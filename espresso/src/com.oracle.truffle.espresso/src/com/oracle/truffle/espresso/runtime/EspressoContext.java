@@ -429,8 +429,6 @@ public final class EspressoContext {
             espressoEnv.getThreadRegistry().createMainThread(meta);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
-                initializeKnownClass(Type.java_lang_Object);
-
                 for (Symbol<Type> type : Arrays.asList(
                                 Type.java_lang_reflect_Method,
                                 Type.java_lang_ref_Finalizer)) {

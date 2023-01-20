@@ -119,13 +119,25 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
             return meta.java_lang_Thread_threadStatus.getInt(guest);
         } else {
             StaticObject holder = meta.java_lang_Thread_holder.getObject(guest);
+            if (StaticObject.isNull(holder)) {
+                return State.NEW.value;
+            }
             return meta.java_lang_Thread$FieldHolder_threadStatus.getInt(holder);
+        }
+    }
+
+    void setPriority(StaticObject thread, int priority) {
+        if (meta.getJavaVersion().java17OrEarlier()) {
+            meta.java_lang_Thread_priority.setInt(thread, priority);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
+            meta.java_lang_Thread$FieldHolder_priority.setInt(holder, priority);
         }
     }
 
     int fromRunnable(StaticObject self, State state) {
         int old = getState(self);
-        assert (old & State.RUNNABLE.value) != 0 : old;
+        assert (old & State.RUNNABLE.value) != 0 || old == State.NEW.value : old;
         setState(self, state.value);
         fullSafePoint(self);
         return old;
@@ -140,21 +152,11 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
     }
 
     void setState(StaticObject self, int state) {
-        assert state != 0;
         if (meta.getJavaVersion().java17OrEarlier()) {
             meta.java_lang_Thread_threadStatus.setInt(self, state);
         } else {
             StaticObject holder = meta.java_lang_Thread_holder.getObject(self);
             meta.java_lang_Thread$FieldHolder_threadStatus.setInt(holder, state);
-        }
-    }
-
-    void setPriority(StaticObject thread, int priority) {
-        if (meta.getJavaVersion().java17OrEarlier()) {
-            meta.java_lang_Thread_priority.setInt(thread, priority);
-        } else {
-            StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
-            meta.java_lang_Thread$FieldHolder_priority.setInt(holder, priority);
         }
     }
 
@@ -472,15 +474,6 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
             }
         }
         return support;
-    }
-
-    public void setThreadGroup(StaticObject guestThread, StaticObject threadGroup) {
-        if (meta.getJavaVersion().java17OrEarlier()) {
-            meta.java_lang_ThreadGroup_add.invokeDirect(threadGroup, guestThread);
-        } else {
-            StaticObject holder = meta.java_lang_Thread_holder.getObject(guestThread);
-            meta.java_lang_Thread$FieldHolder_group.setObject(holder, threadGroup);
-        }
     }
 
     private final class DeprecationSupport {

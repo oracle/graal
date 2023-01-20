@@ -427,8 +427,6 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Thread_threadStatus = java_lang_Thread.requireDeclaredField(Name.threadStatus, Type._int);
             java_lang_Thread$FieldHolder_threadStatus = null;
 
-            java_lang_Thread$FieldHolder_group = null;
-
             java_lang_Thread_priority = java_lang_Thread.requireDeclaredField(Name.priority, _int.getType());
             java_lang_Thread$FieldHolder_priority = null;
 
@@ -439,8 +437,6 @@ public final class Meta extends ContextAccessImpl {
 
             java_lang_Thread_threadStatus = null;
             java_lang_Thread$FieldHolder_threadStatus = java_lang_Thread$FieldHolder.requireDeclaredField(Name.threadStatus, Type._int);
-
-            java_lang_Thread$FieldHolder_group = java_lang_Thread$FieldHolder.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
 
             java_lang_Thread_priority = null;
             java_lang_Thread$FieldHolder_priority = java_lang_Thread$FieldHolder.requireDeclaredField(Name.priority, _int.getType());
@@ -1256,7 +1252,6 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
 
-    public final Field java_lang_Thread$FieldHolder_group;
     public final Field java_lang_Thread_name;
     public final Field java_lang_Thread_priority;
     public final Field java_lang_Thread$FieldHolder_priority;
