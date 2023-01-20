@@ -133,6 +133,6 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
 
     @Override
     public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalFieldProvider.getJavaField(original);
     }
 }

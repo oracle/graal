@@ -26,17 +26,17 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import java.lang.reflect.Field;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public interface OriginalFieldProvider {
 
-    static Field getJavaField(SnippetReflectionProvider reflectionProvider, ResolvedJavaField field) {
+    static Field getJavaField(ResolvedJavaField field) {
         if (field instanceof OriginalFieldProvider) {
             return ((OriginalFieldProvider) field).getJavaField();
         } else {
-            return reflectionProvider.originalField(field);
+            return GraalAccess.getOriginalSnippetReflection().originalField(field);
         }
     }
 

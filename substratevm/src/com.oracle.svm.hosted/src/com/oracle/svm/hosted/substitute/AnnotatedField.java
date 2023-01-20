@@ -124,6 +124,6 @@ public class AnnotatedField implements ReadableJavaField, OriginalFieldProvider,
 
     @Override
     public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalFieldProvider.getJavaField(original);
     }
 }

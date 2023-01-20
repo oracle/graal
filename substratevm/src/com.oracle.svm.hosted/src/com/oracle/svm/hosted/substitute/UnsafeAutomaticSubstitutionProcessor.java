@@ -423,7 +423,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      * <code> static final long fieldOffset = Unsafe.getUnsafe().staticFieldBase(X.class.getDeclaredField("f")); </code>
      */
     private void processUnsafeFieldComputation(ResolvedJavaType type, Invoke invoke, Kind kind) {
-        List<String> unsuccessfulReasons = new ArrayList<>();
+        List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         Class<?> targetFieldHolder = null;
         String targetFieldName = null;
@@ -438,7 +438,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 targetFieldName = targetField.getName();
             }
         } else {
-            unsuccessfulReasons.add("The argument of " + methodFormat + " is not a constant value or a field load that can be constant-folded.");
+            unsuccessfulReasons.add(() -> "The argument of " + methodFormat + " is not a constant value or a field load that can be constant-folded.");
         }
         processUnsafeFieldComputation(type, invoke, kind, unsuccessfulReasons, targetFieldHolder, targetFieldName);
     }
@@ -473,9 +473,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         return null;
     }
 
-    private boolean isValidField(Invoke invoke, Field field, List<String> unsuccessfulReasons, String methodFormat) {
+    private boolean isValidField(Invoke invoke, Field field, List<Supplier<String>> unsuccessfulReasons, String methodFormat) {
         if (field == null) {
-            unsuccessfulReasons.add("The argument of " + methodFormat + " is a null constant.");
+            unsuccessfulReasons.add(() -> "The argument of " + methodFormat + " is a null constant.");
             return false;
         }
 
@@ -483,11 +483,11 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (JavaVersionUtil.JAVA_SPEC >= 17 && isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
             Class<?> declaringClass = field.getDeclaringClass();
             if (RecordSupport.singleton().isRecord(declaringClass)) {
-                unsuccessfulReasons.add("The argument to " + methodFormat + " is a field of a record.");
+                unsuccessfulReasons.add(() -> "The argument to " + methodFormat + " is a field of a record.");
                 valid = false;
             }
             if (SubstrateUtil.isHiddenClass(declaringClass)) {
-                unsuccessfulReasons.add("The argument to " + methodFormat + " is a field of a hidden class.");
+                unsuccessfulReasons.add(() -> "The argument to " + methodFormat + " is a field of a hidden class.");
                 valid = false;
             }
         }
@@ -501,7 +501,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      * <code> static final long fieldOffset = Unsafe.getUnsafe().objectFieldOffset(X.class, "f"); </code>
      */
     private void processUnsafeObjectFieldOffsetClassStringInvoke(ResolvedJavaType type, Invoke unsafeObjectFieldOffsetInvoke) {
-        List<String> unsuccessfulReasons = new ArrayList<>();
+        List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         Class<?> targetFieldHolder = null;
         String targetFieldName = null;
@@ -510,29 +510,29 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (classArgument.isConstant()) {
             Class<?> clazz = snippetReflection.asObject(Class.class, classArgument.asJavaConstant());
             if (clazz == null) {
-                unsuccessfulReasons.add("The Class argument of Unsafe.objectFieldOffset(Class, String) is a null constant.");
+                unsuccessfulReasons.add(() -> "The Class argument of Unsafe.objectFieldOffset(Class, String) is a null constant.");
             } else {
                 targetFieldHolder = clazz;
             }
         } else {
-            unsuccessfulReasons.add("The Class argument of Unsafe.objectFieldOffset(Class, String) is not a constant class.");
+            unsuccessfulReasons.add(() -> "The Class argument of Unsafe.objectFieldOffset(Class, String) is not a constant class.");
         }
 
         ValueNode nameArgument = unsafeObjectFieldOffsetInvoke.callTarget().arguments().get(2);
         if (nameArgument.isConstant()) {
             String fieldName = snippetReflection.asObject(String.class, nameArgument.asJavaConstant());
             if (fieldName == null) {
-                unsuccessfulReasons.add("The String argument of Unsafe.objectFieldOffset(Class, String) is a null String.");
+                unsuccessfulReasons.add(() -> "The String argument of Unsafe.objectFieldOffset(Class, String) is a null String.");
             } else {
                 targetFieldName = fieldName;
             }
         } else {
-            unsuccessfulReasons.add("The name argument of Unsafe.objectFieldOffset(Class, String) is not a constant String.");
+            unsuccessfulReasons.add(() -> "The name argument of Unsafe.objectFieldOffset(Class, String) is not a constant String.");
         }
         processUnsafeFieldComputation(type, unsafeObjectFieldOffsetInvoke, FieldOffset, unsuccessfulReasons, targetFieldHolder, targetFieldName);
     }
 
-    private void processUnsafeFieldComputation(ResolvedJavaType type, Invoke invoke, Kind kind, List<String> unsuccessfulReasons, Class<?> targetFieldHolder, String targetFieldName) {
+    private void processUnsafeFieldComputation(ResolvedJavaType type, Invoke invoke, Kind kind, List<Supplier<String>> unsuccessfulReasons, Class<?> targetFieldHolder, String targetFieldName) {
         assert kind == FieldOffset || kind == StaticFieldBase;
         /*
          * If the value returned by the call to Unsafe.objectFieldOffset() is stored into a field
@@ -569,7 +569,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     private void processUnsafeArrayBaseOffsetInvoke(ResolvedJavaType type, Invoke unsafeArrayBaseOffsetInvoke) {
         SnippetReflectionProvider snippetReflectionProvider = GraalAccess.getOriginalSnippetReflection();
 
-        List<String> unsuccessfulReasons = new ArrayList<>();
+        List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         Class<?> arrayClass = null;
 
@@ -577,7 +577,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (arrayClassArgument.isJavaConstant()) {
             arrayClass = snippetReflectionProvider.asObject(Class.class, arrayClassArgument.asJavaConstant());
         } else {
-            unsuccessfulReasons.add("The argument of the call to Unsafe.arrayBaseOffset() is not a constant.");
+            unsuccessfulReasons.add(() -> "The argument of the call to Unsafe.arrayBaseOffset() is not a constant.");
         }
 
         /*
@@ -610,7 +610,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     private void processUnsafeArrayIndexScaleInvoke(ResolvedJavaType type, Invoke unsafeArrayIndexScale, StructuredGraph clinitGraph) {
         SnippetReflectionProvider snippetReflectionProvider = GraalAccess.getOriginalSnippetReflection();
 
-        List<String> unsuccessfulReasons = new ArrayList<>();
+        List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         Class<?> arrayClass = null;
 
@@ -618,7 +618,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (arrayClassArgument.isJavaConstant()) {
             arrayClass = snippetReflectionProvider.asObject(Class.class, arrayClassArgument.asJavaConstant());
         } else {
-            unsuccessfulReasons.add("The argument of the call to Unsafe.arrayIndexScale() is not a constant.");
+            unsuccessfulReasons.add(() -> "The argument of the call to Unsafe.arrayIndexScale() is not a constant.");
         }
 
         /*
@@ -732,7 +732,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
                 SearchResult result = null;
                 ResolvedJavaField indexShiftField = null;
-                List<String> unsuccessfulReasons = new ArrayList<>();
+                List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
                 Invoke numberOfLeadingZerosInvoke = methodCallTarget.invoke();
                 NodeIterable<SubNode> numberOfLeadingZerosInvokeSubUsages = numberOfLeadingZerosInvoke.asNode().usages().filter(SubNode.class);
                 if (numberOfLeadingZerosInvokeSubUsages.count() == 1) {
@@ -745,10 +745,10 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                         result = extractValueStoreField(subNode, ArrayIndexShift, unsuccessfulReasons);
                         indexShiftField = result.valueStoreField;
                     } else {
-                        unsuccessfulReasons.add("The index array scale value provided by " + indexScaleValue + " is not used to calculate the array index shift.");
+                        unsuccessfulReasons.add(() -> "The index array scale value provided by " + indexScaleValue + " is not used to calculate the array index shift.");
                     }
                 } else {
-                    unsuccessfulReasons.add("The call to " + methodCallTarget.targetMethod().format("%H.%n(%p)") + " has multiple uses.");
+                    unsuccessfulReasons.add(() -> "The call to " + methodCallTarget.targetMethod().format("%H.%n(%p)") + " has multiple uses.");
                 }
 
                 if (indexShiftField != null) {
@@ -838,7 +838,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      * returned. If the field is either not static or not final the method returns null and the
      * reason is recorded in the unsuccessfulReasons parameter.
      */
-    private static SearchResult extractValueStoreField(ValueNode valueNode, Kind substitutionKind, List<String> unsuccessfulReasons) {
+    private static SearchResult extractValueStoreField(ValueNode valueNode, Kind substitutionKind, List<Supplier<String>> unsuccessfulReasons) {
         ResolvedJavaField valueStoreField = null;
         boolean illegalUseFound = false;
 
@@ -874,8 +874,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 /* Success! We found the static final field where this value is stored. */
                 return SearchResult.foundField(valueStoreField);
             } else {
-                String message = "The field " + valueStoreField.format("%H.%n") + ", where the value produced by the " + kindAsString(substitutionKind) +
-                                " computation is stored, is not" + (!valueStoreField.isStatic() ? " static" : "") + (!valueStoreField.isFinal() ? " final" : "") + ".";
+                ResolvedJavaField valueStoreFieldFinal = valueStoreField;
+                Supplier<String> message = () -> "The field " + valueStoreFieldFinal.format("%H.%n") + ", where the value produced by the " + kindAsString(substitutionKind) +
+                                " computation is stored, is not" + (!valueStoreFieldFinal.isStatic() ? " static" : "") + (!valueStoreFieldFinal.isFinal() ? " final" : "") + ".";
                 unsuccessfulReasons.add(message);
                 /* Value is stored to a non static final field. */
                 return SearchResult.foundIllegalUse();
@@ -896,7 +897,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             } else {
                 throw VMError.shouldNotReachHere();
             }
-            String message = "Could not determine the field where the value produced by the " + producer +
+            Supplier<String> message = () -> "Could not determine the field where the value produced by the " + producer +
                             " for the " + kindAsString(substitutionKind) + " computation is stored. The " + operation +
                             " is not directly followed by a field store or by a sign extend node followed directly by a field store. ";
             unsuccessfulReasons.add(message);
@@ -1078,7 +1079,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         }
     }
 
-    private void reportUnsuccessfulAutomaticRecomputation(ResolvedJavaType type, ResolvedJavaField computedField, Invoke invoke, Kind substitutionKind, List<String> reasons) {
+    private void reportUnsuccessfulAutomaticRecomputation(ResolvedJavaType type, ResolvedJavaField computedField, Invoke invoke, Kind substitutionKind, List<Supplier<String>> reasons) {
         String msg = "";
         if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= BASIC_LEVEL) {
             if (!suppressWarningsFor(type) || Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= DEBUG_LEVEL) {
@@ -1097,7 +1098,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                     /* If the computed field is null then reasons will contain the details. */
                     msg += "Add a " + substitutionKindStr + " manual substitution for " + computedField.format("%H.%n") + ". ";
                 }
-                msg += "Detailed failure reason(s): " + reasons.stream().collect(Collectors.joining(", "));
+                msg += "Detailed failure reason(s): " + reasons.stream().map(s -> s.get()).collect(Collectors.joining(", "));
             }
         }
 

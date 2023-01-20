@@ -49,7 +49,6 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.hosted.annotation.AnnotationMetadata.AnnotationExtractionError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -177,7 +176,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     private AnnotationValue[] getAnnotationData(AnnotatedElement element, boolean declaredOnly) {
         AnnotatedElement cur = element;
         while (cur instanceof WrappedElement) {
-            cur = ((WrappedElement) cur).getWrappedWithoutResolve();
+            cur = ((WrappedElement) cur).getWrapped();
         }
         AnnotationValue[] result = NO_ANNOTATIONS;
         while (cur instanceof AnnotationWrapper) {
@@ -449,11 +448,11 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
         assert !(element instanceof WrappedElement || element instanceof AnnotationWrapper);
         try {
             if (element instanceof ResolvedJavaType) {
-                return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), (ResolvedJavaType) element);
+                return OriginalClassProvider.getJavaClass((ResolvedJavaType) element);
             } else if (element instanceof ResolvedJavaMethod) {
-                return OriginalMethodProvider.getJavaMethod(GraalAccess.getOriginalSnippetReflection(), (ResolvedJavaMethod) element);
+                return OriginalMethodProvider.getJavaMethod((ResolvedJavaMethod) element);
             } else if (element instanceof ResolvedJavaField) {
-                return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), (ResolvedJavaField) element);
+                return OriginalFieldProvider.getJavaField((ResolvedJavaField) element);
             } else if (element instanceof Package) {
                 return (Class<?>) packageGetPackageInfo.invoke(element);
             } else {

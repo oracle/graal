@@ -52,7 +52,6 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -166,10 +165,10 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
         JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
 
         AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) ((metaAccess instanceof AnalysisMetaAccess) ? metaAccess : metaAccess.getWrapped());
-        Signature invokeSignature = aMetaAccess.getUniverse().lookup(targetSignature, aMetaAccess.getUniverse().lookup(getDeclaringClass()));
+        Signature invokeSignature = aMetaAccess.getUniverse().lookup(targetSignature, getDeclaringClass());
         if (metaAccess instanceof HostedMetaAccess) {
             // signature might not exist in the hosted universe because it does not match any method
-            invokeSignature = new WrappedSignature(metaAccess.getUniverse(), invokeSignature, (WrappedJavaType) method.getDeclaringClass());
+            invokeSignature = new WrappedSignature(metaAccess.getUniverse(), invokeSignature, getDeclaringClass());
         }
 
         JavaKind wordKind = providers.getWordTypes().getWordKind();

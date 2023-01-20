@@ -49,35 +49,31 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
     public abstract AnnotatedElement getWrapped();
 
-    public AnnotatedElement getWrappedWithoutResolve() {
-        return getWrapped();
-    }
-
     protected abstract AnalysisUniverse getUniverse();
 
     @Override
     public final boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
-        return getUniverse().getAnnotationExtractor().hasAnnotation(getWrappedWithoutResolve(), annotationClass);
+        return getUniverse().getAnnotationExtractor().hasAnnotation(getWrapped(), annotationClass);
     }
 
     @Override
     public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return getUniverse().getAnnotationExtractor().extractAnnotation(getWrappedWithoutResolve(), annotationClass, false);
+        return getUniverse().getAnnotationExtractor().extractAnnotation(getWrapped(), annotationClass, false);
     }
 
     @Override
     public final <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
-        return getUniverse().getAnnotationExtractor().extractAnnotation(getWrappedWithoutResolve(), annotationClass, true);
+        return getUniverse().getAnnotationExtractor().extractAnnotation(getWrapped(), annotationClass, true);
     }
 
     @Override
     public final Annotation[] getAnnotations() {
-        return getUniverse().getAnnotationExtractor().extractAnnotations(getWrappedWithoutResolve(), false);
+        return getUniverse().getAnnotationExtractor().extractAnnotations(getWrapped(), false);
     }
 
     @Override
     public final Annotation[] getDeclaredAnnotations() {
-        return getUniverse().getAnnotationExtractor().extractAnnotations(getWrappedWithoutResolve(), true);
+        return getUniverse().getAnnotationExtractor().extractAnnotations(getWrapped(), true);
     }
 
     /**

@@ -530,8 +530,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 InliningUtil.nonNullReceiver(invoke);
             }
 
-            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + invoke +
-                            ": empty list of callees for call to " + invoke.callTarget().targetMethod().format("%H.%n(%P)"));
+            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + ((AnalysisMethod) graph.method()).getQualifiedName() + ", node " + invoke +
+                            ": empty list of callees for call to " + ((AnalysisMethod) invoke.callTarget().targetMethod()).getQualifiedName());
         }
 
         /**
@@ -675,7 +675,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
             if (typeStateTypes.size() == 0) {
                 if (nonNull) {
-                    makeUnreachable(anchorPoint.next(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + node + ": empty stamp when strengthening oldStamp " + oldStamp);
+                    makeUnreachable(anchorPoint.next(), tool,
+                                    () -> "method " + ((AnalysisMethod) graph.method()).getQualifiedName() + ", node " + node + ": empty stamp when strengthening oldStamp " + oldStamp);
                     return null;
                 } else {
                     return StampFactory.alwaysNull();

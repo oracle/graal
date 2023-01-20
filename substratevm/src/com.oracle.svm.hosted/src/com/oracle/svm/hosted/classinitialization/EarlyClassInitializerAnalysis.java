@@ -165,7 +165,7 @@ final class EarlyClassInitializerAnalysis {
         plugins.appendInlineInvokePlugin(new AbortOnRecursiveInliningPlugin());
         AbortOnUnitializedClassPlugin classInitializationPlugin = new AbortOnUnitializedClassPlugin(analyzedClasses);
         plugins.setClassInitializationPlugin(classInitializationPlugin);
-        plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(originalProviders.getMetaAccess(), originalProviders.getSnippetReflection()));
+        plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(originalProviders.getMetaAccess()));
 
         SubstrateGraphBuilderPlugins.registerClassDesiredAssertionStatusPlugin(invocationPlugins, originalProviders.getSnippetReflection());
         ReflectionPlugins.registerInvocationPlugins(classInitializationSupport.loader, originalProviders.getSnippetReflection(), null, classInitializationPlugin, invocationPlugins, null,

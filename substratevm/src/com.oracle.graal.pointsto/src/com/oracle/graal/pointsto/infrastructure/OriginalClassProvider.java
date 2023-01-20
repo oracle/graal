@@ -24,17 +24,17 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface OriginalClassProvider {
 
-    static Class<?> getJavaClass(SnippetReflectionProvider reflectionProvider, ResolvedJavaType javaType) {
+    static Class<?> getJavaClass(ResolvedJavaType javaType) {
         if (javaType instanceof OriginalClassProvider) {
             return ((OriginalClassProvider) javaType).getJavaClass();
         } else {
-            return reflectionProvider.originalClass(javaType);
+            return GraalAccess.getOriginalSnippetReflection().originalClass(javaType);
         }
     }
 

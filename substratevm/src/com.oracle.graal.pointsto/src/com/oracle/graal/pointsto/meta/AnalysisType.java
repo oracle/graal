@@ -844,17 +844,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public ResolvedJavaType getWrapped() {
+        return wrapped;
+    }
+
+    public ResolvedJavaType getWrappedWithResolve() {
         return universe.substitutions.resolve(wrapped);
     }
 
     @Override
-    public ResolvedJavaType getWrappedWithoutResolve() {
-        return wrapped;
-    }
-
-    @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), wrapped);
+        return OriginalClassProvider.getJavaClass(wrapped);
     }
 
     @Override
@@ -938,8 +937,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
-        ResolvedJavaType subst = universe.substitutions.resolve(((AnalysisType) other).wrapped);
-        return wrapped.isAssignableFrom(subst);
+        return wrapped.isAssignableFrom(((AnalysisType) other).getWrappedWithResolve());
     }
 
     @Override
@@ -1000,8 +998,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public AnalysisType findLeastCommonAncestor(ResolvedJavaType otherType) {
-        ResolvedJavaType subst = universe.substitutions.resolve(((AnalysisType) otherType).wrapped);
-        return universe.lookup(wrapped.findLeastCommonAncestor(subst));
+        return universe.lookup(wrapped.findLeastCommonAncestor(((AnalysisType) otherType).getWrappedWithResolve()));
     }
 
     @Override
@@ -1124,11 +1121,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
-    private AnalysisField[] convertFields(ResolvedJavaField[] original, List<AnalysisField> list, boolean listIncludesSuperClassesFields) {
-        for (int i = 0; i < original.length; i++) {
-            if (!original[i].isInternal()) {
+    private AnalysisField[] convertFields(ResolvedJavaField[] originals, List<AnalysisField> list, boolean listIncludesSuperClassesFields) {
+        for (ResolvedJavaField original : originals) {
+            if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
-                    AnalysisField aField = universe.lookup(original[i]);
+                    AnalysisField aField = universe.lookup(original);
                     if (aField != null) {
                         if (listIncludesSuperClassesFields || aField.isStatic()) {
                             /*

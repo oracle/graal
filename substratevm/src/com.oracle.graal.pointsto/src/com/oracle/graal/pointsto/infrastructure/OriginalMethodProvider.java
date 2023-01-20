@@ -26,17 +26,17 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import java.lang.reflect.Executable;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public interface OriginalMethodProvider {
 
-    static Executable getJavaMethod(SnippetReflectionProvider reflectionProvider, ResolvedJavaMethod method) {
+    static Executable getJavaMethod(ResolvedJavaMethod method) {
         if (method instanceof OriginalMethodProvider) {
             return ((OriginalMethodProvider) method).getJavaMethod();
         } else {
-            return reflectionProvider.originalMethod(method);
+            return GraalAccess.getOriginalSnippetReflection().originalMethod(method);
         }
     }
 
