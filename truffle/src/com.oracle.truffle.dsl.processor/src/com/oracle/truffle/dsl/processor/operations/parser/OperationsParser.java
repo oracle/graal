@@ -48,6 +48,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -59,6 +60,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -93,6 +95,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         OperationsModel model = new OperationsModel(context, typeElement, generateOperationsMirror);
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass").getValue();
         model.enableYield = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableYield", true).getValue();
+        model.enableSerialization = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableSerialization", true).getValue();
 
         model.addDefault();
 
@@ -256,7 +259,52 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             model.optimizationDecisions = parseDecisions(model, model.decisionsFilePath, decisionsOverrideFilesPath);
         }
 
+        // error sync
+        if (model.hasErrors()) {
+            return model;
+        }
+
+        if (model.enableSerialization) {
+            List<VariableElement> serializedFields = new ArrayList<>();
+            TypeElement type = model.getTemplateType();
+            while (type != null) {
+                if (ElementUtils.typeEquals(types.RootNode, type.asType())) {
+                    break;
+                }
+                for (VariableElement field : ElementFilter.fieldsIn(type.getEnclosedElements())) {
+                    if (field.getModifiers().contains(Modifier.STATIC) || field.getModifiers().contains(Modifier.TRANSIENT) || field.getModifiers().contains(Modifier.FINAL)) {
+                        continue;
+                    }
+
+                    boolean visible = model.getTemplateType() == type && !field.getModifiers().contains(Modifier.PRIVATE);
+                    boolean inTemplateType = model.getTemplateType() == type;
+                    if (inTemplateType) {
+                        visible = !field.getModifiers().contains(Modifier.PRIVATE);
+                    } else {
+                        visible = ElementUtils.isVisible(model.getTemplateType(), field);
+                    }
+
+                    if (!visible) {
+                        model.addError(inTemplateType ? field : null, errorPrefix() +
+                                        "The field '%s' is not accessible to generated code. The field must be accessible for serialization. Add the transient modifier to the field or make it accessible to resolve this problem.",
+                                        ElementUtils.getReadableReference(model.getTemplateType(), field));
+                        continue;
+                    }
+
+                    serializedFields.add(field);
+                }
+
+                type = ElementUtils.castTypeElement(type.getSuperclass());
+            }
+
+            model.serializedFields = serializedFields;
+        }
+
         return model;
+    }
+
+    private String errorPrefix() {
+        return String.format("Failed to generate code for @%s: ", getSimpleName(types.GenerateOperations));
     }
 
     private String resolveElementRelativePath(Element element, String relativePath) {

@@ -158,9 +158,12 @@ public class GeneratorUtils {
     }
 
     public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz) {
-        TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
-        ExecutableElement constructor = findConstructor(superClass);
-        return createConstructorUsingFields(modifiers, clazz, constructor);
+        ExecutableElement superConstructor = null;
+        if (clazz.getSuperclass() != null) {
+            TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
+            superConstructor = findConstructor(superClass);
+        }
+        return createConstructorUsingFields(modifiers, clazz, superConstructor);
     }
 
     public static void addBoundaryOrTransferToInterpreter(CodeExecutableElement method, CodeTreeBuilder builder) {

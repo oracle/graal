@@ -182,7 +182,6 @@ public class FlatNodeGenFactory {
     private final TruffleTypes types = ProcessorContext.getInstance().getTypes();
     private final NodeData node;
     private final TypeSystemData typeSystem;
-    private final TypeMirror genericType;
     private final Set<TypeMirror> expectedTypes = new HashSet<>();
     private final Collection<NodeData> sharingNodes;
 
@@ -232,7 +231,6 @@ public class FlatNodeGenFactory {
         this.sharingNodes = stateSharingNodes;
         this.node = node;
         this.typeSystem = node.getTypeSystem();
-        this.genericType = context.getType(Object.class);
         this.boxingEliminationEnabled = !TruffleProcessorOptions.generateSlowPathOnly(context.getEnvironment());
         this.primaryNode = stateSharingNodes.iterator().next() == node;
         this.sharedCaches = sharedCaches;
@@ -3278,7 +3276,9 @@ public class FlatNodeGenFactory {
 
     }
 
-    void createNodeChildReferenceForException(final FrameState frameState, CodeTreeBuilder builder, List<CodeTree> values, NodeExecutionData execution, NodeChildData child, LocalVariable var) {
+    @SuppressWarnings("unused")
+    void createNodeChildReferenceForException(final FrameState frameState, CodeTreeBuilder builder, List<CodeTree> values, NodeExecutionData execution, NodeChildData child,
+                    LocalVariable var) {
         if (child != null && !frameState.getMode().isUncached()) {
             builder.string(accessNodeField(execution));
         } else {

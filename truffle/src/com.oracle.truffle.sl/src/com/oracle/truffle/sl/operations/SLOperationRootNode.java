@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.sl.operations;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.util.List;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -63,6 +68,9 @@ import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
+import com.oracle.truffle.api.operation.serialization.OperationDeserializer;
+import com.oracle.truffle.api.operation.serialization.OperationDeserializer.DeserializerContext;
+import com.oracle.truffle.api.operation.serialization.OperationSerializer.SerializerContext;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
@@ -89,7 +97,7 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
                 languageClass = SLLanguage.class, //
                 decisionsFile = "decisions.json", //
                 boxingEliminationTypes = {long.class, boolean.class}, //
-                forceTracing = true)
+                enableSerialization = true)
 @GenerateUncached
 @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
@@ -113,6 +121,8 @@ public abstract class SLOperationRootNode extends SLRootNode implements Operatio
         super((SLLanguage) language, frameDescriptor);
     }
 
+    protected TruffleString tsName;
+
     @Override
     public SLExpressionNode getBodyNode() {
         return null;
@@ -132,7 +142,13 @@ public abstract class SLOperationRootNode extends SLRootNode implements Operatio
         this.tsName = tsName;
     }
 
-    private TruffleString tsName;
+    public List<Object> decompose() {
+        return List.of(getTSName());
+    }
+
+    public void recompose(List<Object> objects) {
+        setTSName((TruffleString) objects.get(0));
+    }
 
     @Operation
     @TypeSystemReference(SLTypes.class)
@@ -142,6 +158,7 @@ public abstract class SLOperationRootNode extends SLRootNode implements Operatio
                         assumptions = "callTargetStable")
         @SuppressWarnings("unused")
         protected static Object doDirect(SLFunction function, @Variadic Object[] arguments,
+                        @Bind("this") Node node,
                         @Cached("function.getCallTargetStable()") Assumption callTargetStable,
                         @Cached("function.getCallTarget()") RootCallTarget cachedTarget,
                         @Cached("create(cachedTarget)") DirectCallNode callNode) {

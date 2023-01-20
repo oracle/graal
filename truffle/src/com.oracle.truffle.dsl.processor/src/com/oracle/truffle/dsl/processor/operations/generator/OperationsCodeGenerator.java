@@ -52,7 +52,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsMo
 
     @Override
     public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, OperationsModel m) {
-        return List.of(new OperationsNodeFactory(context, m).create());
+        return List.of(new OperationsNodeFactory(m).create());
     }
 
 }

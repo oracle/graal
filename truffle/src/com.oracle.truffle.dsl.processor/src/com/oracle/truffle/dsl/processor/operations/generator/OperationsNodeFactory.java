@@ -45,23 +45,32 @@ import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createNe
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createShouldNotReachHere;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.boxType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
+import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.addField;
+import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.arrayOf;
+import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.generic;
+import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.type;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOError;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Name;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -83,8 +92,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -96,13 +104,15 @@ import com.oracle.truffle.dsl.processor.operations.model.OperationModel.CustomSi
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 
-public class OperationsNodeFactory {
-    private final ProcessorContext context;
-    private final TruffleTypes types;
+public class OperationsNodeFactory implements ElementHelpers {
+    private final ProcessorContext context = ProcessorContext.getInstance();
+    private final TruffleTypes types = context.getTypes();
     private final OperationsModel model;
 
     private CodeTypeElement operationNodeGen;
-    private CodeTypeElement operationBuilder = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
+    private CodeTypeElement builder = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
+    private DeclaredType operationBuilderType = new GeneratedTypeMirror("", builder.getSimpleName().toString(), builder.asType());
+    private TypeMirror parserType = generic(types.OperationParser, operationBuilderType);
     private CodeTypeElement operationNodes = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationNodesImpl");
 
     private CodeTypeElement intRef = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "IntRef");
@@ -119,9 +129,9 @@ public class OperationsNodeFactory {
 
     private static final Name Uncached_Name = CodeNames.of("Uncached");
 
-    public OperationsNodeFactory(ProcessorContext context, OperationsModel model) {
-        this.context = context;
-        this.types = context.getTypes();
+    private BuilderElements builderElements;
+
+    public OperationsNodeFactory(OperationsModel model) {
         this.model = model;
     }
 
@@ -150,7 +160,9 @@ public class OperationsNodeFactory {
         operationNodeGen.add(createInterpreterSwitch(cachedInterpreter, "CACHED"));
         operationNodeGen.add(createInterpreterSwitch(instrumentableInterpreter, "INSTRUMENTABLE"));
 
-        operationNodeGen.add(new BuilderFactory().create());
+        this.builderElements = new BuilderElements();
+        operationNodeGen.add(builderElements.getElement());
+
         operationNodeGen.add(new OperationNodesImplFactory().create());
         operationNodeGen.add(new IntRefFactory().create());
         operationNodeGen.add(new OperationLocalImplFactory().create());
@@ -169,6 +181,26 @@ public class OperationsNodeFactory {
 
         operationNodeGen.add(createExecute());
         operationNodeGen.add(createSneakyThrow());
+
+        if (model.enableSerialization) {
+
+            if (!model.getProvidedTags().isEmpty()) {
+                CodeExecutableElement initializeClassToTagIndex = operationNodeGen.add(createInitializeClassToTagIndex());
+                CodeVariableElement classToTag = compFinal(1,
+                                new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), arrayOf(generic(context.getDeclaredType(Class.class), types.Tag)), "TAG_INDEX_TO_CLASS"));
+                classToTag.createInitBuilder().startStaticCall(initializeClassToTagIndex).end();
+                operationNodeGen.add(classToTag);
+
+                CodeExecutableElement initializeTagIndexToClass = operationNodeGen.add(createInitializeTagIndexToClass());
+                CodeVariableElement tagToClass = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), generic(context.getDeclaredType(ClassValue.class), context.getType(Short.class)),
+                                "CLASS_TO_TAG_INDEX");
+                tagToClass.createInitBuilder().startStaticCall(initializeTagIndexToClass).end();
+                operationNodeGen.add(tagToClass);
+            }
+
+            operationNodeGen.add(createSerialize());
+            operationNodeGen.add(createDeserialize());
+        }
 
         operationNodeGen.add(createGetIntrospectionData());
 
@@ -351,7 +383,7 @@ public class OperationsNodeFactory {
         return fld;
     }
 
-    private CodeVariableElement createInterpreterSwitch(CodeTypeElement interpreterType, String name) {
+    private static CodeVariableElement createInterpreterSwitch(CodeTypeElement interpreterType, String name) {
         CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), interpreterType.asType(), name + "_INTERPRETER");
         fld.createInitBuilder().startNew(interpreterType.asType()).end();
         return fld;
@@ -459,7 +491,7 @@ public class OperationsNodeFactory {
         return ex;
     }
 
-    private CodeExecutableElement createSneakyThrow() {
+    private static CodeExecutableElement createSneakyThrow() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), null, "<E extends Throwable> RuntimeException sneakyThrow(Throwable e) throws E { //");
         CodeTreeBuilder b = ex.createBuilder();
 
@@ -471,12 +503,12 @@ public class OperationsNodeFactory {
     private CodeExecutableElement createCreate() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.OperationNodes, model.templateType.asType()), "create");
         ex.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
-        ex.addParameter(new CodeVariableElement(generic(types.OperationParser, operationBuilder.asType()), "generator"));
+        ex.addParameter(new CodeVariableElement(generic(types.OperationParser, builder.asType()), "generator"));
 
         CodeTreeBuilder b = ex.getBuilder();
 
         b.declaration("OperationNodesImpl", "nodes", "new OperationNodesImpl(generator)");
-        b.startAssign("Builder builder").startNew(operationBuilder.asType());
+        b.startAssign("Builder builder").startNew(builder.asType());
         b.string("nodes");
         b.string("false");
         b.string("config");
@@ -491,6 +523,114 @@ public class OperationsNodeFactory {
         b.startReturn().string("nodes").end();
 
         return ex;
+    }
+
+    private CodeExecutableElement createInitializeClassToTagIndex() {
+        ArrayType rawArray = arrayOf(context.getType(Class.class));
+        ArrayType genericArray = arrayOf(generic(context.getDeclaredType(Class.class), types.Tag));
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), genericArray, "initializeClassToTagIndex");
+        CodeTreeBuilder b = method.createBuilder();
+
+        b.startReturn();
+        b.cast(genericArray);
+        b.startNewArray(rawArray, null);
+
+        for (TypeMirror tagClass : model.getProvidedTags()) {
+            b.typeLiteral(tagClass);
+        }
+
+        b.end();
+        b.end();
+
+        return method;
+    }
+
+    private CodeExecutableElement createInitializeTagIndexToClass() {
+        DeclaredType classValue = context.getDeclaredType(ClassValue.class);
+        TypeMirror classValueType = generic(classValue, context.getType(Short.class));
+
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), classValueType,
+                        "initializeTagIndexToClass");
+        CodeTreeBuilder b = method.createBuilder();
+
+        b.startStatement();
+        b.string("return new ClassValue<>()").startBlock();
+        b.string("protected Short computeValue(Class<?> type) ").startBlock();
+
+        boolean elseIf = false;
+        int index = 0;
+        for (TypeMirror tagClass : model.getProvidedTags()) {
+            elseIf = b.startIf(elseIf);
+            b.string("type == ").typeLiteral(tagClass);
+            b.end().startBlock();
+            b.startReturn().string(index).end();
+            b.end();
+            index++;
+        }
+        b.startReturn().string(-1).end();
+
+        b.end();
+
+        b.end();
+        b.end();
+
+        return method;
+    }
+
+    private CodeExecutableElement createSerialize() {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), context.getType(void.class), "serialize");
+        method.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
+        method.addParameter(new CodeVariableElement(context.getType(DataOutput.class), "buffer"));
+        method.addParameter(new CodeVariableElement(types.OperationSerializer, "callback"));
+        method.addParameter(new CodeVariableElement(parserType, "parser"));
+        method.addThrownType(context.getType(IOException.class));
+
+        CodeTreeBuilder init = CodeTreeBuilder.createBuilder();
+        init.startNew(operationBuilderType);
+        init.startGroup();
+        init.cast(operationNodes.asType());
+        init.string("create(config, parser)");
+        init.end();
+        init.string("false");
+        init.string("config");
+        init.end();
+
+        CodeTreeBuilder b = method.createBuilder();
+        b.declaration(operationBuilderType, "builder", init.build());
+
+        b.startTryBlock();
+
+        b.startStatement().startCall("builder", "serialize");
+        b.string("buffer");
+        b.string("callback");
+        b.end().end();
+
+        b.end().startCatchBlock(context.getType(IOError.class), "e");
+        b.startThrow().cast(context.getType(IOException.class), "e.getCause()").end();
+        b.end();
+
+        return method;
+    }
+
+    private CodeExecutableElement createDeserialize() {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
+                        generic(types.OperationNodes, model.getTemplateType().asType()), "deserialize");
+
+        method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
+        method.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
+        method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));
+        method.addParameter(new CodeVariableElement(types.OperationDeserializer, "callback"));
+        method.addThrownType(context.getType(IOException.class));
+        CodeTreeBuilder b = method.createBuilder();
+
+        b.startTryBlock();
+
+        b.statement("return create(config, (b) -> b.deserialize(language, input, callback))");
+        b.end().startCatchBlock(type(IOError.class), "e");
+        b.startThrow().cast(type(IOException.class), "e.getCause()").end();
+        b.end();
+
+        return method;
     }
 
     private CodeExecutableElement createGetIntrospectionData() {
@@ -686,6 +826,14 @@ public class OperationsNodeFactory {
         return ex;
     }
 
+    private void serializationWrapException(CodeTreeBuilder b, Runnable r) {
+        b.startTryBlock();
+        r.run();
+        b.end().startCatchBlock(context.getType(IOException.class), "ex");
+        b.startThrow().startNew(context.getType(IOError.class)).string("ex").end(2);
+        b.end();
+    }
+
     private CodeExecutableElement createChangeInterpreters() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "changeInterpreters");
 
@@ -766,7 +914,120 @@ public class OperationsNodeFactory {
         return ex;
     }
 
-    class BuilderFactory {
+    final class SerializationStateElements implements ElementHelpers {
+
+        final CodeTypeElement serializationState = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "SerializationState");
+
+        final CodeVariableElement codeCreateLabel = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_LABEL", "-2");
+        final CodeVariableElement codeCreateLocal = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_LOCAL", "-3");
+        final CodeVariableElement codeCreateObject = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_OBJECT", "-4");
+        final CodeVariableElement codeEndSerialize = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END", "-5");
+
+        final CodeVariableElement builtNodes = addField(serializationState, Set.of(PRIVATE, FINAL), generic(ArrayList.class, operationNodeGen.asType()), "builtNodes");
+        final CodeVariableElement buffer = addField(serializationState, Set.of(PRIVATE, FINAL), DataOutput.class, "buffer");
+        final CodeVariableElement callback = addField(serializationState, Set.of(PRIVATE, FINAL), types.OperationSerializer, "callback");
+        final CodeExecutableElement constructor = serializationState.add(createConstructorUsingFields(Set.of(), serializationState, null));
+        final CodeVariableElement language = addField(serializationState, Set.of(PRIVATE), types.TruffleLanguage, "language");
+
+        final CodeVariableElement labelCount = addField(serializationState, Set.of(PRIVATE), int.class, "labelCount");
+        final CodeVariableElement objects = addField(serializationState, Set.of(PRIVATE, FINAL),
+                        generic(HashMap.class, Object.class, Short.class), "objects");
+
+        final CodeVariableElement[] codeBegin;
+        final CodeVariableElement[] codeEnd;
+
+        SerializationStateElements() {
+            serializationState.getImplements().add(types.OperationSerializer_SerializerContext);
+
+            objects.createInitBuilder().startNew("HashMap<>").end();
+
+            codeBegin = new CodeVariableElement[model.getOperations().size() + 1];
+            codeEnd = new CodeVariableElement[model.getOperations().size() + 1];
+
+            for (OperationModel o : model.getOperations()) {
+                if (o.hasChildren()) {
+                    codeBegin[o.id] = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class,
+                                    "CODE_BEGIN_" + ElementUtils.createConstantName(o.name), String.valueOf(o.id) + " << 1");
+                    codeEnd[o.id] = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class,
+                                    "CODE_END_" + ElementUtils.createConstantName(o.name), "(" + String.valueOf(o.id) + " << 1) | 0b1");
+                } else {
+                    codeBegin[o.id] = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class,
+                                    "CODE_EMIT_" + ElementUtils.createConstantName(o.name), String.valueOf(o.id) + " << 1");
+                }
+            }
+
+            serializationState.add(createSerializeObject());
+            serializationState.add(createWriteOperationNode());
+
+        }
+
+        private CodeExecutableElement createWriteOperationNode() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationSerializer_SerializerContext, "writeOperationNode");
+            ex.renameArguments("buffer", "node");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startStatement();
+            b.string("buffer.writeChar((");
+            b.cast(operationNodeGen.asType()).string("node).buildIndex)");
+            b.end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createSerializeObject() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(short.class), "serializeObject");
+            method.addParameter(new CodeVariableElement(type(Object.class), "object"));
+            method.addThrownType(type(IOException.class));
+            CodeTreeBuilder b = method.createBuilder();
+
+            String argumentName = "object";
+            String index = "index";
+
+            b.startAssign("Short " + index).startCall("objects.get").string(argumentName).end(2);
+            b.startIf().string(index + " == null").end().startBlock();
+            b.startAssign(index).startCall("(short) objects.size").end(2);
+            b.startStatement().startCall("objects.put").string(argumentName).string(index).end(2);
+
+            b.startStatement();
+            b.string(buffer.getName(), ".").startCall("writeShort").string(codeCreateObject.getName()).end();
+            b.end();
+            b.statement("callback.serialize(this, buffer, object)");
+            b.end();
+            b.statement("return ", index);
+            return method;
+
+        }
+
+        public void writeShort(CodeTreeBuilder b, CodeVariableElement label) {
+            writeShort(b, b.create().staticReference(label).build());
+        }
+
+        public void writeShort(CodeTreeBuilder b, String value) {
+            writeShort(b, CodeTreeBuilder.singleString(value));
+        }
+
+        public void writeShort(CodeTreeBuilder b, CodeTree value) {
+            b.startStatement();
+            b.string("serialization.", buffer.getName(), ".").startCall("writeShort");
+            b.tree(value).end();
+            b.end();
+        }
+
+        public void writeInt(CodeTreeBuilder b, String value) {
+            writeInt(b, CodeTreeBuilder.singleString(value));
+        }
+
+        public void writeInt(CodeTreeBuilder b, CodeTree value) {
+            b.startStatement();
+            b.string("serialization.", buffer.getName(), ".").startCall("writeInt");
+            b.tree(value).end();
+            b.end();
+        }
+
+    }
+
+    class BuilderElements {
+
+        private CodeTypeElement deserializerContextImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "DeserializerContextImpl");
 
         CodeTypeElement savedState = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "SavedState");
         CodeTypeElement finallyTryContext = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "FinallyTryContext");
@@ -854,52 +1115,310 @@ public class OperationsNodeFactory {
             }
         }
 
-        private CodeTypeElement create() {
-            operationBuilder.setSuperClass(types.OperationBuilder);
-            operationBuilder.setEnclosingElement(operationNodeGen);
+        class DeserializerContextImplFactory {
+            private CodeTypeElement create() {
+                deserializerContextImpl.setEnclosingElement(operationNodeGen);
+                deserializerContextImpl.getImplements().add(types.OperationDeserializer_DeserializerContext);
 
-            operationBuilder.add(new SavedStateFactory().create());
-            operationBuilder.add(new FinallyTryContextFactory().create());
+                deserializerContextImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()), "builtNodes"));
+                deserializerContextImpl.add(GeneratorUtils.createConstructorUsingFields(Set.of(PRIVATE), deserializerContextImpl));
 
-            operationBuilder.add(createConstructor());
+                deserializerContextImpl.add(createDeserializeOperationNode());
 
-            operationBuilder.add(createOperationNames());
+                return deserializerContextImpl;
+            }
 
-            operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), operationNodes.asType(), "nodes"));
-            operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean.class), "isReparse"));
-            operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withSource"));
-            operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withInstrumentation"));
-            operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()), "builtNodes"));
-            operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex"));
-            operationBuilder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), types.Source), "sources"));
+            private CodeExecutableElement createDeserializeOperationNode() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationDeserializer_DeserializerContext, "readOperationNode");
+                ex.renameArguments("buffer");
+                CodeTreeBuilder b = ex.createBuilder();
+                b.statement("return this.builtNodes.get(buffer.readChar())");
+                return ex;
+            }
+        }
 
-            operationBuilder.addAll(builderState);
+        private SerializationStateElements serializationElements;
+        private CodeVariableElement serialization;
 
-            operationBuilder.add(createCreateLocal());
-            operationBuilder.add(createCreateLabel());
+        BuilderElements() {
+            builder.setSuperClass(types.OperationBuilder);
+            builder.setEnclosingElement(operationNodeGen);
+
+            builder.add(new SavedStateFactory().create());
+            builder.add(new FinallyTryContextFactory().create());
+
+            builder.add(createOperationNames());
+
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), operationNodes.asType(), "nodes"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean.class), "isReparse"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withSource"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withInstrumentation"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()), "builtNodes"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), types.Source), "sources"));
+
+            if (model.enableSerialization) {
+                serializationElements = new SerializationStateElements();
+                builder.add(serializationElements.serializationState);
+                serialization = builder.add(new CodeVariableElement(Set.of(PRIVATE),
+                                serializationElements.serializationState.asType(), "serialization"));
+                builder.add(new DeserializerContextImplFactory().create());
+            }
+
+            builder.add(createConstructor());
+
+            builder.addAll(builderState);
+
+            builder.add(createCreateLocal());
+            builder.add(createCreateLabel());
 
             for (OperationModel operation : model.getOperations()) {
-                if (operation.isVariadic || operation.numChildren > 0) {
-                    operationBuilder.add(createBegin(operation));
-                    operationBuilder.add(createEnd(operation));
+                if (operation.hasChildren()) {
+                    builder.add(createBegin(operation));
+                    builder.add(createEnd(operation));
                 } else {
-                    operationBuilder.add(createEmit(operation));
+                    builder.add(createEmit(operation));
                 }
             }
 
-            operationBuilder.add(createBeginHelper());
-            operationBuilder.add(createEndHelper());
-            operationBuilder.add(createEmitHelperBegin());
-            operationBuilder.add(createBeforeChild());
-            operationBuilder.add(createAfterChild());
-            operationBuilder.add(createDoEmitFinallyHandler());
-            operationBuilder.add(createDoEmitInstruction());
-            operationBuilder.add(createDoCreateExceptionHandler());
-            operationBuilder.add(createDoEmitSourceInfo());
-            operationBuilder.add(createFinish());
-            operationBuilder.add(createDoEmitLeaves());
+            builder.add(createBeginHelper());
+            builder.add(createEndHelper());
+            builder.add(createEmitHelperBegin());
+            builder.add(createBeforeChild());
+            builder.add(createAfterChild());
+            builder.add(createDoEmitFinallyHandler());
+            builder.add(createDoEmitInstruction());
+            builder.add(createDoCreateExceptionHandler());
+            builder.add(createDoEmitSourceInfo());
+            builder.add(createFinish());
+            builder.add(createDoEmitLeaves());
+            if (model.enableSerialization) {
+                builder.add(createSerialize());
+                builder.add(createDeserialize());
+            }
+        }
 
-            return operationBuilder;
+        private CodeTypeElement getElement() {
+            return builder;
+        }
+
+        private CodeExecutableElement createSerialize() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE),
+                            context.getType(void.class), "serialize");
+            method.addParameter(new CodeVariableElement(type(DataOutput.class), "buffer"));
+            method.addParameter(new CodeVariableElement(types.OperationSerializer, "callback"));
+
+            method.addThrownType(context.getType(IOException.class));
+            CodeTreeBuilder b = method.createBuilder();
+            b.statement("this.serialization = new SerializationState(builtNodes, buffer, callback)");
+
+            b.startTryBlock();
+            b.statement("nodes.getParser().parse(this)");
+
+            b.statement("short[][] nodeIndices = new short[builtNodes.size()][]");
+            b.startFor().string("int i = 0; i < nodeIndices.length; i ++").end().startBlock();
+
+            b.declaration(operationNodeGen.asType(), "node", "builtNodes.get(i)");
+
+            b.statement("short[] indices = nodeIndices[i] = new short[" + model.serializedFields.size() + "]");
+
+            for (int i = 0; i < model.serializedFields.size(); i++) {
+                VariableElement var = model.serializedFields.get(i);
+                b.startStatement();
+                b.string("indices[").string(i).string("] = ");
+                b.startCall("serialization.serializeObject");
+                b.startGroup();
+                b.string("node.").string(var.getSimpleName().toString());
+                b.end();
+                b.end();
+                b.end();
+            }
+
+            b.end(); // node for
+
+            serializationElements.writeShort(b, serializationElements.codeEndSerialize);
+
+            b.startFor().string("int i = 0; i < nodeIndices.length; i++").end().startBlock();
+            b.statement("short[] indices = nodeIndices[i]");
+
+            for (int i = 0; i < model.serializedFields.size(); i++) {
+                serializationElements.writeShort(b, "indices[" + i + "]");
+            }
+            b.end();
+
+            b.end().startFinallyBlock();
+            b.statement("this.serialization = null");
+            b.end();
+
+            return method;
+
+        }
+
+        private CodeExecutableElement createDeserialize() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE),
+                            context.getType(void.class), "deserialize");
+
+            method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
+            method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "bufferSupplier"));
+            method.addParameter(new CodeVariableElement(types.OperationDeserializer, "callback"));
+
+            CodeTreeBuilder b = method.createBuilder();
+
+            b.startTryBlock();
+
+            b.statement("ArrayList<Object> consts = new ArrayList<>()");
+            b.statement("ArrayList<OperationLocal> locals = new ArrayList<>()");
+            b.statement("ArrayList<OperationLabel> labels = new ArrayList<>()");
+            b.startStatement().type(type(DataInput.class)).string(" buffer = bufferSupplier.get()").end();
+
+            b.startStatement();
+            b.type(generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()));
+            b.string("builtNodes = new ArrayList<>()");
+            b.end();
+
+            b.startStatement();
+            b.type(types.OperationDeserializer_DeserializerContext);
+            b.string(" context = ").startNew(deserializerContextImpl.getSimpleName().toString()).string("builtNodes").end();
+            b.end();
+
+            b.startWhile().string("true").end().startBlock();
+
+            b.declaration(type(short.class), "code", "buffer.readShort()");
+
+            b.startSwitch().string("code").end().startBlock();
+
+            b.startCase().staticReference(serializationElements.codeCreateLabel).end().startBlock();
+            b.statement("labels.add(createLabel())");
+            b.statement("break");
+            b.end();
+
+            b.startCase().staticReference(serializationElements.codeCreateLocal).end().startBlock();
+            b.statement("locals.add(createLocal())");
+            b.statement("break");
+            b.end();
+
+            b.startCase().staticReference(serializationElements.codeCreateObject).end().startBlock();
+            b.statement("consts.add(callback.deserialize(context, buffer))");
+            b.statement("break");
+            b.end();
+
+            b.startCase().staticReference(serializationElements.codeEndSerialize).end().startBlock();
+
+            b.startFor().string("int i = 0; i < builtNodes.size(); i++").end().startBlock();
+            b.declaration(operationNodeGen.asType(), "node", "builtNodes.get(i)");
+
+            for (int i = 0; i < model.serializedFields.size(); i++) {
+                VariableElement var = model.serializedFields.get(i);
+                b.startStatement();
+                b.string("node.").string(var.getSimpleName().toString());
+                b.string(" = ");
+                if (ElementUtils.needsCastTo(type(Object.class), var.asType())) {
+                    b.cast(var.asType());
+                }
+                b.string("consts.get(buffer.readShort())");
+                b.end();
+            }
+            b.end();
+
+            b.returnStatement();
+            b.end();
+
+            final boolean hasTags = !model.getProvidedTags().isEmpty();
+            for (OperationModel op : model.getOperations()) {
+
+                // create begin/emit code
+                b.startCase().staticReference(serializationElements.codeBegin[op.id]).end().startBlock();
+
+                if (op.kind == OperationKind.INSTRUMENT_TAG && !hasTags) {
+                    b.startThrow().startNew(context.getType(IllegalStateException.class));
+                    b.doubleQuote(String.format("Cannot deserialize instrument tag. The language does not specify any tags with a @%s annotation.",
+                                    ElementUtils.getSimpleName(types.ProvidedTags)));
+                    b.end().end();
+                    b.end(); // switch block
+                    continue;
+                }
+
+                int i = 0;
+                for (TypeMirror argType : op.operationArguments) {
+                    String argumentName = "arg" + i;
+                    if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
+                        b.declaration(types.TruffleLanguage, argumentName, "language");
+                    } else if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
+                        b.statement("OperationLocal ", argumentName, " = locals.get(buffer.readShort())");
+                    } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
+                        b.statement("OperationLocal[] ", argumentName, " = new OperationLocal[buffer.readShort()]");
+                        b.startFor().string("int i = 0; i < ", argumentName, ".length; i++").end().startBlock();
+                        // this can be optimized since they are consecutive
+                        b.statement(argumentName, "[i] = locals.get(buffer.readShort());");
+                        b.end();
+                    } else if (ElementUtils.typeEquals(argType, types.OperationLabel)) {
+                        b.statement("OperationLabel ", argumentName, " = labels.get(buffer.readShort())");
+                    } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
+                        b.statement("int ", argumentName, " = buffer.readInt()");
+                    } else if (op.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
+                        b.startStatement().type(argType).string(" ", argumentName, " = TAG_INDEX_TO_CLASS[buffer.readShort()]").end();
+                    } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
+                        b.startStatement().type(argType).string(" ", argumentName, " = ").cast(argType).string("consts.get(buffer.readShort())").end();
+                    } else {
+                        throw new UnsupportedOperationException("cannot deserialize: " + argType);
+                    }
+                    i++;
+                }
+
+                b.startStatement();
+                if (op.hasChildren()) {
+                    b.startCall("begin" + op.name);
+                } else {
+                    b.startCall("emit" + op.name);
+                }
+
+                for (int j = 0; j < i; j++) {
+                    b.string("arg" + j);
+                }
+
+                b.end(2); // statement, call
+
+                b.statement("break");
+
+                b.end(); // case block
+
+                if (op.hasChildren()) {
+                    b.startCase().staticReference(serializationElements.codeEnd[op.id]).end().startBlock();
+
+                    if (op.kind == OperationKind.ROOT) {
+                        b.startStatement();
+                        b.type(model.getTemplateType().asType()).string(" node = ").string("end" + op.name + "()");
+                        b.end();
+                        b.startStatement().startCall("builtNodes.add").startGroup().cast(operationNodeGen.asType()).string("node").end().end().end();
+                    } else {
+                        b.statement("end", op.name, "()");
+                    }
+
+                    b.statement("break");
+
+                    b.end();
+                }
+            }
+
+            b.caseDefault().startBlock();
+            b.startThrow().startNew(context.getType(IllegalStateException.class));
+            b.startGroup();
+            b.doubleQuote("Unknown operation code ").string(" + code");
+            b.end();
+            b.end().end();
+
+            b.end(); // switch block
+            b.end();
+
+            b.end(); // switch
+            b.end(); // while block
+
+            b.end().startCatchBlock(context.getType(IOException.class), "ex");
+            b.startThrow().startNew(context.getType(IOError.class)).string("ex").end(2);
+            b.end();
+
+            return method;
+
         }
 
         private CodeExecutableElement createFinish() {
@@ -921,6 +1440,14 @@ public class OperationsNodeFactory {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.OperationLocal, "createLocal");
             CodeTreeBuilder b = ex.createBuilder();
 
+            if (model.enableSerialization) {
+                b.startIf().string("serialization != null").end().startBlock();
+                serializationWrapException(b, () -> {
+                    serializationElements.writeShort(b, serializationElements.codeCreateLocal);
+                });
+                b.end();
+            }
+
             b.startReturn().startNew(operationLocalImpl.asType()).startNew(intRef.asType()).string("numLocals++").end(3);
 
             return ex;
@@ -929,6 +1456,20 @@ public class OperationsNodeFactory {
         private CodeExecutableElement createCreateLabel() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.OperationLabel, "createLabel");
             CodeTreeBuilder b = ex.createBuilder();
+
+            if (model.enableSerialization) {
+                b.startIf().string("serialization != null").end().startBlock();
+                serializationWrapException(b, () -> {
+                    serializationElements.writeShort(b, serializationElements.codeCreateLabel);
+                });
+
+                b.startReturn().startNew(operationLabelImpl.asType());
+                b.startNew(intRef.asType()).string("-1").end();
+                b.string(serialization.getName(), ".", serializationElements.labelCount.getName(), "++");
+                b.string("0");
+                b.end(2);
+                b.end();
+            }
 
             b.startIf().string(
                             "operationSp == 0 || (",
@@ -1016,15 +1557,29 @@ public class OperationsNodeFactory {
         private CodeExecutableElement createBegin(OperationModel operation) {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "begin" + operation.name);
 
-            if (operation.operationArguments != null) {
-                int argIndex = 0;
-                for (TypeMirror argument : operation.operationArguments) {
-                    ex.addParameter(new CodeVariableElement(argument, "arg" + argIndex));
-                    argIndex++;
+            int argIndex = 0;
+            for (TypeMirror argument : operation.operationArguments) {
+                ex.addParameter(new CodeVariableElement(argument, "arg" + argIndex));
+                argIndex++;
+            }
+            CodeTreeBuilder b = ex.createBuilder();
+
+            if (operation.kind == OperationKind.INSTRUMENT_TAG) {
+                if (model.getProvidedTags().isEmpty()) {
+                    b.startThrow().startNew(context.getType(IllegalArgumentException.class));
+                    b.doubleQuote(String.format("Given tag is not provided by the language. Add a @%s annotation to the %s class.",
+                                    ElementUtils.getSimpleName(types.ProvidedTags), ElementUtils.getSimpleName(model.languageClass)));
+                    b.end().end();
+                    return ex;
                 }
             }
 
-            CodeTreeBuilder b = ex.createBuilder();
+            if (model.enableSerialization) {
+                b.startIf().string("serialization != null").end().startBlock();
+                createSerializeBegin(operation, b);
+                b.statement("return");
+                b.end();
+            }
 
             if (operation.isSourceOnly()) {
                 b.startIf().string("!withSource").end().startBlock();
@@ -1077,6 +1632,7 @@ public class OperationsNodeFactory {
 
             b.startStatement().startCall("beginOperation");
             b.string("" + operation.id);
+
             buildOperationBeginData(b, operation);
             b.end(2);
 
@@ -1175,6 +1731,53 @@ public class OperationsNodeFactory {
             return ex;
         }
 
+        private void createSerializeBegin(OperationModel operation, CodeTreeBuilder b) {
+            serializationWrapException(b, () -> {
+
+                CodeTreeBuilder after = CodeTreeBuilder.createBuilder();
+                int i = 0;
+                for (TypeMirror argType : operation.operationArguments) {
+                    if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
+                        b.statement("serialization.language = arg" + i);
+                    } else if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
+
+                        serializationElements.writeShort(after, "(short) ((OperationLocalImpl) arg" + i + ").index.value");
+
+                    } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
+
+                        serializationElements.writeShort(after, "(short) arg" + i + ".length");
+                        after.startFor().string("int i = 0; i < arg" + i + ".length; i++").end().startBlock();
+                        serializationElements.writeShort(after, "(short) ((OperationLocalImpl) arg" + i + "[i]).index");
+                        after.end();
+
+                    } else if (ElementUtils.typeEquals(argType, types.OperationLabel)) {
+
+                        serializationElements.writeShort(after, "(short) ((OperationLabelImpl) arg" + i + ").declaringOp");
+
+                    } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
+
+                        serializationElements.writeInt(after, "arg" + i);
+
+                    } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
+
+                        serializationElements.writeShort(after, "(short) CLASS_TO_TAG_INDEX.get(arg0)");
+
+                    } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
+                        String argumentName = "arg" + i;
+                        String index = argumentName + "_index";
+                        b.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
+                        serializationElements.writeShort(after, index);
+                    } else {
+                        throw new UnsupportedOperationException("cannot serialize: " + argType);
+                    }
+                    i++;
+                }
+                serializationElements.writeShort(b, serializationElements.codeBegin[operation.id]);
+
+                b.tree(after.build());
+            });
+        }
+
         private void buildOperationBeginData(CodeTreeBuilder b, OperationModel operation) {
             switch (operation.kind) {
                 case ROOT:
@@ -1247,6 +1850,29 @@ public class OperationsNodeFactory {
         private Element createEnd(OperationModel operation) {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "end" + operation.name);
             CodeTreeBuilder b = ex.createBuilder();
+
+            if (model.enableSerialization) {
+                b.startIf().string("serialization != null").end().startBlock();
+                serializationWrapException(b, () -> {
+
+                    if (operation.kind == OperationKind.ROOT) {
+                        b.startStatement();
+                        b.type(operationNodeGen.asType()).string(" node = ").startNew(operationNodeGen.asType()).string("serialization.language").string("FrameDescriptor.newBuilder()").end();
+                        b.end();
+                        b.statement("node.buildIndex = buildIndex++");
+                        serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
+                        b.statement("builtNodes.add(node)");
+                        b.statement("return node");
+                    } else {
+
+                        serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
+
+                        b.statement("return");
+                    }
+
+                });
+                b.end();
+            }
 
             if (operation.isSourceOnly()) {
                 b.startIf().string("!withSource").end().startBlock();
@@ -1496,6 +2122,13 @@ public class OperationsNodeFactory {
 
             CodeTreeBuilder b = ex.createBuilder();
 
+            if (model.enableSerialization) {
+                b.startIf().string("serialization != null").end().startBlock();
+                createSerializeBegin(operation, b);
+                b.statement("return");
+                b.end();
+            }
+
             b.startStatement().startCall("beforeChild").end(2);
             b.startStatement().startCall("emitOperationBegin").end(2);
 
@@ -1623,7 +2256,7 @@ public class OperationsNodeFactory {
             b.startSwitch().string("operationStack[operationSp - 1]").end().startBlock();
 
             for (OperationModel op : model.getOperations()) {
-                if (!op.isVariadic && op.numChildren == 0) {
+                if (!op.hasChildren()) {
                     continue;
                 }
 
@@ -1662,7 +2295,7 @@ public class OperationsNodeFactory {
             b.startSwitch().string("operationStack[operationSp - 1]").end().startBlock();
 
             for (OperationModel op : model.getOperations()) {
-                if (!op.isVariadic && op.numChildren == 0) {
+                if (!op.hasChildren()) {
                     continue;
                 }
 
@@ -2238,12 +2871,14 @@ public class OperationsNodeFactory {
             operationNodes.add(createSetSources());
             operationNodes.add(createGetSources());
 
+            operationNodes.add(createGetParser());
+
             return operationNodes;
         }
 
         private CodeExecutableElement createConstructor() {
             CodeExecutableElement ctor = new CodeExecutableElement(null, "OperationNodesImpl");
-            ctor.addParameter(new CodeVariableElement(generic(types.OperationParser, operationBuilder.asType()), "generator"));
+            ctor.addParameter(new CodeVariableElement(parserType, "generator"));
 
             ctor.createBuilder().statement("super(generator)");
             return ctor;
@@ -2254,14 +2889,24 @@ public class OperationsNodeFactory {
             ex.renameArguments("config", "parse", "nodes");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.statement("Builder builder = new Builder(this, true, config)");
-
+            b.declaration(builder.asType(), "builder",
+                            b.create().startNew(builder.asType()).string("this").string("true").string("config").end().build());
             b.startStatement().startCall("builder.builtNodes.addAll");
             b.startGroup().string("(List) ");
             b.startStaticCall(context.getType(List.class), "of").string("nodes").end();
             b.end();
             b.end(2);
 
+            return ex;
+        }
+
+        private CodeExecutableElement createGetParser() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE),
+                            parserType, "getParser");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn();
+            b.cast(parserType).string("parse");
+            b.end();
             return ex;
         }
 
@@ -2985,7 +3630,7 @@ public class OperationsNodeFactory {
             }
         }
 
-        private CodeExecutableElement creatSetBoxing(InstructionModel instr) {
+        private CodeExecutableElement creatSetBoxing(@SuppressWarnings("unused") InstructionModel instr) {
             CodeExecutableElement setBoxing = GeneratorUtils.overrideImplement((DeclaredType) boxableInterface.asType(), "setBoxing");
             CodeTreeBuilder b = setBoxing.createBuilder();
 
@@ -3010,14 +3655,6 @@ public class OperationsNodeFactory {
             ex.addParameter(new CodeVariableElement(context.getType(byte.class), "kind"));
             return ex;
         }
-    }
-
-    private static TypeMirror generic(DeclaredType el, TypeMirror... args) {
-        return new DeclaredCodeTypeMirror((TypeElement) el.asElement(), List.of(args));
-    }
-
-    private static ArrayType arrayOf(TypeMirror component) {
-        return new CodeTypeMirror.ArrayCodeTypeMirror(component);
     }
 
     private CodeVariableElement compFinal(CodeVariableElement fld) {
