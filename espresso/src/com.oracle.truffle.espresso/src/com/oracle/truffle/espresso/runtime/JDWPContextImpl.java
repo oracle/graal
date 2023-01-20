@@ -770,6 +770,7 @@ public final class JDWPContextImpl implements JDWPContext {
                     controller.warning(() -> "exception while re-running a class initializer!");
                 }
             });
+            assert !changedKlasses.contains(null);
             // run post redefinition plugins before ending the redefinition transaction
             try {
                 classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
@@ -826,9 +827,9 @@ public final class JDWPContextImpl implements JDWPContext {
         // update the JWDP IDs for renamed inner classes
         for (ChangePacket changePacket : changePackets) {
             ObjectKlass klass = changePacket.info.getKlass();
-            changedKlasses.add(klass);
-            if (changePacket.info.isRenamed()) {
-                if (klass != null) {
+            if (klass != null) {
+                changedKlasses.add(klass);
+                if (changePacket.info.isRenamed()) {
                     ids.updateId(klass);
                 }
             }
