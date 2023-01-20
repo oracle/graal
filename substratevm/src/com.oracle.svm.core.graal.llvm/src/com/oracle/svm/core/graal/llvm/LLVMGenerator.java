@@ -885,7 +885,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         DebugInfo debugInfo = null;
         if (state != null) {
-            state.initDebugInfo(null, false);
+            state.initDebugInfo();
             debugInfo = state.debugInfo();
         }
 

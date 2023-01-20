@@ -83,7 +83,7 @@ public class CompilationResult {
 
         @Override
         public final int hashCode() {
-            throw new UnsupportedOperationException("hashCode");
+            throw new UnsupportedOperationException("hashCode"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -96,10 +96,6 @@ public class CompilationResult {
 
         public int getPosition() {
             return position;
-        }
-
-        void setPosition(int position) {
-            this.position = position;
         }
     }
 
@@ -853,10 +849,6 @@ public class CompilationResult {
 
     public void clearInfopoints() {
         infopoints.clear();
-    }
-
-    public void clearExceptionHandlers() {
-        exceptionHandlers.clear();
     }
 
     private void checkOpen() {

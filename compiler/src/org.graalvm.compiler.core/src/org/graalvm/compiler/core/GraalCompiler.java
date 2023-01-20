@@ -290,15 +290,4 @@ public class GraalCompiler {
             graph.checkCancellation();
         }
     }
-
-    protected static <T extends CompilationResult> String getCompilationUnitName(StructuredGraph graph, T compilationResult) {
-        if (compilationResult != null && compilationResult.getName() != null) {
-            return compilationResult.getName();
-        }
-        ResolvedJavaMethod method = graph.method();
-        if (method == null) {
-            return "<unknown>";
-        }
-        return method.format("%H.%n(%p)");
-    }
 }

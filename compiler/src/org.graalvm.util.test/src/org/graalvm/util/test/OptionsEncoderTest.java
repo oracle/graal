@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,16 @@
  */
 package org.graalvm.util.test;
 
-import java.lang.annotation.ElementType;
 import static org.graalvm.util.OptionsEncoder.decode;
 import static org.graalvm.util.OptionsEncoder.encode;
 import static org.junit.Assert.assertEquals;
 
+import java.lang.annotation.ElementType;
 import java.util.Collections;
 import java.util.Map;
+
+import org.graalvm.util.TypedDataOutputStream;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class OptionsEncoderTest {
@@ -60,5 +63,48 @@ public class OptionsEncoderTest {
     public void testEnum() {
         Map<String, Object> options = Collections.singletonMap("key", ElementType.TYPE);
         assertEquals(Collections.singletonMap("key", ElementType.TYPE.name()), decode(encode(options)));
+    }
+
+    @Test
+    public void testNumbers() {
+        testValueIntl("char", (char) 1);
+        testValueIntl("byte", (byte) 1);
+        testValueIntl("short", (short) 1);
+        testValueIntl("integer", 1);
+        testValueIntl("long", (long) 1);
+        testValueIntl("float", (float) 1.5);
+        testValueIntl("double", 1.5);
+    }
+
+    @Test
+    public void testBoolean() {
+        testValueIntl("boolTrue", true);
+        testValueIntl("boolFalse", false);
+    }
+
+    private static void testValueIntl(String name, Object value) {
+        Map<String, Object> options = Collections.singletonMap(name, value);
+        assertEquals(options, decode(encode(options)));
+    }
+
+    @Test
+    public void testFailure() {
+        Map<String, Object> options = Collections.singletonMap("key", new Object());
+        try {
+            encode(options);
+            Assert.fail("Expected an exception");
+        } catch (IllegalArgumentException ex) {
+            Assert.assertTrue(ex.getMessage().contains("Value type: class java.lang.Object"));
+        }
+    }
+
+    @Test
+    public void testIsValueSupported() {
+        Assert.assertFalse(TypedDataOutputStream.isValueSupported(new Object()));
+        Assert.assertFalse(TypedDataOutputStream.isValueSupported(null));
+
+        Assert.assertTrue(TypedDataOutputStream.isValueSupported(1));
+        Assert.assertTrue(TypedDataOutputStream.isValueSupported(true));
+        Assert.assertTrue(TypedDataOutputStream.isValueSupported("test"));
     }
 }

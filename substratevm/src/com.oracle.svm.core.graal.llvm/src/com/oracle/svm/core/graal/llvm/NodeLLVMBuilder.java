@@ -458,7 +458,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
         NodeInputList<ValueNode> arguments = callTarget.arguments();
         LIRFrameState state = state(i);
-        state.initDebugInfo(null, false);
+        state.initDebugInfo();
         DebugInfo debugInfo = state.debugInfo();
 
         LLVMValueRef callee;
