@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,11 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
-public class ThrowableInterop extends EspressoInterop {
+public class ForeignExceptionInterop extends ThrowableInterop {
 
     @ExportMessage
     public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject receiver) {
@@ -39,39 +40,36 @@ public class ThrowableInterop extends EspressoInterop {
     }
 
     @ExportMessage
-    public static boolean isException(StaticObject object) {
-        object.checkNotForeign();
-        return true;
-    }
-
-    @ExportMessage
-    public static RuntimeException throwException(StaticObject object) {
-        object.checkNotForeign();
-        throw object.getKlass().getMeta().throwException(object);
-    }
-
-    @ExportMessage
     public static boolean hasExceptionCause(StaticObject object) {
         object.checkNotForeign();
-        return getMeta().java_lang_Throwable_cause.getObject(object) != StaticObject.NULL;
+        Object rawForeignException = getMeta().java_lang_Throwable_backtrace.getObject(object);
+        return InteropLibrary.getUncached().hasExceptionCause(rawForeignException);
     }
 
     @ExportMessage
     public static Object getExceptionCause(StaticObject object) throws UnsupportedMessageException {
         object.checkNotForeign();
-        return getMeta().java_lang_Throwable_cause.getObject(object);
+        Object rawForeignException = getMeta().java_lang_Throwable_backtrace.getObject(object);
+        return InteropLibrary.getUncached().getExceptionCause(rawForeignException);
     }
 
     @ExportMessage
     public static boolean hasExceptionMessage(StaticObject object) {
         object.checkNotForeign();
-        return getMeta().java_lang_Throwable_detailMessage.getObject(object) != StaticObject.NULL;
+        Object rawForeignException = getMeta().java_lang_Throwable_backtrace.getObject(object);
+        return InteropLibrary.getUncached().hasExceptionMessage(rawForeignException);
     }
 
     @ExportMessage
     public static Object getExceptionMessage(StaticObject object) throws UnsupportedMessageException {
         object.checkNotForeign();
-        return getMeta().java_lang_Throwable_detailMessage.getObject(object);
+        Object rawForeignException = getMeta().java_lang_Throwable_backtrace.getObject(object);
+        return InteropLibrary.getUncached().getExceptionMessage(rawForeignException);
     }
 
+    @ExportMessage
+    public static RuntimeException throwException(StaticObject object) {
+        object.checkNotForeign();
+        throw (RuntimeException) getMeta().java_lang_Throwable_backtrace.getObject(object).rawForeignObject(object.getKlass().getContext().getLanguage());
+    }
 }

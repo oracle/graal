@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.meta;
 
+import com.oracle.truffle.espresso.runtime.dispatch.ForeignExceptionInterop;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -72,6 +73,12 @@ public class InteropKlassesDispatch {
         } else if (k.isArray()) {
             result = EspressoInterop.class;
         } else {
+            // ForeignException is not injected until post system init, meaning we can't
+            // put in into the static dispatch pair mappings.
+            if (k.getMeta().polyglot != null && k.getMeta().polyglot.ForeignException == k) {
+                return ForeignExceptionInterop.class;
+            }
+
             exclusiveLoop: //
             for (Pair<ObjectKlass, Class<?>>[] exclusive : classes) {
                 for (Pair<ObjectKlass, Class<?>> pair : exclusive) {

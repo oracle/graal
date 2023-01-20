@@ -26,11 +26,17 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -130,6 +136,12 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     @Override
     public String getQualifiedName() {
         return getMethod().getDeclaringKlass().getType() + "." + getMethod().getName() + getMethod().getRawSignature();
+    }
+
+    @Override
+    protected Object translateStackTraceElement(TruffleStackTraceElement element) {
+        Node location = element.getLocation();
+        return new ForeignStackTraceElementObject(getMethod(), location != null ? location.getEncapsulatingSourceSection() : getEncapsulatingSourceSection());
     }
 
     @Override
@@ -432,5 +444,52 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     @Override
     protected final boolean isTrivial() {
         return !methodNode.getMethodVersion().isSynchronized() && methodNode.isTrivial();
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public final class ForeignStackTraceElementObject implements TruffleObject {
+
+        private final Method method;
+        private final SourceSection sourceSection;
+
+        public ForeignStackTraceElementObject(Method method, SourceSection sourceSection) {
+            this.method = method;
+            this.sourceSection = sourceSection;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasExecutableName() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getExecutableName() {
+            return method.getNameAsString();
+        }
+
+        @ExportMessage
+        boolean hasSourceLocation() {
+            return sourceSection != null;
+        }
+
+        @ExportMessage
+        SourceSection getSourceLocation() throws UnsupportedMessageException {
+            if (sourceSection == null) {
+                throw UnsupportedMessageException.create();
+            } else {
+                return sourceSection;
+            }
+        }
+
+        @ExportMessage
+        boolean hasDeclaringMetaObject() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getDeclaringMetaObject() {
+            return method.getDeclaringKlass().mirror();
+        }
     }
 }

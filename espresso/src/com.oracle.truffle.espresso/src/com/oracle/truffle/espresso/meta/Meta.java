@@ -228,6 +228,7 @@ public final class Meta extends ContextAccessImpl {
         HIDDEN_FRAMES = java_lang_Throwable.requireHiddenField(Name.HIDDEN_FRAMES);
         HIDDEN_EXCEPTION_WRAPPER = java_lang_Throwable.requireHiddenField(Name.HIDDEN_EXCEPTION_WRAPPER);
         java_lang_Throwable_backtrace = java_lang_Throwable.requireDeclaredField(Name.backtrace, Type.java_lang_Object);
+        java_lang_Throwable_stackTrace = java_lang_Throwable.requireDeclaredField(Name.stackTrace, Type.java_lang_StackTraceElement_array);
         java_lang_Throwable_detailMessage = java_lang_Throwable.requireDeclaredField(Name.detailMessage, Type.java_lang_String);
         java_lang_Throwable_cause = java_lang_Throwable.requireDeclaredField(Name.cause, Type.java_lang_Throwable);
         if (getJavaVersion().java9OrLater()) {
@@ -1175,6 +1176,7 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_FRAMES;
     public final Field HIDDEN_EXCEPTION_WRAPPER;
     public final Field java_lang_Throwable_backtrace;
+    public final Field java_lang_Throwable_stackTrace;
     public final Field java_lang_Throwable_detailMessage;
     public final Field java_lang_Throwable_cause;
     public final Field java_lang_Throwable_depth;

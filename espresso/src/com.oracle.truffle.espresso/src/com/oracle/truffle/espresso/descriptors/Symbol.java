@@ -241,6 +241,7 @@ public final class Symbol<T> extends ByteSequence {
 
         // j.l.Throwable
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");
+        public static final Symbol<Name> stackTrace = StaticSymbols.putName("stackTrace");
         public static final Symbol<Name> cause = StaticSymbols.putName("cause");
         public static final Symbol<Name> depth = StaticSymbols.putName("depth");
         public static final Symbol<Name> fillInStackTrace = StaticSymbols.putName("fillInStackTrace");

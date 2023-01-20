@@ -50,6 +50,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.vm.VM;
 
 /**
  * Class responsible for creating guest objects in Espresso. a helper class {@link AllocationChecks}
@@ -274,7 +275,22 @@ public final class GuestAllocator implements LanguageAccess {
         assert meta.polyglot != null;
         assert interopLibrary.isException(foreignObject);
         assert !(foreignObject instanceof StaticObject);
-        return createForeign(getLanguage(), meta.polyglot.ForeignException, foreignObject, interopLibrary);
+
+        StaticObject foreignException = createNew(meta.polyglot.ForeignException);
+        meta.HIDDEN_FRAMES.setHiddenObject(foreignException, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
+
+        StaticObject foreignWrapper = createForeign(getLanguage(), meta.java_lang_Object, foreignObject, interopLibrary);
+        meta.java_lang_Throwable_backtrace.setObject(foreignException, foreignWrapper);
+
+        if (meta.getJavaVersion().java9OrLater()) {
+            try {
+                int depth = (int) interopLibrary.getArraySize(interopLibrary.getExceptionStackTrace(foreignObject));
+                meta.java_lang_Throwable_depth.setInt(foreignException, depth);
+            } catch (Exception e) {
+                // OK to use depth 0 then, since we can't retrieve the stacktrace length
+            }
+        }
+        return foreignException;
     }
 
     /**

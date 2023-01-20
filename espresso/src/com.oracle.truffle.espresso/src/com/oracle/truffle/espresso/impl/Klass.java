@@ -30,6 +30,7 @@ import java.lang.reflect.Modifier;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
@@ -225,31 +226,39 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                     @Exclusive @Cached ToEspressoNode toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(this, member, true, true, arguments.length);
-        if (candidates != null) {
-            if (candidates.length == 1) {
-                Method method = candidates[0];
-                assert method.isStatic() && method.isPublic();
-                assert member.startsWith(method.getNameAsString());
-                if (!method.isVarargs()) {
-                    assert method.getParameterCount() == arguments.length;
-                    return invoke.execute(method, null, arguments);
-                } else {
-                    CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode);
-                    if (matched != null) {
-                        matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+        try {
+            if (candidates != null) {
+                if (candidates.length == 1) {
+                    Method method = candidates[0];
+                    assert method.isStatic() && method.isPublic();
+                    assert member.startsWith(method.getNameAsString());
+                    if (!method.isVarargs()) {
+                        assert method.getParameterCount() == arguments.length;
+                        return invoke.execute(method, null, arguments);
+                    } else {
+                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode);
                         if (matched != null) {
-                            return invoke.execute(matched.getMethod(), null, matched.getConvertedArgs(), true);
+                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                            if (matched != null) {
+                                return invoke.execute(matched.getMethod(), null, matched.getConvertedArgs(), true);
+                            }
                         }
                     }
-                }
-            } else {
-                CandidateMethodWithArgs typeMatched = overloadSelector.execute(candidates, arguments);
-                if (typeMatched != null) {
-                    return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
+                } else {
+                    CandidateMethodWithArgs typeMatched = overloadSelector.execute(candidates, arguments);
+                    if (typeMatched != null) {
+                        return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
+                    }
                 }
             }
+            throw UnknownIdentifierException.create(member);
+        } catch (EspressoException e) {
+            if (e.getGuestException().getKlass() == getMeta().polyglot.ForeignException) {
+                // rethrow the original foreign exception when leaving espresso interop
+                throw (AbstractTruffleException) getMeta().java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(getLanguage());
+            }
+            throw e;
         }
-        throw UnknownIdentifierException.create(member);
     }
 
     @SuppressWarnings("static-method")
