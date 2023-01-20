@@ -896,6 +896,30 @@ public class TestOperationsParserTest {
     }
 
     @Test
+    public void testTeeLocalRange() {
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            OperationLocal local1 = b.createLocal();
+            OperationLocal local2 = b.createLocal();
+
+            b.beginTeeLocalRange(new OperationLocal[] {local1, local2});
+            b.emitLoadConstant(new long[] {1L, 2L});
+            b.endTeeLocalRange();
+
+            b.beginReturn();
+            b.emitLoadLocal(local2);
+            b.endReturn();
+
+
+            b.endRoot();
+        });
+
+        Assert.assertEquals(2L, root.call());
+
+    }
+
+    @Test
     public void testYield() {
         RootCallTarget root = parse(b -> {
             b.beginRoot(LANGUAGE);

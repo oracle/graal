@@ -1743,7 +1743,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                         serializationElements.writeShort(after, "(short) arg" + i + ".length");
                         after.startFor().string("int i = 0; i < arg" + i + ".length; i++").end().startBlock();
-                        serializationElements.writeShort(after, "(short) ((OperationLocalImpl) arg" + i + "[i]).index");
+                        serializationElements.writeShort(after, "(short) ((OperationLocalImpl) arg" + i + "[i]).index.value");
                         after.end();
 
                     } else if (ElementUtils.typeEquals(argType, types.OperationLabel)) {

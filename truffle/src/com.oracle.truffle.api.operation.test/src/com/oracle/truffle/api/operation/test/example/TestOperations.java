@@ -57,11 +57,13 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.LocalSetter;
+import com.oracle.truffle.api.operation.LocalSetterRange;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
@@ -160,6 +162,27 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         @Specialization
         public static Object doGeneric(VirtualFrame frame, Object value, LocalSetter setter) {
             setter.setObject(frame, value);
+            return value;
+        }
+    }
+
+    @Operation
+    static final class TeeLocalRange {
+        @Specialization
+        @ExplodeLoop
+        public static Object doLong(VirtualFrame frame, long[] value, LocalSetterRange setter) {
+            for (int i = 0; i < value.length; i++) {
+                setter.setLong(frame, i, value[i]);
+            }
+            return value;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        public static Object doGeneric(VirtualFrame frame, Object[] value, LocalSetterRange setter) {
+            for (int i = 0; i < value.length; i++) {
+                setter.setObject(frame, i, value[i]);
+            }
             return value;
         }
     }
