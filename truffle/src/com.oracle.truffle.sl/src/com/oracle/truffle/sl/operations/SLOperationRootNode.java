@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.sl.operations;
 
-import java.util.List;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -134,14 +132,6 @@ public abstract class SLOperationRootNode extends SLRootNode implements Operatio
 
     public void setTSName(TruffleString tsName) {
         this.tsName = tsName;
-    }
-
-    public List<Object> decompose() {
-        return List.of(getTSName());
-    }
-
-    public void recompose(List<Object> objects) {
-        setTSName((TruffleString) objects.get(0));
     }
 
     @Operation
