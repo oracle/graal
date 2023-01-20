@@ -121,8 +121,8 @@ public final class ForeignException extends RuntimeException {
     }
 
     /**
-     * Unsupported, {@link ForeignException} instances are not writable therefore setting the stack
-     * trace has no effect for them.
+     * Unsupported, {@link ForeignException} instances are by definition foreign and thus
+     * stacktraces should not be controllable by the guest.
      */
     @Override
     public void setStackTrace(StackTraceElement[] stackTrace) {
@@ -138,5 +138,11 @@ public final class ForeignException extends RuntimeException {
     @Override
     public Throwable fillInStackTrace() {
         return this;
+    }
+
+    @SuppressWarnings("sync-override")
+    @Override
+    public Throwable initCause(Throwable cause) {
+        throw new UnsupportedOperationException();
     }
 }
