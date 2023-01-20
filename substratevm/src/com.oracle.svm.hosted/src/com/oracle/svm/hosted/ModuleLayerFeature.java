@@ -167,7 +167,6 @@ public final class ModuleLayerFeature implements InternalFeature {
          * is required when filtering the analysis reachable module set.
          */
         Set<String> extraModules = new HashSet<>();
-        List<String> nonExplicit = List.of("ALL-DEFAULT", "ALL-SYSTEM", "ALL-MODULE-PATH");
         String explicitlyAddedModules = System.getProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES, "");
         if (!explicitlyAddedModules.isEmpty()) {
             extraModules.addAll(Arrays.asList(SubstrateUtil.split(explicitlyAddedModules, ",")));
@@ -180,30 +179,44 @@ public final class ModuleLayerFeature implements InternalFeature {
          * modules as specified in the https://openjdk.org/jeps/261. See
          * {@link ModuleLayerFeature.typeIsModuleRootOrReachable(AnalysisType)} for more details.
          */
-        Stream<AnalysisType> rootModuleTypes;
+        Stream<Module> rootModules;
+        List<String> nonExplicit = List.of("ALL-DEFAULT", "ALL-SYSTEM", "ALL-MODULE-PATH");
         if (accessImpl.getApplicationClassPath().isEmpty() && nonExplicit.stream().noneMatch(extraModules::contains)) {
-            rootModuleTypes = universe.getTypes()
+            rootModules = universe.getTypes()
                             .stream()
-                            .filter(ModuleLayerFeature::typeIsReachable);
+                            .filter(ModuleLayerFeature::typeIsReachable)
+                            .map(t -> t.getJavaClass().getModule());
         } else {
-            rootModuleTypes = universe.getTypes()
+            Optional<Module> javaSeModule = universe.getTypes()
                             .stream()
-                            .filter(ModuleLayerFeature::typeIsModuleRootOrReachable);
+                            .filter(ModuleLayerFeature::typeIsReachable)
+                            .map(t -> t.getJavaClass().getModule())
+                            .filter(m -> m.isNamed() && m.getName().equals("java.se"))
+                            .findFirst();
+            if (javaSeModule.isPresent()) {
+                /*
+                 * The java.se module is a root, if it exists.
+                 */
+                rootModules = Stream.of(javaSeModule.get());
+            } else {
+                rootModules = universe.getTypes()
+                                .stream()
+                                .filter(ModuleLayerFeature::typeIsModuleRootOrReachable)
+                                .map(t -> t.getJavaClass().getModule());
 
-            /*
-             * Also make sure to include modules not seen by the analysis.
-             */
-            Set<String> extraUndiscoveredModules = ModuleLayer.boot().modules()
-                            .stream()
-                            .filter(ModuleLayerFeature::isModuleRoot)
-                            .map(Module::getName)
-                            .collect(Collectors.toSet());
-            extraModules.addAll(extraUndiscoveredModules);
+                /*
+                 * Also make sure to include modules not seen by the analysis.
+                 */
+                Set<String> extraUndiscoveredModules = ModuleLayer.boot().modules()
+                                .stream()
+                                .filter(ModuleLayerFeature::isModuleRoot)
+                                .map(Module::getName)
+                                .collect(Collectors.toSet());
+                extraModules.addAll(extraUndiscoveredModules);
+            }
         }
 
-        Stream<Module> runtimeImageModules = rootModuleTypes
-                        .map(t -> t.getJavaClass().getModule())
-                        .distinct();
+        Stream<Module> runtimeImageModules = rootModules.distinct();
 
         Set<Module> runtimeImageNamedModules = runtimeImageModules
                         .filter(Module::isNamed)
