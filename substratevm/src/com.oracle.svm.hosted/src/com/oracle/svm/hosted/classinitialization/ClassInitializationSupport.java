@@ -35,8 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
@@ -47,6 +45,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -252,7 +251,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     }
 
     static boolean isClassListedInStringOption(LocatableMultiOptionValue.Strings option, Class<?> clazz) {
-        return OptionUtils.flatten(",", option).contains(clazz.getName());
+        return option.values().contains(clazz.getName());
     }
 
     private static boolean isObjectInstantiationForClassTracked(Class<?> clazz) {

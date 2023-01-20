@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,6 +94,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
@@ -134,6 +135,7 @@ import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert;
+import org.graalvm.home.Version;
 
 public class LanguageSPITest {
 
@@ -970,7 +972,7 @@ public class LanguageSPITest {
                 case NATIVE_ACCESS:
                     return env.isNativeAccessAllowed();
                 case IO:
-                    return env.isIOAllowed();
+                    return env.isFileIOAllowed();
                 case HOST_CLASS_LOADING:
                     TruffleFile file = env.getTruffleFileInternal("", null);
                     try {
@@ -1048,11 +1050,11 @@ public class LanguageSPITest {
                 builder.allowNativeAccess(allowPrivilege);
                 break;
             case InnerContextAccessPrivilegesLanguage.IO:
-                builder.allowIO(allowPrivilege);
+                builder.allowIO(allowPrivilege ? IOAccess.ALL : IOAccess.NONE);
                 break;
             case InnerContextAccessPrivilegesLanguage.HOST_CLASS_LOADING:
                 // required for host class loading
-                builder.allowIO(true);
+                builder.allowIO(IOAccess.ALL);
                 builder.allowHostClassLookup((s) -> true);
                 builder.allowHostClassLoading(allowPrivilege);
                 break;
@@ -3067,6 +3069,22 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testHostLookup() throws Exception {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        try (Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build()) {
+            // Get the host language info:
+            TruffleInstrument.Env instrumentEnv = context.getEngine().getInstruments().get(ProxyInstrument.ID).lookup(ProxyInstrument.Initialize.class).getEnv();
+            @SuppressWarnings("unchecked")
+            Class<? extends TruffleLanguage<?>> hostLanguage = (Class<? extends TruffleLanguage<?>>) Class.forName("com.oracle.truffle.host.HostLanguage");
+            LanguageInfo hostInfo = instrumentEnv.getLanguageInfo(hostLanguage);
+
+            context.initialize(LanguageSPITestLanguage.ID);
+            langContext.env.initializeLanguage(hostInfo);
+            langContext.env.lookup(hostInfo, Runnable.class);
+        }
+    }
+
+    @Test
     public void testConcurrentLookupWhileInitializing() throws InterruptedException {
         TruffleTestAssumptions.assumeWeakEncapsulation();
 
@@ -3177,6 +3195,27 @@ public class LanguageSPITest {
         context.initialize(INHERITED_VERSION);
         final Engine engine = context.getEngine();
         assertEquals(engine.getVersion(), engine.getLanguages().get(INHERITED_VERSION).getVersion());
+        context.close();
+    }
+
+    static final String WEBSITE_TEST = "SPIWebsiteLanguage";
+
+    @TruffleLanguage.Registration(id = WEBSITE_TEST, name = "", website = "https://graalvm.org/test/${graalvm-website-version}")
+    public static class WebsiteLanguage extends ProxyLanguage {
+
+        public WebsiteLanguage() {
+            wrapper = false;
+        }
+    }
+
+    @Test
+    public void testWebsiteLanguage() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
+        Context context = Context.create();
+        context.initialize(WEBSITE_TEST);
+        final Engine engine = context.getEngine();
+        assertEquals(Version.getCurrent().format("https://graalvm.org/test/%[R%d.%d]%[Sdev]"), engine.getLanguages().get(WEBSITE_TEST).getWebsite());
         context.close();
     }
 

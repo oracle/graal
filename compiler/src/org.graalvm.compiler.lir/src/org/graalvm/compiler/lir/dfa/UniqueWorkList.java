@@ -28,13 +28,13 @@ import java.util.ArrayDeque;
 import java.util.BitSet;
 import java.util.Collection;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 
 /**
  * Ensures that an element is only in the worklist once.
  *
  */
-class UniqueWorkList extends ArrayDeque<AbstractBlockBase<?>> {
+class UniqueWorkList extends ArrayDeque<BasicBlock<?>> {
     private static final long serialVersionUID = 8009554570990975712L;
     BitSet valid;
 
@@ -43,8 +43,8 @@ class UniqueWorkList extends ArrayDeque<AbstractBlockBase<?>> {
     }
 
     @Override
-    public AbstractBlockBase<?> poll() {
-        AbstractBlockBase<?> result = super.poll();
+    public BasicBlock<?> poll() {
+        BasicBlock<?> result = super.poll();
         if (result != null) {
             valid.set(result.getId(), false);
         }
@@ -52,7 +52,7 @@ class UniqueWorkList extends ArrayDeque<AbstractBlockBase<?>> {
     }
 
     @Override
-    public boolean add(AbstractBlockBase<?> pred) {
+    public boolean add(BasicBlock<?> pred) {
         if (!valid.get(pred.getId())) {
             valid.set(pred.getId(), true);
             return super.add(pred);
@@ -61,9 +61,9 @@ class UniqueWorkList extends ArrayDeque<AbstractBlockBase<?>> {
     }
 
     @Override
-    public boolean addAll(Collection<? extends AbstractBlockBase<?>> collection) {
+    public boolean addAll(Collection<? extends BasicBlock<?>> collection) {
         boolean changed = false;
-        for (AbstractBlockBase<?> element : collection) {
+        for (BasicBlock<?> element : collection) {
             if (!valid.get(element.getId())) {
                 valid.set(element.getId(), true);
                 super.add(element);

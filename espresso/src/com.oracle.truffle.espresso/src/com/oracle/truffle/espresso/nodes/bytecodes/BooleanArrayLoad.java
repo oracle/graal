@@ -59,7 +59,7 @@ public abstract class BooleanArrayLoad extends EspressoNode {
     public abstract boolean execute(StaticObject receiver, int index);
 
     @Specialization
-    boolean executeWithNullCheck(StaticObject array, int index,
+    boolean doWithNullCheck(StaticObject array, int index,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck booleanArrayLoad) {
         return booleanArrayLoad.execute(nullCheck.execute(array), index);

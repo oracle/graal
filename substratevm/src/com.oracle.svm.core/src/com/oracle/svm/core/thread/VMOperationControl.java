@@ -393,8 +393,11 @@ public final class VMOperationControl {
             thread.start();
         }
 
+        @NeverInline("Must not have escape analysis move an allocation into this method")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while acquiring / holding lock")
         @Override
         public void run() {
+            ThreadingSupportImpl.pauseRecurringCallback("VM operation thread must not execute recurring callbacks.");
             this.isolateThread = CurrentIsolate.getCurrentThread();
 
             VMOperationControl control = VMOperationControl.get();
@@ -495,6 +498,8 @@ public final class VMOperationControl {
             executeAllQueuedVMOperations();
         }
 
+        @NeverInline("Must not have escape analysis move an allocation into this method")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while acquiring / holding lock")
         void enqueueAndWait(VMOperation operation, NativeVMOperationData data) {
             assert useDedicatedVMOperationThread();
             lock();
@@ -521,6 +526,8 @@ public final class VMOperationControl {
             }
         }
 
+        @NeverInline("Must not have escape analysis move an allocation into this method")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while acquiring / holding lock")
         void enqueueAndExecute(VMOperation operation, NativeVMOperationData data) {
             lock();
             try {

@@ -1,14 +1,21 @@
 # Compiler Changelog
 
-This changelog summarizes newly introduced optimizations that may be relevant to other teams.
+This changelog summarizes newly introduced optimizations and other compiler related changes.
 
 ## Version 23.0.0
-* (GR-19840): An image produced by GraalVM's jlink now includes and uses libgraal by default and its `java -version` output includes GraalVM branding.
+* (GR-42044): Improved output of `-Dgraal.ShowConfiguration=info`. For example:
+    `Using "Graal Community compiler" loaded from a Native Image shared library`
+  instead of:
+    `Using compiler configuration 'community' provided by org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory loaded from JVMCI native library`.
+* (GR-42145): The periodic dumping of benchmark counters enabled by `-Dgraal.TimedDynamicCounters` is now limited to jargraal.
 * (GR-31578): Novel Optimization Log: Unified interface to log and dump (e.g. via JSON) optimization decisions.
 Optimization phases should use the `OptimizationLog` to log transformations. Read more in `OptimizationLog.md` and read
 `Profdiff.md` to learn how to compare performed optimizations in hot compilations of 2 experiments.
+* The `-Dgraal.PrintCompilation=true` output now includes stub compilations. For example:
+`StubCompilation-57   <stub>    exceptionHandler  (Object,Word)void  |  166us     0B bytecodes    88B codesize   137kB allocated`
 
 ## Version 22.3.0
+* (GR-19840): An image produced by GraalVM's jlink now includes and uses libgraal by default and its `java -version` output includes GraalVM branding.
 * (GR-32382): Added a dedicated Native Image GC policy for libgraal that will adjust the eden space aggressively to
 minimize RSS memory usage.
 * (GR-38950): Removed deprecated JMX `HotSpotGraalRuntime` management bean from both `libgraal` and `jargraal`.

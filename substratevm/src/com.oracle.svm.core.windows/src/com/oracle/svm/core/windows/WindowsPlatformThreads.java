@@ -196,7 +196,7 @@ class WindowsParkEvent extends ParkEvent {
      * set and reset operations. They can be waited on until they become set or a timeout occurs,
      * spurious wakeups cannot occur.
      */
-    private final WinBase.HANDLE eventHandle;
+    private WinBase.HANDLE eventHandle;
 
     WindowsParkEvent() {
         /* Create an auto-reset event. */
@@ -231,13 +231,13 @@ class WindowsParkEvent extends ParkEvent {
     }
 
     @Override
-    protected void condTimedWait(long delayNanos) {
+    protected void condTimedWait(long durationNanos) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             final int maxTimeout = 0x10_000_000;
-            long delayMillis = Math.max(0, TimeUtils.roundUpNanosToMillis(delayNanos));
+            long durationMillis = Math.max(0, TimeUtils.roundUpNanosToMillis(durationNanos));
             do { // at least once to consume potential unpark
-                int timeout = (delayMillis < maxTimeout) ? (int) delayMillis : maxTimeout;
+                int timeout = (durationMillis < maxTimeout) ? (int) durationMillis : maxTimeout;
                 int status = SynchAPI.WaitForSingleObject(eventHandle, timeout);
                 if (status == SynchAPI.WAIT_OBJECT_0()) {
                     break; // unparked
@@ -246,8 +246,8 @@ class WindowsParkEvent extends ParkEvent {
                     Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
                     throw VMError.shouldNotReachHere("WaitForSingleObject failed");
                 }
-                delayMillis -= timeout;
-            } while (delayMillis > 0);
+                durationMillis -= timeout;
+            } while (durationMillis > 0);
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
@@ -263,13 +263,20 @@ class WindowsParkEvent extends ParkEvent {
             StackOverflowCheck.singleton().protectYellowZone();
         }
     }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected void release() {
+        WinBase.CloseHandle(eventHandle);
+        eventHandle = WinBase.INVALID_HANDLE_VALUE();
+    }
 }
 
 @AutomaticallyRegisteredImageSingleton(ParkEventFactory.class)
 @Platforms(Platform.WINDOWS.class)
 class WindowsParkEventFactory implements ParkEventFactory {
     @Override
-    public ParkEvent create() {
+    public ParkEvent acquire() {
         return new WindowsParkEvent();
     }
 }

@@ -1,5 +1,5 @@
 {
-  local common = import '../../common.jsonnet',
+  local common = import '../../ci/ci_common/common.jsonnet',
 
   local regex_common = {
     setup+: [
@@ -27,7 +27,7 @@
   local regex_downstream_js = regex_common + {
     name: 'gate-regex-downstream-js-oraclejdk' + self.jdk_version,
     run: [
-      ["mx", "testdownstream", "-R", ['mx', 'urlrewrite', 'https://github.com/graalvm/js-tests.git'], "--mx-command", "--strict-compliance gate --strict-mode --all-suites --tags build,Test262-default,TestV8-default,regex"]
+      ["mx", "testdownstream", "-R", ['mx', 'urlrewrite', 'https://github.com/graalvm/js-tests.git'], "--mx-command", " gate --no-warning-as-error --all-suites --tags build,Test262-default,TestV8-default,regex"]
     ],
     targets: ["gate"],
   },
@@ -38,7 +38,6 @@
       common.linux_amd64  + jdk + regex_downstream_js,
       common.darwin_amd64 + jdk + regex_gate_lite,
     ] for jdk in [
-      common.oraclejdk11,
       common.oraclejdk17,
     ]
   ]),

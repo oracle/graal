@@ -50,7 +50,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.Position;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -678,6 +677,17 @@ public final class FrameState extends VirtualState implements IterableNodeType {
                     }
                 }
                 result.add(pushedEscapeObjectState);
+
+                /*
+                 * The virtual object may be mapped to another virtual object. If this is the case,
+                 * we must ensure that that one is mapped too.
+                 */
+                MaterializedObjectState materializedObjectState = (MaterializedObjectState) pushedEscapeObjectState;
+                if (materializedObjectState.materializedValue() instanceof VirtualObjectNode) {
+                    VirtualObjectNode virtualMaterializedValue = (VirtualObjectNode) materializedObjectState.materializedValue();
+                    result = ensureHasVirtualObjectMapping(virtualMaterializedValue, pushedVirtualObjectMappings, result);
+                }
+
                 return result;
             }
         }
@@ -806,10 +816,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         }
     }
 
-    public NodeIterable<FrameState> innerFrameStates() {
-        return usages().filter(FrameState.class);
-    }
-
     private static String toString(FrameState frameState) {
         StringBuilder sb = new StringBuilder();
         String nl = CodeUtil.NEW_LINE;
@@ -895,13 +901,13 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         if (monitorIds() != null && monitorIds().size() > 0) {
             int depth = outerLockDepth();
             for (MonitorIdNode monitor : monitorIds()) {
-                assertTrue(monitor.getLockDepth() == depth++, "wrong depth");
+                assertTrue(monitor.getLockDepth() == depth++, "wrong monitor depth at frame state %s", this);
             }
         }
-        assertTrue(locksSize() == monitorIdCount(), "mismatch in number of locks");
+        assertTrue(locksSize() == monitorIdCount(), "mismatch in number of locks at frame state", this);
         for (ValueNode value : values) {
-            assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes: %s", value);
-            assertTrue(value == null || value instanceof VirtualObjectNode || (value.getStackKind() != JavaKind.Void), "unexpected value: %s", value);
+            assertTrue(value == null || !value.isDeleted(), "frame state %s must not contain deleted nodes: %s", this, value);
+            assertTrue(value == null || value instanceof VirtualObjectNode || (value.getStackKind() != JavaKind.Void), "unexpected value %s at frame state %s", value, this);
         }
         verifyAfterExceptionState();
         return super.verify();

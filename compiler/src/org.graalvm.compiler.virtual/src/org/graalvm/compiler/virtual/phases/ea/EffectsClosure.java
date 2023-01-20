@@ -56,7 +56,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -106,7 +106,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
      * Effects that can only be applied after the effects from within the loop have been applied and
      * that must be applied before any effect from after the loop is applied. E.g., updating phis.
      */
-    protected EconomicMap<Loop<Block>, GraphEffectList> loopMergeEffects = EconomicMap.create(Equivalence.IDENTITY);
+    protected EconomicMap<Loop<HIRBlock>, GraphEffectList> loopMergeEffects = EconomicMap.create(Equivalence.IDENTITY);
 
     /**
      * The entry state of loops is needed when loop proxies are processed.
@@ -114,7 +114,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     private EconomicMap<LoopBeginNode, BlockT> loopEntryStates = EconomicMap.create(Equivalence.IDENTITY);
 
     // Intended to be used by read-eliminating phases based on the effects phase.
-    protected EconomicMap<Loop<Block>, LoopKillCache> loopLocationKillCache = EconomicMap.create(Equivalence.IDENTITY);
+    protected EconomicMap<Loop<HIRBlock>, LoopKillCache> loopLocationKillCache = EconomicMap.create(Equivalence.IDENTITY);
 
     protected boolean changed;
     protected final DebugContext debug;
@@ -131,7 +131,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         this.hasScalarReplacedInputs = cfg.graph.createNodeBitMap();
         this.blockEffects = new BlockMap<>(cfg);
         this.debug = cfg.graph.getDebug();
-        for (Block block : cfg.getBlocks()) {
+        for (HIRBlock block : cfg.getBlocks()) {
             blockEffects.put(block, new GraphEffectList(debug));
         }
         this.currentMode = EffectsClosureMode.REGULAR_VIRTUALIZATION;
@@ -171,13 +171,13 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             }
 
             @Override
-            protected Void processBlock(Block block, Void currentState) {
+            protected Void processBlock(HIRBlock block, Void currentState) {
                 apply(blockEffects.get(block));
                 return currentState;
             }
 
             @Override
-            protected Void merge(Block merge, List<Void> states) {
+            protected Void merge(HIRBlock merge, List<Void> states) {
                 return null;
             }
 
@@ -187,7 +187,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             }
 
             @Override
-            protected List<Void> processLoop(Loop<Block> loop, Void initialState) {
+            protected List<Void> processLoop(Loop<HIRBlock> loop, Void initialState) {
                 LoopInfo<Void> info = ReentrantBlockIterator.processLoop(this, loop, initialState);
                 apply(loopMergeEffects.get(loop));
                 return info.exitStates;
@@ -220,7 +220,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     }
 
     @Override
-    protected BlockT processBlock(Block block, BlockT state) {
+    protected BlockT processBlock(HIRBlock block, BlockT state) {
         if (!state.isDead()) {
             GraphEffectList effects = blockEffects.get(block);
 
@@ -245,7 +245,19 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             }
 
             OptionValues options = block.getBeginNode().getOptions();
-            VirtualUtil.trace(options, debug, "\nBlock: %s, preds: %s, succ: %s (", block, block.getPredecessors(), block.getSuccessors());
+            if (GraalOptions.TraceEscapeAnalysis.getValue(block.getBeginNode().getOptions())) {
+                int predCount = block.getPredecessorCount();
+                HIRBlock[] pred = new HIRBlock[predCount];
+                for (int i = 0; i < predCount; i++) {
+                    pred[i] = block.getPredecessorAt(i);
+                }
+                int succCount = block.getSuccessorCount();
+                HIRBlock[] succ = new HIRBlock[succCount];
+                for (int i = 0; i < succCount; i++) {
+                    succ[i] = block.getSuccessorAt(i);
+                }
+                VirtualUtil.trace(options, debug, "\nBlock: %s, preds: %s, succ: %s (", block, pred, succ);
+            }
 
             // a lastFixedNode is needed in case we want to insert fixed nodes
             FixedWithNextNode lastFixedNode = null;
@@ -261,7 +273,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                     }
                     processLoopExit(loopExit, loopEntryStates.get(loopExit.loopBegin()), state, blockEffects.get(block));
                 }
-                Block exceptionEdgeToKill = node instanceof WithExceptionNode ? cfg.blockFor(((WithExceptionNode) node).exceptionEdge()) : null;
+                HIRBlock exceptionEdgeToKill = node instanceof WithExceptionNode ? cfg.blockFor(((WithExceptionNode) node).exceptionEdge()) : null;
                 boolean lastNodeChanged = processNode(node, state, effects, lastFixedNode) && isSignificantNode(node);
                 changed |= lastNodeChanged;
                 if (lastNodeChanged && exceptionEdgeToKill != null) {
@@ -287,7 +299,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     }
 
     @Override
-    protected BlockT afterSplit(Block successor, BlockT oldState) {
+    protected BlockT afterSplit(HIRBlock successor, BlockT oldState) {
         BlockT state = oldState;
         if (oldState.exceptionEdgesToKill != null && oldState.exceptionEdgesToKill.contains(successor)) {
             state.markAsDead();
@@ -328,7 +340,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     protected abstract boolean processNode(Node node, BlockT state, GraphEffectList effects, FixedWithNextNode lastFixedNode);
 
     @Override
-    protected BlockT merge(Block merge, List<BlockT> states) {
+    protected BlockT merge(HIRBlock merge, List<BlockT> states) {
         assert blockEffects.get(merge).isEmpty();
         MergeProcessor processor = createMergeProcessor(merge);
         doMergeWithoutDead(processor, states);
@@ -339,7 +351,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     @Override
     @SuppressWarnings("try")
-    protected final List<BlockT> processLoop(Loop<Block> loop, BlockT initialState) {
+    protected final List<BlockT> processLoop(Loop<HIRBlock> loop, BlockT initialState) {
         if (initialState.isDead()) {
             ArrayList<BlockT> states = new ArrayList<>();
             for (int i = 0; i < loop.getLoopExits().size(); i++) {
@@ -373,9 +385,9 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         NodeMap<ValueNode> aliasesCopy = null;
         NodeBitMap hasScalarReplacedInputsCopy = null;
         BlockMap<GraphEffectList> blockEffectsCopy = null;
-        EconomicMap<Loop<Block>, GraphEffectList> loopMergeEffectsCopy = null;
+        EconomicMap<Loop<HIRBlock>, GraphEffectList> loopMergeEffectsCopy = null;
         EconomicMap<LoopBeginNode, BlockT> loopEntryStatesCopy = null;
-        EconomicMap<Loop<Block>, LoopKillCache> loopLocationKillCacheCopy = null;
+        EconomicMap<Loop<HIRBlock>, LoopKillCache> loopLocationKillCacheCopy = null;
         BlockT initialStateRemovedKilledLocationsBackup = null;
 
         if (loop.getDepth() == 1) {
@@ -384,7 +396,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
              * Find out if we will need the copy versions
              */
             boolean initBackUp = false;
-            for (Loop<Block> l : cfg.getLoops()) {
+            for (Loop<HIRBlock> l : cfg.getLoops()) {
                 if (l.getDepth() > GraalOptions.EscapeAnalysisLoopCutoff.getValue(cfg.graph.getOptions())) {
                     initBackUp = true;
                     break;
@@ -395,7 +407,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 aliasesCopy = new NodeMap<>(aliases);
                 hasScalarReplacedInputsCopy = hasScalarReplacedInputs.copy();
                 blockEffectsCopy = new BlockMap<>(cfg);
-                for (Block block : cfg.getBlocks()) {
+                for (HIRBlock block : cfg.getBlocks()) {
                     GraphEffectList copy = new GraphEffectList(debug);
                     copy.addAll(blockEffects.get(block));
                     blockEffectsCopy.put(block, copy);
@@ -459,7 +471,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                             return info.exitStates;
                         } else {
                             lastMergedState = mergeProcessor.newState;
-                            for (Block block : loop.getBlocks()) {
+                            for (HIRBlock block : loop.getBlocks()) {
                                 blockEffects.get(block).clear();
                                 if (block.isLoopHeader()) {
                                     final GraphEffectList loopEffects = loopMergeEffects.get(block.getLoop());
@@ -495,7 +507,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 loopLocationKillCache = loopLocationKillCacheCopy;
                 initialStateRemovedKilledLocations = initialStateRemovedKilledLocationsBackup;
                 processStateBeforeLoopOnOverflow(initialStateRemovedKilledLocations, ((LoopBeginNode) loop.getHeader().getBeginNode()).forwardEnd(),
-                                blockEffects.get(loop.getHeader().getPredecessors()[0]));
+                                blockEffects.get(loop.getHeader().getPredecessorAt(0)));
                 currentMode = EffectsClosureMode.MATERIALIZE_ALL;
                 continue;
             }
@@ -514,17 +526,17 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     }
 
     @SuppressWarnings("unused")
-    protected BlockT stripKilledLoopLocations(Loop<Block> loop, BlockT initialState) {
+    protected BlockT stripKilledLoopLocations(Loop<HIRBlock> loop, BlockT initialState) {
         return initialState;
     }
 
     @SuppressWarnings("unused")
-    protected void processKilledLoopLocations(Loop<Block> loop, BlockT initialState, BlockT mergedStates) {
+    protected void processKilledLoopLocations(Loop<HIRBlock> loop, BlockT initialState, BlockT mergedStates) {
         // nothing to do
     }
 
     @SuppressWarnings("unused")
-    protected void processInitialLoopState(Loop<Block> loop, BlockT initialState) {
+    protected void processInitialLoopState(Loop<HIRBlock> loop, BlockT initialState) {
         // nothing to do
     }
 
@@ -560,7 +572,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         }
     }
 
-    private boolean assertExitStatesNonEmpty(Loop<Block> loop, LoopInfo<BlockT> info) {
+    private boolean assertExitStatesNonEmpty(Loop<HIRBlock> loop, LoopInfo<BlockT> info) {
         for (int i = 0; i < loop.getLoopExits().size(); i++) {
             assert info.exitStates.get(i) != null : "no loop exit state at " + loop.getLoopExits().get(i) + " / " + loop.getHeader();
         }
@@ -569,14 +581,14 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected abstract void processLoopExit(LoopExitNode exitNode, BlockT initialState, BlockT exitState, GraphEffectList effects);
 
-    protected abstract MergeProcessor createMergeProcessor(Block merge);
+    protected abstract MergeProcessor createMergeProcessor(HIRBlock merge);
 
     /**
      * The main workhorse for merging states, both for loops and for normal merges.
      */
     protected abstract class MergeProcessor {
 
-        protected final Block mergeBlock;
+        protected final HIRBlock mergeBlock;
         protected final AbstractMergeNode merge;
 
         protected final GraphEffectList mergeEffects;
@@ -589,7 +601,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         private int[] stateIndexes;
         protected BlockT newState;
 
-        public MergeProcessor(Block mergeBlock) {
+        public MergeProcessor(HIRBlock mergeBlock) {
             this.mergeBlock = mergeBlock;
             this.merge = (AbstractMergeNode) mergeBlock.getBeginNode();
             this.mergeEffects = new GraphEffectList(debug);
@@ -611,8 +623,8 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             this.stateIndexes = stateIndexes;
         }
 
-        protected final Block getPredecessor(int index) {
-            return mergeBlock.getPredecessors()[stateIndexes[index]];
+        protected final HIRBlock getPredecessor(int index) {
+            return mergeBlock.getPredecessorAt(stateIndexes[index]);
         }
 
         protected final NodeIterable<PhiNode> getPhis() {

@@ -38,6 +38,7 @@ import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeAnalysisContextPo
 import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
 
@@ -53,31 +54,26 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
     /**
      * Add the context, if not already added, and return the method flows clone from that context.
      */
-    public MethodFlowsGraph addContext(PointsToAnalysis bb, AnalysisContext calleeContext) {
-        return addContext(bb, calleeContext, null);
-    }
-
-    public MethodFlowsGraph addContext(PointsToAnalysis bb, AnalysisContext calleeContext, InvokeTypeFlow reason) {
+    public MethodFlowsGraphInfo addContext(PointsToAnalysis bb, AnalysisContext calleeContext, InvokeTypeFlow reason) {
 
         /* Ensure that the method is parsed before attempting to clone it. */
-        this.ensureFlowsGraphCreated(bb, reason);
-        this.getMethodFlowsGraph().ensureLinearized();
+        ensureFlowsGraphCreated(bb, reason);
+        flowsGraph.ensureLinearized();
 
         BytecodeAnalysisContextPolicy contextPolicy = ((BytecodeSensitiveAnalysisPolicy) bb.analysisPolicy()).getContextPolicy();
         AnalysisContext newContext = contextPolicy.peel((BytecodeAnalysisContext) calleeContext, localCallingContextDepth);
 
         MethodFlowsGraphClone methodFlows = (MethodFlowsGraphClone) clonedMethodFlows.get(newContext);
         if (methodFlows == null) {
-            MethodFlowsGraphClone newFlows = new MethodFlowsGraphClone(method, newContext);
-            newFlows.cloneOriginalFlows(bb);
-            MethodFlowsGraphClone oldFlows = (MethodFlowsGraphClone) clonedMethodFlows.putIfAbsent(newContext, newFlows);
-            methodFlows = oldFlows != null ? oldFlows : newFlows;
-            if (oldFlows == null) {
-                /*
-                 * Link uses only the clone is registered since linking uses may trigger updates to
-                 * the current method in the current context.
-                 */
-                methodFlows.linkClones(bb);
+            synchronized (this) {
+                // must ensure this cannot race with updateFlowsGraph
+                methodFlows = (MethodFlowsGraphClone) clonedMethodFlows.computeIfAbsent(newContext, (k) -> {
+                    MethodFlowsGraphClone newFlows = new MethodFlowsGraphClone(method, flowsGraph, newContext);
+                    newFlows.cloneOriginalFlows(bb);
+                    newFlows.linkCloneFlows(bb);
+
+                    return newFlows;
+                });
             }
         }
 
@@ -95,10 +91,12 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
 
     @Override
     public Collection<MethodFlowsGraph> getFlows() {
+        ensureFlowsGraphSealed();
         return clonedMethodFlows.values();
     }
 
     public MethodFlowsGraph getFlows(AnalysisContext calleeContext) {
+        ensureFlowsGraphSealed();
         return clonedMethodFlows.get(calleeContext);
     }
 
@@ -138,6 +136,34 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
             saturated |= clonedTypeFlow.isSaturated();
         }
         return saturated;
+    }
+
+    @Override
+    public synchronized void setAsStubFlow() {
+        AnalysisError.shouldNotReachHere(
+                        "The code below is untested. We want to keep it as a blueprint of how an implementation looks like. If this code path is reached, it needs to be checked for correctness first.");
+        super.setAsStubFlow();
+    }
+
+    @Override
+    public synchronized boolean updateFlowsGraph(PointsToAnalysis bb, MethodFlowsGraph.GraphKind newGraphKind, InvokeTypeFlow newParsingReason, boolean forceReparse) {
+        AnalysisError.shouldNotReachHere(
+                        "The code below is untested. We want to keep it as a blueprint of how an implementation looks like. If this code path is reached, it needs to be checked for correctness first.");
+        // this updates the "originalFlow"
+        boolean updated = super.updateFlowsGraph(bb, newGraphKind, newParsingReason, forceReparse);
+
+        if (updated) {
+            // now need to update all clone flows
+            clonedMethodFlows.forEach((k, clonedFlowsGraph) -> {
+                MethodFlowsGraphClone clone = (MethodFlowsGraphClone) clonedFlowsGraph;
+                clone.removeInternalFlows(bb);
+                clone.recloneOriginalFlows(bb);
+                clone.linkCloneFlows(bb);
+            });
+
+        }
+
+        return updated;
     }
 
     @Override

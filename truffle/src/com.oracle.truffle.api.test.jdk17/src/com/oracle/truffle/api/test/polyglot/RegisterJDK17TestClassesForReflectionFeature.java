@@ -51,6 +51,7 @@ public class RegisterJDK17TestClassesForReflectionFeature extends RegisterTestCl
 
     private static final List<Class<?>> TEST_CLASSES = List.of(HostRecordAccessTest.class);
 
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         for (Class<?> testClass : TEST_CLASSES) {
             for (Class<?> innerClass : testClass.getDeclaredClasses()) {

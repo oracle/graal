@@ -51,6 +51,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
@@ -63,7 +65,9 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -88,6 +92,7 @@ final class HostContext {
     private Predicate<String> classFilter;
     private boolean hostClassLoadingAllowed;
     private boolean hostLookupAllowed;
+    private EconomicSet<MutableTargetMapping> mutableTargetMappings;
     final TruffleLanguage.Env env;
     final AbstractHostAccess access;
 
@@ -117,7 +122,7 @@ final class HostContext {
      * preinitialization.
      */
     @SuppressWarnings("hiding")
-    void initialize(Object internalContext, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+    void initialize(Object internalContext, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed, MutableTargetMapping... mutableTargetMappings) {
         if (classloader != null && this.classFilter != null || this.hostClassLoadingAllowed || this.hostLookupAllowed) {
             throw new AssertionError("must not be used during context preinitialization");
         }
@@ -126,12 +131,21 @@ final class HostContext {
         this.classFilter = clFilter;
         this.hostClassLoadingAllowed = hostCLAllowed;
         this.hostLookupAllowed = hostLookupAllowed;
+        if (mutableTargetMappings != null) {
+            this.mutableTargetMappings = EconomicSet.create(mutableTargetMappings.length);
+            for (MutableTargetMapping m : mutableTargetMappings) {
+                this.mutableTargetMappings.add(m);
+            }
+        } else {
+            this.mutableTargetMappings = EconomicSet.create(0);
+        }
     }
 
     public HostClassCache getHostClassCache() {
         return language.hostClassCache;
     }
 
+    @NeverDefault
     GuestToHostCodeCache getGuestToHostCache() {
         GuestToHostCodeCache cache = (GuestToHostCodeCache) HostAccessor.ENGINE.getGuestToHostCodeCache(internalContext);
         if (cache == null) {
@@ -188,6 +202,8 @@ final class HostContext {
                 throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
             }
         } catch (ClassNotFoundException e) {
+            throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
+        } catch (LinkageError e) {
             throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
         }
     }
@@ -262,6 +278,10 @@ final class HostContext {
         }
     }
 
+    EconomicSet<MutableTargetMapping> getMutableTargetMappings() {
+        return mutableTargetMappings;
+    }
+
     void addToHostClasspath(TruffleFile classpathEntry) {
         checkHostAccessAllowed();
         if (TruffleOptions.AOT) {
@@ -333,9 +353,10 @@ final class HostContext {
     }
 
     @GenerateUncached
+    @GenerateInline
     abstract static class ToGuestValueNode extends Node {
 
-        abstract Object execute(HostContext context, Object receiver);
+        abstract Object execute(Node node, HostContext context, Object receiver);
 
         @Specialization(guards = "receiver == null")
         Object doNull(HostContext context, @SuppressWarnings("unused") Object receiver) {
@@ -406,7 +427,7 @@ final class HostContext {
             Object[] newArgs = needsCopy ? new Object[nodes.length] : args;
             for (int i = 0; i < nodes.length; i++) {
                 Object arg = args[i];
-                Object newArg = nodes[i].execute(context, arg);
+                Object newArg = nodes[i].execute(this, context, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
@@ -429,7 +450,7 @@ final class HostContext {
             Object[] newArgs = needsCopy ? new Object[args.length] : args;
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
-                Object newArg = node.execute(context, arg);
+                Object newArg = node.execute(this, context, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {

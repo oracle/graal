@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -25,7 +25,14 @@
  */
 package org.graalvm.compiler.replacements.test;
 
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
+import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+
+import org.junit.Assert;
 import org.junit.Test;
 
 public class MathMultiplyHighTest extends MethodSubstitutionTest {
@@ -45,5 +52,25 @@ public class MathMultiplyHighTest extends MethodSubstitutionTest {
                 test("multiplyHigh", input1, input2);
             }
         }
+    }
+
+    private final SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(getProviders(), false, null, getInitialOptions());
+
+    @Test
+    public void testConstantFold() {
+        IntegerMulHighNode mulHigh = new IntegerMulHighNode(ConstantNode.forLong(-1), ConstantNode.forLong(1));
+        ValueNode canonical = mulHigh.canonical(simplifierTool);
+        Assert.assertTrue("expected constant folding: " + canonical, canonical.isJavaConstant());
+        long expected = Math.multiplyHigh(-1, 1);
+        Assert.assertEquals("-1 *H 1", expected, canonical.asJavaConstant().asLong());
+    }
+
+    @Test
+    public void testSwapConstantAndMulHighZero() {
+        IntegerMulHighNode mulHigh = new IntegerMulHighNode(ConstantNode.forLong(0), new OpaqueNode(ConstantNode.forLong(-1)));
+        ValueNode canonical = mulHigh.canonical(simplifierTool);
+        Assert.assertTrue("expected constant folding: " + canonical, canonical.isJavaConstant());
+        long expected = Math.multiplyHigh(0, -1);
+        Assert.assertEquals("0 *H -1", expected, canonical.asJavaConstant().asLong());
     }
 }

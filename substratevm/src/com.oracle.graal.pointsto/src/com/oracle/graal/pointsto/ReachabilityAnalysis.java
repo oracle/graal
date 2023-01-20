@@ -43,7 +43,7 @@ public interface ReachabilityAnalysis {
 
     /**
      * Marks given class and all its superclasses as reachable.
-     * 
+     *
      * @param clazz class to be marked
      * @param addFields if true, all instance fiels are marked as accessed
      * @param addArrayClass if true, the array class is registered as well
@@ -85,36 +85,36 @@ public interface ReachabilityAnalysis {
         field.setUnsafeFrozenTypeState(true);
     }
 
-    default boolean registerAsUnsafeAccessed(AnalysisField field, UnsafePartitionKind partitionKind) {
-        if (field.registerAsUnsafeAccessed(partitionKind)) {
+    default boolean registerAsUnsafeAccessed(AnalysisField field, UnsafePartitionKind partitionKind, Object reason) {
+        if (field.registerAsUnsafeAccessed(partitionKind, reason)) {
             forceUnsafeUpdate(field);
             return true;
         }
         return false;
     }
 
-    default boolean markTypeReachable(AnalysisType type) {
-        return type.registerAsReachable();
+    default boolean registerTypeAsReachable(AnalysisType type, Object reason) {
+        return type.registerAsReachable(reason);
     }
 
-    default boolean markTypeInstantiated(AnalysisType type) {
-        return type.registerAsAllocated(null);
+    default boolean registerTypeAsAllocated(AnalysisType type, Object reason) {
+        return type.registerAsAllocated(reason);
     }
 
-    default boolean markTypeInHeap(AnalysisType type) {
-        return type.registerAsInHeap();
+    default boolean registerTypeAsInHeap(AnalysisType type, Object reason) {
+        return type.registerAsInHeap(reason);
     }
 
-    default void markFieldAccessed(AnalysisField field) {
-        field.registerAsAccessed();
+    default void markFieldAccessed(AnalysisField field, Object reason) {
+        field.registerAsAccessed(reason);
     }
 
-    default void markFieldRead(AnalysisField field) {
-        field.registerAsRead(null);
+    default void markFieldRead(AnalysisField field, Object reason) {
+        field.registerAsRead(reason);
     }
 
-    default void markFieldWritten(AnalysisField field) {
-        field.registerAsWritten(null);
+    default void markFieldWritten(AnalysisField field, Object reason) {
+        field.registerAsWritten(reason);
     }
 
     /**

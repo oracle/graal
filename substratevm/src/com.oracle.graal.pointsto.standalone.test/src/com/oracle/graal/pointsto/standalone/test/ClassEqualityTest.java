@@ -29,28 +29,14 @@ package com.oracle.graal.pointsto.standalone.test;
 import org.junit.Test;
 
 public class ClassEqualityTest {
-    static class C {
-        public static void foo() {
-        }
-    }
-
-    public static void main(String[] args) {
-        equals(C.class);
-    }
-
-    private static void equals(Class<?> clazz) {
-        if (clazz == C.class) {
-            C.foo();
-        }
-    }
 
     @Test
-    public void test() {
-        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(this.getClass());
+    public void test() throws NoSuchMethodException {
+        PointstoAnalyzerTester tester = new PointstoAnalyzerTester(ClassEqualityCase.class);
         tester.setAnalysisArguments(tester.getTestClassName(),
                         "-H:AnalysisTargetAppCP=" + tester.getTestClassJar());
 
-        tester.setExpectedReachableMethods(C.class.getName() + ".foo()");
+        tester.setExpectedReachableMethods(ClassEqualityCase.C.class.getDeclaredMethod("foo"));
         tester.runAnalysisAndAssert();
     }
 }

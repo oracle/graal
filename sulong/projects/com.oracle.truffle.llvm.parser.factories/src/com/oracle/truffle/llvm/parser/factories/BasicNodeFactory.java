@@ -79,6 +79,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMCatchReturnNode;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMCleanupReturnNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMDispatchBasicBlockNodeGen;
@@ -1202,6 +1203,11 @@ public class BasicNodeFactory implements NodeFactory {
         return LLVMCatchReturnNode.create(unconditionalIndex, getStack, phiWrites);
     }
 
+    @Override
+    public LLVMControlFlowNode createCleanupReturn(int unconditionalIndex, LLVMExpressionNode getStack, LLVMStatementNode phiWrites) {
+        return LLVMCleanupReturnNode.create(unconditionalIndex, getStack, phiWrites);
+    }
+
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadCatchEntry(LLVMExpressionNode exp) {
         return LLVMLandingpadNode.createCatchEntry(exp);
     }
@@ -1313,7 +1319,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     // matches the type suffix of an LLVM intrinsic function, including the dot
-    private static final Pattern INTRINSIC_TYPE_SUFFIX_PATTERN = Pattern.compile("\\S+(?<suffix>\\.(?:[vp](?<length>\\d+))?[if]\\d+)$");
+    private static final Pattern INTRINSIC_TYPE_SUFFIX_PATTERN = Pattern.compile("\\S+(?<suffix>\\.(?:[vp](?<length>\\d+))?([if]\\d+)?)$");
 
     private static TypeSuffix getTypeSuffix(String intrinsicName) {
         assert intrinsicName != null;
@@ -1363,7 +1369,9 @@ public class BasicNodeFactory implements NodeFactory {
         String intrinsicName = declaration.getName();
         try {
             switch (intrinsicName) {
+                case "llvm.memset.p0.i32":
                 case "llvm.memset.p0i8.i32":
+                case "llvm.memset.p0.i64":
                 case "llvm.memset.p0i8.i64":
                     return createMemsetIntrinsic(args);
                 case "llvm.assume":
@@ -1381,7 +1389,9 @@ public class BasicNodeFactory implements NodeFactory {
                     return CountLeadingZeroesI32NodeGen.create(args[1], args[2]);
                 case "llvm.ctlz.i64":
                     return CountLeadingZeroesI64NodeGen.create(args[1], args[2]);
+                case "llvm.memcpy.p0.p0.i64":
                 case "llvm.memcpy.p0i8.p0i8.i64":
+                case "llvm.memcpy.p0.p0.i32":
                 case "llvm.memcpy.p0i8.p0i8.i32":
                     return createMemcpyIntrinsic(args);
                 case "llvm.ctpop.i32":
@@ -1416,6 +1426,7 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMByteSwapI64VectorNodeGen.create(2, args[1]);
                 case "llvm.bswap.v4i64":
                     return LLVMByteSwapI64VectorNodeGen.create(4, args[1]);
+                case "llvm.memmove.p0.p0.i64":
                 case "llvm.memmove.p0i8.p0i8.i64":
                     return createMemmoveIntrinsic(args);
                 case "llvm.pow.f32":
@@ -1491,16 +1502,20 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMCMathsIntrinsicsFactory.LLVMMaxnumNodeGen.create(args[1], args[2]);
                 case "llvm.returnaddress":
                     return LLVMReturnAddressNodeGen.create(args[1]);
+                case "llvm.lifetime.start.p0":
                 case "llvm.lifetime.start.p0i8":
                 case "llvm.lifetime.start":
                     return LLVMLifetimeStartNodeGen.create(args[1], args[2]);
+                case "llvm.lifetime.end.p0":
                 case "llvm.lifetime.end.p0i8":
                 case "llvm.lifetime.end":
                     return LLVMLifetimeEndNodeGen.create(args[1], args[2]);
                 case "llvm.invariant.start":
+                case "llvm.invariant.start.p0":
                 case "llvm.invariant.start.p0i8":
                     return LLVMInvariantStartNodeGen.create(args[1], args[2]);
                 case "llvm.invariant.end":
+                case "llvm.invariant.end.p0":
                 case "llvm.invariant.end.p0i8":
                     return LLVMInvariantEndNodeGen.create(args[1], args[2]);
                 case "llvm.stacksave":
@@ -1508,6 +1523,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.stackrestore":
                     return LLVMStackRestoreNodeGen.create(args[1]);
                 case "llvm.frameaddress":
+                case "llvm.frameaddress.p0":
                 case "llvm.frameaddress.p0i8":
                     return LLVMFrameAddressNodeGen.create(args[1]);
                 case "llvm.va_start":
@@ -1548,6 +1564,7 @@ public class BasicNodeFactory implements NodeFactory {
                     LLVMExpressionNode actualValueNode = args[1];
                     return LLVMExpectI64NodeGen.create(expectedValue, actualValueNode);
                 }
+                case "llvm.objectsize.i64.p0":
                 case "llvm.objectsize.i64.p0i8":
                 case "llvm.objectsize.i64":
                     return LLVMI64ObjectSizeNodeGen.create(args[1], args[2]);
@@ -1681,8 +1698,10 @@ public class BasicNodeFactory implements NodeFactory {
         if (intrinsicName.startsWith("llvm.aarch64.neon")) {
             String op = intrinsicName.substring("llvm.aarch64.neon.".length());
             switch (op) {
+                case "ld1x2.v16i8.p0":
                 case "ld1x2.v16i8.p0i8":
                     return LLVMAArch64_NeonNodesFactory.LLVMAArch64_Ld1x2NodeGen.create(2 * I64_SIZE_IN_BYTES, args[1], args[2]);
+                case "ld2.v16i8.p0":
                 case "ld2.v16i8.p0v16i8":
                     return LLVMAArch64_NeonNodesFactory.LLVMAArch64_Ld2NodeGen.create(2 * I64_SIZE_IN_BYTES, I8_SIZE_IN_BYTES, args[1], args[2]);
                 case "tbl1.v16i8":

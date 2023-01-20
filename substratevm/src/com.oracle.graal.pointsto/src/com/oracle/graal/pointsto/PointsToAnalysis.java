@@ -58,6 +58,7 @@ import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
@@ -81,7 +82,6 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
-import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 
@@ -159,8 +159,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return reportAnalysisStatistics;
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method) {
-        return new MethodTypeFlowBuilder(bb, method);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
+        return new MethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }
 
     public void registerUnsafeLoad(AbstractUnsafeLoadTypeFlow unsafeLoad) {
@@ -299,86 +299,83 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     @SuppressWarnings("try")
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial) {
+        assert aMethod.isOriginalMethod();
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
-        try (Indent indent = debug.logAndIndent("add root method %s", aMethod.getName())) {
+        AnalysisType declaringClass = aMethod.getDeclaringClass();
+        boolean isStatic = aMethod.isStatic();
+        WrappedSignature signature = aMethod.getSignature();
+        int paramCount = signature.getParameterCount(!isStatic);
+        PointsToAnalysisMethod pointsToMethod = assertPointsToAnalysisMethod(aMethod);
 
-            AnalysisType declaringClass = aMethod.getDeclaringClass();
-            boolean isStatic = aMethod.isStatic();
-            WrappedSignature signature = aMethod.getSignature();
-            int paramCount = signature.getParameterCount(!isStatic);
-            PointsToAnalysisMethod pointsToMethod = assertPointsToAnalysisMethod(aMethod);
-
-            if (isStatic) {
-                /*
-                 * For static methods trigger analysis in the empty context. This will trigger
-                 * parsing and return the method flows graph. Then the method parameter type flows
-                 * are initialized with the corresponding parameter declared type.
-                 */
-                postTask(() -> {
-                    pointsToMethod.registerAsDirectRootMethod();
-                    pointsToMethod.registerAsImplementationInvoked(null);
-                    MethodFlowsGraph methodFlowsGraph = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
-                    for (int idx = 0; idx < paramCount; idx++) {
-                        AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);
-                        FormalParamTypeFlow parameter = methodFlowsGraph.getParameter(idx);
-                        if (declaredParamType.getJavaKind() == JavaKind.Object && parameter != null) {
-                            TypeFlow<?> initialParameterFlow = declaredParamType.getTypeFlow(this, true);
-                            initialParameterFlow.addUse(this, parameter);
-                        }
+        if (isStatic) {
+            /*
+             * For static methods trigger analysis in the empty context. This will trigger parsing
+             * and return the method flows graph. Then the method parameter type flows are
+             * initialized with the corresponding parameter declared type.
+             */
+            postTask(() -> {
+                pointsToMethod.registerAsDirectRootMethod();
+                pointsToMethod.registerAsImplementationInvoked("root method");
+                MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
+                for (int idx = 0; idx < paramCount; idx++) {
+                    AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);
+                    FormalParamTypeFlow parameter = flowInfo.getParameter(idx);
+                    if (declaredParamType.getJavaKind() == JavaKind.Object && parameter != null) {
+                        TypeFlow<?> initialParameterFlow = declaredParamType.getTypeFlow(this, true);
+                        initialParameterFlow.addUse(this, parameter);
                     }
-                });
-            } else {
-                if (invokeSpecial && pointsToMethod.isAbstract()) {
-                    throw AnalysisError.userError("Abstract methods cannot be registered as special invoke entry point.");
                 }
-                /*
-                 * For special invoked methods trigger method resolution by using the
-                 * context-insensitive special invoke type flow. This will resolve the method in its
-                 * declaring class when the declaring class is instantiated.
-                 *
-                 * For virtual methods trigger method resolution by using the context-insensitive
-                 * virtual invoke type flow. Since the virtual invoke observes the receiver flow
-                 * state it will get notified for any future reachable subtypes and will resolve the
-                 * method in each subtype.
-                 *
-                 * In both cases the context-insensitive invoke parameters are initialized with the
-                 * corresponding declared type state. When a callee is resolved the method is parsed
-                 * and the actual parameter type state is propagated to the formal parameters. Then
-                 * the callee is linked and registered as implementation-invoked.
-                 */
-                postTask(() -> {
-                    BytecodePosition location = new BytecodePosition(null, pointsToMethod, 0);
-                    if (invokeSpecial) {
-                        pointsToMethod.registerAsDirectRootMethod();
-                    } else {
-                        pointsToMethod.registerAsVirtualRootMethod();
-                    }
-                    InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, location, invokeSpecial);
-                    /*
-                     * Initialize the type flow of the invoke's actual parameters with the
-                     * corresponding parameter declared type. Thus, when the invoke links callees it
-                     * will propagate the parameter types too.
-                     *
-                     * The parameter iteration skips the primitive parameters, as these are not
-                     * modeled. The type flow of the receiver is set to the receiver type already
-                     * when the invoke is created.
-                     */
-                    for (int idx = 1; idx < paramCount; idx++) {
-                        /*
-                         * Note: the Signature doesn't count the receiver of a virtual invoke as a
-                         * parameter whereas the MethodTypeFlow does, hence when accessing the
-                         * parameter type below we use idx-1 but when accessing the actual parameter
-                         * flow we simply use idx.
-                         */
-                        AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx - 1, declaringClass);
-                        TypeFlow<?> actualParameterFlow = invoke.getActualParameter(idx);
-                        if (declaredParamType.getJavaKind() == JavaKind.Object && actualParameterFlow != null) {
-                            TypeFlow<?> initialParameterFlow = declaredParamType.getTypeFlow(this, true);
-                            initialParameterFlow.addUse(this, actualParameterFlow);
-                        }
-                    }
-                });
+            });
+        } else {
+            if (invokeSpecial && pointsToMethod.isAbstract()) {
+                throw AnalysisError.userError("Abstract methods cannot be registered as special invoke entry point.");
             }
+            /*
+             * For special invoked methods trigger method resolution by using the
+             * context-insensitive special invoke type flow. This will resolve the method in its
+             * declaring class when the declaring class is instantiated.
+             *
+             * For virtual methods trigger method resolution by using the context-insensitive
+             * virtual invoke type flow. Since the virtual invoke observes the receiver flow state
+             * it will get notified for any future reachable subtypes and will resolve the method in
+             * each subtype.
+             *
+             * In both cases the context-insensitive invoke parameters are initialized with the
+             * corresponding declared type state. When a callee is resolved the method is parsed and
+             * the actual parameter type state is propagated to the formal parameters. Then the
+             * callee is linked and registered as implementation-invoked.
+             */
+            postTask(() -> {
+                if (invokeSpecial) {
+                    pointsToMethod.registerAsDirectRootMethod();
+                } else {
+                    pointsToMethod.registerAsVirtualRootMethod();
+                }
+                InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial, pointsToMethod.getMultiMethodKey());
+                /*
+                 * Initialize the type flow of the invoke's actual parameters with the corresponding
+                 * parameter declared type. Thus, when the invoke links callees it will propagate
+                 * the parameter types too.
+                 *
+                 * The parameter iteration skips the primitive parameters, as these are not modeled.
+                 * The type flow of the receiver is set to the receiver type already when the invoke
+                 * is created.
+                 */
+                for (int idx = 1; idx < paramCount; idx++) {
+                    /*
+                     * Note: the Signature doesn't count the receiver of a virtual invoke as a
+                     * parameter whereas the MethodTypeFlow does, hence when accessing the parameter
+                     * type below we use idx-1 but when accessing the actual parameter flow we
+                     * simply use idx.
+                     */
+                    AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx - 1, declaringClass);
+                    TypeFlow<?> actualParameterFlow = invoke.getActualParameter(idx);
+                    if (declaredParamType.getJavaKind() == JavaKind.Object && actualParameterFlow != null) {
+                        TypeFlow<?> initialParameterFlow = declaredParamType.getTypeFlow(this, true);
+                        initialParameterFlow.addUse(this, actualParameterFlow);
+                    }
+                }
+            });
         }
         return aMethod;
 
@@ -392,31 +389,29 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public AnalysisType addRootClass(Class<?> clazz, boolean addFields, boolean addArrayClass) {
         AnalysisType type = metaAccess.lookupJavaType(clazz);
-        type.registerAsReachable();
         return addRootClass(type, addFields, addArrayClass);
     }
 
     @SuppressWarnings({"try"})
     @Override
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
-        try (Indent indent = debug.logAndIndent("add root class %s", type.getName())) {
-            for (AnalysisField field : type.getInstanceFields(false)) {
-                if (addFields) {
-                    field.registerAsAccessed();
-                }
-                /*
-                 * For system classes any instantiated (sub)type of the declared field type can be
-                 * written to the field flow.
-                 */
-                TypeFlow<?> fieldDeclaredTypeFlow = field.getType().getTypeFlow(this, true);
-                fieldDeclaredTypeFlow.addUse(this, type.getContextInsensitiveAnalysisObject().getInstanceFieldFlow(this, field, true));
+        type.registerAsReachable("root class");
+        for (AnalysisField field : type.getInstanceFields(false)) {
+            if (addFields) {
+                field.registerAsAccessed("field of root class");
             }
-            if (type.getSuperclass() != null) {
-                addRootClass(type.getSuperclass(), addFields, addArrayClass);
-            }
-            if (addArrayClass) {
-                addRootClass(type.getArrayClass(), false, false);
-            }
+            /*
+             * For system classes any instantiated (sub)type of the declared field type can be
+             * written to the field flow.
+             */
+            TypeFlow<?> fieldDeclaredTypeFlow = field.getType().getTypeFlow(this, true);
+            fieldDeclaredTypeFlow.addUse(this, type.getContextInsensitiveAnalysisObject().getInstanceFieldFlow(this, field, true));
+        }
+        if (type.getSuperclass() != null) {
+            addRootClass(type.getSuperclass(), addFields, addArrayClass);
+        }
+        if (addArrayClass) {
+            addRootClass(type.getArrayClass(), false, false);
         }
         return type;
     }
@@ -427,15 +422,13 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         AnalysisType type = addRootClass(clazz, false, false);
         for (AnalysisField field : type.getInstanceFields(true)) {
             if (field.getName().equals(fieldName)) {
-                try (Indent indent = debug.logAndIndent("add root field %s in class %s", fieldName, clazz.getName())) {
-                    field.registerAsAccessed();
-                    /*
-                     * For system classes any instantiated (sub)type of the declared field type can
-                     * be written to the field flow.
-                     */
-                    TypeFlow<?> fieldDeclaredTypeFlow = field.getType().getTypeFlow(this, true);
-                    fieldDeclaredTypeFlow.addUse(this, type.getContextInsensitiveAnalysisObject().getInstanceFieldFlow(this, field, true));
-                }
+                field.registerAsAccessed("root field");
+                /*
+                 * For system classes any instantiated (sub)type of the declared field type can be
+                 * written to the field flow.
+                 */
+                TypeFlow<?> fieldDeclaredTypeFlow = field.getType().getTypeFlow(this, true);
+                fieldDeclaredTypeFlow.addUse(this, type.getContextInsensitiveAnalysisObject().getInstanceFieldFlow(this, field, true));
                 return field.getType();
             }
         }
@@ -447,14 +440,12 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         addRootClass(clazz, false, false);
         Field reflectField;
         try {
-            try (Indent indent = debug.logAndIndent("add system static field %s in class %s", fieldName, clazz.getName())) {
-                reflectField = clazz.getField(fieldName);
-                AnalysisField field = metaAccess.lookupJavaField(reflectField);
-                field.registerAsAccessed();
-                TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
-                fieldFlow.addUse(this, field.getStaticFieldFlow());
-                return field.getType();
-            }
+            reflectField = clazz.getField(fieldName);
+            AnalysisField field = metaAccess.lookupJavaField(reflectField);
+            field.registerAsAccessed("static root field");
+            TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
+            fieldFlow.addUse(this, field.getStaticFieldFlow());
+            return field.getType();
         } catch (NoSuchFieldException e) {
             throw shouldNotReachHere("field not found: " + fieldName);
         }

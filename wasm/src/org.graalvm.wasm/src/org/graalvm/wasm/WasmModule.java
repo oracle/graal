@@ -40,17 +40,17 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.source.Source;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.wasm.parser.ir.CodeEntry;
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.parser.ir.CodeEntry;
+
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * Represents a parsed and validated WebAssembly module, which has not yet been instantiated.
@@ -58,47 +58,34 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 @SuppressWarnings("static-method")
 public final class WasmModule extends SymbolTable implements TruffleObject {
     private final String name;
-    private final ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
+    private ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
     private final ModuleLimits limits;
+
     private Source source;
-
+    @CompilationFinal(dimensions = 1) private byte[] bytecode;
     @CompilationFinal(dimensions = 1) private CodeEntry[] codeEntries;
-
-    @CompilationFinal(dimensions = 1) private byte[] data;
     @CompilationFinal private boolean isParsed;
 
-    private WasmModule(String name, byte[] data, ModuleLimits limits) {
+    private WasmModule(String name, byte[] sourceCode, ModuleLimits limits) {
         super();
         this.name = name;
         this.limits = limits == null ? ModuleLimits.DEFAULTS : limits;
         this.linkActions = new ArrayList<>();
-        this.data = data;
+        this.bytecode = sourceCode;
         this.isParsed = false;
     }
 
-    public static WasmModule create(String name, byte[] data, ModuleLimits limits) {
-        return new WasmModule(name, data, limits);
+    public static WasmModule create(String name, byte[] sourceCode, ModuleLimits limits) {
+        return new WasmModule(name, sourceCode, limits);
     }
 
     public static WasmModule createBuiltin(String name) {
         return new WasmModule(name, null, null);
     }
 
-    public ModuleLimits limits() {
-        return limits;
-    }
-
     @Override
     protected WasmModule module() {
         return this;
-    }
-
-    public void setParsed() {
-        isParsed = true;
-    }
-
-    public boolean isParsed() {
-        return isParsed;
     }
 
     public SymbolTable symbolTable() {
@@ -109,16 +96,27 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return name;
     }
 
-    public byte[] data() {
-        return data;
+    public List<BiConsumer<WasmContext, WasmInstance>> linkActions() {
+        return Collections.unmodifiableList(linkActions);
     }
 
-    public void setData(byte[] data) {
-        this.data = data;
+    public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
+        if (linkActions == null) {
+            linkActions = new ArrayList<>();
+        }
+        linkActions.add(action);
     }
 
-    public boolean isBuiltin() {
-        return data == null;
+    public void removeLinkActions() {
+        this.linkActions = null;
+    }
+
+    public boolean hasLinkActions() {
+        return this.linkActions != null;
+    }
+
+    public ModuleLimits limits() {
+        return limits;
     }
 
     public Source source() {
@@ -126,38 +124,54 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
             if (isBuiltin()) {
                 source = Source.newBuilder(WasmLanguage.ID, "", name).internal(true).build();
             } else {
-                source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), name).build();
+                source = Source.newBuilder(WasmLanguage.ID, "", name).build();
             }
         }
         return source;
     }
 
-    public List<BiConsumer<WasmContext, WasmInstance>> linkActions() {
-        return Collections.unmodifiableList(linkActions);
+    public byte[] data() {
+        return bytecode;
     }
 
-    public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
-        linkActions.add(action);
+    public byte[] bytecode() {
+        return bytecode;
     }
 
-    @Override
-    public String toString() {
-        return "wasm-module(" + name + ")";
+    public int bytecodeLength() {
+        return bytecode != null ? bytecode.length : 0;
+    }
+
+    public void setBytecode(byte[] bytecode) {
+        this.bytecode = bytecode;
+    }
+
+    public CodeEntry[] codeEntries() {
+        return codeEntries;
     }
 
     public void setCodeEntries(CodeEntry[] codeEntries) {
         this.codeEntries = codeEntries;
     }
 
-    public CodeEntry[] getCodeEntries() {
-        return codeEntries;
-    }
-
-    public void removeCodeEntries() {
-        codeEntries = null;
-    }
-
     public boolean hasCodeEntries() {
         return codeEntries != null;
+    }
+
+    public void setParsed() {
+        isParsed = true;
+    }
+
+    public boolean isParsed() {
+        return isParsed;
+    }
+
+    public boolean isBuiltin() {
+        return bytecode == null;
+    }
+
+    @Override
+    public String toString() {
+        return "wasm-module(" + name + ")";
     }
 }

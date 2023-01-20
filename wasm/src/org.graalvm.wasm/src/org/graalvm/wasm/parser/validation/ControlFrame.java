@@ -41,10 +41,8 @@
 
 package org.graalvm.wasm.parser.validation;
 
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
-
-import java.util.ArrayList;
+import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.parser.bytecode.BytecodeGen;
 
 /**
  * Represents the scope of a block structure during module validation.
@@ -52,9 +50,10 @@ import java.util.ArrayList;
 public abstract class ControlFrame {
     private final byte[] paramTypes;
     private final byte[] resultTypes;
+
     private final int initialStackSize;
     private boolean unreachable;
-    private final ArrayList<BranchTargetWithStackChange> branchTargets;
+    private final int commonResultType;
 
     /**
      * @param paramTypes The parameter value types of the block structure.
@@ -67,38 +66,7 @@ public abstract class ControlFrame {
         this.resultTypes = resultTypes;
         this.initialStackSize = initialStackSize;
         this.unreachable = unreachable;
-
-        this.branchTargets = new ArrayList<>(0);
-    }
-
-    /**
-     * @return The types that must be on the value stack when branching to this frame.
-     */
-    abstract byte[] labelTypes();
-
-    /**
-     * Performs checks and actions when entering an else branch.
-     * 
-     * @param state The current parser state.
-     * @param extraData The current extra data array.
-     * @param offset The offset of the else branch in the wasm binary.
-     */
-    abstract void enterElse(ParserState state, ExtraDataList extraData, int offset);
-
-    /**
-     * Performs checks and actions when exiting a frame.
-     * 
-     * @param extraData The current extra data array.
-     * @param offset The offset of the end instruction in the wasm binary.
-     */
-    abstract void exit(ExtraDataList extraData, int offset);
-
-    void addBranchTarget(BranchTargetWithStackChange jumpTarget) {
-        branchTargets.add(jumpTarget);
-    }
-
-    protected ArrayList<BranchTargetWithStackChange> branchTargets() {
-        return branchTargets;
+        commonResultType = WasmType.getCommonValueType(resultTypes);
     }
 
     protected byte[] paramTypes() {
@@ -108,6 +76,22 @@ public abstract class ControlFrame {
     public byte[] resultTypes() {
         return resultTypes;
     }
+
+    protected int resultTypeLength() {
+        return resultTypes.length;
+    }
+
+    /**
+     * @return The union of all result types.
+     */
+    protected int commonResultType() {
+        return commonResultType;
+    }
+
+    /**
+     * @return The types that must be on the value stack when branching to this frame.
+     */
+    abstract byte[] labelTypes();
 
     protected int labelTypeLength() {
         return labelTypes().length;
@@ -128,4 +112,45 @@ public abstract class ControlFrame {
     protected void resetUnreachable() {
         this.unreachable = false;
     }
+
+    /**
+     * Performs checks and actions when entering an else branch.
+     * 
+     * @param state The current parser state.
+     * @param bytecode The current extra data array.
+     */
+    abstract void enterElse(ParserState state, BytecodeGen bytecode);
+
+    /**
+     * Performs checks and actions when exiting a frame.
+     * 
+     * @param bytecode The current extra data array.
+     */
+    abstract void exit(BytecodeGen bytecode);
+
+    /**
+     * Adds an unconditional branch targeting this control frame. Automatically patches the branch
+     * target as soon as it is available.
+     * 
+     * @param bytecode The bytecode of the current control frame.
+     */
+    abstract void addBranch(BytecodeGen bytecode);
+
+    /**
+     * Adds a conditional branch targeting this control frame. Automatically patches the branch *
+     * target as soon as it is available.
+     * 
+     * @param bytecode The bytecode of the current control frame.
+     */
+
+    abstract void addBranchIf(BytecodeGen bytecode);
+
+    /**
+     * Adds a branch table item targeting this control frame. Automatically patches the branch *
+     * target as soon as it is available.
+     * 
+     * @param bytecode The bytecode of the current control frame.
+     */
+
+    abstract void addBranchTableItem(BytecodeGen bytecode);
 }

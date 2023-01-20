@@ -229,5 +229,25 @@
         "justification": "JDK 19 introduced parallelMultiply(BI) that shares its implementation with multiply(BI), which causes a spurious privileged call being found in the latter, so we explicitly deny parallelMultiply(BI) and allow multiply(BI) to avoid this false positive."
       }
     ]
+  },
+  {
+    "name": "java.util.Arrays",
+    "methods": [
+      {
+        "name": "sort",
+        "justification": "In the JDK 17 Arrays#sort and Arrays#parallelSort share the same DualPivotQuicksort#sort(array,parallelism,low,high) implementation that uses ForkJoinPool for parallelism > 1. This causes a spurious privileged call being found in the Arrays#sort, so we allow Arrays#sort to avoid this false positive and keep Arrays#parallelSort denied."
+      }
+    ]
+  },
+  {  
+    "name": "java.util.ServiceLoader$ModuleServicesLookupIterator",
+    "methods": [
+      {
+        "name": "loaderFor",
+        "parameterTypes" : [
+          "java.lang.Module"
+        ]
+      }
+    ]
   }
 ]

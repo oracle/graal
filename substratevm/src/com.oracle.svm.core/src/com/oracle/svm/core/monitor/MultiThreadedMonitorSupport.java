@@ -375,17 +375,26 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         return unreplacedObject;
     }
 
-    protected final JavaMonitor getOrCreateMonitor(Object unreplacedObject, boolean createIfNotExisting) {
-        Object obj = replaceObject(unreplacedObject);
-        assert obj != null;
+    protected final JavaMonitor getOrCreateMonitor(Object obj, boolean createIfNotExisting) {
         int monitorOffset = getMonitorOffset(obj);
         if (monitorOffset != 0) {
             /* The common case: pointer to the monitor reserved in the object. */
             return getOrCreateMonitorFromObject(obj, createIfNotExisting, monitorOffset);
         } else {
-            /* No memory reserved for a lock in the object, fall back to secondary storage. */
-            return getOrCreateMonitorFromMap(obj, createIfNotExisting);
+            return getOrCreateMonitorSlow(obj, createIfNotExisting);
         }
+    }
+
+    private JavaMonitor getOrCreateMonitorSlow(Object unreplacedObject, boolean createIfNotExisting) {
+        Object replacedObject = replaceObject(unreplacedObject);
+        if (replacedObject != unreplacedObject) {
+            int monitorOffset = getMonitorOffset(replacedObject);
+            if (monitorOffset != 0) {
+                return getOrCreateMonitorFromObject(replacedObject, createIfNotExisting, monitorOffset);
+            }
+        }
+        /* No memory reserved for a lock in the object, fall back to secondary storage. */
+        return getOrCreateMonitorFromMap(replacedObject, createIfNotExisting);
     }
 
     protected JavaMonitor getOrCreateMonitorFromObject(Object obj, boolean createIfNotExisting, int monitorOffset) {
@@ -403,7 +412,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     protected JavaMonitor getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {
-        assert JavaVersionUtil.JAVA_SPEC > 19 ||
+        assert JavaVersionUtil.JAVA_SPEC > 17 ||
                         obj.getClass() != Target_java_lang_ref_ReferenceQueue_Lock.class : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
         VMError.guarantee(!additionalMonitorsLock.isHeldByCurrentThread(),
                         "Recursive manipulation of the additionalMonitors map can lead to table corruptions and double insertion of a monitor for the same object");
@@ -427,7 +436,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
     }
 
-    protected static JavaMonitor newMonitorLock() {
+    protected JavaMonitor newMonitorLock() {
         return new JavaMonitor();
     }
 }

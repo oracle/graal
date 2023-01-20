@@ -43,23 +43,17 @@ package org.graalvm.wasm.parser.validation;
 
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
+import org.graalvm.wasm.parser.bytecode.BytecodeGen;
 
 /**
  * Representation of a wasm loop during module validation.
  */
 class LoopFrame extends ControlFrame {
-    private final int byteCodeTarget;
-    private final int extraDataTarget;
+    private final int labelLocation;
 
-    private final int extraDataTargetIndex;
-
-    LoopFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int byteCodeTarget, int extraDataTarget, int extraDataTargetIndex) {
+    LoopFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int labelLocation) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
-        this.byteCodeTarget = byteCodeTarget;
-        this.extraDataTarget = extraDataTarget;
-        this.extraDataTargetIndex = extraDataTargetIndex;
+        this.labelLocation = labelLocation;
     }
 
     @Override
@@ -68,15 +62,26 @@ class LoopFrame extends ControlFrame {
     }
 
     @Override
-    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
+    void enterElse(ParserState state, BytecodeGen bytecode) {
         throw WasmException.create(Failure.TYPE_MISMATCH, "Expected then branch. Else branch requires preceding then branch.");
     }
 
     @Override
-    void exit(ExtraDataList extraData, int offset) {
-        for (BranchTargetWithStackChange branchTarget : branchTargets()) {
-            branchTarget.setTargetInfo(byteCodeTarget, extraDataTarget, extraDataTargetIndex);
-            branchTarget.setStackInfo(labelTypeLength(), initialStackSize());
-        }
+    void exit(BytecodeGen bytecode) {
+    }
+
+    @Override
+    void addBranch(BytecodeGen bytecode) {
+        bytecode.addBranch(labelLocation);
+    }
+
+    @Override
+    void addBranchIf(BytecodeGen bytecode) {
+        bytecode.addBranchIf(labelLocation);
+    }
+
+    @Override
+    void addBranchTableItem(BytecodeGen bytecode) {
+        bytecode.patchLocation(bytecode.addBranchTableItemLocation(), labelLocation);
     }
 }

@@ -59,7 +59,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
@@ -184,7 +184,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         }
     }
 
-    protected void processBlock(Block b, EconomicSet<LocationIdentity> currentState) {
+    protected void processBlock(HIRBlock b, EconomicSet<LocationIdentity> currentState) {
         for (FixedNode n : b.getNodes()) {
             processNode(n, currentState);
         }
@@ -198,11 +198,11 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         }
 
         result = EconomicSet.create(Equivalence.DEFAULT);
-        for (Loop<Block> inner : loop.getChildren()) {
+        for (Loop<HIRBlock> inner : loop.getChildren()) {
             result.addAll(processLoop((HIRLoop) inner, modifiedInLoops));
         }
 
-        for (Block b : loop.getBlocks()) {
+        for (HIRBlock b : loop.getBlocks()) {
             if (b.getLoop() == loop) {
                 processBlock(b, result);
             }
@@ -213,13 +213,13 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.FLOATING_READS, graphState),
-                        NotApplicable.mustRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
-                        NotApplicable.mustRunAfter(this, StageFlag.HIGH_TIER_LOWERING, graphState),
-                        NotApplicable.notApplicableIf(graphState.getGuardsStage().areFrameStatesAtDeopts(), Optional.of(new NotApplicable("This phase must run before FSA."))));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.ifApplied(this, StageFlag.FLOATING_READS, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.VALUE_PROXY_REMOVAL, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.HIGH_TIER_LOWERING, graphState),
+                        NotApplicable.when(graphState.getGuardsStage().areFrameStatesAtDeopts(), "This phase must run before FSA"));
     }
 
     @Override

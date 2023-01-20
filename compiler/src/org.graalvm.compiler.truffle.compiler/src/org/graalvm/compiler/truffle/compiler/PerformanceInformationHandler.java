@@ -48,7 +48,7 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -61,6 +61,12 @@ import org.graalvm.options.OptionValues;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * This class handles reporting of performance warning.
+ *
+ * One instance is installed ({@link #install(OptionValues)} for each compilation before the
+ * {@link org.graalvm.compiler.truffle.compiler.phases.TruffleTier} and closed after.
+ */
 public final class PerformanceInformationHandler implements Closeable {
 
     private static final ThreadLocal<PerformanceInformationHandler> instance = new ThreadLocal<>();
@@ -207,11 +213,11 @@ public final class PerformanceInformationHandler implements Closeable {
         }
         if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO)) {
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
-            for (Loop<Block> loop : cfg.getLoops()) {
+            for (Loop<HIRBlock> loop : cfg.getLoops()) {
                 // check if all loop exit contain trusted profiles
-                List<Block> loopBlocks = loop.getBlocks();
-                for (Block exit : loop.getLoopExits()) {
-                    Block exitDom = exit.getDominator();
+                List<HIRBlock> loopBlocks = loop.getBlocks();
+                for (HIRBlock exit : loop.getLoopExits()) {
+                    HIRBlock exitDom = exit.getDominator();
                     while (!(exitDom.getEndNode() instanceof ControlSplitNode) && !loopBlocks.contains(exitDom)) {
                         // potential computation before loop exit
                         exitDom = exitDom.getDominator();

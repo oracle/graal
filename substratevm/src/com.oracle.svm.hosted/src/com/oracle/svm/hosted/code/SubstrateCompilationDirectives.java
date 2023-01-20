@@ -33,6 +33,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
@@ -43,6 +45,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredImageSingleton
 public class SubstrateCompilationDirectives {
+
+    public static final MultiMethod.MultiMethodKey RUNTIME_COMPILED_METHOD = new MultiMethod.MultiMethodKey() {
+        @Override
+        public String toString() {
+            return "Runtime_Compiled_Method_Key";
+        }
+    };
 
     /**
      * Stores the value kinds present at a deoptimization point's (deoptimization source)
@@ -149,16 +158,16 @@ public class SubstrateCompilationDirectives {
         return forcedCompilations.contains(toAnalysisMethod(method));
     }
 
-    public void registerFrameInformationRequired(AnalysisMethod method) {
+    public void registerFrameInformationRequired(AnalysisMethod frameMethod, AnalysisMethod deoptMethod) {
         assert !sealed;
-        frameInformationRequired.add(method);
+        frameInformationRequired.add(frameMethod);
         /*
          * Frame information is matched using the deoptimization entry point of a method. So in
          * addition to requiring frame information, we also need to mark the method as a
          * deoptimization target. No bci needs to be registered, it is enough to have a non-null
          * value in the map.
          */
-        deoptEntries.computeIfAbsent(method, m -> new ConcurrentHashMap<>());
+        deoptEntries.computeIfAbsent(deoptMethod, m -> new ConcurrentHashMap<>());
     }
 
     public boolean isFrameInformationRequired(ResolvedJavaMethod method) {
@@ -166,23 +175,45 @@ public class SubstrateCompilationDirectives {
         return frameInformationRequired.contains(toAnalysisMethod(method));
     }
 
-    public void registerDeoptEntry(FrameState state) {
+    /**
+     * @return whether this was a new frame state seen.
+     */
+    public boolean registerDeoptEntry(FrameState state, ResolvedJavaMethod method) {
         assert !sealed;
         assert state.bci >= 0;
         long encodedBci = FrameInfoEncoder.encodeBci(state.bci, state.duringCall(), state.rethrowException());
 
-        Map<Long, DeoptSourceFrameInfo> sourceFrameInfoMap = deoptEntries.computeIfAbsent(toAnalysisMethod(state.getMethod()), m -> new ConcurrentHashMap<>());
+        Map<Long, DeoptSourceFrameInfo> sourceFrameInfoMap = deoptEntries.computeIfAbsent(toAnalysisMethod(method), m -> new ConcurrentHashMap<>());
+
+        boolean newEntry = !sourceFrameInfoMap.containsKey(encodedBci);
+
         sourceFrameInfoMap.compute(encodedBci, (k, v) -> v == null ? DeoptSourceFrameInfo.create(state) : v.mergeStateInfo(state));
+
+        return newEntry;
     }
 
-    public boolean isDeoptTarget(ResolvedJavaMethod method) {
+    public boolean isRegisteredDeoptTarget(ResolvedJavaMethod method) {
         assert seal();
         return deoptEntries.containsKey(toAnalysisMethod(method));
     }
 
-    protected boolean isDeoptEntry(ResolvedJavaMethod method, int bci, boolean duringCall, boolean rethrowException) {
+    public boolean isDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
         assert seal();
-        Map<Long, DeoptSourceFrameInfo> bciMap = deoptEntries.get(toAnalysisMethod(method));
+
+        if (method instanceof HostedMethod && ((HostedMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting()) {
+            return true;
+        }
+
+        Map<Long, DeoptSourceFrameInfo> bciMap = deoptEntries.get(toAnalysisMethod((ResolvedJavaMethod) method));
+        assert bciMap != null : "can only query for deopt entries for methods registered as deopt targets";
+
+        long encodedBci = FrameInfoEncoder.encodeBci(bci, duringCall, rethrowException);
+        return bciMap.containsKey(encodedBci);
+    }
+
+    public boolean isRegisteredDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
+        assert seal();
+        Map<Long, DeoptSourceFrameInfo> bciMap = deoptEntries.get(toAnalysisMethod((ResolvedJavaMethod) method));
         assert bciMap != null : "can only query for deopt entries for methods registered as deopt targets";
 
         long encodedBci = FrameInfoEncoder.encodeBci(bci, duringCall, rethrowException);
@@ -215,7 +246,9 @@ public class SubstrateCompilationDirectives {
     }
 
     private boolean seal() {
-        sealed = true;
+        if (!SubstrateOptions.parseOnce()) {
+            sealed = true;
+        }
         return true;
     }
 }

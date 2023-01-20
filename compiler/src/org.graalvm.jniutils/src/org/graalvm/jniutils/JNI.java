@@ -836,6 +836,9 @@ public final class JNI {
     public interface NewStringUTF8 extends CFunctionPointer {
         @InvokeCFunctionPointer
         JString call(JNIEnv env, CCharPointer bytes);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        JString callNoTransition(JNIEnv env, CCharPointer bytes);
     }
 
     public interface ReleaseBooleanArrayElements extends CFunctionPointer {

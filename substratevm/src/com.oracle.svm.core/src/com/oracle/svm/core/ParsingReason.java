@@ -35,4 +35,8 @@ public enum ParsingReason {
     public boolean isForHosted() {
         return this != JITCompilation;
     }
+
+    public boolean duringAnalysis() {
+        return this == PointsToAnalysis || (SubstrateOptions.parseOnce() && this == JITCompilation);
+    }
 }

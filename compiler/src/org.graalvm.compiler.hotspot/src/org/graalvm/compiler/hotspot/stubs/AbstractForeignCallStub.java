@@ -98,15 +98,34 @@ public abstract class AbstractForeignCallStub extends Stub {
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
      */
-    public AbstractForeignCallStub(OptionValues options, HotSpotJVMCIRuntime runtime, HotSpotProviders providers, long address, HotSpotForeignCallDescriptor descriptor, boolean prependThread) {
-        super(options, providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), descriptor, 0L,
-                        COMPUTES_REGISTERS_KILLED, JavaCall, JavaCallee));
+    public AbstractForeignCallStub(OptionValues options,
+                    HotSpotJVMCIRuntime runtime,
+                    HotSpotProviders providers,
+                    long address,
+                    HotSpotForeignCallDescriptor descriptor,
+                    boolean prependThread) {
+        super(options, providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(),
+                        providers.getCodeCache(),
+                        providers.getWordTypes(),
+                        providers.getForeignCalls(),
+                        descriptor,
+                        0L,
+                        COMPUTES_REGISTERS_KILLED,
+                        JavaCall,
+                        JavaCallee));
         this.jvmciRuntime = runtime;
         this.prependThread = prependThread;
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         HotSpotForeignCallDescriptor targetSig = getTargetSignature(descriptor);
-        target = HotSpotForeignCallLinkageImpl.create(metaAccess, providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), targetSig, address,
-                        DESTROYS_ALL_CALLER_SAVE_REGISTERS, NativeCall, NativeCall);
+        target = HotSpotForeignCallLinkageImpl.create(metaAccess,
+                        providers.getCodeCache(),
+                        providers.getWordTypes(),
+                        providers.getForeignCalls(),
+                        targetSig,
+                        address,
+                        DESTROYS_ALL_CALLER_SAVE_REGISTERS,
+                        NativeCall,
+                        NativeCall);
     }
 
     protected abstract HotSpotForeignCallDescriptor getTargetSignature(HotSpotForeignCallDescriptor descriptor);
@@ -221,7 +240,7 @@ public abstract class AbstractForeignCallStub extends Stub {
             ResolvedJavaMethod getAndClearObjectResult = foreignCallSnippets.getAndClearObjectResult.getMethod();
             ResolvedJavaMethod verifyObject = foreignCallSnippets.verifyObject.getMethod();
             ResolvedJavaMethod thisMethod = getGraphMethod();
-            GraphKit kit = new GraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
+            HotSpotGraphKit kit = new HotSpotGraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
             StructuredGraph graph = kit.getGraph();
             graph.getGraphState().forceDisableFrameStateVerification();
             ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));

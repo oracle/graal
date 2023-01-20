@@ -26,7 +26,7 @@ package org.graalvm.compiler.truffle.test.strings;
 
 import java.lang.reflect.Field;
 
-import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -35,13 +35,13 @@ public class TStringOpsCalcStringAttributesReturnValuesInSyncTest {
     @Test
     public void testBMP() throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException {
         Class<?> c = Class.forName("com.oracle.truffle.api.strings.TSCodeRange");
-        checkField(c, AMD64CalcStringAttributesOp.CR_7BIT, "CR_7BIT");
-        checkField(c, AMD64CalcStringAttributesOp.CR_8BIT, "CR_8BIT");
-        checkField(c, AMD64CalcStringAttributesOp.CR_16BIT, "CR_16BIT");
-        checkField(c, AMD64CalcStringAttributesOp.CR_VALID_FIXED_WIDTH, "CR_VALID_FIXED_WIDTH");
-        checkField(c, AMD64CalcStringAttributesOp.CR_BROKEN_FIXED_WIDTH, "CR_BROKEN_FIXED_WIDTH");
-        checkField(c, AMD64CalcStringAttributesOp.CR_VALID_MULTIBYTE, "CR_VALID_MULTIBYTE");
-        checkField(c, AMD64CalcStringAttributesOp.CR_BROKEN_MULTIBYTE, "CR_BROKEN_MULTIBYTE");
+        checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT, "CR_7BIT");
+        checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT, "CR_8BIT");
+        checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_16BIT, "CR_16BIT");
+        checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_FIXED_WIDTH, "CR_VALID_FIXED_WIDTH");
+        checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_FIXED_WIDTH, "CR_BROKEN_FIXED_WIDTH");
+        checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE, "CR_VALID_MULTIBYTE");
+        checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE, "CR_BROKEN_MULTIBYTE");
     }
 
     private static void checkField(Class<?> tsCodeRangeClass, int value, String fieldName) throws NoSuchFieldException, IllegalAccessException {

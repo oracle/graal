@@ -1,0 +1,8 @@
+# long isnt long long
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/20010327-1.c
+
+# typedef redefinitions
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/20090907-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/20140110-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/pr41182-1.c
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/pr44043.c

@@ -29,6 +29,10 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 /**
  * A collection of static methods for error reporting of fatal error. A fatal error leaves the VM in
  * an inconsistent state, so no meaningful recovery is possible.
@@ -90,6 +94,40 @@ public final class VMError {
         }
     }
 
+    public static RuntimeException shouldNotReachHere(String msg, Object... args) {
+        throw shouldNotReachHere(String.format(msg, formatArguments(args)));
+    }
+
+    public static void guarantee(boolean condition, String msg, Object arg1) {
+        if (!condition) {
+            throw shouldNotReachHere(msg, arg1);
+        }
+    }
+
+    public static void guarantee(boolean condition, String msg, Object arg1, Object arg2) {
+        if (!condition) {
+            throw shouldNotReachHere(msg, arg1, arg2);
+        }
+    }
+
+    public static void guarantee(boolean condition, String msg, Object arg1, Object arg2, Object arg3) {
+        if (!condition) {
+            throw shouldNotReachHere(msg, arg1, arg2, arg3);
+        }
+    }
+
+    public static void guarantee(boolean condition, String msg, Object arg1, Object arg2, Object arg3, Object arg4) {
+        if (!condition) {
+            throw shouldNotReachHere(msg, arg1, arg2, arg3, arg4);
+        }
+    }
+
+    public static void guarantee(boolean condition, String msg, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
+        if (!condition) {
+            throw shouldNotReachHere(msg, arg1, arg2, arg3, arg4, arg5);
+        }
+    }
+
     public static RuntimeException unimplemented() {
         throw new UnsupportedOperationException("unimplemented");
     }
@@ -104,5 +142,37 @@ public final class VMError {
 
     public static boolean hostedError(Throwable t) {
         return t instanceof HostedError;
+    }
+
+    /**
+     * Processes {@code args} to convert selected values to strings.
+     * <ul>
+     * <li>A {@link ResolvedJavaType} is converted with {@link ResolvedJavaType#toJavaName}
+     * {@code (true)}.</li>
+     * <li>A {@link ResolvedJavaMethod} is converted with {@link ResolvedJavaMethod#format}
+     * {@code ("%H.%n($p)")}.</li>
+     * <li>A {@link ResolvedJavaField} is converted with {@link ResolvedJavaField#format}
+     * {@code ("%H.%n")}.</li>
+     * </ul>
+     * All other values are copied to the returned array unmodified.
+     *
+     * @param args arguments to process
+     * @return a copy of {@code args} with certain values converted to strings as described above
+     */
+    static Object[] formatArguments(Object... args) {
+        Object[] newArgs = new Object[args.length];
+        for (int i = 0; i < args.length; i++) {
+            Object arg = args[i];
+            if (arg instanceof ResolvedJavaType) {
+                newArgs[i] = ((ResolvedJavaType) arg).toJavaName(true);
+            } else if (arg instanceof ResolvedJavaMethod) {
+                newArgs[i] = ((ResolvedJavaMethod) arg).format("%H.%n(%p)");
+            } else if (arg instanceof ResolvedJavaField) {
+                newArgs[i] = ((ResolvedJavaField) arg).format("%H.%n");
+            } else {
+                newArgs[i] = arg;
+            }
+        }
+        return newArgs;
     }
 }

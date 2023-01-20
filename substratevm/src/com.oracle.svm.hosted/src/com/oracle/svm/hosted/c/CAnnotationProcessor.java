@@ -34,12 +34,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -138,7 +138,10 @@ public class CAnnotationProcessor {
             }
             printingProcess.waitFor();
         } catch (IOException ex) {
-            throw shouldNotReachHere(ex);
+            throw shouldNotReachHere(
+                            "Unable to run '" + binaryName +
+                                            "' to compute offsets in C data structures. Is it possible that your antivirus software interferes and puts the resulting file into quarantine?",
+                            ex);
         } catch (InterruptedException e) {
             throw new InterruptImageBuilding();
         } finally {
@@ -159,7 +162,7 @@ public class CAnnotationProcessor {
         ArrayList<String> options = new ArrayList<>();
         options.addAll(codeCtx.getDirectives().getOptions());
         if (Platform.includedIn(Platform.LINUX.class)) {
-            options.addAll(LibCBase.singleton().getAdditionalQueryCodeCompilerOptions());
+            options.addAll(HostedLibCBase.singleton().getAdditionalQueryCodeCompilerOptions());
         }
         compilerInvoker.compileAndParseError(SubstrateOptions.StrictQueryCodeCompilation.getValue(), options, queryFile, binary, this::reportCompilerError);
         return binary;

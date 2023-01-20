@@ -136,9 +136,9 @@ import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -1024,12 +1024,14 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
     }
 
+    @SuppressWarnings("unlikely-arg-type")
     private static ForeignCallDescriptor chooseCPUFeatureVariant(ForeignCallDescriptor descriptor, TargetDescription target, EnumSet<?> runtimeCheckedCPUFeatures) {
         EnumSet<?> buildtimeCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
-        if (buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) || !((AMD64) target.arch).getFeatures().containsAll(runtimeCheckedCPUFeatures)) {
+        EnumSet<?> amd64Features = ((AMD64) target.arch).getFeatures();
+        if (buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) || !amd64Features.containsAll(runtimeCheckedCPUFeatures)) {
             return descriptor;
         } else {
-            GraalError.guarantee(DeoptimizationSupport.enabled(), "should be reached in JIT mode only");
+            GraalError.guarantee(RuntimeCompilation.isEnabled(), "should be reached in JIT mode only");
             return new ForeignCallDescriptor(descriptor.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, descriptor.getResultType(), descriptor.getArgumentTypes(),
                             descriptor.isReexecutable(), descriptor.getKilledLocations(), descriptor.canDeoptimize(), descriptor.isGuaranteedSafepoint());
         }
@@ -1385,7 +1387,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
         LIR lir = lirGenResult.getLIR();
         OptionValues options = lir.getOptions();
-        AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget(), options);
+        AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget(), options, true);
         PatchConsumerFactory patchConsumerFactory;
         if (SubstrateUtil.HOSTED) {
             patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();

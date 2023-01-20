@@ -61,7 +61,7 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.jni.JNIJavaCallWrapperHolder;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
+import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
@@ -85,7 +85,7 @@ import jdk.vm.ci.meta.Signature;
  * @see <a href="https://docs.oracle.com/en/java/javase/11/docs/specs/jni/functions.html">Java 11
  *      JNI functions documentation</a>
  */
-public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
+public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
     private static final Constructor<ClassCastException> CLASS_CAST_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(ClassCastException.class);
     private static final Constructor<InstantiationException> INSTANTIATION_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(InstantiationException.class);
 
@@ -121,7 +121,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
     private final Signature targetSignature;
 
     protected JNIJavaCallWrapperMethod(SimpleSignature targetSignature, MetaAccessProvider metaAccess, WordTypes wordTypes) {
-        super("invoke_" + targetSignature.getIdentifier(), metaAccess.lookupJavaType(JNIJavaCallWrapperHolder.class),
+        super("invoke_" + targetSignature.getIdentifier(), true, metaAccess.lookupJavaType(JNIJavaCallWrapperHolder.class),
                         createSignature(targetSignature, metaAccess, wordTypes), JNIJavaCallWrapperHolder.getConstantPool(metaAccess));
         this.targetSignature = targetSignature;
     }

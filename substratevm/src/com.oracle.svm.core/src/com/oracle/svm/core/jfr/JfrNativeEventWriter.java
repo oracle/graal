@@ -30,10 +30,10 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -193,7 +193,9 @@ public final class JfrNativeEventWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putString(JfrNativeEventWriterData data, String string) {
-        if (string.isEmpty()) {
+        if (string == null) {
+            putByte(data, JfrChunkWriter.StringEncoding.NULL.byteValue);
+        } else if (string.isEmpty()) {
             putByte(data, JfrChunkWriter.StringEncoding.EMPTY_STRING.byteValue);
         } else {
             int mUTF8Length = UninterruptibleUtils.String.modifiedUTF8Length(string, false);

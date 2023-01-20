@@ -50,7 +50,7 @@ public final class ExecutionSampleEvent {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
     public static void tryToRegisterExecutionSampleEventCallback() {
-        if (SubstrateJVM.get().isEnabled(JfrEvent.ExecutionSample) && intervalMillis > 0) {
+        if (intervalMillis > 0) {
             ImageSingletons.lookup(ThreadingSupport.class).registerRecurringCallback(intervalMillis, TimeUnit.MILLISECONDS, CALLBACK);
         }
     }
@@ -83,7 +83,7 @@ public final class ExecutionSampleEvent {
             ExecutionSampleEvent.writeExecutionSample(
                             JfrTicks.elapsedTicks(),
                             SubstrateJVM.getThreadId(isolateThread),
-                            SubstrateJVM.get().getStackTraceId(JfrEvent.ExecutionSample.getId(), 0),
+                            SubstrateJVM.get().getStackTraceId(JfrEvent.ExecutionSample, 0),
                             JfrThreadState.getId(javaThread.getState()));
         }
     }

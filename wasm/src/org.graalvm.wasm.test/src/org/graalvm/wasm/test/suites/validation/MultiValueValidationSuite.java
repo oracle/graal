@@ -90,7 +90,15 @@ public class MultiValueValidationSuite extends ValidationSuite {
                                                         "   drop" +
                                                         "   drop" +
                                                         ")",
-                                        Failure.Type.INVALID));
+                                        Failure.Type.INVALID),
+                        binaryCase("Return - invalid reference type",
+                                        "malformed value type",
+                                        // (module
+                                        // (func (result funcref)
+                                        // return)
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 6F 03 02 01 00 0A 03 01 00 0B",
+                                        Failure.Type.MALFORMED));
     }
 
     public MultiValueValidationSuite(String basename, String expectedErrorMessage, byte[] bytecode, Failure.Type failureType) {
@@ -100,5 +108,6 @@ public class MultiValueValidationSuite extends ValidationSuite {
     @Override
     protected void addContextOptions(Context.Builder contextBuilder) {
         contextBuilder.option("wasm.MultiValue", "true");
+        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "false");
     }
 }

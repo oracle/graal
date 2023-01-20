@@ -28,32 +28,15 @@ import java.lang.reflect.Executable;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface OriginalMethodProvider {
 
     static Executable getJavaMethod(SnippetReflectionProvider reflectionProvider, ResolvedJavaMethod method) {
         if (method instanceof OriginalMethodProvider) {
             return ((OriginalMethodProvider) method).getJavaMethod();
-        }
-        try {
-            ResolvedJavaMethod.Parameter[] parameters = method.getParameters();
-            Class<?>[] parameterTypes = new Class<?>[parameters.length];
-            ResolvedJavaType declaringClassType = method.getDeclaringClass();
-            for (int i = 0; i < parameterTypes.length; i++) {
-                parameterTypes[i] = OriginalClassProvider.getJavaClass(reflectionProvider, parameters[i].getType().resolve(declaringClassType));
-            }
-            Class<?> declaringClass = OriginalClassProvider.getJavaClass(reflectionProvider, declaringClassType);
-            if (method.isConstructor()) {
-                return declaringClass.getDeclaredConstructor(parameterTypes);
-            } else {
-                return declaringClass.getDeclaredMethod(method.getName(), parameterTypes);
-            }
-        } catch (NoSuchMethodException e) {
-            throw AnalysisError.shouldNotReachHere();
+        } else {
+            return reflectionProvider.originalMethod(method);
         }
     }
 

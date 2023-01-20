@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.dap.server;
 
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
@@ -50,6 +51,7 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
     private final List<DAPSourceWrapper> sources = new ArrayList<>(100);
     private final Map<String, Source> sourcesByPath = new HashMap<>(100);
     private final Map<String, Consumer<Source>> toRunOnLoad = new HashMap<>();
+    private volatile List<Source> sourcesBacklog = null;
     private final Object sourcesLock = sourceIDs;
 
     public LoadedSourcesHandler(ExecutionContext context, DebuggerSession debuggerSession) {
@@ -77,6 +79,9 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
 
     public Source getSource(int id) {
         synchronized (sourcesLock) {
+            if (id > sources.size()) {
+                return null;
+            }
             return sources.get(id - 1).truffleSource;
         }
     }
@@ -119,6 +124,24 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
     }
 
     public com.oracle.truffle.tools.dap.types.Source assureLoaded(Source sourceLoaded) {
+        TruffleContext truffleContext = context.getEnv().getEnteredContext();
+        if (truffleContext == null) {
+            truffleContext = context.getATruffleContext();
+        }
+        if (truffleContext == null) {
+            synchronized (sourcesLock) {
+                if (sourcesBacklog == null) {
+                    sourcesBacklog = new ArrayList<>();
+                }
+                sourcesBacklog.add(sourceLoaded);
+            }
+            return null;
+        } else {
+            return assureLoaded(sourceLoaded, truffleContext);
+        }
+    }
+
+    public com.oracle.truffle.tools.dap.types.Source assureLoaded(Source sourceLoaded, TruffleContext truffleContext) {
         Source sourceResolved = debuggerSession.resolveSource(sourceLoaded);
         Source source = (sourceResolved != null) ? sourceResolved : sourceLoaded;
         int id;
@@ -131,7 +154,7 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
             }
             id = sources.size() + 1;
             sourceIDs.put(source, id);
-            dapSource = from(source);
+            dapSource = from(source, truffleContext);
             sources.add(new DAPSourceWrapper(dapSource, source));
             String path = dapSource.getPath();
             if (path != null) {
@@ -139,22 +162,22 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
                 task = toRunOnLoad.remove(path);
             }
         }
-        if (task != null) {
-            task.accept(sourceLoaded);
-        }
         DebugProtocolClient client = context.getClient();
         if (client != null) {
             client.loadedSource(LoadedSourceEvent.EventBody.create("new", dapSource));
         }
+        if (task != null) {
+            task.accept(sourceLoaded);
+        }
         return dapSource;
     }
 
-    private com.oracle.truffle.tools.dap.types.Source from(Source source) {
+    private com.oracle.truffle.tools.dap.types.Source from(Source source, TruffleContext truffleContext) {
         if (source == null) {
             return null;
         }
         com.oracle.truffle.tools.dap.types.Source src = com.oracle.truffle.tools.dap.types.Source.create().setName(source.getName());
-        Pair<String, Boolean> pathSrcRef = getPath(source);
+        Pair<String, Boolean> pathSrcRef = getPath(source, truffleContext);
         String path = pathSrcRef.getLeft();
         if (path != null) {
             src.setPath(path);
@@ -166,7 +189,7 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
         return src;
     }
 
-    private Pair<String, Boolean> getPath(Source source) {
+    private Pair<String, Boolean> getPath(Source source, TruffleContext truffleContext) {
         String path = source.getPath();
         boolean srcRef = path == null;
         TruffleFile tFile = null;
@@ -174,11 +197,11 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
             if (path == null) {
                 URI uri = source.getURI();
                 if (uri.isAbsolute()) {
-                    tFile = context.getEnv().getTruffleFile(uri);
+                    tFile = context.getEnv().getTruffleFile(truffleContext, uri);
                 }
             } else {
                 if (!source.getURI().isAbsolute()) {
-                    tFile = context.getEnv().getTruffleFile(path);
+                    tFile = context.getEnv().getTruffleFile(truffleContext, path);
                 }
             }
         } catch (UnsupportedOperationException ex) {
@@ -193,13 +216,30 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
             }
         } else if (path != null) {
             try {
-                srcRef = !context.getEnv().getTruffleFile(path).isReadable();
+                srcRef = !context.getEnv().getTruffleFile(truffleContext, path).isReadable();
             } catch (SecurityException ex) {
                 // Can not verify readability
                 srcRef = true;
             }
         }
         return Pair.create(path, srcRef);
+    }
+
+    void notifyNewTruffleContext(TruffleContext truffleContext) {
+        if (sourcesBacklog != null) {
+            List<Source> oldSources = null;
+            synchronized (sourcesLock) {
+                if (sourcesBacklog != null) {
+                    oldSources = sourcesBacklog;
+                    sourcesBacklog = null;
+                }
+            }
+            if (oldSources != null) {
+                for (Source source : oldSources) {
+                    assureLoaded(source, truffleContext);
+                }
+            }
+        }
     }
 
     private static final class DAPSourceWrapper {

@@ -66,9 +66,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 5855,
-          lineEnd   = 5989,
-          commit    = "77e21c57ce00463db4cc3d87f93729cbfe2c96b4",
+          lineStart = 5869,
+          lineEnd   = 6003,
+          commit    = "2afb4c3327b6830a009ee1ab8a1eb7803ef53007",
           sha1      = "f11f84b57df21c9b49473f204e11efc0e6da53d0")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64_aes.cpp",
           lineStart = 285,
@@ -92,7 +92,11 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
 
     @Temp protected Value[] temps;
 
-    public AArch64GHASHProcessBlocksOp(LIRGeneratorTool tool, AllocatableValue stateValue, AllocatableValue htblValue, AllocatableValue originalDataValue, AllocatableValue originalBlocksValue) {
+    public AArch64GHASHProcessBlocksOp(LIRGeneratorTool tool,
+                    AllocatableValue stateValue,
+                    AllocatableValue htblValue,
+                    AllocatableValue originalDataValue,
+                    AllocatableValue originalBlocksValue) {
         super(TYPE);
 
         this.stateValue = stateValue;
@@ -108,10 +112,10 @@ public final class AArch64GHASHProcessBlocksOp extends AArch64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        assert stateValue.getPlatformKind().equals(AArch64Kind.QWORD) : stateValue;
-        assert htblValue.getPlatformKind().equals(AArch64Kind.QWORD) : htblValue;
-        assert originalDataValue.getPlatformKind().equals(AArch64Kind.QWORD) : originalDataValue;
-        assert originalBlocksValue.getPlatformKind().equals(AArch64Kind.DWORD) : originalBlocksValue;
+        GraalError.guarantee(stateValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid stateValue kind: %s", stateValue);
+        GraalError.guarantee(htblValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid htblValue kind: %s", htblValue);
+        GraalError.guarantee(originalDataValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid originalDataValue kind: %s", originalDataValue);
+        GraalError.guarantee(originalBlocksValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid originalBlocksValue kind: %s", originalBlocksValue);
 
         Label labelSmall = new Label();
         Label labelDone = new Label();

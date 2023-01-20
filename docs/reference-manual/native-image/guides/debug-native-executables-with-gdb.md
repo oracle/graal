@@ -11,12 +11,7 @@ A generated native executable is heavily optimized code with minimal symbol info
 This can be solved by embedding debug information into the resulting binary at build time.
 This information tells the debugger precisely how to interpret the machine code and point it back to the original Java method.
 
-If your Java application deployed as a native executable behaves differently than expected, you can interactively debug a running process:
-
-- using the standard Linux GNU Debugger (GDB);
-- using the built-in Java debugging in VS Code enabled with the [GraalVM Tools for Java extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm).
-
-In this guide you will learn how to debug a native executable using GDB. 
+In this guide you will learn how to debug a native executable using the standard Linux GNU Debugger (GDB).
 
 > Note: Native Image debugging with GDB currently works on Linux with initial support for macOS. The feature is experimental.
 
@@ -129,5 +124,3 @@ Read more about Native Image debugging support from the [reference documentation
 ### Related Documentation
 
 - [Debug Info Feature](../DebugInfo.md)
-- [Debug a running native image process from VS Code](../../../tools/vscode/graalvm/native-image-debugging.md)
-- [GraalVM Native Image Debugging](https://luna.oracle.com/lab/cbe9d331-5dbc-4300-a5ca-20b88346cbcf)

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -34,22 +34,21 @@ cat << EOF
 ; Function Attrs: nofree nounwind uwtable
 define dso_local void @testVectorGEP_${VECLEN}x${VECTYPE}() local_unnamed_addr #0 {
 
-  %rawPtr = getelementptr i8, i8* bitcast ([5 x i8]* @fmt1 to i8*), i64 0
-  %vectorPtr = bitcast i8* %rawPtr to <${VECLEN} x ${VECTYPE}>*
-  %vectorPtr0 = getelementptr <${VECLEN} x ${VECTYPE}>, <${VECLEN} x ${VECTYPE}>* %vectorPtr, i64 0
-  %vectorPtr1 = getelementptr <${VECLEN} x ${VECTYPE}>, <${VECLEN} x ${VECTYPE}>* %vectorPtr, i64 1
-  %vectorPtr2 = getelementptr <${VECLEN} x ${VECTYPE}>, <${VECLEN} x ${VECTYPE}>* %vectorPtr, i64 2
+  %rawPtr = getelementptr i8, ptr @fmt1, i64 0
+  %vectorPtr0 = getelementptr <${VECLEN} x ${VECTYPE}>, ptr %rawPtr, i64 0
+  %vectorPtr1 = getelementptr <${VECLEN} x ${VECTYPE}>, ptr %rawPtr, i64 1
+  %vectorPtr2 = getelementptr <${VECLEN} x ${VECTYPE}>, ptr %rawPtr, i64 2
         
-  %base = ptrtoint i8* %rawPtr to i64
-  %a0 = ptrtoint <${VECLEN} x ${VECTYPE}>* %vectorPtr0 to i64
+  %base = ptrtoint ptr %rawPtr to i64
+  %a0 = ptrtoint ptr %vectorPtr0 to i64
   %diff0 = sub i64 %a0, %base
-  %dummy0 = tail call i32 (i8*, ...) @printf(i8* nonnull dereferenceable(1) getelementptr inbounds ([5 x i8], [5 x i8]* @fmt1, i64 0, i64 0), i64 %diff0)
-  %a1 = ptrtoint <${VECLEN} x ${VECTYPE}>* %vectorPtr1 to i64
+  %dummy0 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) getelementptr inbounds ([5 x i8], ptr @fmt1, i64 0, i64 0), i64 %diff0)
+  %a1 = ptrtoint ptr %vectorPtr1 to i64
   %diff1 = sub i64 %a1, %base
-  %dummy1 = tail call i32 (i8*, ...) @printf(i8* nonnull dereferenceable(1) getelementptr inbounds ([5 x i8], [5 x i8]* @fmt1, i64 0, i64 0), i64 %diff1)
-  %a2 = ptrtoint <${VECLEN} x ${VECTYPE}>* %vectorPtr2 to i64
+  %dummy1 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) getelementptr inbounds ([5 x i8], ptr @fmt1, i64 0, i64 0), i64 %diff1)
+  %a2 = ptrtoint ptr %vectorPtr2 to i64
   %diff2 = sub i64 %a2, %base
-  %dummy2 = tail call i32 (i8*, ...) @printf(i8* nonnull dereferenceable(1) getelementptr inbounds ([5 x i8], [5 x i8]* @fmt1, i64 0, i64 0), i64 %diff2)
+  %dummy2 = tail call i32 (ptr, ...) @printf(ptr nonnull dereferenceable(1) getelementptr inbounds ([5 x i8], ptr @fmt1, i64 0, i64 0), i64 %diff2)
   
   ret void
 }

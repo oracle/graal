@@ -43,6 +43,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 final class HotSpotTruffleGraphBuilderPlugins {
 
+    /**
+     * Installed for runtime compilation using partial evaluation.
+     */
     static void registerCompilationFinalReferencePlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, HotSpotKnownTruffleTypes types) {
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, Reference.class);
         r.register(new RequiredInvocationPlugin("get", InvocationPlugin.Receiver.class) {
@@ -85,6 +88,7 @@ final class HotSpotTruffleGraphBuilderPlugins {
                 return true;
             }
         });
+
     }
 
 }

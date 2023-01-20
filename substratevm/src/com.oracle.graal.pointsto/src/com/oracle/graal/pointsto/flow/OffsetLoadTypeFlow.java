@@ -144,7 +144,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
     public abstract static class AbstractUnsafeLoadTypeFlow extends OffsetLoadTypeFlow {
 
         AbstractUnsafeLoadTypeFlow(BytecodePosition loadLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow) {
-            super(loadLocation, objectType, componentType, objectFlow);
+            super(loadLocation, objectType, filterUncheckedInterface(componentType), objectFlow);
         }
 
         AbstractUnsafeLoadTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractUnsafeLoadTypeFlow original) {

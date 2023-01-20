@@ -28,10 +28,10 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.Objects;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.core.util.json.JsonPrintable;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
 public class SerializationConfigurationLambdaCapturingType implements JsonPrintable {

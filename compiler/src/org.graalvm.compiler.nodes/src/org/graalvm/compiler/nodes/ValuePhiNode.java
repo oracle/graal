@@ -60,7 +60,7 @@ public class ValuePhiNode extends PhiNode {
         values = new NodeInputList<>(this);
     }
 
-    public ValuePhiNode(Stamp stamp, AbstractMergeNode merge, ValueNode[] values) {
+    public ValuePhiNode(Stamp stamp, AbstractMergeNode merge, ValueNode... values) {
         super(TYPE, stamp, merge);
         assert stamp != StampFactory.forVoid();
         this.values = new NodeInputList<>(this, values);

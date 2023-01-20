@@ -103,10 +103,6 @@ public final class NullCheckNode extends ImplicitNullCheckNode implements LIRLow
         return new NullCheckNode(address);
     }
 
-    public ValueNode getObject() {
-        return object;
-    }
-
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         generator.getLIRGeneratorTool().emitNullCheck(generator.operand(object), generator.state(this));

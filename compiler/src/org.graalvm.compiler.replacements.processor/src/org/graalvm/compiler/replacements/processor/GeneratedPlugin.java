@@ -102,7 +102,7 @@ public abstract class GeneratedPlugin {
         out.printf("//        class: %s\n", intrinsicMethod.getEnclosingElement());
         out.printf("//       method: %s\n", intrinsicMethod);
         out.printf("// generated-by: %s\n", getClass().getName());
-        out.printf("@JacocoIgnoreGenerated(\"deferred plugin support that is only called in libgraal\")\n");
+        out.printf("@ExcludeFromJacocoGeneratedReport(\"deferred plugin support that is only called in libgraal\")\n");
         out.printf("final class %s implements PluginReplacementNode.ReplacementFunction {\n", name);
         out.printf("    static PluginReplacementNode.ReplacementFunction FUNCTION = new %s();\n", name);
         InjectedDependencies deps = new InjectedDependencies(false, intrinsicMethod);

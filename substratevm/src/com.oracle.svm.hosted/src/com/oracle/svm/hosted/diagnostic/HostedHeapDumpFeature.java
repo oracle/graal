@@ -39,12 +39,11 @@ import org.graalvm.compiler.options.Option;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
@@ -54,7 +53,7 @@ public class HostedHeapDumpFeature implements InternalFeature {
     static class Options {
         @Option(help = "Dump the heap at a specific time during image building." +
                         "The option accepts a list of comma separated phases, any of: during-analysis, after-analysis, before-compilation.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DumpHeap = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DumpHeap = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
     }
 
     enum Phases {
@@ -79,7 +78,7 @@ public class HostedHeapDumpFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         List<String> validPhases = Stream.of(Phases.values()).map(Phases::getName).collect(Collectors.toList());
-        List<String> values = OptionUtils.flatten(",", Options.DumpHeap.getValue());
+        List<String> values = Options.DumpHeap.getValue().values();
         phases = new ArrayList<>();
         for (String value : values) {
             if (validPhases.contains(value)) {

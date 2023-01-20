@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PAT
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
@@ -136,7 +137,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         long entryStart = referenceMapIndex + InstanceReferenceMapEncoder.MAP_HEADER_SIZE;
         for (long idx = entryStart; idx < entryStart + entryCount * InstanceReferenceMapEncoder.MAP_ENTRY_SIZE; idx += InstanceReferenceMapEncoder.MAP_ENTRY_SIZE) {
             int objectOffset = NonmovableByteArrayReader.getS4(referenceMapEncoding, idx);
-            long count = NonmovableByteArrayReader.getU4(referenceMapEncoding, idx + 4);
+            int count = NumUtil.safeToInt(NonmovableByteArrayReader.getU4(referenceMapEncoding, idx + 4));
             assert objectOffset >= firstFieldOffset : "must not overwrite the object header";
 
             // copy non-object data

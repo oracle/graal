@@ -59,6 +59,9 @@ public class UninitializedStaticFieldValueReader {
      * primitive types or the String type. By limiting the Unsafe read to these narrow cases, it is
      * pretty likely (although not guaranteed) that we are not returning an unintended value for a
      * class that is re-initialized at run time.
+     *
+     * GR-41856 should provide a proper JVMCI API to read the ConstantValue attribute of a field,
+     * which then makes this method unnecessary.
      */
     public static JavaConstant readUninitializedStaticValue(AnalysisField field, Function<Object, JavaConstant> function) {
         JavaKind kind = field.getJavaKind();

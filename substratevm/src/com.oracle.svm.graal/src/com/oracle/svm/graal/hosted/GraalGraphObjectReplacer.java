@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -204,7 +204,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         assert dest != null;
         String className = dest.getClass().getName();
         assert SubstrateUtil.isBuildingLibgraal() || !className.contains(".hotspot.") || className.contains(".svm.jtt.hotspot.") : "HotSpot object in image " + className;
-        assert !className.contains(".analysis.meta.") : "Analysis meta object in image " + className;
+        assert !className.contains(".pointsto.meta.") : "Analysis meta object in image " + className;
         assert !className.contains(".hosted.meta.") : "Hosted meta object in image " + className;
         assert !SubstrateUtil.isBuildingLibgraal() || !className.contains(".svm.hosted.snippets.") : "Hosted snippet object in image " + className;
 
@@ -315,7 +315,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
 
         if (sType == null) {
             assert !(original instanceof HostedType) : "too late to create new type";
-            aType.registerAsReachable();
+            aType.registerAsReachable("type reachable from Graal graphs");
             DynamicHub hub = ((SVMHost) aUniverse.hostVM()).dynamicHub(aType);
             sType = new SubstrateType(aType.getJavaKind(), hub);
             types.put(aType, sType);

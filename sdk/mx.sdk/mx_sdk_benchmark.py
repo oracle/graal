@@ -41,7 +41,6 @@
 
 from __future__ import print_function
 
-import sys
 import os.path
 import time
 import signal
@@ -53,6 +52,10 @@ import mx_benchmark
 import datetime
 import re
 import copy
+import urllib.request
+
+import mx_sdk_vm_impl
+
 
 def parse_prefixed_args(prefix, args):
     ret = []
@@ -71,17 +74,6 @@ def parse_prefixed_arg(prefix, args, errorMsg):
         return None
     else:
         return ret[0]
-
-
-def urllib():
-    try:
-        if sys.version_info < (3, 0):
-            import urllib2 as urllib
-        else:
-            import urllib.request as urllib
-        return urllib
-    except ImportError:
-        mx.abort("Failed to import dependency module: urllib")
 
 
 def convertValue(table, value, fromUnit, toUnit):
@@ -193,6 +185,16 @@ class NativeImageBenchmarkMixin(object):
     def extra_image_build_argument(self, _, args):
         return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
 
+    def extraVmArgs(self):
+        assert self.dist
+        distribution = mx.distribution(self.dist)
+        assert distribution.isJARDistribution()
+        jdk = mx.get_jdk(distribution.javaCompliance)
+        add_opens_add_extracts = []
+        if mx_benchmark.mx_benchmark_compatibility().jmh_dist_benchmark_extracts_add_opens_from_manifest():
+            add_opens_add_extracts = mx_benchmark._add_opens_and_exports_from_manifest(distribution.path)
+        return mx.get_runtime_jvm_args([self.dist], jdk=jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes) + add_opens_add_extracts
+
     def extra_run_arg(self, benchmark, args, image_run_args):
         """Returns all arguments passed to the final image.
 
@@ -285,12 +287,12 @@ def measureTimeToFirstResponse(bmSuite):
     if not (servicePath.startswith('/') or protocolHost.endswith('/')):
         servicePath = '/' + servicePath
     url = "{}:{}{}".format(protocolHost, bmSuite.servicePort(), servicePath)
-    lib = urllib()
 
     measurementStartTime = time.time()
     sentRequests = 0
     receivedNon200Responses = 0
     last_report_time = time.time()
+    req = urllib.request.Request(url, headers=bmSuite.requestHeaders())
     while time.time() - measurementStartTime < 120:
         time.sleep(.0001)
         if sentRequests > 0 and time.time() - last_report_time > 10:
@@ -299,7 +301,7 @@ def measureTimeToFirstResponse(bmSuite):
 
         try:
             sentRequests += 1
-            res = lib.urlopen(url, timeout=10)
+            res = urllib.request.urlopen(req, timeout=10)
             responseCode = res.getcode()
             if responseCode == 200:
                 processStartTime = mx.get_last_subprocess_start_time()
@@ -343,9 +345,15 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.bmSuiteArgs = None
         self.workloadPath = None
         self.measureLatency = None
+        self.measureFirstResponse = None
+        self.measureStartup = None
+        self.measurePeak = None
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("--workload-configuration", type=str, default=None, help="Path to workload configuration.")
         self.parser.add_argument("--skip-latency-measurements", action='store_true', help="Determines if the latency measurements should be skipped.")
+        self.parser.add_argument("--skip-first-response-measurements", action='store_true', help="Determines if the time-to-first-response measurements should be skipped.")
+        self.parser.add_argument("--skip-startup-measurements", action='store_true', help="Determines if the startup performance measurements should be skipped.")
+        self.parser.add_argument("--skip-peak-measurements", action='store_true', help="Determines if the peak performance measurements should be skipped.")
 
     def benchMicroserviceName(self):
         """
@@ -411,6 +419,12 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         :rtype: str
         """
         return ''
+
+    def requestHeaders(self):
+        """Returns extra headers to be sent when markign requests to the service endpoint..
+        :rtype: dict[str, str]
+        """
+        return {}
 
     def inNativeMode(self):
         return self.jvm(self.bmSuiteArgs) == "native-image"
@@ -514,6 +528,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.servicePort()):
             mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
 
+    def get_env(self):
+        return {}
+
     def run_stage(self, vm, stage, server_command, out, err, cwd, nonZeroIsFatal):
         if 'image' in stage:
             # For image stages, we just run the given command
@@ -528,7 +545,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
                 # Measure time-to-first-response multiple times (without any command mapper hooks as those affect the measurement significantly)
                 for _ in range(self.NumMeasureTimeToFirstResponse):
-                    with EmptyEnv():
+                    with EmptyEnv(self.get_env()):
                         measurementThread = self.startDaemonThread(target=BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, args=[self])
                         returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                         measurementThread.join()
@@ -536,7 +553,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 # Measure startup performance (without RSS tracker)
-                with EmptyEnv():
+                with EmptyEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
                     returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     measurementThread.join()
@@ -544,7 +561,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                     mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 # Measure peak performance (with all command mapper hooks)
-                with EmptyEnv():
+                with EmptyEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
                     returnCode = mx.run(serverCommandWithTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     measurementThread.join()
@@ -553,7 +570,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
                 if self.measureLatency:
                     # Calibrate for latency measurements (without RSS tracker)
-                    with EmptyEnv():
+                    with EmptyEnv(self.get_env()):
                         measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
                         returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                         measurementThread.join()
@@ -561,7 +578,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                     # Measure latency (without RSS tracker)
-                    with EmptyEnv():
+                    with EmptyEnv(self.get_env()):
                         measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testLatencyInBackground, [self])
                         returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                         measurementThread.join()
@@ -571,18 +588,26 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 return returnCode
             elif stage == 'agent' or 'instrument-run' in stage:
                 # For the agent and the instrumented run, it is sufficient to run the peak performance workload.
-                measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self, False])
-                returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
-                measurementThread.join()
+                with EmptyEnv(self.get_env()):
+                    measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self, False])
+                    returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    measurementThread.join()
                 return returnCode
             else:
                 mx.abort("Unexpected stage: " + stage)
 
     def startDaemonThread(self, target, args):
-        thread = threading.Thread(target=target, args=args)
+        def true_target(*true_target_args):
+            self.setup_application()
+            target(*args)
+
+        thread = threading.Thread(target=true_target)
         thread.setDaemon(True)
         thread.start()
         return thread
+
+    def setup_application(self):
+        pass
 
     def rules(self, output, benchmarks, bmSuiteArgs):
         return [
@@ -638,42 +663,48 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         args, remainder = self.parser.parse_known_args(self.bmSuiteArgs)
         self.workloadPath = args.workload_configuration
         self.measureLatency = not args.skip_latency_measurements
+        self.measureFirstResponse = not args.skip_first_response_measurements
+        self.measureStartup = not args.skip_startup_measurements
+        self.measurePeak = not args.skip_peak_measurements
 
         if not self.inNativeMode():
             datapoints = []
-            # Measure time-to-first-response (without any command mapper hooks as those affect the measurement significantly)
-            mx.disable_command_mapper_hooks()
-            for _ in range(self.NumMeasureTimeToFirstResponse):
-                with EmptyEnv():
-                    measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, [self])
+            if self.measureFirstResponse:
+                # Measure time-to-first-response (without any command mapper hooks as those affect the measurement significantly)
+                mx.disable_command_mapper_hooks()
+                for _ in range(self.NumMeasureTimeToFirstResponse):
+                    with EmptyEnv(self.get_env()):
+                        measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, [self])
+                        datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+                        measurementThread.join()
+                mx.enable_command_mapper_hooks()
+
+            if self.measureStartup:
+                # Measure startup performance (without RSS tracker)
+                mx_benchmark.disable_tracker()
+                with EmptyEnv(self.get_env()):
+                    measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
                     datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                     measurementThread.join()
-            mx.enable_command_mapper_hooks()
+                mx_benchmark.enable_tracker()
 
-            # Measure startup performance (without RSS tracker)
-            mx_benchmark.disable_tracker()
-            with EmptyEnv():
-                measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
-                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
-                measurementThread.join()
-            mx_benchmark.enable_tracker()
-
-            # Measure peak performance (with all command mapper hooks)
-            with EmptyEnv():
-                measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
-                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
-                measurementThread.join()
+            if self.measurePeak:
+                # Measure peak performance (with all command mapper hooks)
+                with EmptyEnv(self.get_env()):
+                    measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
+                    datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+                    measurementThread.join()
 
             if self.measureLatency:
                 # Calibrate for latency measurements (without RSS tracker)
                 mx_benchmark.disable_tracker()
-                with EmptyEnv():
+                with EmptyEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
                     datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                     measurementThread.join()
 
                 # Measure latency (without RSS tracker)
-                with EmptyEnv():
+                with EmptyEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testLatencyInBackground, [self])
                     datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                     measurementThread.join()
@@ -683,16 +714,20 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         else:
             return super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
-class EmptyEnv():
+class EmptyEnv:
+    def __init__(self, env):
+        self.env = env
+
     def __enter__(self):
         self._prev_environ = os.environ
-        os.environ = {}
+        os.environ = self.env.copy()
         # urllib.request caches http_proxy, https_proxy etc. globally but doesn't cache no_proxy
         # preserve no_proxy to avoid issues with proxies
         if 'no_proxy' in self._prev_environ:
             os.environ['no_proxy'] = self._prev_environ['no_proxy']
         if 'NO_PROXY' in self._prev_environ:
             os.environ['NO_PROXY'] = self._prev_environ['NO_PROXY']
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         os.environ = self._prev_environ
 
@@ -703,11 +738,26 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
         return '5.3'
 
     def rules(self, out, benchmarks, bmSuiteArgs):
-        # Example of jmeter output:
-        # "summary =     70 in 00:00:01 =   47.6/s Avg:    12 Min:     3 Max:   592 Err:     0 (0.00%)"
+        # Example of jmeter output (time = 100s):
+        #
+        # summary +     59 in 00:00:10 =    5.9/s Avg:   449 Min:    68 Max:  7725 Err:     0 (0.00%) Active: 3 Started: 3 Finished: 0
+        # summary +   1945 in 00:00:30 =   64.9/s Avg:    46 Min:    26 Max:   116 Err:     0 (0.00%) Active: 3 Started: 3 Finished: 0
+        # summary =   2004 in 00:00:40 =   50.2/s Avg:    57 Min:    26 Max:  7725 Err:     0 (0.00%)
+        # summary +   1906 in 00:00:30 =   63.6/s Avg:    47 Min:    26 Max:    73 Err:     0 (0.00%) Active: 3 Started: 3 Finished: 0
+        # summary =   3910 in 00:01:10 =   55.9/s Avg:    52 Min:    26 Max:  7725 Err:     0 (0.00%)
+        # summary +   1600 in 00:00:30 =   53.3/s Avg:    56 Min:    29 Max:    71 Err:     0 (0.00%) Active: 3 Started: 3 Finished: 0
+        # summary =   5510 in 00:01:40 =   55.1/s Avg:    53 Min:    26 Max:  7725 Err:     0 (0.00%)
+        # summary +      8 in 00:00:00 =   68.4/s Avg:    46 Min:    30 Max:    58 Err:     0 (0.00%) Active: 0 Started: 3 Finished: 3
+        # summary =   5518 in 00:01:40 =   55.1/s Avg:    53 Min:    26 Max:  7725 Err:     0 (0.00%)
+        #
+        # The following rules matches `^summary \+` and reports the corresponding data points as 'warmup'.
+        # Note that the `run()` function calls `addAverageAcrossLatestResults()`, which computes
+        # the avg. of the last `AveragingBenchmarkMixin.getExtraIterationCount()` warmup data points
+        # and reports that value as 'throughput'.
+        pattern = r"^summary \+\s+(?P<requests>[0-9]+) in (?P<hours>\d+):(?P<minutes>\d\d):(?P<seconds>\d\d) =\s+(?P<throughput>\d*[.,]?\d*)/s Avg:\s+(?P<avg>\d+) Min:\s+(?P<min>\d+) Max:\s+(?P<max>\d+) Err:\s+(?P<errors>\d+) \((?P<errpct>\d*[.,]?\d*)\%\)"  # pylint: disable=line-too-long
         return [
             mx_benchmark.StdOutRule(
-                r"^summary \+\s+(?P<requests>[0-9]+) in (?P<hours>\d+):(?P<minutes>\d\d):(?P<seconds>\d\d) =\s+(?P<throughput>\d*[.,]?\d*)/s Avg:\s+(?P<avg>\d+) Min:\s+(?P<min>\d+) Max:\s+(?P<max>\d+) Err:\s+(?P<errors>\d+) \((?P<errpct>\d*[.,]?\d*)\%\)", # pylint: disable=line-too-long
+                pattern,
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
@@ -715,6 +765,19 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
                     "metric.value": ("<throughput>", float),
                     "metric.unit": "op/s",
                     "metric.better": "higher",
+                    "metric.iteration": ("$iteration", int),
+                    "warnings": ("<errors>", str),
+                }
+            ),
+            mx_benchmark.StdOutRule(
+                pattern,
+                {
+                    "benchmark": benchmarks[0],
+                    "bench-suite": self.benchSuiteName(),
+                    "metric.name": "peak-latency",
+                    "metric.value": ("<max>", float),
+                    "metric.unit": "ms",
+                    "metric.better": "lower",
                     "metric.iteration": ("$iteration", int),
                     "warnings": ("<errors>", str),
                 }
@@ -728,7 +791,7 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
         jmeterDirectory = mx.library("APACHE_JMETER_" + self.jmeterVersion(), True).get_path(True)
         jmeterPath = os.path.join(jmeterDirectory, "apache-jmeter-" + self.jmeterVersion(), "bin/ApacheJMeter.jar")
         extraVMArgs = []
-        if mx.get_jdk().javaCompliance >= '9':
+        if mx.get_jdk(tag='default').javaCompliance >= '9':
             extraVMArgs += ["--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
                             "--add-opens=java.desktop/sun.swing=ALL-UNNAMED",
                             "--add-opens=java.desktop/javax.swing.text.html=ALL-UNNAMED",
@@ -740,13 +803,16 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
                             "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
                             "--add-opens=java.base/java.util=ALL-UNNAMED",
                             "--add-opens=java.base/java.text=ALL-UNNAMED"]
-        jmeterCmd = [mx.get_jdk().java] + extraVMArgs + ["-jar", jmeterPath,
+        jmeterCmd = [mx.get_jdk(tag='default').java] + extraVMArgs + ["-jar", jmeterPath,
                                                          "-t", self.workloadConfigurationPath(),
-                                                         "-n", "-j", "/dev/stdout"]
+                                                         "-n", "-j", "/dev/stdout"] + self.extraJMeterArgs()
         mx.log("Running JMeter: {0}".format(jmeterCmd))
         output = mx.TeeOutputCapture(mx.OutputCapture())
         mx.run(jmeterCmd, out=output, err=output)
         self.peakOutput = output.underlying.data
+
+    def extraJMeterArgs(self):
+        return []
 
     def calibrateLatencyTest(self):
         pass

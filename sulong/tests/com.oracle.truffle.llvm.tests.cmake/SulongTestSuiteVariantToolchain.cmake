@@ -32,10 +32,8 @@ include_guard(GLOBAL)
 include(SulongCommon)
 
 macro(setupCompiler)
-    requireVariable(TOOLCHAIN_CLANG)
-    requireVariable(TOOLCHAIN_CLANGXX)
-    setCompilerConfig(CMAKE_C_COMPILER ${TOOLCHAIN_CLANG})
-    setCompilerConfig(CMAKE_CXX_COMPILER ${TOOLCHAIN_CLANGXX})
+    overrideCompilerConfig(CMAKE_C_COMPILER TOOLCHAIN_CLANG)
+    overrideCompilerConfig(CMAKE_CXX_COMPILER TOOLCHAIN_CLANGXX)
     noFortranSupport()
 endmacro()
 
@@ -43,7 +41,11 @@ macro(setupOptions)
     # this must be called after compiler checks
 
     set(OUTPUT "${SULONG_CURRENT_VARIANT}")
-    if(NOT SULONG_BUILD_SHARED_OBJECT)
+    if(SULONG_BUILD_SHARED_OBJECT)
+        if (WIN32)
+          set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
+        endif()
+    else()
         set(SUFFIX ".bc")
     endif()
 

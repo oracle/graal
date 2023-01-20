@@ -1,8 +1,8 @@
-local graal_common = import '../../../common.jsonnet';
+local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local base = import '../ci.jsonnet';
 local base_json = import '../../../common.json';
 
-local composable = (import "../../../common-utils.libsonnet").composable;
+local composable = (import "../../../ci/ci_common/common-utils.libsonnet").composable;
 local sulong_deps = composable(base_json.sulong.deps);
 
 local _version_suffix(java_version) = if java_version == 8 then '' else '-java' + java_version;
@@ -36,10 +36,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     },
   },
 
-  ol65: self.linux + {
-    capabilities+: ['ol65'],
-  },
-
   x52: self.linux + {
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
@@ -58,7 +54,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // generic targets
   gate:            {targets+: ['gate'], timelimit: "1:00:00"},
   postMerge:       {targets+: ['post-merge'],          notify_groups:: ['espresso']},
-  bench:           {targets+: ['bench', 'post-merge'], notify_groups:: ['espresso']},
   dailyBench:      {targets+: ['bench', 'daily'],      notify_groups:: ['espresso']},
   daily:           {targets+: ['daily'],               notify_groups:: ['espresso']},
   weekly:          {targets+: ['weekly'],              notify_groups:: ['espresso']},
@@ -67,30 +62,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   onDemandBench:   {targets+: ['bench', 'on-demand']},
 
   // precise targets and capabilities
-  jdk11_gate_linux              : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.gate          + self.linux,
-  jdk11_gate_darwin             : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.gate          + self.darwin_amd64,
-  jdk11_gate_windows            : graal_common.labsjdk11                              + self.gate          + base.windows_11,
-  jdk11_bench_linux             : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.bench         + self.x52,
-  jdk11_bench_darwin            : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.bench         + self.darwin_amd64,
-  jdk11_bench_windows           : graal_common.labsjdk11                              + self.bench         + base.windows_11,
-  jdk11_daily_linux             : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.daily         + self.linux,
-  jdk11_daily_darwin            : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.daily         + self.darwin_amd64,
-  jdk11_daily_windows           : graal_common.labsjdk11                              + self.daily         + base.windows_11,
-  jdk11_daily_bench_linux       : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.dailyBench    + self.x52,
-  jdk11_daily_bench_darwin      : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.dailyBench    + self.darwin_amd64,
-  jdk11_daily_bench_windows     : graal_common.labsjdk11                              + self.dailyBench    + base.windows_11,
-  jdk11_weekly_linux            : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.weekly        + self.linux,
-  jdk11_weekly_darwin           : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.weekly        + self.darwin_amd64,
-  jdk11_weekly_windows          : graal_common.labsjdk11                              + self.weekly        + base.windows_11,
-  jdk11_weekly_bench_linux      : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.weeklyBench   + self.x52,
-  jdk11_weekly_bench_darwin     : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.weeklyBench   + self.darwin_amd64,
-  jdk11_weekly_bench_windows    : graal_common.labsjdk11                              + self.weeklyBench   + base.windows_11,
-  jdk11_on_demand_linux         : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.onDemand      + self.linux,
-  jdk11_on_demand_darwin        : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.onDemand      + self.darwin_amd64,
-  jdk11_on_demand_windows       : graal_common.labsjdk11                              + self.onDemand      + base.windows_11,
-  jdk11_on_demand_bench_linux   : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.onDemandBench + self.x52,
-  jdk11_on_demand_bench_darwin  : graal_common.labsjdk11 + graal_common.labsjdk11LLVM + self.onDemandBench + self.darwin_amd64,
-  jdk11_on_demand_bench_windows : graal_common.labsjdk11                              + self.onDemandBench + base.windows_11,
   jdk17_gate_linux              : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.gate          + self.linux,
   jdk17_gate_darwin             : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.gate          + self.darwin_amd64,
   jdk17_gate_windows            : graal_common.labsjdk17                              + self.gate          + base.windows_17,
@@ -115,6 +86,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk17_on_demand_bench_linux   : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.onDemandBench + self.x52,
   jdk17_on_demand_bench_darwin  : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.onDemandBench + self.darwin_amd64,
   jdk17_on_demand_bench_windows : graal_common.labsjdk17                              + self.onDemandBench + base.windows_17,
+
+  jdk19_gate_linux              : graal_common.labsjdk19 + graal_common.labsjdk19LLVM + self.gate          + self.linux,
 
   // shared snippets
   eclipse: {
@@ -257,6 +230,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   builds: [
     // Gates
-    that.jdk11_gate_linux + that.eclipse + that.jdt + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,jackpot', timelimit='35:00', name='gate-espresso-style-jdk11-linux-amd64'),
+    that.jdk17_gate_linux + that.eclipse + that.jdt + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,jackpot', timelimit='35:00', name='gate-espresso-style-jdk17-linux-amd64'),
   ],
 }

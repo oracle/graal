@@ -178,6 +178,21 @@ public abstract class EspressoProcessor extends BaseProcessor {
     abstract ClassBuilder generateFactoryConstructor(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
     /**
+     * Additional hook called after
+     * {@link #generateFactoryConstructor(ClassBuilder, String, String, List, SubstitutionHelper)},
+     * which allows processors to add additional methods to the generated factory.
+     * <p>
+     * By default, adds the {@code isTrivial} method.
+     */
+    @SuppressWarnings("unused")
+    protected ClassBuilder generateAdditionalFactoryMethods(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+        if (isTrivial(helper.getTarget(), helper.getImplAnnotation())) {
+            factoryBuilder.withMethod(generateIsTrivial(helper));
+        }
+        return factoryBuilder;
+    }
+
+    /**
      * Generates the builder that corresponds to the code of the invoke method for the current
      * substitutor. Care must be taken to correctly unwrap and cast the given arguments (given in an
      * Object[]) so that they correspond to the substituted method's signature. Furthermore, all
@@ -236,6 +251,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String SUPPRESS_UNUSED = "@SuppressWarnings(\"unused\")";
 
     static final String IS_TRIVIAL = "isTrivial";
+    static final String GUARD = "guard";
 
     static final String STATIC_OBJECT_NULL = "StaticObject.NULL";
 
@@ -605,22 +621,23 @@ public abstract class EspressoProcessor extends BaseProcessor {
      *     }
      *     @Override
      *     public final SUBSTITUTOR create() {
-     *         return new className();
+     *         return new substitutorName();
      *     }
      * }
      */
     // @formatter:on
-    private ClassBuilder generateFactory(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+    private ClassBuilder generateFactory(String className, String substitutorName, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         ClassBuilder factory = new ClassBuilder(FACTORY) //
                         .withAnnotation("@Collect(", helper.getImplAnnotation().getQualifiedName().toString(), ".class)") //
                         .withQualifiers(new ModifierBuilder().asPublic().asStatic().asFinal()) //
                         .withSuperClass(substitutor + "." + FACTORY);
-        generateFactoryConstructor(factory, className, targetMethodName, parameterTypeName, helper);
+        generateFactoryConstructor(factory, substitutorName, targetMethodName, parameterTypeName, helper);
+        generateAdditionalFactoryMethods(factory, className, targetMethodName, parameterTypeName, helper);
         factory.withMethod(new MethodBuilder(CREATE) //
                         .withOverrideAnnotation() //
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withReturnType(substitutor) //
-                        .addBodyLine("return new ", className, "();"));
+                        .addBodyLine("return new ", substitutorName, "();"));
         return factory;
     }
 
@@ -648,7 +665,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         return constructor;
     }
 
-    private static boolean isTrivial(Element element, TypeElement implAnnotation) {
+    protected static boolean isTrivial(Element element, TypeElement implAnnotation) {
         AnnotationMirror mirror = getAnnotation(element, implAnnotation);
         try {
             Boolean value = getAnnotationValue(mirror, "isTrivial", Boolean.class);
@@ -736,7 +753,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withSuperClass(substitutor) //
                         .withJavaDoc(generateGeneratedBy(className, parameterTypeName, helper)) //
                         .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
-                        .withInnerClass(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper));
+                        .withInnerClass(generateFactory(className, substitutorName, targetMethodName, parameterTypeName, helper));
 
         if (helper.isNodeTarget() || helper.hasLanguageInjection || helper.hasMetaInjection || helper.hasProfileInjection || helper.hasContextInjection) {
             generateChildInstanceField(substitutorClass, helper);

@@ -41,6 +41,13 @@ import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 
 import jdk.vm.ci.code.BytecodePosition;
 
+/**
+ * This class models analysis objects that retain some information about their allocation. So here
+ * context doesn't refer to calling context, but rather to the allocation context of this object
+ * (which could contain information about the calling context of its allocator). More importantly,
+ * this object abstraction is responsible four correct routing of field and array read and write
+ * flows.
+ */
 public class ContextSensitiveAnalysisObject extends AnalysisObject {
 
     public ContextSensitiveAnalysisObject(AnalysisUniverse universe, AnalysisType type, AnalysisObjectKind kind) {

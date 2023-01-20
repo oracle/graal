@@ -42,6 +42,7 @@ package com.oracle.truffle.api.strings;
 
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 final class TStringGuards {
@@ -114,8 +115,8 @@ final class TStringGuards {
         return isFixedWidth(codeRangeA) && isFixedWidth(codeRangeB);
     }
 
-    static boolean indexOfCannotMatch(int codeRangeA, AbstractTruffleString b, int codeRangeB, int regionLength, TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
-        return regionLength < getCodePointLengthNodeB.execute(b) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
+    static boolean indexOfCannotMatch(Node node, int codeRangeA, AbstractTruffleString b, int codeRangeB, int regionLength, TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
+        return regionLength < getCodePointLengthNodeB.execute(node, b) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
     }
 
     static boolean indexOfCannotMatch(int codeRangeA, AbstractTruffleString b, int codeRangeB, byte[] mask, int regionLength) {
@@ -190,9 +191,13 @@ final class TStringGuards {
     }
 
     static boolean isUTF16Or32(Encoding enc) {
+        return isUTF16Or32(enc.id);
+    }
+
+    static boolean isUTF16Or32(int enc) {
         assert Encoding.UTF_32.id == 0;
         assert Encoding.UTF_16.id == 1;
-        return enc.id <= 1;
+        return enc <= 1;
     }
 
     static boolean identical(Object a, Object b) {

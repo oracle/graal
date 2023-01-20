@@ -97,6 +97,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -1253,7 +1254,7 @@ public class ContextPreInitializationTest {
             doContextPreinitialize(FIRST);
             assertFalse(files.isEmpty());
             System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), execHome.toString());
-            try (Context ctx = Context.newBuilder().allowIO(true).build()) {
+            try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
                 Value res = ctx.eval(Source.create(FIRST, "test"));
                 assertEquals("test", res.asString());
             }
@@ -1533,7 +1534,7 @@ public class ContextPreInitializationTest {
             });
             doContextPreinitialize(FIRST);
             assertFalse(filesFromPreInitialization.isEmpty());
-            try (Context ctx = Context.newBuilder().allowIO(true).currentWorkingDirectory(newCwd).build()) {
+            try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).currentWorkingDirectory(newCwd).build()) {
                 Value res = ctx.eval(Source.create(FIRST, "test"));
                 assertEquals("test", res.asString());
             }
@@ -2094,7 +2095,7 @@ public class ContextPreInitializationTest {
 
     @Test
     public void testIsSameFileAllowedIO() throws Exception {
-        IsSameFileResult res = testIsSameFileImpl(true, null);
+        IsSameFileResult res = testIsSameFileImpl(IOAccess.ALL);
         assertTrue(res.imageBuildInternalFile.isSameFile(res.imageBuildPublicFile));
         assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecInternalFile));
         assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecPublicFile));
@@ -2111,7 +2112,7 @@ public class ContextPreInitializationTest {
 
     @Test
     public void testIsSameFileDeniedIO() throws Exception {
-        IsSameFileResult res = testIsSameFileImpl(false, null);
+        IsSameFileResult res = testIsSameFileImpl(IOAccess.NONE);
         assertFalse(res.imageBuildInternalFile.isSameFile(res.imageBuildPublicFile));
         assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecInternalFile));
         assertFalse(res.imageBuildInternalFile.isSameFile(res.imageExecPublicFile));
@@ -2128,7 +2129,7 @@ public class ContextPreInitializationTest {
 
     @Test
     public void testIsSameFileCustomFileSystem() throws Exception {
-        IsSameFileResult res = testIsSameFileImpl(true, FileSystem.newDefaultFileSystem());
+        IsSameFileResult res = testIsSameFileImpl(IOAccess.newBuilder().fileSystem(FileSystem.newDefaultFileSystem()).build());
         assertTrue(res.imageBuildInternalFile.isSameFile(res.imageBuildPublicFile));
         assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecInternalFile));
         assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecPublicFile));
@@ -2352,7 +2353,47 @@ public class ContextPreInitializationTest {
         }
     }
 
-    private static IsSameFileResult testIsSameFileImpl(boolean allowIO, FileSystem fs) throws ReflectiveOperationException {
+    @Test
+    public void testInstrumentLogger() throws Exception {
+        ContextPreInitializationFirstInstrument.actions = Collections.singletonMap("onCreate", (e) -> {
+            TruffleLogger logger = e.env.getLogger((String) null);
+            logger.log(Level.INFO, "CREATED");
+        });
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(0, firstLangCtx.patchContextCount);
+        assertEquals(0, firstLangCtx.disposeContextCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
+        try (Context ctx = Context.newBuilder().option(ContextPreInitializationFirstInstrument.ID, "true").option("log.level", "OFF").build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+            assertEquals(0, firstLangCtx.disposeContextCount);
+            assertEquals(2, firstLangCtx.initializeThreadCount);
+            assertEquals(1, firstLangCtx.disposeThreadCount);
+        }
+        contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(1, firstLangCtx.patchContextCount);
+        assertEquals(1, firstLangCtx.disposeContextCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(2, firstLangCtx.disposeThreadCount);
+    }
+
+    private static IsSameFileResult testIsSameFileImpl(IOAccess ioAccess) throws ReflectiveOperationException {
         String path = Paths.get(".").toAbsolutePath().toString();
         setPatchable(FIRST);
         IsSameFileResult result = new IsSameFileResult();
@@ -2371,10 +2412,7 @@ public class ContextPreInitializationTest {
             result.imageExecInternalFile = env.getInternalTruffleFile(path);
             result.imageExecPublicFile = env.getPublicTruffleFile(path);
         });
-        Context.Builder builder = Context.newBuilder().allowIO(allowIO);
-        if (fs != null) {
-            builder.fileSystem(fs);
-        }
+        Context.Builder builder = Context.newBuilder().allowIO(ioAccess);
         try (Context ctx = builder.build()) {
             Value res = ctx.eval(Source.create(FIRST, "test"));
             assertEquals("test", res.asString());

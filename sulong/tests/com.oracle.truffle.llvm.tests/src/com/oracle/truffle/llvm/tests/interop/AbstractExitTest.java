@@ -36,7 +36,9 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.PlatformCapability.OS;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -45,6 +47,8 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.junit.runners.model.Statement;
+
+import static org.junit.Assume.assumeFalse;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
@@ -128,6 +132,7 @@ public abstract class AbstractExitTest {
 
     @Before
     public void prepareTest() {
+        assumeFalse("Truffle exit tests are not supported on Windows", InteropTestBase.getOS() == OS.Windows);
         testModule = InteropTestBase.loadTestBitcodeValue("truffleExitTest.c");
 
         installExitHook = testModule.getMember("installExitHook");

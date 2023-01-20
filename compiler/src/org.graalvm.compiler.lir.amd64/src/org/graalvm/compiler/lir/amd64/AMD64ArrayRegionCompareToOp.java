@@ -202,8 +202,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
             AMD64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, masm, tmp1, asRegister(dynamicStridesValue), 0, 8, Arrays.stream(variants));
             for (Stride strideA : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
                 for (Stride strideB : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
-                    masm.align(crb.target.wordSize * 2);
-                    masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
+                    masm.align(preferredBranchTargetAlignment(crb));
+                    masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
                     emitArrayCompare(crb, masm, strideA, strideB, result, arrayA, arrayB, length, tmp1, tmp2);
                     masm.jmp(done);
                 }
@@ -265,7 +265,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         masm.negq(length);
 
         // main loop
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
         // load and extend elements of arrayB to match the stride of arrayA
         masm.pmovSZx(vectorSize, extendMode, vector1, maxStride, arrayA, strideA, length, 0);
@@ -340,10 +340,17 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         assert cmpSize.getBytes() == loadSize.getBytes() * 2;
         assert cmpSize == YMM || cmpSize == XMM;
         masm.cmplAndJcc(length, getElementsPerVector(loadSize, maxStride), ConditionFlag.Less, nextTail, false);
-        masm.pmovSZx(loadSize, extendMode, vector1, maxStride, arrayA, strideA, 0);
-        masm.pmovSZx(loadSize, extendMode, vector2, maxStride, arrayB, strideB, 0);
-        masm.pmovSZx(loadSize, extendMode, vector3, maxStride, arrayA, strideA, length, -loadSize.getBytes());
-        masm.pmovSZx(loadSize, extendMode, vector4, maxStride, arrayB, strideB, length, -loadSize.getBytes());
+        if (loadSize == QWORD) {
+            masm.pmovSZxQWORD(extendMode, vector1, maxStride, arrayA, strideA, Register.None, 0);
+            masm.pmovSZxQWORD(extendMode, vector2, maxStride, arrayB, strideB, Register.None, 0);
+            masm.pmovSZxQWORD(extendMode, vector3, maxStride, arrayA, strideA, length, -loadSize.getBytes());
+            masm.pmovSZxQWORD(extendMode, vector4, maxStride, arrayB, strideB, length, -loadSize.getBytes());
+        } else {
+            masm.pmovSZx(loadSize, extendMode, vector1, maxStride, arrayA, strideA, Register.None, 0);
+            masm.pmovSZx(loadSize, extendMode, vector2, maxStride, arrayB, strideB, Register.None, 0);
+            masm.pmovSZx(loadSize, extendMode, vector3, maxStride, arrayA, strideA, length, -loadSize.getBytes());
+            masm.pmovSZx(loadSize, extendMode, vector4, maxStride, arrayB, strideB, length, -loadSize.getBytes());
+        }
         if (cmpSize == YMM) {
             AMD64Assembler.VexRVMIOp.VPERM2I128.emit(masm, cmpSize, vector1, vector3, vector1, 0x02);
             AMD64Assembler.VexRVMIOp.VPERM2I128.emit(masm, cmpSize, vector2, vector4, vector2, 0x02);
@@ -383,7 +390,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         masm.leaq(arrayB, new AMD64Address(arrayB, length, strideB));
         masm.negq(length);
 
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
         masm.movSZx(strideA, extendMode, result, new AMD64Address(arrayA, length, strideA));
         masm.movSZx(strideB, extendMode, tmp, new AMD64Address(arrayB, length, strideB));

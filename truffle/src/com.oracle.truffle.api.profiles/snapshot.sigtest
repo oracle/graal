@@ -11,6 +11,7 @@ CLSS public final com.oracle.truffle.api.profiles.BranchProfile
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.profiles.BranchProfile create()
 meth public static com.oracle.truffle.api.profiles.BranchProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedBranchProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
 meth public void disable()
 meth public void enter()
 meth public void reset()
@@ -23,19 +24,38 @@ meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.profiles.ByteValueProfile create()
 meth public static com.oracle.truffle.api.profiles.ByteValueProfile createIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.ByteValueProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedByteValueProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
 meth public void disable()
 meth public void reset()
 supr com.oracle.truffle.api.profiles.Profile
 hfds DISABLED,GENERIC,SPECIALIZED,UNINITIALIZED,cachedValue,state
 
-CLSS public abstract com.oracle.truffle.api.profiles.ConditionProfile
-meth public abstract boolean profile(boolean)
+CLSS public com.oracle.truffle.api.profiles.ConditionProfile
+meth public boolean profile(boolean)
+meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.profiles.ConditionProfile create()
 meth public static com.oracle.truffle.api.profiles.ConditionProfile createBinaryProfile()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static com.oracle.truffle.api.profiles.ConditionProfile createCountingProfile()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static com.oracle.truffle.api.profiles.ConditionProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedConditionProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+meth public void disable()
+meth public void reset()
 supr com.oracle.truffle.api.profiles.Profile
-hcls Binary,Counting,Disabled
+hfds DISABLED,wasFalse,wasTrue
+hcls Counting,Disabled
+
+CLSS public final com.oracle.truffle.api.profiles.CountingConditionProfile
+meth public boolean profile(boolean)
+meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.profiles.CountingConditionProfile create()
+meth public static com.oracle.truffle.api.profiles.CountingConditionProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedCountingConditionProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+meth public void disable()
+meth public void reset()
+supr com.oracle.truffle.api.profiles.Profile
+hfds DISABLED,MAX_VALUE,falseCount,trueCount
 
 CLSS public final com.oracle.truffle.api.profiles.DoubleValueProfile
 meth public double profile(double)
@@ -43,6 +63,7 @@ meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.profiles.DoubleValueProfile create()
 meth public static com.oracle.truffle.api.profiles.DoubleValueProfile createRawIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.DoubleValueProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedDoubleValueProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
 meth public void disable()
 meth public void reset()
 supr com.oracle.truffle.api.profiles.Profile
@@ -54,14 +75,162 @@ meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.profiles.FloatValueProfile create()
 meth public static com.oracle.truffle.api.profiles.FloatValueProfile createRawIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.FloatValueProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedFloatValueProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
 meth public void disable()
 meth public void reset()
 supr com.oracle.truffle.api.profiles.Profile
 hfds DISABLED,GENERIC,SPECIALIZED,UNINITIALIZED,cachedRawValue,cachedValue,state
 
+CLSS public final com.oracle.truffle.api.profiles.InlinedBranchProfile
+meth public boolean wasEntered(com.oracle.truffle.api.nodes.Node)
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.profiles.InlinedBranchProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedBranchProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+meth public void disable(com.oracle.truffle.api.nodes.Node)
+meth public void enter(com.oracle.truffle.api.nodes.Node)
+meth public void reset(com.oracle.truffle.api.nodes.Node)
+supr com.oracle.truffle.api.profiles.InlinedProfile
+hfds DISABLED,REQUIRED_STATE_BITS,state
+
+CLSS public final com.oracle.truffle.api.profiles.InlinedByteValueProfile
+fld protected final com.oracle.truffle.api.dsl.InlineSupport$StateField state
+fld protected final static int GENERIC = 2
+fld protected final static int REQUIRED_STATE_BITS = 2
+fld protected final static int SPECIALIZED = 1
+fld protected final static int UNINITIALIZED = 0
+meth public byte profile(com.oracle.truffle.api.nodes.Node,byte)
+meth public final void disable(com.oracle.truffle.api.nodes.Node)
+meth public final void reset(com.oracle.truffle.api.nodes.Node)
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.profiles.InlinedByteValueProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedByteValueProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+supr com.oracle.truffle.api.profiles.InlinedProfile
+hfds DISABLED,cachedValue
+
+CLSS public final com.oracle.truffle.api.profiles.InlinedConditionProfile
+meth public boolean profile(com.oracle.truffle.api.nodes.Node,boolean)
+meth public boolean wasFalse(com.oracle.truffle.api.nodes.Node)
+meth public boolean wasTrue(com.oracle.truffle.api.nodes.Node)
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.profiles.InlinedConditionProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedConditionProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+meth public void disable(com.oracle.truffle.api.nodes.Node)
+meth public void reset(com.oracle.truffle.api.nodes.Node)
+supr com.oracle.truffle.api.profiles.InlinedProfile
+hfds DISABLED,REQUIRED_STATE_BITS,state
+
+CLSS public final com.oracle.truffle.api.profiles.InlinedCountingConditionProfile
+meth public boolean profile(com.oracle.truffle.api.nodes.Node,boolean)
+meth public boolean wasFalse(com.oracle.truffle.api.nodes.Node)
+meth public boolean wasTrue(com.oracle.truffle.api.nodes.Node)
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.profiles.InlinedCountingConditionProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedCountingConditionProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+meth public void disable(com.oracle.truffle.api.nodes.Node)
+meth public void reset(com.oracle.truffle.api.nodes.Node)
+supr com.oracle.truffle.api.profiles.InlinedProfile
+hfds DISABLED,MAX_VALUE,falseCount,trueCount
+
+CLSS public final com.oracle.truffle.api.profiles.InlinedDoubleValueProfile
+fld protected final com.oracle.truffle.api.dsl.InlineSupport$StateField state
+fld protected final static int GENERIC = 2
+fld protected final static int REQUIRED_STATE_BITS = 2
+fld protected final static int SPECIALIZED = 1
+fld protected final static int UNINITIALIZED = 0
+meth public double profile(com.oracle.truffle.api.nodes.Node,double)
+meth public final void disable(com.oracle.truffle.api.nodes.Node)
+meth public final void reset(com.oracle.truffle.api.nodes.Node)
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.profiles.InlinedDoubleValueProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedDoubleValueProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+supr com.oracle.truffle.api.profiles.InlinedProfile
+hfds DISABLED,cachedValue0
+
+CLSS public final com.oracle.truffle.api.profiles.InlinedExactClassProfile
+fld protected final com.oracle.truffle.api.dsl.InlineSupport$StateField state
+fld protected final static int GENERIC = 2
+fld protected final static int REQUIRED_STATE_BITS = 2
+fld protected final static int SPECIALIZED = 1
+fld protected final static int UNINITIALIZED = 0
+meth public <%0 extends java.lang.Object> {%%0} profile(com.oracle.truffle.api.nodes.Node,{%%0})
+meth public final void disable(com.oracle.truffle.api.nodes.Node)
+meth public final void reset(com.oracle.truffle.api.nodes.Node)
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.profiles.InlinedExactClassProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedExactClassProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+supr com.oracle.truffle.api.profiles.InlinedProfile
+hfds DISABLED,cachedValue
+
+CLSS public final com.oracle.truffle.api.profiles.InlinedFloatValueProfile
+fld protected final com.oracle.truffle.api.dsl.InlineSupport$StateField state
+fld protected final static int GENERIC = 2
+fld protected final static int REQUIRED_STATE_BITS = 2
+fld protected final static int SPECIALIZED = 1
+fld protected final static int UNINITIALIZED = 0
+meth public final void disable(com.oracle.truffle.api.nodes.Node)
+meth public final void reset(com.oracle.truffle.api.nodes.Node)
+meth public float profile(com.oracle.truffle.api.nodes.Node,float)
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.profiles.InlinedFloatValueProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedFloatValueProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+supr com.oracle.truffle.api.profiles.InlinedProfile
+hfds DISABLED,cachedValue
+
+CLSS public final com.oracle.truffle.api.profiles.InlinedIntValueProfile
+fld protected final com.oracle.truffle.api.dsl.InlineSupport$StateField state
+fld protected final static int GENERIC = 2
+fld protected final static int REQUIRED_STATE_BITS = 2
+fld protected final static int SPECIALIZED = 1
+fld protected final static int UNINITIALIZED = 0
+meth public final void disable(com.oracle.truffle.api.nodes.Node)
+meth public final void reset(com.oracle.truffle.api.nodes.Node)
+meth public int profile(com.oracle.truffle.api.nodes.Node,int)
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.profiles.InlinedIntValueProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedIntValueProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+supr com.oracle.truffle.api.profiles.InlinedProfile
+hfds DISABLED,cachedValue
+
+CLSS public final com.oracle.truffle.api.profiles.InlinedLongValueProfile
+fld protected final com.oracle.truffle.api.dsl.InlineSupport$StateField state
+fld protected final static int GENERIC = 2
+fld protected final static int REQUIRED_STATE_BITS = 2
+fld protected final static int SPECIALIZED = 1
+fld protected final static int UNINITIALIZED = 0
+meth public final void disable(com.oracle.truffle.api.nodes.Node)
+meth public final void reset(com.oracle.truffle.api.nodes.Node)
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node)
+meth public long profile(com.oracle.truffle.api.nodes.Node,long)
+meth public static com.oracle.truffle.api.profiles.InlinedLongValueProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedLongValueProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+supr com.oracle.truffle.api.profiles.InlinedProfile
+hfds DISABLED,cachedValue
+
+CLSS public final com.oracle.truffle.api.profiles.InlinedLoopConditionProfile
+meth public boolean inject(com.oracle.truffle.api.nodes.Node,boolean)
+meth public boolean profile(com.oracle.truffle.api.nodes.Node,boolean)
+meth public boolean wasFalse(com.oracle.truffle.api.nodes.Node)
+meth public boolean wasTrue(com.oracle.truffle.api.nodes.Node)
+meth public java.lang.String toString(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.profiles.InlinedLoopConditionProfile getUncached()
+meth public static com.oracle.truffle.api.profiles.InlinedLoopConditionProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+meth public void disable(com.oracle.truffle.api.nodes.Node)
+meth public void profileCounted(com.oracle.truffle.api.nodes.Node,long)
+meth public void reset(com.oracle.truffle.api.nodes.Node)
+supr com.oracle.truffle.api.profiles.InlinedProfile
+hfds DISABLED,MAX_VALUE,falseCount,trueCount
+
+CLSS public abstract com.oracle.truffle.api.profiles.InlinedProfile
+meth public abstract java.lang.String toString(com.oracle.truffle.api.nodes.Node)
+meth public abstract void disable(com.oracle.truffle.api.nodes.Node)
+meth public abstract void reset(com.oracle.truffle.api.nodes.Node)
+meth public final java.lang.String toString()
+supr java.lang.Object
+
 CLSS public final com.oracle.truffle.api.profiles.IntValueProfile
 meth public int profile(int)
 meth public java.lang.String toString()
+meth public static com.oracle.truffle.api.profiles.InlinedIntValueProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
 meth public static com.oracle.truffle.api.profiles.IntValueProfile create()
 meth public static com.oracle.truffle.api.profiles.IntValueProfile createIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.IntValueProfile getUncached()
@@ -73,6 +242,7 @@ hfds DISABLED,GENERIC,SPECIALIZED,UNINITIALIZED,cachedValue,state
 CLSS public final com.oracle.truffle.api.profiles.LongValueProfile
 meth public java.lang.String toString()
 meth public long profile(long)
+meth public static com.oracle.truffle.api.profiles.InlinedLongValueProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
 meth public static com.oracle.truffle.api.profiles.LongValueProfile create()
 meth public static com.oracle.truffle.api.profiles.LongValueProfile createIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.LongValueProfile getUncached()
@@ -87,6 +257,7 @@ meth public boolean profile(boolean)
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.profiles.LoopConditionProfile create()
 meth public static com.oracle.truffle.api.profiles.LoopConditionProfile createCountingProfile()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static com.oracle.truffle.api.profiles.LoopConditionProfile getUncached()
 meth public void disable()
 meth public void profileCounted(long)
@@ -120,6 +291,8 @@ supr com.oracle.truffle.api.nodes.NodeCloneable
 
 CLSS public abstract com.oracle.truffle.api.profiles.ValueProfile
 meth public abstract <%0 extends java.lang.Object> {%%0} profile({%%0})
+meth public static com.oracle.truffle.api.profiles.InlinedExactClassProfile inline(com.oracle.truffle.api.dsl.InlineSupport$InlineTarget)
+meth public static com.oracle.truffle.api.profiles.ValueProfile create()
 meth public static com.oracle.truffle.api.profiles.ValueProfile createClassProfile()
 meth public static com.oracle.truffle.api.profiles.ValueProfile createIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.ValueProfile getUncached()

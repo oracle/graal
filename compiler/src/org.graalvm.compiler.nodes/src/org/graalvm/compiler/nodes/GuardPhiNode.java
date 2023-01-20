@@ -46,7 +46,7 @@ public final class GuardPhiNode extends PhiNode implements GuardingNode {
         this.values = new NodeInputList<>(this);
     }
 
-    public GuardPhiNode(AbstractMergeNode merge, ValueNode[] values) {
+    public GuardPhiNode(AbstractMergeNode merge, ValueNode... values) {
         super(TYPE, StampFactory.forVoid(), merge);
         this.values = new NodeInputList<>(this, values);
     }

@@ -57,7 +57,6 @@ public class NFIAPITest {
     @ClassRule public static CommonTestUtils.RunWithTestEngineConfigRule runWithPolyglot = new CommonTestUtils.RunWithTestEngineConfigRule(InteropTestBase::updateContextBuilder);
 
     private static final Path TEST_DIR = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "nfi");
-    private static final String SULONG_FILENAME = "toolchain-plain.so";
 
     public static Object sulongObject;
 
@@ -67,11 +66,11 @@ public class NFIAPITest {
     @BeforeClass
     public static void initialize() {
         TestOptions.assumeBundledLLVM();
-        sulongObject = loadLibrary("basicTest.c.dir", SULONG_FILENAME);
+        sulongObject = loadLibrary("basicTest.c.dir");
     }
 
-    private static Object loadLibrary(String lib, String filename) {
-        File file = new File(TEST_DIR.toFile(), lib + "/" + filename);
+    private static Object loadLibrary(String lib) {
+        File file = new File(TEST_DIR.toFile(), lib + "/" + InteropTestBase.getTestLibraryName(runWithPolyglot.getPolyglotContext()));
         String loadLib = "with llvm load '" + file.getAbsolutePath() + "'";
         Source source = Source.newBuilder("nfi", loadLib, "loadLibrary").internal(true).build();
         CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);

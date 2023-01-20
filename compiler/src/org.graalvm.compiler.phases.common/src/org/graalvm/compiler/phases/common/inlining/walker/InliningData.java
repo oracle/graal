@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,10 +31,8 @@ import static org.graalvm.compiler.core.common.GraalOptions.MegamorphicInliningM
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.List;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -673,18 +671,6 @@ public class InliningData {
         }
 
         return result.toString();
-    }
-
-    /**
-     * Gets a stack trace representing the current inlining stack represented by this object.
-     */
-    public Collection<StackTraceElement> getInvocationStackTrace() {
-        List<StackTraceElement> result = new ArrayList<>();
-        for (CallsiteHolder graph : graphQueue) {
-            result.add(graph.method().asStackTraceElement(0));
-        }
-
-        return result;
     }
 
     private boolean contains(StructuredGraph graph) {

@@ -82,4 +82,8 @@ public class AbstractKnownTruffleTypes {
         }
         throw new GraalError("Could not find required field %s.%s", declaringClass.getName(), name);
     }
+
+    protected ResolvedJavaField[] getInstanceFields(ResolvedJavaType type, boolean includeSuperclasses) {
+        return type.getInstanceFields(includeSuperclasses);
+    }
 }

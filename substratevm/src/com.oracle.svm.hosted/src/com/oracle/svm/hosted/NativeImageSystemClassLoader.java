@@ -28,13 +28,13 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.security.SecureClassLoader;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
-import java.util.jar.JarFile;
 
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -267,33 +267,13 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     private List<ClassLoader> getActiveClassLoaders() {
         ClassLoader activeClassLoader = nativeImageClassLoader;
         if (activeClassLoader != null) {
-            ClassLoader activeClassLoaderParent = activeClassLoader.getParent();
-            if (activeClassLoaderParent instanceof NativeImageClassLoaderSupport.ClassPathClassLoader) {
-                return List.of(activeClassLoader, activeClassLoaderParent);
-            } else {
+            if (activeClassLoader instanceof URLClassLoader) {
                 return List.of(activeClassLoader);
+            } else {
+                return List.of(activeClassLoader, activeClassLoader.getParent());
             }
         } else {
             return List.of(defaultSystemClassLoader);
         }
     }
-
-    /**
-     * This method is necessary for all custom system class loaders. It allows for the load of the
-     * agent during startup. See
-     * {@link java.lang.instrument.Instrumentation#appendToSystemClassLoaderSearch(JarFile)} }
-     *
-     * @param classPathEntry the classpath entry that will be added to the class path
-     */
-    @SuppressWarnings("unused")
-    private void appendToClassPathForInstrumentation(String classPathEntry) {
-        try {
-            Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
-            method.invoke(getParent(), classPathEntry);
-        } catch (ReflectiveOperationException e) {
-            String message = String.format("Can not add jar: %s to class path. Due to %s", classPathEntry, e);
-            VMError.shouldNotReachHere(message, e);
-        }
-    }
-
 }

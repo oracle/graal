@@ -1,0 +1,2 @@
+zero-memory = true
+async-iterations=10000

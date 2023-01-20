@@ -45,7 +45,8 @@ public enum JavaVersion {
     JAVA_15(15),
     JAVA_16(16),
     JAVA_17(17),
-    JAVA_18(18);
+    JAVA_18(18),
+    JAVA_19(19);
 
     public static final class VersionRange {
         public static final VersionRange VERSION_8_OR_LOWER = lower(8);
@@ -55,6 +56,7 @@ public enum JavaVersion {
         public static final VersionRange VERSION_11_TO_17 = new VersionRange(11, 17);
         public static final VersionRange VERSION_16_OR_HIGHER = higher(16);
         public static final VersionRange VERSION_17_OR_HIGHER = higher(17);
+        public static final VersionRange VERSION_19_OR_HIGHER = higher(19);
         public static final VersionRange ALL = new VersionRange(0, LATEST_SUPPORTED);
 
         private final int low;
@@ -81,7 +83,7 @@ public enum JavaVersion {
     private static final String HOST_VERSION = System.getProperty("java.version");
 
     public static final boolean HOST_COMPACT_STRINGS = !HOST_VERSION.startsWith("1.");
-    public static final int LATEST_SUPPORTED = 17;
+    public static final int LATEST_SUPPORTED = 19;
 
     private final int version;
 
@@ -126,8 +128,16 @@ public enum JavaVersion {
         return version >= 16;
     }
 
+    public boolean java17OrEarlier() {
+        return version <= 17;
+    }
+
     public boolean java17OrLater() {
         return version >= 17;
+    }
+
+    public boolean java19OrLater() {
+        return version >= 19;
     }
 
     public boolean inRange(int low, int high) {

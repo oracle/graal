@@ -127,7 +127,6 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         if (methodSpecification == null) {
             return null;
         }
-
         TemplateMethod templateMethod = parser.parse(methodSpecification, method, annotation, naturalOrder);
         if (templateMethod != null) {
             return create(templateMethod, templateMethod.hasErrors());

@@ -27,18 +27,22 @@ package com.oracle.svm.core.graal.nodes;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * For deoptimzation testing. The node performs a deoptimization in a normally compiled method, but
@@ -54,16 +58,22 @@ public class TestDeoptimizeNode extends FixedWithNextNode implements Canonicaliz
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (graph().method() instanceof SharedMethod) {
-            SharedMethod method = (SharedMethod) graph().method();
-            if (method.isDeoptTarget()) {
-                /* no-op for deoptimization target methods. */
-                return null;
-            } else {
-                /* deoptimization for all other methods. */
-                return new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter);
+        ResolvedJavaMethod method = graph().method();
+
+        if (SubstrateOptions.parseOnce()) {
+            throw VMError.unimplemented("Deopt Testing does not yet work.");
+        } else {
+            if (method instanceof SharedMethod) {
+                if (MultiMethod.isDeoptTarget(method)) {
+                    /* no-op for deoptimization target methods. */
+                    return null;
+                } else {
+                    /* deoptimization for all other methods. */
+                    return new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter);
+                }
             }
         }
+
         return this;
     }
 }

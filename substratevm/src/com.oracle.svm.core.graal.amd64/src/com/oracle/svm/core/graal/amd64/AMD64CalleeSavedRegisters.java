@@ -59,7 +59,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheckImpl;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.log.Log;
@@ -81,15 +81,6 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         return (AMD64CalleeSavedRegisters) CalleeSavedRegisters.singleton();
     }
 
-    public static boolean isRuntimeCompilationEnabled() {
-        /*
-         * Check whether JIT support is enabled. Since GraalFeature is not visible here, we check
-         * for DeoptimizationSupport#enabled() instead, which is available iff the GraalFeature is
-         * enabled.
-         */
-        return DeoptimizationSupport.enabled();
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void createAndRegister() {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
@@ -100,12 +91,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         List<Register> calleeSavedXMMRegisters = new ArrayList<>();
         List<Register> calleeSavedMaskRegisters = new ArrayList<>();
 
-        /*
-         * Check whether JIT support is enabled. Since GraalFeature is not visible here, we check
-         * for DeoptimizationSupport#enabled() instead, which is available iff the GraalFeature is
-         * enabled.
-         */
-        boolean isRuntimeCompilationEnabled = DeoptimizationSupport.enabled();
+        boolean isRuntimeCompilationEnabled = RuntimeCompilation.isEnabled();
 
         /*
          * Reverse list so that CPU registers are spilled close to the beginning of the frame, i.e.,
@@ -260,7 +246,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
         @SuppressWarnings("unlikely-arg-type")
         public void emit() {
-            assert isRuntimeCompilationEnabled == DeoptimizationSupport.enabled() : "JIT compilation enabled after registering singleton?";
+            assert isRuntimeCompilationEnabled == RuntimeCompilation.isEnabled() : "JIT compilation enabled after registering singleton?";
             if (isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
                 // JIT compilation is enabled -> need dynamic checks
                 Label end = new Label();

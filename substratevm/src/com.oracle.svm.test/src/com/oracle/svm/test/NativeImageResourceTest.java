@@ -32,7 +32,13 @@ import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -54,6 +60,7 @@ public class NativeImageResourceTest {
      * </p>
      */
     @Test
+    @SuppressWarnings("deprecation")
     public void githubIssues() {
         try {
             URL url1 = resourceNameToURL(RESOURCE_FILE_1, true);
@@ -110,5 +117,72 @@ public class NativeImageResourceTest {
 
         String nonCanonicalResourceDirectoryName = RESOURCE_DIR + "/./";
         resourceNameToURL(nonCanonicalResourceDirectoryName, false);
+    }
+
+    @Test
+    public void moduleResourceURLAccess() {
+        URL url = Class.class.getResource("uniName.dat");
+        Assert.assertNotNull("URL for resource java.base/java/lang/uniName.dat must not be null", url);
+        try (InputStream in = url.openStream()) {
+            try {
+                Assert.assertNotEquals("uniName.dat does not seem to contain valid data", in.read(), 0);
+            } catch (IOException e) {
+                Assert.fail("IOException in in.read(): " + e.getMessage());
+            }
+        } catch (IOException e) {
+            Assert.fail("IOException in url.openStream(): " + e.getMessage());
+        }
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testURLExternalFormEquivalence() {
+        Enumeration<URL> urlEnumeration = null;
+        try {
+            urlEnumeration = ClassLoader.getSystemResources("module-info.class");
+        } catch (IOException e) {
+            Assert.fail("IOException in ClassLoader.getSystemResources(\"module-info.class\"): " + e.getMessage());
+        }
+
+        Assert.assertNotNull(urlEnumeration);
+        Enumeration<URL> finalVar = urlEnumeration;
+        Iterable<URL> urlIterable = finalVar::asIterator;
+        List<URL> urlList = StreamSupport.stream(urlIterable.spliterator(), false).collect(Collectors.toList());
+        Assert.assertTrue("ClassLoader.getSystemResources(\"module-info.class\") must return many module-info.class URLs",
+                        urlList.size() > 3);
+
+        URL thirdEntry = urlList.get(2);
+        String thirdEntryExternalForm = thirdEntry.toExternalForm();
+        URL thirdEntryFromExternalForm = null;
+        try {
+            thirdEntryFromExternalForm = new URL(thirdEntryExternalForm);
+        } catch (MalformedURLException e) {
+            Assert.fail("Creating a new URL from the ExternalForm of another has to work: " + e.getMessage());
+        }
+
+        boolean compareResult = compareTwoURLs(thirdEntry, thirdEntryFromExternalForm);
+        Assert.assertTrue("Contents of original URL and one created from originals ExternalForm must be the same", compareResult);
+    }
+
+    @Test
+    public void moduleGetResourceAsStream() {
+        Module module = Class.class.getModule();
+        try (InputStream in = module.getResourceAsStream("java/lang/uniName.dat")) {
+            Assert.assertNotNull("InputStream for resource java.base/java/lang/uniName.dat must not be null", in);
+            try {
+                Assert.assertNotEquals("uniName.dat does not seem to contain valid data", in.read(), 0);
+            } catch (IOException e) {
+                Assert.fail("IOException in in.read(): " + e.getMessage());
+            }
+        } catch (IOException e) {
+            Assert.fail("IOException in module.getResourceAsStream(): " + e.getMessage());
+        }
+
+        /* The resource file with leading slash should be present as well. */
+        try (InputStream in2 = module.getResourceAsStream("/java/lang/uniName.dat")) {
+            Assert.assertNotNull("InputStream for resource java.base/java/lang/uniName.dat must not be null", in2);
+        } catch (IOException e) {
+            Assert.fail("IOException in module.getResourceAsStream(): " + e.getMessage());
+        }
     }
 }

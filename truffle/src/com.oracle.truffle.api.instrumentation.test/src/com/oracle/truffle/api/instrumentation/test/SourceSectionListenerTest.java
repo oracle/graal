@@ -157,7 +157,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         assertEvents(impl.onlyExpressions, sourceSections3[2], sourceSections3[3], sourceSections3[4]);
     }
 
-    private SourceSection[] sections(String code, String... match) {
+    protected SourceSection[] sections(String code, String... match) {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, code, "sourceSectionTest").buildLiteral();
 
         List<SourceSection> sections = new ArrayList<>();
@@ -186,7 +186,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         return newArray;
     }
 
-    private static void assertEvents(List<LoadSourceSectionEvent> actualEvents, SourceSection... expectedSourceSections) {
+    protected static void assertEvents(List<LoadSourceSectionEvent> actualEvents, SourceSection... expectedSourceSections) {
         Assert.assertEquals(expectedSourceSections.length, actualEvents.size());
         for (int i = 0; i < expectedSourceSections.length; i++) {
             LoadSourceSectionEvent actualEvent = actualEvents.get(i);

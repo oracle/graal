@@ -35,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
@@ -58,13 +59,15 @@ import org.graalvm.polyglot.io.ByteSequence;
  *      structure (winnt.h)</a>
  */
 public final class CoffFile {
+    private final Source source;
     private final ByteSequence bytes;
     private final ImageFileHeader header;
     private final ImageOptionHeader optionHeader;
     private final ImageSectionHeader[] sections;
     private final List<ImageSymbol> symbols;
 
-    private CoffFile(ByteSequence bytes, ImageFileHeader header, ImageOptionHeader optionHeader) {
+    private CoffFile(Source source, ByteSequence bytes, ImageFileHeader header, ImageOptionHeader optionHeader) {
+        this.source = source;
         this.bytes = bytes;
         this.header = header;
         this.optionHeader = optionHeader;
@@ -104,7 +107,7 @@ public final class CoffFile {
             symbols.add(symbol);
 
             // skip the symbol as well as any auxiliary symbols
-            i += 1 + symbol.numberOfAuxSymbols;
+            i += 1 + (symbol.numberOfAuxSymbols > 0 ? symbol.numberOfAuxSymbols : 0);
         }
     }
 
@@ -139,14 +142,14 @@ public final class CoffFile {
         return reader;
     }
 
-    public static CoffFile create(ByteSequence bytes) {
-        return create(bytes, new ObjectFileReader(bytes, true));
+    public static CoffFile create(Source source, ByteSequence bytes) {
+        return create(source, bytes, new ObjectFileReader(bytes, true));
     }
 
-    static CoffFile create(ByteSequence bytes, ObjectFileReader reader) {
+    static CoffFile create(Source source, ByteSequence bytes, ObjectFileReader reader) {
         ImageFileHeader header = ImageFileHeader.createImageFileHeader(reader);
         ImageOptionHeader optionHeader = header.sizeOfOptionalHeader > 0 ? ImageOptionHeader.create(reader) : null;
-        CoffFile coffFile = new CoffFile(bytes, header, optionHeader);
+        CoffFile coffFile = new CoffFile(source, bytes, header, optionHeader);
         coffFile.initializeSections(reader);
         coffFile.initializeSymbols(reader);
         return coffFile;
@@ -547,6 +550,9 @@ public final class CoffFile {
 
         private static final int TYPE_FUNCTION_SYMBOL = 0x20;
 
+        private static final int IMAGE_SYM_CLASS_EXTERNAL = 2;
+        private static final int IMAGE_SYM_CLASS_EXTERNAL_DEF = 5;
+
         String name;
         int value;
         short sectionNumber;
@@ -591,6 +597,14 @@ public final class CoffFile {
 
         public boolean isFunction() {
             return type == TYPE_FUNCTION_SYMBOL;
+        }
+
+        public boolean isDefinedExternally() {
+            return storageClass == IMAGE_SYM_CLASS_EXTERNAL_DEF;
+        }
+
+        public boolean isExternal() {
+            return storageClass == IMAGE_SYM_CLASS_EXTERNAL;
         }
     }
 
@@ -669,4 +683,12 @@ public final class CoffFile {
         return new String(nameBytes, 0, length, StandardCharsets.UTF_8);
     }
 
+    public Source getSource() {
+        return source;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("<CoffFile: %s>", source.getPath());
+    }
 }

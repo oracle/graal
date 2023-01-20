@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -878,10 +878,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         public BytecodeParserError(Throwable cause) {
             super(cause);
         }
-
-        public BytecodeParserError(String msg, Object... args) {
-            super(msg, args);
-        }
     }
 
     protected static class ReturnToCallerData {
@@ -1560,10 +1556,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         StampPair stamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, field.getType(), false);
         if (stamp == null) {
             return LoadFieldNode.create(getConstantFieldProvider(), getConstantReflection(), getMetaAccess(), getOptions(),
-                            getAssumptions(), receiver, field, false, false);
+                            getAssumptions(), receiver, field, false, false, createBytecodePosition());
         } else {
             return LoadFieldNode.createOverrideStamp(getConstantFieldProvider(), getConstantReflection(), getMetaAccess(), getOptions(),
-                            stamp, receiver, field, false, false);
+                            stamp, receiver, field, false, false, createBytecodePosition());
         }
     }
 
@@ -1597,6 +1593,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         ValueNode componentHub = append(LoadArrayComponentHubNode.create(arrayClass, getStampProvider(), getMetaAccess(), getConstantReflection()));
         LogicNode condition = genUnique(InstanceOfDynamicNode.create(graph.getAssumptions(), getConstantReflection(), componentHub, value, true));
         return emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.ARRAY_STORE, value);
+    }
+
+    protected ValueNode maybeEmitIncompatibleClassChangeErrorCheck(ValueNode receiver, InvokeKind invokeKind, ResolvedJavaType referencedType) {
+        if (invokeKind != InvokeKind.Interface || receiver.getStackKind() != JavaKind.Object || !needsIncompatibleClassChangeErrorCheck()) {
+            return receiver;
+        }
+        GraalError.guarantee(referencedType != null, "Interface calls must have a referenceType");
+        return emitIncompatibleClassChangeCheck(receiver, referencedType);
     }
 
     @Override
@@ -1668,7 +1672,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             }
 
             ValueNode[] args = frameState.popArguments(resolvedTarget.getSignature().getParameterCount(false));
-            Invoke invoke = appendInvoke(InvokeKind.Static, resolvedTarget, args);
+            Invoke invoke = appendInvoke(InvokeKind.Static, resolvedTarget, args, null);
             if (invoke != null && classInit[0] != null) {
                 invoke.setClassInit(classInit[0]);
             }
@@ -1693,7 +1697,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     protected void genInvokeInterface(JavaType referencedType, JavaMethod target) {
         if (callTargetIsResolved(target) && (referencedType == null || referencedType instanceof ResolvedJavaType)) {
             ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(true));
-            Invoke invoke = appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args);
+            Invoke invoke = appendInvoke(InvokeKind.Interface, (ResolvedJavaMethod) target, args, (ResolvedJavaType) referencedType);
             if (invoke != null) {
                 invoke.callTarget().setReferencedType((ResolvedJavaType) referencedType);
             }
@@ -1736,7 +1740,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         ValueNode[] args = frameState.popArguments(resolvedTarget.getSignature().getParameterCount(true));
-        appendInvoke(InvokeKind.Virtual, resolvedTarget, args);
+        appendInvoke(InvokeKind.Virtual, resolvedTarget, args, null);
     }
 
     private boolean genDynamicInvokeHelper(ResolvedJavaMethod target, int cpi, int opcode) {
@@ -1755,9 +1759,9 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         boolean hasReceiver = (opcode == INVOKEDYNAMIC) ? false : !target.isStatic();
         ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(hasReceiver));
         if (hasReceiver) {
-            appendInvoke(InvokeKind.Virtual, target, args);
+            appendInvoke(InvokeKind.Virtual, target, args, null);
         } else {
-            appendInvoke(InvokeKind.Static, target, args);
+            appendInvoke(InvokeKind.Static, target, args, null);
         }
 
         return true;
@@ -1773,7 +1777,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             assert target != null;
             assert target.getSignature() != null;
             ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(true));
-            appendInvoke(InvokeKind.Special, (ResolvedJavaMethod) target, args);
+            appendInvoke(InvokeKind.Special, (ResolvedJavaMethod) target, args, null);
         } else {
             handleUnresolvedInvoke(target, InvokeKind.Special);
         }
@@ -1820,11 +1824,16 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     @Override
     public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
+        GraalError.guarantee(invokeKind != InvokeKind.Interface, "Interface invoke needs a referencedType");
+        return handleReplacedInvoke(invokeKind, targetMethod, args, inlineEverything, null);
+    }
+
+    public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything, ResolvedJavaType referencedType) {
         boolean previous = forceInliningEverything;
         forceInliningEverything = previous || inlineEverything;
         try {
             setBciCanBeDuplicated(true);
-            return appendInvoke(invokeKind, targetMethod, args);
+            return appendInvoke(invokeKind, targetMethod, args, referencedType);
         } finally {
             setBciCanBeDuplicated(false);
             forceInliningEverything = previous;
@@ -1838,7 +1847,20 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         createNonInlinedInvoke(exceptionEdgeAction, bci(), callTarget, resultType);
     }
 
-    protected Invoke appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args) {
+    protected Invoke appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args, ResolvedJavaType referencedType) {
+        if (!parsingIntrinsic() && DeoptALot.getValue(options)) {
+            append(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
+            JavaKind resultType = initialTargetMethod.getSignature().getReturnKind();
+            frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, graph));
+            return null;
+        }
+
+        if (initialInvokeKind.hasReceiver()) {
+            args[0] = maybeEmitExplicitNullCheck(args[0]);
+            /* This check must be done before any de-virtualization of the invoke. */
+            args[0] = maybeEmitIncompatibleClassChangeErrorCheck(args[0], initialInvokeKind, referencedType);
+        }
+
         ResolvedJavaMethod targetMethod = initialTargetMethod;
         InvokeKind invokeKind = initialInvokeKind;
         if (initialInvokeKind.isIndirect()) {
@@ -1851,16 +1873,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         JavaKind resultType = targetMethod.getSignature().getReturnKind();
-        if (!parsingIntrinsic() && DeoptALot.getValue(options)) {
-            append(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
-            frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, graph));
-            return null;
-        }
-
         JavaType returnType = maybeEagerlyResolve(targetMethod.getSignature().getReturnType(method.getDeclaringClass()), targetMethod.getDeclaringClass());
-        if (invokeKind.hasReceiver()) {
-            args[0] = maybeEmitExplicitNullCheck(args[0]);
-        }
 
         if (initialInvokeKind == InvokeKind.Special && !targetMethod.isConstructor()) {
             emitCheckForInvokeSuperSpecial(args);
@@ -1960,11 +1973,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      *            declared in a interface
      */
     private void emitCheckForDeclaringClassChange(ResolvedJavaType declaringClass, ValueNode[] args) {
-        ValueNode receiver = args[0];
-        TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), declaringClass);
-        LogicNode condition = genUnique(createInstanceOf(checkedType, receiver, null));
-        FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, ClassCastException, None, false));
-        args[0] = append(PiNode.create(receiver, StampFactory.object(checkedType, true), fixedGuard));
+        args[0] = emitIncompatibleClassChangeCheck(args[0], declaringClass);
     }
 
     /**
@@ -1981,12 +1990,20 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         ResolvedJavaType callingClass = method.getDeclaringClass();
         callingClass = getHostClass(callingClass);
         if (callingClass.isInterface()) {
-            ValueNode receiver = args[0];
-            TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), callingClass);
-            LogicNode condition = genUnique(createInstanceOf(checkedType, receiver, null));
-            FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, ClassCastException, None, false));
-            args[0] = append(PiNode.create(receiver, StampFactory.object(checkedType, true), fixedGuard));
+            args[0] = emitIncompatibleClassChangeCheck(args[0], callingClass);
         }
+    }
+
+    protected ValueNode emitIncompatibleClassChangeCheck(ValueNode object, ResolvedJavaType checkedType) {
+        TypeReference checkedTypeRef = TypeReference.createTrusted(graph.getAssumptions(), checkedType);
+        LogicNode condition = genUnique(InstanceOfNode.create(checkedTypeRef, object));
+        ValueNode guardingNode;
+        if (needsExplicitException()) {
+            guardingNode = emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.INCOMPATIBLE_CLASS_CHANGE);
+        } else {
+            guardingNode = append(new FixedGuardNode(condition, ClassCastException, None, false));
+        }
+        return append(PiNode.create(object, StampFactory.object(checkedTypeRef, true), guardingNode));
     }
 
     @SuppressWarnings("deprecation")
@@ -3473,6 +3490,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
             if (disableLoopSafepoint()) {
                 loopBegin.disableSafepoint();
+                loopBegin.disableGuestSafepoint();
             }
             fixedWithNext.setNext(preLoopEnd);
             // Add the single non-loop predecessor of the loop header.
@@ -3937,22 +3955,30 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected void genLoadConstant(int cpi, int opcode) {
-        Object con = lookupConstant(cpi, opcode);
-
-        if (con instanceof JavaType) {
-            // this is a load of class constant which might be unresolved
-            JavaType type = (JavaType) con;
-            if (typeIsResolved(type)) {
-                frameState.push(JavaKind.Object, appendConstant(getConstantReflection().asJavaClass((ResolvedJavaType) type)));
+        try {
+            Object con = lookupConstant(cpi, opcode);
+            if (con instanceof JavaType) {
+                // this is a load of class constant which might be unresolved
+                JavaType type = (JavaType) con;
+                if (typeIsResolved(type)) {
+                    frameState.push(JavaKind.Object, appendConstant(getConstantReflection().asJavaClass((ResolvedJavaType) type)));
+                } else {
+                    handleUnresolvedLoadConstant(type);
+                }
+            } else if (con instanceof JavaConstant) {
+                JavaConstant constant = (JavaConstant) con;
+                frameState.push(constant.getJavaKind(), appendConstant(constant));
             } else {
-                handleUnresolvedLoadConstant(type);
+                throw new Error("lookupConstant returned an object of incorrect type: " + con);
             }
-        } else if (con instanceof JavaConstant) {
-            JavaConstant constant = (JavaConstant) con;
-            frameState.push(constant.getJavaKind(), appendConstant(constant));
-        } else {
-            throw new Error("lookupConstant returned an object of incorrect type: " + con);
+        } catch (BootstrapMethodError error) {
+            handleBootstrapMethodError(error, method);
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected void handleBootstrapMethodError(BootstrapMethodError be, JavaMethod javaMethod) {
+        throw be;
     }
 
     private JavaKind refineComponentType(ValueNode array, JavaKind kind) {
@@ -4717,6 +4743,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected boolean needsExplicitStoreCheckException(ValueNode array, ValueNode value) {
         return needsExplicitException();
+    }
+
+    protected boolean needsIncompatibleClassChangeErrorCheck() {
+        return false;
     }
 
     @Override

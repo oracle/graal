@@ -110,10 +110,6 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         protected Value[] getValueArray(Object obj, int index) {
             return (Value[]) getObject(obj, index);
         }
-
-        protected void setValueArray(Object obj, int index, Value[] valueArray) {
-            putObjectChecked(obj, index, valueArray);
-        }
     }
 
     /**

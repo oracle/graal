@@ -54,6 +54,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonObject;
  */
 public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVisitorIterable {
 
+    private int globalSubTreeId = -1;
     private int subTreeId = -1;
     private Group group;
     private PositionAssertion anchoredInitialState;
@@ -61,6 +62,8 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     private PositionAssertion anchoredFinalState;
     private MatchFound matchFound;
     private boolean visitorGroupVisited = false;
+
+    private final SubTreeIndex subtrees = new SubTreeIndex();
 
     RegexASTSubtreeRootNode() {
     }
@@ -81,6 +84,18 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
         setGroup(copy.group.copyRecursive(ast, compilationBuffer));
     }
 
+    public boolean globalSubTreeIdInitialized() {
+        return globalSubTreeId >= 0;
+    }
+
+    public int getGlobalSubTreeId() {
+        return globalSubTreeId;
+    }
+
+    public void setGlobalSubTreeId(int globalSubTreeId) {
+        this.globalSubTreeId = globalSubTreeId;
+    }
+
     public boolean subTreeIdInitialized() {
         return subTreeId >= 0;
     }
@@ -91,6 +106,10 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
 
     public void setSubTreeId(int subTreeId) {
         this.subTreeId = subTreeId;
+    }
+
+    public SubTreeIndex getSubtrees() {
+        return subtrees;
     }
 
     @Override

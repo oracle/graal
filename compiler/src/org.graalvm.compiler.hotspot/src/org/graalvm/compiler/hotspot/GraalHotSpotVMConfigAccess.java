@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,7 +110,7 @@ public class GraalHotSpotVMConfigAccess {
         return getProperty(name, null);
     }
 
-    public static final Set<String> KNOWN_ARCHITECTURES = new HashSet<>(Arrays.asList("amd64", "aarch64"));
+    public static final Set<String> KNOWN_ARCHITECTURES = new HashSet<>(Arrays.asList("amd64", "aarch64", "riscv64"));
     public static final Set<String> KNOWN_OS_NAMES = new HashSet<>(Arrays.asList("windows", "linux", "darwin"));
 
     /**
@@ -123,6 +123,7 @@ public class GraalHotSpotVMConfigAccess {
      */
     public final String osArch;
 
+    protected static final Version JVMCI_23_0_b04 = new Version(23, 0, 4);
     protected static final Version JVMCI_22_1_b01 = new Version(22, 1, 1);
     protected static final Version JVMCI_21_1_b02 = new Version(21, 1, 2);
     public static final Version JVMCI_20_3_b04 = new Version(20, 3, 4);
@@ -146,7 +147,7 @@ public class GraalHotSpotVMConfigAccess {
     public static final boolean JDK_PRERELEASE;
     static {
         String vmVersion = getProperty("java.vm.version");
-        JVMCI_VERSION = Version.parse(vmVersion, Services.getSavedProperties());
+        JVMCI_VERSION = Version.parse(vmVersion);
         JDK_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("-dev");
         JVMCI = JVMCI_VERSION != null;
     }

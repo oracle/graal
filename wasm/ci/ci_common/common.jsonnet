@@ -6,9 +6,9 @@ local graal_suite_root = root_ci.graal_suite_root;
 
 {
   local mx = (import "../../../common.json").mx_version,
-  local common = (import "../../../common.jsonnet"),
+  local common = (import "../../../ci/ci_common/common.jsonnet"),
   local common_json = (import "../../../common.json"),
-  local utils = (import "../../../common-utils.libsonnet"),
+  local utils = (import "../../../ci/ci_common/common-utils.libsonnet"),
 
   devkits: utils.composable(common_json.devkits),
 
@@ -17,7 +17,7 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   bench: {
-    targets+: ['bench', 'post-merge'],
+    targets+: ['bench', 'daily'],
   },
 
   common: {
@@ -41,6 +41,10 @@ local graal_suite_root = root_ci.graal_suite_root;
       nodejs: '==8.9.4',
     },
     capabilities+: ['linux'],
+    docker: {
+      "image": "buildslave_ol7",
+      "mount_modules": true
+    },
   },
 
   windows: self.common + {
@@ -78,10 +82,6 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   emsdk: {
-    docker: {
-      "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol7",
-      "mount_modules": true
-    },
     downloads+: {
       EMSDK_DIR: {name: 'emsdk', version: '1.39.13', platformspecific: true},
     },
@@ -91,16 +91,22 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   ocamlbuild: {
-    docker: {
-      "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol7",
-      "mount_modules": true
-    },
     downloads+: {
       OCAML_DIR: {name: 'ocamlbuild', version: '0.14.0', platformspecific: true},
     },
     environment+: {
       PATH: "$OCAML_DIR/bin:$PATH",
       OCAMLLIB: "$OCAML_DIR/lib/ocaml"
+    },
+  },
+
+  nodejs: {
+    downloads+: {
+      NODE: {name: 'node', version: 'v16.13.2', platformspecific: true},
+    },
+    environment+: {
+      NODE_DIR: '${NODE}/bin',
+      PATH: '${NODE}/bin:${PATH}',
     },
   },
 
@@ -172,7 +178,6 @@ local graal_suite_root = root_ci.graal_suite_root;
   jdk17_gate_linux_wabt_emsdk               : common.labsjdk17 + self.gate  + self.linux   + self.wabt    + self.emsdk,
   jdk17_gate_linux_wabt_emsdk_ocamlbuild    : common.labsjdk17 + self.gate  + self.linux   + self.wabt    + self.emsdk + self.ocamlbuild,
   jdk17_bench_linux_wabt_emsdk              : common.labsjdk17 + self.bench + self.linux   + self.wabt    + self.emsdk,
+  jdk17_bench_linux_wabt_emsdk_nodejs       : common.labsjdk17 + self.bench + self.linux   + self.wabt    + self.emsdk + self.nodejs,
   jdk17_gate_windows_wabt                   : common.labsjdk17 + self.gate  + self.windows + self.wabt,
-
-  jdk11_gate_linux_wabt                     : common.labsjdk11 + self.gate  + self.linux   + self.wabt,
 }

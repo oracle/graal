@@ -44,16 +44,17 @@ import static org.graalvm.wasm.nodes.WasmFrame.popLong;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.popInt;
+import static org.graalvm.wasm.nodes.WasmFrame.popReference;
 import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
+import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmMultiValueResult;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -90,7 +91,7 @@ public class WasmRootNode extends RootNode {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        context.linker().tryLink(function.getInstance());
+        context.linker().tryLink(function.instance());
     }
 
     @Override
@@ -112,7 +113,7 @@ public class WasmRootNode extends RootNode {
         // The reason for this is that the operand stack cannot be passed
         // as an argument to the loop-node's execute method,
         // and must be restored at the beginning of the loop body.
-        final int localCount = function.getLocalCount();
+        final int localCount = function.localCount();
         moveArgumentsToLocals(frame);
 
         // WebAssembly rules dictate that a function's locals must be initialized to zero before
@@ -120,7 +121,7 @@ public class WasmRootNode extends RootNode {
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
         initializeLocals(frame);
 
-        final int resultCount = function.getResultCount();
+        final int resultCount = function.resultCount();
         CompilerAsserts.partialEvaluationConstant(resultCount);
         if (resultCount > 1) {
             context.resizeMultiValueStack(resultCount);
@@ -133,13 +134,13 @@ public class WasmRootNode extends RootNode {
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
         }
         if (resultCount == 0) {
-            return WasmVoidResult.getInstance();
+            return WasmConstant.VOID;
         } else if (resultCount == 1) {
-            final byte resultType = function.getResultType(0);
+            final byte resultType = function.resultType(0);
             CompilerAsserts.partialEvaluationConstant(resultType);
             switch (resultType) {
                 case WasmType.VOID_TYPE:
-                    return WasmVoidResult.getInstance();
+                    return WasmConstant.VOID;
                 case WasmType.I32_TYPE:
                     return popInt(frame, localCount);
                 case WasmType.I64_TYPE:
@@ -148,21 +149,25 @@ public class WasmRootNode extends RootNode {
                     return popFloat(frame, localCount);
                 case WasmType.F64_TYPE:
                     return popDouble(frame, localCount);
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    return popReference(frame, localCount);
                 default:
                     throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
             }
         } else {
             moveResultValuesToMultiValueStack(frame, context, resultCount, localCount);
-            return WasmMultiValueResult.INSTANCE;
+            return WasmConstant.MULTI_VALUE;
         }
     }
 
     @ExplodeLoop
     private void moveResultValuesToMultiValueStack(VirtualFrame frame, WasmContext context, int resultCount, int localCount) {
         CompilerAsserts.partialEvaluationConstant(resultCount);
-        final long[] multiValueStack = context.multiValueStack();
+        final long[] multiValueStack = context.primitiveMultiValueStack();
+        final Object[] referenceMultiValueStack = context.referenceMultiValueStack();
         for (int i = 0; i < resultCount; i++) {
-            final int resultType = function.getResultType(i);
+            final int resultType = function.resultType(i);
             CompilerAsserts.partialEvaluationConstant(resultType);
             switch (resultType) {
                 case WasmType.I32_TYPE:
@@ -177,6 +182,10 @@ public class WasmRootNode extends RootNode {
                 case WasmType.F64_TYPE:
                     multiValueStack[i] = Double.doubleToRawLongBits(popDouble(frame, localCount + i));
                     break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    referenceMultiValueStack[i] = popReference(frame, localCount + i);
+                    break;
                 default:
                     throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
             }
@@ -186,11 +195,11 @@ public class WasmRootNode extends RootNode {
     @ExplodeLoop
     private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        int paramCount = function.getParamCount();
+        int paramCount = function.paramCount();
         assert args.length == paramCount : "Expected number of params " + paramCount + ", actual " + args.length;
         for (int i = 0; i != paramCount; ++i) {
             final Object arg = args[i];
-            byte type = function.getLocalType(i);
+            byte type = function.localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, (int) arg);
@@ -204,15 +213,19 @@ public class WasmRootNode extends RootNode {
                 case WasmType.F64_TYPE:
                     pushDouble(frame, i, (double) arg);
                     break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    pushReference(frame, i, arg);
+                    break;
             }
         }
     }
 
     @ExplodeLoop
     private void initializeLocals(VirtualFrame frame) {
-        int paramCount = function.getParamCount();
-        for (int i = paramCount; i != function.getLocalCount(); ++i) {
-            byte type = function.getLocalType(i);
+        int paramCount = function.paramCount();
+        for (int i = paramCount; i != function.localCount(); ++i) {
+            byte type = function.localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, 0);
@@ -225,6 +238,10 @@ public class WasmRootNode extends RootNode {
                     break;
                 case WasmType.F64_TYPE:
                     pushDouble(frame, i, 0D);
+                    break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    pushReference(frame, i, WasmConstant.NULL);
                     break;
             }
         }
@@ -240,7 +257,7 @@ public class WasmRootNode extends RootNode {
         if (function == null) {
             return "function";
         }
-        return function.getName();
+        return function.name();
     }
 
     @Override
@@ -248,7 +265,7 @@ public class WasmRootNode extends RootNode {
         if (function == null) {
             return getName();
         }
-        return function.getQualifiedName();
+        return function.qualifiedName();
     }
 
     @Override
@@ -257,7 +274,7 @@ public class WasmRootNode extends RootNode {
             return null;
         } else {
             if (sourceSection == null) {
-                sourceSection = function.getInstance().module().source().createUnavailableSection();
+                sourceSection = function.instance().module().source().createUnavailableSection();
             }
             return sourceSection;
         }

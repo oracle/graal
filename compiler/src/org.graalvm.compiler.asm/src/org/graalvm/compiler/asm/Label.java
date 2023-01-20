@@ -34,7 +34,7 @@ import org.graalvm.compiler.debug.GraalError;
 public final class Label {
 
     private int position = -1;
-    private int blockId = -1;
+    private final int blockId;
 
     /**
      * Positions of instructions that jump to this unresolved label. These instructions are patched
@@ -58,6 +58,7 @@ public final class Label {
     }
 
     public Label() {
+        blockId = -1;
     }
 
     public Label(int id) {
@@ -96,15 +97,16 @@ public final class Label {
             nextWithPatches = asm.labelsWithPatches;
             asm.labelsWithPatches = this;
         }
+        // Note this check is slow and should remain as an assert
+        assert !patchPositions.contains(branchLocation) : "same location added multiple times: " + branchLocation;
         patchPositions.add(branchLocation);
 
     }
 
     public void reset() {
-        if (this.patchPositions != null) {
-            this.patchPositions.clear();
-        }
-        this.position = -1;
+        patchPositions = null;
+        nextWithPatches = null;
+        position = -1;
     }
 
     @Override

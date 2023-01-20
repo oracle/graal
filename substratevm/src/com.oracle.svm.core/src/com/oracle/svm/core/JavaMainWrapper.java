@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import java.io.File;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
@@ -91,7 +90,7 @@ public class JavaMainWrapper {
 
     public static class JavaMainSupport {
 
-        final MethodHandle javaMainHandle;
+        public final MethodHandle javaMainHandle;
         final String javaMainClassName;
 
         public String[] mainArgs;
@@ -143,7 +142,7 @@ public class JavaMainWrapper {
         try {
             if (SubstrateOptions.DumpHeapAndExit.getValue()) {
                 if (VMInspectionOptions.hasHeapDumpSupport()) {
-                    String absoluteHeapDumpPath = new File(SubstrateOptions.Name.getValue() + ".hprof").getAbsolutePath();
+                    String absoluteHeapDumpPath = SubstrateOptions.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
                     VMRuntime.dumpHeap(absoluteHeapDumpPath, true);
                     System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");
                     return 0;
@@ -275,6 +274,9 @@ public class JavaMainWrapper {
     private static class RunMainInNewThreadBooleanSupplier implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
+            if (!ImageSingletons.contains(JavaMainSupport.class)) {
+                return false;
+            }
             return SubstrateOptions.RunMainInNewThread.getValue();
         }
     }

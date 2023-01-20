@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,7 +112,7 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
      * <li>Loop over the phases that modify the {@link GraphState} (see
      * {@link #getSingleApplyPhases()}) by applying a mandatory stage and insert them in the tier
      * plan if the resulting {@link MinimalFuzzedTierPlan#getPhaseSuite} can be applied (see
-     * {@link PhaseSuite#canApply}). <br>
+     * {@link PhaseSuite#notApplicableTo(GraphState)}). <br>
      * This is done until all the {@code mandatoryStages} are applied by one of the phase in the
      * tier plan or the maximum number of attempts has been reached. <br>
      * </li>
@@ -156,6 +156,8 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
             if (!phasesIterator.hasNext()) {
                 currAttempt += 1;
                 if (currAttempt > maxAttempts) {
+                    EnumSet<StageFlag> unreachedStages = EnumSet.copyOf(mandatoryStages);
+                    unreachedStages.removeAll(graphStateCopy.getStageFlags());
                     Formatter errorMsg = new Formatter();
                     errorMsg.format("The given phases cannot fulfill the requirements.%n");
                     errorMsg.format("Current random seed:%s%n", getRandomSeed());
@@ -166,6 +168,8 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
                     errorMsg.format("%s%n", mandatoryStages);
                     errorMsg.format("Stages that can be reached with the current plan:%n");
                     errorMsg.format("%s%n", graphStateCopy.getStageFlags());
+                    errorMsg.format("Mandatory stages that are not reached:%n");
+                    errorMsg.format("%s%n", unreachedStages);
                     GraalError.shouldNotReachHere(errorMsg.toString());
                 }
                 Collections.shuffle(minimalPhases, random);
@@ -258,15 +262,15 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
 
     /**
      * Inserts a phase at the given index in the tier plan if it results in a correct plan (see
-     * {@link BasePhase#canApply(GraphState)}).
+     * {@link BasePhase#notApplicableTo(GraphState)}).
      *
      * @return {@code true} if the phase was inserted successfully, {@code false} otherwise.
      */
     protected boolean insertPhaseAtIndex(BasePhase<? super C> phase, int index, GraphState graphState) {
         PhaseSuite<C> newFuzzedPhaseSuite = getPhaseSuite().copy();
         newFuzzedPhaseSuite.insertAtIndex(index, phase);
-        Optional<NotApplicable> canNewSuiteBeApplied = newFuzzedPhaseSuite.canApply(graphState.copy());
-        if (canNewSuiteBeApplied.isEmpty()) {
+        Optional<NotApplicable> suiteNotApplicable = newFuzzedPhaseSuite.notApplicableTo(graphState.copy());
+        if (suiteNotApplicable.isEmpty()) {
             getIgnoredPhases().remove(phase);
             setPhaseSuite(newFuzzedPhaseSuite);
             return true;

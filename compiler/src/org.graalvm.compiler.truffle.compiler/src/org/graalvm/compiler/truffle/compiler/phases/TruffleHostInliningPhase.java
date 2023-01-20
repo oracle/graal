@@ -59,7 +59,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -390,7 +390,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
          * actual invoke. This allows us to not inline calls that were preceded by a transfer to
          * interpreter.
          */
-        for (Block block : cfg.reversePostOrder()) {
+        for (HIRBlock block : cfg.reversePostOrder()) {
 
             if (block.getEndNode() instanceof IfNode) {
                 /*
@@ -429,7 +429,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                             if (input instanceof Invoke) {
                                 ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
                                 if (targetMethod != null && isInInterpreter(targetMethod)) {
-                                    Block dominatedSilbling = block.getFirstDominated();
+                                    HIRBlock dominatedSilbling = block.getFirstDominated();
                                     while (dominatedSilbling != null) {
                                         inInterpreterBlocks.add(dominatedSilbling.getBeginNode());
                                         dominatedSilbling = dominatedSilbling.getDominatedSibling();
@@ -490,7 +490,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
                 if (shouldInline(context, callee)) {
                     if (!callee.propagatesDeopt) {
-                        callee.propagatesDeopt = peekPropagatesDeopt(context, getTargetMethod(context, callee), 0);
+                        callee.propagatesDeopt = peekPropagatesDeopt(context, callee.invoke, getTargetMethod(context, callee), 0);
                     }
 
                     if (callee.propagatesDeopt) {
@@ -512,15 +512,16 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     }
 
     /**
-     * Peeks down the first block of a maximum of {@link #MAX_PEEK_PROPAGATE_DEOPT} number of
-     * methods to find a transferToInterpeterAndInvalidate() that dominates the method.
+     * Traverses the call graph starting at {@code method} based on invokes in each traversed
+     * method's entry block, stopping at depth {@link #MAX_PEEK_PROPAGATE_DEOPT}` to find a
+     * {@link #isTransferToInterpreterMethod}.
      */
-    private boolean peekPropagatesDeopt(InliningPhaseContext context, ResolvedJavaMethod method, int depth) {
+    private boolean peekPropagatesDeopt(InliningPhaseContext context, Invoke callerInvoke, ResolvedJavaMethod method, int depth) {
         if (depth > MAX_PEEK_PROPAGATE_DEOPT) {
             return false;
         }
 
-        StructuredGraph graph = lookupGraph(context, method);
+        StructuredGraph graph = lookupGraph(context, callerInvoke, method);
         FixedNode current = graph.start();
         while (current instanceof FixedWithNextNode) {
             current = ((FixedWithNextNode) current).next();
@@ -537,7 +538,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                     if (!targetMethod.canBeInlined()) {
                         continue;
                     }
-                    if (peekPropagatesDeopt(context, targetMethod, depth + 1)) {
+                    if (peekPropagatesDeopt(context, invoke, targetMethod, depth + 1)) {
                         return true;
                     }
                 }
@@ -556,11 +557,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      * to check whether the current block is deoptimized itself or one of the current blocks
      * dominators is.
      */
-    private static boolean isBlockOrDominatorContainedIn(Block currentBlock, EconomicSet<AbstractBeginNode> blocks) {
+    private static boolean isBlockOrDominatorContainedIn(HIRBlock currentBlock, EconomicSet<AbstractBeginNode> blocks) {
         if (blocks.isEmpty()) {
             return false;
         }
-        Block dominator = currentBlock;
+        HIRBlock dominator = currentBlock;
         while (dominator != null) {
             if (blocks.contains(dominator.getBeginNode())) {
                 return true;
@@ -586,7 +587,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             targetMethod = callee.monomorphicTargetMethod;
         }
 
-        calleeGraph = lookupGraph(context, targetMethod);
+        calleeGraph = lookupGraph(context, callee.invoke, targetMethod);
         assert calleeGraph != null : "There must be a graph available for an inlinable call.";
         callee.cost = NodeCostUtil.computeNodesSize(calleeGraph.getNodes());
         int depth = callee.getDepth();
@@ -659,7 +660,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return null;
         }
 
-        StructuredGraph graph = lookupGraph(context, getTargetMethod(context, root));
+        StructuredGraph graph = lookupGraph(context, root.invoke, getTargetMethod(context, root));
         StructuredGraph mutableGraph = (StructuredGraph) graph.copy((map) -> {
             for (CallTree callee : root.children) {
                 callee.invoke = (Invoke) map.get(callee.invoke.asFixedNode());
@@ -667,7 +668,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         }, context.graph.getDebug());
 
         EconomicSet<Node> canonicalizableNodes = EconomicSet.create();
-        enhandeParameters(canonicalizableNodes, mutableGraph, root);
+        enhanceParameters(canonicalizableNodes, mutableGraph, root);
 
         int currentGraphSize;
         int inlineIndex = 0;
@@ -734,7 +735,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         return mutableGraph;
     }
 
-    private static void enhandeParameters(EconomicSet<Node> canonicalizableNodes, StructuredGraph graph, CallTree root) {
+    private static void enhanceParameters(EconomicSet<Node> canonicalizableNodes, StructuredGraph graph, CallTree root) {
         for (ParameterNode formalParameter : graph.getNodes(ParameterNode.TYPE).snapshot()) {
             int index = formalParameter.index();
             ValueNode actualParameter = root.invoke.callTarget().arguments().get(index);
@@ -924,11 +925,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
-        if (context.highTierContext.getReplacements().hasSubstitution(targetMethod, context.graph.getOptions())) {
-            call.reason = "has substituion";
-            return false;
-        }
-
         String boundary = isTruffleBoundary(targetMethod);
         if (boundary != null) {
             /*
@@ -1067,7 +1063,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         assert call.children != null : "Call not yet explored or marked incomplete.";
         assert shouldInline(context, call) : "Call should be inlined.";
 
-        StructuredGraph graph = lookupGraph(context, getTargetMethod(context, call));
+        StructuredGraph graph = lookupGraph(context, call.invoke, getTargetMethod(context, call));
         UnmodifiableEconomicMap<Node, Node> oldToNew = inlineGraph(context, canonicalizableNodes, targetGraph, call, graph);
 
         call.reason = null;
@@ -1123,11 +1119,20 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         return targetMethod;
     }
 
-    private StructuredGraph lookupGraph(InliningPhaseContext context, ResolvedJavaMethod method) {
-        StructuredGraph graph = context.graphCache.get(method);
+    private StructuredGraph lookupGraph(InliningPhaseContext context, Invoke invoke, ResolvedJavaMethod method) {
+        /*
+         * We guarantee that we copy on modification of the looked up graph, so we do not need to
+         * copy the intrinsic graph if it is frozen.
+         */
+        StructuredGraph graph = context.highTierContext.getReplacements().getInlineSubstitution(method,
+                        invoke.bci(), invoke.getInlineControl(), context.graph.trackNodeSourcePosition(), null,
+                        invoke.asNode().graph().allowAssumptions(), invoke.asNode().getOptions());
         if (graph == null) {
-            graph = parseGraph(context.highTierContext, context.graph, method);
-            context.graphCache.put(method, graph);
+            graph = context.graphCache.get(method);
+            if (graph == null) {
+                graph = parseGraph(context.highTierContext, context.graph, method);
+                context.graphCache.put(method, graph);
+            }
         }
         return graph;
     }

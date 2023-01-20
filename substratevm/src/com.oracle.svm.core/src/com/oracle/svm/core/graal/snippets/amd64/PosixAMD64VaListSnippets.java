@@ -37,6 +37,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
@@ -102,6 +103,11 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
     private static final int OVERFLOW_ARG_AREA_ALIGNMENT = 8;
     private static final int REG_SAVE_AREA_LOCATION = 16;
 
+    @Snippet
+    protected static Pointer vaListInitializationSnippet(Pointer vaList) {
+        return vaList;
+    }
+
     @Snippet(allowMissingProbabilities = true)
     protected static double vaArgDoubleSnippet(Pointer vaList) {
         int fpOffset = vaList.readInt(FP_OFFSET_LOCATION);
@@ -150,6 +156,8 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
         new PosixAMD64VaListSnippets(options, providers, lowerings);
     }
 
+    private final SnippetInfo vaListInitialization;
+
     private final SnippetInfo vaArgDouble;
     private final SnippetInfo vaArgFloat;
     private final SnippetInfo vaArgLong;
@@ -157,13 +165,25 @@ final class PosixAMD64VaListSnippets extends SubstrateTemplates implements Snipp
 
     private PosixAMD64VaListSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
+        this.vaListInitialization = snippet(providers, PosixAMD64VaListSnippets.class, "vaListInitializationSnippet");
 
         this.vaArgDouble = snippet(providers, PosixAMD64VaListSnippets.class, "vaArgDoubleSnippet");
         this.vaArgFloat = snippet(providers, PosixAMD64VaListSnippets.class, "vaArgFloatSnippet");
         this.vaArgLong = snippet(providers, PosixAMD64VaListSnippets.class, "vaArgLongSnippet");
         this.vaArgInt = snippet(providers, PosixAMD64VaListSnippets.class, "vaArgIntSnippet");
 
+        lowerings.put(VaListInitializationNode.class, new VaListInitializationSnippetsLowering());
         lowerings.put(VaListNextArgNode.class, new VaListSnippetsLowering());
+    }
+
+    protected class VaListInitializationSnippetsLowering implements NodeLoweringProvider<VaListInitializationNode> {
+
+        @Override
+        public void lower(VaListInitializationNode node, LoweringTool tool) {
+            Arguments args = new Arguments(vaListInitialization, node.graph().getGuardsStage(), tool.getLoweringStage());
+            args.add("vaList", node.getVaList());
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+        }
     }
 
     protected class VaListSnippetsLowering implements NodeLoweringProvider<VaListNextArgNode> {

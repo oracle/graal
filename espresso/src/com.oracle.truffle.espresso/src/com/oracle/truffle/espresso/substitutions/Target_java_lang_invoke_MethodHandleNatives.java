@@ -153,7 +153,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "Nothing to expand");
                 }
                 Klass holder = clazz.getMirrorKlass(meta);
-                int slot = (int) (((long) meta.HIDDEN_VMINDEX.getHiddenObject(self)) - Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
+                int slot = Target_sun_misc_Unsafe.safetyOffsetToSlot((long) meta.HIDDEN_VMINDEX.getHiddenObject(self));
                 boolean isStatic = (flags & ACC_STATIC) != 0;
                 Field f;
                 try {
@@ -590,7 +590,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     private static void plantResolvedField(StaticObject memberName, Field field, int refKind, Meta meta) {
         meta.HIDDEN_VMTARGET.setHiddenObject(memberName, field.getDeclaringKlass());
-        meta.HIDDEN_VMINDEX.setHiddenObject(memberName, (long) field.getSlot() + Target_sun_misc_Unsafe.SAFETY_FIELD_OFFSET);
+        meta.HIDDEN_VMINDEX.setHiddenObject(memberName, Target_sun_misc_Unsafe.slotToSafetyOffset(field.getSlot(), field.isStatic()));
         meta.java_lang_invoke_MemberName_flags.setInt(memberName, getFieldFlags(refKind, field));
         meta.java_lang_invoke_MemberName_clazz.setObject(memberName, field.getDeclaringKlass().mirror());
     }

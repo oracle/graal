@@ -97,6 +97,7 @@ public abstract class ClassRegistry {
             this.classData = classData;
             this.isHidden = isHidden;
             this.isStrongHidden = isStrongHidden;
+            assert isAnonymousClass() || patches == null;
         }
 
         public final StaticObject protectionDomain;

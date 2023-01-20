@@ -60,6 +60,7 @@ import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrFeature;
+import com.oracle.svm.core.jfr.JfrManager;
 import com.oracle.svm.core.jfr.JfrRecorderThread;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
@@ -250,7 +251,7 @@ public abstract class SubstrateSigprofHandler {
      * Installs the platform dependent sigprof handler.
      */
     void install() {
-        if (SubstrateOptions.FlightRecorder.getValue()) {
+        if (JfrManager.isJFREnabled()) {
             threadMXBean = (SubstrateThreadMXBean) ManagementFactory.getThreadMXBean();
             /* Call VM operation to initialize the sampler and the threads. */
             InitializeSamplerOperation initializeSamplerOperation = new InitializeSamplerOperation();
@@ -343,7 +344,7 @@ public abstract class SubstrateSigprofHandler {
              * walk was interrupted because stack size exceeded given depth.
              */
             if (JavaStackWalker.walkCurrentThread(sp, ip, visitor()) || data.getTruncated()) {
-                SamplerSampleWriter.end(data);
+                SamplerSampleWriter.end(data, SamplerSampleWriter.SAMPLE_EVENT_DATA_END);
             }
         }
     }

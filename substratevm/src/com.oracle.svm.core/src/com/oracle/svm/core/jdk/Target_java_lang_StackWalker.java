@@ -34,7 +34,9 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -71,6 +73,7 @@ import com.oracle.svm.core.thread.Target_jdk_internal_vm_ContinuationScope;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(value = java.lang.StackWalker.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class Target_java_lang_StackWalker {
 
     /**
@@ -263,7 +266,7 @@ final class Target_java_lang_StackWalker {
             this.continuation = continuation;
         }
 
-        @Uninterruptible(reason = "Prevent GC while in this method.", calleeMustBe = false)
+        @Uninterruptible(reason = "Prevent GC while in this method.")
         private boolean initWalk() {
             assert stored == null;
             Continuation internal = (continuation != null) ? LoomSupport.getInternalContinuation(continuation) : null;

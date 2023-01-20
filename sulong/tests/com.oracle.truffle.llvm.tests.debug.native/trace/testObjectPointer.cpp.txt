@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 54 CONTINUE "myMethod"
+BREAK 55 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -47,7 +47,7 @@ BREAK 54 CONTINUE "myMethod"
         END_MEMBERS
 
 
-BREAK 58 CONTINUE "myStaticMethod"
+BREAK 59 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -64,7 +64,7 @@ BREAK 58 CONTINUE "myStaticMethod"
         END_MEMBERS
 
 
-BREAK 54 CONTINUE "myMethod"
+BREAK 55 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -83,7 +83,7 @@ BREAK 54 CONTINUE "myMethod"
         END_MEMBERS
 
 
-BREAK 58 CONTINUE "myStaticMethod"
+BREAK 59 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -100,7 +100,7 @@ BREAK 58 CONTINUE "myStaticMethod"
         END_MEMBERS
 
 
-BREAK 54 CONTINUE "myMethod"
+BREAK 55 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -119,7 +119,7 @@ BREAK 54 CONTINUE "myMethod"
         END_MEMBERS
 
 
-BREAK 58 CONTINUE "myStaticMethod"
+BREAK 59 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -136,7 +136,7 @@ BREAK 58 CONTINUE "myStaticMethod"
         END_MEMBERS
 
 
-BREAK 54 CONTINUE "myMethod"
+BREAK 55 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -155,7 +155,7 @@ BREAK 54 CONTINUE "myMethod"
         END_MEMBERS
 
 
-BREAK 58 CONTINUE "myStaticMethod"
+BREAK 59 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -172,7 +172,7 @@ BREAK 58 CONTINUE "myStaticMethod"
         END_MEMBERS
 
 
-BREAK 80 CONTINUE "start"
+BREAK 81 CONTINUE "start"
     OPEN_SCOPE
         MEMBER structured "MyClass" "localObj"
             MEMBER int "int" "a" "16"

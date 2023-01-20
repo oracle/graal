@@ -56,6 +56,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.tools.lsp.exceptions.LSPIOException;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.server.LSPFileSystem;
@@ -202,7 +203,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         Context.Builder builder = Context.newBuilder();
         builder.allowAllAccess(true);
         builder.engine(Engine.create());
-        builder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter));
+        builder.allowIO(IOAccess.newBuilder().fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter)).build());
         ContextAwareExecutor executorWrapper = new ContextAwareExecutorImpl(builder);
 
         setWaitForClose();

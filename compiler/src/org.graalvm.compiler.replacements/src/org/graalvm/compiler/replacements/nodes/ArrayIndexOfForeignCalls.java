@@ -82,7 +82,7 @@ public class ArrayIndexOfForeignCalls {
                     STUB_INDEX_OF_4_S4,
     };
 
-    public static final ForeignCallDescriptor[] STUBS_AMD64 = Stream.concat(Stream.of(
+    public static final ForeignCallDescriptor[] STUBS = Stream.concat(Stream.of(
                     STUB_INDEX_OF_TWO_CONSECUTIVE_S1,
                     STUB_INDEX_OF_TWO_CONSECUTIVE_S2,
                     STUB_INDEX_OF_TWO_CONSECUTIVE_S4,
@@ -93,15 +93,6 @@ public class ArrayIndexOfForeignCalls {
                     STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S2,
                     STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S4),
                     Arrays.stream(STUBS_INDEX_OF_ANY)).toArray(ForeignCallDescriptor[]::new);
-
-    public static final ForeignCallDescriptor[] STUBS_AARCH64 = {
-                    STUB_INDEX_OF_1_S1,
-                    STUB_INDEX_OF_1_S2,
-                    STUB_INDEX_OF_1_S4,
-                    STUB_INDEX_OF_TWO_CONSECUTIVE_S1,
-                    STUB_INDEX_OF_TWO_CONSECUTIVE_S2,
-                    STUB_INDEX_OF_TWO_CONSECUTIVE_S4,
-    };
 
     public static ForeignCallDescriptor getStub(ArrayIndexOfNode indexOfNode) {
         Stride stride = indexOfNode.getStride();

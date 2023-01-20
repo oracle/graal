@@ -62,6 +62,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:JVMCIThreads=1",
                         "-Dgraal.CompilationFailureAction=ExitVM",
                         "-Dgraal.CrashAt=TestProgram.*",
                         "-Xcomp",
@@ -78,6 +79,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:JVMCIThreads=1",
                         "-Dgraal.ExitVMOnException=true",
                         "-Dgraal.CrashAt=TestProgram.*",
                         "-Xcomp",
@@ -148,6 +150,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         };
         testHelper(Arrays.asList(probes), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:JVMCIThreads=1",
                         "-Dgraal.CompilationFailureAction=Diagnose",
                         "-Dgraal.MaxCompilationProblemsPerAction=" + maxProblems,
                         "-Dgraal.CrashAt=TestProgram.*",

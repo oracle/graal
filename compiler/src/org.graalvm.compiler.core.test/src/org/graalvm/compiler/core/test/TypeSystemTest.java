@@ -39,7 +39,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
@@ -211,13 +211,14 @@ public class TypeSystemTest extends GraalCompilerTest {
         TTY.println("========================= " + message);
         SchedulePhase.runWithoutContextOptimizations(graph);
         ScheduleResult schedule = graph.getLastSchedule();
-        for (Block block : schedule.getCFG().getBlocks()) {
+        for (HIRBlock block : schedule.getCFG().getBlocks()) {
             TTY.print("Block " + block + " ");
             if (block == schedule.getCFG().getStartBlock()) {
                 TTY.print("* ");
             }
             TTY.print("-> ");
-            for (Block succ : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                HIRBlock succ = block.getSuccessorAt(i);
                 TTY.print(succ + " ");
             }
             TTY.println();

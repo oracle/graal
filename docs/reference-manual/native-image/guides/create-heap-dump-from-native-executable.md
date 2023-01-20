@@ -14,11 +14,14 @@ To enable heap dump support, native executables must be built with the `--enable
 1. Create heap dumps with VisualVM.
 2. Dump the initial heap of a native executable using the `-XX:+DumpHeapAndExit` command-line option.
 3. Create heap dumps sending a `SIGUSR1` signal at run time.
-4. Create heap dumps programmatically using the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspection.java) API.
+4. Create heap dumps programmatically using the [`org.graalvm.nativeimage.VMRuntime#dumpHeap`](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/VMInspectionOptions.java) API.
 
-All three approaches are described below.
+All approaches are described below.
 
->Note: Creating heap dumps is not available on the Microsoft Windows platform.
+>Note: By default, heap dumps are created in the current working directory. The `-XX:HeapDumpPath` option can be used to specify an alternative filename or directory. For example:  
+> `./helloworld -XX:HeapDumpPath=$HOME/helloworld.hprof`
+
+>Also note: Creating heap dumps is not available on the Microsoft Windows platform.
 
 ## Create Heap Dumps with VisualVM
 
@@ -40,6 +43,8 @@ Heap dump created at '/path/to/helloworld.hprof'.
 ```
 
 ## Create Heap Dumps with SIGUSR1 (Linux/macOS only)
+
+>Note: This requires the `Signal` API, which is enabled by default except when building shared libraries.
 
 The following example is a simple multi-threaded Java application that runs for 60 seconds. 
 This provides you with enough time to send it a `SIGUSR1` signal. The application will handle the signal and create a heap dump in the application's working directory. The heap dump will contain the `Collection` of `Person`s referenced by the static variable `CROWD`.

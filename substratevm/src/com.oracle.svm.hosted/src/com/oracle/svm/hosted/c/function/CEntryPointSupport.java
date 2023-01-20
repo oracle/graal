@@ -107,10 +107,10 @@ public class CEntryPointSupport implements InternalFeature {
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("enterIsolate", Isolate.class) {
+        r.register(new RequiredInvocationPlugin("enterByIsolate", Isolate.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterByIsolate(isolate));
                 return true;
             }
         });

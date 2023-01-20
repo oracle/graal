@@ -52,7 +52,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public abstract class SLExitBuiltin extends SLBuiltinNode {
 
     @Specialization
-    protected Object execute(long exitCode) {
+    protected Object doDefault(long exitCode) {
         SLContext.get(this).getEnv().getContext().closeExited(this, (int) exitCode);
         return SLNull.SINGLETON;
     }

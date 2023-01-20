@@ -76,7 +76,7 @@ macro(setupOptions)
         endif()
     elseif(SULONG_CURRENT_OPT_LEVEL)
         # non-empty but not in the known list
-        message(FATAL_ERROR "Unknonw opt-level: ${SULONG_CURRENT_OPT_LEVEL}")
+        message(FATAL_ERROR "Unknown opt-level: ${SULONG_CURRENT_OPT_LEVEL}")
     endif()
 
     # set post-opt
@@ -86,7 +86,7 @@ macro(setupOptions)
         elseif(SULONG_CURRENT_POST_OPT STREQUAL "MEM2REG")
             set(TARGET_OPT_FLAGS ${MEM2REG})
         else()
-            message(FATAL_ERROR "Unknonw opt sub-variant ${SULONG_CURRENT_POST_OPT}")
+            message(FATAL_ERROR "Unknown opt sub-variant ${SULONG_CURRENT_POST_OPT}")
         endif()
 
         requireVariable(LLVM_OPT)

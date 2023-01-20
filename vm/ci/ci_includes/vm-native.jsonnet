@@ -30,7 +30,7 @@ local vm_common = import '../ci_common/common.jsonnet';
     vm.vm_java_17 + vm_common.svm_common_linux_amd64 + vm_common.gate_vm_linux_amd64 + {
      run+: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
-       ['mx', '--dynamicimports', '$SVM_SUITE,/tools', '--disable-polyglot', '--skip-libraries=true', '--force-bash-launchers=gu,native-image-configure', 'gate', '--no-warning-as-error', '--tags', 'build,svm_sl_tck'],
+       ['mx', '--dynamicimports', '$SVM_SUITE,/tools', '--disable-polyglot', '--skip-libraries=true', '--force-bash-launchers=gu,native-image-configure,polybench', 'gate', '--no-warning-as-error', '--tags', 'build,svm_tck_test,svm_sl_tck'],
      ],
      timelimit: '35:00',
      name: 'gate-vm-svm-truffle-tck-linux-amd64',

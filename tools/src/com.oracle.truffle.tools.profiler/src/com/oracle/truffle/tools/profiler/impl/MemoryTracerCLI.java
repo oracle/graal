@@ -291,14 +291,14 @@ class MemoryTracerCLI extends ProfilerCLI {
             @Override
             public int compare(SourceLocation sl1, SourceLocation sl2) {
                 int sl1Self = 0;
-                int sl1Total = 0;
+                long sl1Total = 0;
                 for (ProfilerNode<MemoryTracer.Payload> node : histogram.get(sl1)) {
                     sl1Self += node.getPayload().getEvents().size();
                     sl1Total += node.isRecursive() ? 0 : node.getPayload().getTotalAllocations();
                 }
 
                 int sl2Self = 0;
-                int sl2Total = 0;
+                long sl2Total = 0;
                 for (ProfilerNode<MemoryTracer.Payload> node : histogram.get(sl2)) {
                     sl2Self += node.getPayload().getEvents().size();
                     sl2Total += node.isRecursive() ? 0 : node.getPayload().getTotalAllocations();
@@ -306,7 +306,7 @@ class MemoryTracerCLI extends ProfilerCLI {
 
                 int result = Integer.compare(sl2Self, sl1Self);
                 if (result == 0) {
-                    return Integer.compare(sl2Total, sl1Total);
+                    return Long.compare(sl2Total, sl1Total);
                 }
                 return result;
             }

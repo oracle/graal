@@ -50,7 +50,7 @@ public class HP_array02 extends JTTTest {
             l[x] = x;
             f[x] = x;
             d[x] = x;
-            sum += b[x] + c[x] + s[x] + iArray[x] + l[x] + f[x] + d[x];
+            sum += b[x] + c[x] + s[x] + iArray[x] + (int) l[x] + (int) f[x] + (int) d[x];
         }
         return sum;
     }

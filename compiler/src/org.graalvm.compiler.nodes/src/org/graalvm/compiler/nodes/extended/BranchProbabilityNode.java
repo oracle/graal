@@ -37,12 +37,15 @@ import org.graalvm.compiler.graph.iterators.NodePredicates;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
@@ -113,6 +116,9 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
         super(TYPE, StampFactory.forKind(JavaKind.Boolean));
         this.probability = probability;
         this.condition = condition;
+
+        GraalError.guarantee(!(condition instanceof ShortCircuitOrNode),
+                        "Branch probabilities must be injected on simple conditions, not short-circuiting && or ||: %s", condition);
     }
 
     public BranchProbabilityNode(ValueNode condition) {
@@ -121,10 +127,6 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
 
     public ValueNode getProbability() {
         return probability;
-    }
-
-    public ValueNode getCondition() {
-        return condition;
     }
 
     public void setProbability(ValueNode probability) {
@@ -179,6 +181,9 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                         usageFound = node.usages().filter(NodePredicates.isA(FixedGuardNode.class).or(ConditionalNode.class)).isNotEmpty();
                     }
                 }
+            }
+            if (!usageFound) {
+                usageFound = hasValidPhiUsage();
             }
             if (usageFound) {
                 ValueNode currentCondition = condition;
@@ -239,6 +244,53 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
 
     private boolean isSubstitutionGraph() {
         return hasExactlyOneUsage() && usages().first() instanceof ReturnNode;
+    }
+
+    /**
+     * Normally a branch probability should be consumed directly as a condition, but in some cases
+     * it can be used as a value itself. For example:
+     *
+     * <pre>
+     * boolean helper() {
+     *     if (probability(a, ...) || probability(b, ...) || probability(c, condition)) {
+     *         return true;
+     *     } else {
+     *         return false;
+     *     }
+     * }
+     *
+     * ...
+     * if (probability(d, helper()) {
+     *     ...
+     * }
+     * </pre>
+     *
+     * After inlining the helper, {@code probability(c, condition)} can be represented as a branch
+     * probability node that feeds into a phi which is then used in an {@code if} condition. This is
+     * benign if that {@code if} has an injected branch probability itself.
+     */
+    private boolean hasValidPhiUsage() {
+        for (Node usage : this.usages()) {
+            if (usage instanceof ValuePhiNode && !((ValuePhiNode) usage).isLoopPhi()) {
+                Node phi = usage;
+                // We want exactly one non-state usage, and it must be a branch probability node.
+                Node uniquePhiUsage = null;
+                for (Node phiUsage : phi.usages()) {
+                    if (phiUsage instanceof FrameState) {
+                        continue;
+                    } else if (uniquePhiUsage == null) {
+                        uniquePhiUsage = phiUsage;
+                    } else if (phiUsage != uniquePhiUsage) {
+                        uniquePhiUsage = null;
+                        break;
+                    }
+                }
+                if (uniquePhiUsage instanceof BranchProbabilityNode) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

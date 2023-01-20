@@ -54,7 +54,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return ALWAYS_APPLICABLE;
     }
 
@@ -88,7 +88,7 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
         }
 
         @Override
-        public Optional<NotApplicable> canApply(GraphState graphState) {
+        public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
             return ALWAYS_APPLICABLE;
         }
 

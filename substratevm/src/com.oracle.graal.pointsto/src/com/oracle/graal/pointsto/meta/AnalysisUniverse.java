@@ -40,6 +40,7 @@ import java.util.function.Function;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
@@ -115,6 +116,7 @@ public class AnalysisUniverse implements Universe {
     private final SnippetReflectionProvider originalSnippetReflection;
     private final SnippetReflectionProvider snippetReflection;
     private final AnalysisFactory analysisFactory;
+    private final AnnotationExtractor annotationExtractor;
 
     private final AtomicInteger numReachableTypes = new AtomicInteger();
 
@@ -133,7 +135,7 @@ public class AnalysisUniverse implements Universe {
 
     @SuppressWarnings("unchecked")
     public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
-                    SnippetReflectionProvider originalSnippetReflection, SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory) {
+                    SnippetReflectionProvider originalSnippetReflection, SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory, AnnotationExtractor annotationExtractor) {
         this.hostVM = hostVM;
         this.wordKind = wordKind;
         this.analysisPolicy = analysisPolicy;
@@ -142,6 +144,7 @@ public class AnalysisUniverse implements Universe {
         this.originalSnippetReflection = originalSnippetReflection;
         this.snippetReflection = snippetReflection;
         this.analysisFactory = analysisFactory;
+        this.annotationExtractor = annotationExtractor;
 
         sealed = false;
         objectReplacers = (Function<Object, Object>[]) new Function<?, ?>[0];
@@ -152,6 +155,10 @@ public class AnalysisUniverse implements Universe {
     @Override
     public HostVM hostVM() {
         return hostVM;
+    }
+
+    protected AnnotationExtractor getAnnotationExtractor() {
+        return annotationExtractor;
     }
 
     public int getNextTypeId() {
@@ -366,7 +373,7 @@ public class AnalysisUniverse implements Universe {
              * it during constant folding.
              */
             AnalysisType declaringType = lookup(field.getDeclaringClass());
-            declaringType.registerAsReachable();
+            declaringType.registerAsReachable(field);
             declaringType.ensureInitialized();
 
             /*
@@ -539,8 +546,16 @@ public class AnalysisUniverse implements Universe {
         return fields.values();
     }
 
+    public AnalysisField getField(ResolvedJavaField resolvedJavaField) {
+        return fields.get(resolvedJavaField);
+    }
+
     public Collection<AnalysisMethod> getMethods() {
         return methods.values();
+    }
+
+    public AnalysisMethod getMethod(ResolvedJavaMethod resolvedJavaMethod) {
+        return methods.get(resolvedJavaMethod);
     }
 
     public Map<JavaConstant, BytecodePosition> getEmbeddedRoots() {

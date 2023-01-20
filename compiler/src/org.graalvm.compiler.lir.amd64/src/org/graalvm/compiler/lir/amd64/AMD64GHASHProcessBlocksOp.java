@@ -51,6 +51,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
@@ -161,10 +162,10 @@ public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        assert stateValue.getPlatformKind().equals(AMD64Kind.QWORD) : stateValue;
-        assert htblValue.getPlatformKind().equals(AMD64Kind.QWORD) : htblValue;
-        assert originalDataValue.getPlatformKind().equals(AMD64Kind.QWORD) : originalDataValue;
-        assert originalBlocksValue.getPlatformKind().equals(AMD64Kind.DWORD) : originalBlocksValue;
+        GraalError.guarantee(stateValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid stateValue kind: %s", stateValue);
+        GraalError.guarantee(htblValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid htblValue kind: %s", htblValue);
+        GraalError.guarantee(originalDataValue.getPlatformKind().equals(AMD64Kind.QWORD), "Invalid originalDataValue kind: %s", originalDataValue);
+        GraalError.guarantee(originalBlocksValue.getPlatformKind().equals(AMD64Kind.DWORD), "Invalid originalBlocksValue kind: %s", originalBlocksValue);
 
         if (masm.supports(AMD64.CPUFeature.AVX)) {
             Label labelBeginProcess = new Label();

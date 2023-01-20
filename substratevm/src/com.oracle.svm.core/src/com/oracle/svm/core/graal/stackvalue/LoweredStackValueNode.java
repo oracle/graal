@@ -61,9 +61,21 @@ public final class LoweredStackValueNode extends StackValueNode implements LIRLo
     private int recursionDepth;
     StackSlotHolder stackSlotHolder;
 
-    protected static class StackSlotHolder {
+    public static class StackSlotHolder {
         protected VirtualStackSlot slot;
         protected NodeLIRBuilderTool gen;
+
+        public VirtualStackSlot getSlot() {
+            return slot;
+        }
+
+        public void setSlot(VirtualStackSlot slot) {
+            this.slot = slot;
+        }
+    }
+
+    public StackSlotHolder getStackSlotHolder() {
+        return stackSlotHolder;
     }
 
     protected LoweredStackValueNode(int sizeInBytes, int alignmentInBytes, StackSlotIdentity slotIdentity) {

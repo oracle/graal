@@ -40,8 +40,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
 
-import jdk.vm.ci.amd64.AMD64;
-
 public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
     static final TruffleString a = TruffleString.fromByteArrayUncached(new byte[]{'a', 'b', 'c', 'd', 'e'}, UTF_8);
@@ -126,7 +124,7 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
     }
 
     private void assertConstant(RootNode root) {
-        Assume.assumeTrue(getArchitecture() instanceof AMD64 &&
+        Assume.assumeTrue(TStringTest.isSupportedArchitecture(getArchitecture()) &&
                         Math.max(GraalOptions.ArrayRegionEqualsConstantLimit.getValue(getGraalOptions()), GraalOptions.StringIndexOfConstantLimit.getValue(getGraalOptions())) >= a.byteLength(UTF_8));
 
         StructuredGraph graph = partialEval(root);

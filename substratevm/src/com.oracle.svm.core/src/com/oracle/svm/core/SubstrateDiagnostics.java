@@ -62,12 +62,13 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
-import com.oracle.svm.core.code.UninterruptibleReusableTypeReader;
+import com.oracle.svm.core.code.ReusableTypeReader;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -782,7 +783,7 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            if (DeoptimizationSupport.enabled()) {
+            if (RuntimeCompilation.isEnabled()) {
                 boolean allowJavaHeapAccess = DiagnosticLevel.javaHeapAccessAllowed(maxDiagnosticLevel) && invocationCount < 2;
                 RuntimeCodeInfoHistory.singleton().printRecentOperations(log, allowJavaHeapAccess);
             }
@@ -798,7 +799,7 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            if (DeoptimizationSupport.enabled()) {
+            if (RuntimeCompilation.isEnabled()) {
                 boolean allowJavaHeapAccess = DiagnosticLevel.javaHeapAccessAllowed(maxDiagnosticLevel) && invocationCount < 3;
                 boolean allowUnsafeOperations = DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel) && invocationCount < 2;
                 RuntimeCodeInfoMemory.singleton().printTable(log, allowJavaHeapAccess, allowUnsafeOperations);
@@ -957,7 +958,7 @@ public class SubstrateDiagnostics {
     }
 
     private static class ImageCodeLocationInfoPrinter {
-        private final UninterruptibleReusableTypeReader frameInfoReader = new UninterruptibleReusableTypeReader();
+        private final ReusableTypeReader frameInfoReader = new ReusableTypeReader();
         private final SingleShotFrameInfoQueryResultAllocator singleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
         private final DummyValueInfoAllocator dummyValueInfoAllocator = new DummyValueInfoAllocator();
         private final FrameInfoState frameInfoState = new FrameInfoState();

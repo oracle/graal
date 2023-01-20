@@ -190,7 +190,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                          * Need to have snapshot of trampoline key set since we update their
                          * positions.
                          */
-                        for (HostedMethod callTarget : trampolines.keySet().toArray(new HostedMethod[0])) {
+                        for (HostedMethod callTarget : trampolines.keySet().toArray(HostedMethod.EMPTY_ARRAY)) {
                             position = NumUtil.roundUp(position, trampolineSupport.getTrampolineAlignment());
                             trampolines.put(callTarget, position);
                             sortedTrampolines.add(Pair.create(callTarget, position));

@@ -37,18 +37,14 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
  */
 public class LowTierLoweringPhase extends LoweringPhase {
 
-    public LowTierLoweringPhase(CanonicalizerPhase canonicalizer, boolean lowerOptimizableMacroNodes) {
-        super(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER, lowerOptimizableMacroNodes, StageFlag.LOW_TIER_LOWERING);
-    }
-
     public LowTierLoweringPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER, StageFlag.LOW_TIER_LOWERING);
     }
 
     @Override
-    public Optional<NotApplicable> canApply(GraphState graphState) {
-        return NotApplicable.combineConstraints(
-                        super.canApply(graphState),
-                        NotApplicable.canOnlyApplyOnce(this, StageFlag.LOW_TIER_LOWERING, graphState));
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.ifApplied(this, StageFlag.LOW_TIER_LOWERING, graphState));
     }
 }

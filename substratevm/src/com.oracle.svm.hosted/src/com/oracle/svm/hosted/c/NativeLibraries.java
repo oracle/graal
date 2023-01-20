@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,13 +75,12 @@ import org.graalvm.word.WordFactory;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.info.ElementInfo;
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -268,7 +267,7 @@ public final class NativeLibraries {
 
     private ResolvedJavaType lookupAndRegisterType(Class<?> clazz) {
         AnalysisType type = (AnalysisType) metaAccess.lookupJavaType(clazz);
-        type.registerAsReachable();
+        type.registerAsReachable("is native library type");
         return type;
     }
 
@@ -296,9 +295,9 @@ public final class NativeLibraries {
         Path staticLibPath = baseSearchPath.resolve("static");
         Platform platform = ImageSingletons.lookup(Platform.class);
         Path platformDependentPath = staticLibPath.resolve((platform.getOS() + "-" + platform.getArchitecture()).toLowerCase());
-        if (LibCBase.isPlatformEquivalent(Platform.LINUX.class)) {
-            platformDependentPath = platformDependentPath.resolve(LibCBase.singleton().getName());
-            if (LibCBase.singleton().requiresLibCSpecificStaticJDKLibraries()) {
+        if (HostedLibCBase.isPlatformEquivalent(Platform.LINUX.class)) {
+            platformDependentPath = platformDependentPath.resolve(HostedLibCBase.singleton().getName());
+            if (HostedLibCBase.singleton().requiresLibCSpecificStaticJDKLibraries()) {
                 return platformDependentPath;
             }
         }
@@ -327,6 +326,17 @@ public final class NativeLibraries {
                 String libraryLocationHint = System.lineSeparator() + "(search path: " + jdkLibDir + ")";
                 hint = defaultBuiltInLibraries.stream().filter(hasStaticLibrary.negate()).collect(Collectors.joining(", ", "Missing libraries: ", libraryLocationHint));
             }
+
+            /* Probe for static JDK libraries in user-specified CLibraryPath directory */
+            if (staticLibsDir == null) {
+                for (String clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
+                    Path path = Paths.get(clibPathComponent);
+                    Predicate<String> hasStaticLibraryCLibraryPath = s -> Files.isRegularFile(path.resolve(getStaticLibraryName(s)));
+                    if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibraryCLibraryPath)) {
+                        return libraryPaths;
+                    }
+                }
+            }
         } catch (IOException e) {
             /* Fallthrough to next strategy */
             hint = e.getMessage();
@@ -344,7 +354,7 @@ public final class NativeLibraries {
                 /* Fail if we will statically link JDK libraries but do not have them available */
                 String libCMessage = "";
                 if (Platform.includedIn(Platform.LINUX.class)) {
-                    libCMessage = " (target libc: " + LibCBase.singleton().getName() + ")";
+                    libCMessage = " (target libc: " + HostedLibCBase.singleton().getName() + ")";
                 }
                 String jdkDownloadURL = JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
                 UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
@@ -455,10 +465,6 @@ public final class NativeLibraries {
         return staticLibs;
     }
 
-    public Path getStaticLibraryPath(String staticLibraryName) {
-        return getStaticLibraryPath(getAllStaticLibs(), staticLibraryName);
-    }
-
     private static Path getStaticLibraryPath(Map<Path, Path> allStaticLibs, String staticLibraryName) {
         return allStaticLibs.get(Paths.get(getStaticLibraryName(staticLibraryName)));
     }
@@ -546,7 +552,7 @@ public final class NativeLibraries {
     }
 
     public void finish() {
-        libraryPaths.addAll(OptionUtils.flatten(",", SubstrateOptions.CLibraryPath.getValue()));
+        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values());
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());

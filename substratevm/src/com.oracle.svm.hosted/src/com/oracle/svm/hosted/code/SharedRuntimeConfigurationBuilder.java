@@ -31,7 +31,6 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -57,7 +56,6 @@ import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateStampProvider;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
-import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -78,9 +76,11 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected final NativeLibraries nativeLibraries;
     protected final ClassInitializationSupport classInitializationSupport;
     protected final LoopsDataProvider originalLoopsDataProvider;
+    protected final SubstratePlatformConfigurationProvider platformConfig;
 
     public SharedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, UniverseMetaAccess metaAccess, Function<Providers, SubstrateBackend> backendProvider,
-                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider) {
+                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
+                    SubstratePlatformConfigurationProvider platformConfig) {
         this.options = options;
         this.hostVM = hostVM;
         this.metaAccess = metaAccess;
@@ -88,6 +88,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         this.nativeLibraries = nativeLibraries;
         this.classInitializationSupport = classInitializationSupport;
         this.originalLoopsDataProvider = originalLoopsDataProvider;
+        this.platformConfig = platformConfig;
     }
 
     public NativeLibraries getNativeLibraries() {
@@ -111,8 +112,6 @@ public abstract class SharedRuntimeConfigurationBuilder {
         SnippetReflectionProvider snippetReflection = createSnippetReflectionProvider();
         ForeignCallsProvider foreignCalls = createForeignCallsProvider(registerConfigs.get(ConfigKind.NORMAL));
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, null, null, null);
-        BarrierSet barrierSet = ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(metaAccess);
-        PlatformConfigurationProvider platformConfig = createPlatformConfigProvider(barrierSet);
         MetaAccessExtensionProvider metaAccessExtensionProvider = HostedConfiguration.instance().createCompilationMetaAccessExtensionProvider(metaAccess);
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider, null);
         LoweringProvider lowerer = createLoweringProvider(p);
@@ -169,10 +168,6 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
     protected LoweringProvider createLoweringProvider(Providers p) {
         return SubstrateLoweringProvider.createForRuntime(p.getMetaAccess(), p.getForeignCalls(), p.getPlatformConfigurationProvider(), p.getMetaAccessExtensionProvider());
-    }
-
-    protected SubstratePlatformConfigurationProvider createPlatformConfigProvider(BarrierSet barrierSet) {
-        return new SubstratePlatformConfigurationProvider(barrierSet);
     }
 
     protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection);

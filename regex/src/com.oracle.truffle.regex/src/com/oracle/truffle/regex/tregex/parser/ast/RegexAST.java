@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -55,7 +56,6 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
@@ -97,7 +97,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private Group wrappedRoot;
     private Group[] captureGroups;
     private final List<QuantifiableTerm> zeroWidthQuantifiables = new ArrayList<>();
-    private final SubTreeIndex subtrees = new SubTreeIndex();
+    private final GlobalSubTreeIndex subtrees = new GlobalSubTreeIndex();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
     private final List<PositionAssertion> reachableDollars = new ArrayList<>();
     private StateSet<RegexAST, PositionAssertion> nfaAnchoredInitialStates;
@@ -204,7 +204,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     public boolean isLiteralString() {
         Group r = getRoot();
         RegexProperties p = getProperties();
-        return !((r.hasBackReferences() || p.hasAlternations() || p.hasLookAroundAssertions() || r.hasLoops()) || ((r.startsWithCaret() || r.endsWithDollar()) && getFlags().isMultiline())) &&
+        return !((p.hasBackReferences() || p.hasAlternations() || p.hasLookAroundAssertions() || r.hasLoops()) || ((r.startsWithCaret() || r.endsWithDollar()) && getFlags().isMultiline())) &&
                         (!p.hasCharClasses() || p.charClassesCanBeMatchedWithMask());
     }
 
@@ -251,7 +251,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return wrappedRoot;
     }
 
-    public SubTreeIndex getSubtrees() {
+    public GlobalSubTreeIndex getSubtrees() {
         return subtrees;
     }
 
@@ -297,6 +297,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     public Group createCaptureGroup(int groupNumber) {
         return register(new Group(groupNumber));
+    }
+
+    public Group createConditionalBackReferenceGroup(int referencedGroupNumber) {
+        referencedGroups.set(referencedGroupNumber);
+        return register(new ConditionalBackReferenceGroup(referencedGroupNumber));
     }
 
     public LookAheadAssertion createLookAheadAssertion(boolean negated) {
@@ -352,6 +357,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     }
 
     public Group register(Group group) {
+        nodeCount.inc();
+        return group;
+    }
+
+    public ConditionalBackReferenceGroup register(ConditionalBackReferenceGroup group) {
         nodeCount.inc();
         return group;
     }
@@ -446,23 +456,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             wrappedRoot = root;
             return;
         }
-        int prefixLength = 0;
-        for (RegexASTSubtreeRootNode subtreeRootNode : subtrees) {
-            if (!subtreeRootNode.isLookBehindAssertion()) {
-                continue;
-            }
-            LookBehindAssertion lb = subtreeRootNode.asLookBehindAssertion();
-            int minPath = lb.getMinPath();
-            RegexASTSubtreeRootNode laParent = lb.getSubTreeParent();
-            while (!(laParent instanceof RegexASTRootNode)) {
-                if (laParent instanceof LookBehindAssertion) {
-                    throw new UnsupportedRegexException("nested look-behind assertions");
-                }
-                minPath += laParent.getMinPath();
-                laParent = laParent.getSubTreeParent();
-            }
-            prefixLength = Math.max(prefixLength, lb.getLiteralLength() - minPath);
+        if (properties.hasNestedLookBehindAssertions()) {
+            throw new UnsupportedRegexException("nested look-behind assertions");
         }
+        final int prefixLength = root.getPrefixLengthMax();
         if (prefixLength == 0) {
             wrappedRoot = root;
             return;
@@ -620,7 +617,8 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         boolean couldCalculateLastGroup = !getOptions().getFlavor().usesLastGroupResultField() || !getProperties().hasCaptureGroupsInLookAroundAssertions();
         return getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA &&
                         getNumberOfCaptureGroups() <= TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA &&
-                        !(getRoot().hasBackReferences() ||
+                        !(getProperties().hasBackReferences() ||
+                                        getProperties().hasConditionalBackReferences() ||
                                         getProperties().hasLargeCountedRepetitions() ||
                                         getProperties().hasNegativeLookAheadAssertions() ||
                                         getProperties().hasNonLiteralLookBehindAssertions() ||
@@ -639,8 +637,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         if (getNumberOfCaptureGroups() > TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA) {
             sb.add(String.format("regex has too many capture groups: %d (threshold: %d)", getNumberOfCaptureGroups(), TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA));
         }
-        if (getRoot().hasBackReferences()) {
+        if (getProperties().hasBackReferences()) {
             sb.add("regex has back-references");
+        }
+        if (getProperties().hasConditionalBackReferences()) {
+            sb.add("regex has conditional back-references");
         }
         if (getProperties().hasLargeCountedRepetitions()) {
             sb.add(String.format("regex has large counted repetitions (threshold: %d for single CC, %d for groups)",

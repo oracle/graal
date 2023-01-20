@@ -57,7 +57,7 @@ public abstract class FloatArrayLoad extends EspressoNode {
     public abstract float execute(StaticObject receiver, int index);
 
     @Specialization
-    float executeWithNullCheck(StaticObject array, int index,
+    float doWithNullCheck(StaticObject array, int index,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck floatArrayLoad) {
         return floatArrayLoad.execute(nullCheck.execute(array), index);

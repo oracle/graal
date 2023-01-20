@@ -46,7 +46,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -59,6 +61,7 @@ import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodSpec;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ReflectionUtil;
@@ -99,6 +102,7 @@ public interface PodSupport {
 }
 
 @AutomaticallyRegisteredFeature
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class PodFeature implements PodSupport, InternalFeature {
     private static final AtomicInteger GENERATED_COUNTER = new AtomicInteger();
 
@@ -140,8 +144,8 @@ final class PodFeature implements PodSupport, InternalFeature {
         pods.forEach((spec, podInfo) -> registerPodAsInstantiated(access, spec, podInfo));
     }
 
-    private static void registerPodAsInstantiated(BeforeAnalysisAccess access, PodSpec spec, PodInfo info) {
-        access.registerAsInHeap(info.podClass);
+    private static void registerPodAsInstantiated(BeforeAnalysisAccess a, PodSpec spec, PodInfo info) {
+        ((BeforeAnalysisAccessImpl) a).registerAsInHeap(info.podClass, "Pod class registered by PodFeature.");
         Pod.RuntimeSupport.singleton().registerPod(spec, info);
     }
 

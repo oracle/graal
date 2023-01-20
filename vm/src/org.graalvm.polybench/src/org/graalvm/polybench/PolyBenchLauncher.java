@@ -465,6 +465,8 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                     break;
                 case "wasm":
                     contextBuilder.option("wasm.Builtins", "wasi_snapshot_preview1");
+                    // Provide a mapping to the /dev dir, so benchmarks can use /dev/null
+                    contextBuilder.option("wasm.WasiMapDirs", "/dev::/dev");
                     break;
             }
         }

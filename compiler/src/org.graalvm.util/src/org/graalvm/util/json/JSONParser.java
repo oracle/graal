@@ -70,6 +70,18 @@ public class JSONParser {
         return value;
     }
 
+    @SuppressWarnings("unchecked")
+    public static EconomicMap<String, Object> parseDict(Reader input) throws IOException {
+        JSONParser parser = new JSONParser(input);
+        return (EconomicMap<String, Object>) parser.parse();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static EconomicMap<String, Object> parseDict(String input) {
+        JSONParser parser = new JSONParser(input);
+        return (EconomicMap<String, Object>) parser.parse();
+    }
+
     private Object parseLiteral() {
         skipWhiteSpace();
 

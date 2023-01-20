@@ -29,6 +29,8 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -278,6 +280,16 @@ public class EncodedSnippets {
         @Override
         public Class<?> originalClass(ResolvedJavaType type) {
             return delegate.originalClass(type);
+        }
+
+        @Override
+        public Executable originalMethod(ResolvedJavaMethod method) {
+            return delegate.originalMethod(method);
+        }
+
+        @Override
+        public Field originalField(ResolvedJavaField field) {
+            return delegate.originalField(field);
         }
     }
 

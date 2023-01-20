@@ -26,18 +26,19 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.graalvm.compiler.debug.DebugContext;
+
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.Range;
-import org.graalvm.compiler.debug.DebugContext;
-
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Section generator for debug_aranges section.
@@ -119,7 +120,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     }
 
     private static int entrySize(Stream<CompiledMethodEntry> compiledEntries) {
-        int size = 0;
+        long size = 0;
         // allow for header data
         size += DW_AR_HEADER_SIZE;
         // align to 2 * address size.
@@ -128,7 +129,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         size += compiledEntries.count() * (2 * 8);
         // allow for two trailing zeroes to terminate
         size += 2 * 8;
-        return size;
+        return Math.toIntExact(size);
     }
 
     @Override

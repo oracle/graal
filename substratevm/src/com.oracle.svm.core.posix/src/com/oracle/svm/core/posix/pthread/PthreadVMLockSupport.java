@@ -185,20 +185,25 @@ public final class PthreadVMLockSupport extends VMLockSupport {
         return PosixVMSemaphoreSupport.singleton().initialize();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     public static void checkResult(int result, String functionName) {
         if (result != 0) {
-            /*
-             * Functions are called very early and late during our execution, so there is not much
-             * we can do when they fail.
-             */
-            SafepointBehavior.preventSafepoints();
-            StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
-
-            Log.log().string(functionName).string(" returned ").signed(result).newline();
-            ImageSingletons.lookup(LogHandler.class).fatalError();
+            fatalError(result, functionName);
         }
+    }
+
+    @Uninterruptible(reason = "Error handling is interruptible.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
+    private static void fatalError(int result, String functionName) {
+        /*
+         * Functions are called very early and late during our execution, so there is not much we
+         * can do when they fail.
+         */
+        SafepointBehavior.preventSafepoints();
+        StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
+        Log.log().string(functionName).string(" returned ").signed(result).newline();
+        ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
     @Override
@@ -315,7 +320,7 @@ final class PthreadVMCondition extends VMCondition {
     @Override
     public long block(long waitNanos) {
         Time.timespec deadlineTimespec = UnsafeStackValue.get(Time.timespec.class);
-        PthreadConditionUtils.delayNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
+        PthreadConditionUtils.durationNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
 
         mutex.clearCurrentThreadOwner();
         final int timedWaitResult = Pthread.pthread_cond_timedwait(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
@@ -326,14 +331,14 @@ final class PthreadVMCondition extends VMCondition {
         }
         /* Check for other errors from the timed wait. */
         PthreadVMLockSupport.checkResult(timedWaitResult, "pthread_cond_timedwait");
-        return PthreadConditionUtils.deadlineTimespecToDelayNanos(deadlineTimespec);
+        return PthreadConditionUtils.deadlineTimespecToDurationNanos(deadlineTimespec);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public long blockNoTransition(long waitNanos) {
         Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
-        PthreadConditionUtils.delayNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
+        PthreadConditionUtils.durationNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
 
         mutex.clearCurrentThreadOwner();
         final int timedwaitResult = Pthread.pthread_cond_timedwait_no_transition(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
@@ -344,7 +349,7 @@ final class PthreadVMCondition extends VMCondition {
         }
         /* Check for other errors from the timed wait. */
         PthreadVMLockSupport.checkResult(timedwaitResult, "pthread_cond_timedwait");
-        return PthreadConditionUtils.deadlineTimespecToDelayNanos(deadlineTimespec);
+        return PthreadConditionUtils.deadlineTimespecToDurationNanos(deadlineTimespec);
     }
 
     @Override

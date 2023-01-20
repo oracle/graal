@@ -61,7 +61,7 @@ pthread_t pthread_self() {
     return (pthread_t) __sulong_thread_self();
 }
 
-#ifdef __linux__
+#if defined(__linux__) || defined(_WIN32)
 int pthread_setname_np(pthread_t thread, const char *name) {
     return __sulong_thread_setname_np((__sulong_thread_t) thread, name);
 }

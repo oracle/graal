@@ -26,6 +26,7 @@ package com.oracle.svm.graal.stubs;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Set;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
@@ -39,8 +40,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.cpufeature.Stubs;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -55,8 +56,8 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
     public static final class StubDescriptor {
 
         private final ForeignCallDescriptor[] foreignCallDescriptors;
-        private final EnumSet<?> minimumRequiredFeatures;
-        private final EnumSet<?> runtimeCheckedCPUFeatures;
+        private final Set<?> minimumRequiredFeatures;
+        private final Set<?> runtimeCheckedCPUFeatures;
         private SnippetRuntime.SubstrateForeignCallDescriptor[] stubs;
 
         public StubDescriptor(ForeignCallDescriptor foreignCallDescriptors, EnumSet<?> minimumRequiredFeatures, EnumSet<?> runtimeCheckedCPUFeatures) {
@@ -78,11 +79,11 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
 
         private SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs(Class<?> stubsHolder) {
             EnumSet<?> buildtimeCPUFeatures = getBuildtimeFeatures();
-            boolean isJITCompilationEnabled = DeoptimizationSupport.enabled();
+            boolean isJITCompilationEnabled = RuntimeCompilation.isEnabled();
             // If JIT is enabled, we compile a variant with the intrinsic's minimal CPU feature set
             // as well as a version with the preferred runtime checked features, even if both
             // variants are not supported by the build time feature set. This way, intrinsics
-            // requiring e.g. SSE4.2 can still be used on a machine that just barely fulfils the
+            // requiring e.g. SSE4.2 can still be used on a machine that just barely fulfills the
             // minimum requirements and doesn't have the preferred AVX2 flag.
             boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumRequiredFeatures) || isJITCompilationEnabled && !minimumRequiredFeatures.equals(runtimeCheckedCPUFeatures);
             boolean generateRuntimeChecked = !buildtimeCPUFeatures.containsAll(runtimeCheckedCPUFeatures) && isJITCompilationEnabled;

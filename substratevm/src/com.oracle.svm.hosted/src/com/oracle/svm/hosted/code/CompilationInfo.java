@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.deopt.Specialize;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
@@ -65,20 +66,6 @@ public class CompilationInfo {
      */
     protected ConstantNode[] specializedArguments;
 
-    /**
-     * A link to the deoptimization target method if this method can deoptimize.
-     */
-    protected HostedMethod deoptTarget;
-
-    /**
-     * A link to the regular compiled method if this method is a deoptimization target.
-     *
-     * Note that it is important that this field is final: the {@link HostedMethod#getName() method
-     * name} depends on this field (to distinguish a regular method from a deoptimization target
-     * method), so mutating this field would mutate the name of a method.
-     */
-    protected final HostedMethod deoptOrigin;
-
     /* Custom parsing and compilation code that is executed instead of that of CompileQueue */
     protected ParseFunction customParseFunction;
     protected CompileFunction customCompileFunction;
@@ -95,39 +82,17 @@ public class CompilationInfo {
     protected final AtomicLong numVirtualCalls = new AtomicLong();
     protected final AtomicLong numEntryPointCalls = new AtomicLong();
 
-    public CompilationInfo(HostedMethod method, HostedMethod deoptOrigin) {
+    public CompilationInfo(HostedMethod method) {
         this.method = method;
-        this.deoptOrigin = deoptOrigin;
-
-        if (deoptOrigin != null) {
-            assert deoptOrigin.compilationInfo.deoptTarget == null;
-            deoptOrigin.compilationInfo.deoptTarget = method;
-        }
-    }
-
-    public boolean isDeoptTarget() {
-        return deoptOrigin != null;
     }
 
     public boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
-        return isDeoptTarget() && (deoptOrigin.compilationInfo.canDeoptForTesting || SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException));
-    }
-
-    /**
-     * Returns whether this bci was registered as a potential deoptimization entrypoint via
-     * {@link SubstrateCompilationDirectives#registerDeoptEntry}.
-     */
-    public boolean isRegisteredDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
-        return isDeoptTarget() && SubstrateCompilationDirectives.singleton().isDeoptTarget(method) &&
-                        SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException);
+        return method.isDeoptTarget() && (method.getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting ||
+                        SubstrateCompilationDirectives.singleton().isRegisteredDeoptEntry(method, bci, duringCall, rethrowException));
     }
 
     public boolean canDeoptForTesting() {
         return canDeoptForTesting;
-    }
-
-    public HostedMethod getDeoptTargetMethod() {
-        return deoptTarget;
     }
 
     public CompilationGraph getCompilationGraph() {
@@ -162,6 +127,10 @@ public class CompilationInfo {
         this.compileOptions = compileOptions;
     }
 
+    public OptionValues getCompileOptions() {
+        return compileOptions;
+    }
+
     public void clear() {
         compilationGraph = null;
         specializedArguments = null;
@@ -189,9 +158,5 @@ public class CompilationInfo {
 
     public CompileFunction getCustomCompileFunction() {
         return customCompileFunction;
-    }
-
-    public boolean hasDefaultParseFunction() {
-        return customCompileFunction == null;
     }
 }

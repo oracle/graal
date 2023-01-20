@@ -30,7 +30,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 
 /**
  * Iterates over a list of nodes, which usually comes from
@@ -45,7 +45,7 @@ public abstract class ScheduledNodeIterator {
     private FixedWithNextNode reconnect;
     private ListIterator<Node> iterator;
 
-    public void processNodes(Block block, ScheduleResult schedule) {
+    public void processNodes(HIRBlock block, ScheduleResult schedule) {
         lastFixed = block.getBeginNode();
         assert lastFixed != null;
         reconnect = null;
@@ -85,5 +85,5 @@ public abstract class ScheduledNodeIterator {
         iterator.set(newNode);
     }
 
-    protected abstract void processNode(Node node, Block block, ScheduleResult schedule, ListIterator<Node> iter);
+    protected abstract void processNode(Node node, HIRBlock block, ScheduleResult schedule, ListIterator<Node> iter);
 }

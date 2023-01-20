@@ -25,6 +25,10 @@
 
 package com.oracle.svm.core.sampler;
 
+import static com.oracle.svm.core.jfr.JfrStackTraceRepository.JfrStackTraceTableEntryStatus.FAILED;
+import static com.oracle.svm.core.jfr.JfrStackTraceRepository.JfrStackTraceTableEntryStatus.SERIALIZED;
+import static com.oracle.svm.core.jfr.JfrStackTraceRepository.JfrStackTraceTableEntryStatus.SHOULD_SERIALIZE;
+
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -48,8 +52,6 @@ import com.oracle.svm.core.util.VMError;
  * Used to access the pool of {@link SamplerBuffer}s.
  */
 public final class SamplerBuffersAccess {
-    private static final CodeInfoQueryResult CODE_INFO_QUERY_RESULT = new CodeInfoQueryResult();
-
     private SamplerBuffersAccess() {
     }
 
@@ -119,18 +121,30 @@ public final class SamplerBuffersAccess {
             stackTraceRepo.acquireLock();
             try {
                 long stackTraceId = stackTraceRepo.getStackTraceId(current, current.add(sampleSize), sampleHash, status, true);
-                if (JfrStackTraceRepository.JfrStackTraceTableEntryStatus.get(status, JfrStackTraceRepository.JfrStackTraceTableEntryStatus.SERIALIZED)) {
-                    ExecutionSampleEvent.writeExecutionSample(sampleTick, buffer.getOwner(), stackTraceId, threadState);
-                    /* Sample is already there, skip the rest of sample plus END_MARK symbol. */
-                    current = current.add(sampleSize).add(SamplerSampleWriter.END_MARKER_SIZE);
+                boolean serialized = JfrStackTraceRepository.JfrStackTraceTableEntryStatus.get(status, SERIALIZED);
+                boolean failed = JfrStackTraceRepository.JfrStackTraceTableEntryStatus.get(status, FAILED);
+                if (serialized || failed) {
+                    /*
+                     * Sample/Stack is already there or there is not enough memory to operate, skip
+                     * the rest of the data.
+                     */
+                    current = current.add(sampleSize);
+                    long endMarker = current.readLong(0);
+                    if (endMarker == SamplerSampleWriter.SAMPLE_EVENT_DATA_END && serialized) {
+                        ExecutionSampleEvent.writeExecutionSample(sampleTick, buffer.getOwner(), stackTraceId, threadState);
+                    }
+                    current = current.add(SamplerSampleWriter.END_MARKER_SIZE);
                 } else {
-                    assert JfrStackTraceRepository.JfrStackTraceTableEntryStatus.get(status, JfrStackTraceRepository.JfrStackTraceTableEntryStatus.SHOULD_SERIALIZE);
+                    assert JfrStackTraceRepository.JfrStackTraceTableEntryStatus.get(status, SHOULD_SERIALIZE);
                     /* Sample is not there. Start walking a stacktrace. */
                     stackTraceRepo.serializeStackTraceHeader(stackTraceId, isTruncated, sampleSize / SamplerSampleWriter.IP_SIZE);
                     while (current.belowThan(end)) {
                         long ip = current.readLong(0);
-                        if (ip == SamplerSampleWriter.END_MARKER) {
-                            ExecutionSampleEvent.writeExecutionSample(sampleTick, buffer.getOwner(), stackTraceId, threadState);
+                        /* Check if we hit any of the end markers. */
+                        if (ip == SamplerSampleWriter.JFR_STACK_TRACE_END || ip == SamplerSampleWriter.SAMPLE_EVENT_DATA_END) {
+                            if (ip == SamplerSampleWriter.SAMPLE_EVENT_DATA_END) {
+                                ExecutionSampleEvent.writeExecutionSample(sampleTick, buffer.getOwner(), stackTraceId, threadState);
+                            }
                             current = current.add(SamplerSampleWriter.END_MARKER_SIZE);
                             break;
                         } else {
@@ -143,6 +157,7 @@ public final class SamplerBuffersAccess {
                 stackTraceRepo.releaseLock();
             }
         }
+        SamplerBufferAccess.reinitialize(buffer);
     }
 
     @Uninterruptible(reason = "The handle should only be accessed from uninterruptible code to prevent that the GC frees the CodeInfo.", callerMustBe = true)
@@ -150,23 +165,22 @@ public final class SamplerBuffersAccess {
         CodePointer ip = WordFactory.pointer(address);
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         if (untetheredInfo.isNull()) {
-            /* Unknown frame. May happen for various reasons. */
+            /* Unknown frame. Must not happen for AOT-compiled code. */
             VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
         }
 
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
         try {
-            /* Now the value of code info can be passed to interruptible code safely. */
-            visitFrame0(tetheredCodeInfo, ip);
+            visitFrameInterruptibly(tetheredCodeInfo, ip);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
     }
 
-    @Uninterruptible(reason = "The handle should only be accessed from uninterruptible code to prevent that the GC frees the CodeInfo.", callerMustBe = true)
-    private static void visitFrame0(CodeInfo codeInfo, CodePointer ip) {
-        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResultUninterruptible(codeInfo, ip, CODE_INFO_QUERY_RESULT);
+    @Uninterruptible(reason = "CodeInfo is tethered, so safepoints are allowed.", calleeMustBe = false)
+    private static void visitFrameInterruptibly(CodeInfo codeInfo, CodePointer ip) {
+        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
         VMError.guarantee(queryResult != null);
         FrameInfoQueryResult frameInfoQueryResult = queryResult.getFrameInfo();
         if (frameInfoQueryResult != null) {

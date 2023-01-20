@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.methodhandles;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -36,14 +35,13 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.internal.misc.Unsafe;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
@@ -188,9 +186,6 @@ public class MethodHandleFeature implements InternalFeature {
                         access.findClassByName("java.lang.invoke.VarHandle"));
 
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle, boundMethodHandleClass);
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerUnsafePutReference,
-                        ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "unreflectSetter", Field.class));
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
@@ -267,10 +262,6 @@ public class MethodHandleFeature implements InternalFeature {
         }
     }
 
-    private static void registerUnsafePutReference(DuringAnalysisAccess access) {
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(Unsafe.class, "putReference", Object.class, long.class, Object.class));
-    }
-
     private static String valueConverterName(Wrapper src, Wrapper dest) {
         String srcType = src.primitiveSimpleName();
         String destType = dest.primitiveSimpleName();
@@ -344,7 +335,10 @@ public class MethodHandleFeature implements InternalFeature {
                 for (int i = arity; i < names.length; ++i) {
                     Object function = nameFunction.get(names[i]);
                     if (function != null) {
-                        registerMemberName(namedFunctionMemberName.get(function));
+                        Object memberName = namedFunctionMemberName.get(function);
+                        if (memberName != null) {
+                            registerMemberName(memberName);
+                        }
                     }
                 }
             } catch (IllegalAccessException e) {

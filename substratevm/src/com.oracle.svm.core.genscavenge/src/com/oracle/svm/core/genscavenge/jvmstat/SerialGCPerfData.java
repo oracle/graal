@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.genscavenge.CollectionPolicy;
 import com.oracle.svm.core.genscavenge.GCAccounting;
 import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.HeapAccounting;
@@ -94,12 +95,14 @@ public class SerialGCPerfData implements PerfDataHolder {
     public void update() {
         GCAccounting accounting = GCImpl.getGCImpl().getAccounting();
         HeapAccounting heapAccounting = HeapImpl.getHeapImpl().getAccounting();
+        CollectionPolicy policy = GCImpl.getPolicy();
+        policy.ensureSizeParametersInitialized();
 
-        long maxNewSize = GCImpl.getPolicy().getMaximumYoungGenerationSize().rawValue();
+        long maxNewSize = policy.getMaximumYoungGenerationSize().rawValue();
         youngCollector.invocations.setValue(accounting.getIncrementalCollectionCount());
         youngCollector.time.setValue(accounting.getIncrementalCollectionTotalNanos());
 
-        youngGen.capacity.setValue(heapAccounting.getYoungUsedBytes().rawValue());
+        youngGen.capacity.setValue(policy.getYoungGenerationCapacity().rawValue());
         youngGen.maxCapacity.setValue(maxNewSize);
 
         youngGen.spaces[0].used.setValue(heapAccounting.getEdenUsedBytes().rawValue());
@@ -107,11 +110,11 @@ public class SerialGCPerfData implements PerfDataHolder {
             youngGen.spaces[i].used.setValue(heapAccounting.getSurvivorSpaceAfterChunkBytes(i - 1).rawValue());
         }
 
-        long maxOldSize = GCImpl.getPolicy().getMaximumHeapSize().rawValue() - maxNewSize;
+        long maxOldSize = policy.getMaximumHeapSize().rawValue() - maxNewSize;
         oldCollector.invocations.setValue(accounting.getCompleteCollectionCount());
         oldCollector.time.setValue(accounting.getCompleteCollectionTotalNanos());
 
-        oldGen.capacity.setValue(accounting.getOldGenerationAfterChunkBytes().rawValue());
+        oldGen.capacity.setValue(policy.getOldGenerationCapacity().rawValue());
         oldGen.maxCapacity.setValue(maxOldSize);
 
         oldGen.spaces[0].used.setValue(accounting.getOldGenerationAfterChunkBytes().rawValue());

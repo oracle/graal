@@ -46,24 +46,6 @@ public final class ConstantReflectionUtil {
     private ConstantReflectionUtil() {
     }
 
-    public static byte[] loadByteArrayConstant(ConstantReflectionProvider crp, JavaConstant targetArg, int maxLength) {
-        int targetArgLength = Integer.min(maxLength, crp.readArrayLength(targetArg));
-        byte[] targetByteArray = new byte[targetArgLength];
-        for (int i = 0; i < targetArgLength; i++) {
-            targetByteArray[i] = (byte) crp.readArrayElement(targetArg, i).asInt();
-        }
-        return targetByteArray;
-    }
-
-    public static char[] loadCharArrayConstant(ConstantReflectionProvider crp, JavaConstant targetArg, int maxLength) {
-        int targetArgLength = Integer.min(maxLength, crp.readArrayLength(targetArg));
-        char[] targetCharArray = new char[targetArgLength];
-        for (int i = 0; i < targetArgLength; i++) {
-            targetCharArray[i] = (char) crp.readArrayElement(targetArg, i).asInt();
-        }
-        return targetCharArray;
-    }
-
     public static int[] loadIntArrayConstant(ConstantReflectionProvider crp, JavaConstant targetArg, int maxLength) {
         int targetArgLength = Integer.min(maxLength, crp.readArrayLength(targetArg));
         int[] targetCharArray = new int[targetArgLength];

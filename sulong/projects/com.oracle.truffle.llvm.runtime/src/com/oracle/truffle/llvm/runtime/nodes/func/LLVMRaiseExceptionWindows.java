@@ -31,10 +31,13 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions.SulongEHUnwindWindowsNode;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage.LLVMThreadLocalValue;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException.LLVMUserExceptionWindows;
@@ -49,10 +52,28 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(value = "throwInfo", type = LLVMExpressionNode.class)
 public abstract class LLVMRaiseExceptionWindows extends LLVMExpressionNode {
 
+    @Child private SulongEHUnwindWindowsNode unwindNode;
+
+    public SulongEHUnwindWindowsNode getUnwind() {
+        if (unwindNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            unwindNode = insert(new SulongEHUnwindWindowsNode(getContext()));
+        }
+        return unwindNode;
+    }
+
     @Specialization(guards = {"throwInfo.isNull()", "exceptionObject.isNull()"})
     public Object doNull(@SuppressWarnings("unused") LLVMPointer exceptionObject, @SuppressWarnings("unused") LLVMPointer throwInfo) {
         // rethrow the last exception
         throw getLanguage().contextThreadLocal.get().popException();
+    }
+
+    protected void unwindCurrentException(LLVMStack stack) {
+        LLVMThreadLocalValue threadLocal = getLanguage().contextThreadLocal.get();
+        if (threadLocal.hasException()) {
+            LLVMUserExceptionWindows exception = (LLVMUserExceptionWindows) threadLocal.popException();
+            getUnwind().unwind(stack, exception.getExceptionObject(), exception.getThrowInfo(), exception.getImageBase());
+        }
     }
 
     @Specialization(guards = {"!throwInfo.isNull()", "throwInfo.isSame(cachedThrowInfo)"}, limit = "3")
@@ -60,12 +81,14 @@ public abstract class LLVMRaiseExceptionWindows extends LLVMExpressionNode {
                     @Cached("throwInfo") LLVMPointer cachedThrowInfo,
                     @Cached("getImageBase(cachedThrowInfo)") LLVMPointer imageBase) {
         LLVMStack stack = getContext().getThreadingStack().getStack(this);
+        unwindCurrentException(stack);
         throw new LLVMUserExceptionWindows(this, imageBase, exceptionObject, cachedThrowInfo, stack.getStackPointer());
     }
 
     @Specialization(guards = "!throwInfo.isNull()", replaces = "doRaise")
     public Object doFallback(LLVMPointer exceptionObject, LLVMPointer throwInfo) {
         LLVMStack stack = getContext().getThreadingStack().getStack(this);
+        unwindCurrentException(stack);
         throw new LLVMUserExceptionWindows(this, getImageBase(throwInfo), exceptionObject, throwInfo, stack.getStackPointer());
     }
 

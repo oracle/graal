@@ -29,9 +29,31 @@
 ;
 
 EXPORTS
+  abort=__sulong_abort
+  _assert
+  _wassert
+  _exit
+  _Exit
   exit=__sulong_exit
   ExitProcess=__sulong_exit
   atexit=__sulong_atexit
+  __cxa_atexit
   _start
   __sulong_init_context
   __sulong_dispose_context
+  pthread_create
+  pthread_equal
+  pthread_join
+  pthread_self
+  pthread_setname_np
+  pthread_getname_np
+  pthread_key_create
+  pthread_key_delete
+  pthread_getspecific
+  pthread_setspecific
+  strncpy
+  strcpy
+  strnlen
+  strlen
+  strcmp
+  strndup

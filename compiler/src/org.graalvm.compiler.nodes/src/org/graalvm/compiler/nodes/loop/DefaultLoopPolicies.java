@@ -45,7 +45,7 @@ import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.Unroll
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
 import org.graalvm.compiler.debug.DebugContext;
@@ -60,7 +60,7 @@ import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
@@ -312,9 +312,9 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     /**
-     * Compute the sum of the local frequencies ({@link AbstractBlockBase#getRelativeFrequency()})
-     * of the control split nodes. If a control split node is within an inner loop then its
-     * frequency is divided by the local loop frequencies of the inner loops.
+     * Compute the sum of the local frequencies ({@link BasicBlock#getRelativeFrequency()}) of the
+     * control split nodes. If a control split node is within an inner loop then its frequency is
+     * divided by the local loop frequencies of the inner loops.
      *
      * The result should be between 0 and {@code controlSplits.size()} times the local loop
      * frequency.
@@ -354,9 +354,9 @@ public class DefaultLoopPolicies implements LoopPolicies {
 
         double freq = 0.0;
         for (ControlSplitNode node : controlSplits) {
-            Block b = cfg.blockFor(node);
+            HIRBlock b = cfg.blockFor(node);
             double f = b.getRelativeFrequency();
-            for (Loop<Block> l = b.getLoop(); l.getDepth() > loopDepth; l = l.getParent()) {
+            for (Loop<HIRBlock> l = b.getLoop(); l.getDepth() > loopDepth; l = l.getParent()) {
                 f /= loop.loopsData().loop(l).localLoopFrequency();
             }
 

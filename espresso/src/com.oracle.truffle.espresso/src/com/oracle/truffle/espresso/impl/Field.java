@@ -429,7 +429,7 @@ public class Field extends Member<Type> implements FieldRef {
         return getObject(obj, false);
     }
 
-    protected StaticObject getObject(StaticObject obj, boolean forceVolatile) {
+    public StaticObject getObject(StaticObject obj, boolean forceVolatile) {
         assert !isHidden() : this + " is hidden, use getHiddenObject";
         return (StaticObject) getObjectHelper(obj, forceVolatile);
     }

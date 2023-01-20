@@ -34,6 +34,7 @@ import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Test;
 
@@ -1196,7 +1197,7 @@ public class SLInspectDebugTest {
         file.createNewFile();
         file.deleteOnExit();
 
-        Context context = Context.newBuilder().allowIO(true).build();
+        Context context = Context.newBuilder().allowIO(IOAccess.ALL).build();
         context.initialize("sl");
         context.enter();
         TruffleFile truffleFile = SLContext.get(null).getEnv().getPublicTruffleFile(file.toPath().toString());

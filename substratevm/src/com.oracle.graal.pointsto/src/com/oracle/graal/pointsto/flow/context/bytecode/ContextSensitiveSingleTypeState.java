@@ -36,6 +36,8 @@ import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.SingleTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.meta.JavaConstant;
+
 public class ContextSensitiveSingleTypeState extends SingleTypeState {
     /** The objects of this type state. */
     protected final AnalysisObject[] objects;
@@ -145,8 +147,16 @@ public class ContextSensitiveSingleTypeState extends SingleTypeState {
     }
 
     @Override
-    public boolean isConstant() {
-        return objects[0].isConstantContextSensitiveObject();
+    public JavaConstant asConstant() {
+        JavaConstant result = null;
+        for (AnalysisObject object : objects) {
+            JavaConstant objectConstant = object.asConstant();
+            if (objectConstant == null || (result != null && !result.equals(objectConstant))) {
+                return null;
+            }
+            result = objectConstant;
+        }
+        return result;
     }
 
     @Override

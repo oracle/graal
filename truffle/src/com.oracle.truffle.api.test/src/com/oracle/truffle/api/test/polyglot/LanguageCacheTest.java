@@ -95,6 +95,7 @@ public class LanguageCacheTest {
         Path location = Paths.get(codeSource.getLocation().toURI());
         Function<String, List<URL>> loader = new Function<>() {
             @Override
+            @SuppressWarnings("deprecation")
             public List<URL> apply(String binaryName) {
                 try {
                     URL url;
@@ -327,6 +328,7 @@ public class LanguageCacheTest {
             this.relocation = relocation;
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public List<URL> apply(String binaryName) {
             String entryName = binaryName.charAt(0) == '/' ? binaryName.substring(1) : binaryName;
@@ -365,6 +367,7 @@ public class LanguageCacheTest {
                         throw new UnsupportedOperationException("Not supported.");
                     }
 
+                    @SuppressWarnings("deprecation")
                     @Override
                     public URL getJarFileURL() {
                         try {

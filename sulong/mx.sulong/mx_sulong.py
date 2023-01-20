@@ -73,6 +73,12 @@ _testDir = join(_suite.dir, "tests")
 
 toolchainLLVMVersion = mx_sulong_llvm_config.VERSION
 
+# TODO: [GR-41902] use mx.add_lib_suffix
+def _lib_suffix(name):
+    if mx.is_windows():
+        return name + ".dll"
+    else:
+        return name + ".so"
 
 def _lib_versioned(arg):
     name, version = arg.split('.')
@@ -332,7 +338,7 @@ def _get_toolchain(toolchain_name):
 
 
 def _get_toolchain_tool(name_tool):
-    name, tool = name_tool.split(",", 2)
+    name, tool = name_tool.split(",", 1)
     return _get_toolchain(name).get_toolchain_tool(tool)
 
 
@@ -359,6 +365,9 @@ def _exe_sub(program):
 
 def _cmd_sub(program):
     return mx_subst.path_substitutions.substitute("<cmd:{}>".format(program))
+
+def _lib_sub(program):
+    return mx_subst.path_substitutions.substitute("<lib:{}>".format(program))
 
 class ToolchainConfig(object):
     # Please keep this list in sync with Toolchain.java (method documentation) and ToolchainImpl.java (lookup switch block).
@@ -481,13 +490,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name='LLVM Runtime Core',
     short_name='llrc',
     dir_name='llvm',
-    license_files=['sulong:SULONG_GRAALVM_DOCS/LICENSE_SULONG.txt'],
-    third_party_license_files=['sulong:SULONG_GRAALVM_DOCS/THIRD_PARTY_LICENSE_SULONG.txt'],
+    license_files=['sulong:SULONG_GRAALVM_LICENSES/LICENSE_SULONG.txt'],
+    third_party_license_files=['sulong:SULONG_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_SULONG.txt'],
     dependencies=['Truffle', 'Truffle NFI'],
     truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API', 'sulong:SULONG_NFI'],
     support_distributions=[
         'sulong:SULONG_CORE_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
+        'sulong:SULONG_GRAALVM_LICENSES',
     ],
     installable=True,
     stability='experimental' if mx.get_os() == 'windows' else 'supported',

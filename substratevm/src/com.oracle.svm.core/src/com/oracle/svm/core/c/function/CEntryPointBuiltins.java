@@ -91,7 +91,7 @@ public final class CEntryPointBuiltins {
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @CEntryPointBuiltinImplementation(builtin = Builtin.GET_CURRENT_THREAD)
     public static IsolateThread getCurrentThread(Isolate isolate) {
-        int status = CEntryPointActions.enterIsolate(isolate);
+        int status = CEntryPointActions.enterByIsolate(isolate);
         if (status != 0) {
             return WordFactory.nullPointer();
         }

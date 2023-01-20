@@ -56,7 +56,7 @@ public final class DisallowedImageHeapObjects {
         CANCELLABLE_CLASS = ReflectionUtil.lookupClass(false, "sun.nio.fs.Cancellable");
         JDK_VIRTUAL_THREAD_CLASS = ReflectionUtil.lookupClass(true, "java.lang.VirtualThread");
         CONTINUATION_CLASS = ReflectionUtil.lookupClass(true, "jdk.internal.vm.Continuation");
-        CONTINUATION_IS_STARTED_METHOD = (CONTINUATION_CLASS == null) ? null : ReflectionUtil.lookupMethod(false, CONTINUATION_CLASS, "isStarted");
+        CONTINUATION_IS_STARTED_METHOD = (CONTINUATION_CLASS == null) ? null : ReflectionUtil.lookupMethod(CONTINUATION_CLASS, "isStarted");
     }
 
     public static void check(Object obj, DisallowedObjectReporter reporter) {
@@ -111,8 +111,8 @@ public final class DisallowedImageHeapObjects {
              */
             if (buffer.capacity() != 0 || getFileDescriptor(buffer) != null) {
                 throw reporter.raise("Detected a direct/mapped ByteBuffer in the image heap. " +
-                                "A direct ByteBuffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image runtime." +
-                                "A mapped ByteBuffer references a file descriptor, which is no longer open and mapped at run time. ",
+                                "A direct ByteBuffer has a pointer to unmanaged C memory, and C memory from the image generator is not available at image runtime. " +
+                                "A mapped ByteBuffer references a file descriptor, which is no longer open and mapped at run time.",
                                 buffer, "Try avoiding to initialize the class that caused initialization of the MappedByteBuffer.");
             }
         } else if (obj instanceof Buffer && ((Buffer) obj).isDirect()) {

@@ -343,6 +343,7 @@ final class HostClassLoader extends ClassLoader implements Closeable {
             }
             return new Resource(protectionDomain) {
 
+                @SuppressWarnings("deprecation")
                 @Override
                 public URL getURL() {
                     try {
@@ -400,6 +401,7 @@ final class HostClassLoader extends ClassLoader implements Closeable {
 
                 return new Resource(protectionDomain) {
 
+                    @SuppressWarnings("deprecation")
                     @Override
                     URL getURL() {
                         StringBuilder url = new StringBuilder("jar:");

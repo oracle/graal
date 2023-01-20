@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -669,4 +669,14 @@ public class CxxVirtualInheritanceFieldTest extends InteropTestBase {
 
     }
 
+    @Test
+    public void testInternalA3(@Inject(TestCallNode.class) CallTarget call) throws InteropException {
+        Object a = InteropLibrary.getUncached().invokeMember(cppLibraryInternal, "getA3");
+        for (int i = 0; i < 4; i++) {
+            CxxVirtualInheritanceFieldTest.fieldNameToAccess = "a" + i + "_data";
+            Object ret = call.call(a);
+            Assert.assertEquals(i, InteropLibrary.getUncached().asInt(ret));
+        }
+
+    }
 }

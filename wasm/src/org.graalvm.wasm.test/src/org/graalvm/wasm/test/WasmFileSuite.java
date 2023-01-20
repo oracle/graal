@@ -66,6 +66,7 @@ import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
@@ -289,7 +290,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 contextBuilder.option("wasm.StoreConstantsPolicy", WasmTestOptions.STORE_CONSTANTS_POLICY);
                 System.out.println("wasm.StoreConstantsPolicy: " + WasmTestOptions.STORE_CONSTANTS_POLICY);
             }
-            contextBuilder.option("wasm.KeepDataSections", "true");
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             final String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {
@@ -317,7 +317,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
             final boolean enableIO = Boolean.parseBoolean(testCase.options().getProperty("enable-io"));
             if (enableIO) {
-                contextBuilder.allowIO(true);
+                contextBuilder.allowIO(IOAccess.ALL);
                 tempWorkingDirectory = Files.createTempDirectory("graalwasm-io-test");
                 contextBuilder.currentWorkingDirectory(tempWorkingDirectory);
                 contextBuilder.option("wasm.WasiMapDirs", "test::" + tempWorkingDirectory);
@@ -511,7 +511,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     private static ContextState saveContext(WasmContext context) {
         Assert.assertTrue("Currently, only 0 or 1 memories can be saved.", context.memories().count() <= 1);
         final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
-        final GlobalRegistry globals = context.globals().duplicate();
+        final GlobalRegistry globals = context.globals().duplicate(context.getContextOptions().supportBulkMemoryAndRefTypes());
         return new ContextState(currentMemory, globals, context.fdManager().size());
     }
 

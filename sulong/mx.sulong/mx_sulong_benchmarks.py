@@ -163,6 +163,10 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 return [re.compile(r'.*', re.MULTILINE)]
         return []
 
+    def flakySuccessPatterns(self):
+        # bzip2 is known to have a compiler error during OSR compilation, which would trigger failurePatterns
+        return [re.compile(r'bzip2')]  # GR-38646
+
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.use_polybench:
             return self.polybenchRules(out, benchmarks, bmSuiteArgs)
@@ -441,7 +445,10 @@ class ClangVm(GccLikeVm):
         super(ClangVm, self).prepare_env(env)
         env["CXXFLAGS"] = env.get("CXXFLAGS", "") + " -stdlib=libc++"
         if "LIBCXXPATH" not in env:
-            env["LIBCXXPATH"] = os.path.join(mx.distribution("LLVM_TOOLCHAIN").get_output(), "lib")
+            toolchainPath = mx.distribution("LLVM_TOOLCHAIN").get_output()
+            out = mx.LinesOutputCapture()
+            mx.run([os.path.join(toolchainPath, "bin", "llvm-config"), "--libdir", "--host-target"], out=out)
+            env["LIBCXXPATH"] = os.path.join(*out.lines)  # os.path.join(libdir, host-target)
         return env
 
 
@@ -522,7 +529,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def launcher_args(self, args):
         launcher_args = [
             '--experimental-options',
-            '--engine.CompilationFailureAction=ExitVM',
+            '--engine.CompilationFailureAction=Diagnose',
             '--engine.TreatPerformanceWarningsAsErrors=call,instanceof,store',
         ]
         return launcher_args + args

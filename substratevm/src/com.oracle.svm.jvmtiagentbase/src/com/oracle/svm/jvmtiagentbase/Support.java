@@ -59,7 +59,7 @@ public final class Support {
 
     public static boolean isInitialized() {
         boolean initialized = jvmtiEnv.isNonNull();
-        assert initialized == jniFunctions.isNonNull() && initialized == (jvmtiVersion == 0);
+        assert initialized == jniFunctions.isNonNull() && initialized == (jvmtiVersion != 0);
         return initialized;
     }
 
@@ -446,7 +446,7 @@ public final class Support {
     }
 
     public static void check(JvmtiError resultCode) {
-        guarantee(resultCode.equals(JvmtiError.JVMTI_ERROR_NONE), "JVMTI call failed with " + resultCode.name());
+        guarantee(resultCode.equals(JvmtiError.JVMTI_ERROR_NONE), "JVMTI call failed with %s", resultCode);
     }
 
     public static void checkPhase(JvmtiError resultCode) throws WrongPhaseException {

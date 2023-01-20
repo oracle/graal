@@ -26,28 +26,39 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+/**
+ * See {@link DefaultLoomTest} for the default runtime.
+ */
 public class OptimizedLoomTest {
 
     @Test
-    public void test() throws InterruptedException {
-        Assume.assumeTrue(LoomUtils.isLoomAvailable());
-        Thread t = LoomUtils.startVirtualThread(() -> {
-            try (Context c = Context.create()) {
-                c.eval("sl", "function main() {}");
-            } catch (IllegalStateException e) {
-                assertTrue(e.getMessage().equals("Using polyglot contexts on Java virtual threads is currently not supported with an optimizing Truffle runtime. " +
-                                "As a workaround you may add the -Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime JVM argument to switch to a non-optimizing runtime when using virtual threads. " +
-                                "Please note that performance is severly reduced in this mode. Loom support for optimizing runtimes will be added in a future release."));
-                return;
+    public void test() throws InterruptedException, IOException {
+        SubprocessTestUtils.executeInSubprocess(OptimizedLoomTest.class, () -> {
+            try {
+                Assume.assumeTrue(LoomUtils.isLoomAvailable());
+                Thread t = LoomUtils.startVirtualThread(() -> {
+                    try (Context c = Context.create()) {
+                        c.eval("sl", "function main() {}");
+                    } catch (IllegalStateException e) {
+                        assertTrue(e.getMessage().equals("Using polyglot contexts on Java virtual threads is currently not supported with an optimizing Truffle runtime. " +
+                                        "As a workaround you may add the -Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime JVM argument to switch to a non-optimizing runtime when using virtual threads. " +
+                                        "Please note that performance is severly reduced in this mode. Loom support for optimizing runtimes will be added in a future release."));
+                        return;
+                    }
+                    Assert.fail("Loom should not be supported yet.");
+                });
+                t.join();
+            } catch (InterruptedException e) {
+                Assert.fail(e.getMessage());
             }
-            Assert.fail("Loom should not be supported yet.");
-        });
-        t.join();
+        }, "--enable-preview");
     }
 
 }

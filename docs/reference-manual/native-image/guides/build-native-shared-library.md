@@ -116,7 +116,7 @@ $GRAALVM_HOME/bin/gu install llvm-toolchain
 
     ```shell
     $GRAALVM_HOME/bin/javac LibEnvMap.java
-    $GRAALVM_HOME/bin/native-image -H:Name=LibEnvMap --shared 
+    $GRAALVM_HOME/bin/native-image -H:Name=libenvmap --shared 
     ```
 
     It will produce the following artifacts:

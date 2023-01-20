@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,8 +41,9 @@ public final class HeapImplMemoryMXBean extends AbstractMemoryMXBean {
 
     @Override
     public MemoryUsage getHeapMemoryUsage() {
-        long heapUsed = HeapImpl.getHeapImpl().getUsedBytes().rawValue();
-        long heapCommitted = HeapImpl.getHeapImpl().getCommittedBytes().rawValue();
-        return new MemoryUsage(UNDEFINED_MEMORY_USAGE, heapUsed, heapCommitted, UNDEFINED_MEMORY_USAGE);
+        long used = HeapImpl.getHeapImpl().getUsedBytes().rawValue();
+        long committed = HeapImpl.getHeapImpl().getCommittedBytes().rawValue();
+        long max = GCImpl.getPolicy().getMaximumHeapSize().rawValue();
+        return new MemoryUsage(UNDEFINED_MEMORY_USAGE, used, committed, max);
     }
 }

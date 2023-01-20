@@ -49,6 +49,7 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
@@ -74,6 +75,7 @@ import sun.security.util.SecurityConstants;
  */
 
 @TargetClass(java.security.AccessController.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"unused"})
 final class Target_java_security_AccessController {
 
@@ -203,6 +205,7 @@ final class Target_java_security_AccessController {
 }
 
 @TargetClass(SecurityManager.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"static-method", "unused"})
 final class Target_java_lang_SecurityManager {
     @Substitute
