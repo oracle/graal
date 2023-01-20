@@ -65,7 +65,7 @@ import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
-import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.extended.OpaqueValueNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
@@ -309,12 +309,12 @@ public abstract class NonSnippetLowerings {
                      * target method. To avoid that the new type check floats above a deoptimization
                      * entry point, we need to anchor the receiver to the control flow. To avoid
                      * that Graal optimizes away the InstanceOfNode immediately, we need an
-                     * OpaqueNode that removes all type information from the receiver. Then we wire
-                     * up an IfNode that leads to a ForeignCallNode in case the verification fails.
+                     * OpaqueValueNode that removes all type information from the receiver. Then we
+                     * wire up an IfNode that leads to a ForeignCallNode in case the verification fails.
                      */
                     FixedValueAnchorNode anchoredReceiver = graph.add(new FixedValueAnchorNode(receiver));
                     graph.addBeforeFixed(node, anchoredReceiver);
-                    ValueNode opaqueReceiver = graph.unique(new OpaqueNode(anchoredReceiver));
+                    ValueNode opaqueReceiver = graph.unique(new OpaqueValueNode(anchoredReceiver));
                     TypeReference declaringClass = TypeReference.createTrustedWithoutAssumptions(method.getDeclaringClass());
                     LogicNode instanceOf = graph.addOrUniqueWithInputs(InstanceOfNode.create(declaringClass, opaqueReceiver));
                     BeginNode passingBegin = graph.add(new BeginNode());

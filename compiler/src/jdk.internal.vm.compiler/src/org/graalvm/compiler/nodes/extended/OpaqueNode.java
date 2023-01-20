@@ -34,12 +34,12 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public abstract class OpaqueNode extends FloatingNode implements NodeWithIdentity {
     public static final NodeClass<OpaqueNode> TYPE = NodeClass.create(OpaqueNode.class);
+
+    @OptionalInput(InputType.Anchor) protected AnchoringNode anchor;
 
     protected OpaqueNode(NodeClass<? extends OpaqueNode> c, Stamp stamp) {
         super(c, stamp);
@@ -51,5 +51,14 @@ public abstract class OpaqueNode extends FloatingNode implements NodeWithIdentit
 
     public void remove() {
         replaceAndDelete(getValue());
+    }
+
+    public AnchoringNode getAnchor() {
+        return anchor;
+    }
+
+    public void setAnchor(AnchoringNode x) {
+        updateUsagesInterface(this.anchor, x);
+        this.anchor = x;
     }
 }
