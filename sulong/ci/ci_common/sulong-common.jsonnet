@@ -266,6 +266,6 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
     jdk: "jdk" + self.jdk_version,
   }
   for name in std.objectFieldsAll(common)
-  if std.startsWith(name, "labsjdk-")
+  if std.startsWith(name, "labsjdk")
 
 }

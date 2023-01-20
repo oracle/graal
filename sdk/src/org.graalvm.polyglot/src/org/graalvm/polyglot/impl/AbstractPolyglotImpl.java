@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -598,6 +598,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void shutdown(Object engine);
 
+        public abstract RuntimeException hostToGuestException(Object engineReceiver, Throwable throwable);
+
     }
 
     public abstract static class AbstractExceptionDispatch extends AbstractDispatchClass {
@@ -765,6 +767,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract void notifyContextClosed(Object contextReceiver, boolean cancelIfExecuting, boolean resourceLimit, String message);
 
         public abstract void notifyEngineClosed(Object engineReceiver, boolean cancelIfExecuting);
+
+        public abstract RuntimeException hostToGuestException(AbstractHostLanguageService hostLanguageService, Throwable throwable);
     }
 
     public abstract static class AbstractHostLanguageService extends AbstractDispatchClass {
@@ -792,9 +796,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object findStaticClass(Object context, String classValue);
 
-        public abstract Object createToHostTypeNode();
-
-        public abstract <T> T toHostType(Object hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
+        public abstract <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
 
         public abstract boolean isHostValue(Object value);
 
@@ -1139,6 +1141,10 @@ public abstract class AbstractPolyglotImpl {
 
     public FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
         return getNext().newReadOnlyFileSystem(fileSystem);
+    }
+
+    public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+        return getNext().newNIOFileSystem(fileSystem);
     }
 
     public ProcessHandler newDefaultProcessHandler() {

@@ -68,7 +68,7 @@ public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
             result = ConstantFoldUtil.tryConstantFold(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), field, receiver, b.getOptions(),
                             b.getGraph().currentNodeSourcePosition());
         } catch (UnsupportedFeatureException e) {
-            if (reason == ParsingReason.PointsToAnalysis) {
+            if (reason.duringAnalysis()) {
                 AnalysisMetaAccess metaAccess = (AnalysisMetaAccess) b.getMetaAccess();
                 ObjectScanner.unsupportedFeatureDuringFieldFolding(metaAccess.getUniverse().getBigbang(), (AnalysisField) field, receiver, e, (AnalysisMethod) b.getMethod(), b.bci());
                 // kill control flow, the image build fails anyway

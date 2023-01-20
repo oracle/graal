@@ -52,6 +52,8 @@ import com.oracle.truffle.nfi.SignatureTypeCachedStateFactory.ClosureToNativeFac
 import com.oracle.truffle.nfi.SignatureTypeCachedStateFactory.FunctionPtrFromNativeFactory;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 final class SignatureTypeCachedState {
 
     static final TypeCachedState INSTANCE = new TypeCachedState(1, ClosureToNativeFactory.getInstance(), FunctionPtrFromNativeFactory.getInstance());

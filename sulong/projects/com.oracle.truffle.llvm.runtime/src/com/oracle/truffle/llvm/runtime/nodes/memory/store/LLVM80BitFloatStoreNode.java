@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -92,10 +92,16 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
             doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         @GenerateAOT.Exclude
         protected static void doOpManaged(LLVMManagedPointer address, long offset, LLVM80BitFloat value,
-                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+            /*
+             * Since we write multiple values, we need to use a dispatching library here.
+             *
+             * @CachedLibrary("address.getObject()") does not work because of possible state
+             * transitions on earlier writes.
+             */
             byte[] bytes = value.getBytes();
             assert bytes.length == LLVM80BitFloat.BYTE_WIDTH;
             long curOffset = address.getOffset() + offset;

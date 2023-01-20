@@ -81,5 +81,6 @@ public final class JsConstants {
                     MULTI_VALUE_RESULT_COUNT_LIMIT,
                     LOCAL_COUNT_LIMIT,
                     TABLE_SIZE_LIMIT,
+                    MEMORY_SIZE_LIMIT,
                     MEMORY_SIZE_LIMIT);
 }

@@ -49,11 +49,25 @@ import java.lang.annotation.Target;
  * Annotate nodes or base classes of nodes to generate factory handlers implementing the
  * {@link NodeFactory} interface. The generated factory handlers class name starts with the source
  * original class and ends with 'Factory'.
- * 
- * @since 0.8 or earlier
+ *
+ * @since 23.0
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
 public @interface GenerateNodeFactory {
 
+    /**
+     * If <code>true</code> enables the generation of node factories of this {@link Specialization
+     * specializing} node. It is disabled by default.
+     *
+     * @since 23.0
+     */
+    boolean value() default true;
+
+    /**
+     * Inherits the semantics of the annotation to subclasses.
+     *
+     * @since 23.0
+     */
+    boolean inherit() default true;
 }

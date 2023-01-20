@@ -90,7 +90,7 @@ public class TreeNodeTest {
     public void removeRightSubtree() {
         MockTree mockTree = new MockTree();
         mockTree.root.removeIf(mockTreeNode -> mockTreeNode == mockTree.right);
-        Assert.assertNull(mockTree.right.parent);
+        Assert.assertNull(mockTree.right.getParent());
         List<MockTreeNode> expectedPreorderAfterRemoval = List.of(mockTree.root, mockTree.left);
         List<MockTreeNode> actualPreorder = new ArrayList<>();
         mockTree.root.forEach(actualPreorder::add);

@@ -19,6 +19,6 @@
   },
 
   builds: [
-    common.daily + common.linux_amd64 + common.oraclejdk11 + gate_math_stubs_listener,
+    common.daily + common.linux_amd64 + common.labsjdk17 + gate_math_stubs_listener,
   ]
 }

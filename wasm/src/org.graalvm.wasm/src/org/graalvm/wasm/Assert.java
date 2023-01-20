@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -116,6 +116,26 @@ public class Assert {
         }
     }
 
+    public static void assertUnsignedLongLess(long n1, long n2, Failure failure) throws WasmException {
+        assertUnsignedLongLess(n1, n2, failure, failure.name);
+    }
+
+    public static void assertUnsignedLongLess(long n1, long n2, Failure failure, String message) throws WasmException {
+        if (Long.compareUnsigned(n1, n2) >= 0) {
+            fail(failure, format("%s: %s should be < %s", message, Long.toUnsignedString(n1), Long.toUnsignedString(n2)));
+        }
+    }
+
+    public static void assertUnsignedLongLessOrEqual(long n1, long n2, Failure failure) throws WasmException {
+        assertUnsignedLongLessOrEqual(n1, n2, failure, failure.name);
+    }
+
+    public static void assertUnsignedLongLessOrEqual(long n1, long n2, Failure failure, String message) throws WasmException {
+        if (Long.compareUnsigned(n1, n2) > 0) {
+            fail(failure, format("%s: %s should be <= %s", message, Long.toUnsignedString(n1), Long.toUnsignedString(n2)));
+        }
+    }
+
     public static void assertUnsignedIntGreaterOrEqual(int n1, int n2, Failure failure) throws WasmException {
         assertUnsignedIntGreaterOrEqual(n1, n2, failure, failure.name);
     }
@@ -123,6 +143,16 @@ public class Assert {
     public static void assertUnsignedIntGreaterOrEqual(int n1, int n2, Failure failure, String message) throws WasmException {
         if (Integer.compareUnsigned(n1, n2) < 0) {
             fail(failure, format("%s: %s should be >= %s", message, Integer.toUnsignedString(n1), Integer.toUnsignedString(n2)));
+        }
+    }
+
+    public static void assertUnsignedLongGreaterOrEqual(long n1, long n2, Failure failure) throws WasmException {
+        assertUnsignedLongGreaterOrEqual(n1, n2, failure, failure.name);
+    }
+
+    public static void assertUnsignedLongGreaterOrEqual(long n1, long n2, Failure failure, String message) throws WasmException {
+        if (Long.compareUnsigned(n1, n2) < 0) {
+            fail(failure, format("%s: %s should be >= %s", message, Long.toUnsignedString(n1), Long.toUnsignedString(n2)));
         }
     }
 

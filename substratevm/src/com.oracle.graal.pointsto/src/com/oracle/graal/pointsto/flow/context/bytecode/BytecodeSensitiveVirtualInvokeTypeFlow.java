@@ -25,10 +25,9 @@
 package com.oracle.graal.pointsto.flow.context.bytecode;
 
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
@@ -36,6 +35,7 @@ import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.CallSiteSensitiveMethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraphClone;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -60,12 +61,12 @@ final class BytecodeSensitiveVirtualInvokeTypeFlow extends AbstractVirtualInvoke
      * site to avoid redundant relinking. MethodFlows is unique for each method type flow and
      * context combination.
      */
-    private final ConcurrentMap<MethodFlowsGraph, Object> calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
+    private final Set<MethodFlowsGraph> calleesFlows = new ConcurrentHashMap<MethodFlowsGraph, Boolean>(4, 0.75f, 1).keySet(Boolean.TRUE);
     private final AnalysisContext callerContext;
 
     BytecodeSensitiveVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
         callerContext = null;
     }
 
@@ -114,24 +115,31 @@ final class BytecodeSensitiveVirtualInvokeTypeFlow extends AbstractVirtualInvoke
 
             assert !Modifier.isAbstract(method.getModifiers());
 
-            CallSiteSensitiveMethodTypeFlow callee = (CallSiteSensitiveMethodTypeFlow) PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
-
-            while (toi.hasNextObject(type)) {
-                AnalysisObject actualReceiverObject = toi.nextObject(type);
-
-                // get the context based on the actualReceiverObject
-                AnalysisContext calleeContext = BytecodeSensitiveAnalysisPolicy.contextPolicy(bb).calleeContext(bb, actualReceiverObject, (BytecodeAnalysisContext) callerContext, callee);
-
-                MethodFlowsGraph calleeFlows = callee.addContext(bb, calleeContext, this);
-
-                if (calleesFlows.put(calleeFlows, Boolean.TRUE) == null) {
-                    /* register the analysis method as a callee for this invoke */
-                    addCallee(calleeFlows.getMethod());
-                    /* linkCallee() does not link the receiver object. */
-                    linkCallee(bb, false, calleeFlows);
+            Collection<PointsToAnalysisMethod> calleeList = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(method),
+                            targetMethod, callerMultiMethodKey, this);
+            for (PointsToAnalysisMethod callee : calleeList) {
+                if (!callee.isOriginalMethod() && allOriginalCallees) {
+                    allOriginalCallees = false;
                 }
+                CallSiteSensitiveMethodTypeFlow calleeTypeFlow = (CallSiteSensitiveMethodTypeFlow) callee.getTypeFlow();
 
-                updateReceiver(bb, calleeFlows, actualReceiverObject);
+                while (toi.hasNextObject(type)) {
+                    AnalysisObject actualReceiverObject = toi.nextObject(type);
+
+                    // get the context based on the actualReceiverObject
+                    AnalysisContext calleeContext = BytecodeSensitiveAnalysisPolicy.contextPolicy(bb).calleeContext(bb, actualReceiverObject, (BytecodeAnalysisContext) callerContext, calleeTypeFlow);
+
+                    MethodFlowsGraphInfo calleeFlows = calleeTypeFlow.addContext(bb, calleeContext, this);
+
+                    if (calleesFlows.add((MethodFlowsGraph) calleeFlows)) {
+                        /* register the analysis method as a callee for this invoke */
+                        addCallee(calleeFlows.getMethod());
+                        /* linkCallee() does not link the receiver object. */
+                        linkCallee(bb, false, calleeFlows);
+                    }
+
+                    updateReceiver(bb, calleeFlows, actualReceiverObject);
+                }
             }
 
         }
@@ -144,7 +152,7 @@ final class BytecodeSensitiveVirtualInvokeTypeFlow extends AbstractVirtualInvoke
     }
 
     @Override
-    public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
-        return new ArrayList<>(calleesFlows.keySet());
+    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
+        return calleesFlows;
     }
 }

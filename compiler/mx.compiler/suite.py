@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.11.4",
+  "mxversion": "6.14.13",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -104,6 +104,11 @@ suite = {
       "digest" : "sha512:40c505dd03ca0bb102f1091b89b90672126922f290bd8370eef9a7afc5d9c1e7b5db08c448a0948ef46bf57d850e166813e2d68bf7b1c88a46256d839b6b0201",
       "packedResource": True,
     },
+    "IDEALGRAPHVISUALIZER-0_31-0A82D7A0D60_DIST" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/idealgraphvisualizer/idealgraphvisualizer-0.31-0a82d7a0d60-all.zip"],
+      "digest" : "sha512:20a3d87927fbecfe9b61dcd6c59f12f4c25e7da1ca926ea6d2571594424782751261e581e1c6e5113aeaeb8f31b8141b1941f7bbef1c6c07c55b9a753812b6db",
+      "packedResource": True,
+    },
 
     "JOL_CLI" : {
       "digest" : "sha512:aeefbf80b51e6aa546f7522b7dfd6a405529fc0d07be4b11fda56103b5b187a03f3b202c1d7ab65ffaa166630a0ec9a4684efccdf224743a3f79b4ca7504819c",
@@ -162,6 +167,9 @@ suite = {
             "digest" : "sha512:422e1078fe5d9e2f71c04ca2bbefef4e09cf9675d132c7531f1fb17330e2b1f9441470541b66c8db2f3d8e105d167e25a78dc11aada524ed623b1ae9a4cfdeeb",
             "urls" : ["{urlbase}/hsdis-aarch64-linux-fcc9b70ac91c00db8a50b0d4345490a68e3743e1.tar.gz"],
           },
+          "riscv64" : {
+            "optional" : True,
+          }
         },
         "darwin" : {
           "amd64" : {
@@ -676,6 +684,27 @@ suite = {
       "workingSets" : "Graal,HotSpot,AMD64",
     },
 
+    "org.graalvm.compiler.hotspot.riscv64" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.core.riscv64",
+        "org.graalvm.compiler.hotspot",
+      ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+        ],
+      },
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+        "GRAAL_PROCESSOR"
+      ],
+      "javaCompliance" : "11+",
+      "workingSets" : "Graal,HotSpot,RISCV64",
+    },
+
     "org.graalvm.compiler.hotspot.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -836,6 +865,7 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.code",
+          "jdk.vm.ci.code.site",
         ],
       },
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1053,6 +1083,7 @@ suite = {
         "GRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Replacements",
+      "jacoco" : "exclude",
     },
 
     "org.graalvm.compiler.replacements.aarch64" : {
@@ -1380,6 +1411,20 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
       "workingSets" : "Graal,AMD64,Test",
+    },
+
+    "org.graalvm.compiler.core.riscv64" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.core",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+        "GRAAL_PROCESSOR",
+      ],
+      "javaCompliance" : "11+",
+      "workingSets" : "Graal,RISCV64",
     },
 
     "org.graalvm.compiler.runtime" : {
@@ -2042,7 +2087,8 @@ suite = {
           "jdk.unsupported" # sun.misc.Unsafe
         ],
         "exports" : [
-          "* to com.oracle.graal.graal_enterprise,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.nativeimage.base",
+          """* to com.oracle.graal.graal_enterprise,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.nativeimage.base,
+          org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise""",
           "org.graalvm.compiler.core.common            to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.hotspot                to jdk.internal.vm.compiler.management",
@@ -2103,8 +2149,10 @@ suite = {
         "org.graalvm.compiler.replacements.aarch64",
         "org.graalvm.compiler.core.amd64",
         "org.graalvm.compiler.replacements.amd64",
+        "org.graalvm.compiler.core.riscv64",
         "org.graalvm.compiler.hotspot.aarch64",
         "org.graalvm.compiler.hotspot.amd64",
+        "org.graalvm.compiler.hotspot.riscv64",
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.lir.aarch64",
         "org.graalvm.compiler.truffle.runtime.serviceprovider",
@@ -2180,6 +2228,9 @@ suite = {
       "description" : "Disassembler support distribution for the GraalVM",
       "os_arch" : {
         "linux" : {
+          "riscv64" : {
+            "optional" : True,
+          },
           "<others>" : {
             "layout" : {
               "hsdis-<arch>.so" : "file:<path:HSDIS>/*",

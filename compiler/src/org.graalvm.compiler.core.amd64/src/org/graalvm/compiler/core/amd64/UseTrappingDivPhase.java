@@ -28,7 +28,6 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
@@ -47,7 +46,7 @@ import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.MultiGuardNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -86,6 +85,7 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, LowTierContext context) {
+        graph.clearLastSchedule();
         if (!GraalOptions.FloatingDivNodes.getValue(graph.getOptions())) {
             return;
         }
@@ -118,13 +118,13 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
                             // condition ensures that divisor is dominated by condition, now do
                             // the
                             // same for the dividend
-                            Block ifBlock = sched.getNodeToBlockMap().get(ifNode);
-                            Block dividendBlock = sched.getNodeToBlockMap().get(dividend);
+                            HIRBlock ifBlock = sched.getNodeToBlockMap().get(ifNode);
+                            HIRBlock dividendBlock = sched.getNodeToBlockMap().get(dividend);
                             if (dividendBlock == null) {
                                 assert dividend instanceof PhiNode;
                                 dividendBlock = sched.getNodeToBlockMap().get(((PhiNode) dividend).merge());
                             }
-                            if (AbstractControlFlowGraph.dominates(dividendBlock, ifBlock)) {
+                            if (dividendBlock.dominates(ifBlock)) {
                                 trappingReplaceTargets.put((IntegerEqualsNode) ifNode.condition(), divRem);
                             }
                         }

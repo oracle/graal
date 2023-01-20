@@ -50,52 +50,54 @@ public class CodeEntry {
     private final int functionIndex;
     private final int maxStackSize;
     private final byte[] localTypes;
-    private final int[] extraData;
-    private final List<CallNode> callNodes;
-    private final int startOffset;
-    private final int endOffset;
     private final byte[] resultTypes;
+    private List<CallNode> callNodes;
+    private final int bytecodeStartOffset;
+    private final int bytecodeEndOffset;
 
-    public CodeEntry(int functionIndex, int currentMaxStackSize, byte[] localTypes, int[] extraData, List<CallNode> callNodes, int startOffset, int endOffset, byte[] resultTypes) {
+    public CodeEntry(int functionIndex, int maxStackSize, byte[] localTypes, byte[] resultTypes, List<CallNode> callNodes, int startOffset, int endOffset) {
         this.functionIndex = functionIndex;
-        this.maxStackSize = currentMaxStackSize;
+        this.maxStackSize = maxStackSize;
         this.localTypes = localTypes;
-        this.extraData = extraData;
-        this.callNodes = callNodes;
-        this.startOffset = startOffset;
-        this.endOffset = endOffset;
         this.resultTypes = resultTypes;
+        this.callNodes = callNodes;
+        this.bytecodeStartOffset = startOffset;
+        this.bytecodeEndOffset = endOffset;
     }
 
-    public int getMaxStackSize() {
+    public int maxStackSize() {
         return maxStackSize;
     }
 
-    public int getFunctionIndex() {
+    public int functionIndex() {
         return functionIndex;
     }
 
-    public byte[] getLocalTypes() {
+    public byte[] localTypes() {
         return localTypes;
     }
 
-    public int[] getExtraData() {
-        return extraData;
+    public byte[] resultTypes() {
+        return resultTypes;
     }
 
-    public List<CallNode> getCallNodes() {
+    public List<CallNode> callNodes() {
         return callNodes;
     }
 
-    public int getStartOffset() {
-        return startOffset;
+    public boolean hasCallNodes() {
+        return callNodes != null;
     }
 
-    public int getEndOffset() {
-        return endOffset;
+    public void setCallNodes(List<CallNode> callNodes) {
+        this.callNodes = callNodes;
     }
 
-    public byte[] getResultTypes() {
-        return resultTypes;
+    public int bytecodeStartOffset() {
+        return bytecodeStartOffset;
+    }
+
+    public int bytecodeEndOffset() {
+        return bytecodeEndOffset;
     }
 }

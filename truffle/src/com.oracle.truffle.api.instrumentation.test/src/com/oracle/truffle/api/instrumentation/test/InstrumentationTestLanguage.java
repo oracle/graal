@@ -168,6 +168,10 @@ import com.oracle.truffle.api.test.TestAPIAccessor;
  * output resp. error output.</li>
  * <li><code>SPAWN(&lt;function&gt;)</code> - calls the function in a new thread</li>
  * <li><code>JOIN()</code> - waits for all spawned threads</li>
+ * <li><code>CALL(name)</code> - call a function</li>
+ * <li><code>CALL_WITH(name, receiver)</code> - call a function with a receiver object</li>
+ * <li><code>CALL_SPLIT(name)</code> - split the function and call it, returns <code>false</code>
+ * when the split is not allowed</li>
  * </ul>
  * </p>
  * <p>
@@ -221,7 +225,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "CALL_WITH", "BLOCK", "ROOT_BODY", "ROOT", "CONSTANT",
                     "VARIABLE", "ARGUMENT", "READ_VAR", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION",
                     "MATERIALIZE_CHILD_STMT_AND_EXPR", "MATERIALIZE_CHILD_STMT_AND_EXPR_NC", "MATERIALIZE_CHILD_STMT_AND_EXPR_SEPARATELY", "MATERIALIZE_CHILD_STATEMENT", "BLOCK_NO_SOURCE_SECTION",
-                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE", "EXIT", "CANCEL", "RETURN", "INVOKE_MEMBER"};
+                    "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE", "EXIT", "CANCEL", "RETURN", "INVOKE_MEMBER", "CALL_SPLIT"};
 
     public InstrumentationTestLanguage() {
     }
@@ -393,8 +397,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             int numberOfIdents = 0;
-            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("READ_VAR") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("UNEXPECTED_RESULT") ||
-                            tag.equals("SLEEP") || tag.equals("SPAWN") || tag.equals("EXIT") || tag.equals("RETURN") || tag.equals("PRINT") || tag.equals("INVOKE_MEMBER")) {
+            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("READ_VAR") || tag.equals("CALL") || tag.equals("CALL_SPLIT") || tag.equals("LOOP") || tag.equals("CONSTANT") ||
+                            tag.equals("SLEEP") || tag.equals("SPAWN") || tag.equals("EXIT") || tag.equals("RETURN") || tag.equals("PRINT") || tag.equals("INVOKE_MEMBER") ||
+                            tag.equals("UNEXPECTED_RESULT")) {
                 numberOfIdents = 1;
             } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("CALL_WITH") || tag.equals("THROW") || tag.equals("CATCH")) {
                 numberOfIdents = 2;
@@ -510,6 +515,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     return new ArgumentNode(idents[0], childArray);
                 case "CALL":
                     return new CallNode(idents[0], childArray);
+                case "CALL_SPLIT":
+                    return new CallCloneNode(idents[0], childArray);
                 case "RECURSIVE_CALL":
                     return new RecursiveCallNode(idents[0], (Integer) parseIdent(idents[1]), childArray);
                 case "CALL_WITH":
@@ -643,6 +650,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     private static class InstrumentationTestRootNode extends RootNode {
 
+        private final InstrumentationTestLanguage language;
         private final String name;
         private final SourceSection sourceSection;
         private final RootCallTarget afterTarget;
@@ -654,6 +662,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         protected InstrumentationTestRootNode(InstrumentationTestLanguage lang, String name, SourceSection sourceSection, RootCallTarget afterTarget, BaseNode... expressions) {
             super(lang, getDefaultFrameDescriptor());
+            this.language = lang;
             this.name = name;
             this.sourceSection = sourceSection;
             this.afterTarget = afterTarget;
@@ -664,6 +673,22 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 this.functionRoot = new FunctionRootNode(expressions);
             }
             this.functionRoot.setSourceSection(sourceSection);
+        }
+
+        @Override
+        public boolean isCloningAllowed() {
+            return true;
+        }
+
+        @Override
+        protected boolean isCloneUninitializedSupported() {
+            return true;
+        }
+
+        @Override
+        protected RootNode cloneUninitialized() {
+            BaseNode[] children = BaseNode.cloneUninitialized(functionRoot.children, Set.of());
+            return new InstrumentationTestRootNode(language, name, sourceSection, afterTarget, children);
         }
 
         @Override
@@ -1285,6 +1310,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             interop = InteropLibrary.getFactory().createDispatched(5);
         }
 
+        private TryCatchNode(InstrumentedNode tryNode, CatchNode[] catchNodes) {
+            this.tryNode = tryNode;
+            this.catchNodes = catchNodes;
+            this.interop = InteropLibrary.getFactory().createDispatched(5);
+        }
+
         @Override
         public void setSourceSection(SourceSection sourceSection) {
             super.setSourceSection(sourceSection);
@@ -1365,7 +1396,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new TryCatchNode(cloneUninitialized(children, materializedTags));
+            return new TryCatchNode(cloneUninitialized(tryNode, materializedTags), cloneUninitialized(catchNodes, materializedTags));
         }
     }
 
@@ -1824,6 +1855,46 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 arguments[i] = children[i].execute(frame);
             }
             return callNode.call(arguments);
+        }
+
+        @Override
+        protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new CallNode(identifier, cloneUninitialized(children, materializedTags));
+        }
+    }
+
+    private static class CallCloneNode extends InstrumentedNode {
+
+        @Child private DirectCallNode callNode;
+        private final String identifier;
+
+        CallCloneNode(String identifier, BaseNode[] children) {
+            super(children);
+            this.identifier = identifier;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (callNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                CallTarget target = InstrumentContext.get(this).callFunctions.callTargets.get(identifier);
+                callNode = insert(Truffle.getRuntime().createDirectCallNode(target));
+            }
+            if (!callNode.isCallTargetCloningAllowed()) {
+                return false;
+            }
+            CallTarget target = getClonedTarget();
+            Object[] arguments = new Object[children.length];
+            for (int i = 0; i < children.length; i++) {
+                arguments[i] = children[i].execute(frame);
+            }
+            return target.call(arguments);
+        }
+
+        @TruffleBoundary
+        private CallTarget getClonedTarget() {
+            callNode.cloneCallTarget();
+            return callNode.getClonedCallTarget();
         }
 
         @Override

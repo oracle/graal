@@ -248,14 +248,14 @@ public class BytecodeInterpreterBenchmark extends TruffleBenchmark {
 
         @TruffleBoundary
         @CompilerControl(Mode.DONT_INLINE)
-        static void boundary(MaterializedFrame f) {
+        static void boundary(@SuppressWarnings("unused") MaterializedFrame f) {
             // just have some complicated code here
             map.put("s", "s");
         }
 
         @BytecodeInterpreterSwitch
         @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
-        public int executeUnsafe(VirtualFrame f) {
+        public int executeUnsafe(@SuppressWarnings("unused") VirtualFrame f) {
             // VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(new Object[0],
             // descriptor);
             final int maxLocals = locals + 2;

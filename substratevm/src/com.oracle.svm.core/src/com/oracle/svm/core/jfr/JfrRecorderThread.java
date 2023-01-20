@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jfr;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -135,8 +136,11 @@ public class JfrRecorderThread extends Thread {
             if (isFullEnough(buffer)) {
                 boolean shouldNotify = persistBuffer(chunkWriter, buffer);
                 if (shouldNotify) {
-                    synchronized (Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE) {
-                        Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE.notifyAll();
+                    Object chunkRotationMonitor = JavaVersionUtil.JAVA_SPEC >= 20
+                                    ? Target_jdk_jfr_internal_JVM.CHUNK_ROTATION_MONITOR
+                                    : Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE;
+                    synchronized (chunkRotationMonitor) {
+                        chunkRotationMonitor.notifyAll();
                     }
                 }
             }

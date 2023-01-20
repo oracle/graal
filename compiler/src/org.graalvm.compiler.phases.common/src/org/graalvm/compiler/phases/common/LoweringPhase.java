@@ -75,7 +75,7 @@ import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
@@ -139,9 +139,9 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         private final NodeBitMap activeGuards;
         private AnchoringNode guardAnchor;
         private FixedWithNextNode lastFixedNode;
-        private NodeMap<Block> nodeMap;
+        private NodeMap<HIRBlock> nodeMap;
 
-        LoweringToolImpl(CoreProviders context, AnchoringNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode, NodeMap<Block> nodeMap) {
+        LoweringToolImpl(CoreProviders context, AnchoringNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode, NodeMap<HIRBlock> nodeMap) {
             super(context);
             this.guardAnchor = guardAnchor;
             this.activeGuards = activeGuards;
@@ -273,7 +273,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
             ScheduleResult schedule = graph.getLastSchedule();
             schedule.getCFG().computePostdominators();
-            Block startBlock = schedule.getCFG().getStartBlock();
+            HIRBlock startBlock = schedule.getCFG().getStartBlock();
             ProcessFrame rootFrame = new ProcessFrame(context, startBlock, graph.createNodeBitMap(), startBlock.getBeginNode(), null, schedule);
             LoweringPhase.processBlock(rootFrame);
         }
@@ -521,7 +521,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         private final ScheduleResult schedule;
         private final CoreProviders context;
 
-        ProcessFrame(CoreProviders context, Block block, NodeBitMap activeGuards, AnchoringNode anchor, ProcessFrame parent, ScheduleResult schedule) {
+        ProcessFrame(CoreProviders context, HIRBlock block, NodeBitMap activeGuards, AnchoringNode anchor, ProcessFrame parent, ScheduleResult schedule) {
             super(block, parent);
             this.context = context;
             this.activeGuards = activeGuards;
@@ -535,12 +535,12 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         }
 
         @Override
-        public ProcessFrame enter(Block b) {
+        public ProcessFrame enter(HIRBlock b) {
             return new ProcessFrame(context, b, activeGuards, b.getBeginNode(), this, schedule);
         }
 
         @Override
-        public Frame<?> enterAlwaysReached(Block b) {
+        public Frame<?> enterAlwaysReached(HIRBlock b) {
             AnchoringNode newAnchor = anchor;
             if (parent != null && b.getLoop() != parent.block.getLoop() && !b.isLoopHeader()) {
                 // We are exiting a loop => cannot reuse the anchor without inserting loop
@@ -563,7 +563,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
     }
 
     @SuppressWarnings("try")
-    private AnchoringNode process(CoreProviders context, final Block b, final NodeBitMap activeGuards, final AnchoringNode startAnchor, ScheduleResult schedule) {
+    private AnchoringNode process(CoreProviders context, final HIRBlock b, final NodeBitMap activeGuards, final AnchoringNode startAnchor, ScheduleResult schedule) {
 
         final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), schedule.getNodeToBlockMap());
 
@@ -710,7 +710,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                 }
             } else if (state == ST_ENTER) {
                 if (f.dominated != null) {
-                    Block n = f.dominated;
+                    HIRBlock n = f.dominated;
                     f.dominated = n.getDominatedSibling();
                     if (n == f.alwaysReachedBlock) {
                         if (f.dominated != null) {
@@ -742,23 +742,23 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
     }
 
     public abstract static class Frame<T extends Frame<?>> {
-        protected final Block block;
+        protected final HIRBlock block;
         final T parent;
-        Block dominated;
-        final Block alwaysReachedBlock;
+        HIRBlock dominated;
+        final HIRBlock alwaysReachedBlock;
 
-        public Frame(Block block, T parent) {
+        public Frame(HIRBlock block, T parent) {
             this.block = block;
             this.alwaysReachedBlock = block.getPostdominator();
             this.dominated = block.getFirstDominated();
             this.parent = parent;
         }
 
-        public Frame<?> enterAlwaysReached(Block b) {
+        public Frame<?> enterAlwaysReached(HIRBlock b) {
             return enter(b);
         }
 
-        public abstract Frame<?> enter(Block b);
+        public abstract Frame<?> enter(HIRBlock b);
 
         public abstract void preprocess();
 

@@ -27,28 +27,30 @@ package com.oracle.graal.pointsto.typestate;
 import static jdk.vm.ci.common.JVMCIError.guarantee;
 
 import java.util.Collection;
-import java.util.Collections;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.util.LightImmutableCollection;
+import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 final class DefaultStaticInvokeTypeFlow extends AbstractStaticInvokeTypeFlow {
     DefaultStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
     public void update(PointsToAnalysis bb) {
         /* The static invokes should be updated only once and the callee should be null. */
-        guarantee(callee == null, "static invoke updated multiple times!");
+        guarantee(LightImmutableCollection.isEmpty(this, CALLEES_ACCESSOR), "static invoke updated multiple times!");
 
         // Unlinked methods can not be parsed
         if (!targetMethod.getWrapped().getDeclaringClass().isLinked()) {
@@ -59,19 +61,16 @@ final class DefaultStaticInvokeTypeFlow extends AbstractStaticInvokeTypeFlow {
          * Initialize the callee lazily so that if the invoke flow is not reached in this context,
          * i.e. for this clone, there is no callee linked/
          */
-        callee = targetMethod.getTypeFlow();
+        initializeCallees(bb);
 
-        MethodFlowsGraph calleeFlows = callee.getOrCreateMethodFlowsGraph(bb, this);
-        linkCallee(bb, true, calleeFlows);
+        LightImmutableCollection.forEach(this, CALLEES_ACCESSOR, (PointsToAnalysisMethod callee) -> {
+            MethodFlowsGraphInfo calleeFlows = callee.getTypeFlow().getOrCreateMethodFlowsGraphInfo(bb, this);
+            linkCallee(bb, true, calleeFlows);
+        });
     }
 
     @Override
-    public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
-        if (callee == null) {
-            /* This static invoke was not updated. */
-            return Collections.emptyList();
-        } else {
-            return Collections.singletonList(callee.getMethodFlowsGraph());
-        }
+    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
+        return DefaultInvokeTypeFlowUtil.getAllCalleesFlows(this);
     }
 }

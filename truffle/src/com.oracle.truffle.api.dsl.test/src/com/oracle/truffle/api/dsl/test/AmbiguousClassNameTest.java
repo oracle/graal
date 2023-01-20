@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.test.AmbiguousClassNameTestFactory.InnerClassR
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class AmbiguousClassNameTest {
 
     /*

@@ -191,7 +191,7 @@ public final class Target_java_lang_Thread {
 
         @Specialization
         @JavaType(internalName = "Ljava/lang/Thread$State;")
-        StaticObject execute(@JavaType(Thread.class) StaticObject self,
+        StaticObject doDefault(@JavaType(Thread.class) StaticObject self,
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().sun_misc_VM_toThreadState.getCallTarget())") DirectCallNode toThreadState) {
             return (StaticObject) toThreadState.call(context.getThreadAccess().getState(self));
@@ -231,6 +231,18 @@ public final class Target_java_lang_Thread {
         } catch (IllegalArgumentException e) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
         }
+    }
+
+    @Substitution
+    public static long getNextThreadIdOffset() {
+        // value should never be used, because we substitute ThreadIdentifiers::next
+        return 0x13371337;
+    }
+
+    @Substitution
+    public static @JavaType(Thread.class) StaticObject currentCarrierThread(@Inject EspressoContext context) {
+        // FIXME: this is wrong for virtual threads
+        return context.getCurrentThread();
     }
 
     @TruffleBoundary

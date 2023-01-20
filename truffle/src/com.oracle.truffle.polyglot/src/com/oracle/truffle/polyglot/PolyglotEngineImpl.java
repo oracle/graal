@@ -52,6 +52,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -865,6 +866,14 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         } else {
             return null;
         }
+    }
+
+    /**
+     * Finds a {@link PolyglotLanguage} for a guest or host language.
+     */
+    PolyglotLanguage findLanguage(LanguageInfo info) {
+        LanguageCache cache = (LanguageCache) EngineAccessor.NODES.getLanguageCache(info);
+        return languages[cache.getStaticIndex()];
     }
 
     private Map<String, PolyglotInstrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
@@ -1721,8 +1730,18 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newLanguageHomeFileSystem());
             }
             if (currentWorkingDirectory != null) {
-                fileSystemConfig.fileSystem.setCurrentWorkingDirectory(fileSystemConfig.fileSystem.parsePath(currentWorkingDirectory));
-                fileSystemConfig.internalFileSystem.setCurrentWorkingDirectory(fileSystemConfig.internalFileSystem.parsePath(currentWorkingDirectory));
+                Path publicFsCwd;
+                Path internalFsCwd;
+                try {
+                    publicFsCwd = fileSystemConfig.fileSystem.parsePath(currentWorkingDirectory);
+                    internalFsCwd = fileSystemConfig.internalFileSystem.parsePath(currentWorkingDirectory);
+                } catch (IllegalArgumentException e) {
+                    throw PolyglotEngineException.illegalArgument(e);
+                } catch (UnsupportedOperationException e) {
+                    throw PolyglotEngineException.illegalArgument(new IllegalArgumentException(e));
+                }
+                fileSystemConfig.fileSystem.setCurrentWorkingDirectory(publicFsCwd);
+                fileSystemConfig.internalFileSystem.setCurrentWorkingDirectory(internalFsCwd);
             }
             final OutputStream useOut;
             if (configOut == null || configOut == INSTRUMENT.getOut(this.out)) {

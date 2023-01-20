@@ -37,9 +37,6 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseAddressNop;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIntelNops;
-import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseNormalNop;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADC;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
@@ -1266,7 +1263,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp VCVTTPD2DQ      = new VexRMOp("VCVTTPD2DQ",      P_66, M_0F,   WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       W1);
         public static final VexRMOp VCVTTPD2QQ      = new VexRMOp("VCVTTPD2QQ",      P_66, M_0F,   W1,  0x7A, VEXOpAssertion.AVX512DQ_VL,               EVEXTuple.FVM,       W1);
         public static final VexRMOp VCVTDQ2PD       = new VexRMOp("VCVTDQ2PD",       P_F3, M_0F,   WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.HVM,       W0);
-        public static final VexRMOp VBROADCASTSS    = new VexRMOp("VBROADCASTSS",    P_66, M_0F38, W0,  0x18, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,      EVEXTuple.FVM,       W0);
+        public static final VexRMOp VBROADCASTSS    = new VexRMOp("VBROADCASTSS",    P_66, M_0F38, W0,  0x18, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       W0);
         public static final VexRMOp VBROADCASTSD    = new VexRMOp("VBROADCASTSD",    P_66, M_0F38, W0,  0x19, VEXOpAssertion.AVX1_256ONLY_AVX512F_VL,   EVEXTuple.FVM,       W1);
         public static final VexRMOp VBROADCASTF128  = new VexRMOp("VBROADCASTF128",  P_66, M_0F38, W0,  0x1A, VEXOpAssertion.AVX1_256ONLY);
         public static final VexRMOp VPBROADCASTI128 = new VexRMOp("VPBROADCASTI128", P_66, M_0F38, W0,  0x5A, VEXOpAssertion.AVX2_256ONLY);
@@ -3216,217 +3213,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public void nop(int count) {
-        int i = count;
-        if (UseNormalNop) {
-            assert i > 0 : " ";
-            // The fancy nops aren't currently recognized by debuggers making it a
-            // pain to disassemble code while debugging. If assert are on clearly
-            // speed is not an issue so simply use the single byte traditional nop
-            // to do alignment.
-
-            for (; i > 0; i--) {
-                emitByte(0x90);
-            }
-            return;
-        }
-
-        if (UseAddressNop) {
-            if (UseIntelNops) {
-                intelNops(i);
-            } else {
-                amdNops(i);
-            }
-            return;
-        }
-
-        // Using nops with size prefixes "0x66 0x90".
-        // From AMD Optimization Guide:
-        // 1: 0x90
-        // 2: 0x66 0x90
-        // 3: 0x66 0x66 0x90
-        // 4: 0x66 0x66 0x66 0x90
-        // 5: 0x66 0x66 0x90 0x66 0x90
-        // 6: 0x66 0x66 0x90 0x66 0x66 0x90
-        // 7: 0x66 0x66 0x66 0x90 0x66 0x66 0x90
-        // 8: 0x66 0x66 0x66 0x90 0x66 0x66 0x66 0x90
-        // 9: 0x66 0x66 0x90 0x66 0x66 0x90 0x66 0x66 0x90
-        // 10: 0x66 0x66 0x66 0x90 0x66 0x66 0x90 0x66 0x66 0x90
-        //
-        while (i > 12) {
-            i -= 4;
-            emitByte(0x66); // size prefix
-            emitByte(0x66);
-            emitByte(0x66);
-            emitByte(0x90); // nop
-        }
-        // 1 - 12 nops
-        if (i > 8) {
-            if (i > 9) {
-                i -= 1;
-                emitByte(0x66);
-            }
-            i -= 3;
-            emitByte(0x66);
-            emitByte(0x66);
-            emitByte(0x90);
-        }
-        // 1 - 8 nops
-        if (i > 4) {
-            if (i > 6) {
-                i -= 1;
-                emitByte(0x66);
-            }
-            i -= 3;
-            emitByte(0x66);
-            emitByte(0x66);
-            emitByte(0x90);
-        }
-        switch (i) {
-            case 4:
-                emitByte(0x66);
-                emitByte(0x66);
-                emitByte(0x66);
-                emitByte(0x90);
-                break;
-            case 3:
-                emitByte(0x66);
-                emitByte(0x66);
-                emitByte(0x90);
-                break;
-            case 2:
-                emitByte(0x66);
-                emitByte(0x90);
-                break;
-            case 1:
-                emitByte(0x90);
-                break;
-            default:
-                assert i == 0;
-        }
-    }
-
-    private void amdNops(int count) {
-        int i = count;
-        //
-        // Using multi-bytes nops "0x0F 0x1F [Address]" for AMD.
-        // 1: 0x90
-        // 2: 0x66 0x90
-        // 3: 0x66 0x66 0x90 (don't use "0x0F 0x1F 0x00" - need patching safe padding)
-        // 4: 0x0F 0x1F 0x40 0x00
-        // 5: 0x0F 0x1F 0x44 0x00 0x00
-        // 6: 0x66 0x0F 0x1F 0x44 0x00 0x00
-        // 7: 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00
-        // 8: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 9: 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 10: 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // 11: 0x66 0x66 0x66 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-
-        // The rest coding is AMD specific - use consecutive Address nops
-
-        // 12: 0x66 0x0F 0x1F 0x44 0x00 0x00 0x66 0x0F 0x1F 0x44 0x00 0x00
-        // 13: 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00 0x66 0x0F 0x1F 0x44 0x00 0x00
-        // 14: 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00
-        // 15: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x0F 0x1F 0x80 0x00 0x00 0x00 0x00
-        // 16: 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00 0x0F 0x1F 0x84 0x00 0x00 0x00 0x00 0x00
-        // Size prefixes (0x66) are added for larger sizes
-
-        while (i >= 22) {
-            i -= 11;
-            emitByte(0x66); // size prefix
-            emitByte(0x66); // size prefix
-            emitByte(0x66); // size prefix
-            addrNop8();
-        }
-        // Generate first nop for size between 21-12
-        switch (i) {
-            case 21:
-                i -= 11;
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 20:
-            case 19:
-                i -= 10;
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 18:
-            case 17:
-                i -= 9;
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 16:
-            case 15:
-                i -= 8;
-                addrNop8();
-                break;
-            case 14:
-            case 13:
-                i -= 7;
-                addrNop7();
-                break;
-            case 12:
-                i -= 6;
-                emitByte(0x66); // size prefix
-                addrNop5();
-                break;
-            default:
-                assert i < 12;
-        }
-
-        // Generate second nop for size between 11-1
-        switch (i) {
-            case 11:
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 10:
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 9:
-                emitByte(0x66); // size prefix
-                addrNop8();
-                break;
-            case 8:
-                addrNop8();
-                break;
-            case 7:
-                addrNop7();
-                break;
-            case 6:
-                emitByte(0x66); // size prefix
-                addrNop5();
-                break;
-            case 5:
-                addrNop5();
-                break;
-            case 4:
-                addrNop4();
-                break;
-            case 3:
-                // Don't use "0x0F 0x1F 0x00" - need patching safe padding
-                emitByte(0x66); // size prefix
-                emitByte(0x66); // size prefix
-                emitByte(0x90); // nop
-                break;
-            case 2:
-                emitByte(0x66); // size prefix
-                emitByte(0x90); // nop
-                break;
-            case 1:
-                emitByte(0x90); // nop
-                break;
-            default:
-                assert i == 0;
-        }
+        intelNops(count);
     }
 
     @SuppressWarnings("fallthrough")
@@ -5011,22 +4798,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public void clflush(AMD64Address adr) {
-        prefix(adr);
-        // opcode family is 0x0F 0xAE
-        emitByte(0x0f);
-        emitByte(0xae);
-        // extended opcode byte is 7
-        emitOperandHelper(7, adr, 0);
-    }
-
-    public void clflushopt(AMD64Address adr) {
-        assert supportsCPUFeature("FLUSHOPT");
-        // adr should be base reg only with no index or offset
-        assert adr.getIndex().equals(Register.None) : adr;
-        assert adr.getScale().equals(Stride.S1) : adr;
-        assert adr.getDisplacement() == 0 : adr;
-        // instruction prefix is 0x66
-        emitByte(0x66);
         prefix(adr);
         // opcode family is 0x0F 0xAE
         emitByte(0x0f);

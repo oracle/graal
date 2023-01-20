@@ -56,6 +56,7 @@ import com.oracle.truffle.api.nodes.Node;
 /*
  * Tests that import generation generates valid code for all combinations of referring to nodes.
  */
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class ImportGenerationTest {
 
     @Test

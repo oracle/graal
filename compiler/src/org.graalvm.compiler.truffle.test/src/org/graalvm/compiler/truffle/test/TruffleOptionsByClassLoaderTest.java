@@ -33,6 +33,7 @@ import java.net.URLClassLoader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleOptions;
@@ -47,6 +48,11 @@ public class TruffleOptionsByClassLoaderTest {
             String urlString = url.toString();
             String protocol = url.getProtocol();
             url = null;
+
+            // may happen with exploded jars
+            // avoid failing this test then.
+            Assume.assumeFalse("file".equals(protocol));
+
             if ("jar".equals(protocol)) {
                 // Example:
                 // jar:file:/usr/lib/jvm/graalvm-ce-19.2.0/jre/lib/truffle/truffle-api.jar!/com/oracle/truffle/api/TruffleOptions.class

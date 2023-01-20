@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -30,7 +30,7 @@
 diff --git a/llvm-stress.cpp b/llvm-stress.cpp
 --- a/llvm-stress.cpp
 +++ b/llvm-stress.cpp
-@@ -169,8 +169,7 @@ Function *GenEmptyFunction(Module *M) {
+@@ -138,8 +138,7 @@ Function *GenEmptyFunction(Module *M) {
    };
  
    auto *FuncTy = FunctionType::get(Type::getVoidTy(Context), ArgsTy, false);
@@ -40,7 +40,7 @@ diff --git a/llvm-stress.cpp b/llvm-stress.cpp
    auto *Func = Function::Create(FuncTy, GlobalValue::ExternalLinkage, Name, M);
    Func->setCallingConv(CallingConv::C);
    return Func;
-@@ -722,7 +721,7 @@ static void IntroduceControlFlow(Function *F, Random &R) {
+@@ -714,7 +713,7 @@ static void IntroduceControlFlow(Function *F, Random &R) {
        BoolInst.push_back(&Instr);
    }
  
@@ -49,7 +49,7 @@ diff --git a/llvm-stress.cpp b/llvm-stress.cpp
  
    for (auto *Instr : BoolInst) {
      BasicBlock *Curr = Instr->getParent();
-@@ -730,7 +729,8 @@ static void IntroduceControlFlow(Function *F, Random &R) {
+@@ -722,7 +721,8 @@ static void IntroduceControlFlow(Function *F, Random &R) {
      BasicBlock *Next = Curr->splitBasicBlock(Loc, "CF");
      Instr->moveBefore(Curr->getTerminator());
      if (Curr != &F->getEntryBlock()) {

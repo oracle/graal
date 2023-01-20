@@ -586,7 +586,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * intrinsified during analysis. Otherwise new code that was not seen as reachable by the
          * static analysis would be compiled.
          */
-        if (reason != ParsingReason.PointsToAnalysis && intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
+        if (!reason.duringAnalysis() && intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
             return false;
         }
         Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
@@ -634,7 +634,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             try {
                 transplanter.graph(graph);
 
-                if (reason == ParsingReason.PointsToAnalysis) {
+                if (reason.duringAnalysis()) {
                     /*
                      * Successfully intrinsified during analysis, remember that we can intrinsify
                      * when parsing for compilation.
@@ -895,7 +895,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             return (ValueNode) tNode;
         }
 
-        private void transplantInvoke(FixedWithNextNode oNode, ResolvedJavaMethod tTargetMethod, InvokeKind invokeKind, ValueNode[] arguments, JavaKind invokeResultKind) {
+        private void transplantInvoke(InvokeNode oNode, ResolvedJavaMethod tTargetMethod, InvokeKind invokeKind, ValueNode[] arguments, JavaKind invokeResultKind) {
             maybeEmitClassInitialization(b, invokeKind == InvokeKind.Static, tTargetMethod.getDeclaringClass());
 
             if (invokeResultKind == JavaKind.Void) {
@@ -918,7 +918,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 }
             }
 
-            b.handleReplacedInvoke(invokeKind, tTargetMethod, arguments, false);
+            b.handleReplacedInvoke(invokeKind, tTargetMethod, arguments, false, lookup(oNode.callTarget().referencedType()));
 
             if (invokeResultKind != JavaKind.Void) {
                 /*

@@ -54,6 +54,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.ExecuteTracingSupport;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -137,6 +138,7 @@ public class ExecuteTracingSupportTest {
     }
 
     @GenerateUncached
+    @GenerateInline(false)
     abstract static class OverloadedExecuteNode extends TracingBaseNode {
 
         abstract Object execute(int x, Object y);
@@ -159,6 +161,7 @@ public class ExecuteTracingSupportTest {
         }
     }
 
+    @GenerateInline(false)
     abstract static class TraceDisabledNode extends TracingBaseNode {
         abstract Object execute(int x);
 
@@ -173,6 +176,7 @@ public class ExecuteTracingSupportTest {
         }
     }
 
+    @GenerateInline(false)
     abstract static class VoidNoArgsNode extends TracingBaseNode {
         abstract void execute();
 
@@ -181,6 +185,7 @@ public class ExecuteTracingSupportTest {
         }
     }
 
+    @GenerateInline(false)
     abstract static class VoidExecuteWithNonVoidSpecializationNode extends TracingBaseNode {
         abstract void execute(int a);
 
@@ -197,6 +202,7 @@ public class ExecuteTracingSupportTest {
         }
     }
 
+    @GenerateInline(false)
     abstract static class ObjectArrayArgNode extends TracingBaseNode {
         abstract Object execute(Object[] arg);
 

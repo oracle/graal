@@ -42,6 +42,8 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.NeverDefault;
 
 /**
  * <p>
@@ -157,7 +159,7 @@ public final class LongValueProfile extends Profile {
     @Override
     public String toString() {
         if (this == DISABLED) {
-            return toStringDisabled(LongValueProfile.class);
+            return toStringDisabled();
         } else {
             return toString(LongValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
                             String.format("value == (long)%s", cachedValue));
@@ -171,6 +173,7 @@ public final class LongValueProfile extends Profile {
      * @see LongValueProfile
      * @since 0.10
      */
+    @NeverDefault
     public static LongValueProfile createIdentityProfile() {
         return create();
     }
@@ -181,8 +184,9 @@ public final class LongValueProfile extends Profile {
      * @see LongValueProfile
      * @since 22.1
      */
+    @NeverDefault
     public static LongValueProfile create() {
-        if (Profile.isProfilingEnabled()) {
+        if (isProfilingEnabled()) {
             return new LongValueProfile();
         } else {
             return DISABLED;
@@ -196,6 +200,16 @@ public final class LongValueProfile extends Profile {
      */
     public static LongValueProfile getUncached() {
         return DISABLED;
+    }
+
+    /**
+     * Returns an inlined version of the profile. This version is automatically used by Truffle DSL
+     * node inlining.
+     *
+     * @since 23.0
+     */
+    public static InlinedLongValueProfile inline(InlineTarget target) {
+        return InlinedLongValueProfile.inline(target);
     }
 
 }

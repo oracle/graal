@@ -101,7 +101,9 @@ public final class ExceptionSynthesizer {
 
     public static Method throwExceptionMethod(Class<?>... methodDescriptor) {
         Method method = throwExceptionMethodOrNull(methodDescriptor);
-        VMError.guarantee(method != null, "Exception synthesizer method " + Arrays.toString(methodDescriptor) + " not found.");
+        if (method == null) {
+            throw VMError.shouldNotReachHere("Exception synthesizer method " + Arrays.toString(methodDescriptor) + " not found.");
+        }
         return method;
     }
 

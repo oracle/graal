@@ -112,11 +112,11 @@ public final class WasmTable extends EmbedderDataHolder implements TruffleObject
     }
 
     /**
-     * Shrinks this table's size to its {@link #declaredMinSize()} initial size}, and sets all
+     * Shrinks this table's size to its {@link #declaredMinSize()} initial size, and sets all
      * elements to {@code null}.
      * <p>
      * Note: this does not restore content from elements section. For this, use
-     * {@link org.graalvm.wasm.BinaryParser#resetTableState}.
+     * {@link org.graalvm.wasm.parser.bytecode.BytecodeParser#resetTableState}.
      */
     @TruffleBoundary
     public void reset() {

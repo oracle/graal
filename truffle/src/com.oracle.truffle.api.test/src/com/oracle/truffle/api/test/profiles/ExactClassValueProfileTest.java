@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,48 +40,23 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
-import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
-import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.theories.DataPoint;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
+import com.oracle.truffle.api.profiles.ByteValueProfile;
+import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-@RunWith(Theories.class)
-public class ExactClassValueProfileTest {
+public class ExactClassValueProfileTest extends AbstractProfileTest {
 
-    @SuppressWarnings("deprecation")
-    private static Integer newInteger(int value) {
-        return new Integer(value);
-    }
-
-    @DataPoint public static final String O1 = new String();
-    @DataPoint public static final String O2 = new String();
-    @DataPoint public static final Object O3 = new Object();
-    @DataPoint public static final Integer O4 = newInteger(1);
-    @DataPoint public static final Integer O5 = null;
-    @DataPoint public static final TestBaseClass O6 = new TestBaseClass();
-    @DataPoint public static final TestSubClass O7 = new TestSubClass();
-
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-    }
-
-    private ValueProfile profile;
+    private static Object[] VALUES = new Object[]{"", 42, 42d, new TestBaseClass(), new TestSubClass()};
 
     private static class TestBaseClass {
     }
@@ -89,77 +64,205 @@ public class ExactClassValueProfileTest {
     private static class TestSubClass extends TestBaseClass {
     }
 
-    @Before
-    public void create() {
-        profile = (ValueProfile) invokeStatic(loadRelative(ExactClassValueProfileTest.class, "ValueProfile$ExactClass"), "create");
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
-    private static boolean isGeneric(ValueProfile profile) {
-        return (boolean) invoke(profile, "isGeneric");
+    @SuppressWarnings("unchecked")
+    @Override
+    protected <T> T createEnabled(Class<T> p) {
+        if (p == ValueProfile.class) {
+            for (Class<?> c : ValueProfile.class.getDeclaredClasses()) {
+                if (c.getSimpleName().equals("ExactClass")) {
+                    return (T) super.createEnabled(c);
+                }
+            }
+        }
+        return super.createEnabled(p);
     }
 
-    private static boolean isUninitialized(ValueProfile profile) {
-        return (boolean) invoke(profile, "isUninitialized");
-    }
-
-    private static Object getCachedClass(ValueProfile profile) {
-        return invoke(profile, "getCachedClass");
+    @Override
+    protected InlinableField[] getInlinedFields() {
+        return createInlinedFields(1, 0, 0, 0, 1);
     }
 
     @Test
-    public void testInitial() throws Exception {
+    public void testNotCrashing() {
+        ValueProfile profile = createEnabled(ValueProfile.class);
+        profile.disable();
+        profile.reset();
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
+    }
+
+    @Test
+    public void testInitial() {
+        ValueProfile profile = createEnabled(ValueProfile.class);
         assertThat(isGeneric(profile), is(false));
         assertThat(isUninitialized(profile), is(true));
-        assertNull(getCachedClass(profile));
+        profile.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testProfileOneObject() {
+        for (Object value : VALUES) {
+            ValueProfile profile = createEnabled(ValueProfile.class);
+            Object result = profile.profile(value);
+            assertThat(result, is(value));
+            assertEquals(getCachedValue(profile), value.getClass());
+            assertThat(isUninitialized(profile), is(false));
+        }
+    }
+
+    @Test
+    public void testProfileTwoObject() {
+        for (Object value0 : VALUES) {
+            for (Object value1 : VALUES) {
+                ValueProfile profile = createEnabled(ValueProfile.class);
+                Object result0 = profile.profile(value0);
+                Object result1 = profile.profile(value1);
+
+                assertThat(result0, is(value0));
+                assertThat(result1, is(value1));
+
+                if (value0 == value1) {
+                    assertThat(getCachedValue(profile), is((Object) value0.getClass()));
+                    assertThat(isGeneric(profile), is(false));
+                } else {
+                    assertThat(isGeneric(profile), is(true));
+                }
+                assertThat(isUninitialized(profile), is(false));
+                toString(profile); // test that it is not crashing
+            }
+        }
+    }
+
+    @Test
+    public void testProfileThreeObject() {
+        for (Object value0 : VALUES) {
+            for (Object value1 : VALUES) {
+                for (Object value2 : VALUES) {
+                    ValueProfile profile = createEnabled(ValueProfile.class);
+                    Object result0 = profile.profile(value0);
+                    Object result1 = profile.profile(value1);
+                    Object result2 = profile.profile(value2);
+
+                    assertThat(result0, is(value0));
+                    assertThat(result1, is(value1));
+                    assertThat(result2, is(value2));
+
+                    if (value0 == value1 && value1 == value2) {
+                        assertThat(getCachedValue(profile), is((Object) value0.getClass()));
+                        assertThat(isGeneric(profile), is(false));
+                    } else {
+                        assertThat(isGeneric(profile), is(true));
+                    }
+                    assertThat(isUninitialized(profile), is(false));
+                    profile.toString(); // test that it is not crashing
+
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testNotCrashingInlined() {
+        InlinedExactClassProfile profile = createEnabled(InlinedExactClassProfile.class);
+        profile.disable(state);
+        profile.reset(state);
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
         assertNotNull(profile.toString());
     }
 
-    @Theory
-    public void testProfileOne(Object value) throws Exception {
-        Object result = profile.profile(value);
-
-        assertThat(result, is(value));
-        assertEquals(expectedClass(value), getCachedClass(profile));
-        assertThat(isUninitialized(profile), is(false));
-        assertNotNull(profile.toString());
+    @Test
+    public void testInitialInlined() {
+        ByteValueProfile profile = createEnabled(ByteValueProfile.class);
+        assertThat(isGeneric(profile), is(false));
+        assertThat(isUninitialized(profile), is(true));
+        profile.toString(); // test that it is not crashing
     }
 
-    @Theory
-    public void testProfileTwo(Object value0, Object value1) throws Exception {
-        Object result0 = profile.profile(value0);
-        Object result1 = profile.profile(value1);
-
-        assertThat(result0, is(value0));
-        assertThat(result1, is(value1));
-
-        Object expectedClass = expectedClass(value0) == expectedClass(value1) ? expectedClass(value0) : Object.class;
-
-        assertEquals(expectedClass, getCachedClass(profile));
-        assertThat(isUninitialized(profile), is(false));
-        assertThat(isGeneric(profile), is(expectedClass == Object.class));
-        assertNotNull(profile.toString());
+    @Test
+    public void testProfileOneObjectInlined() {
+        for (Object value : VALUES) {
+            InlinedExactClassProfile profile = createEnabled(InlinedExactClassProfile.class);
+            Object result = profile.profile(state, value);
+            assertThat(result, is(value));
+            assertEquals(getCachedValue(profile), value.getClass());
+            assertThat(isUninitialized(profile), is(false));
+        }
     }
 
-    @Theory
-    public void testProfileThree(Object value0, Object value1, Object value2) throws Exception {
-        Object result0 = profile.profile(value0);
-        Object result1 = profile.profile(value1);
-        Object result2 = profile.profile(value2);
+    @Test
+    public void testProfileTwoObjectInlined() {
+        for (Object value0 : VALUES) {
+            for (Object value1 : VALUES) {
+                InlinedExactClassProfile profile = createEnabled(InlinedExactClassProfile.class);
+                Object result0 = profile.profile(state, value0);
+                Object result1 = profile.profile(state, value1);
 
-        assertThat(result0, is(value0));
-        assertThat(result1, is(value1));
-        assertThat(result2, is(value2));
+                assertThat(result0, is(value0));
+                assertThat(result1, is(value1));
 
-        Object expectedClass = expectedClass(value0) == expectedClass(value1) && expectedClass(value1) == expectedClass(value2) ? expectedClass(value0) : Object.class;
-
-        assertEquals(expectedClass, getCachedClass(profile));
-        assertThat(isUninitialized(profile), is(false));
-        assertThat(isGeneric(profile), is(expectedClass == Object.class));
-        assertNotNull(profile.toString());
+                if (value0 == value1) {
+                    assertThat(getCachedValue(profile), is((Object) value0.getClass()));
+                    assertThat(isGeneric(profile), is(false));
+                } else {
+                    assertThat(isGeneric(profile), is(true));
+                }
+                assertThat(isUninitialized(profile), is(false));
+                toString(profile); // test that it is not crashing
+            }
+        }
     }
 
-    private static Class<?> expectedClass(Object value) {
-        return value == null ? Object.class : value.getClass();
+    @Test
+    public void testProfileThreeObjectInlined() {
+        for (Object value0 : VALUES) {
+            for (Object value1 : VALUES) {
+                for (Object value2 : VALUES) {
+                    InlinedExactClassProfile profile = createEnabled(InlinedExactClassProfile.class);
+                    Object result0 = profile.profile(state, value0);
+                    Object result1 = profile.profile(state, value1);
+                    Object result2 = profile.profile(state, value2);
+
+                    assertThat(result0, is(value0));
+                    assertThat(result1, is(value1));
+                    assertThat(result2, is(value2));
+
+                    if (value0 == value1 && value1 == value2) {
+                        assertThat(getCachedValue(profile), is((Object) value0.getClass()));
+                        assertThat(isGeneric(profile), is(false));
+                    } else {
+                        assertThat(isGeneric(profile), is(true));
+                    }
+                    assertThat(isUninitialized(profile), is(false));
+                    profile.toString(); // test that it is not crashing
+
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testDisabled() {
+        ValueProfile p = ValueProfile.getUncached();
+        for (Object value : VALUES) {
+            assertThat(p.profile(value), is(value));
+        }
+        p.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testDisabledInlined() {
+        InlinedExactClassProfile p = InlinedExactClassProfile.getUncached();
+        for (Object value : VALUES) {
+            assertThat(p.profile(state, value), is(value));
+        }
+        p.toString(); // test that it is not crashing
     }
 
 }

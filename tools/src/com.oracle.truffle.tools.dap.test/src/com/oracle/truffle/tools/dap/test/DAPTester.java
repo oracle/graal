@@ -39,8 +39,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -95,13 +93,11 @@ public final class DAPTester {
     public void finish() throws IOException {
         if (!lastValue.isDone()) {
             try {
-                lastValue.get(1, TimeUnit.SECONDS);
-            } catch (TimeoutException ex) {
-                if (handler.getInputStream().available() > 0) {
-                    Assert.fail("Additional message available: " + getMessage());
-                }
-                Assert.fail("Last eval(...) has not finished yet");
-            } catch (InterruptedException | ExecutionException ex) {
+                lastValue.get();
+            } catch (InterruptedException ex) {
+                throw new AssertionError("Last eval(...) has not finished yet", ex);
+            } catch (ExecutionException ex) {
+                // Guest language execution failed
             }
         }
         if (handler.getInputStream().available() > 0) {

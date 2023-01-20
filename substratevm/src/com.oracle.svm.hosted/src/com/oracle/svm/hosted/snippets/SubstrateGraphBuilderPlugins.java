@@ -112,6 +112,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.OS;
@@ -152,7 +153,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ClassUtil;
@@ -271,7 +271,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerProxyPlugins(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, ParsingReason reason) {
-        if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
+        if (SubstrateOptions.parseOnce() || reason.duringAnalysis()) {
             Registration proxyRegistration = new Registration(plugins, Proxy.class);
             proxyRegistration.register(new RequiredInvocationPlugin("getProxyClass", ClassLoader.class, Class[].class) {
                 @Override
@@ -471,7 +471,7 @@ public class SubstrateGraphBuilderPlugins {
             } else if (successor instanceof FullInfopointNode) {
                 successor = ((FullInfopointNode) successor).next();
             } else if (successor instanceof DeoptEntryNode) {
-                assert ((HostedMethod) successor.graph().method()).isDeoptTarget();
+                assert MultiMethod.isDeoptTarget(successor.graph().method());
                 successor = ((DeoptEntryNode) successor).next();
             } else if (successor instanceof AbstractBeginNode) {
                 /* Useless block begins can occur during parsing or graph decoding. */
@@ -520,7 +520,7 @@ public class SubstrateGraphBuilderPlugins {
      */
     private static void interceptUpdaterInvoke(GraphBuilderContext b, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, ParsingReason reason, ValueNode tclassNode,
                     ValueNode fieldNameNode) {
-        if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
+        if (SubstrateOptions.parseOnce() || reason.duringAnalysis()) {
             if (tclassNode.isConstant() && fieldNameNode.isConstant()) {
                 Class<?> tclass = snippetReflection.asObject(Class.class, tclassNode.asJavaConstant());
                 String fieldName = snippetReflection.asObject(String.class, fieldNameNode.asJavaConstant());
@@ -728,7 +728,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("newInstance", Class.class, int[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode, ValueNode dimensionsNode) {
-                if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
+                if (SubstrateOptions.parseOnce() || reason.duringAnalysis()) {
                     /*
                      * There is no Graal node for dynamic multi array allocation, and it is also not
                      * necessary for performance reasons. But when the arguments are constant, we
@@ -824,21 +824,24 @@ public class SubstrateGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("isDeoptimizationTarget") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+
+                ResolvedJavaMethod method = b.getGraph().method();
                 if (SubstrateOptions.parseOnce()) {
                     throw VMError.unimplemented("Intrinsification of isDeoptimizationTarget not done yet");
+
+                } else {
+                    if (method instanceof SharedMethod) {
+                        if (MultiMethod.isDeoptTarget(method)) {
+                            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
+                        } else {
+                            b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
+                        }
+                    } else {
+                        // In analysis the value is always true.
+                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
+                    }
                 }
 
-                if (b.getGraph().method() instanceof SharedMethod) {
-                    SharedMethod method = (SharedMethod) b.getGraph().method();
-                    if (method.isDeoptTarget()) {
-                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
-                    } else {
-                        b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
-                    }
-                } else {
-                    // In analysis the value is always true.
-                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
-                }
                 return true;
             }
         });

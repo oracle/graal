@@ -42,14 +42,14 @@ package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.strings.NumberConversion.numberFormatException;
 import static com.oracle.truffle.api.strings.TStringOps.readValue;
-import static com.oracle.truffle.api.strings.TruffleString.NumberFormatException.Reason;
 
 import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString.NumberFormatException.Reason;
 
 /*
  * MIT License
@@ -253,14 +253,14 @@ final class FastDoubleParser {
      * @return the parsed double value
      * @throws NumberFormatException if the string can not be parsed
      */
-    static double parseDouble(Node location, AbstractTruffleString a, Object arrayA, int strideA, int off, int len, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
+    static double parseDouble(Node location, AbstractTruffleString a, Object arrayA, int strideA, int off, int len, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
         final int endIndex = len + off;
 
         // Skip leading whitespace
         // -------------------
         int index = skipWhitespace(a, arrayA, strideA, off, endIndex);
         if (index == endIndex) {
-            errorProfile.enter();
+            errorProfile.enter(location);
             throw numberFormatException(a, Reason.EMPTY);
         }
         int ch = readValue(a, arrayA, strideA, index);
@@ -271,7 +271,7 @@ final class FastDoubleParser {
         if (isNegative || ch == '+') {
             ch = ++index < endIndex ? readValue(a, arrayA, strideA, index) : 0;
             if (ch == 0) {
-                errorProfile.enter();
+                errorProfile.enter(location);
                 throw numberFormatException(a, off, len, Reason.LONE_SIGN);
             }
         }
@@ -316,34 +316,34 @@ final class FastDoubleParser {
         return (int) (val);
     }
 
-    private static double parseInfinity(Node location, AbstractTruffleString a, Object arrayA, int strideA, int curIndex, int endIndex, boolean negative, int off, BranchProfile errorProfile)
+    private static double parseInfinity(Node location, AbstractTruffleString a, Object arrayA, int strideA, int curIndex, int endIndex, boolean negative, int off, InlinedBranchProfile errorProfile)
                     throws TruffleString.NumberFormatException {
         int index = curIndex;
         if (index + 7 < endIndex && regionMatches(location, a, arrayA, strideA, index, TStringConstants.getInfinity(a.encoding()))) {
             index = skipWhitespace(a, arrayA, strideA, index + 8, endIndex);
             if (index < endIndex) {
-                errorProfile.enter();
+                errorProfile.enter(location);
                 throw numberFormatException(a, off, endIndex - off, Reason.INVALID_CODEPOINT);
             }
             return negative ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
         } else {
-            errorProfile.enter();
+            errorProfile.enter(location);
             throw numberFormatException(a, off, endIndex - off, Reason.INVALID_CODEPOINT);
         }
     }
 
-    private static double parseNaN(Node location, AbstractTruffleString a, Object arrayA, int strideA, int curIndex, int endIndex, int off, BranchProfile errorProfile)
+    private static double parseNaN(Node location, AbstractTruffleString a, Object arrayA, int strideA, int curIndex, int endIndex, int off, InlinedBranchProfile errorProfile)
                     throws TruffleString.NumberFormatException {
         int index = curIndex;
         if (index + 2 < endIndex && regionMatches(location, a, arrayA, strideA, index, TStringConstants.getNaN(a.encoding()))) {
             index = skipWhitespace(a, arrayA, strideA, index + 3, endIndex);
             if (index < endIndex) {
-                errorProfile.enter();
+                errorProfile.enter(location);
                 throw numberFormatException(a, off, endIndex - off, Reason.INVALID_CODEPOINT);
             }
             return Double.NaN;
         } else {
-            errorProfile.enter();
+            errorProfile.enter(location);
             throw numberFormatException(a, off, endIndex - off, Reason.INVALID_CODEPOINT);
         }
     }
@@ -372,7 +372,7 @@ final class FastDoubleParser {
      * @return a double representation
      */
     private static double parseRestOfDecimalFloatLiteral(Node location, AbstractTruffleString a, Object arrayA, int strideA, int curIndex, int startIndex, int endIndex,
-                    boolean isNegative, boolean hasLeadingZero, BranchProfile errorProfile) throws TruffleString.NumberFormatException {
+                    boolean isNegative, boolean hasLeadingZero, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
         int index = curIndex;
         // Parse digits
         // ------------
@@ -392,7 +392,7 @@ final class FastDoubleParser {
                 digits = 10 * digits + ch - '0';
             } else if (ch == '.') {
                 if (virtualIndexOfPoint != -1) {
-                    errorProfile.enter();
+                    errorProfile.enter(location);
                     throw numberFormatException(a, startIndex, len, Reason.MULTIPLE_DECIMAL_POINTS);
                 }
                 virtualIndexOfPoint = index;
@@ -433,7 +433,7 @@ final class FastDoubleParser {
                 ch = ++index < endIndex ? readValue(a, arrayA, strideA, index) : 0;
             }
             if (!isDigit(ch)) {
-                errorProfile.enter();
+                errorProfile.enter(location);
                 throw numberFormatException(a, startIndex, len, Reason.INVALID_CODEPOINT);
             }
             do {
@@ -453,7 +453,7 @@ final class FastDoubleParser {
         // ------------------------
         index = skipWhitespace(a, arrayA, strideA, index, endIndex);
         if (index < endIndex || !hasLeadingZero && digitCount == 0) {
-            errorProfile.enter();
+            errorProfile.enter(location);
             throw numberFormatException(a, startIndex, len, Reason.EMPTY);
         }
 
@@ -536,11 +536,11 @@ final class FastDoubleParser {
      * @return a double representation
      */
     private static double parseRestOfHexFloatingPointLiteral(Node location, AbstractTruffleString a, Object arrayA, int strideA, int curIndex, int startIndex, int endIndex, boolean isNegative,
-                    BranchProfile errorProfile) throws TruffleString.NumberFormatException {
+                    InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
         int index = curIndex;
         int len = endIndex - startIndex;
         if (index >= endIndex) {
-            errorProfile.enter();
+            errorProfile.enter(location);
             throw numberFormatException(a, startIndex, len, Reason.MALFORMED_HEX_ESCAPE);
         }
 
@@ -561,7 +561,7 @@ final class FastDoubleParser {
                                                    // later.
             } else if (hexValue == DECIMAL_POINT_CLASS) {
                 if (virtualIndexOfPoint != -1) {
-                    errorProfile.enter();
+                    errorProfile.enter(location);
                     throw numberFormatException(a, startIndex, len, Reason.MULTIPLE_DECIMAL_POINTS);
                 }
                 virtualIndexOfPoint = index;
@@ -589,7 +589,7 @@ final class FastDoubleParser {
                 ch = ++index < endIndex ? readValue(a, arrayA, strideA, index) : 0;
             }
             if (!isDigit(ch)) {
-                errorProfile.enter();
+                errorProfile.enter(location);
                 throw numberFormatException(a, startIndex, len, Reason.INVALID_CODEPOINT);
             }
             do {
@@ -609,7 +609,7 @@ final class FastDoubleParser {
         // ------------------------
         index = skipWhitespace(a, arrayA, strideA, index, endIndex);
         if (index < endIndex || digitCount == 0 && readValue(a, arrayA, strideA, virtualIndexOfPoint) != '.' || !hasExponent) {
-            errorProfile.enter();
+            errorProfile.enter(location);
             throw numberFormatException(a, startIndex, len, Reason.EMPTY);
         }
 

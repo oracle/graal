@@ -186,6 +186,10 @@ public final class StatisticsPrinter {
 
         for (AnalysisMethod method : pta.getUniverse().getMethods()) {
 
+            if (!method.isImplementationInvoked()) {
+                continue;
+            }
+
             boolean runtimeMethod = isRuntimeLibraryType(method.getDeclaringClass());
             MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
             if (!methodFlow.flowsGraphCreated()) {

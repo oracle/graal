@@ -178,6 +178,10 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(Group group) {
+        if (group.isConditionalBackReferenceGroup()) {
+            assert group.size() == 2;
+            ast.getProperties().setConditionalBackReferences();
+        }
         if (group.getParent().isSequence() || group.getParent().isAtomicGroup()) {
             group.setMinPath(group.getParent().getMinPath());
             group.setMaxPath(group.getParent().getMaxPath());
@@ -204,6 +208,8 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         }
         int minPath = Integer.MAX_VALUE;
         int maxPath = 0;
+        int prefixLengthMin = 0;
+        int prefixLengthMax = 0;
         int flags = (group.isLoop() ? RegexASTNode.FLAG_HAS_LOOPS : 0) | AND_FLAGS;
         for (Sequence s : group.getAlternatives()) {
             if (s.isDead()) {
@@ -212,6 +218,10 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             flags = (flags & (s.getFlags(AND_FLAGS) | ~AND_FLAGS)) | s.getFlags(OR_FLAGS);
             minPath = Math.min(minPath, s.getMinPath());
             maxPath = Math.max(maxPath, s.getMaxPath());
+            if (isForward()) {
+                prefixLengthMin = Math.min(prefixLengthMin, s.getPrefixLengthMin());
+                prefixLengthMax = Math.max(prefixLengthMax, s.getPrefixLengthMax());
+            }
         }
         if (group.hasQuantifier()) {
             if (!group.isExpandedQuantifier()) {
@@ -265,12 +275,22 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         group.setFlags(flags, CHANGED_FLAGS);
         group.setMinPath(minPath);
         group.setMaxPath(maxPath);
+        if (isForward()) {
+            group.setPrefixLengthMin(prefixLengthMin);
+            group.setPrefixLengthMax(prefixLengthMax);
+        }
         if (group.getParent().isSequence() || group.getParent().isAtomicGroup()) {
             group.getParent().setMinPath(minPath);
             group.getParent().setMaxPath(maxPath);
         }
         if (group.getParent() != null) {
             group.getParent().setFlags(group.getParent().getFlags(CHANGED_FLAGS) | flags, CHANGED_FLAGS);
+            // Propagate prefix length to the parent of the group (a SubtreeRootNode like a
+            // LookAroundAssertion or AtomicGroup).
+            if (isForward()) {
+                group.getParent().setPrefixLengthMin(prefixLengthMin);
+                group.getParent().setPrefixLengthMax(prefixLengthMax);
+            }
         }
     }
 
@@ -285,6 +305,8 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         // remove dead negated lookaround expressions. we can't do this directly in their visit
         // methods, since that would mess up their parent Sequence's iterator state
         int i = 0;
+        int prefixLengthMin = 0;
+        int prefixLengthMax = 0;
         while (i < sequence.size()) {
             Term term = sequence.get(i);
             if (term.isLookAroundAssertion()) {
@@ -295,7 +317,19 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                     continue;
                 }
             }
+            if (isForward()) {
+                // We take the max of both the lower and upper bound on the prefix. A longer prefix
+                // in one part of the expression might dominate a smaller, but variable, prefix in
+                // another part of the expression. This way, a variable prefix can be hidden by a
+                // larger fixed prefix and TraceFinder can still be safely used.
+                prefixLengthMin = Math.max(prefixLengthMin, term.getPrefixLengthMin());
+                prefixLengthMax = Math.max(prefixLengthMax, term.getPrefixLengthMax());
+            }
             i++;
+        }
+        if (isForward()) {
+            sequence.setPrefixLengthMin(prefixLengthMin);
+            sequence.setPrefixLengthMax(prefixLengthMax);
         }
     }
 
@@ -373,6 +407,21 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             }
             if (!assertion.isLiteral()) {
                 ast.getProperties().setNonLiteralLookBehindAssertions();
+            }
+            int minPath = assertion.getMinPath();
+            int maxPath = assertion.getMaxPath();
+            RegexASTSubtreeRootNode laParent = assertion.getSubTreeParent();
+            while (!(laParent instanceof RegexASTRootNode)) {
+                if (laParent instanceof LookBehindAssertion) {
+                    ast.getProperties().setNestedLookBehindAssertions();
+                }
+                minPath += laParent.getMinPath();
+                maxPath += laParent.getMaxPath();
+                laParent = laParent.getSubTreeParent();
+            }
+            if (assertion.isLiteral()) {
+                assertion.setPrefixLengthMin(Math.max(0, assertion.getLiteralLength() - maxPath));
+                assertion.setPrefixLengthMax(Math.max(0, assertion.getLiteralLength() - minPath));
             }
         }
         leaveLookAroundAssertion(assertion);

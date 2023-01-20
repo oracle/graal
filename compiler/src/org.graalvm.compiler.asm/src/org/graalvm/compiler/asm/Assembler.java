@@ -33,6 +33,7 @@ import org.graalvm.compiler.debug.GraalError;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.site.Infopoint;
 
 /**
  * The platform-independent base class for the assembler.
@@ -249,6 +250,15 @@ public abstract class Assembler<T extends Enum<T>> {
      * Emits a NOP instruction to advance the current PC.
      */
     public abstract void ensureUniquePC();
+
+    /**
+     * Some platforms might require special post call code emission.
+     *
+     * @param infopoint The infopoint assoicated with the call if any
+     */
+    public void postCallNop(Infopoint infopoint) {
+        ensureUniquePC();
+    }
 
     public void reset() {
         labelsWithPatches = null;

@@ -133,6 +133,7 @@ import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryStoreNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
@@ -142,6 +143,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInli
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndAddNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
@@ -159,6 +161,7 @@ import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
@@ -262,6 +265,46 @@ public class StandardGraphBuilderPlugins {
             throw new GraalError(e);
         }
         STRING_CODER_FIELD = coder;
+    }
+
+    public static void registerConstantFieldLoadPlugin(Plugins plugins) {
+        plugins.appendNodePlugin(new NodePlugin() {
+
+            @Override
+            public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
+                if (object.isConstant()) {
+                    JavaConstant asJavaConstant = object.asJavaConstant();
+                    if (tryReadField(b, field, asJavaConstant)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
+                if (tryReadField(b, field, null)) {
+                    return true;
+                }
+                return false;
+            }
+
+            public boolean tryReadField(GraphBuilderContext b, ResolvedJavaField field, JavaConstant object) {
+                return tryConstantFold(b, field, object);
+            }
+
+            private boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant object) {
+                ConstantNode result = ConstantFoldUtil.tryConstantFold(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), field, object, b.getOptions(),
+                                b.getGraph().currentNodeSourcePosition());
+                if (result != null) {
+                    result = b.getGraph().unique(result);
+                    b.push(field.getJavaKind(), result);
+                    return true;
+                }
+                return false;
+            }
+
+        });
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, SnippetReflectionProvider snippetReflection, boolean supportsStubBasedPlugins) {
@@ -702,6 +745,34 @@ public class StandardGraphBuilderPlugins {
             r.register(new CacheWritebackPlugin(true, "writebackPreSync0", Receiver.class));
             r.register(new CacheWritebackPlugin(false, "writebackPostSync0", Receiver.class));
         }
+
+        r.register(new InvocationPlugin("arrayBaseOffset", Receiver.class, Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode arrayClass) {
+                return handleArrayBaseOffsetOrIndexScale(b, unsafe, arrayClass, true);
+            }
+        });
+        r.register(new InvocationPlugin("arrayIndexScale", Receiver.class, Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode arrayClass) {
+                return handleArrayBaseOffsetOrIndexScale(b, unsafe, arrayClass, false);
+            }
+        });
+    }
+
+    private static boolean handleArrayBaseOffsetOrIndexScale(GraphBuilderContext b, Receiver unsafe, ValueNode arrayClass, boolean arrayBaseOffset) {
+        var arrayClassConstant = arrayClass.asJavaConstant();
+        if (arrayClassConstant != null && arrayClassConstant.isNonNull()) {
+            var arrayType = b.getConstantReflection().asJavaType(arrayClassConstant);
+            if (arrayType != null && arrayType.isArray()) {
+                unsafe.get();
+                var elementKind = b.getMetaAccessExtensionProvider().getStorageKind(arrayType.getComponentType());
+                int result = arrayBaseOffset ? b.getMetaAccess().getArrayBaseOffset(elementKind) : b.getMetaAccess().getArrayIndexScale(elementKind);
+                b.addPush(JavaKind.Int, ConstantNode.forInt(result));
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind) {

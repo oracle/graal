@@ -47,6 +47,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 
+@SuppressWarnings("truffle")
 public abstract class TestNestedDispatchNode extends Node {
 
     final Object key = "testKey";

@@ -151,7 +151,7 @@ public class FunctionCall {
 
         @Specialization(replaces = "directCall")
         protected Object indirectCall(Function function, Object argument,
-                        @Cached("create()") IndirectCallNode callNode) {
+                        @Cached IndirectCallNode callNode) {
             indirectCall++;
             return callNode.call(function.getTarget(), new Object[]{argument});
         }

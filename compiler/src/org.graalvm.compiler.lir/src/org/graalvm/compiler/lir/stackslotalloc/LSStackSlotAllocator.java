@@ -39,7 +39,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -117,7 +117,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
         private final StackInterval[] stackSlotMap;
         private final PriorityQueue<StackInterval> unhandled;
         private final PriorityQueue<StackInterval> active;
-        private final AbstractBlockBase<?>[] sortedBlocks;
+        private final BasicBlock<?>[] sortedBlocks;
         private final int maxOpId;
 
         @SuppressWarnings("try")
@@ -193,10 +193,10 @@ public final class LSStackSlotAllocator extends AllocationPhase {
          *
          * @return The id of the last operation.
          */
-        private static int numberInstructions(LIR lir, AbstractBlockBase<?>[] sortedBlocks) {
+        private static int numberInstructions(LIR lir, BasicBlock<?>[] sortedBlocks) {
             int opId = 0;
             int index = 0;
-            for (AbstractBlockBase<?> block : sortedBlocks) {
+            for (BasicBlock<?> block : sortedBlocks) {
 
                 ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
 

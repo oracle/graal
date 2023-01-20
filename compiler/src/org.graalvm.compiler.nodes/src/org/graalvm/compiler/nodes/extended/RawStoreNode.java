@@ -157,8 +157,4 @@ public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowera
         return new RawStoreNode(object(), location, value, accessKind(), identity, needsBarrier, memOrder, stateAfter(), isLocationForced());
     }
 
-    public FrameState getState() {
-        return stateAfter;
-    }
-
 }

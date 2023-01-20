@@ -129,4 +129,9 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     default void afterAnalysis() {
 
     }
+
+    @SuppressWarnings("unused")
+    default AnalysisMethod fallbackResolveConcreteMethod(AnalysisType resolvingType, AnalysisMethod method) {
+        return null;
+    }
 }

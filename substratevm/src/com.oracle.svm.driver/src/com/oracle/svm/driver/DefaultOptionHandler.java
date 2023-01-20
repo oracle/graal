@@ -285,26 +285,25 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     ctx.state = PARSER_STATE.SKIP_LEAD_WS;
                 } else {
                     // escaped character
-                    char[] escaped = new char[2];
-                    escaped[1] = '\0';
+                    String escaped;
                     switch (ch) {
                         case 'n':
-                            escaped[0] = '\n';
+                            escaped = "\n";
                             break;
                         case 'r':
-                            escaped[0] = '\r';
+                            escaped = "\r";
                             break;
                         case 't':
-                            escaped[0] = '\t';
+                            escaped = "\t";
                             break;
                         case 'f':
-                            escaped[0] = '\f';
+                            escaped = "\f";
                             break;
                         default:
-                            escaped[0] = ch;
+                            escaped = String.valueOf(ch);
                             break;
                     }
-                    ctx.parts.add(String.valueOf(escaped));
+                    ctx.parts.add(escaped);
                     ctx.state = PARSER_STATE.IN_QUOTE;
                 }
                 // anchor to next character

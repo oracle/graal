@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -40,7 +40,7 @@ do
 done
 
 
-echo "define void @run(i8*,i8*,i8*) {"
+echo "define void @run(ptr,ptr,ptr) {"
 
 for VECLEN in $(seq 1 16)
 do

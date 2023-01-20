@@ -385,11 +385,14 @@ public final class NFIContextExtension extends NativeContextExtension {
     private static String getNativeType(Type type) throws UnsupportedNativeTypeException {
         if (type instanceof FunctionType) {
             return getNativeSignature((FunctionType) type, 0);
-        } else if (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof FunctionType) {
-            FunctionType functionType = (FunctionType) ((PointerType) type).getPointeeType();
-            return getNativeSignature(functionType, 0);
         } else if (type instanceof PointerType) {
-            return "POINTER";
+            PointerType ptr = (PointerType) type;
+            if (!ptr.isOpaque() && ptr.getPointeeType() instanceof FunctionType) {
+                FunctionType functionType = (FunctionType) ptr.getPointeeType();
+                return getNativeSignature(functionType, 0);
+            } else {
+                return "POINTER";
+            }
         } else if (type instanceof PrimitiveType) {
             PrimitiveType primitiveType = (PrimitiveType) type;
             PrimitiveKind kind = primitiveType.getPrimitiveKind();

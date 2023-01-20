@@ -11,9 +11,11 @@ local jdks = common_json.jdks;
 {
   vm_java_17:: graal_common.labsjdk17 + vm_common.vm_env_mixin('17'),
   vm_java_19:: graal_common.labsjdk19 + vm_common.vm_env_mixin('19'),
+  vm_java_20:: graal_common.labsjdk20 + vm_common.vm_env_mixin('20'),
 
-  vm_java_17_llvm:: self.vm_java_17 + graal_common['labsjdk-ce-17-llvm'],
+  vm_java_17_llvm:: self.vm_java_17 + graal_common['labsjdk-ee-17-llvm'],
   vm_java_19_llvm:: self.vm_java_19 + graal_common['labsjdk-ce-19-llvm'],
+  vm_java_20_llvm:: self.vm_java_20 + graal_common['labsjdk-ce-20-llvm'],
 
   binaries_repository: 'lafo',
   svm_suite:: '/substratevm',
@@ -45,7 +47,7 @@ local jdks = common_json.jdks;
 
   maven_17_19:: {
     downloads+: {
-      JAVA_HOME: jdks['labsjdk-ce-17'],
+      JAVA_HOME: jdks['labsjdk-ee-17'],
       EXTRA_JAVA_HOMES: jdks['labsjdk-ce-19'],
     },
     mx_cmd_base:: ['mx', '--dynamicimports', '/tools,/compiler,/graal-js,/espresso,/substratevm', '--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
@@ -106,8 +108,8 @@ local jdks = common_json.jdks;
   },
 
   diskspace_required: {
-    java17_linux_mad64: "30GB",
-    java19_linux_mad64: "30GB",
+    java17_linux_amd64: "30GB",
+    java19_linux_amd64: "30GB",
   },
 
   local builds = [

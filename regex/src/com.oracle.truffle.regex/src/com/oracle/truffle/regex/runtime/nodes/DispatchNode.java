@@ -56,14 +56,14 @@ public abstract class DispatchNode extends Node {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"target == cachedTarget"})
-    static Object executeDirect(CallTarget target, RegexResult result,
+    static Object doDirect(CallTarget target, RegexResult result,
                     @Cached("target") CallTarget cachedTarget,
                     @Cached("create(cachedTarget)") DirectCallNode callNode) {
         return callNode.call(result);
     }
 
-    @Specialization(replaces = "executeDirect")
-    static Object executeIndirect(CallTarget target, RegexResult result,
+    @Specialization(replaces = "doDirect")
+    static Object doIndirect(CallTarget target, RegexResult result,
                     @Cached IndirectCallNode callNode) {
         return callNode.call(target, result);
     }

@@ -38,7 +38,7 @@ import com.oracle.svm.core.code.CodeInfoAccess.SingleShotFrameInfoQueryResultAll
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.code.UninterruptibleReusableTypeReader;
+import com.oracle.svm.core.code.ReusableTypeReader;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -48,7 +48,7 @@ public class ThreadStackPrinter {
     private static final int MAX_STACK_FRAMES_PER_THREAD_TO_PRINT = 100_000;
 
     public static class StackFramePrintVisitor extends Stage1StackFramePrintVisitor {
-        private static final UninterruptibleReusableTypeReader frameInfoReader = new UninterruptibleReusableTypeReader();
+        private static final ReusableTypeReader frameInfoReader = new ReusableTypeReader();
         private static final SingleShotFrameInfoQueryResultAllocator singleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
         private static final DummyValueInfoAllocator dummyValueInfoAllocator = new DummyValueInfoAllocator();
         private static final FrameInfoState frameInfoState = new FrameInfoState();
@@ -86,7 +86,7 @@ public class ThreadStackPrinter {
         }
     }
 
-    public static class Stage0StackFramePrintVisitor extends ParameterizedStackFrameVisitor<Log> {
+    public static class Stage0StackFramePrintVisitor extends ParameterizedStackFrameVisitor {
         protected int printedFrames;
 
         public Stage0StackFramePrintVisitor() {
@@ -99,7 +99,8 @@ public class ThreadStackPrinter {
 
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
-        protected final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame, Log log) {
+        protected final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame, Object data) {
+            Log log = (Log) data;
             if (printedFrames >= MAX_STACK_FRAMES_PER_THREAD_TO_PRINT) {
                 log.string("... (truncated)").newline();
                 return false;
@@ -111,7 +112,8 @@ public class ThreadStackPrinter {
         }
 
         @Override
-        protected final boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Log log) {
+        protected final boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
+            Log log = (Log) data;
             logFrameRaw(log, sp, ip);
             if (DeoptimizationSupport.enabled()) {
                 log.string("  deoptFrame=").object(deoptimizedFrame);

@@ -60,7 +60,7 @@ public abstract class ReferenceArrayLoad extends EspressoNode {
     public abstract StaticObject execute(StaticObject receiver, int index);
 
     @Specialization
-    StaticObject executeWithNullCheck(StaticObject array, int index,
+    StaticObject doWithNullCheck(StaticObject array, int index,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck objectArrayLoad) {
         return objectArrayLoad.execute(nullCheck.execute(array), index);

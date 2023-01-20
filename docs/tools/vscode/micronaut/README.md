@@ -1,17 +1,31 @@
 ---
 layout: docs
 toc_group: vscode
-link_title: GraalVM Tools for Micronaut Extension
+link_title: GraalVM Tools for Micronaut
 permalink: /tools/vscode/micronaut-extension/
 ---
 
-# GraalVM Tools for Micronaut Extension
+# GraalVM Tools for Micronaut
 
-[GraalVM Tools for Micronaut](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) provides complete support for developing applications on the [Micronaut framework](https://micronaut.io/) in Visual Studio Code (VS Code). 
+* [Extension Installation](#extension-installation)
+* [Extension Settings](#extension-settings)
+* [Micronaut Commands](#micronaut-commands)
+* [Create a Micronaut Project](#create-a-micronaut-project)
+* [Package and Run Micronaut Applications](#package-and-run-micronaut-applications)
+* [Debug Micronaut Applications](#debug-micronaut-applications)
+* [Transform  Micronaut Applications into Native Executables](#transform-micronaut-applications-into-native-executables)
+* [Build Docker Images and Deploy Micronaut Applications to a Docker Registry](#build-docker-images-and-deploy-micronaut-applications-to-a-docker-registry)
+* [Deploy, Run, and Debug Micronaut Applications in a Kubernetes Cluster](#deploy-run-and-debug-micronaut-applications-in-a-kubernetes-cluster)
+* [Manage Databases with Database Explorer](#manage-databases-with-database-explorer)
+* [Work with Oracle Autonomous Database from VS Code](#work-with-oracle-autonomous-database-from-vs-code)
 
-This extension, in combination with the [GraalVM Tools for Java extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), brings native support for the Micronaut framework in VS Code. Consequently, it opens many more possibilities for Java developers such as turning Micronaut applications into native executables, debugging with different debugging protocols, and polyglot programming.
+[GraalVM Tools for Micronaut](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) extension provides support for developing Micronaut applications with Visual Studio Code (VS Code).
 
-In addition to Micronaut and full Java development support, key features include:
+The [Micronaut framework](https://micronaut.io/) is a lightweight reactive framework that provides a solid foundation for building cloud native Java microservices. Thanks to [Micronaut Data](https://micronaut-projects.github.io/micronaut-data/latest/guide/), the database access toolkit, you can access the database and execute queries.
+
+> Note: The extension is a Technology Preview.
+
+The extension provides many features to boost your Java 8+ and Micronaut productivity in the VS Code environment:
 
 * Micronaut project creation wizard
 * Editing and debugging capabilities for Micronaut projects
@@ -23,8 +37,7 @@ In addition to Micronaut and full Java development support, key features include
 * Databases integration
 * Oracle Cloud explorer
 
-The extension is a Technology Preview.
-
+While the extension delivers all these features on its own, it works best when used together with the [GraalVM Tools for Java extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm). You get all the GraalVM-specific features like the innovative Graal compiler for better performance, ahead-of-time compilation with GraalVM Native Image, built-in VisualVM, and many more.
 ## Extension Installation
 
 To install the GraalVM Tools for Micronaut extension in VS Code, do the following:
@@ -34,21 +47,23 @@ To install the GraalVM Tools for Micronaut extension in VS Code, do the followin
 3. Once found, click **Install**. to install the GraalVM Tools for Micronaut extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut).
 4. Reload when required.
 
-> Note: The Micronaut extension requires the [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension for more features support such as building native executables, and polyglot programming. It will be installed in the background.
+The Micronaut extension requires the [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension for more features support such as GraalVM Java runtime and building native executables. For the Java language support, it depends on the [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=ASF.apache-netbeans-java). Both extensions will be installed in the background. 
 
 When installed, the extension checks whether there is a registered GraalVM installation, and eventually requests to download it or point to a local installation (see [GraalVM Installation and Setup in VS Code](../graalvm/README.md#graalvm-installation-wizard)).
+
+You can use the [Extension Pack for Java from Microsoft](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack) if you prefer instead of the default Apache NetBeans Language Server (see [Java in VS Code](https://code.visualstudio.com/docs/languages/java) to get started).
+If VS Code detects the Extension Pack for Java from Microsoft installed, it deactivates the Apache NetBeans Language Server.
 
 The entrypoint to the Micronaut extension is the Micronaut Tools page which opens as soon as the extension is installed or using the Command Palette command **Micronaut: Show Micronaut Tools Page**.
 
  ![Micronaut Tools Page](images/micronaut_tools_page.png)
-
 ## Extension Settings
 
 The GraalVM Tools for Micronaut extension contributes the following settings in VS Code:
 * __micronaut.home__ - the optional path to the Micronaut CLI installation
 * __micronaut.showWelcomePage__ - show the Micronaut Tools Page on extension activation
 
-## Micronaut Commands 
+## Micronaut Commands
 
 Invoke the Micronaut commands from **View**, **Command Palette** (Command Palette can be also opened by pressing F1, or the `Ctrl+Shift+P` hot keys combination for Linux, and `Command+Shift+P` for macOS), then search for "Micronaut". 
 The following commands are available for Micronaut project development:
@@ -101,9 +116,7 @@ For user's convenience, there is a quick command available:
 
 3. When compilation completes, invoke the **Micronaut: Build...** quick action again, and select **package** target, which will package the compiled code into a distributive format.
 
-Alternatively, open the entry-point class of your Micronaut application, find its `main` method, and click **Run Main** above:
-
-   ![Run main method](images/run_main_method.png)
+Alternatively, open the entry-point class of your Micronaut application, find its `main` method, and click **Run Main** above.
  
 Lastly, you can package and run your application at the same time calling the Maven or  Gradle jobs explicitly from the command line.
 
@@ -210,7 +223,3 @@ The extension integrates with [Oracle Developer Tools for VS Code (SQL and PLSQL
 ### Privacy Policy
 
 Read the [Oracle Privacy Policy](https://www.oracle.com/legal/privacy/privacy-policy.html) to learn more.
-
-### Known Issues
-
-The GraalVM Tools for Micronaut Extension extension is Technology Preview, meaning the functionality may not be complete.

@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
+import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
@@ -202,9 +203,18 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
      * canonicalized (and therefore be a non-fixed node).
      *
      * @param methodScope The current method.
-     * @param node The node to be canonicalized.
+     * @param originalNode The node to be canonicalized.
      */
-    protected Node canonicalizeFixedNode(MethodScope methodScope, Node node) {
+    protected Node canonicalizeFixedNode(MethodScope methodScope, Node originalNode) {
+        Node node = originalNode;
+        if (originalNode instanceof UnsafeAccessNode) {
+            /*
+             * Ensure that raw stores and loads are eventually transformed to fields to make node
+             * plugins trigger for them reliably during PE.
+             */
+            node = ((UnsafeAccessNode) node).canonical(canonicalizerTool);
+        }
+
         /*
          * Duplicate cases for frequent classes (LoadFieldNode, LoadIndexedNode and ArrayLengthNode)
          * to improve performance (Haeubl, 2017).

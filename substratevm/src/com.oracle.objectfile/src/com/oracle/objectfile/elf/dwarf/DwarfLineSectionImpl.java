@@ -26,18 +26,19 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+import java.util.Iterator;
+import java.util.Map;
+
+import org.graalvm.compiler.debug.DebugContext;
+
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.Range;
-import org.graalvm.compiler.debug.DebugContext;
-
-import java.util.Iterator;
-import java.util.Map;
 
 /**
  * Section generator for debug_line section.
@@ -436,7 +437,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int debugLine = 1;
+    private long debugLine = 1;
     private int debugCopyCount = 0;
 
     private int writeCompiledMethodLineInfo(DebugContext context, ClassEntry classEntry, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {

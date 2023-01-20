@@ -175,7 +175,7 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
             asm.movdqu(vectorSize, vector1, new AMD64Address(arrayA, result, stride));
             asm.movdqu(vectorSize, vector2, new AMD64Address(arrayB, result, stride));
             asm.pxor(vectorSize, vector3, vector1, vector2);
-            asm.ptest(vectorSize, vector3);
+            asm.ptest(vectorSize, vector3, vector3);
             asm.jccb(ConditionFlag.NotZero, diffFound);
             // regions are equal, continue the loop
             asm.addq(result, bytesPerVector);
@@ -188,7 +188,7 @@ public final class AMD64VectorizedMismatchOp extends AMD64ComplexVectorOp {
             asm.movdqu(vectorSize, vector1, new AMD64Address(arrayA, result, stride));
             asm.movdqu(vectorSize, vector2, new AMD64Address(arrayB, result, stride));
             asm.pxor(vectorSize, vector3, vector1, vector2);
-            asm.ptest(vectorSize, vector3);
+            asm.ptest(vectorSize, vector3, vector3);
             asm.jcc(ConditionFlag.Zero, returnEqualLabel);
 
             asm.align(preferredBranchTargetAlignment(crb));

@@ -29,6 +29,7 @@ import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.util.EnumSet;
@@ -70,6 +71,8 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value vtmp1;
     @Temp({REG}) private Value rtmp2;
 
+    @Temp({REG, ILLEGAL}) private Value maskRegister;
+
     public AMD64StringLatin1InflateOp(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, int useAVX3Threshold, Value src, Value dst, Value len) {
         super(TYPE, tool, runtimeCheckedCPUFeatures,
                         supportsAVX512VLBW(tool.target(), runtimeCheckedCPUFeatures) && supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.YMM);
@@ -87,6 +90,12 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
 
         vtmp1 = tool.newVariable(LIRKind.value(getVectorKind(JavaKind.Byte)));
         rtmp2 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
+
+        if (canUseAVX512Variant()) {
+            maskRegister = k2.asValue();
+        } else {
+            maskRegister = Value.ILLEGAL;
+        }
     }
 
     @Override
@@ -99,6 +108,10 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
         Register tmp2 = asRegister(rtmp2);
 
         byteArrayInflate(masm, src, dst, len, tmp1, tmp2);
+    }
+
+    private boolean canUseAVX512Variant() {
+        return supportsAVX512VLBWAndZMM() && supportsBMI2();
     }
 
     /**
@@ -126,7 +139,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64ComplexVectorOp {
         assert len.number != tmp2.number;
 
         masm.movl(tmp2, len);
-        if (supportsAVX512VLBWAndZMM() && supportsBMI2()) {
+        if (canUseAVX512Variant()) {
             Label labelCopy32Loop = new Label();
             Label labelCopyTail = new Label();
             Register tmp3Aliased = len;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -326,6 +326,17 @@ public final class NativeLibraries {
                 String libraryLocationHint = System.lineSeparator() + "(search path: " + jdkLibDir + ")";
                 hint = defaultBuiltInLibraries.stream().filter(hasStaticLibrary.negate()).collect(Collectors.joining(", ", "Missing libraries: ", libraryLocationHint));
             }
+
+            /* Probe for static JDK libraries in user-specified CLibraryPath directory */
+            if (staticLibsDir == null) {
+                for (String clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
+                    Path path = Paths.get(clibPathComponent);
+                    Predicate<String> hasStaticLibraryCLibraryPath = s -> Files.isRegularFile(path.resolve(getStaticLibraryName(s)));
+                    if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibraryCLibraryPath)) {
+                        return libraryPaths;
+                    }
+                }
+            }
         } catch (IOException e) {
             /* Fallthrough to next strategy */
             hint = e.getMessage();
@@ -452,10 +463,6 @@ public final class NativeLibraries {
             staticLibs.add(libraryPath);
         }
         return staticLibs;
-    }
-
-    public Path getStaticLibraryPath(String staticLibraryName) {
-        return getStaticLibraryPath(getAllStaticLibs(), staticLibraryName);
     }
 
     private static Path getStaticLibraryPath(Map<Path, Path> allStaticLibs, String staticLibraryName) {

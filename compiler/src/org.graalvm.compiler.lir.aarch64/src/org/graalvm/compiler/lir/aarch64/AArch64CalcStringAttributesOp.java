@@ -621,7 +621,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
             asm.bind(multibyteFound);
-            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 254 * 16);
+            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 254 * 16, 32);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecNCB, 0);
             asm.jmp(multibyteContinue);
 
@@ -632,7 +632,7 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             // cycles. The inner loop accumulates the continuation byte count in vecNCB as long as
             // it cannot overflow, and the outer loop processes the accumulated vector.
 
-            Label multibyteOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 254 * 16);
+            Label multibyteOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 254 * 16, 32);
 
             // --- begin of inner loop ---
 
@@ -724,13 +724,13 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecResult, 0);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecNCB, 0);
 
-            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 254 * 16);
+            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 254 * 16, 16);
             asm.jmp(multibyteContinue);
 
             // --- begin of outer loop ---
             // nested to avoid using uaddlvSV in the inner loop, see the "assumeValid" variant above
 
-            Label multibyteOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 254 * 16);
+            Label multibyteOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 254 * 16, 16);
 
             // --- begin of inner loop ---
 
@@ -1004,19 +1004,23 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
         asm.neon.usraVVI(FullReg, ElementSize.Byte, vecNCB, vecTmp2, 7);
     }
 
-    private static void setCodepointCountOuterLoopRefAddress(AArch64MacroAssembler asm, Register arr, Register refAddressTail, Register refAddressOuter, int blockSize) {
-        asm.adds(64, refAddressOuter, arr, blockSize);
+    private static void setCodepointCountOuterLoopRefAddress(AArch64MacroAssembler asm, Register arr, Register refAddressTail, Register refAddressOuter, int outerBlockSize, int innerBlockSize) {
+        assert outerBlockSize > innerBlockSize * 2;
+        asm.adds(64, refAddressOuter, arr, outerBlockSize);
         asm.csel(64, refAddressOuter, refAddressTail, refAddressOuter, ConditionFlag.VS);
         asm.cmp(64, refAddressOuter, refAddressTail);
+        // make sure that there is at least one iteration for the inner loop to process when
+        // switching over to refAddressTail
+        asm.sub(64, refAddressOuter, refAddressOuter, innerBlockSize);
         asm.csel(64, refAddressOuter, refAddressOuter, refAddressTail, ConditionFlag.LO);
     }
 
-    private static Label emitCodepointCountOuterLoopBegin(AArch64MacroAssembler asm, Register arr, Register refAddressTail, Register refAddressOuter, int blockSize) {
+    private static Label emitCodepointCountOuterLoopBegin(AArch64MacroAssembler asm, Register arr, Register refAddressTail, Register refAddressOuter, int outerBlockSize, int innerBlockSize) {
         Label loopHead = new Label();
         asm.align(PREFERRED_LOOP_ALIGNMENT);
         asm.bind(loopHead);
         // calculate new reference address
-        setCodepointCountOuterLoopRefAddress(asm, arr, refAddressTail, refAddressOuter, blockSize);
+        setCodepointCountOuterLoopRefAddress(asm, arr, refAddressTail, refAddressOuter, outerBlockSize, innerBlockSize);
         return loopHead;
     }
 
@@ -1182,13 +1186,13 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
 
             asm.align(PREFERRED_BRANCH_TARGET_ALIGNMENT);
             asm.bind(surrogateFound);
-            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 4096);
+            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 4096, 32);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecNSurrogates, 0);
             asm.jmp(surrogateContinue);
 
             // --- begin of outer loop ---
 
-            Label surrogateOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 4096);
+            Label surrogateOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 4096, 32);
 
             // --- begin of inner loop ---
             // surrogate loop: surrogates have been found, calculate the codepoint length
@@ -1254,13 +1258,13 @@ public final class AArch64CalcStringAttributesOp extends AArch64ComplexVectorOp 
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecPrev, 0);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecResult, 0);
             asm.neon.moveVI(FullReg, ElementSize.Byte, vecNSurrogates, 0);
-            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 4096);
+            setCodepointCountOuterLoopRefAddress(asm, arr, refAddress, tmp2, 4096, 32);
             asm.jmp(surrogateContinue);
 
             // --- begin of outer loop ---
             // nested loop avoids uaddlvSV - see utf8 variant
 
-            Label surrogateOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 4096);
+            Label surrogateOuterLoop = emitCodepointCountOuterLoopBegin(asm, arr, refAddress, tmp2, 4096, 32);
 
             // --- begin of inner loop ---
 

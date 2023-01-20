@@ -42,27 +42,36 @@ import org.graalvm.compiler.word.WordTypes;
 import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
+    protected final SVMHost hostVM;
+
     public AnalysisGraphBuilderPhase(CoreProviders providers,
-                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes) {
+                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes, SVMHost hostVM) {
         super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
+        this.hostVM = hostVM;
     }
 
     @Override
     protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, hostVM, true);
     }
 
     public static class AnalysisBytecodeParser extends SharedBytecodeParser {
+
+        private final SVMHost hostVM;
+
         protected AnalysisBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true);
+                        IntrinsicContext intrinsicContext, SVMHost hostVM, boolean explicitExceptionEdges) {
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges);
+            this.hostVM = hostVM;
         }
 
         @Override
@@ -112,7 +121,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
                 var result = plugin.convertInvokeDynamic(this, bootstrap);
                 if (result != null) {
-                    appendInvoke(InvokeKind.Static, result.getLeft(), result.getRight());
+                    appendInvoke(InvokeKind.Static, result.getLeft(), result.getRight(), null);
                     return true;
                 }
             }
@@ -128,6 +137,12 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 }
             }
             super.genInvokeDynamic(cpi, opcode);
+        }
+
+        @Override
+        protected void genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value) {
+            hostVM.recordFieldStore(field, method);
+            super.genStoreField(receiver, field, value);
         }
     }
 }

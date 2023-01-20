@@ -323,7 +323,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         while (!queue.isEmpty()) {
             ReachabilityAnalysisMethod method = queue.removeFirst();
             for (InvokeInfo invoke : method.getInvokes()) {
-                for (AnalysisMethod c : invoke.getCallees()) {
+                for (AnalysisMethod c : invoke.getAllCallees()) {
                     ReachabilityAnalysisMethod callee = (ReachabilityAnalysisMethod) c;
                     callee.addCaller(invoke.getPosition());
                     if (seen.add(callee)) {

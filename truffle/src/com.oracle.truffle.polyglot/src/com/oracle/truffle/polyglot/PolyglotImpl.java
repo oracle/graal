@@ -476,6 +476,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+        return FileSystems.newNIOFileSystem(fileSystem);
+    }
+
+    @Override
     public ProcessHandler newDefaultProcessHandler() {
         if (PolyglotEngineImpl.ALLOW_CREATE_PROCESS) {
             return ProcessHandlers.newDefaultProcessHandler();
@@ -528,7 +533,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public String findMimeType(File file) throws IOException {
         Objects.requireNonNull(file);
-        TruffleFile truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
+        TruffleFile truffleFile;
+        try {
+            truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
+        } catch (UnsupportedOperationException | IllegalArgumentException e) {
+            throw new AssertionError("Inconsistent path", e);
+        }
         return truffleFile.detectMimeType();
     }
 
@@ -732,6 +742,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         APIAccess access = polyglot.getAPIAccess();
         PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(polyglot, e);
         return access.newLanguageException(exceptionImpl.getMessage(), getInstance().exceptionDispatch, exceptionImpl);
+    }
+
+    static RuntimeException hostToGuestException(PolyglotEngineImpl engine, Throwable t) {
+        return engine.polyglotHostService.hostToGuestException(engine.host, t);
     }
 
     static boolean isGuestPrimitive(Object receiver) {

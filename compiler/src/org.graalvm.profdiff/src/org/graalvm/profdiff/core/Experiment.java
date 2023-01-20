@@ -31,7 +31,6 @@ import java.util.Objects;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.profdiff.util.Writer;
 
 /**
  * An experiment consisting of all graal-compiled methods and metadata. Additionally, this class

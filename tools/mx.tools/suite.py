@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.11.4",
+    "mxversion": "6.14.13",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
@@ -336,7 +336,10 @@ suite = {
                     "aarch64" : {
                         "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1089-linux-aarch64.tar.gz"],
                         "digest" : "sha512:8987f5c0f3922df71dbc33249a15c5840b3e2164a6ace1dd14730542e9536ab11dd332ceff41b6b16900f9bfca9bc779f83e06bec30ec28c1915d1b8830e00ea",
-                    }
+                    },
+                    "<others>": {
+                        "optional": True,
+                    },
                 },
                 "darwin" : {
                     "amd64" : {

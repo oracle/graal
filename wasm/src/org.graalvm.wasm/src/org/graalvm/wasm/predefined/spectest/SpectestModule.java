@@ -72,7 +72,7 @@ public class SpectestModule extends BuiltinModule {
         defineGlobal(module, "global_f32", F32_TYPE, GlobalModifier.CONSTANT, Float.floatToRawIntBits(666.0f));
         defineGlobal(module, "global_f64", F64_TYPE, GlobalModifier.CONSTANT, Double.doubleToRawLongBits(666.0));
         defineTable(module, "table", 10, 20, WasmType.FUNCREF_TYPE);
-        defineMemory(module, "memory", 1, 2);
+        defineMemory(module, "memory", 1, 2, false);
         return module;
     }
 }

@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIR;
@@ -90,7 +90,7 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
         public void run() {
             LIR lir = lirGenRes.getLIR();
             BlockMap<MoveStatistics> collected = MoveProfiler.profile(lir);
-            for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+            for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
                 MoveStatistics moveStatistics = collected.get(block);
                 if (moveStatistics != null) {
                     names.clear();
@@ -101,7 +101,7 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
             }
         }
 
-        public void doBlock(AbstractBlockBase<?> block, MoveStatistics moveStatistics) {
+        public void doBlock(BasicBlock<?> block, MoveStatistics moveStatistics) {
             // counter insertion phase
             for (MoveType type : MoveType.values()) {
                 String name = type.toString();
@@ -119,7 +119,7 @@ public class MoveProfilingPhase extends PostAllocationOptimizationPhase {
             }
         }
 
-        protected final void insertBenchmarkCounter(AbstractBlockBase<?> block) {
+        protected final void insertBenchmarkCounter(BasicBlock<?> block) {
             int size = names.size();
             if (size > 0) { // Don't pollute LIR when nothing has to be done
                 assert size > 0 && size == groups.size() && size == increments.size();

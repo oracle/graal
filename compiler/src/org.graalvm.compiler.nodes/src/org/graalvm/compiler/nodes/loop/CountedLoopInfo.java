@@ -29,7 +29,6 @@ import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.add;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.sub;
 import static org.graalvm.compiler.nodes.loop.MathUtil.unsignedDivBefore;
 
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -50,7 +49,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
@@ -281,14 +280,14 @@ public class CountedLoopInfo {
         if (cfg.getNodeToBlock().isNew(loop.loopBegin())) {
             return null;
         }
-        Block loopBlock = cfg.blockFor(loop.loopBegin());
+        HIRBlock loopBlock = cfg.blockFor(loop.loopBegin());
         for (Node checkUsage : noEntryCheck.usages()) {
             if (checkUsage instanceof IfNode) {
                 IfNode ifCheck = (IfNode) checkUsage;
                 if (cfg.getNodeToBlock().isNew(ifCheck.falseSuccessor())) {
                     continue;
                 }
-                if (AbstractControlFlowGraph.dominates(cfg.blockFor(ifCheck.falseSuccessor()), loopBlock)) {
+                if (cfg.blockFor(ifCheck.falseSuccessor()).dominates(loopBlock)) {
                     return graph.addOrUniqueWithInputs(PiNode.create(div, positiveIntStamp.improveWith(div.stamp(NodeView.DEFAULT)), ifCheck.falseSuccessor()));
                 }
             }

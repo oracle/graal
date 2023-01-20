@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -46,7 +45,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
-import com.oracle.svm.util.AnnotationWrapper;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -54,7 +52,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class AnalysisField extends AnalysisElement implements WrappedJavaField, OriginalFieldProvider, AnnotationWrapper {
+public abstract class AnalysisField extends AnalysisElement implements WrappedJavaField, OriginalFieldProvider {
 
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> OBSERVERS_UPDATER = //
@@ -151,7 +149,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         }
     }
 
-    private AnalysisUniverse getUniverse() {
+    @Override
+    protected AnalysisUniverse getUniverse() {
         /* Access the universe via the declaring class to avoid storing it here. */
         return declaringClass.getUniverse();
     }
@@ -514,11 +513,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @Override
     public boolean isStatic() {
         return Modifier.isStatic(this.getModifiers());
-    }
-
-    @Override
-    public AnnotatedElement getAnnotationRoot() {
-        return wrapped;
     }
 
     @Override

@@ -56,12 +56,12 @@ public abstract class LLVMPolyglotNativeBufferInfo extends LLVMNode {
         public abstract boolean execute(LLVMPointer pointer);
 
         @Specialization
-        public boolean executeNative(LLVMNativePointer pointer) {
+        public boolean doNative(LLVMNativePointer pointer) {
             return isNativeBuffer(pointer);
         }
 
         @Specialization(guards = "!foreignsLib.isForeign(pointer)")
-        public boolean executeNonForeign(LLVMManagedPointer pointer,
+        public boolean doNonForeign(LLVMManagedPointer pointer,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreignsLib) {
             return isNativeBuffer(pointer);
         }
@@ -83,7 +83,7 @@ public abstract class LLVMPolyglotNativeBufferInfo extends LLVMNode {
         }
 
         @Specialization(guards = {"!foreignsLib.isForeign(pointer)", "isNativeBuffer(pointer)"})
-        public boolean executeNonForeign(LLVMManagedPointer pointer,
+        public boolean doNonForeign(LLVMManagedPointer pointer,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreignsLib) {
             return asBufferType(pointer).isWritable();
         }
@@ -105,7 +105,7 @@ public abstract class LLVMPolyglotNativeBufferInfo extends LLVMNode {
         }
 
         @Specialization(guards = {"!foreignsLib.isForeign(pointer)", "isNativeBuffer(pointer)"})
-        public long executeNonForeign(LLVMManagedPointer pointer,
+        public long doNonForeign(LLVMManagedPointer pointer,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreignsLib) {
             return asBufferType(pointer).getSize();
         }

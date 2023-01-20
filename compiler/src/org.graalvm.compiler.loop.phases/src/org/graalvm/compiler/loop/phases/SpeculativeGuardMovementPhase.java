@@ -28,7 +28,6 @@ import java.util.EnumSet;
 import java.util.Optional;
 
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -61,7 +60,7 @@ import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -195,14 +194,14 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
         private final boolean ignoreProfiles;
         private final LoopsData loops;
-        private final NodeMap<Block> earliestCache;
+        private final NodeMap<HIRBlock> earliestCache;
         private final StructuredGraph graph;
         private final ProfilingInfo profilingInfo;
         private final SpeculationLog speculationLog;
         boolean iterate;
         private final NodeBitMap toProcess;
 
-        SpeculativeGuardMovement(LoopsData loops, NodeMap<Block> earliestCache, StructuredGraph graph, ProfilingInfo profilingInfo, SpeculationLog speculationLog, NodeBitMap toProcess,
+        SpeculativeGuardMovement(LoopsData loops, NodeMap<HIRBlock> earliestCache, StructuredGraph graph, ProfilingInfo profilingInfo, SpeculationLog speculationLog, NodeBitMap toProcess,
                         boolean ignoreProfiles) {
             this.loops = loops;
             this.earliestCache = earliestCache;
@@ -217,7 +216,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         public void run() {
             for (GuardNode guard : graph.getNodes(GuardNode.TYPE)) {
                 if (toProcess == null || toProcess.contains(guard)) {
-                    Block anchorBlock = loops.getCFG().blockFor(guard.getAnchor().asNode());
+                    HIRBlock anchorBlock = loops.getCFG().blockFor(guard.getAnchor().asNode());
                     if (exitsLoop(anchorBlock, earliestBlock(guard))) {
                         iterate = true;
                     }
@@ -226,7 +225,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             }
         }
 
-        private static boolean exitsLoop(Block earliestOld, Block earliestNew) {
+        private static boolean exitsLoop(HIRBlock earliestOld, HIRBlock earliestNew) {
             if (earliestOld == null) {
                 return false;
             }
@@ -236,9 +235,9 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         /**
          * Determines the earliest block in which the given node can be scheduled.
          */
-        private Block earliestBlock(Node node) {
+        private HIRBlock earliestBlock(Node node) {
             ControlFlowGraph cfg = loops.getCFG();
-            Block earliest = earliestCache.getAndGrow(node);
+            HIRBlock earliest = earliestCache.getAndGrow(node);
             if (earliest != null) {
                 return earliest;
             }
@@ -260,7 +259,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 GuardNode guard = (GuardNode) node;
                 LogicNode condition = guard.getCondition();
 
-                Loop<Block> forcedHoisting = null;
+                Loop<HIRBlock> forcedHoisting = null;
                 if (condition instanceof IntegerLessThanNode || condition instanceof IntegerBelowNode) {
                     forcedHoisting = tryOptimizeCompare(guard, (CompareNode) condition);
                 } else if (condition instanceof InstanceOfNode) {
@@ -274,7 +273,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return earliest;
         }
 
-        private Block computeEarliestBlock(Node node) {
+        private HIRBlock computeEarliestBlock(Node node) {
             /*
              * All inputs must be in a dominating block, otherwise the graph cannot be scheduled.
              * This implies that the inputs' blocks have a total ordering via their dominance
@@ -288,17 +287,17 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             ControlFlowGraph cfg = loops.getCFG();
             assert node.predecessor() == null;
 
-            Block earliest = null;
+            HIRBlock earliest = null;
             for (Node input : node.inputs().snapshot()) {
                 if (input != null) {
                     assert input instanceof ValueNode;
-                    Block inputEarliest;
+                    HIRBlock inputEarliest;
                     if (input instanceof WithExceptionNode) {
                         inputEarliest = cfg.getNodeToBlock().get(((WithExceptionNode) input).next());
                     } else {
                         inputEarliest = earliestBlock(input);
                     }
-                    earliest = (earliest == null || AbstractControlFlowGraph.strictlyDominates(earliest, inputEarliest)) ? inputEarliest : earliest;
+                    earliest = (earliest == null || earliest.strictlyDominates(inputEarliest)) ? inputEarliest : earliest;
                 }
             }
             if (earliest == null) {
@@ -307,7 +306,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return earliest;
         }
 
-        private Loop<Block> tryOptimizeCompare(GuardNode guard, CompareNode compare) {
+        private Loop<HIRBlock> tryOptimizeCompare(GuardNode guard, CompareNode compare) {
             assert compare instanceof IntegerLessThanNode || compare instanceof IntegerBelowNode;
             assert !compare.usages().filter(GuardNode.class).isEmpty();
             InductionVariable ivX = loops.getInductionVariable(compare.getX());
@@ -446,7 +445,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return graph.addOrUniqueWithInputs(new ShortCircuitOrNode(compare, !limitIncluded, newCompare, false, BranchProbabilityData.unknown()));
         }
 
-        private static boolean shouldHoistBasedOnFrequency(Block anchorBlock, Block proposedNewAnchor) {
+        private static boolean shouldHoistBasedOnFrequency(HIRBlock anchorBlock, HIRBlock proposedNewAnchor) {
             return proposedNewAnchor.getRelativeFrequency() <= anchorBlock.getRelativeFrequency();
         }
 
@@ -458,8 +457,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             }
 
             LoopEx loopEx = iv.getLoop();
-            Loop<Block> ivLoop = loopEx.loop();
-            Block guardAnchorBlock = earliestBlock(guard.getAnchor().asNode());
+            Loop<HIRBlock> ivLoop = loopEx.loop();
+            HIRBlock guardAnchorBlock = earliestBlock(guard.getAnchor().asNode());
             if (isInverted(iv.getLoop())) {
                 /*
                  * <Special case inverted loops>
@@ -470,14 +469,14 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                  * block is outside the loop while the condition is still rooted inside the loop. We
                  * need to account for this case.
                  */
-                if (!AbstractControlFlowGraph.dominates(earliestBlock(iv.getLoop().counted().getBody()), guardAnchorBlock)) {
+                if (!earliestBlock(iv.getLoop().counted().getBody()).dominates(guardAnchorBlock)) {
                     // determine if the condition is inside the loop
                     if (!iv.getLoop().whole().contains(guard.getCondition())) {
                         return false;
                     }
                 }
             } else {
-                if (!AbstractControlFlowGraph.dominates(earliestBlock(iv.getLoop().counted().getBody()), guardAnchorBlock)) {
+                if (!earliestBlock(iv.getLoop().counted().getBody()).dominates(guardAnchorBlock)) {
                     debug.log("shouldOptimizeCompare(%s):guard is not inside loop", guard);
                     return false; // guard must come from inside the loop
                 }
@@ -520,7 +519,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 }
             }
 
-            Loop<Block> l = guardAnchorBlock.getLoop();
+            Loop<HIRBlock> l = guardAnchorBlock.getLoop();
             if (isInverted(loopEx)) {
                 // guard is anchored outside the loop but the condition might still be in the loop
                 l = iv.getLoop().loop();
@@ -544,9 +543,9 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
              * If the guard anchor is already outside the loop, the condition may still be inside
              * the loop, thus w still want to try hoisting the guard.
              */
-            if (!isInverted(iv.getLoop()) && !AbstractControlFlowGraph.dominates(guardAnchorBlock, iv.getLoop().loop().getHeader())) {
+            if (!isInverted(iv.getLoop()) && !guardAnchorBlock.dominates(iv.getLoop().loop().getHeader())) {
                 if (!ignoreProfiles && !shouldHoistBasedOnFrequency(guardAnchorBlock, ivLoop.getHeader().getDominator())) {
-                    debug.log("hoisting is not beneficial based on fequency", guard);
+                    debug.log("hoisting is not beneficial based on frequency", guard);
                     return false;
                 }
             }
@@ -569,17 +568,17 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return NumUtil.isUInt(stamp.upMask());
         }
 
-        private Loop<Block> tryOptimizeInstanceOf(GuardNode guard, InstanceOfNode compare) {
+        private Loop<HIRBlock> tryOptimizeInstanceOf(GuardNode guard, InstanceOfNode compare) {
             AnchoringNode anchor = compare.getAnchor();
             if (anchor == null) {
                 return null;
             }
-            Block anchorBlock = earliestBlock(anchor.asNode());
+            HIRBlock anchorBlock = earliestBlock(anchor.asNode());
             if (anchorBlock.getLoop() == null) {
                 return null;
             }
-            Block valueBlock = earliestBlock(compare.getValue());
-            Loop<Block> hoistAbove = findInstanceOfLoopHoisting(guard, anchorBlock, valueBlock);
+            HIRBlock valueBlock = earliestBlock(compare.getValue());
+            Loop<HIRBlock> hoistAbove = findInstanceOfLoopHoisting(guard, anchorBlock, valueBlock);
             if (hoistAbove != null) {
                 compare.setProfile(compare.profile(), hoistAbove.getHeader().getDominator().getBeginNode());
                 graph.getOptimizationLog().report(SpeculativeGuardMovementPhase.class, "InstanceOfOptimization", compare);
@@ -588,7 +587,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return null;
         }
 
-        private Loop<Block> findInstanceOfLoopHoisting(GuardNode guard, Block anchorBlock, Block valueBlock) {
+        private Loop<HIRBlock> findInstanceOfLoopHoisting(GuardNode guard, HIRBlock anchorBlock, HIRBlock valueBlock) {
             assert anchorBlock.getLoop() != null;
             DebugContext debug = guard.getDebug();
             if (valueBlock.getLoop() == anchorBlock.getLoop()) {
@@ -599,7 +598,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 debug.log("shouldOptimizeInstanceOf(%s): condition loop is not a parent of anchor loop", guard);
                 return null;
             }
-            if (!AbstractControlFlowGraph.dominates(valueBlock, anchorBlock)) {
+            if (!valueBlock.dominates(anchorBlock)) {
                 // this can happen when the value comes from *after* the exit of the anchor loop
                 debug.log("shouldOptimizeInstanceOf(%s): value block does not dominate loop header", guard);
                 return null;
@@ -609,27 +608,27 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 return null; // the guard would not hoist, don't hoist the compare
             }
 
-            Loop<Block> result = anchorBlock.getLoop();
+            Loop<HIRBlock> result = anchorBlock.getLoop();
             while (result.getParent() != valueBlock.getLoop()) {
                 result = result.getParent();
             }
             return result;
         }
 
-        private Block earliestBlockForGuard(GuardNode guard, Loop<Block> forcedHoisting) {
+        private HIRBlock earliestBlockForGuard(GuardNode guard, Loop<HIRBlock> forcedHoisting) {
             DebugContext debug = guard.getDebug();
             Node anchor = guard.getAnchor().asNode();
             assert guard.inputs().count() == 2;
-            Block conditionEarliest = earliestBlock(guard.getCondition());
+            HIRBlock conditionEarliest = earliestBlock(guard.getCondition());
 
-            Block anchorEarliest = earliestBlock(anchor);
-            Block newAnchorEarliest = null;
+            HIRBlock anchorEarliest = earliestBlock(anchor);
+            HIRBlock newAnchorEarliest = null;
             LoopBeginNode outerMostExitedLoop = null;
-            Block b = anchorEarliest;
+            HIRBlock b = anchorEarliest;
 
             if (forcedHoisting != null) {
                 newAnchorEarliest = forcedHoisting.getHeader().getDominator();
-                if (AbstractControlFlowGraph.strictlyDominates(anchorEarliest, newAnchorEarliest)) {
+                if (anchorEarliest.strictlyDominates(newAnchorEarliest)) {
                     /*
                      * Special case strip mined inverted loops: if the original guard of a strip
                      * mined inverted loop is already anchored outside the outer strip mined loop,
@@ -646,8 +645,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
             double minFrequency = anchorEarliest.getRelativeFrequency();
 
-            while (AbstractControlFlowGraph.strictlyDominates(conditionEarliest, b)) {
-                Block candidateAnchor = b.getDominatorSkipLoops();
+            while (conditionEarliest.strictlyDominates(b)) {
+                HIRBlock candidateAnchor = b.getDominatorSkipLoops();
                 assert candidateAnchor.getLoopDepth() <= anchorEarliest.getLoopDepth() : " candidate anchor block at begin node " + candidateAnchor.getBeginNode() + " earliest anchor block " +
                                 anchorEarliest.getBeginNode() + " loop depth is not smaller equal for guard " + guard;
 
@@ -674,7 +673,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 AnchoringNode newAnchor = newAnchorEarliest.getBeginNode();
                 guard.setAnchor(newAnchor);
                 debug.log("New earliest : %s, anchor is %s, update guard", newAnchorEarliest.getBeginNode(), anchor);
-                Block earliest = newAnchorEarliest;
+                HIRBlock earliest = newAnchorEarliest;
                 if (guard.getAction() == DeoptimizationAction.None) {
                     guard.setAction(DeoptimizationAction.InvalidateRecompile);
                 }
@@ -683,7 +682,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 return earliest;
             } else {
                 debug.log("Keep normal anchor edge");
-                return AbstractControlFlowGraph.strictlyDominates(conditionEarliest, anchorEarliest) ? anchorEarliest : conditionEarliest;
+                return conditionEarliest.strictlyDominates(anchorEarliest) ? anchorEarliest : conditionEarliest;
             }
         }
 

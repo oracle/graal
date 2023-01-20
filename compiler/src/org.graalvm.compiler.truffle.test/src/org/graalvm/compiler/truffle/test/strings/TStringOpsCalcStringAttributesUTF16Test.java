@@ -128,7 +128,52 @@ public class TStringOpsCalcStringAttributesUTF16Test extends TStringOpsTest<Calc
             writeCodePoint(arr4, offset, MIN_HIGH_SURROGATE, true);
             ret.add(new Object[]{arr4, byteOffset, length});
         }
+        // GR-42967
+        byte[] build = buildString(new int[]{
+                        0x000000, 0x00002f,
+                        0x00003a, 0x00dbfe,
+                        0x10fc00, 0x10fc00,
+                        0x00dc01, 0x07a159,
+        }, new int[]{});
+        ret.add(new Object[]{build, 0, build.length / 2});
         return ret;
+    }
+
+    private static byte[] buildString(int[] ranges, int[] loneCodePoints) {
+        int length = 0;
+        for (int c : loneCodePoints) {
+            length += codePointByteLength(c);
+        }
+        for (int i = 0; i < ranges.length; i += 2) {
+            int lo = ranges[i];
+            int hi = ranges[i + 1];
+            if (hi <= 0xffff) {
+                length += (1 + hi - lo) * 2;
+            } else if (lo <= 0xffff) {
+                length += (1 + 0xffff - lo) * 2;
+                length += (1 + hi - 0x10000) * 4;
+            } else {
+                length += (1 + hi - lo) * 4;
+            }
+        }
+        byte[] array = new byte[length];
+        int j = 0;
+        for (int c : loneCodePoints) {
+            j += writeCodePoint(array, j, c, true);
+        }
+        for (int i = 0; i < ranges.length; i += 2) {
+            int lo = ranges[i];
+            int hi = ranges[i + 1];
+            for (int c = lo; c <= hi; c++) {
+                j += writeCodePoint(array, j, c, true);
+            }
+        }
+        assert j == length / 2;
+        return array;
+    }
+
+    private static int codePointByteLength(int codePoint) {
+        return codePoint > 0xffff ? 4 : 2;
     }
 
     private static int writeCodePoint(byte[] array, int index, int cp, boolean forward) {

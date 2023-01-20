@@ -68,7 +68,7 @@ public class TestHarness {
             } else {
                 return 0;
             }
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             ex.printStackTrace();
             return -99123;
         }
@@ -114,7 +114,7 @@ public class TestHarness {
                 }
             }
 
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             ex.printStackTrace();
         }
 

@@ -236,7 +236,7 @@ def vm_executable_path(executable, config=None):
 @contextmanager
 def native_image_context(common_args=None, hosted_assertions=True, native_image_cmd='', config=None, build_if_missing=False):
     common_args = [] if common_args is None else common_args
-    base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods']
+    base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods', '-H:+ReportExceptionStackTraces']
     base_args += ['-H:Path=' + svmbuild_dir()]
     if mx.get_opts().verbose:
         base_args += ['--verbose']
@@ -415,7 +415,7 @@ def svm_gate_body(args, tasks):
         if t:
             hellomodule(args.extra_image_builder_arguments)
 
-    with Task('Validate JSON build output', tasks, tags=[mx_gate.Tags.style]) as t:
+    with Task('Validate JSON build info', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
             import json
             try:
@@ -423,20 +423,28 @@ def svm_gate_body(args, tasks):
                 from jsonschema.exceptions import ValidationError, SchemaError
             except ImportError:
                 mx.abort('Unable to import jsonschema')
-            with open(join(suite.dir, '..', 'docs', 'reference-manual', 'native-image', 'assets', 'build-output-schema-v0.9.1.json')) as f:
-                json_schema = json.load(f)
-            with tempfile.NamedTemporaryFile(prefix='build_json') as json_file:
-                helloworld(['--output-path', svmbuild_dir(), f'-H:BuildOutputJSONFile={json_file.name}'])
-                try:
-                    with open(json_file.name) as f:
-                        json_output = json.load(f)
-                    json_validate(json_output, json_schema)
-                except IOError as e:
-                    mx.abort(f'Unable to load JSON build output: {e}')
-                except ValidationError as e:
-                    mx.abort(f'Unable to validate JSON build output against the schema: {e}')
-                except SchemaError as e:
-                    mx.abort(f'JSON schema not valid: {e}')
+
+            json_and_schema_file_pairs = [
+                ('build-artifacts.json', 'build-artifacts-schema-v0.9.0.json'),
+                ('build-output.json', 'build-output-schema-v0.9.1.json'),
+            ]
+
+            build_output_file = join(svmbuild_dir(), 'build-output.json')
+            helloworld(['--output-path', svmbuild_dir(), f'-H:BuildOutputJSONFile={build_output_file}', '-H:+GenerateBuildArtifactsFile'])
+
+            try:
+                for json_file, schema_file in json_and_schema_file_pairs:
+                    with open(join(svmbuild_dir(), json_file)) as f:
+                        json_contents = json.load(f)
+                    with open(join(suite.dir, '..', 'docs', 'reference-manual', 'native-image', 'assets', schema_file)) as f:
+                        schema_contents = json.load(f)
+                    json_validate(json_contents, schema_contents)
+            except IOError as e:
+                mx.abort(f'Unable to load JSON build info: {e}')
+            except ValidationError as e:
+                mx.abort(f'Unable to validate JSON build info against the schema: {e}')
+            except SchemaError as e:
+                mx.abort(f'JSON schema not valid: {e}')
 
 
 def native_unittests_task(extra_build_args=None):
@@ -1732,8 +1740,12 @@ def native_image_on_jvm(args, **kwargs):
         for key, value in javaProperties.items():
             args.append("-D" + key + "=" + value)
 
-    mx.run([executable] + args, **kwargs)
-
+    arg = [executable]
+    jacoco_args = mx_gate.get_jacoco_agent_args(agent_option_prefix='-J')
+    if jacoco_args is not None:
+        arg += jacoco_args
+    arg += args
+    mx.run(arg, **kwargs)
 
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):

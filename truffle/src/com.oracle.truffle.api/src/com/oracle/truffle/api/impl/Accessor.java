@@ -40,13 +40,12 @@
  */
 package com.oracle.truffle.api.impl;
 
-import static org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
-
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
 import java.net.URI;
 import java.net.URL;
@@ -80,8 +79,9 @@ import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -157,6 +157,8 @@ public abstract class Accessor {
         protected NodeSupport() {
             super(IMPL_CLASS_NAME);
         }
+
+        public abstract Lookup nodeLookup();
 
         public abstract boolean isInstrumentable(RootNode rootNode);
 
@@ -300,6 +302,8 @@ public abstract class Accessor {
         public abstract boolean isGuestToHostRootNode(RootNode root);
 
         public abstract boolean isHostLanguage(Class<?> languageClass);
+
+        public abstract Node inlineToHostNode(Object target);
 
     }
 
