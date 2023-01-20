@@ -170,31 +170,12 @@ final class PanamaSignature {
     @ImportStatic(PanamaNFILanguage.class)
     static final class CreateClosure {
 
-//        @Specialization(guards = "receiver.checkUpcallMethodHandle(cachedHandle)")
-//        static PanamaClosure createCached(PanamaSignature receiver, Object executable,
-//                        @Cached("receiver.createCachedUpcallHandle()") MethodHandle cachedHandle) {
-//            MemoryAddress ret = receiver.bind(cachedHandle, executable);
-//            return new PanamaClosure(ret);
-//        }
-//
-//        @Specialization(replaces = "createCached")
-//        static PanamaClosure createGeneric(PanamaSignature receiver, Object executable) {
-//            MethodHandle handle = receiver.getUncachedUpcallHandle();
-//            MemoryAddress ret = receiver.bind(handle, executable);
-//            return new PanamaClosure(ret);
-//        }
-
         @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()")
         static PanamaClosure doCachedExecutable(PanamaSignature signature, Object executable,
                                                 @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                                                 @Cached("executable") Object cachedExecutable,
                                                 @CachedLibrary("signature") NFIBackendSignatureLibrary self,
                                                 @Cached("create(cachedSignatureInfo, cachedExecutable)") MonomorphicClosureInfo cachedClosureInfo) {
-            // what needs to happen
-            // 1. we need to get the cachedHandle
-            //    this comes from the RootNode and binding it to the upcall target
-            // 2. we need the Monomorphic info but don't really know why
-            //    upcall
             assert signature.signatureInfo == cachedSignatureInfo && executable == cachedExecutable;
             // no need to cache duplicated allocation in the single-context case
             // the NFI frontend is taking care of that already

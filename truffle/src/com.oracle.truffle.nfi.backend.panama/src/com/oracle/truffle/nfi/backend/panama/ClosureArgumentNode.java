@@ -44,9 +44,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
 abstract class ClosureArgumentNode extends Node {
@@ -77,8 +74,8 @@ abstract class ClosureArgumentNode extends Node {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object[] argArray = (Object[]) frame.getArguments()[index];
-            return argArray[0];
+            Object[] args = (Object[]) frame.getArguments()[1];
+            return args[index];
         }
     }
 
@@ -117,14 +114,6 @@ abstract class ClosureArgumentNode extends Node {
         @Fallback
         Object doString(Object arg) {
             return arg;
-        }
-    }
-
-    static class InjectedClosureArgumentNode extends ClosureArgumentNode {
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return new NativePointer(0);
         }
     }
 }

@@ -149,7 +149,7 @@ final class PanamaClosure implements TruffleObject {
             PanamaType[] args = signature.getArgTypes();
             argNodes = new ClosureArgumentNode[args.length];
             for (int i = 0; i < args.length; i++) {
-                ClosureArgumentNode rawArg = new GetArgumentNode(i+1);
+                ClosureArgumentNode rawArg = new GetArgumentNode(i);
                 argNodes[i] = args[i].createClosureArgumentNode(rawArg);
             }
         }
@@ -200,20 +200,7 @@ final class PanamaClosure implements TruffleObject {
             if (interopLibrary.isNull(ret)) {
                 return null;
             }
-            // TODO: recheck
-            Object receiver = frame.getArguments()[0];
-            Object[] args = (Object[]) frame.getArguments()[1];
-            try {
-                // TODO refactor inside callClosure.execute
-                Object result = interop.execute(receiver, args);
-                if (result instanceof String) {
-                    return MemorySession.global().allocateUtf8String((String) result).address();
-                } else {
-                    return result;
-                }
-            } catch (InteropException ex) {
-                throw CompilerDirectives.shouldNotReachHere(ex);
-            }
+            return MemorySession.global().allocateUtf8String((String) ret).address();
         }
     }
 
