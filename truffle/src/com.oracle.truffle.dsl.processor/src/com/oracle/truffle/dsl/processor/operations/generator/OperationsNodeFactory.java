@@ -619,7 +619,7 @@ public class OperationsNodeFactory {
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.startIf().string("(boxing & 0xffff000) == 0xffff0000 || frame.isObject(slot)").end().startBlock(); // {
+        b.startIf().string("(boxing & 0xffff0000) == 0xffff0000 || frame.isObject(slot)").end().startBlock(); // {
         b.startReturn().string("frame.getObject(slot)").end();
         b.end(); // }
 
@@ -643,7 +643,7 @@ public class OperationsNodeFactory {
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.startIf().string("(boxing & 0xffff000) == 0xffff0000").end().startBlock(); // {
+        b.startIf().string("(boxing & 0xffff0000) == 0xffff0000").end().startBlock(); // {
         b.statement("Object result = frame.getObject(slot)");
 
         b.startIf().string("result").instanceOf(boxType(resultType)).end().startBlock(); // {
