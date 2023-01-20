@@ -119,6 +119,11 @@ public final class ComponentInfo {
      */
     private int priority;
 
+    /**
+     * Implicitly accepted license.
+     */
+    private Boolean implicitlyAccepted = null;
+
     private StabilityLevel stability = StabilityLevel.Undefined;
 
     public ComponentInfo(String id, String name, String versionString, String tag) {
@@ -268,6 +273,14 @@ public final class ComponentInfo {
 
     public void setLicenseType(String licenseType) {
         this.licenseType = licenseType;
+    }
+
+    public Boolean isImplicitlyAccepted() {
+        return implicitlyAccepted;
+    }
+
+    public void setImplicitlyAccepted(Boolean implicitlyAccepted) {
+        this.implicitlyAccepted = implicitlyAccepted;
     }
 
     @Override
