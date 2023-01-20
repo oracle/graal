@@ -366,6 +366,29 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     private static void addFactoryMethods(ClassVisitor cv, Class<?> storageClass, Class<?> storageFactoryInterface, String factoryName) {
+        /**
+         * Example:
+         *
+         * Interface provided by the user:
+         * 
+         * <pre>
+         * public interface StaticObjectFactory {
+         *     StaticObject create(Klass klass);
+         * }
+         * </pre>
+         *
+         * Generated factory method:
+         * 
+         * <pre>
+         * StaticObject create(Klass klass) {
+         *     return new StaticObject(
+         *                     klass,
+         *                     shape,
+         *                     primitiveArraySize > 0 ? new byte[primitiveArraySize] : null,
+         *                     objectArraySize > 0 ? new Object[objectArraySize] : null);
+         * }
+         * </pre>
+         */
         for (Method m : storageFactoryInterface.getMethods()) {
             MethodVisitor mv = cv.visitMethod(ACC_PUBLIC | ACC_FINAL, m.getName(), Type.getMethodDescriptor(m), null, null);
             mv.visitCode();
@@ -399,6 +422,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             }
 
             constructorDescriptor.append(STATIC_SHAPE_DESCRIPTOR);
+            // this.shape
             mv.visitVarInsn(ALOAD, 0);
             mv.visitFieldInsn(GETFIELD, factoryName, "shape", STATIC_SHAPE_DESCRIPTOR);
             frameStack.add(Type.getInternalName(ArrayBasedStaticShape.class));
