@@ -44,16 +44,22 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
+import org.graalvm.nativeimage.ImageInfo;
 import sun.misc.Unsafe;
 
 final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     @SuppressWarnings("rawtypes") //
     private static final Class[] PRIMITIVE_TYPES = new Class[]{long.class, double.class, int.class, float.class, short.class, char.class, byte.class, boolean.class};
     private static final int N_PRIMITIVES = PRIMITIVE_TYPES.length;
+
+    // Used by TruffleBaseFeature.StaticObjectArrayBasedSupport to patch the offsets and the indexes
+    // used to store primitive values.
+    private static final ConcurrentMap<Object, Object> replacements = createReplacementsMap();
 
     @CompilationFinal(dimensions = 1) //
     private final StaticShape<T>[] superShapes;
@@ -80,8 +86,15 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
             ArrayBasedPropertyLayout propertyLayout = new ArrayBasedPropertyLayout(generator, parentPropertyLayout, staticProperties);
             ArrayBasedStaticShape<T> shape = new ArrayBasedStaticShape<>(parentShape, generatedStorageClass, propertyLayout, checkShapes);
             T factory = generatedFactoryClass.cast(
-                            generatedFactoryClass.getConstructor(ArrayBasedStaticShape.class, int.class, int.class).newInstance(shape, propertyLayout.getPrimitiveArraySize(),
-                                            propertyLayout.getObjectArraySize()));
+                            generatedFactoryClass.getConstructor(
+                                            ArrayBasedStaticShape.class,
+                                            int.class,
+                                            int.class,
+                                            ConcurrentMap.class).newInstance(
+                                                            shape,
+                                                            propertyLayout.getPrimitiveArraySize(),
+                                                            propertyLayout.getObjectArraySize(),
+                                                            replacements));
             shape.setFactory(factory);
             return shape;
         } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
@@ -127,6 +140,18 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
             assert storage.getClass() == Object[].class;
             return SomAccessor.RUNTIME.unsafeCast(storage, Object[].class, true, true, true);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ConcurrentMap<Object, Object> createReplacementsMap() {
+        if (ImageInfo.inImageBuildtimeCode()) {
+            try {
+                return (ConcurrentMap<Object, Object>) Class.forName("com.oracle.svm.core.util.ConcurrentIdentityHashMap").getConstructor().newInstance();
+            } catch (ReflectiveOperationException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("cast")
