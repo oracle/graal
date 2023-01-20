@@ -409,6 +409,8 @@ public class PythonTests extends RegexTestBase {
         test("(foo)?(?(1)bar|baz)", "", "foxbar", 0, false);
         test("(foo)?(?(1)bar|baz)", "", "foxbaz", 0, true, 3, 6, -1, -1, -1);
 
+        // GR-42252
+        test("(?P<quote>)(?(quote))", "", "", 0, true, 0, 0, 0, 0, 1);
         // GR-42254
         test("(?P<a>x)(?P=a)(?(a)y)", "", "xxy", 0, true, 0, 3, 0, 1, 1);
         test("(?P<a1>x)(?P=a1)(?(a1)y)", "", "xxy", 0, true, 0, 3, 0, 1, 1);
