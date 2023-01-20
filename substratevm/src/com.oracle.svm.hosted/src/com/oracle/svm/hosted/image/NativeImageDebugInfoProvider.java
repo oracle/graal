@@ -2231,7 +2231,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return kind.getSlotCount();
         }
 
-
         @Override
         public JavaKind javaKind() {
             return kind;
@@ -2242,6 +2241,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return line;
         }
     }
+
     public class NativeImageDebugLocalValueInfo extends NativeImageDebugLocalInfo implements DebugLocalValueInfo {
         private final NativeImageDebugLocalValue value;
         private LocalKind localKind;
@@ -2366,7 +2366,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     public abstract static class NativeImageDebugLocalValue {
     }
 
-    public static class NativeImageDebugRegisterValue extends NativeImageDebugLocalValue {
+    public static final class NativeImageDebugRegisterValue extends NativeImageDebugLocalValue {
         private static EconomicMap<Integer, NativeImageDebugRegisterValue> registerValues = EconomicMap.create();
         private int number;
 
@@ -2406,7 +2406,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public static class NativeImageDebugStackValue extends NativeImageDebugLocalValue {
+    public static final class NativeImageDebugStackValue extends NativeImageDebugLocalValue {
         private static EconomicMap<Integer, NativeImageDebugStackValue> stackValues = EconomicMap.create();
         private int offset;
 
@@ -2446,7 +2446,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public static class NativeImageDebugConstantValue extends NativeImageDebugLocalValue {
+    public static final class NativeImageDebugConstantValue extends NativeImageDebugLocalValue {
         private static EconomicMap<JavaConstant, NativeImageDebugConstantValue> constantValues = EconomicMap.create();
         private JavaConstant value;
         private long heapoffset;

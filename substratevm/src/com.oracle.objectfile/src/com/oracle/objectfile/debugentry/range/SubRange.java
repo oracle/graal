@@ -33,12 +33,11 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 public abstract class SubRange extends Range {
     private static final DebugInfoProvider.DebugLocalInfo[] EMPTY_LOCAL_INFOS = new DebugInfoProvider.DebugLocalInfo[0];
     /**
-     * This is null for a primary range. For sub ranges it holds the root of the call tree they
-     * belong to.
+     * The root of the call tree the subrange belongs to.
      */
     private final PrimaryRange primary;
     /**
-     * The range for the caller or the primary range when this range if for top level method code.
+     * The range for the caller or the primary range when this range is for top level method code.
      */
     protected Range caller;
     /**
@@ -67,6 +66,7 @@ public abstract class SubRange extends Range {
         if (caller != null) {
             caller.addCallee(this);
         }
+        assert primary != null;
         this.primary = primary;
     }
 
@@ -77,14 +77,13 @@ public abstract class SubRange extends Range {
     @Override
     public int getFileIndex() {
         // the primary range's class entry indexes all files defined by the compilation unit
-        Range primaryRange = (isPrimary() ? this : getPrimary());
-        ClassEntry owner = primaryRange.methodEntry.ownerType();
+        ClassEntry owner = primary.methodEntry.ownerType();
         return owner.localFilesIdx(getFileEntry());
     }
 
     @Override
     public boolean isPrimary() {
-        return getPrimary() == null;
+        return false;
     }
 
     public Range getCaller() {
@@ -98,18 +97,15 @@ public abstract class SubRange extends Range {
     public abstract boolean isLeaf();
 
     public int getLocalValueCount() {
-        assert !this.isPrimary() : "primary range does not have local values";
         return localValueInfos.length;
     }
 
     public DebugInfoProvider.DebugLocalValueInfo getLocalValue(int i) {
-        assert !this.isPrimary() : "primary range does not have local values";
         assert i >= 0 && i < localValueInfos.length : "bad index";
         return localValueInfos[i];
     }
 
     public DebugInfoProvider.DebugLocalInfo getLocal(int i) {
-        assert !this.isPrimary() : "primary range does not have local vars";
         assert i >= 0 && i < localInfos.length : "bad index";
         return localInfos[i];
     }

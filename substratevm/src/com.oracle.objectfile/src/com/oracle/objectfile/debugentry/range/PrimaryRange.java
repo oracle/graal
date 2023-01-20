@@ -28,10 +28,8 @@ package com.oracle.objectfile.debugentry.range;
 
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 
 public class PrimaryRange extends Range {
-    private static final DebugInfoProvider.DebugLocalInfo[] EMPTY_LOCAL_INFOS = new DebugInfoProvider.DebugLocalInfo[0];
     /**
      * The first subrange in the range covered by this primary or null if this primary as no
      * subranges.
