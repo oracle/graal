@@ -26,7 +26,6 @@ package com.oracle.graal.pointsto.flow;
 
 import static jdk.vm.ci.common.JVMCIError.guarantee;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
-import static org.graalvm.compiler.options.OptionType.Expert;
 
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
@@ -99,8 +98,6 @@ import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
@@ -117,6 +114,7 @@ import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph.GraphKind;
@@ -151,11 +149,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.VMConstant;
 
 public class MethodTypeFlowBuilder {
-
-    public static class Options {
-        @Option(help = "Run partial escape analysis on compiler graphs before static analysis.", type = Expert)//
-        public static final OptionKey<Boolean> PEABeforeAnalysis = new OptionKey<>(true);
-    }
 
     protected final PointsToAnalysis bb;
     protected final MethodFlowsGraph flowsGraph;
@@ -215,9 +208,10 @@ public class MethodTypeFlowBuilder {
                  * bytecode parser emits explicit null checks before e.g., all method calls, field
                  * access, array accesses; many of those dominate each other.
                  */
-                new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders());
-
-                if (Options.PEABeforeAnalysis.getValue(bb.getOptions())) {
+                if (PointstoOptions.ConditionalEliminationBeforeAnalysis.getValue(bb.getOptions())) {
+                    new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders());
+                }
+                if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions())) {
                     if (!method.isDeoptTarget()) {
                         /*
                          * Deoptimization Targets cannot have virtual objects in framestates.
