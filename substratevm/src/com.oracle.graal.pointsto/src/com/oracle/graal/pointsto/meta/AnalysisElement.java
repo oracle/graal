@@ -199,7 +199,12 @@ public abstract class AnalysisElement implements AnnotatedElement {
         public void notifyCallback(AnalysisUniverse universe, AnalysisMethod reachableOverride) {
             assert reachableOverride.isReachable();
             if (seenOverride.add(reachableOverride)) {
-                execute(universe, () -> callback.accept(universe.getConcurrentAnalysisAccess(), reachableOverride.getJavaMethod()));
+                Executable javaMethod = reachableOverride.getJavaMethod();
+                if (javaMethod != null) {
+                    execute(universe, () -> {
+                        callback.accept(universe.getConcurrentAnalysisAccess(), javaMethod);
+                    });
+                }
             }
         }
     }
