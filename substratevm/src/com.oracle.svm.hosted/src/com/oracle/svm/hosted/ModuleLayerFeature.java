@@ -160,7 +160,6 @@ public final class ModuleLayerFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
-        AnalysisUniverse universe = accessImpl.getUniverse();
 
         /*
          * Parse explicitly added modules via --add-modules. This is done early as this information
@@ -172,51 +171,9 @@ public final class ModuleLayerFeature implements InternalFeature {
             extraModules.addAll(Arrays.asList(SubstrateUtil.split(explicitlyAddedModules, ",")));
         }
 
-        /**
-         * If we are running on module path and if user did not explicitly add special --add-module
-         * args as defined in the nonExplicit list, then the root modules only include reachable
-         * modules. Otherwise, we calculate root modules based on reachable modules and include
-         * modules as specified in the https://openjdk.org/jeps/261. See
-         * {@link ModuleLayerFeature.typeIsModuleRootOrReachable(AnalysisType)} for more details.
-         */
-        Stream<Module> rootModules;
         List<String> nonExplicit = List.of("ALL-DEFAULT", "ALL-SYSTEM", "ALL-MODULE-PATH");
-        if (accessImpl.getApplicationClassPath().isEmpty() && nonExplicit.stream().noneMatch(extraModules::contains)) {
-            rootModules = universe.getTypes()
-                            .stream()
-                            .filter(ModuleLayerFeature::typeIsReachable)
-                            .map(t -> t.getJavaClass().getModule());
-        } else {
-            Optional<Module> javaSeModule = universe.getTypes()
-                            .stream()
-                            .filter(ModuleLayerFeature::typeIsReachable)
-                            .map(t -> t.getJavaClass().getModule())
-                            .filter(m -> m.isNamed() && m.getName().equals("java.se"))
-                            .findFirst();
-            if (javaSeModule.isPresent()) {
-                /*
-                 * The java.se module is a root, if it exists.
-                 */
-                rootModules = Stream.of(javaSeModule.get());
-            } else {
-                rootModules = universe.getTypes()
-                                .stream()
-                                .filter(ModuleLayerFeature::typeIsModuleRootOrReachable)
-                                .map(t -> t.getJavaClass().getModule());
 
-                /*
-                 * Also make sure to include modules not seen by the analysis.
-                 */
-                Set<String> extraUndiscoveredModules = ModuleLayer.boot().modules()
-                                .stream()
-                                .filter(ModuleLayerFeature::isModuleRoot)
-                                .map(Module::getName)
-                                .collect(Collectors.toSet());
-                extraModules.addAll(extraUndiscoveredModules);
-            }
-        }
-
-        Stream<Module> runtimeImageModules = rootModules.distinct();
+        Stream<Module> runtimeImageModules = calculateRootModulesAndUpdateExtraModules(accessImpl, nonExplicit, extraModules);
 
         Set<Module> runtimeImageNamedModules = runtimeImageModules
                         .filter(Module::isNamed)
@@ -264,6 +221,67 @@ public final class ModuleLayerFeature implements InternalFeature {
         replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, runtimeImageNamedModules);
     }
 
+    /**
+     * If we are running on module path and if user did not explicitly add special --add-module args
+     * as defined in the nonExplicit list, then the root modules only include reachable modules.
+     * Otherwise, we calculate root modules based on reachable modules and include modules as
+     * specified in the JEP 261 (see <a href="https://openjdk.org/jeps/261"></a>).
+     */
+    private static Stream<Module> calculateRootModulesAndUpdateExtraModules(FeatureImpl.AfterAnalysisAccessImpl accessImpl, Collection<String> nonExplicit, Collection<String> extraModules) {
+        AnalysisUniverse universe = accessImpl.getUniverse();
+
+        Stream<Module> rootModules;
+        if (accessImpl.getApplicationClassPath().isEmpty() && nonExplicit.stream().noneMatch(extraModules::contains)) {
+            /*
+             * When running on the module path, reachable modules on the module path are root
+             * modules
+             */
+            rootModules = universe.getTypes()
+                            .stream()
+                            .filter(ModuleLayerFeature::typeIsReachable)
+                            .map(t -> t.getJavaClass().getModule());
+        } else {
+            Optional<Module> javaSeModule = universe.getTypes()
+                            .stream()
+                            .filter(ModuleLayerFeature::typeIsReachable)
+                            .map(t -> t.getJavaClass().getModule())
+                            .filter(m -> m.isNamed() && m.getName().equals("java.se"))
+                            .findFirst();
+            if (javaSeModule.isPresent()) {
+                /*
+                 * java.se module is a root, if it exists.
+                 */
+                rootModules = Stream.of(javaSeModule.get());
+            } else {
+                /*
+                 * If java.se is not present, then:
+                 *
+                 * 1. Every java.* module on the upgrade module path or among the system modules
+                 * that exports at least one package, without qualification, is a root.
+                 *
+                 * 2. Every non-java.* module on the upgrade module path or among the system modules
+                 * that exports at least one package, without qualification, is also a root.
+                 */
+                rootModules = universe.getTypes()
+                                .stream()
+                                .filter(ModuleLayerFeature::typeIsModuleRootOrReachable)
+                                .map(t -> t.getJavaClass().getModule());
+
+                /*
+                 * Also make sure to include modules not seen by the analysis.
+                 */
+                Set<String> extraUndiscoveredModules = ModuleLayer.boot().modules()
+                                .stream()
+                                .filter(ModuleLayerFeature::moduleExportsPackagesUnconditionally)
+                                .map(Module::getName)
+                                .collect(Collectors.toSet());
+                extraModules.addAll(extraUndiscoveredModules);
+            }
+        }
+
+        return rootModules.distinct();
+    }
+
     private static boolean typeIsReachable(AnalysisType t) {
         return t.isReachable() && !t.isArray();
     }
@@ -274,37 +292,11 @@ public final class ModuleLayerFeature implements InternalFeature {
         }
 
         Module m = t.getJavaClass().getModule();
-        return isModuleRoot(m);
+        return moduleExportsPackagesUnconditionally(m);
     }
 
-    private static boolean isModuleRoot(Module m) {
-        if (!m.isNamed()) {
-            return false;
-        }
-
-        /*
-         * When the main class of the application is loaded from the class path into the unnamed
-         * module of the application class loader, then the default set of root modules for the
-         * unnamed module is computed as follows (https://openjdk.org/jeps/261):
-         *
-         * 1. The java.se module is a root, if it exists. If it does not exist then every java.*
-         * module on the upgrade module path or among the system modules that exports at least one
-         * package, without qualification, is a root.
-         *
-         * 2. Every non-java.* module on the upgrade module path or among the system modules that
-         * exports at least one package, without qualification, is also a root.
-         */
-        if (m.getName().startsWith("java.")) {
-            return true;
-        } else {
-            for (String pn : m.getPackages()) {
-                if (m.isExported(pn)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+    private static boolean moduleExportsPackagesUnconditionally(Module m) {
+        return m.isNamed() && m.getPackages().stream().anyMatch(m::isExported);
     }
 
     /*
