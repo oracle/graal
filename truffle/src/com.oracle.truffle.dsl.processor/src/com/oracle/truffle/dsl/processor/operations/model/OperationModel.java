@@ -89,6 +89,7 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
         public boolean resultBoxingElimination;
         public Set<TypeMirror> possibleBoxingResults;
         public boolean isVoid;
+        public TypeMirror[] valueTypes;
 
         public int localSetterCount;
         public int localSetterRangeCount;

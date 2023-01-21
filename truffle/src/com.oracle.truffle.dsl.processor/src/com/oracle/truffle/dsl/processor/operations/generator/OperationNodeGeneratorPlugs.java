@@ -105,10 +105,6 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
             String slotString = "$sp - " + (instr.signature.valueCount - index);
 
-            if (instr.signature.isVariadic) {
-                slotString += " - this.op_variadicCount_";
-            }
-
             boolean canThrow;
 
             if (instr.signature.valueBoxingElimination[index]) {
@@ -129,6 +125,10 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
                 return canThrow;
             } else {
+                TypeMirror targetType = instr.signature.valueTypes[index];
+                if (!ElementUtils.isObject(targetType)) {
+                    b.cast(targetType);
+                }
                 b.startCall(frame, "getObject");
                 b.string(slotString);
                 b.end();
@@ -137,17 +137,6 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
         }
 
         index -= instr.signature.valueCount;
-        if (instr.signature.isVariadic) {
-            if (index == 0) {
-                b.startCall("readVariadic");
-                b.tree(frame);
-                b.string("$sp");
-                b.string("this.op_variadicCount_");
-                b.end();
-                return false;
-            }
-            index -= 1;
-        }
 
         if (index < instr.signature.localSetterCount) {
             b.string("this.op_localSetter" + index + "_");

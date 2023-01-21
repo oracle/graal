@@ -236,7 +236,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             data.operationArguments[signature.localSetterCount + i] = new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal);
         }
 
-        data.childrenMustBeValues = new boolean[signature.valueCount + (signature.isVariadic ? 1 : 0)];
+        data.childrenMustBeValues = new boolean[signature.valueCount];
         Arrays.fill(data.childrenMustBeValues, true);
 
         data.instruction = createCustomInstruction(data, nodeType, signature, name);
@@ -250,10 +250,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         TypeMirror[] boxingEliminated = parent.boxingEliminatedTypes.toArray(new TypeMirror[0]);
 
         for (int i = 0; i < signature.valueCount; i++) {
-            result.add(createNodeChildAnnotation("child" + i, context.getType(Object.class), boxingEliminated));
-        }
-        if (signature.isVariadic) {
-            result.add(createNodeChildAnnotation("variadicChild", context.getType(Object[].class)));
+            result.add(createNodeChildAnnotation("child" + i, signature.valueTypes[i], boxingEliminated));
         }
         for (int i = 0; i < signature.localSetterCount; i++) {
             result.add(createNodeChildAnnotation("localSetter" + i, types.LocalSetter));
@@ -342,10 +339,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         if (uncached) {
             for (int i = 0; i < signature.valueCount; i++) {
-                ex.addParameter(new CodeVariableElement(context.getType(Object.class), "child" + i + "Value"));
-            }
-            if (signature.isVariadic) {
-                ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "variadicChildValue"));
+                ex.addParameter(new CodeVariableElement(signature.valueTypes[i], "child" + i + "Value"));
             }
             for (int i = 0; i < signature.localSetterCount; i++) {
                 ex.addParameter(new CodeVariableElement(types.LocalSetter, "localSetter" + i + "Value"));
@@ -397,10 +391,6 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                 // once we go uncached -> cached (recalculating the value offsets and child indices)
                 instr.addField(context.getType(int.class), "op_childValue" + i + "_boxing_", true, true);
             }
-        }
-
-        if (signature.isVariadic) {
-            instr.addField(context.getType(int.class), "op_variadicCount_", true, false);
         }
 
         for (int i = 0; i < signature.localSetterCount; i++) {
@@ -507,6 +497,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         List<Boolean> canBeBoxingEliminated = new ArrayList<>();
 
+        List<TypeMirror> genericTypes = new ArrayList<>();
         int numValues = 0;
         boolean hasVariadic = false;
 
@@ -556,6 +547,9 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                                     getSimpleName(types.LocalSetterRange));
                     isValid = false;
                 }
+                genericTypes.add(context.getType(Object[].class));
+                canBeBoxingEliminated.add(false);
+                numValues++;
                 hasVariadic = true;
             } else if (isDSLParameter(param)) {
                 // nothing, we ignore these
@@ -568,6 +562,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                     data.addError(param, "Value parameters must precede LocalSetter and LocalSetterRange parameters.");
                     isValid = false;
                 }
+                genericTypes.add(context.getType(Object.class));
                 canBeBoxingEliminated.add(parent.isBoxingEliminated(param.asType()));
                 numValues++;
             }
@@ -583,6 +578,8 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         signature.localSetterCount = numLocalSetters;
         signature.localSetterRangeCount = numLocalSetterRanges;
         signature.valueBoxingElimination = new boolean[numValues];
+        signature.valueTypes = genericTypes.toArray(new TypeMirror[genericTypes.size()]);
+
         for (int i = 0; i < numValues; i++) {
             signature.valueBoxingElimination[i] = canBeBoxingEliminated.get(i);
         }

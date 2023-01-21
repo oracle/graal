@@ -110,6 +110,9 @@ public class OperationsModel extends Template implements InfoDumpable {
     public InstructionModel branchFalseInstruction;
     public InstructionModel throwInstruction;
     public InstructionModel yieldInstruction;
+    public InstructionModel[] popVariadicInstruction;
+    public InstructionModel mergeVariadicInstruction;
+    public InstructionModel storeNullInstruction;
 
     public List<TypeMirror> getProvidedTags() {
         AnnotationMirror providedTags = ElementUtils.findAnnotationMirror(ElementUtils.castTypeElement(languageClass), types.ProvidedTags);
@@ -211,6 +214,7 @@ public class OperationsModel extends Template implements InfoDumpable {
                             .setChildrenMustBeValues(true) //
                             .setInstruction(yieldInstruction);
         }
+
         operation(OperationKind.SOURCE, "Source") //
                         .setNumChildren(1) //
                         .setTransparent(true) //
@@ -224,6 +228,13 @@ public class OperationsModel extends Template implements InfoDumpable {
                         .setTransparent(true) //
                         .setOperationArguments(generic(context.getDeclaredType(Class.class), new WildcardTypeMirror(types.Tag, null)));
 
+        popVariadicInstruction = new InstructionModel[9];
+        for (int i = 0; i <= 8; i++) {
+            popVariadicInstruction[i] = instruction(InstructionKind.LOAD_VARIADIC, "store.variadic[" + i + "]");
+            popVariadicInstruction[i].variadicPopCount = i;
+        }
+        mergeVariadicInstruction = instruction(InstructionKind.MERGE_VARIADIC, "merge.variadic");
+        storeNullInstruction = instruction(InstructionKind.STORE_NULL, "store.variadic-end");
     }
 
     private static TypeMirror generic(DeclaredType el, TypeMirror... args) {

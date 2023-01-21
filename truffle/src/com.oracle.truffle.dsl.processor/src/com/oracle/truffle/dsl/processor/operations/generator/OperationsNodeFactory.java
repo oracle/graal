@@ -130,6 +130,8 @@ public class OperationsNodeFactory implements ElementHelpers {
     private CodeTypeElement instrumentableInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "InstrumentableInterpreter");
     private CodeTypeElement boxableInterface = new CodeTypeElement(Set.of(PRIVATE), ElementKind.INTERFACE, null, "BoxableInterface");
 
+    private CodeVariableElement emptyObjectArray;
+
     private static final Name Uncached_Name = CodeNames.of("Uncached");
 
     private BuilderElements builderElements;
@@ -140,7 +142,8 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     public CodeTypeElement create() {
         operationNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.templateType.getSimpleName() + "Gen", model.templateType.asType());
-        GeneratorUtils.addSuppressWarnings(context, operationNodeGen, "all");
+
+        emptyObjectArray = addField(operationNodeGen, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRRAY", "new Object[0]");
 
         if (model.generateUncached) {
             uncachedInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "UncachedInterpreter");
@@ -242,6 +245,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(Object.class), "EPSILON = new Object()"));
 
         operationNodeGen.add(createReadVariadic());
+        operationNodeGen.add(createMergeVariadic());
         if (model.hasBoxingElimination()) {
             operationNodeGen.add(createDoPopObject());
             for (TypeMirror type : model.boxingEliminatedTypes) {
@@ -695,9 +699,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                     buildIntrospectionArgument(b, "BRANCH_OFFSET", "((IntRef) data).value");
                     break;
                 case CUSTOM:
-                    if (instr.signature.isVariadic) {
-                        buildIntrospectionArgument(b, "VARIADIC", "((" + instr.getInternalName() + "Gen" + (model.generateUncached ? "_UncachedData" : "") + ") data).op_variadicCount_");
-                    }
                     break;
                 case LOAD_CONSTANT:
                     buildIntrospectionArgument(b, "CONSTANT", "data");
@@ -775,14 +776,70 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeTreeBuilder b = ex.createBuilder();
 
         b.statement("Object[] result = new Object[variadicCount]");
-
         b.startFor().string("int i = 0; i < variadicCount; i++").end().startBlock();
-        b.statement("result[i] = frame.getObject(sp - variadicCount + i)");
+        b.statement("int index = sp - variadicCount + i");
+        b.statement("result[i] = frame.getObject(index)");
+        b.statement("frame.clear(index)");
         b.end();
 
         b.statement("return result");
 
         return ex;
+    }
+
+    private CodeExecutableElement createMergeVariadic() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(Object[].class), "mergeVariadic");
+
+// ex.addParameter(new CodeVariableElement(type(Object[].class), "array0"));
+// ex.addParameter(new CodeVariableElement(type(Object[].class), "array1"));
+//
+// CodeTreeBuilder b = ex.createBuilder();
+// b.startAssert().string("array0.length >= ").string(model.popVariadicInstruction.length -
+// 1).end();
+// b.startAssert().string("array1.length > 0").end();
+//
+// b.statement("Object[] newArray = new Object[array0.length + array1.length]");
+// b.statement("System.arraycopy(array0, 0, newArray, 0, array0.length)");
+// b.statement("System.arraycopy(array1, 0, newArray, array0.length, array1.length)");
+//
+// b.startReturn().string("newArray").end();
+//
+        ex.addParameter(new CodeVariableElement(type(Object[].class), "array"));
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.statement("Object[] current = array");
+        b.statement("int length = 0");
+        b.startDoBlock();
+        b.statement("int currentLength = current.length - 1");
+        b.statement("length += currentLength");
+        b.statement("current = (Object[]) current[currentLength]");
+        b.end().startDoWhile().string("current != null").end();
+
+        b.statement("Object[] newArray = new Object[length]");
+        b.statement("current = array");
+        b.statement("int index = 0");
+
+        b.startDoBlock();
+        b.statement("int currentLength = current.length - 1");
+        b.statement("System.arraycopy(current, 0, newArray, index, currentLength)");
+        b.statement("index += currentLength");
+        b.statement("current = (Object[]) current[currentLength]");
+        b.end().startDoWhile().string("current != null").end();
+
+        b.startReturn().string("newArray").end();
+
+        return ex;
+    }
+
+    static Object[] merge(Object[] array0, Object[] array1) {
+        assert array0.length >= 8;
+        assert array1.length > 0;
+
+        Object[] newArray = new Object[array0.length + array1.length];
+        System.arraycopy(array0, 0, newArray, 0, array0.length);
+        System.arraycopy(array1, 0, newArray, array0.length, array0.length);
+        return newArray;
     }
 
     private CodeExecutableElement createDoPopObject() {
@@ -1228,6 +1285,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             builder.add(createAfterChild());
             builder.add(createDoEmitFinallyHandler());
             builder.add(createDoEmitInstruction());
+            builder.add(createDoEmitVariadic());
             builder.add(createDoCreateExceptionHandler());
             builder.add(createDoEmitSourceInfo());
             builder.add(createFinish());
@@ -1900,9 +1958,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("builtNodes.add(node)");
                         b.statement("return node");
                     } else {
-
                         serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
-
                         b.statement("return");
                     }
 
@@ -1920,8 +1976,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.string("" + operation.id);
             b.end(2);
 
-            if (operation.isVariadic && operation.numChildren > 0) {
-                b.startIf().string("operationChildCount[operationSp] < " + operation.numChildren).end().startBlock();
+            if (operation.isVariadic && operation.numChildren > 1) {
+                b.startIf().string("operationChildCount[operationSp] < " + (operation.numChildren - 1)).end().startBlock();
                 buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + operation.numChildren +
                                 " children, but \" + operationChildCount[operationSp] + \" provided. This is probably a bug in the parser.\"");
                 b.end();
@@ -2230,6 +2286,10 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private void buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction) {
+            if (instruction.signature.isVariadic) {
+                b.statement("doEmitVariadic(operationChildCount[operationSp] - " + (instruction.signature.valueCount - 1) + ")");
+            }
+
             if (model.generateUncached) {
                 if (!instruction.needsUncachedData()) {
                     b.statement("Object argument = EPSILON");
@@ -2242,11 +2302,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.statement(instruction.getInternalName() + "Gen argument = new " + instruction.getInternalName() + "Gen()");
             }
 
-            boolean inEmit = !operation.isVariadic && operation.numChildren == 0;
-
-            if (instruction.signature.isVariadic) {
-                b.statement("argument.op_variadicCount_ = operationChildCount[operationSp] - " + instruction.signature.valueCount);
-            }
+            boolean inEmit = operation.numChildren == 0;
 
             int argBase;
             if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
@@ -2671,6 +2727,42 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private CodeExecutableElement createDoEmitVariadic() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitVariadic");
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "count"));
+            CodeTreeBuilder b = ex.createBuilder();
+
+            int variadicCount = model.popVariadicInstruction.length - 1;
+
+            b.startIf().string("count <= ").string(variadicCount).end().startBlock();
+            b.statement("doEmitInstruction(" + model.popVariadicInstruction[0].id + " + count, EPSILON)");
+            b.end().startElseBlock();
+
+            b.startIf().string("curStack + 1 > maxStack").end().startBlock();
+            b.statement("maxStack = curStack + 1");
+            b.end();
+            b.statement("int elementCount = count + 1");
+            b.statement("doEmitInstruction(" + model.storeNullInstruction.id + ", EPSILON)");
+
+            b.startWhile().string("elementCount > 8").end().startBlock();
+            b.statement("doEmitInstruction(" + model.popVariadicInstruction[variadicCount].id + ", EPSILON)");
+            b.statement("elementCount -= 7");
+            b.end();
+
+            b.startIf().string("elementCount > 0").end().startBlock();
+            b.statement("doEmitInstruction(" + model.popVariadicInstruction[0].id + " + elementCount, EPSILON)");
+            b.end();
+            b.statement("doEmitInstruction(" + model.mergeVariadicInstruction.id + ", EPSILON)");
+            b.end();
+
+            b.statement("curStack -= count - 1");
+            b.startIf().string("count == 0 && curStack > maxStack").end().startBlock();
+            b.statement("maxStack = curStack");
+            b.end();
+
+            return ex;
+        }
+
         private void buildPushStackIndex(CodeTreeBuilder b, String index, boolean performCheck) {
             if (performCheck) {
                 b.startIf().string("stackValueBciStack.length == stackValueBciSp").end().startBlock();
@@ -2706,10 +2798,15 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case CUSTOM:
                     case CUSTOM_QUICKENED:
+                        int effect;
                         if (instr.signature.isVariadic) {
-                            b.statement("stackValueBciSp -= " + argument + ".op_variadicCount_");
+                            b.statement("stackValueBciSp -= operationChildCount[operationSp] - " + (instr.signature.valueCount - 1));
+                            effect = instr.signature.valueCount - 2;
+                        } else {
+                            effect = instr.signature.valueCount - 1;
                         }
-                        for (int i = instr.signature.valueCount - 1; i >= 0; i--) {
+
+                        for (int i = effect - 1; i >= 0; i--) {
                             if (instr.signature.valueBoxingElimination[i]) {
                                 b.statement(argument + ".op_childValue" + i + "_boxing_ = stackValueBciStack[--stackValueBciSp]");
                             } else {
@@ -2773,9 +2870,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                     break;
                 case CUSTOM:
                 case CUSTOM_QUICKENED:
-                    if (instr.signature.isVariadic) {
-                        b.statement("curStack -= " + argument + ".op_variadicCount_");
-                    }
                     int delta = (instr.signature.isVoid ? 0 : 1) - instr.signature.valueCount;
                     if (delta != 0) {
                         b.statement("curStack += " + delta);
@@ -3333,6 +3427,38 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case SUPERINSTRUCTION:
                         // todo: implement superinstructions
                         break;
+                    case STORE_NULL:
+                        b.statement("frame.setObject(sp, null)");
+                        b.statement("sp += 1");
+                        break;
+                    case LOAD_VARIADIC:
+                        int effect = -instr.variadicPopCount + 1;
+                        b.startStatement();
+                        b.string("frame.setObject(sp");
+                        if (instr.variadicPopCount != 0) {
+                            b.string(" - ").string(instr.variadicPopCount);
+                        }
+                        b.string(", ");
+                        if (instr.variadicPopCount == 0) {
+                            b.staticReference(emptyObjectArray);
+                        } else {
+                            b.string("readVariadic(frame, sp, ").string(instr.variadicPopCount).string(")");
+                        }
+                        b.string(")");
+                        b.end();
+
+                        if (effect != 0) {
+                            if (effect > 0) {
+                                b.statement("sp += " + effect);
+                            } else {
+                                b.statement("sp -= " + -effect);
+                            }
+                        }
+                        break;
+                    case MERGE_VARIADIC:
+                        b.statement("frame.setObject(sp - 1, mergeVariadic((Object[])frame.getObject(sp - 1)))");
+                        break;
+
                     default:
                         throw new UnsupportedOperationException("not implemented");
                 }
@@ -3415,15 +3541,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             String extraArguments = "$this, objs, bci, sp";
 
-            if (signature.isVariadic) {
-                b.startAssign("int variadicCount");
-                b.startParantheses().cast(uncachedType).string("curObj").end().string(".op_variadicCount_");
-                b.end();
-            }
-
             if (doPush) {
                 int stackOffset = -instr.signature.valueCount + (instr.signature.isVoid ? 0 : 1);
-                b.statement("int resultSp = sp + " + stackOffset + (instr.signature.isVariadic ? " - variadicCount" : ""));
+                b.statement("int resultSp = sp + " + stackOffset);
             }
 
             if (isUncached) {
@@ -3443,17 +3563,16 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.string("frame");
 
                 for (int i = 0; i < instr.signature.valueCount; i++) {
+                    TypeMirror targetType = instr.signature.valueTypes[i];
+                    b.startGroup();
+                    if (!ElementUtils.isObject(targetType)) {
+                        b.cast(targetType);
+                    }
                     b.startCall("frame.getObject").startGroup();
                     b.string("sp");
-                    if (signature.isVariadic) {
-                        b.string(" - variadicCount");
-                    }
                     b.string(" - " + (instr.signature.valueCount - i));
                     b.end(2);
-                }
-
-                if (instr.signature.isVariadic) {
-                    b.string("readVariadic(frame, sp, variadicCount)");
+                    b.end();
                 }
 
                 for (int i = 0; i < instr.signature.localSetterCount; i++) {

@@ -64,6 +64,9 @@ public class InstructionModel implements InfoDumpable {
         LOAD_LOCAL_MATERIALIZED,
         STORE_LOCAL,
         STORE_LOCAL_MATERIALIZED,
+        LOAD_VARIADIC,
+        MERGE_VARIADIC,
+        STORE_NULL,
 
         RETURN,
         YIELD,
@@ -95,6 +98,7 @@ public class InstructionModel implements InfoDumpable {
     public CodeTypeElement nodeType;
     public CustomSignature signature;
     public NodeData nodeData;
+    public int variadicPopCount = -1;
 
     public final List<InstructionField> fields = new ArrayList<>();
     public boolean continueWhen;
