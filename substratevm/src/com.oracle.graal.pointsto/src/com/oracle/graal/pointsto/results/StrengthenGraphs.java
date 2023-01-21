@@ -668,7 +668,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
              */
             List<AnalysisType> typeStateTypes = new ArrayList<>(nodeTypeState.typesCount());
             for (AnalysisType typeStateType : nodeTypeState.types(pta)) {
-                if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isAssignableFrom(typeStateType))) {
+                if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isJavaLangObject() || oldType.isAssignableFrom(typeStateType))) {
                     typeStateTypes.add(typeStateType);
                 }
             }
@@ -700,6 +700,9 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 assert typeStateTypes.size() > 1;
                 AnalysisType baseType = typeStateTypes.get(0);
                 for (int i = 1; i < typeStateTypes.size(); i++) {
+                    if (baseType.isJavaLangObject()) {
+                        break;
+                    }
                     baseType = baseType.findLeastCommonAncestor(typeStateTypes.get(i));
                 }
 

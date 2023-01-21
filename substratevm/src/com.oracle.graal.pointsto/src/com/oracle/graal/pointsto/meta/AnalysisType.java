@@ -166,6 +166,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
+    private final boolean isJavaLangObject;
 
     private final int dimension;
 
@@ -210,6 +211,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         this.universe = universe;
         this.wrapped = javaType;
         isArray = wrapped.isArray();
+        isJavaLangObject = wrapped.isJavaLangObject();
         this.storageKind = storageKind;
         if (universe.analysisPolicy().needsConstantCache()) {
             this.constantObjectsCache = new ConcurrentHashMap<>();
@@ -923,6 +925,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public boolean isArray() {
         return isArray;
+    }
+
+    @Override
+    public boolean isJavaLangObject() {
+        return isJavaLangObject;
     }
 
     @Override
