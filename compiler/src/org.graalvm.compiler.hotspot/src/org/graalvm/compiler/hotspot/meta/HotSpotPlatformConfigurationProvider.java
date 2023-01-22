@@ -34,6 +34,8 @@ import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
 import org.graalvm.compiler.nodes.gc.G1BarrierSet;
+import org.graalvm.compiler.nodes.gc.ShenandoahBarrierConfig;
+import org.graalvm.compiler.nodes.gc.ShenandoahBarrierSet;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -65,8 +67,8 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
     private BarrierSet createBarrierSet(GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         boolean useDeferredInitBarriers = config.useDeferredInitBarriers;
         ResolvedJavaType objectArrayType = metaAccess.lookupJavaType(Object[].class);
+        ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
         if (config.useG1GC) {
-            ResolvedJavaField referentField = HotSpotReplacementsUtil.referentField(metaAccess);
             return new G1BarrierSet(objectArrayType, referentField) {
                 @Override
                 protected boolean writeRequiresPostBarrier(FixedAccessNode node, ValueNode writtenValue) {
@@ -84,6 +86,9 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
                     return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
                 }
             };
+        } else if (config.useShenandoahGC) {
+            ShenandoahBarrierConfig shenandoahConfig = new ShenandoahBarrierConfig(config.shenandoahLoadRefBarrier, config.shenandoahSATBBarrier, config.shenandoahCASBarrier);
+            return new ShenandoahBarrierSet(shenandoahConfig, objectArrayType, referentField);
         } else {
             return new CardTableBarrierSet(objectArrayType) {
                 @Override

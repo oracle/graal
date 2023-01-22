@@ -86,6 +86,7 @@ import org.graalvm.compiler.hotspot.replacements.HotSpotHashCodeSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotIsArraySnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.hotspot.replacements.HotSpotSerialWriteBarrierSnippets;
+import org.graalvm.compiler.hotspot.replacements.HotSpotShenandoahBarrierSnippets;
 import org.graalvm.compiler.hotspot.replacements.HubGetClassNode;
 import org.graalvm.compiler.hotspot.replacements.InstanceOfSnippets;
 import org.graalvm.compiler.hotspot.replacements.KlassLayoutHelperNode;
@@ -153,6 +154,10 @@ import org.graalvm.compiler.nodes.gc.G1PreWriteBarrier;
 import org.graalvm.compiler.nodes.gc.G1ReferentFieldReadBarrier;
 import org.graalvm.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
 import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
+import org.graalvm.compiler.nodes.gc.ShenandoahArrayRangePreWriteBarrier;
+import org.graalvm.compiler.nodes.gc.ShenandoahLoadReferenceBarrier;
+import org.graalvm.compiler.nodes.gc.ShenandoahPreWriteBarrier;
+import org.graalvm.compiler.nodes.gc.ShenandoahReferentFieldReadBarrier;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
@@ -255,6 +260,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected MonitorSnippets.Templates monitorSnippets;
     protected HotSpotSerialWriteBarrierSnippets.Templates serialWriteBarrierSnippets;
     protected HotSpotG1WriteBarrierSnippets.Templates g1WriteBarrierSnippets;
+    protected HotSpotShenandoahBarrierSnippets.Templates shenandoahBarrierSnippets;
     protected LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
     protected AssertionSnippets.Templates assertionSnippets;
     protected LogSnippets.Templates logSnippets;
@@ -304,6 +310,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         allocationSnippets = allocationSnippetTemplates;
         monitorSnippets = new MonitorSnippets.Templates(options, runtime, providers, config.useFastLocking);
         g1WriteBarrierSnippets = new HotSpotG1WriteBarrierSnippets.Templates(options, runtime, providers, config);
+        shenandoahBarrierSnippets = new HotSpotShenandoahBarrierSnippets.Templates(options, runtime, providers, config);
         serialWriteBarrierSnippets = new HotSpotSerialWriteBarrierSnippets.Templates(options, runtime, providers);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(options, providers);
         assertionSnippets = new AssertionSnippets.Templates(options, providers);
@@ -459,6 +466,14 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             g1WriteBarrierSnippets.lower((G1PostWriteBarrier) n, tool);
         } else if (n instanceof G1ReferentFieldReadBarrier) {
             g1WriteBarrierSnippets.lower((G1ReferentFieldReadBarrier) n, tool);
+        } else if (n instanceof ShenandoahArrayRangePreWriteBarrier) {
+            shenandoahBarrierSnippets.lower((ShenandoahArrayRangePreWriteBarrier) n, tool);
+        } else if (n instanceof ShenandoahPreWriteBarrier) {
+            shenandoahBarrierSnippets.lower((ShenandoahPreWriteBarrier) n, tool);
+        } else if (n instanceof ShenandoahReferentFieldReadBarrier) {
+            shenandoahBarrierSnippets.lower((ShenandoahReferentFieldReadBarrier) n, tool);
+        } else if (n instanceof ShenandoahLoadReferenceBarrier) {
+            shenandoahBarrierSnippets.lower((ShenandoahLoadReferenceBarrier) n, tool);
         } else if (n instanceof SerialWriteBarrier) {
             serialWriteBarrierSnippets.lower((SerialWriteBarrier) n, tool);
         } else if (n instanceof SerialArrayRangeWriteBarrier) {

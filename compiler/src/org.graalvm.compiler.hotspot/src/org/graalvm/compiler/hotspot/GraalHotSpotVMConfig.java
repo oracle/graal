@@ -204,6 +204,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final boolean useG1GC = getFlag("UseG1GC", Boolean.class);
     public final boolean useCMSGC = getFlag("UseConcMarkSweepGC", Boolean.class, false, JDK < 14); // JDK-8231559
+    public final boolean useShenandoahGC = getFlag("UseShenandoahGC", Boolean.class);
+    public final boolean shenandoahLoadRefBarrier = getFlag("ShenandoahLoadRefBarrier", Boolean.class);
+    public final boolean shenandoahSATBBarrier = getFlag("ShenandoahSATBBarrier", Boolean.class);
+    public final boolean shenandoahCASBarrier = getFlag("ShenandoahCASBarrier", Boolean.class);
 
     public final int allocatePrefetchStyle = getFlag("AllocatePrefetchStyle", Integer.class);
     public final int allocatePrefetchInstr = getFlag("AllocatePrefetchInstr", Integer.class);
@@ -527,6 +531,29 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         g1CardQueueBufferOffset = getConstant("G1ThreadLocalData::dirty_card_queue_buffer_offset", Integer.class);
     }
 
+    public final int shenandoahSATBQueueMarkingOffset;
+    public final int shenandoahSATBQueueIndexOffset;
+    public final int shenandoahSATBQueueBufferOffset;
+    public final int shenandoahGCStateOffset;
+    {
+        if (JDK <= 8) {
+            int satbMarkQueueBufferOffset = getFieldOffset("PtrQueue::_buf", Integer.class, "void**");
+            int satbMarkQueueIndexOffset = getFieldOffset("PtrQueue::_index", Integer.class, "size_t");
+            int satbMarkQueueActiveOffset = getFieldOffset("PtrQueue::_active", Integer.class, "bool");
+            int javaThreadSatbMarkQueueOffset = getFieldOffset("JavaThread::_satb_mark_queue", Integer.class);
+
+            shenandoahSATBQueueMarkingOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueActiveOffset;
+            shenandoahSATBQueueIndexOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueIndexOffset;
+            shenandoahSATBQueueBufferOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueBufferOffset;
+            shenandoahGCStateOffset = getFieldOffset("JavaThread::_gc_state", Integer.class);
+        } else {
+            shenandoahSATBQueueMarkingOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_active_offset", Integer.class);
+            shenandoahSATBQueueIndexOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_index_offset", Integer.class);
+            shenandoahSATBQueueBufferOffset = getConstant("ShenandoahThreadLocalData::satb_mark_queue_buffer_offset", Integer.class);
+            shenandoahGCStateOffset = getConstant("ShenandoahThreadLocalData::gc_state_offset", Integer.class);
+         }
+    }
+
     public final int klassOffset = getFieldValue("java_lang_Class::_klass_offset", Integer.class, "int");
     public final int arrayKlassOffset = getFieldValue("java_lang_Class::_array_klass_offset", Integer.class, "int");
 
@@ -740,6 +767,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long writeBarrierPreAddress = getAddress("JVMCIRuntime::write_barrier_pre");
     public final long writeBarrierPostAddress = getAddress("JVMCIRuntime::write_barrier_post");
     public final long validateObject = getAddress("JVMCIRuntime::validate_object");
+
+    public final long shenandoahConcmarkBarrierAddress = getAddress("JVMCIRuntime::shenandoah_concmark_barrier");
+    public final long shenandoahLoadReferenceBarrierAddress = getAddress("JVMCIRuntime::shenandoah_load_reference_barrier");
 
     public final long testDeoptimizeCallInt = getAddress("JVMCIRuntime::test_deoptimize_call_int");
 
