@@ -830,7 +830,7 @@ public class FallbackTest extends AbstractPolyglotTest {
 
         @Specialization(guards = {"shared.execute(arg0)", "notShared.execute(arg0)"}, limit = "1")
         protected String s0(Object arg0,
-                        @Cached(neverDefault = false) GuardNode notShared,
+                        @Cached GuardNode notShared,
                         @Shared("shared") @Cached(neverDefault = false) GuardNode shared) {
             return "s0";
         }
