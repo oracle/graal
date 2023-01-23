@@ -41,10 +41,10 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     public static final int BYTE_WIDTH = BIT_WIDTH / Byte.SIZE;
     public static final long EXPONENT_MASK = 0b111111111111111L << EXPONENT_POSITION; // 15 bit, shifted to the left by 48bits.
     public static final long FRACTION_MASK = (1L << EXPONENT_POSITION) - 1; //
-    private static final LLVM128BitFloat POSITIVE_INFINITY = LLVM128BitFloat.fromRawValues(false, EXPONENT_MASK, bit(112L));
-    private static final LLVM128BitFloat NEGATIVE_INFINITY = LLVM128BitFloat.fromRawValues(true, EXPONENT_MASK, bit(112L));
+    //private static final LLVM128BitFloat POSITIVE_INFINITY = LLVM128BitFloat.fromRawValues(false, EXPONENT_MASK, bit(112L));
+    //private static final LLVM128BitFloat NEGATIVE_INFINITY = LLVM128BitFloat.fromRawValues(true, EXPONENT_MASK, bit(112L));
     private static final LLVM128BitFloat POSITIVE_ZERO = LLVM128BitFloat.fromRawValues(false, 0, 0);
-    private static final LLVM128BitFloat NEGATIVE_ZERO = LLVM128BitFloat.fromRawValues(true, 0, 0);
+    //private static final LLVM128BitFloat NEGATIVE_ZERO = LLVM128BitFloat.fromRawValues(true, 0, 0);
     private static final int EXPONENT_BIAS = 16383;
     private static final int FLOAT_EXPONENT_BIAS = 127;
 
@@ -56,11 +56,11 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
 
     @CompilerDirectives.TruffleBoundary
     public static String toLLVMString(LLVM128BitFloat value) {
-        if (value.isInfinity()) {
+        /*if (value.isInfinity()) {
             return "INF";
-        } else {
+        } else {*/
             return String.format("0xK%016x%016x", value.expSignFraction, value.fraction);
-        }
+        //}
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -81,10 +81,10 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         this.fraction = fraction;
     }
 
-    private LLVM128BitFloat(LLVM128BitFloat value) {
+    /*private LLVM128BitFloat(LLVM128BitFloat value) {
         this.expSignFraction = value.expSignFraction;
         this.fraction = value.fraction;
-    }
+    }*/
 
     public static LLVM128BitFloat fromRawValues(boolean sign, long exponentFraction, long fraction) {
         assert (exponentFraction & 0x7FFFF) == exponentFraction;
@@ -116,6 +116,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         return this.expSignFraction == other.expSignFraction && this.fraction == other.fraction;
     }
 
+    /*
     public boolean isPositiveInfinity() {
         return POSITIVE_INFINITY.equals(this);
     }
@@ -126,7 +127,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
 
     public boolean isInfinity() {
         return isPositiveInfinity() || isNegativeInfinity();
-    }
+    }*/
 
     public static LLVM128BitFloat createPositiveZero() {
         if (CompilerDirectives.inCompiledCode()) {
@@ -185,11 +186,11 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     }
 
     public double toDoubleValue() {
-       if (isPositiveInfinity()) {
+       /*if (isPositiveInfinity()) {
             return DoubleHelper.POSITIVE_INFINITY;
         } else if (isNegativeInfinity()) {
            return DoubleHelper.NEGATIVE_INFINITY;
-       } else {
+       } else {*/
            long doubleExponent = getUnbiasedExponent() + DoubleHelper.DOUBLE_EXPONENT_BIAS;
            long doubleFraction = (expSignFraction & FRACTION_MASK) << (DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH - EXPONENT_POSITION); // 48bits from expSignFraction, with 4 bits shift left.
            doubleFraction |= fraction >>> (Long.SIZE - (DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH - EXPONENT_POSITION)); // 4bits from fraction
@@ -197,23 +198,22 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
            long shiftedExponent = doubleExponent << DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH; //TODO: overflow case. Test this.
            long rawVal = doubleFraction | shiftedExponent | shiftedSignBit;
            return Double.longBitsToDouble(rawVal);
-       }
+       //}
     }
 
     public float toFloatValue() {
-        if (isPositiveInfinity()) {
+        /*if (isPositiveInfinity()) {
             return FloatHelper.POSITIVE_INFINITY;
         } else if (isNegativeInfinity()) {
             return FloatHelper.NEGATIVE_INFINITY;
-        } else {
+        } else {*/
             int floatExponent = (int) getUnbiasedExponent() + FLOAT_EXPONENT_BIAS;
             int floatFraction = (int) (expSignFraction & FRACTION_MASK) >>> (EXPONENT_POSITION - FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
             int shiftedSignBit = (getSign() ? 1 : 0) << FloatHelper.FLOAT_SIGN_POS;
             int shiftedExponent = floatExponent << FloatHelper.FLOAT_FRACTION_BIT_WIDTH;
             int rawVal = floatFraction | shiftedExponent | shiftedSignBit;
             return Float.intBitsToFloat(rawVal);
-
-        }
+        //}
     }
 
     public byte[] getBytes() {
@@ -268,20 +268,20 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
 
     public static LLVM128BitFloat fromDouble(double val) {
         boolean sign = val < 0;
-        if (DoubleHelper.isPositiveZero(val)) {
+        /*if (DoubleHelper.isPositiveZero(val)) {
             return new LLVM128BitFloat(POSITIVE_ZERO);
         } else if (DoubleHelper.isNegativeZero(val)) {
             return new LLVM128BitFloat(NEGATIVE_ZERO);
-        } else {
-            long rawValue = Double.doubleToRawLongBits(val);
-            int doubleExponent = DoubleHelper.getUnbiasedExponent(val);
-            int biasedExponent = doubleExponent + EXPONENT_BIAS;
-            long doubleFraction = rawValue & DoubleHelper.FRACTION_MASK;
-            long shiftAmount = FRACTION_BIT_WIDTH - DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH; //112 - 52 = 60
-            long fraction = doubleFraction << (shiftAmount);
-            long biasedExponentFraction = ((long) biasedExponent << EXPONENT_POSITION) | (doubleFraction >> (Long.SIZE - shiftAmount)); // 64 - 60 = 4
-            return LLVM128BitFloat.fromRawValues(sign, biasedExponentFraction, fraction);
-        }
+        } else {*/
+        long rawValue = Double.doubleToRawLongBits(val);
+        int doubleExponent = DoubleHelper.getUnbiasedExponent(val);
+        int biasedExponent = doubleExponent + EXPONENT_BIAS;
+        long doubleFraction = rawValue & DoubleHelper.FRACTION_MASK;
+        long shiftAmount = FRACTION_BIT_WIDTH - DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH; //112 - 52 = 60
+        long fraction = doubleFraction << (shiftAmount);
+        long biasedExponentFraction = ((long) biasedExponent << EXPONENT_POSITION) | (doubleFraction >> (Long.SIZE - shiftAmount)); // 64 - 60 = 4
+        return LLVM128BitFloat.fromRawValues(sign, biasedExponentFraction, fraction);
+        //}
     }
 
     @Override
