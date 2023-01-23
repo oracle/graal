@@ -1794,8 +1794,8 @@ public class TestOperationsParserTest {
     }
 
     private static void assertInstructionEquals(Instruction instr, int index, String name) {
-        assertEquals(instr.getIndex(), index);
-        assertEquals(instr.getName(), name);
+        assertEquals(index, instr.getIndex());
+        assertEquals(name, instr.getName());
     }
 
     @Test
@@ -1815,12 +1815,60 @@ public class TestOperationsParserTest {
 
         OperationIntrospection data = node.getIntrospectionData();
 
-        assertEquals(data.getInstructions().size(), 5);
+        assertEquals(5, data.getInstructions().size());
         assertInstructionEquals(data.getInstructions().get(0), 0, "load.argument");
         assertInstructionEquals(data.getInstructions().get(1), 1, "load.argument");
         assertInstructionEquals(data.getInstructions().get(2), 2, "c.AddOperation");
         assertInstructionEquals(data.getInstructions().get(3), 3, "return");
         // todo: with DCE, this pop will go away (since return is considered as returning a value)
         assertInstructionEquals(data.getInstructions().get(4), 4, "pop");
+    }
+
+    @Test
+    public void testDecisionQuicken() {
+        TestOperations node = parseNode(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        // todo: these tests do not pass, since quickening is not implemented yet properly
+
+        assertInstructionEquals(node.getIntrospectionData().getInstructions().get(2), 2, "c.AddOperation");
+
+        assertEquals(3L, node.getCallTarget().call(1L, 2L));
+
+        assertInstructionEquals(node.getIntrospectionData().getInstructions().get(2), 2, "c.AddOperation.q.AddLongs");
+
+        assertEquals("foobar", node.getCallTarget().call("foo", "bar"));
+
+        assertInstructionEquals(node.getIntrospectionData().getInstructions().get(2), 2, "c.AddOperation");
+    }
+
+    @Test
+    public void testDecisionSuperInstruction() {
+        TestOperations node = parseNode(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginLessThanOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endLessThanOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        // todo: these tests do not pass, since quickening is not implemented yet properly
+
+        assertInstructionEquals(node.getIntrospectionData().getInstructions().get(1), 1, "si.load.argument.c.LessThanOperation");
     }
 }

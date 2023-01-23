@@ -1,0 +1,16 @@
+[
+	{
+		"id": "test1",
+		"type": "Quicken",
+		"operation": "AddOperation",
+		"specializations": ["AddLongs"]
+	},
+	{
+        "id": "test2",
+        "type": "SuperInstruction",
+        "instructions": [
+            "load.argument",
+            "c.LessThanOperation"
+        ]
+    }
+]

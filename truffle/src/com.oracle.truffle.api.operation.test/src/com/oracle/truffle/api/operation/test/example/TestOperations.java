@@ -70,7 +70,12 @@ import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
 
-@GenerateOperations(languageClass = TestLanguage.class, enableYield = true, enableSerialization = true, boxingEliminationTypes = {long.class})
+@GenerateOperations(//
+                languageClass = TestLanguage.class, //
+                enableYield = true, //
+                enableSerialization = true, //
+                boxingEliminationTypes = {long.class}, //
+                decisionsFile = "decisions.json")
 @GenerateAOT
 @OperationProxy(SomeOperationNode.class)
 @ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScAnd", continueWhen = true)
@@ -99,7 +104,7 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     @GenerateAOT
     static final class AddOperation {
         @Specialization
-        public static long add(long lhs, long rhs) {
+        public static long addLongs(long lhs, long rhs) {
             return lhs + rhs;
         }
 

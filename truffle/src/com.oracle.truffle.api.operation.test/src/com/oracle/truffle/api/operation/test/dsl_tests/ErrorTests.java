@@ -210,6 +210,27 @@ public class ErrorTests {
             public static void spec(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
             }
         }
+    } 
+
+    // todo: more tests when parsing becomes more robust (right now messages are pretty useless, and
+    // also contain full filepath, making the tests non-portable)
+    // todo: test for bad quicken decision when we parse those
+    @ExpectError({
+                    "Unknown optimization decision type: 'MadeUpType'.",
+                    "Error reading optimization decisions: Super-instruction 'si.made.up.instruction' defines a sub-instruction 'made.up.instruction' which does not exist.",
+    })
+    @GenerateOperations(languageClass = ErrorLanguage.class, decisionsFile = "bad_decisions.json")
+    public abstract static class OperationDecisionErrorTests extends RootNode implements OperationRootNode {
+        protected OperationDecisionErrorTests(TruffleLanguage<?> language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class TestOperation {
+            @Specialization
+            public static void doStuff() {
+            }
+        }
     }
 
     @ExpectError("%")
