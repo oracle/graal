@@ -34,10 +34,12 @@ import org.graalvm.compiler.hotspot.CompilationTask;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.ProfileReplaySupport;
 import org.graalvm.compiler.options.OptionValues;
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -131,10 +133,11 @@ public class ProfileReplayTest extends GraalCompilerTest {
     }
 
     private static void runCompile(CompilationTask task, OptionValues opt) {
-        task.runCompilation(opt);
+        HotSpotCompilationRequestResult res = task.runCompilation(opt);
         InstalledCode installedCode = task.getInstalledCode();
         if (installedCode != null) {
             installedCode.invalidate();
         }
+        Assert.assertNull(res.getFailureMessage());
     }
 }
