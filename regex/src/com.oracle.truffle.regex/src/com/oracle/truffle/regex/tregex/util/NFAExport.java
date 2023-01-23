@@ -387,8 +387,8 @@ public final class NFAExport {
         if (fullLabels && state.isMustAdvance()) {
             sb.append("_ma");
         }
-        if (fullLabels && state.getMatchedConditionGroups() != null && !state.getMatchedConditionGroups().isEmpty()) {
-            sb.append("_?(").append(state.getMatchedConditionGroups()).append(")");
+        if (fullLabels && state.getMatchedConditionGroupsMap() != null && !state.getMatchedConditionGroupsMap().isEmpty()) {
+            sb.append("_?(").append(state.getMatchedConditionGroupsMap()).append(")");
         }
         return sb.toString();
     }

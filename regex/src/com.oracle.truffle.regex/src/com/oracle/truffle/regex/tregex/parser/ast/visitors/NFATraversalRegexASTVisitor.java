@@ -238,6 +238,20 @@ public abstract class NFATraversalRegexASTVisitor {
         return matchedConditionGroups;
     }
 
+    protected TBitSet getCurrentMatchedConditionGroups() {
+        assert isBuildingDFA();
+        TBitSet currentMatchedConditionGroups = getMatchedConditionGroups().copy();
+        for (int conditionGroup : ast.getConditionGroups()) {
+            if (captureGroupClears.get(2 * conditionGroup + 1)) {
+                currentMatchedConditionGroups.clear(conditionGroup);
+            }
+            if (captureGroupUpdates.get(2 * conditionGroup + 1)) {
+                currentMatchedConditionGroups.set(conditionGroup);
+            }
+        }
+        return currentMatchedConditionGroups;
+    }
+
     public void setReverse() {
         this.forward = false;
     }

@@ -49,14 +49,17 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.TBitSet;
 
 public final class ASTStep implements JsonConvertible {
 
     private final RegexASTNode root;
     private final ArrayList<ASTSuccessor> successors = new ArrayList<>();
+    private final TBitSet matchedConditionGroups;
 
-    public ASTStep(RegexASTNode root) {
+    public ASTStep(RegexASTNode root, TBitSet matchedConditionGroups) {
         this.root = root;
+        this.matchedConditionGroups = matchedConditionGroups;
     }
 
     public RegexASTNode getRoot() {
@@ -65,6 +68,10 @@ public final class ASTStep implements JsonConvertible {
 
     public ArrayList<ASTSuccessor> getSuccessors() {
         return successors;
+    }
+
+    public TBitSet getMatchedConditionGroups() {
+        return matchedConditionGroups;
     }
 
     public void addSuccessor(ASTSuccessor successor) {
@@ -87,6 +94,7 @@ public final class ASTStep implements JsonConvertible {
     @Override
     public JsonValue toJson() {
         return Json.obj(Json.prop("root", root.getId()),
-                        Json.prop("successors", successors));
+                        Json.prop("successors", successors),
+                        Json.prop("matchedConditionGroups", Json.array(matchedConditionGroups.stream().toArray())));
     }
 }

@@ -90,16 +90,16 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         assert lookAroundExpansionQueue.isEmpty();
         for (RegexASTNode t : expandState.getStateSet()) {
             if (t.isInLookAheadAssertion()) {
-                ASTStep laStep = new ASTStep(t);
+                ASTStep laStep = new ASTStep(t, expandState.getMatchedConditionGroups(t));
                 curLookAheads.add(laStep);
                 lookAroundExpansionQueue.push(laStep);
             } else if (t.isInLookBehindAssertion()) {
-                ASTStep lbStep = new ASTStep(t);
+                ASTStep lbStep = new ASTStep(t, expandState.getMatchedConditionGroups(t));
                 curLookBehinds.add(lbStep);
                 lookAroundExpansionQueue.push(lbStep);
             } else {
                 assert stepRoot == null;
-                stepRoot = new ASTStep(t);
+                stepRoot = new ASTStep(t, expandState.getMatchedConditionGroups(t));
             }
         }
         if (stepRoot == null) {
@@ -129,12 +129,13 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         Term root = (Term) stepRoot.getRoot();
         setTraversableLookBehindAssertions(expandState.getFinishedLookBehinds());
         setCanTraverseCaret(root instanceof PositionAssertion && ast.getNfaAnchoredInitialStates().contains(root));
-        setMatchedConditionGroups(expandState.getMatchedConditionGroups());
+        setMatchedConditionGroups(stepCur.getMatchedConditionGroups());
         run(root);
         curLookAheads.clear();
         curLookBehinds.clear();
         while (!lookAroundExpansionQueue.isEmpty()) {
             stepCur = lookAroundExpansionQueue.pop();
+            setMatchedConditionGroups(stepCur.getMatchedConditionGroups());
             root = (Term) stepCur.getRoot();
             run(root);
         }
@@ -146,6 +147,8 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         ASTSuccessor successor = new ASTSuccessor();
         ASTTransition transition = new ASTTransition(ast.getLanguage());
         transition.setGroupBoundaries(getGroupBoundaries());
+        TBitSet matchedConditionGroups = getCurrentMatchedConditionGroups();
+        transition.setMatchedConditionGroups(matchedConditionGroups);
         if (dollarsOnPath()) {
             assert target instanceof MatchFound;
             transition.setTarget(getLastDollarOnPath());
@@ -155,9 +158,11 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                 if (!charClass.getLookBehindEntries().isEmpty()) {
                     ArrayList<ASTStep> newLookBehinds = new ArrayList<>(charClass.getLookBehindEntries().size());
                     for (LookBehindAssertion lb : charClass.getLookBehindEntries()) {
-                        final ASTStep lbAstStep = new ASTStep(lb.getGroup());
+                        final ASTStep lbAstStep = new ASTStep(lb.getGroup(), matchedConditionGroups);
                         assert lb.getGroup().isLiteral();
-                        lbAstStep.addSuccessor(new ASTSuccessor(new ASTTransition(ast.getLanguage(), lb.getGroup().getFirstAlternative().getFirstTerm())));
+                        ASTTransition lbAstTransition = new ASTTransition(ast.getLanguage(), lb.getGroup().getFirstAlternative().getFirstTerm());
+                        lbAstTransition.setMatchedConditionGroups(matchedConditionGroups);
+                        lbAstStep.addSuccessor(new ASTSuccessor(lbAstTransition));
                         newLookBehinds.add(lbAstStep);
                     }
                     successor.setLookBehinds(newLookBehinds);
@@ -180,10 +185,11 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
 
     @Override
     protected void enterLookAhead(LookAheadAssertion assertion) {
-        ASTStepCacheKey key = new ASTStepCacheKey(assertion, canTraverseCaret(), getTraversableLookBehindAssertions(), getMatchedConditionGroups());
+        TBitSet currentMatchedConditionGroups = getCurrentMatchedConditionGroups();
+        ASTStepCacheKey key = new ASTStepCacheKey(assertion, canTraverseCaret(), getTraversableLookBehindAssertions(), currentMatchedConditionGroups);
         ASTStep laStep = lookAheadMap.get(key);
         if (laStep == null) {
-            laStep = new ASTStep(assertion.getGroup());
+            laStep = new ASTStep(assertion.getGroup(), currentMatchedConditionGroups);
             lookAroundExpansionQueue.push(laStep);
             lookAheadMap.put(key, laStep);
         }

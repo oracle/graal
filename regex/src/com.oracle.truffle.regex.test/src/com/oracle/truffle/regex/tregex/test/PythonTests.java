@@ -434,6 +434,28 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void testConditionalBackReferencesWithLookArounds() {
+        /// Test temporal ordering of lookaround assertions and conditional back-references in DFAs.
+        test("(?=(?(1)a|b))(b)", "", "b", 0, true, 0, 1, 0, 1, 1);
+        test("(?=x(?(1)a|b))(x)b", "", "xb", 0, true, 0, 2, 0, 1, 1);
+        test("(?=xy(?(1)a|b))(x)yb", "", "xyb", 0, true, 0, 3, 0, 1, 1);
+        // The following 6 tests use back-tracking because the presence of capture groups in
+        // lookarounds in Python force the use of backtracking due to the calculation of lastGroup.
+        test("(?=(a))(?(1)a|b)", "", "a", 0, true, 0, 1, 0, 1, 1);
+        test("(?=a(x))(?(1)a|b)x", "", "ax", 0, true, 0, 2, 1, 2, 1);
+        test("(?=ax(y))(?(1)a|b)xy", "", "axy", 0, true, 0, 3, 2, 3, 1);
+        test("(?(1)a|b)(?<=(b))", "", "b", 0, true, 0, 1, 0, 1, 1);
+        test("x(?(1)a|b)(?<=(x)b)", "", "xb", 0, true, 0, 2, 0, 1, 1);
+        test("xy(?(1)a|b)(?<=(x)yb)", "", "xyb", 0, true, 0, 3, 0, 1, 1);
+
+        // Conditional back-reference and capture group within lookahead.
+        test("(?=(a)(?(1)a|b))", "", "aa", 0, true, 0, 0, 0, 1, 1);
+        test("(?=(a)x(?(1)a|b))", "", "axa", 0, true, 0, 0, 0, 1, 1);
+        test("(?=(a)xy(?(1)a|b))", "", "axya", 0, true, 0, 0, 0, 1, 1);
+        test("(?=(?(1)a|b)())", "", "b", 0, true, 0, 0, 1, 1, 1);
+    }
+
+    @Test
     public void testSyntaxErrors() {
         // Generated using sre from CPython 3.10.8
         expectSyntaxError("()\\2", "", "invalid group reference 2", 3);
