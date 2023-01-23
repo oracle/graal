@@ -93,8 +93,7 @@ final class PanamaNFIBackend implements NFIBackend {
 
         @TruffleBoundary
         private SymbolLookup doLoad() {
-            MemorySession session = MemorySession.openImplicit();
-            return SymbolLookup.libraryLookup(name, session);
+            return SymbolLookup.libraryLookup(name, MemorySession.global() /* TODO */);
         }
 
         @Override
