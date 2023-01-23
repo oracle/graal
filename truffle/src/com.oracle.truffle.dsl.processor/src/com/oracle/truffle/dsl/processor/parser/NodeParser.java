@@ -636,7 +636,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                 getSimpleName(types.Specialization));
             }
 
-            boolean isLayoutBenefittingFromNeverDefault = isLayoutBenefittingFromNeverDefault(specialization);
+            boolean isLayoutBenefittingFromNeverDefault = FlatNodeGenFactory.isLayoutBenefittingFromNeverDefault(specialization);
             for (CacheExpression cache : specialization.getCaches()) {
                 if (cache.isAlwaysInitialized()) {
                     // no space needed
@@ -688,10 +688,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
 
         }
-    }
-
-    private static boolean isLayoutBenefittingFromNeverDefault(SpecializationData specialization) {
-        return !specialization.hasMultipleInstances() && !FlatNodeGenFactory.shouldUseSpecializationClassBySize(specialization);
     }
 
     private static TypeMirror findRedirectedInliningType(SpecializationData specialization, CacheExpression cache) {
