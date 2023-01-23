@@ -200,11 +200,6 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                     properties.put("StageFlags", structuredGraph.getGraphState().getStageFlags());
                     properties.put("speculationLog", structuredGraph.getSpeculationLog() != null ? structuredGraph.getSpeculationLog().toString() : "null");
                 }
-                if (PrintUnmodifiedGraphs.getValue(options) || lastGraph != graph || lastModCount != graph.getEdgeModificationCount()) {
-                    printer.print(debug, graph, properties, nextDumpId(), format, arguments);
-                    lastGraph = graph;
-                    lastModCount = graph.getEdgeModificationCount();
-                }
                 printer.print(debug, graph, properties, nextDumpId(), format, arguments);
             } catch (IOException e) {
                 handleException(debug, e);
