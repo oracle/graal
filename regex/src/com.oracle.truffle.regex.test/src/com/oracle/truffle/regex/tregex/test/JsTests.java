@@ -203,6 +203,11 @@ public class JsTests extends RegexTestBase {
     }
 
     @Test
+    public void gr42794() {
+        test("\\b|\\B", "gyim", "\ua074\n\nP \n\u00a7", 7, true, 7, 7);
+    }
+
+    @Test
     public void quantifierOverflow() {
         long max = Integer.MAX_VALUE;
         test(String.format("x{%d,%d}", max, max + 1), "", "x", 0, false);
