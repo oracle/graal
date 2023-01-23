@@ -1169,6 +1169,8 @@ public class FlatNodeGenFactory {
                 generateAOT(inlined, true);
             }
 
+            generateStatisticsFields(inlined);
+
             clazz.add(inlined);
         }
 
