@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.backend.panama;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -57,7 +58,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.nfi.backend.panama.FunctionExecuteNode.SignatureExecuteNode;
+import com.oracle.truffle.nfi.backend.panama.FunctionExecuteNodeGen.SignatureExecuteNodeGen;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
@@ -335,7 +336,7 @@ final class PanamaSignature {
             this.retType = retType;
             this.argTypes = argTypes;
             this.functionDescriptor = functionDescriptor;
-            this.callTarget = new SignatureExecuteNode(language, this).getCallTarget();
+            this.callTarget = SignatureExecuteNodeGen.create(language, this).getCallTarget();
         }
 
         PanamaType[] getArgTypes() {
@@ -348,11 +349,9 @@ final class PanamaSignature {
 
         FunctionDescriptor getFunctionDescriptor() { return functionDescriptor; }
 
-        Object execute(Node node, PanamaSignature signature, PanamaNFIContext ctx, long functionPointer, Object[] args) {
+        Object execute(PanamaSignature signature, PanamaNFIContext ctx, Object[] args, MethodHandle handle) {
             assert signature.signatureInfo == this;
             CompilerAsserts.partialEvaluationConstant(retType);
-
-            MethodHandle handle = signature.createDowncallHandle(functionPointer);
 
             try {
                 Object result = (Object) handle.invokeExact(args);
@@ -368,8 +367,9 @@ final class PanamaSignature {
                 } else {
                     return result;
                 }
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
+            } catch (Throwable t) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalStateException(t);
             }
         }
     }

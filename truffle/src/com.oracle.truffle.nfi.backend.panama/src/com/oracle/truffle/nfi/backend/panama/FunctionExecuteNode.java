@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi.backend.panama;
 
 
+import java.lang.invoke.MethodHandle;
 import java.lang.ref.Reference;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -58,6 +59,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import com.oracle.truffle.nfi.backend.panama.PanamaSignature.CachedSignatureInfo;
+import com.oracle.truffle.nfi.backend.panama.FunctionExecuteNodeGen.SignatureExecuteNodeGen;
 
 @GenerateUncached
 @ImportStatic(PanamaNFILanguage.class)
@@ -102,7 +104,7 @@ abstract class FunctionExecuteNode extends Node {
         }
     }
 
-    static final class SignatureExecuteNode extends RootNode {
+    static abstract class SignatureExecuteNode extends RootNode {
 
         final CachedSignatureInfo signatureInfo;
         @Children ArgumentNode[] argNodes;
@@ -119,30 +121,44 @@ abstract class FunctionExecuteNode extends Node {
         }
 
         @Override
+        public abstract Object execute(VirtualFrame frame);
+
+        long getAddress(VirtualFrame frame) {
+            return (long) frame.getArguments()[0];
+        }
+
+        Object[] getArgs(VirtualFrame frame) {
+            return (Object[]) frame.getArguments()[1];
+        }
+
+        PanamaSignature getSig(VirtualFrame frame) {
+            return (PanamaSignature) frame.getArguments()[2];
+        }
+
+        @Specialization
         @ExplodeLoop
-        public Object execute(VirtualFrame frame) {
-            long address = (long) frame.getArguments()[0];
-            Object[] args = (Object[]) frame.getArguments()[1];
-            PanamaSignature signature = (PanamaSignature) frame.getArguments()[2];
+        public Object doCall(VirtualFrame frame,
+                             @Cached("getAddress(frame)") long address,
+                             @Cached("getArgs(frame)") Object[] args,
+                             @Cached("getSig(frame)") PanamaSignature signature,
+                             @Cached("signature.createDowncallHandle(address)") MethodHandle handle) {
 
             if (args.length != argNodes.length) {
                 throw silenceException(RuntimeException.class, ArityException.create(argNodes.length, argNodes.length, args.length));
             }
 
+            try {
+                PanamaType[] types = signatureInfo.getArgTypes();
+                assert argNodes.length == types.length;
 
-            PanamaType[] types = signatureInfo.getArgTypes();
-            assert argNodes.length == types.length;
-
-            for (int i = 0; i < argNodes.length; i++) {
-                try {
-                    args[i] = argNodes[i].execute(args[i]);
-                } catch (UnsupportedTypeException e) {
-                    // TODO handle exception
-                    throw new RuntimeException(e);
+                for (int i = 0; i < argNodes.length; i++) {
+                        args[i] = argNodes[i].execute(args[i]);
                 }
+            } catch (UnsupportedTypeException ex) {
+                throw silenceException(RuntimeException.class, ex);
             }
 
-            return signatureInfo.execute(this, signature, PanamaNFIContext.get(this), address, args);
+            return signatureInfo.execute(signature, PanamaNFIContext.get(this), args, handle);
         }
 
         @SuppressWarnings({"unchecked"})
