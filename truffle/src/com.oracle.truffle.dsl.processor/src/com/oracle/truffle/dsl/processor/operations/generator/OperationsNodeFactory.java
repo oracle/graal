@@ -323,6 +323,10 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         b.statement("i -= 3");
 
+        b.startIf().string("sourceInfo[i + 1] == -1").end().startBlock();
+        b.returnNull();
+        b.end();
+
         b.statement("return sources[(sourceInfo[i] >> 16) & 0xffff].createSection(sourceInfo[i + 1], sourceInfo[i + 2])");
 
         return ex;
@@ -698,8 +702,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case BRANCH_FALSE:
                     buildIntrospectionArgument(b, "BRANCH_OFFSET", "((IntRef) data).value");
                     break;
-                case CUSTOM:
-                    break;
                 case LOAD_CONSTANT:
                     buildIntrospectionArgument(b, "CONSTANT", "data");
                     break;
@@ -723,8 +725,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case THROW:
                     buildIntrospectionArgument(b, "LOCAL", "((IntRef) data).value");
                     break;
+                case CUSTOM:
+                    break;
                 case CUSTOM_SHORT_CIRCUIT:
-                    buildIntrospectionArgument(b, "BRANCH_OFFSET", "((" + instr.getInternalName() + "Gen" + (model.generateUncached ? "_UncachedData" : "") + " ) data).op_branchTarget_");
+                    buildIntrospectionArgument(b, "BRANCH_OFFSET", "((" + instr.getInternalName() + "Gen" + (model.generateUncached ? "_UncachedData" : "") + " ) data).op_branchTarget_.value");
                     break;
             }
 
@@ -2089,15 +2093,19 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                     b.startStatement().startCall("doEmitSourceInfo");
                     b.string("sourceIndexStack[sourceIndexSp - 1]");
-                    b.string("sourceLocationStack[sourceLocationSp]");
-                    b.string("sourceLocationStack[sourceLocationSp + 1]");
+                    b.string("sourceLocationStack[sourceLocationSp - 2]");
+                    b.string("sourceLocationStack[sourceLocationSp - 1]");
                     b.end(2);
                     break;
 
                 case SOURCE:
                     b.statement("sourceLocationSp -= 2");
                     b.statement("sourceIndexSp -= 1");
+                    b.startIf().string("sourceIndexSp > 0").end().startBlock();
+                    b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp - 1], sourceLocationStack[sourceLocationSp - 2], sourceLocationStack[sourceLocationSp - 1])");
+                    b.end().startElseBlock();
                     b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp], -1, -1)");
+                    b.end();
                     break;
                 case IF_THEN:
                 case IF_THEN_ELSE:
@@ -2806,7 +2814,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                             effect = instr.signature.valueCount - 1;
                         }
 
-                        for (int i = effect - 1; i >= 0; i--) {
+                        for (int i = effect; i >= 0; i--) {
                             if (instr.signature.valueBoxingElimination[i]) {
                                 b.statement(argument + ".op_childValue" + i + "_boxing_ = stackValueBciStack[--stackValueBciSp]");
                             } else {

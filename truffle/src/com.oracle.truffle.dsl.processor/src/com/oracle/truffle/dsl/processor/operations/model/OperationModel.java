@@ -81,6 +81,8 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
         CUSTOM_SHORT_CIRCUIT
     }
 
+    // todo: this is wrongly here, it is only relevant to instructions
+    // operations have no concept of signatures (yet)
     public static class CustomSignature {
         public int valueCount;
         public boolean isVariadic;

@@ -40,12 +40,17 @@
  */
 package com.oracle.truffle.api.operation.test.example;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -56,6 +61,9 @@ import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationRootNode;
+import com.oracle.truffle.api.operation.introspection.Instruction;
+import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.operation.OperationParser;
 
 public class TestOperationsParserTest {
@@ -63,20 +71,29 @@ public class TestOperationsParserTest {
 
     private static final TestLanguage LANGUAGE = null;
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
     private static RootCallTarget parse(OperationParser<TestOperationsGen.Builder> builder) {
         OperationRootNode operationsNode = parseNode(builder);
         return ((RootNode) operationsNode).getCallTarget();
     }
 
-    private static OperationRootNode parseNode(OperationParser<TestOperationsGen.Builder> builder) {
+    private static TestOperations parseNode(OperationParser<TestOperationsGen.Builder> builder) {
         OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.DEFAULT, builder);
+        TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        System.out.println(op.dump());
+        return op;
+    }
+    private static TestOperations parseNodeWithSource(OperationParser<TestOperationsGen.Builder> builder) {
+        OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.WITH_SOURCE, builder);
         TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
         System.out.println(op.dump());
         return op;
     }
 
     @Test
-    public void testAdd() {
+    public void testExampleAdd() {
         RootCallTarget root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -90,13 +107,13 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        Assert.assertEquals(42L, root.call(20L, 22L));
-        Assert.assertEquals("foobar", root.call("foo", "bar"));
-        Assert.assertEquals(100L, root.call(120L, -20L));
+        assertEquals(42L, root.call(20L, 22L));
+        assertEquals("foobar", root.call("foo", "bar"));
+        assertEquals(100L, root.call(120L, -20L));
     }
 
     @Test
-    public void testMax() {
+    public void testExampleMax() {
         RootCallTarget root = parse(b -> {
             b.beginRoot(LANGUAGE);
             b.beginIfThenElse();
@@ -119,10 +136,10 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        Assert.assertEquals(42L, root.call(42L, 13L));
-        Assert.assertEquals(42L, root.call(42L, 13L));
-        Assert.assertEquals(42L, root.call(42L, 13L));
-        Assert.assertEquals(42L, root.call(13L, 42L));
+        assertEquals(42L, root.call(42L, 13L));
+        assertEquals(42L, root.call(42L, 13L));
+        assertEquals(42L, root.call(42L, 13L));
+        assertEquals(42L, root.call(13L, 42L));
     }
 
     @Test
@@ -149,15 +166,50 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        Assert.assertEquals(0L, root.call(-2L));
-        Assert.assertEquals(0L, root.call(-1L));
-        Assert.assertEquals(0L, root.call(0L));
-        Assert.assertEquals(1L, root.call(1L));
-        Assert.assertEquals(2L, root.call(2L));
+        assertEquals(0L, root.call(-2L));
+        assertEquals(0L, root.call(-1L));
+        assertEquals(0L, root.call(0L));
+        assertEquals(1L, root.call(1L));
+        assertEquals(2L, root.call(2L));
     }
 
     @Test
-    public void testSumLoop() {
+    public void testConditional() {
+        // return arg0 < 0 ? 0 : arg0;
+
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+
+            b.beginConditional();
+
+            b.beginLessThanOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(0L);
+            b.endLessThanOperation();
+
+            b.emitLoadConstant(0L);
+
+            b.emitLoadArgument(0);
+
+            b.endConditional();
+
+            b.endReturn();
+
+
+            b.endRoot();
+        });
+
+        assertEquals(0L, root.call(-2L));
+        assertEquals(0L, root.call(-1L));
+        assertEquals(0L, root.call(0L));
+        assertEquals(1L, root.call(1L));
+        assertEquals(2L, root.call(2L));
+    }
+
+    @Test
+    public void testExampleSumLoop() {
 
         // i = 0;j = 0;
         // while ( i < arg0 ) { j = j + i;i = i + 1;}
@@ -207,7 +259,7 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        Assert.assertEquals(45L, root.call(10L));
+        assertEquals(45L, root.call(10L));
     }
 
     @Test
@@ -241,8 +293,8 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        Assert.assertEquals(1L, root.call(-1L));
-        Assert.assertEquals(0L, root.call(1L));
+        assertEquals(1L, root.call(-1L));
+        assertEquals(0L, root.call(1L));
     }
 
     @Test
@@ -298,7 +350,7 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        Assert.assertEquals(4950L, root.call());
+        assertEquals(4950L, root.call());
     }
 
     private static void testOrdering(boolean expectException, RootCallTarget root, Long... order) {
@@ -892,7 +944,7 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        Assert.assertEquals(1L, root.call());
+        assertEquals(1L, root.call());
     }
 
     @Test
@@ -915,7 +967,7 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        Assert.assertEquals(2L, root.call());
+        assertEquals(2L, root.call());
     }
 
     @Test
@@ -939,12 +991,12 @@ public class TestOperationsParserTest {
         });
 
         ContinuationResult r1 = (ContinuationResult) root.call();
-        Assert.assertEquals(1L, r1.getResult());
+        assertEquals(1L, r1.getResult());
 
         ContinuationResult r2 = (ContinuationResult) r1.continueWith(null);
-        Assert.assertEquals(2L, r2.getResult());
+        assertEquals(2L, r2.getResult());
 
-        Assert.assertEquals(3L, r2.continueWith(null));
+        assertEquals(3L, r2.continueWith(null));
     }
 
 
@@ -996,12 +1048,12 @@ public class TestOperationsParserTest {
         });
 
         ContinuationResult r1 = (ContinuationResult) root.call();
-        Assert.assertEquals(0L, r1.getResult());
+        assertEquals(0L, r1.getResult());
 
         ContinuationResult r2 = (ContinuationResult) r1.continueWith(null);
-        Assert.assertEquals(1L, r2.getResult());
+        assertEquals(1L, r2.getResult());
 
-        Assert.assertEquals(2L, r2.continueWith(null));
+        assertEquals(2L, r2.continueWith(null));
     }
     @Test
     public void testYieldStack() {
@@ -1028,12 +1080,12 @@ public class TestOperationsParserTest {
         });
 
         ContinuationResult r1 = (ContinuationResult) root.call();
-        Assert.assertEquals(1L, r1.getResult());
+        assertEquals(1L, r1.getResult());
 
         ContinuationResult r2 = (ContinuationResult) r1.continueWith(3L);
-        Assert.assertEquals(2L, r2.getResult());
+        assertEquals(2L, r2.getResult());
 
-        Assert.assertEquals(7L, r2.continueWith(4L));
+        assertEquals(7L, r2.continueWith(4L));
     }
 
     @Test
@@ -1085,16 +1137,16 @@ public class TestOperationsParserTest {
         });
 
         ContinuationResult r1 = (ContinuationResult) root.call();
-        Assert.assertEquals(1L, r1.getResult());
+        assertEquals(1L, r1.getResult());
 
         ContinuationResult r2 = (ContinuationResult) r1.continueWith(3L);
-        Assert.assertEquals(4L, r2.getResult());
+        assertEquals(4L, r2.getResult());
 
-        Assert.assertEquals(3L, r2.continueWith(4L));
+        assertEquals(3L, r2.continueWith(4L));
     }
 
     @Test
-    public void testNestedFunctions() {
+    public void testExampleNestedFunctions() {
         RootCallTarget root = parse(b -> {
             // this simulates following in python:
             // return (lambda: 1)()
@@ -1120,11 +1172,11 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        Assert.assertEquals(1L, root.call());
+        assertEquals(1L, root.call());
     }
 
     @Test
-    public void testNonlocalRead() {
+    public void testLocalsNonlocalRead() {
         // todo: this test fails when boxing elimination is enabled
         // locals accessed non-locally must have boxing elimination disabled
         // since non-local reads do not do boxing elimination
@@ -1164,11 +1216,11 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        Assert.assertEquals(1L, root.call());
+        assertEquals(1L, root.call());
     }
 
     @Test
-    public void testNonlocalWrite() {
+    public void testLocalsNonlocalWrite() {
         RootCallTarget root = parse(b -> {
             // x = 1
             // (lambda: x = 2)()
@@ -1210,6 +1262,565 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        Assert.assertEquals(2L, root.call());
+        assertEquals(2L, root.call());
+    }
+
+    @Test
+    public void testBranchForward() {
+        RootCallTarget root = parse(b -> {
+            // goto lbl;
+            // return 0;
+            // lbl: return 1;
+            b.beginRoot(LANGUAGE);
+
+            OperationLabel lbl = b.createLabel();
+
+            b.emitBranch(lbl);
+
+            b.beginReturn();
+            b.emitLoadConstant(0L);
+            b.endReturn();
+
+            b.emitLabel(lbl);
+
+            b.beginReturn();
+            b.emitLoadConstant(1L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(1L, root.call());
+    }
+
+
+    @Test
+    public void testBranchBackwards() {
+        RootCallTarget root = parse(b -> {
+            // x = 0
+            // lbl:
+            // if (5 < x) return x;
+            // x = x + 1;
+            // goto lbl;
+            b.beginRoot(LANGUAGE);
+
+            OperationLabel lbl = b.createLabel();
+            OperationLocal loc = b.createLocal();
+
+            b.beginStoreLocal(loc);
+            b.emitLoadConstant(0L);
+            b.endStoreLocal();
+
+            b.emitLabel(lbl);
+
+            b.beginIfThen();
+
+            b.beginLessThanOperation();
+            b.emitLoadConstant(5L);
+            b.emitLoadLocal(loc);
+            b.endLessThanOperation();
+
+            b.beginReturn();
+            b.emitLoadLocal(loc);
+            b.endReturn();
+
+            b.endIfThen();
+
+            b.beginStoreLocal(loc);
+            b.beginAddOperation();
+            b.emitLoadLocal(loc);
+            b.emitLoadConstant(1L);
+            b.endAddOperation();
+            b.endStoreLocal();
+
+            b.emitBranch(lbl);
+
+            b.endRoot();
+        });
+
+        assertEquals(6L, root.call());
+    }
+
+    @Test
+    public void testBranchOutwards() {
+        RootCallTarget root = parse(b -> {
+            // return 1 + { goto lbl; 2 }
+            // lbl:
+            // return 0;
+            b.beginRoot(LANGUAGE);
+
+            OperationLabel lbl = b.createLabel();
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadConstant(1L);
+            b.beginBlock();
+              b.emitBranch(lbl);
+              b.emitLoadConstant(2L);
+            b.endBlock();
+            b.endAddOperation();
+            b.endReturn();
+
+            b.emitLabel(lbl);
+
+            b.beginReturn();
+            b.emitLoadConstant(0L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(0L, root.call());
+    }
+
+    @Test
+    public void testBranchInwards() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("OperationLabel must be emitted inside the same operation it was created in.");
+        parse(b -> {
+            // goto lbl;
+            // return 1 + { lbl: 2 }
+            b.beginRoot(LANGUAGE);
+
+            OperationLabel lbl = b.createLabel();
+            b.emitBranch(lbl);
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadConstant(1L);
+            b.beginBlock();
+              b.emitLabel(lbl);
+              b.emitLoadConstant(2L);
+            b.endBlock();
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testVariadicZeroVarargs()  {
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginVeryComplexOperation();
+            b.emitLoadConstant(7L);
+            b.endVeryComplexOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(7L, root.call());
+    }
+
+    @Test
+    public void testVariadicOneVarargs()  {
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginVeryComplexOperation();
+            b.emitLoadConstant(7L);
+            b.emitLoadConstant("foo");
+            b.endVeryComplexOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(8L, root.call());
+    }
+
+    @Test
+    public void testVariadicFewVarargs()  {
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginVeryComplexOperation();
+            b.emitLoadConstant(7L);
+            b.emitLoadConstant("foo");
+            b.emitLoadConstant("bar");
+            b.emitLoadConstant("baz");
+            b.endVeryComplexOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(10L, root.call());
+    }
+
+    @Test
+    public void testVariadicManyVarargs()  {
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginVeryComplexOperation();
+            b.emitLoadConstant(7L);
+            for (int i = 0; i < 1330; i++) {
+                b.emitLoadConstant("test");
+            }
+            b.endVeryComplexOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(1337L, root.call());
+    }
+
+    @Test
+    public void testVariadicTooFewArguments()  {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Operation VeryComplexOperation expected at least 1 children, but 0 provided. This is probably a bug in the parser.");
+
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginVeryComplexOperation();
+            b.endVeryComplexOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testValidationTooFewArguments() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Operation AddOperation expected exactly 2 children, but 1 provided. This is probably a bug in the parser.");
+
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadConstant(1L);
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testValidationTooManyArguments() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Operation AddOperation expected exactly 2 children, but 3 provided. This is probably a bug in the parser.");
+
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadConstant(1L);
+            b.emitLoadConstant(2L);
+            b.emitLoadConstant(3L);
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testValidationNotValueArgument() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Operation AddOperation expected a value-producing child at position 0, but a void one was provided. This likely indicates a bug in the parser.");
+
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitVoidOperation();
+            b.emitLoadConstant(2L);
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testSource() {
+        Source source = Source.newBuilder("test", "return 1", "test.test").build();
+        TestOperations node = parseNodeWithSource(b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginSource(source);
+            b.beginSourceSection(0, 8);
+
+            b.beginReturn();
+
+            b.beginSourceSection(7, 1);
+            b.emitLoadConstant(1L);
+            b.endSourceSection();
+
+            b.endReturn();
+
+            b.endSourceSection();
+            b.endSource();
+            b.endRoot();
+        });
+
+        assertEquals(node.getSourceSection().getSource(), source);
+        assertEquals(node.getSourceSection().getCharIndex(), 0);
+        assertEquals(node.getSourceSection().getCharLength(), 8);
+
+        assertEquals(node.getSourceSectionAtBci(0).getSource(), source);
+        assertEquals(node.getSourceSectionAtBci(0).getCharIndex(), 7);
+        assertEquals(node.getSourceSectionAtBci(0).getCharLength(), 1);
+
+        assertEquals(node.getSourceSectionAtBci(1).getSource(), source);
+        assertEquals(node.getSourceSectionAtBci(1).getCharIndex(), 0);
+        assertEquals(node.getSourceSectionAtBci(1).getCharLength(), 8);
+    }
+
+    @Test
+    public void testSourceNoSourceSet() {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.");
+        parseNodeWithSource(b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginSourceSection(0, 8);
+
+            b.beginReturn();
+
+            b.beginSourceSection(7, 1);
+            b.emitLoadConstant(1L);
+            b.endSourceSection();
+
+            b.endReturn();
+
+            b.endSourceSection();
+            b.endRoot();
+        });
+    }
+
+
+
+    @Test
+    public void testSourceMultipleSources() {
+        Source source1 = Source.newBuilder("test", "This is just a piece of test source.", "test1.test").build();
+        Source source2 = Source.newBuilder("test", "This is another test source.", "test2.test").build();
+        TestOperations root = parseNodeWithSource(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.emitVoidOperation(); // no source
+
+            b.beginSource(source1);
+            b.beginBlock();
+
+            b.emitVoidOperation(); // no source
+
+            b.beginSourceSection(1, 2);
+            b.beginBlock();
+
+            b.emitVoidOperation(); // source1, 1, 2
+
+            b.beginSource(source2);
+            b.beginBlock();
+
+            b.emitVoidOperation(); // no source
+
+            b.beginSourceSection(3,  4);
+            b.beginBlock();
+
+            b.emitVoidOperation(); // source2, 3, 4
+
+            b.beginSourceSection(5, 1);
+            b.beginBlock();
+
+            b.emitVoidOperation(); // source2, 5, 1
+
+            b.endBlock();
+            b.endSourceSection();
+
+            b.emitVoidOperation(); // source2, 3, 4
+
+            b.endBlock();
+            b.endSourceSection();
+
+            b.emitVoidOperation(); // no source
+
+            b.endBlock();
+            b.endSource();
+
+            b.emitVoidOperation(); // source1, 1, 2
+
+            b.endBlock();
+            b.endSourceSection();
+
+            b.emitVoidOperation(); // no source
+
+            b.endBlock();
+            b.endSource();
+
+            b.emitVoidOperation(); // no source
+
+            b.endRoot();
+        });
+
+        assertEquals(root.getSourceSection().getSource(), source1);
+        assertEquals(root.getSourceSection().getCharIndex(), 1);
+        assertEquals(root.getSourceSection().getCharLength(), 2);
+
+        Source[] sources = {null, source1, source2};
+
+        int[][] expected = {
+                        null,
+                        null,
+                        {1, 1, 2},
+                        null,
+                        {2, 3, 4},
+                        {2, 5, 1},
+                        {2, 3, 4},
+                        null,
+                        {1, 1, 2},
+                        null,
+                        null,
+        };
+
+        for (int i = 0; i < expected.length; i++) {
+            if (expected[i] == null) {
+                assertEquals("Mismatch at bci " + i, root.getSourceSectionAtBci(i), null);
+            } else {
+                assertNotNull("Mismatch at bci " + i, root.getSourceSectionAtBci(i));
+                assertEquals("Mismatch at bci " + i, root.getSourceSectionAtBci(i).getSource(), sources[expected[i][0]]);
+                assertEquals("Mismatch at bci " + i, root.getSourceSectionAtBci(i).getCharIndex(), expected[i][1]);
+                assertEquals("Mismatch at bci " + i, root.getSourceSectionAtBci(i).getCharLength(), expected[i][2]);
+            }
+        }
+    }
+
+    @Test
+    public void testShortCircuitingAllPass() {
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginScAnd();
+            b.emitLoadConstant(1L);
+            b.emitLoadConstant(true);
+            b.emitLoadConstant("test");
+            b.endScAnd();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals("test", root.call());
+    }
+
+    @Test
+    public void testShortCircuitingLastFail() {
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginScAnd();
+            b.emitLoadConstant(1L);
+            b.emitLoadConstant("test");
+            b.emitLoadConstant(0L);
+            b.endScAnd();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(0L, root.call());
+    }
+
+    @Test
+    public void testShortCircuitingFirstFail() {
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginScAnd();
+            b.emitLoadConstant(0L);
+            b.emitLoadConstant("test");
+            b.emitLoadConstant(1L);
+            b.endScAnd();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(0L, root.call());
+    }
+
+    @Test
+    public void testShortCircuitingNoChildren() {
+        // todo: this fails since there is no check, since sc is considered as taking 0 (only variadic) args
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Operation ScAnd expected at least 1 children, but 0 provided. This is probably a bug in the parser.");
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginScAnd();
+            b.endScAnd();
+            b.endReturn();
+
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testShortCircuitingNonValueChild() {
+        // todo: this message should be improved, since all variadic children are treated as the same position (e.g. message should be "at position 1".
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Operation ScAnd expected a value-producing child at position 0, but a void one was provided. This likely indicates a bug in the parser.");
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginScAnd();
+            b.emitLoadConstant("test");
+            b.emitVoidOperation();
+            b.emitLoadConstant("tost");
+            b.endScAnd();
+            b.endReturn();
+
+            b.endRoot();
+        });
+    }
+
+    private static void assertInstructionEquals(Instruction instr, int index, String name) {
+        assertEquals(instr.getIndex(), index);
+        assertEquals(instr.getName(), name);
+    }
+
+    @Test
+    public void testIntrospectionData() {
+        TestOperations node = parseNode(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        OperationIntrospection data = node.getIntrospectionData();
+
+        assertEquals(data.getInstructions().size(), 5);
+        assertInstructionEquals(data.getInstructions().get(0), 0, "load.argument");
+        assertInstructionEquals(data.getInstructions().get(1), 1, "load.argument");
+        assertInstructionEquals(data.getInstructions().get(2), 2, "c.AddOperation");
+        assertInstructionEquals(data.getInstructions().get(3), 3, "return");
+        // todo: with DCE, this pop will go away (since return is considered as returning a value)
+        assertInstructionEquals(data.getInstructions().get(4), 4, "pop");
     }
 }

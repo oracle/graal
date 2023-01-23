@@ -67,11 +67,14 @@ import com.oracle.truffle.api.operation.LocalSetterRange;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
+import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
 
 @GenerateOperations(languageClass = TestLanguage.class, enableYield = true, enableSerialization = true, boxingEliminationTypes = {long.class})
 @GenerateAOT
 @OperationProxy(SomeOperationNode.class)
+@ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScAnd", continueWhen = true)
+@ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScOr", continueWhen = false)
 public abstract class TestOperations extends RootNode implements OperationRootNode {
 
     protected TestOperations(TruffleLanguage<?> language, FrameDescriptor.Builder frameDescriptor) {
@@ -225,6 +228,30 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
             return new TestClosure(frame.materialize(), root);
         }
     }
+
+    @Operation
+    public static final class VoidOperation {
+        @Specialization
+        public static void doNothing() {
+        }
+    }
+
+    public static final class ToBoolean {
+        @Specialization
+        public static boolean doLong(long l) {
+            return l != 0;
+        }
+
+        @Specialization
+        public static boolean doBoolean(boolean b) {
+            return b;
+        }
+
+        @Specialization
+        public static boolean doString(String s) {
+            return s != null;
+        }
+    }
 }
 
 class TestClosure {
@@ -242,6 +269,7 @@ class TestClosure {
 }
 
 @ProvidedTags(ExpressionTag.class)
+@TruffleLanguage.Registration(id = "test")
 class TestLanguage extends TruffleLanguage<Object> {
     @Override
     protected Object createContext(Env env) {
