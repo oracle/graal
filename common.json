@@ -19,9 +19,12 @@
     "labsjdk-ee-19-llvm": {"name": "labsjdk",   "version": "ee-19.0.2+7-jvmci-23.0-b05-sulong", "platformspecific": true },
 
     "oraclejdk20":        {"name": "jpg-jdk",   "version": "20",      "build_id": "24", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
-    "labsjdk-ce-20":      {"name": "labsjdk",   "version": "ce-20+26-jvmci-23.0-b05", "platformspecific": true },
-    "labsjdk-ce-20Debug": {"name": "labsjdk",   "version": "ce-20+26-jvmci-23.0-b05-debug", "platformspecific": true },
-    "labsjdk-ce-20-llvm": {"name": "labsjdk",   "version": "ce-20+26-jvmci-23.0-b05-sulong", "platformspecific": true }
+    "labsjdk-ce-20":      {"name": "labsjdk",   "version": "ce-20+30-jvmci-23.0-b06-20230121151508-f39104f75a", "platformspecific": true },
+    "labsjdk-ce-20Debug": {"name": "labsjdk",   "version": "ce-20+30-jvmci-23.0-b06-20230121151508-f39104f75a-debug", "platformspecific": true },
+    "labsjdk-ce-20-llvm": {"name": "labsjdk",   "version": "ce-20+30-jvmci-23.0-b06-20230121151508-f39104f75a-sulong", "platformspecific": true },
+    "labsjdk-ee-20":      {"name": "labsjdk",   "version": "ee-20.0.1+2-jvmci-23.0-b06-20230124141607-f6d241e0ce+81ce3b3d8c", "platformspecific": true },
+    "labsjdk-ee-20Debug": {"name": "labsjdk",   "version": "ee-20.0.1+2-jvmci-23.0-b06-20230124141607-f6d241e0ce+81ce3b3d8c-debug", "platformspecific": true },
+    "labsjdk-ee-20-llvm": {"name": "labsjdk",   "version": "ee-20.0.1+2-jvmci-23.0-b06-20230124141607-f6d241e0ce+81ce3b3d8c-sulong", "platformspecific": true }
   },
 
   "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
