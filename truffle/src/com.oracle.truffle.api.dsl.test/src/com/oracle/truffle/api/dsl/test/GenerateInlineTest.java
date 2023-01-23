@@ -2262,4 +2262,98 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
 
     }
 
+    // caller Cached + Callee Inlinable, but not inlined -> Warning
+    @GenerateInline(false)
+    public abstract static class CachedWarningTest1 extends Node {
+
+        public abstract Object execute(Object object);
+
+        @Specialization
+        @SuppressWarnings("unused")
+        static String s0(int value,
+                        @ExpectError("The cached type 'SingleBitNode' supports object-inlining.%") //
+                        @Cached SingleBitNode inlinedNnode) {
+            return "s0";
+        }
+
+    }
+
+    // caller Cached + Callee Inlinable, alwaysInlineCached -> Auto-inline
+    @GenerateInline(false)
+    @GenerateCached(alwaysInlineCached = true)
+    public abstract static class CachedWarningTest2 extends Node {
+
+        public abstract Object execute(Object object);
+
+        @Specialization
+        @SuppressWarnings("unused")
+        static String s0(int value,
+                        @Cached SingleBitNode inlinedNnode) {
+            return "s0";
+        }
+
+    }
+
+    // caller Cached + Callee Not Inlinable , alwaysInlineCached -> do nothing
+    @GenerateInline(false)
+    @GenerateCached(alwaysInlineCached = true)
+    public abstract static class CachedWarningTest3 extends Node {
+
+        public abstract Object execute(Object object);
+
+        @Specialization
+        @SuppressWarnings("unused")
+        static String s0(int value,
+                        @Cached CachedWarningTest1 inlinedNnode) {
+            return "s0";
+        }
+
+    }
+
+    // caller Inlined + Callee Not Inlinable -> Warnings
+    @GenerateInline(true)
+    public abstract static class InlinedWarningTest1 extends Node {
+
+        public abstract Object execute(Node node, Object object);
+
+        @Specialization
+        @SuppressWarnings("unused")
+        static String s0(int value,
+                        @ExpectError("The cached node type does not support object inlining.%") //
+                        @Cached CachedWarningTest1 inlinedNnode) {
+            return "s0";
+        }
+
+    }
+
+    // caller Inlined + Callee Not Inlinable + inline=false -> No warning
+    @GenerateInline(true)
+    public abstract static class InlinedWarningTest2 extends Node {
+
+        public abstract Object execute(Node node, Object object);
+
+        @Specialization
+        @SuppressWarnings("unused")
+        static String s0(int value,
+                        @Cached(inline = false) CachedWarningTest1 inlinedNnode) {
+            return "s0";
+        }
+
+    }
+
+    // caller Inlined + Callee Inlinable -> Auto Inline
+    @GenerateInline(true)
+    public abstract static class InlinedWarningTest3 extends Node {
+
+        public abstract Object execute(Node node, Object object);
+
+        @Specialization
+        @SuppressWarnings("unused")
+        static String s0(Node node, int value,
+                        @Cached SingleBitNode inlinedNnode) {
+            return "s0";
+        }
+
+    }
+
 }
