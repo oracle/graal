@@ -3448,21 +3448,19 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         if (inline && !hasInlineMethod && ElementUtils.isAssignable(cache.getParameter().getType(), types.Node)) {
-            if (declaresInline || node.isGenerateInline()) {
-                if (declaresInline) {
-                    cache.addError(cachedAnnotation, getAnnotationValue(cachedAnnotation, "inline"),
-                                    "The cached node type does not support object inlining." + //
-                                                    " Add @%s on the node type or disable inline using @%s(inline=false) to resolve this.",
-                                    getSimpleName(types.GenerateInline),
-                                    getSimpleName(types.Cached));
-                } else {
-                    cache.addSuppressableWarning(TruffleSuppressedWarnings.INLINING_RECOMMENDATION,
-                                    "The cached node type does not support object inlining." + //
-                                                    " Add @%s on the node type or disable inline using @%s(inline=false) to resolve this.",
-                                    getSimpleName(types.GenerateInline),
-                                    getSimpleName(types.Cached));
-                    inline = false;
-                }
+            if (declaresInline) {
+                cache.addError(cachedAnnotation, getAnnotationValue(cachedAnnotation, "inline"),
+                                "The cached node type does not support object inlining." + //
+                                                " Add @%s on the node type or disable inline using @%s(inline=false) to resolve this.",
+                                getSimpleName(types.GenerateInline),
+                                getSimpleName(types.Cached));
+            } else if (node.isGenerateInline()) {
+                cache.addSuppressableWarning(TruffleSuppressedWarnings.INLINING_RECOMMENDATION,
+                                "The cached node type does not support object inlining." + //
+                                                " Add @%s on the node type or disable inline using @%s(inline=false) to resolve this.",
+                                getSimpleName(types.GenerateInline),
+                                getSimpleName(types.Cached));
+                inline = false;
             } else {
                 inline = false;
             }
