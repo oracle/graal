@@ -197,7 +197,7 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                         properties.put("node-cost-exception", t.getMessage());
                     }
 
-                    properties.put("StageFlags", structuredGraph.getGraphState().getStageFlags());
+                    properties.put("StageFlags", structuredGraph.getStageFlags());
                     properties.put("speculationLog", structuredGraph.getSpeculationLog() != null ? structuredGraph.getSpeculationLog().toString() : "null");
                 }
                 printer.print(debug, graph, properties, nextDumpId(), format, arguments);
