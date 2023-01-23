@@ -93,6 +93,8 @@ import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.SingleInstancePri
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseMultiInstanceNodeCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseSharedDefaultInlinedNodeNodeGen;
 import com.oracle.truffle.api.dsl.test.NeverDefaultTestFactory.UseSharedNeverDefaultInlinedNodeNodeGen;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -1351,6 +1353,19 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
                         // test: does not cause a never-default warning
                         @Cached("value") boolean cachedValue) {
             return cachedValue;
+        }
+    }
+
+    @SuppressWarnings({"truffle-inlining", "unused"})
+    abstract static class NeverDefaultFrameDescriptor extends Node {
+
+        abstract Object execute(VirtualFrame frame, Object arg);
+
+        @Specialization(guards = "value == 1")
+        int s0(VirtualFrame frame, int value,
+                        @ExpectError("The @Cached(neverDefault=true|false) property is guaranteed%") //
+                        @Cached(value = "frame.getFrameDescriptor()", neverDefault = true) FrameDescriptor cachedValue) {
+            return value;
         }
 
     }

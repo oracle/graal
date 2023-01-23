@@ -3702,7 +3702,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             if ((ElementUtils.typeEquals(types.Frame, enlcosingType) || ElementUtils.typeEquals(types.VirtualFrame, enlcosingType) ||
                             ElementUtils.typeEquals(types.MaterializedFrame, enlcosingType)) && //
-                            (simpleName.equals("getDescriptor") || //
+                            (simpleName.equals("getFrameDescriptor") || //
                                             simpleName.equals("getArguments") || //
                                             simpleName.equals("materialize"))) {
                 return true;
