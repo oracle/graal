@@ -198,6 +198,11 @@ public class JsTests extends RegexTestBase {
     }
 
     @Test
+    public void gr42791() {
+        test("(?:(?!(?:(?:\\B)|([^])?){4}))", "gm", "", 0, false);
+    }
+
+    @Test
     public void quantifierOverflow() {
         long max = Integer.MAX_VALUE;
         test(String.format("x{%d,%d}", max, max + 1), "", "x", 0, false);
