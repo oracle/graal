@@ -173,9 +173,10 @@ public final class ModuleLayerFeature implements InternalFeature {
 
         List<String> nonExplicit = List.of("ALL-DEFAULT", "ALL-SYSTEM", "ALL-MODULE-PATH");
 
-        Stream<Module> runtimeImageModules = calculateRootModulesAndUpdateExtraModules(accessImpl, nonExplicit, extraModules);
+        Set<Module> runtimeImageModules = calculateRootModulesAndUpdateExtraModules(accessImpl, nonExplicit, extraModules);
 
         Set<Module> runtimeImageNamedModules = runtimeImageModules
+                        .stream()
                         .filter(Module::isNamed)
                         .collect(Collectors.toSet());
 
@@ -227,7 +228,7 @@ public final class ModuleLayerFeature implements InternalFeature {
      * Otherwise, we calculate root modules based on reachable modules and include modules as
      * specified in the JEP 261 (see <a href="https://openjdk.org/jeps/261"></a>).
      */
-    private static Stream<Module> calculateRootModulesAndUpdateExtraModules(FeatureImpl.AfterAnalysisAccessImpl accessImpl, Collection<String> nonExplicit, Collection<String> extraModules) {
+    private static Set<Module> calculateRootModulesAndUpdateExtraModules(FeatureImpl.AfterAnalysisAccessImpl accessImpl, Collection<String> nonExplicit, Collection<String> extraModules) {
         AnalysisUniverse universe = accessImpl.getUniverse();
 
         Stream<Module> rootModules;
@@ -279,7 +280,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
         }
 
-        return rootModules.distinct();
+        return rootModules.collect(Collectors.toSet());
     }
 
     private static boolean typeIsReachable(AnalysisType t) {
