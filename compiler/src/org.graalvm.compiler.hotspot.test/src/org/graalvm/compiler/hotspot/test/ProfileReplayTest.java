@@ -97,7 +97,7 @@ public class ProfileReplayTest extends GraalCompilerTest {
         HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
 
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 100000; i++) {
             A use = null;
             if (i % 2 == 0) {
                 use = new B();
@@ -109,7 +109,7 @@ public class ProfileReplayTest extends GraalCompilerTest {
             foo(i, i % 4, use);
         }
         final ResolvedJavaMethod method = getResolvedJavaMethod("foo");
-        try (TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "GraphDumpWithAssertionsTest")) {
+        try (TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "ProfileReplayTest")) {
             OptionValues overrides = new OptionValues(getInitialOptions(), DebugOptions.DumpPath, temp.toString());
             runInitialCompilation(method, overrides, jvmciRuntime, compiler);
             runSanityCompilation(temp.toString(), method, overrides, jvmciRuntime, compiler);

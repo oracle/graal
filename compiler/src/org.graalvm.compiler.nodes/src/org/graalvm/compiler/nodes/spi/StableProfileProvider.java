@@ -440,6 +440,7 @@ public class StableProfileProvider implements ProfileProvider {
                 profileRecord.put("method", m.format(METHOD_FORMAT));
             }
             profileRecord.put("isMature", this.isMature == null ? false : this.isMature);
+            profileRecord.put("compilerIRSize", compilerIRSize == null ? -1 : compilerIRSize);
             ArrayList<EconomicMap<String, Object>> bciData = new ArrayList<>();
             for (BytecodeProfile data : bytecodeProfiles.getValues()) {
                 EconomicMap<String, Object> v = EconomicMap.create();
