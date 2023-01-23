@@ -1357,15 +1357,33 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
     }
 
     @SuppressWarnings({"truffle-inlining", "unused"})
-    abstract static class NeverDefaultFrameDescriptor extends Node {
+    abstract static class NeverDefaultFrameDescriptorWarningNode extends Node {
 
         abstract Object execute(VirtualFrame frame, Object arg);
 
-        @Specialization(guards = "value == 1")
+        @Specialization
         int s0(VirtualFrame frame, int value,
                         @ExpectError("The @Cached(neverDefault=true|false) property is guaranteed%") //
                         @Cached(value = "frame.getFrameDescriptor()", neverDefault = true) FrameDescriptor cachedValue) {
             return value;
+        }
+
+    }
+
+    static final class AllocatableObject {
+    }
+
+    // tests GR-43642
+    abstract static class NeverDefaultWithLibraryWarningNode extends Node {
+
+        abstract Object execute(Object arg);
+
+        @SuppressWarnings("unused")
+        @Specialization(limit = "3")
+        Object s0(Object receiver,
+                        @CachedLibrary("receiver") InteropLibrary receivers,
+                        @Cached(value = "new()") AllocatableObject cachedValue) {
+            return receiver;
         }
 
     }

@@ -114,6 +114,7 @@ public final class CacheExpression extends MessageContainer {
         copy.cachedlibrary = cachedlibrary;
         copy.usedInGuard = usedInGuard;
         copy.neverDefault = neverDefault;
+        copy.neverDefaultGuaranteed = neverDefaultGuaranteed;
         return copy;
     }
 

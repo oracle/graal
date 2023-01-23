@@ -3629,17 +3629,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 if (ElementUtils.findAnnotationMirror(executable, types.NeverDefault) != null) {
                     return true;
                 }
-
-                Element enclosing = executable.getEnclosingElement();
-                if (enclosing != null) {
-                    if (typeEquals(enclosing.asType(), types.DirectCallNode)) {
-                        // cannot use NeverDefault annotation in certain TruffleTypes
-                        return executable.getSimpleName().toString().equals("create");
-                    } else if (typeEquals(enclosing.asType(), types.IndirectCallNode)) {
-                        // cannot use NeverDefault annotation in certain TruffleTypes
-                        return executable.getSimpleName().toString().equals("create");
-                    }
-                }
             }
             VariableElement var = cache.getDefaultExpression().resolveVariable();
             if (var != null) {
@@ -3653,17 +3642,18 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private static boolean isNeverDefaultGuaranteed(SpecializationData specialization, CacheExpression cache) {
-        if (cache.getDefaultExpression() == null) {
+        DSLExpression expression = cache.getDefaultExpression();
+        if (expression == null) {
             return false;
         }
 
-        TypeMirror type = cache.getDefaultExpression().getResolvedType();
+        TypeMirror type = expression.getResolvedType();
         if (type != null && ElementUtils.isPrimitive(type) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
             // An assignment of a primitive to its boxed type is never null.
             return true;
         }
 
-        Object constant = cache.getDefaultExpression().resolveConstant();
+        Object constant = expression.resolveConstant();
         if (constant != null) {
             if (constant instanceof Number) {
                 long value = ((Number) constant).longValue();
@@ -3681,7 +3671,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        ExecutableElement method = cache.getDefaultExpression().resolveExecutable();
+        ExecutableElement method = expression.resolveExecutable();
         if (method != null && method.getKind() == ElementKind.CONSTRUCTOR) {
             // Constructors never return null.
             return true;
@@ -3693,28 +3683,37 @@ public final class NodeParser extends AbstractParser<NodeData> {
         ProcessorContext context = ProcessorContext.getInstance();
         TruffleTypes types = context.getTypes();
         if (method != null) {
-            TypeMirror enlcosingType = method.getEnclosingElement().asType();
+            TypeMirror enclosingType = method.getEnclosingElement().asType();
             String simpleName = method.getSimpleName().toString();
-            if (ElementUtils.typeEquals(context.getType(Object.class), enlcosingType) &&
+            if (ElementUtils.typeEquals(context.getType(Object.class), enclosingType) &&
                             (simpleName.equals("getClass") || simpleName.equals("toString"))) {
                 return true;
             }
 
-            if ((ElementUtils.typeEquals(types.Frame, enlcosingType) || ElementUtils.typeEquals(types.VirtualFrame, enlcosingType) ||
-                            ElementUtils.typeEquals(types.MaterializedFrame, enlcosingType)) && //
+            if ((ElementUtils.typeEquals(types.Frame, enclosingType) || ElementUtils.typeEquals(types.VirtualFrame, enclosingType) ||
+                            ElementUtils.typeEquals(types.MaterializedFrame, enclosingType)) && //
                             (simpleName.equals("getFrameDescriptor") || //
                                             simpleName.equals("getArguments") || //
                                             simpleName.equals("materialize"))) {
                 return true;
             }
-            if ((ElementUtils.typeEquals(types.FrameDescriptor, enlcosingType)) && //
+            if ((ElementUtils.typeEquals(types.FrameDescriptor, enclosingType)) && //
                             (simpleName.equals("getSlotKind") || //
                                             simpleName.equals("getAuxiliarySlots"))) {
                 return true;
             }
+
+            if (typeEquals(enclosingType, types.DirectCallNode) && simpleName.equals("create")) {
+                return true;
+            }
+
+            if (typeEquals(enclosingType, types.IndirectCallNode) && simpleName.equals("create")) {
+                return true;
+            }
+
         }
 
-        VariableElement var = cache.getDefaultExpression().resolveVariable();
+        VariableElement var = expression.resolveVariable();
         if (var != null && var.getSimpleName().toString().equals("this")) {
             // this pointer for libraries never null
             return true;
