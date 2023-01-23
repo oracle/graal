@@ -265,7 +265,7 @@ public class NativeImage {
     final Map<String, String> userConfigProperties = new HashMap<>();
     private final Map<String, String> propertyFileSubstitutionValues = new HashMap<>();
 
-    private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
+    private int verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS")) ? 1 : 0;
     private boolean diagnostics = false;
     String diagnosticsDir;
     private boolean jarOptionMode = false;
@@ -693,6 +693,7 @@ public class NativeImage {
         buildArgs.add(FallbackExecutor.class.getName());
         buildArgs.add(imageName);
 
+        defaultOptionHandler.addFallbackBuildArgs(buildArgs);
         for (OptionHandler<? extends NativeImage> handler : optionHandlers) {
             handler.addFallbackBuildArgs(buildArgs);
         }
@@ -1148,11 +1149,11 @@ public class NativeImage {
         if (useBundle()) {
             /*
              * In creation-mode, we are at the point where we know the final imagePath and imageName
-             * that we can now use to derive the new bundle name from. For apply-mode setting
-             * imagePath determines where to copy the bundle output to.
+             * that we can now use to derive a bundle name in case non was set so far.
              */
-            imageName = bundleSupport.setBundleLocation(imagePath, imageName);
-            updateArgumentEntryValue(imageBuilderArgs, imageNameEntry, imageName);
+            String bundleName = imageName.endsWith(BundleSupport.BUNDLE_FILE_EXTENSION) ? imageName : imageName + BundleSupport.BUNDLE_FILE_EXTENSION;
+            bundleSupport.updateBundleLocation(imagePath.resolve(bundleName), false);
+
             /* The imagePath has to be redirected to be within the bundle */
             imagePath = bundleSupport.substituteImagePath(imagePath);
             /* and we need to adjust the argument that passes the imagePath to the builder */
@@ -1249,7 +1250,7 @@ public class NativeImage {
             return false;
         }
 
-        if (useBundle() && bundleSupport.status.loadBundle) {
+        if (useBundle() && bundleSupport.loadBundle) {
             /* If bundle was loaded we have valid -cp and/or -p from within the bundle */
             return false;
         }
@@ -1275,7 +1276,7 @@ public class NativeImage {
 
         if (!agentOptions.isEmpty()) {
             if (useDebugAttach()) {
-                throw NativeImage.showError(CmdLineOptionHandler.DEBUG_ATTACH_OPTION + " cannot be used with class initialization/object instantiation tracing (" + oHTraceClassInitialization +
+                throw NativeImage.showError(CmdLineOptionHandler.debugAttachOption + " cannot be used with class initialization/object instantiation tracing (" + oHTraceClassInitialization +
                                 "/ + " + oHTraceObjectInstantiation + ").");
             }
             args.add("-agentlib:native-image-diagnostics-agent=" + agentOptions);
@@ -1426,12 +1427,12 @@ public class NativeImage {
             // write to the diagnostics dir
             ReportUtils.report("command line arguments", diagnosticsDir, "command-line", "txt", printWriter -> printWriter.write(commandLine));
         } else {
-            showVerboseMessage(isVerbose() || dryRun, "Executing [");
-            showVerboseMessage(isVerbose() || dryRun, commandLine);
-            showVerboseMessage(isVerbose() || dryRun, "]");
+            showVerboseMessage(isVerbose(), "Executing [");
+            showVerboseMessage(isVerbose(), commandLine);
+            showVerboseMessage(isVerbose(), "]");
         }
 
-        if (dryRun || useBundle() && !bundleSupport.status.buildImage) {
+        if (dryRun) {
             return ExitStatus.OK.getValue();
         }
 
@@ -1751,15 +1752,16 @@ public class NativeImage {
         customJavaArgs.add(javaArg);
     }
 
-    void setVerbose(boolean val) {
-        verbose = val;
+    void addVerbose() {
+        verbose += 1;
     }
 
     void setDiagnostics(boolean val) {
         diagnostics = val;
         diagnosticsDir = Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", "")).toString();
         if (val) {
-            verbose = true;
+            addVerbose();
+            addVerbose();
         }
     }
 
@@ -1780,7 +1782,15 @@ public class NativeImage {
     }
 
     boolean isVerbose() {
-        return verbose;
+        return verbose > 0;
+    }
+
+    boolean isVVerbose() {
+        return verbose > 1;
+    }
+
+    boolean isVVVerbose() {
+        return verbose > 2;
     }
 
     boolean isDiagnostics() {

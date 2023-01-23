@@ -39,7 +39,6 @@ import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
-    static final String verboseOption = "--verbose";
     private static final String requireValidJarFileMessage = "-jar requires a valid jarfile";
     private static final String newStyleClasspathOptionName = "--class-path";
 
@@ -436,12 +435,5 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             NativeImage.showError("No manifest in " + finalFilePath);
         }
         nativeImage.addCustomImageClasspath(finalFilePath);
-    }
-
-    @Override
-    void addFallbackBuildArgs(List<String> buildArgs) {
-        if (nativeImage.isVerbose()) {
-            buildArgs.add(verboseOption);
-        }
     }
 }
