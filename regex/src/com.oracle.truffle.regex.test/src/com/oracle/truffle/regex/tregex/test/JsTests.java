@@ -198,6 +198,11 @@ public class JsTests extends RegexTestBase {
     }
 
     @Test
+    public void gr43230() {
+        test(".(?!(?=\\S^\\b)+)|(?=\\S*)", "y", "", 0, true, 0, 0);
+    }
+
+    @Test
     public void gr42791() {
         test("(?:(?!(?:(?:\\B)|([^])?){4}))", "gm", "", 0, false);
     }
