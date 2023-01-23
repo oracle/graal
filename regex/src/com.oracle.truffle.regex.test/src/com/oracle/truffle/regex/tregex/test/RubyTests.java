@@ -553,9 +553,9 @@ public class RubyTests extends RegexTestBase {
         test("(?=(?(1)a|b))(b)", "", "b", 0, true, 0, 1, 0, 1);
         test("(?=x(?(1)a|b))(x)b", "", "xb", 0, true, 0, 2, 0, 1);
         test("(?=xy(?(1)a|b))(x)yb", "", "xyb", 0, true, 0, 3, 0, 1);
-        // test("(?=(a))(?(1)a|b)", "", "a", 0, true, 0, 1, 0, 1);
-        // test("(?=a(x))(?(1)a|b)x", "", "ax", 0, true, 0, 2, 1, 2);
-        // test("(?=ax(y))(?(1)a|b)xy", "", "axy", 0, true, 0, 3, 2, 3);
+        test("(?=(a))(?(1)a|b)", "", "a", 0, true, 0, 1, 0, 1);
+        test("(?=a(x))(?(1)a|b)x", "", "ax", 0, true, 0, 2, 1, 2);
+        test("(?=ax(y))(?(1)a|b)xy", "", "axy", 0, true, 0, 3, 2, 3);
         test("(?(1)a|b)(?<=(b))", "", "b", 0, true, 0, 1, 0, 1);
         test("x(?(1)a|b)(?<=(x)b)", "", "xb", 0, true, 0, 2, 0, 1);
         test("xy(?(1)a|b)(?<=(x)yb)", "", "xyb", 0, true, 0, 3, 0, 1);

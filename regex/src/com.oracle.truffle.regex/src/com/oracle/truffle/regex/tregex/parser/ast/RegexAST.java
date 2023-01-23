@@ -629,7 +629,8 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
                                         getProperties().hasNonLiteralLookBehindAssertions() ||
                                         getProperties().hasNegativeLookBehindAssertions() ||
                                         getRoot().hasQuantifiers() ||
-                                        getProperties().hasAtomicGroups()) &&
+                                        getProperties().hasAtomicGroups() ||
+                                        getProperties().hasConditionalReferencesIntoLookAheads()) &&
                         couldCalculateLastGroup;
     }
 
@@ -663,6 +664,9 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         }
         if (getProperties().hasAtomicGroups()) {
             sb.add("regex has atomic groups");
+        }
+        if (getProperties().hasConditionalReferencesIntoLookAheads()) {
+            sb.add("regex has conditional back-references into look-ahead assertions");
         }
         return sb.toString();
     }
