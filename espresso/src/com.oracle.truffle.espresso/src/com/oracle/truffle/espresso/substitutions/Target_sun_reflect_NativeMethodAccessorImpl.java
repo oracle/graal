@@ -278,10 +278,13 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         Method reflectedMethod = m;
         if (reflectedMethod.isRemovedByRedefinition()) {
-            reflectedMethod = m.getContext().getClassRedefinition().handleRemovedMethod(
-                            reflectedMethod,
-                            reflectedMethod.isStatic() ? reflectedMethod.getDeclaringKlass() : receiver.getKlass());
-
+            try {
+                reflectedMethod = m.getContext().getClassRedefinition().handleRemovedMethod(
+                                reflectedMethod,
+                                reflectedMethod.isStatic() ? reflectedMethod.getDeclaringKlass() : receiver.getKlass());
+            } catch (EspressoException e) {
+                throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, e.getGuestException());
+            }
         }
 
         Method method;      // actual method to invoke
