@@ -26,6 +26,8 @@
 
 package com.oracle.objectfile.debugentry;
 
+import com.oracle.objectfile.debugentry.range.PrimaryRange;
+import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 
 import java.util.ArrayDeque;
@@ -39,7 +41,7 @@ public class CompiledMethodEntry {
     /**
      * The primary range detailed by this object.
      */
-    private Range primary;
+    private PrimaryRange primary;
     /**
      * Details of the class owning this range.
      */
@@ -53,14 +55,14 @@ public class CompiledMethodEntry {
      */
     private int frameSize;
 
-    public CompiledMethodEntry(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, ClassEntry classEntry) {
+    public CompiledMethodEntry(PrimaryRange primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, ClassEntry classEntry) {
         this.primary = primary;
         this.classEntry = classEntry;
         this.frameSizeInfos = frameSizeInfos;
         this.frameSize = frameSize;
     }
 
-    public Range getPrimary() {
+    public PrimaryRange getPrimary() {
         return primary;
     }
 
@@ -74,10 +76,10 @@ public class CompiledMethodEntry {
      *
      * @return the iterator
      */
-    public Iterator<Range> topDownRangeIterator() {
+    public Iterator<SubRange> topDownRangeIterator() {
         return new Iterator<>() {
-            final ArrayDeque<Range> workStack = new ArrayDeque<>();
-            Range current = primary.getFirstCallee();
+            final ArrayDeque<SubRange> workStack = new ArrayDeque<>();
+            SubRange current = primary.getFirstCallee();
 
             @Override
             public boolean hasNext() {
@@ -85,15 +87,15 @@ public class CompiledMethodEntry {
             }
 
             @Override
-            public Range next() {
+            public SubRange next() {
                 assert hasNext();
-                Range result = current;
+                SubRange result = current;
                 forward();
                 return result;
             }
 
             private void forward() {
-                Range sibling = current.getSiblingCallee();
+                SubRange sibling = current.getSiblingCallee();
                 assert sibling == null || (current.getHi() <= sibling.getLo()) : current.getHi() + " > " + sibling.getLo();
                 if (!current.isLeaf()) {
                     /* save next sibling while we process the children */
@@ -121,10 +123,10 @@ public class CompiledMethodEntry {
      *
      * @return the iterator
      */
-    public Iterator<Range> leafRangeIterator() {
-        final Iterator<Range> iter = topDownRangeIterator();
+    public Iterator<SubRange> leafRangeIterator() {
+        final Iterator<SubRange> iter = topDownRangeIterator();
         return new Iterator<>() {
-            Range current = forwardLeaf(iter);
+            SubRange current = forwardLeaf(iter);
 
             @Override
             public boolean hasNext() {
@@ -132,16 +134,16 @@ public class CompiledMethodEntry {
             }
 
             @Override
-            public Range next() {
+            public SubRange next() {
                 assert hasNext();
-                Range result = current;
+                SubRange result = current;
                 current = forwardLeaf(iter);
                 return result;
             }
 
-            private Range forwardLeaf(Iterator<Range> t) {
+            private SubRange forwardLeaf(Iterator<SubRange> t) {
                 if (t.hasNext()) {
-                    Range next = t.next();
+                    SubRange next = t.next();
                     while (next != null && !next.isLeaf()) {
                         next = t.next();
                     }

@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import com.oracle.objectfile.debugentry.range.SubRange;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.BuildDependency;
@@ -45,7 +46,7 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.debugentry.Range;
+import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.elf.ELFMachine;
@@ -174,9 +175,9 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         Range primary = compiledEntry.getPrimary();
         long base = primary.getLo();
         log(context, "  [0x%08x] top level locations [0x%x,0x%x] %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodNameWithParams());
-        HashMap<DebugLocalInfo, List<Range>> varRangeMap = primary.getVarRangeMap();
+        HashMap<DebugLocalInfo, List<SubRange>> varRangeMap = primary.getVarRangeMap();
         for (DebugLocalInfo local : varRangeMap.keySet()) {
-            List<Range> rangeList = varRangeMap.get(local);
+            List<SubRange> rangeList = varRangeMap.get(local);
             if (!rangeList.isEmpty()) {
                 setRangeLocalIndex(primary, local, pos);
                 pos = writeVarLocations(context, local, base, rangeList, buffer, pos);
@@ -193,15 +194,15 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         }
         long base = primary.getLo();
         log(context, "  [0x%08x] inline locations [0x%x,0x%x] %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodNameWithParams());
-        Iterator<Range> iterator = compiledEntry.topDownRangeIterator();
+        Iterator<SubRange> iterator = compiledEntry.topDownRangeIterator();
         while (iterator.hasNext()) {
-            Range subrange = iterator.next();
+            SubRange subrange = iterator.next();
             if (subrange.isLeaf()) {
                 continue;
             }
-            HashMap<DebugLocalInfo, List<Range>> varRangeMap = subrange.getVarRangeMap();
+            HashMap<DebugLocalInfo, List<SubRange>> varRangeMap = subrange.getVarRangeMap();
             for (DebugLocalInfo local : varRangeMap.keySet()) {
-                List<Range> rangeList = varRangeMap.get(local);
+                List<SubRange> rangeList = varRangeMap.get(local);
                 if (!rangeList.isEmpty()) {
                     setRangeLocalIndex(subrange, local, pos);
                     pos = writeVarLocations(context, local, base, rangeList, buffer, pos);
@@ -211,7 +212,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeVarLocations(DebugContext context, DebugLocalInfo local, long base, List<Range> rangeList, byte[] buffer, int p) {
+    private int writeVarLocations(DebugContext context, DebugLocalInfo local, long base, List<SubRange> rangeList, byte[] buffer, int p) {
         assert !rangeList.isEmpty();
         int pos = p;
         // collect ranges and values, merging adjacent ranges that have equal value
@@ -418,10 +419,10 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             return value;
         }
 
-        public static List<LocalValueExtent> coalesce(DebugLocalInfo local, List<Range> rangeList) {
+        public static List<LocalValueExtent> coalesce(DebugLocalInfo local, List<SubRange> rangeList) {
             List<LocalValueExtent> extents = new ArrayList<>();
             LocalValueExtent current = null;
-            for (Range range : rangeList) {
+            for (SubRange range : rangeList) {
                 if (current == null) {
                     current = new LocalValueExtent(range.getLo(), range.getHi(), range.lookupValue(local));
                     extents.add(current);

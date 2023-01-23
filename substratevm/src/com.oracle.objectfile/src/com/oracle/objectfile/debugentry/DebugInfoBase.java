@@ -34,6 +34,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.objectfile.debugentry.range.PrimaryRange;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicMap;
@@ -299,14 +302,14 @@ public abstract class DebugInfoBase {
             /* Search for a method defining this primary range. */
             ClassEntry classEntry = lookupClassEntry(ownerType);
             MethodEntry methodEntry = classEntry.ensureMethodEntryForDebugRangeInfo(debugCodeInfo, this, debugContext);
-            Range primaryRange = new Range(stringTable, methodEntry, lo, hi, primaryLine);
+            PrimaryRange primaryRange = Range.createPrimary(methodEntry, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.toJavaName(), methodName, filePath, fileName, primaryLine, lo, hi);
             classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
             /*
              * Record all subranges even if they have no line or file so we at least get a symbol
              * for them and don't see a break in the address range.
              */
-            EconomicMap<DebugLocationInfo, Range> subRangeIndex = EconomicMap.create();
+            EconomicMap<DebugLocationInfo, SubRange> subRangeIndex = EconomicMap.create();
             debugCodeInfo.locationInfoProvider().forEach(debugLocationInfo -> addSubrange(debugLocationInfo, primaryRange, classEntry, subRangeIndex, debugContext));
         }));
 
@@ -427,12 +430,13 @@ public abstract class DebugInfoBase {
      * @param locationInfo
      * @param primaryRange
      * @param classEntry
+     * @param subRangeIndex
      * @param debugContext
      * @return the subrange for {@code locationInfo} linked with all its caller subranges up to the
      *         primaryRange
      */
     @SuppressWarnings("try")
-    private Range addSubrange(DebugLocationInfo locationInfo, Range primaryRange, ClassEntry classEntry, EconomicMap<DebugLocationInfo, Range> subRangeIndex, DebugContext debugContext) {
+    private Range addSubrange(DebugLocationInfo locationInfo, PrimaryRange primaryRange, ClassEntry classEntry, EconomicMap<DebugLocationInfo, SubRange> subRangeIndex, DebugContext debugContext) {
         /*
          * We still insert subranges for the primary method but they don't actually count as inline.
          * we only need a range so that subranges for inline code can refer to the top level line
@@ -458,7 +462,7 @@ public abstract class DebugInfoBase {
         final int line = locationInfo.line();
         ClassEntry subRangeClassEntry = lookupClassEntry(ownerType);
         MethodEntry subRangeMethodEntry = subRangeClassEntry.ensureMethodEntryForDebugRangeInfo(locationInfo, this, debugContext);
-        Range subRange = new Range(stringTable, subRangeMethodEntry, lo, hi, line, primaryRange, isTopLevel, caller);
+        SubRange subRange = Range.createSubrange(subRangeMethodEntry, lo, hi, line, primaryRange, caller, locationInfo.isLeaf());
         classEntry.indexSubRange(subRange);
         subRangeIndex.put(locationInfo, subRange);
         debugContext.log(DebugContext.DETAILED_LEVEL, "SubRange %s.%s %d %s:%d [0x%x, 0x%x] (%d, %d)",
