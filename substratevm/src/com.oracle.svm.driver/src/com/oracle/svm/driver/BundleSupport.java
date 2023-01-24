@@ -39,11 +39,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -365,10 +367,16 @@ final class BundleSupport {
 
         boolean forbiddenPath = false;
         if (!OS.WINDOWS.isCurrent()) {
-            for (Path path : ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES) {
-                if (origPath.startsWith(path)) {
-                    forbiddenPath = true;
-                    break;
+            Path tmpPath = ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT.resolve("tmp");
+            boolean subdirInTmp = origPath.startsWith(tmpPath) && !origPath.equals(tmpPath);
+            if (!subdirInTmp) {
+                Set<Path> forbiddenPaths = new HashSet<>(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES);
+                forbiddenPaths.add(rootDir);
+                for (Path path : forbiddenPaths) {
+                    if (origPath.startsWith(path)) {
+                        forbiddenPath = true;
+                        break;
+                    }
                 }
             }
         }
