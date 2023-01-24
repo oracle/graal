@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -162,10 +162,6 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
             if any(a == "--multi-context-runs=0" for a in bmSuiteArgs):
                 return [re.compile(r'.*', re.MULTILINE)]
         return []
-
-    def flakySuccessPatterns(self):
-        # bzip2 is known to have a compiler error during OSR compilation, which would trigger failurePatterns
-        return [re.compile(r'bzip2')]  # GR-38646
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.use_polybench:
