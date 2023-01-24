@@ -67,3 +67,42 @@ DECLARE_UNARY_INTRINSIC(exp)
 DECLARE_UNARY_INTRINSIC(exp2)
 DECLARE_UNARY_INTRINSIC(sin)
 DECLARE_UNARY_INTRINSIC(cos)
+
+long double __sulong_fp128_add(long double x, long double y) {
+    return x + y;
+}
+
+long double __sulong_fp128_sub(long double x, long double y) {
+    return x - y;
+}
+
+long double __sulong_fp128_mul(long double x, long double y) {
+    return x * y;
+}
+
+long double __sulong_fp128_div(long double x, long double y) {
+    return x / y;
+}
+
+long double __sulong_fp128_mod(long double x, long double y) {
+    return fmodl(x, y);
+}
+
+long double __sulong_fp128_pow(long double x, long double y) {
+    return powl(x, y);
+}
+
+#define DECLARE_UNARY_INTRINSIC(fn)                                                                                                                  \
+    long double __sulong_fp128_##fn(long double value) { return fn##l(value); }
+
+DECLARE_UNARY_INTRINSIC(sqrt)
+DECLARE_UNARY_INTRINSIC(log)
+DECLARE_UNARY_INTRINSIC(log2)
+DECLARE_UNARY_INTRINSIC(log10)
+DECLARE_UNARY_INTRINSIC(rint)
+DECLARE_UNARY_INTRINSIC(ceil)
+DECLARE_UNARY_INTRINSIC(floor)
+DECLARE_UNARY_INTRINSIC(exp)
+DECLARE_UNARY_INTRINSIC(exp2)
+DECLARE_UNARY_INTRINSIC(sin)
+DECLARE_UNARY_INTRINSIC(cos)
