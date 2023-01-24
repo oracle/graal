@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.api;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+import static org.graalvm.compiler.options.OptionType.Expert;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
@@ -141,6 +142,12 @@ public class PointstoOptions {
 
     @Option(help = "Scan all objects reachable from roots for analysis. By default false.")//
     public static final OptionKey<Boolean> ExhaustiveHeapScan = new OptionKey<>(false);
+
+    @Option(help = "Run partial escape analysis on compiler graphs before static analysis.", type = Expert)//
+    public static final OptionKey<Boolean> EscapeAnalysisBeforeAnalysis = new OptionKey<>(true);
+
+    @Option(help = "Run conditional elimination before static analysis.", type = Expert)//
+    public static final OptionKey<Boolean> ConditionalEliminationBeforeAnalysis = new OptionKey<>(true);
 
     /**
      * Controls the static analysis context sensitivity. Available values:
