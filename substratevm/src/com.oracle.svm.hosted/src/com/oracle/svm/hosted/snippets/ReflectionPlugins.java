@@ -160,14 +160,18 @@ public final class ReflectionPlugins {
      * Adding an array type of a Java collection class to this list is always wrong, because those
      * are never immutable.
      */
-    private static final Set<Class<?>> ALLOWED_CONSTANT_CLASSES = new HashSet<>(Arrays.asList(
+    private static final Set<Class<?>> ALLOWED_CONSTANT_CLASSES = Set.of(
                     Class.class, String.class, ClassLoader.class,
                     Method.class, Constructor.class, Field.class,
                     MethodHandle.class, MethodHandles.Lookup.class, MethodType.class,
                     VarHandle.class,
-                    ByteOrder.class));
+                    ByteOrder.class);
 
     private void registerMethodHandlesPlugins(InvocationPlugins plugins) {
+        for (Class<?> clazz : List.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class)) {
+            registerFoldInvocationPlugins(plugins, clazz, "toString", "toBinaryString", "toOctalString", "toHexString");
+        }
+        registerFoldInvocationPlugins(plugins, String.class, "valueOf");
 
         registerFoldInvocationPlugins(plugins, MethodHandles.class,
                         "publicLookup", "privateLookupIn",
