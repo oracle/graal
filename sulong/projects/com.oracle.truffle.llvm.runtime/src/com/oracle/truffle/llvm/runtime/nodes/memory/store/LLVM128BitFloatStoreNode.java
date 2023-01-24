@@ -16,7 +16,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-
 public abstract class LLVM128BitFloatStoreNode extends LLVMStoreNode {
 
     protected final boolean isRecursive;
@@ -30,7 +29,7 @@ public abstract class LLVM128BitFloatStoreNode extends LLVMStoreNode {
     }
 
     public static LLVM128BitFloatStoreNode create() {
-        return LLVM128BitFloatStoreNodeGen.create( null, null);
+        return LLVM128BitFloatStoreNodeGen.create(null, null);
     }
 
     public static LLVM128BitFloatStoreNode createRecursive() {
@@ -59,15 +58,15 @@ public abstract class LLVM128BitFloatStoreNode extends LLVMStoreNode {
 
         @Specialization(guards = "isAutoDerefHandle(addr)")
         protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, LLVM128BitFloat value,
-                                              @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                                              @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
         }
 
         @Specialization(limit = "3")
         @GenerateAOT.Exclude
         protected static void doOpManaged(LLVMManagedPointer address, long offset, LLVM128BitFloat value,
-                                          @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
 
             long currentptr = address.getOffset() + offset;
             nativeWrite.writeI64(address.getObject(), currentptr, value.getFractionPart());
@@ -83,8 +82,8 @@ public abstract class LLVM128BitFloatStoreNode extends LLVMStoreNode {
 
     @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(addr)"})
     protected static void doOpDerefHandle(LLVMNativePointer addr, LLVM128BitFloat value,
-                                          @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                                          @Cached("createRecursive()") LLVM128BitFloatStoreNode store) {
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @Cached("createRecursive()") LLVM128BitFloatStoreNode store) {
         store.executeWithTarget(getReceiver.execute(addr), value);
     }
 
@@ -94,9 +93,9 @@ public abstract class LLVM128BitFloatStoreNode extends LLVMStoreNode {
     @ExplodeLoop
     @GenerateAOT.Exclude
     protected static void doForeign(LLVMManagedPointer address, LLVM128BitFloat value,
-                                    // TODO (fredmorcos) When GR-26485 is fixed, use
-                                    // @CachedLibrary("address.getObject()") here.
-                                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                    // TODO (fredmorcos) When GR-26485 is fixed, use
+                    // @CachedLibrary("address.getObject()") here.
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         long currentptr = address.getOffset();
         nativeWrite.writeI64(address.getObject(), currentptr, value.getFractionPart());
         currentptr += I64_SIZE_IN_BYTES;

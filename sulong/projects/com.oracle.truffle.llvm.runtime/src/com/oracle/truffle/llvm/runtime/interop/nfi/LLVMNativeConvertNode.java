@@ -192,7 +192,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         @Specialization(limit = "1")
         @GenerateAOT.Exclude
         protected LLVM128BitFloat convert(Object value,
-                                         @CachedLibrary("value") InteropLibrary interop) {
+                        @CachedLibrary("value") InteropLibrary interop) {
             try {
                 long fraction = interop.readBufferLong(value, ByteOrder.LITTLE_ENDIAN, 0);
                 long expSign = interop.readBufferLong(value, ByteOrder.LITTLE_ENDIAN, 8);

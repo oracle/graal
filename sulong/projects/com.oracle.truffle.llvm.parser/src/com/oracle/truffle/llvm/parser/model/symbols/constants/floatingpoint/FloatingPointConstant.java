@@ -43,7 +43,6 @@ public abstract class FloatingPointConstant extends AbstractConstant {
     private static final int X86_FP80_BYTES = Math.toIntExact(PrimitiveType.X86_FP80.getBitSize() / Byte.SIZE);
     private static final int FP128_BYTES = Math.toIntExact(PrimitiveType.F128.getBitSize() / Byte.SIZE);
 
-
     FloatingPointConstant(Type type) {
         super(type);
     }

@@ -37,20 +37,8 @@ public abstract class LLVM128BitFloatLoadNode extends LLVMLoadNode {
 
     @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(addr)"})
     protected LLVM128BitFloat do128BitFloatDerefHandle(LLVMNativePointer addr,
-                                                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                                                     @Cached("createRecursive()") LLVM128BitFloatLoadNode load) {
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                    @Cached("createRecursive()") LLVM128BitFloatLoadNode load) {
         return load.executeWithTarget(getReceiver.execute(addr));
     }
-
-    /*@Specialization(limit = "3")
-    @ExplodeLoop
-    @GenerateAOT.Exclude
-    protected LLVM128BitFloat doForeign(LLVMManagedPointer addr,
-                                       @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) throws UnexpectedResultException {
-        long currentAddressPtr = addr.getOffset();
-        long fraction = nativeRead.readI64(addr.getObject(), currentAddressPtr);
-        currentAddressPtr += Double.BYTES;
-        long expSignFraction = nativeRead.readI64(addr.getObject(), currentAddressPtr);
-        return new LLVM128BitFloat(expSignFraction, fraction);
-    }*/
 }

@@ -146,7 +146,6 @@ public abstract class ForeignToLLVM extends LLVMNode {
             return this == ForeignToLLVMType.FP128;
         }
 
-
         public static Object getDefaultValue(ForeignToLLVMType type) {
             switch (type) {
                 case I1:

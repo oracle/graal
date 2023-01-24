@@ -807,7 +807,7 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMDoubleLoadNodeGen.create(targetAddress);
                 case X86_FP80:
                     return LLVM80BitFloatLoadNodeGen.create(targetAddress);
-                    //TODO: FP128
+                // TODO: FP128
                 default:
                     throw new AssertionError(type);
             }
