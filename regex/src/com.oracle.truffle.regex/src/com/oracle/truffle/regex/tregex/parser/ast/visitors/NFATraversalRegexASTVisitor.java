@@ -240,7 +240,10 @@ public abstract class NFATraversalRegexASTVisitor {
 
     protected TBitSet getCurrentMatchedConditionGroups() {
         assert isBuildingDFA();
-        TBitSet currentMatchedConditionGroups = getMatchedConditionGroups().copy();
+        if (!ast.getProperties().hasConditionalBackReferences()) {
+            return matchedConditionGroups;
+        }
+        TBitSet currentMatchedConditionGroups = matchedConditionGroups.copy();
         for (int conditionGroup : ast.getConditionGroups()) {
             if (captureGroupClears.get(2 * conditionGroup + 1)) {
                 currentMatchedConditionGroups.clear(conditionGroup);
@@ -655,7 +658,7 @@ public abstract class NFATraversalRegexASTVisitor {
         // two states of the traversal that differ only in capture groups, since the state that was
         // encountered first will dominate the one found later and any empty capture groups that
         // would have been matched along the way cannot affect future matching.
-        boolean captureGroupsMatter = ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail() || (isBuildingDFA() && !ast.getConditionGroups().isEmpty());
+        boolean captureGroupsMatter = ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail() || (isBuildingDFA() && ast.getProperties().hasConditionalBackReferences());
         DeduplicationKey key;
         if (captureGroupsMatter) {
             key = CGSensitiveDeduplicationKey.create(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, captureGroupUpdates, captureGroupClears, lastGroup);

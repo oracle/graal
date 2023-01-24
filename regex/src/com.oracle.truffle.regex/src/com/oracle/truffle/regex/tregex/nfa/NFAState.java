@@ -109,6 +109,9 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     }
 
     private static EconomicMap<Integer, TBitSet> initMatchedConditionGroupsMap(StateSet<RegexAST, ? extends RegexASTNode> stateSet) {
+        if (!stateSet.getStateIndex().getProperties().hasConditionalBackReferences()) {
+            return null;
+        }
         EconomicMap<Integer, TBitSet> matchedConditionGroupsMap = EconomicMap.create();
         for (RegexASTNode node : stateSet) {
             matchedConditionGroupsMap.put(node.getId(), TBitSet.getEmptyInstance());
@@ -182,11 +185,17 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     }
 
     public TBitSet getMatchedConditionGroups(RegexASTNode t) {
+        if (!stateSet.getStateIndex().getProperties().hasConditionalBackReferences()) {
+            return TBitSet.getEmptyInstance();
+        }
         assert matchedConditionGroupsMap.containsKey(t.getId());
         return matchedConditionGroupsMap.get(t.getId());
     }
 
     public TBitSet getMatchedConditionGroupsDebug() {
+        if (!stateSet.getStateIndex().getProperties().hasConditionalBackReferences()) {
+            return TBitSet.getEmptyInstance();
+        }
         TBitSet matchedConditionGroups = new TBitSet(Long.SIZE);
         for (RegexASTNode t : stateSet) {
             matchedConditionGroups.union(matchedConditionGroupsMap.get(t.getId()));

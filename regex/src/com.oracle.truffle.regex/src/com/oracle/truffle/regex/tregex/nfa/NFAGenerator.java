@@ -248,7 +248,7 @@ public final class NFAGenerator {
                 boolean containsMatchFound = false;
                 boolean containsPrefixStates = false;
                 int lastGroup = -1;
-                EconomicMap<Integer, TBitSet> matchedConditionGroups = EconomicMap.create();
+                EconomicMap<Integer, TBitSet> matchedConditionGroupsMap = ast.getProperties().hasConditionalBackReferences() ? EconomicMap.create() : null;
                 for (ASTTransition astTransition : mergeBuilder.getTransitionSet().getTransitions()) {
                     Term target = astTransition.getTarget();
                     if (target instanceof CharacterClass) {
@@ -271,7 +271,9 @@ public final class NFAGenerator {
                     if (!target.isInLookAheadAssertion() && !target.isInLookBehindAssertion()) {
                         lastGroup = astTransition.getGroupBoundaries().getLastGroup();
                     }
-                    matchedConditionGroups.put(target.getId(), astTransition.getMatchedConditionGroups());
+                    if (ast.getProperties().hasConditionalBackReferences()) {
+                        matchedConditionGroupsMap.put(target.getId(), astTransition.getMatchedConditionGroups());
+                    }
                 }
                 if (!(sourceState.isMustAdvance() && transitionGBUpdateIndices.get(0) && transitionGBUpdateIndices.get(1))) {
                     if (stateSetCC == null) {
@@ -289,7 +291,7 @@ public final class NFAGenerator {
                     } else if (!containsPositionAssertion) {
                         assert mergeBuilder.getCodePointSet().matchesSomething();
                         NFAState targetState = registerMatcherState(stateSetCC, mergeBuilder.getCodePointSet(), finishedLookBehinds, containsPrefixStates,
-                                        sourceState.isMustAdvance() && !ast.getHardPrefixNodes().isDisjoint(stateSetCC), matchedConditionGroups);
+                                        sourceState.isMustAdvance() && !ast.getHardPrefixNodes().isDisjoint(stateSetCC), matchedConditionGroupsMap);
                         transitionsBuffer.add(createTransition(sourceState, targetState, mergeBuilder.getCodePointSet(), lastGroup));
                     }
                 }
@@ -364,6 +366,12 @@ public final class NFAGenerator {
         }
 
         private static <K, V> boolean mapEquals(EconomicMap<K, V> mapA, EconomicMap<K, V> mapB) {
+            if (mapA == null) {
+                return mapB == null;
+            }
+            if (mapB == null) {
+                return mapA == null;
+            }
             if (mapA.size() != mapB.size()) {
                 return false;
             }
@@ -381,6 +389,9 @@ public final class NFAGenerator {
         }
 
         private static <K, V> int mapHashCode(EconomicMap<K, V> map) {
+            if (map == null) {
+                return 0;
+            }
             int hashCode = 0;
             for (V value : map.getValues()) {
                 hashCode = 31 * hashCode + value.hashCode();
