@@ -1080,7 +1080,11 @@ public class CommonNodeFactory {
                         return LLVM80BitFloatLiteralNodeGen.create(LLVM80BitFloat.fromBytesBigEndian((byte[]) constant));
                     }
                 case F128:
-                    return LLVM128BitFloatLiteralNodeGen.create(LLVM128BitFloat.fromBytesBigEndian((byte[]) constant));
+                    if (constant == null) {
+                        return LLVM128BitFloatLiteralNodeGen.create(LLVM128BitFloat.fromLong(0));
+                    } else {
+                        return LLVM128BitFloatLiteralNodeGen.create(LLVM128BitFloat.fromBytesBigEndian((byte[]) constant));
+                    }
                 case I64:
                     return LLVMI64LiteralNodeGen.create((long) constant);
                 default:

@@ -229,7 +229,7 @@ public final class PrimitiveType extends Type {
             case X86_FP80:
                 return CommonNodeFactory.createSimpleConstantNoArray(null, this);
             case F128:
-                return CommonNodeFactory.createSimpleConstantNoArray(LLVM128BitFloat.POSITIVE_ZERO, this);
+                return CommonNodeFactory.createSimpleConstantNoArray(null, this);
             default:
                 throw new LLVMParserException("Unsupported Type for Zero Constant: " + this);
         }

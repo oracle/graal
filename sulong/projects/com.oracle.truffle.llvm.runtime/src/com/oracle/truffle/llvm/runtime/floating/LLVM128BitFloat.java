@@ -43,7 +43,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     public static final long FRACTION_MASK = (1L << EXPONENT_POSITION) - 1;
     private static final LLVM128BitFloat POSITIVE_INFINITY = LLVM128BitFloat.fromRawValues(false, EXPONENT_MASK, 0);
     private static final LLVM128BitFloat NEGATIVE_INFINITY = LLVM128BitFloat.fromRawValues(true, EXPONENT_MASK, 0);
-    public static final LLVM128BitFloat POSITIVE_ZERO = LLVM128BitFloat.fromRawValues(false, 0, 0);
+    private static final LLVM128BitFloat POSITIVE_ZERO = LLVM128BitFloat.fromRawValues(false, 0, 0);
     private static final LLVM128BitFloat NEGATIVE_ZERO = LLVM128BitFloat.fromRawValues(true, 0, 0);
     private static final int EXPONENT_BIAS = 16383;
     private static final int FLOAT_EXPONENT_BIAS = 127;
