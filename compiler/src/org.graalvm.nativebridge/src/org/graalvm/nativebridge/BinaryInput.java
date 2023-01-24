@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import static org.graalvm.nativebridge.BinaryOutput.LARGE_STRING_TAG;
 import static org.graalvm.nativebridge.BinaryOutput.NULL;
@@ -497,6 +498,18 @@ public abstract class BinaryInput {
     }
 
     /**
+     * Returns a read only {@link ByteBuffer} backed by the {@link BinaryInput} internal buffer. The
+     * content of the buffer will start at the {@link BinaryInput}'s current position. The buffer's
+     * capacity and limit will be {@code len}, its position will be zero, its mark will be
+     * undefined, and its byte order will be {@link ByteOrder#BIG_ENDIAN BIG_ENDIAN}. After a
+     * successful call, the {@link BinaryInput}'s current position is incremented by the
+     * {@code len}.
+     *
+     * @throws IndexOutOfBoundsException if the BinaryInput has not enough remaining bytes.
+     */
+    public abstract ByteBuffer asByteBuffer(int len);
+
+    /**
      * Creates a new buffer backed by a byte array.
      */
     public static BinaryInput create(byte[] buffer) {
@@ -544,6 +557,13 @@ public abstract class BinaryInput {
             }
             System.arraycopy(buffer, pos, b, off, len);
             pos += len;
+        }
+
+        @Override
+        public ByteBuffer asByteBuffer(int len) {
+            ByteBuffer result = ByteBuffer.wrap(buffer, pos, len).slice().asReadOnlyBuffer();
+            pos += len;
+            return result;
         }
     }
 
@@ -596,6 +616,13 @@ public abstract class BinaryInput {
                 }
             }
             pos += len;
+        }
+
+        @Override
+        public ByteBuffer asByteBuffer(int len) {
+            ByteBuffer result = CTypeConversion.asByteBuffer(address.addressOf(pos), len).order(ByteOrder.BIG_ENDIAN).asReadOnlyBuffer();
+            pos += len;
+            return result;
         }
     }
 }

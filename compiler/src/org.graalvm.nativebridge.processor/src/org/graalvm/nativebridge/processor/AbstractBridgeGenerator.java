@@ -279,9 +279,11 @@ abstract class AbstractBridgeGenerator {
             int mark = builder.position();
             switch (e.marshallerData.kind) {
                 case CUSTOM:
-                    // Reservation for custom types is hard to guess as we don't have an instance
-                    // yet. It's highly probable that reallocation is needed anyway, we ignore it.
-                    if (!e.reservation) {
+                    if (e.reserveSpace) {
+                        // Reservation for custom types is hard to guess as we don't have an
+                        // instance yet. It's highly probable that reallocation is needed anyway, we
+                        // ignore it.
+                    } else {
                         if (e.parameterType.getKind() == TypeKind.ARRAY) {
                             TypeMirror componentType = ((ArrayType) e.parameterType).getComponentType();
                             if (componentType.getKind() == TypeKind.ARRAY) {
@@ -303,9 +305,11 @@ abstract class AbstractBridgeGenerator {
                     break;
                 case REFERENCE:
                     if (e.parameterType.getKind() == TypeKind.ARRAY) {
-                        // Reservation for arrays is hard to guess as we don't have an instance yet.
-                        // It's highly probable that reallocation is needed anyway, we ignore it.
-                        if (!e.reservation) {
+                        if (e.reserveSpace) {
+                            // Reservation for arrays is hard to guess as we don't have an instance
+                            // yet. It's highly probable that reallocation is needed anyway, we
+                            // ignore it.
+                        } else {
                             CharSequence arrayLength = null;
                             if (e.marshallerData.in != null) {
                                 arrayLength = e.marshallerData.in.lengthParameter;
@@ -323,14 +327,14 @@ abstract class AbstractBridgeGenerator {
                             builder.write("(").write(e.parameterName).write(" != null ? ").write(arrayLength).write(" * ").memberSelect(boxedLong, "BYTES", false).write(" : 0").write(")");
                         }
                     } else {
-                        generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG), e.reservation);
+                        generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG), e.reserveSpace);
                     }
                     break;
                 case VALUE:
-                    generateSizeOf(builder, e.parameterName, e.parameterType, e.reservation);
+                    generateSizeOf(builder, e.parameterName, e.parameterType, e.reserveSpace);
                     break;
                 case RAW_REFERENCE:
-                    generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG), e.reservation);
+                    generateSizeOf(builder, e.parameterName, types.getPrimitiveType(TypeKind.LONG), e.reserveSpace);
                     break;
                 default:
                     throw new IllegalStateException(String.format("Unsupported marshaller %s of kind %s.", e.marshallerData.name, e.marshallerData.kind));
@@ -342,7 +346,7 @@ abstract class AbstractBridgeGenerator {
         builder.lineEnd(";");
     }
 
-    private void generateSizeOf(CodeBuilder builder, CharSequence variable, TypeMirror type, boolean reservation) {
+    private void generateSizeOf(CodeBuilder builder, CharSequence variable, TypeMirror type, boolean reserveSpace) {
         switch (type.getKind()) {
             case BOOLEAN:
             case BYTE:
@@ -357,14 +361,15 @@ abstract class AbstractBridgeGenerator {
                 builder.memberSelect(types.boxedClass((PrimitiveType) type).asType(), "BYTES", false);
                 break;
             case ARRAY:
-                // Reservation for arrays is hard to guess as we don't have an instance yet. It's
-                // highly probable that reallocation is needed anyway, we ignore it.
-                if (!reservation) {
+                if (reserveSpace) {
+                    // Reservation for arrays is hard to guess as we don't have an instance yet.
+                    // It's highly probable that reallocation is needed anyway, we ignore it.
+                } else {
                     builder.memberSelect(variable, "length", false);
                     builder.write(" * ");
                     TypeMirror componentType = ((ArrayType) type).getComponentType();
                     if (componentType.getKind().isPrimitive()) {
-                        generateSizeOf(builder, null, componentType, reservation);
+                        generateSizeOf(builder, null, componentType, reserveSpace);
                     } else {
                         assert types.isSameType(typeCache.string, type);
                         builder.write("32");    // String array element size estimate
@@ -372,11 +377,12 @@ abstract class AbstractBridgeGenerator {
                 }
                 break;
             case DECLARED:
-                // Reservation for strings is hard to guess as we don't have an instance yet. It's
-                // highly probable that reallocation is needed anyway, we ignore it.
-                if (!reservation) {
+                if (reserveSpace) {
+                    // Reservation for strings is hard to guess as we don't have an instance yet.
+                    // It's highly probable that reallocation is needed anyway, we ignore it.
+                } else {
                     assert types.isSameType(typeCache.string, type);
-                    generateSizeOf(builder, null, types.getPrimitiveType(TypeKind.INT), reservation);
+                    generateSizeOf(builder, null, types.getPrimitiveType(TypeKind.INT), reserveSpace);
                     builder.write(" + ");
                     builder.invoke(variable, "length");
                 }
@@ -997,14 +1003,14 @@ abstract class AbstractBridgeGenerator {
     }
 
     static final class MarshalledParameter {
-        final boolean reservation;
+        final boolean reserveSpace;
         final CharSequence parameterName;
         final TypeMirror parameterType;
         final boolean isResult;
         final MarshallerData marshallerData;
 
         MarshalledParameter(CharSequence parameterName, TypeMirror parameterType, boolean isResult, MarshallerData marshallerData) {
-            this.reservation = false;
+            this.reserveSpace = false;
             this.parameterName = parameterName;
             this.parameterType = parameterType;
             this.isResult = isResult;
@@ -1012,7 +1018,7 @@ abstract class AbstractBridgeGenerator {
         }
 
         MarshalledParameter(TypeMirror resultType, MarshallerData marshallerData) {
-            this.reservation = true;
+            this.reserveSpace = true;
             this.parameterName = null;
             this.parameterType = resultType;
             this.isResult = true;
