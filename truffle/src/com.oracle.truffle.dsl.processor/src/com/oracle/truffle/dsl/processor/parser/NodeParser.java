@@ -858,23 +858,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
                 AnnotationValue inlineValue = getAnnotationValue(cache.getMessageAnnotation(), "inline", false);
                 Boolean inline = getAnnotationValue(Boolean.class, cache.getMessageAnnotation(), "inline", false);
-                if (cache.getInlinedNode() == null) {
-                    if (inline == null) {
-                        inline = node.shouldInlineByDefault();
-                    }
-                    if (inline && !isInliningSupported(cache)) {
-                        if (emitErrors) {
-                            cache.addError("Failed to generate code for @%s: Cached type '%s' does not support inlining. " + //
-                                            "Only inlinable types are supported for nodes annotated with @%s. " + //
-                                            "Inlinable types declare a static inline method or use the @%s annotation. " + //
-                                            "The primitive types boolean, byte, short, int are also considered inlinable.",
-                                            getSimpleName(types.GenerateInline),
-                                            getSimpleName(cache.getParameter().getType()),
-                                            getSimpleName(types.GenerateInline),
-                                            getSimpleName(types.GenerateInline));
-                        }
-                    }
-                } else if (inline != null && inline) {
+                if (cache.getInlinedNode() != null && inline != null && inline) {
                     if (emitErrors) {
                         cache.addSuppressableWarning(TruffleSuppressedWarnings.UNUSED, inlineValue, "Redundant specification of @%s(... inline=true). " + //
                                         "Cached values of nodes with @%s are implicitely inlined.",
@@ -3447,14 +3431,39 @@ public final class NodeParser extends AbstractParser<NodeData> {
         AnnotationMirror cachedAnnotation = cache.getMessageAnnotation();
         final NodeData node = specialization.getNode();
         Boolean inline = getAnnotationValue(Boolean.class, cachedAnnotation, "inline", false);
-        boolean hasInline = hasInlineMethod(cache);
-        boolean requireCached = node.isGenerateCached() || !hasInline || (inline != null && !inline);
+        boolean declaresInline = inline != null;
+        boolean hasInlineMethod = hasInlineMethod(cache);
+        boolean requireCached = node.isGenerateCached() || !hasInlineMethod || (inline != null && !inline);
+
         if (inline == null) {
             if (forceInlineByDefault(cache)) {
                 inline = true;
             } else {
                 inline = node.shouldInlineByDefault();
             }
+        }
+
+        if (inline && !hasInlineMethod && ElementUtils.isAssignable(cache.getParameter().getType(), types.Node)) {
+            if (declaresInline) {
+                cache.addError(cachedAnnotation, getAnnotationValue(cachedAnnotation, "inline"),
+                                "The cached node type does not support object inlining." + //
+                                                " Add @%s on the node type or disable inline using @%s(inline=false) to resolve this.",
+                                getSimpleName(types.GenerateInline),
+                                getSimpleName(types.Cached));
+            } else if (node.isGenerateInline()) {
+                cache.addSuppressableWarning(TruffleSuppressedWarnings.INLINING_RECOMMENDATION,
+                                "The cached node type does not support object inlining." + //
+                                                " Add @%s on the node type or disable inline using @%s(inline=false) to resolve this.",
+                                getSimpleName(types.GenerateInline),
+                                getSimpleName(types.Cached));
+                inline = false;
+            } else {
+                inline = false;
+            }
+        }
+
+        if (cache.hasErrors()) {
+            return;
         }
 
         boolean requireUncached = node.isGenerateUncached() || mode == ParseMode.EXPORTED_MESSAGE;
@@ -3485,7 +3494,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         AnnotationValue adopt = getAnnotationValue(cachedAnnotation, "adopt", false);
-        if (inline && hasInline) {
+        if (inline && hasInlineMethod) {
             ExecutableElement inlineMethod = lookupInlineMethod(originalResolver, node, cache, cache.getParameter().getType(), cache);
             List<InlineFieldData> fields;
             if (inlineMethod != null) {
@@ -3563,14 +3572,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
         }
         cache.setAdopt(getAnnotationValue(Boolean.class, cachedAnnotation, "adopt", true));
-
-        if (inline != null && inline && !hasInline && ElementUtils.isAssignable(cache.getParameter().getType(), types.Node)) {
-            cache.addError(cachedAnnotation, getAnnotationValue(cachedAnnotation, "inline"),
-                            "The cached node type does not support object inlining." + //
-                                            " Add @%s on the node type or disable inline using @%s(inline=false) to resolve this.",
-                            getSimpleName(types.GenerateInline),
-                            getSimpleName(types.Cached));
-        }
 
         Boolean neverDefault = getAnnotationValue(Boolean.class, cachedAnnotation, "neverDefault", false);
         cache.setNeverDefaultGuaranteed(isNeverDefaultGuaranteed(specialization, cache));
