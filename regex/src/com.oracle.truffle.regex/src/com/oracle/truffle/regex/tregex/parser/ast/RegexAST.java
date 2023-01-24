@@ -637,6 +637,9 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     @TruffleBoundary
     public String canTransformToDFAFailureReason() {
         StringJoiner sb = new StringJoiner(", ");
+        if (getOptions().getFlavor().usesLastGroupResultField() && getProperties().hasCaptureGroupsInLookAroundAssertions()) {
+            sb.add("regex has capture groups in look-around assertions while needing to calculate last group matched");
+        }
         if (getNumberOfNodes() > TRegexOptions.TRegexMaxParseTreeSizeForDFA) {
             sb.add(String.format("Parser tree has too many nodes: %d (threshold: %d)", getNumberOfNodes(), TRegexOptions.TRegexMaxParseTreeSizeForDFA));
         }
