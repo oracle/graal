@@ -356,12 +356,14 @@ final class PanamaSignature {
             try {
                 Object result = (Object) handle.invokeExact(args);
                 if (result == null) {
-                    return NativePointer.NULL;
+                    if (retType.type == NativeSimpleType.VOID) {
+                        return null;
+                    } else {
+                        return NativePointer.NULL;
+                    }
                 } else if (retType.type == NativeSimpleType.STRING) {
                     MemoryAddress test = (MemoryAddress) result;
                     return new NativeString(test.toRawLongValue());
-                } else if (retType.type == NativeSimpleType.VOID) {
-                    return NativePointer.NULL; // TODO check this vs NativePointer.NULL
                 } else if (retType.type == NativeSimpleType.POINTER) {
                     return NativePointer.create((long) result);
                 } else {

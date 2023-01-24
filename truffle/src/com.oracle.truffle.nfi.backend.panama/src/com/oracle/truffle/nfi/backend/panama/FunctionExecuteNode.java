@@ -139,9 +139,10 @@ abstract class FunctionExecuteNode extends Node {
         @ExplodeLoop
         public Object doCall(VirtualFrame frame,
                              @Cached("getAddress(frame)") long address,
-                             @Cached("getArgs(frame)") Object[] args,
                              @Cached("getSig(frame)") PanamaSignature signature,
                              @Cached("signature.createDowncallHandle(address)") MethodHandle handle) {
+
+            Object[] args = getArgs(frame);
 
             if (args.length != argNodes.length) {
                 throw silenceException(RuntimeException.class, ArityException.create(argNodes.length, argNodes.length, args.length));

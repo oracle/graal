@@ -68,6 +68,8 @@ final class PanamaClosure implements TruffleObject {
             // TODO
             if (retType.type == NativeSimpleType.STRING) {
                 return StringRetClosureRootNode.createInfo(lang, signatureInfo, executable);
+            } else if (retType.type == NativeSimpleType.VOID) {
+                return VoidRetClosureRootNode.createInfo(lang, signatureInfo, executable);
             } else {
                 return GenericRetClosureRootNode.createInfo(lang, signatureInfo, executable);
             }
