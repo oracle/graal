@@ -79,7 +79,6 @@ import org.graalvm.home.HomeFinder;
 import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -796,6 +795,9 @@ public final class TruffleBaseFeature implements InternalFeature {
                                 new ArrayBasedShapeGeneratorOffsetTransformer("object"));
                 access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "shapeOffset"),
                                 new ArrayBasedShapeGeneratorOffsetTransformer("shape"));
+
+                access.registerFieldValueTransformer(ReflectionUtil.lookupField(StaticProperty.class, "offset"),
+                                new StaticPropertyOffsetTransformer());
             }
 
             static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
@@ -1008,78 +1010,76 @@ final class Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> {
 
 @TargetClass(className = "com.oracle.truffle.api.staticobject.StaticProperty", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
-
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_com_oracle_truffle_api_staticobject_StaticProperty.OffsetTransformer.class) //
-    int offset;
-
     @Alias //
     native Class<?> getPropertyType();
 
     @Alias
     native void initOffset(int o);
+}
 
-    public static final class OffsetTransformer implements FieldValueTransformer {
+final class StaticPropertyOffsetTransformer implements FieldValueTransformerWithAvailability {
+    /*
+     * We have to use reflection to access private members instead of aliasing them in the
+     * substitution class since substitutions are present only at runtime
+     */
+    private static final Method GET_PROPERTY_TYPE = ReflectionUtil.lookupMethod(StaticProperty.class, "getPropertyType");
+
+
+    @Override
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
+    }
+
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        int offset = (int) originalValue;
+        if (offset == 0) {
+            /*
+             * The offset is not yet initialized, probably because no shape was built for the
+             * receiver static property
+             */
+            return offset;
+        }
+
+        StaticProperty receiverStaticProperty = (StaticProperty) receiver;
+
+        Class<?> propertyType;
+        try {
+            propertyType = (Class<?>) GET_PROPERTY_TYPE.invoke(receiverStaticProperty);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+
+        int baseOffset;
+        int indexScale;
+        JavaKind javaKind;
+        if (propertyType.isPrimitive()) {
+            javaKind = JavaKind.Byte;
+            baseOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            indexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
+        } else {
+            javaKind = JavaKind.Object;
+            baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+            indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+        }
+
+        assert offset >= baseOffset && (offset - baseOffset) % indexScale == 0;
+
         /*
-         * We have to use reflection to access private members instead of aliasing them in the
-         * substitution class since substitutions are present only at runtime
+         * Reverse the offset computation to find the index
          */
+        int index = (offset - baseOffset) / indexScale;
 
-        private static final Method GET_PROPERTY_TYPE;
-        static {
-            GET_PROPERTY_TYPE = ReflectionUtil.lookupMethod(StaticProperty.class, "getPropertyType");
-        }
+        /*
+         * Find SVM array base offset and array index scale for this JavaKind
+         */
+        int svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(javaKind);
+        int svmArrayIndexScaleOffset = ConfigurationValues.getObjectLayout().getArrayIndexScale(javaKind);
 
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            int offset = (int) originalValue;
-            if (offset == 0) {
-                /*
-                 * The offset is not yet initialized, probably because no shape was built for the
-                 * receiver static property
-                 */
-                return offset;
-            }
-
-            StaticProperty receiverStaticProperty = (StaticProperty) receiver;
-
-            Class<?> propertyType;
-            try {
-                propertyType = (Class<?>) GET_PROPERTY_TYPE.invoke(receiverStaticProperty);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-
-            int baseOffset;
-            int indexScale;
-            JavaKind javaKind;
-            if (propertyType.isPrimitive()) {
-                javaKind = JavaKind.Byte;
-                baseOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET;
-                indexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
-            } else {
-                javaKind = JavaKind.Object;
-                baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
-                indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
-            }
-
-            assert offset >= baseOffset && (offset - baseOffset) % indexScale == 0;
-
-            /*
-             * Reverse the offset computation to find the index
-             */
-            int index = (offset - baseOffset) / indexScale;
-
-            /*
-             * Find SVM array base offset and array index scale for this JavaKind
-             */
-            int svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(javaKind);
-            int svmArrayIndexScaleOffset = ConfigurationValues.getObjectLayout().getArrayIndexScale(javaKind);
-
-            /*
-             * Redo the offset computation with the SVM array base offset and array index scale
-             */
-            return svmArrayBaseOffset + svmArrayIndexScaleOffset * index;
-        }
+        /*
+         * Redo the offset computation with the SVM array base offset and array index scale
+         */
+        return svmArrayBaseOffset + svmArrayIndexScaleOffset * index;
     }
 }
 
