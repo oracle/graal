@@ -289,6 +289,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMStructStoreNodeGen
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode.LLVMAbstractI64ArithmeticNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMDoubleArithmeticNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMFP128ArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMFP80ArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMFloatArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI16ArithmeticNodeGen;
@@ -1976,6 +1977,8 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMDoubleArithmeticNodeGen.create(op, left, right);
                 case X86_FP80:
                     return LLVMFP80ArithmeticNodeGen.create(op, left, right);
+                case F128:
+                    return LLVMFP128ArithmeticNodeGen.create(op, left, right);
                 default:
                     throw new AssertionError("Unknown primitive type: " + type);
             }
