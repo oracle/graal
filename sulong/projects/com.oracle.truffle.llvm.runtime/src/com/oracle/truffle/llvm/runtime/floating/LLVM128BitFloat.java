@@ -39,11 +39,8 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     public static final int BIT_WIDTH = 128;
     public static final int EXPONENT_POSITION = FRACTION_BIT_WIDTH - Long.SIZE; // 112 - 64 = 48
     public static final int BYTE_WIDTH = BIT_WIDTH / Byte.SIZE;
-    public static final long EXPONENT_MASK = 0b0111111111111111L << EXPONENT_POSITION; // 15 bit,
-                                                                                       // shifted to
-                                                                                       // the left
-                                                                                       // by 48bits.
-    public static final long FRACTION_MASK = (1L << EXPONENT_POSITION) - 1; //
+    public static final long EXPONENT_MASK = 0b0111111111111111L << EXPONENT_POSITION;
+    public static final long FRACTION_MASK = (1L << EXPONENT_POSITION) - 1;
     private static final LLVM128BitFloat POSITIVE_INFINITY = LLVM128BitFloat.fromRawValues(false, EXPONENT_MASK, 0);
     private static final LLVM128BitFloat NEGATIVE_INFINITY = LLVM128BitFloat.fromRawValues(true, EXPONENT_MASK, 0);
     private static final LLVM128BitFloat POSITIVE_ZERO = LLVM128BitFloat.fromRawValues(false, 0, 0);
