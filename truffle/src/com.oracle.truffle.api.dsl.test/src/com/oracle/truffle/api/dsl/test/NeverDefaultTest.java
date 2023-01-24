@@ -59,6 +59,7 @@ import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
@@ -665,7 +666,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
     abstract static class SingleInstancePrimitiveCacheNode extends InlinableTestNode {
 
         @Specialization(guards = "value == cachedValue", limit = "1")
-        int s0(int value, @Cached(value = "value", neverDefault = true) int cachedValue) {
+        int s0(int value, @Cached(value = "value") int cachedValue) {
             assertNotEquals(0, cachedValue);
             return value;
         }
@@ -679,11 +680,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
         });
 
         SingleInstancePrimitiveCacheNode node = adoptNode(SingleInstancePrimitiveCacheNodeGen.create()).get();
-        assertFails(() -> node.execute(null, 0), NullPointerException.class, (e) -> {
-            assertEquals("Specialization 's0(int, int)' cache 'cachedValue' returned a '0' default value. The cache initializer must never return a default value for this cache. " +
-                            "Use @Cached(neverDefault=false) to allow default values for this cached value or make sure the cache initializer never returns '0'.",
-                            e.getMessage());
-        });
+        assertFails(() -> node.execute(null, 0), AssertionError.class);
     }
 
     @SuppressWarnings("truffle-inlining")
@@ -1341,6 +1338,21 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
                         @Shared("a") @Cached(value = "value", neverDefault = false) int cachedValue) {
             return value;
         }
+    }
+
+    @ImportStatic(CompilerDirectives.class)
+    abstract static class ProfileArgumentNode extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization(guards = "value == cachedValue", limit = "1")
+        @SuppressWarnings("unused")
+        protected boolean cacheBoolean(boolean value,
+                        // test: does not cause a never-default warning
+                        @Cached("value") boolean cachedValue) {
+            return cachedValue;
+        }
+
     }
 
 }

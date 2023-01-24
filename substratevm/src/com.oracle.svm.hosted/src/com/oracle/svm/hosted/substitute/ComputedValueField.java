@@ -549,6 +549,6 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
 
     @Override
     public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalFieldProvider.getJavaField(original);
     }
 }

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +23,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
+package com.oracle.objectfile.debugentry.range;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import com.oracle.objectfile.debugentry.MethodEntry;
 
-public class NativeImageUtil {
-
-    public static ResolvedJavaMethod toOriginal(ResolvedJavaMethod method) {
-        if (method instanceof HostedMethod) {
-            return ((HostedMethod) method).wrapped.wrapped;
-        } else if (method instanceof AnalysisMethod) {
-            return ((AnalysisMethod) method).wrapped;
-        } else {
-            return method;
-        }
+class LeafRange extends SubRange {
+    protected LeafRange(MethodEntry methodEntry, int lo, int hi, int line, PrimaryRange primary, Range caller) {
+        super(methodEntry, lo, hi, line, primary, caller);
     }
 
-    public static ResolvedJavaType toOriginal(ResolvedJavaType type) {
-        if (type instanceof HostedType) {
-            return ((HostedType) type).getWrapped().getWrapped();
-        } else if (type instanceof AnalysisType) {
-            return ((AnalysisType) type).getWrapped();
-        } else {
-            return type;
-        }
+    @Override
+    protected void addCallee(SubRange callee) {
+        assert false : "should never be adding callees to a leaf range!";
     }
 
+    @Override
+    public SubRange getFirstCallee() {
+        return null;
+    }
+
+    @Override
+    public boolean isLeaf() {
+        return true;
+    }
 }

@@ -34,10 +34,12 @@ import org.graalvm.compiler.hotspot.CompilationTask;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.ProfileReplaySupport;
 import org.graalvm.compiler.options.OptionValues;
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -97,7 +99,7 @@ public class ProfileReplayTest extends GraalCompilerTest {
         HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
 
-        for (int i = 0; i < 10000; i++) {
+        for (int i = 0; i < 100000; i++) {
             A use = null;
             if (i % 2 == 0) {
                 use = new B();
@@ -109,7 +111,7 @@ public class ProfileReplayTest extends GraalCompilerTest {
             foo(i, i % 4, use);
         }
         final ResolvedJavaMethod method = getResolvedJavaMethod("foo");
-        try (TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "GraphDumpWithAssertionsTest")) {
+        try (TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "ProfileReplayTest")) {
             OptionValues overrides = new OptionValues(getInitialOptions(), DebugOptions.DumpPath, temp.toString());
             runInitialCompilation(method, overrides, jvmciRuntime, compiler);
             runSanityCompilation(temp.toString(), method, overrides, jvmciRuntime, compiler);
@@ -131,10 +133,11 @@ public class ProfileReplayTest extends GraalCompilerTest {
     }
 
     private static void runCompile(CompilationTask task, OptionValues opt) {
-        task.runCompilation(opt);
+        HotSpotCompilationRequestResult res = task.runCompilation(opt);
         InstalledCode installedCode = task.getInstalledCode();
         if (installedCode != null) {
             installedCode.invalidate();
         }
+        Assert.assertNull(res.getFailureMessage());
     }
 }

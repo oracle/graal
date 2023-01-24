@@ -453,7 +453,7 @@ public class MethodTypeFlowBuilder {
                     AnalysisType paramType = (AnalysisType) paramTypes[index];
                     FormalParamTypeFlow parameter;
                     if (!isStatic && index == 0) {
-                        assert paramType == method.getDeclaringClass();
+                        assert paramType.equals(method.getDeclaringClass());
                         parameter = new FormalReceiverTypeFlow(position, paramType);
                     } else {
                         parameter = new FormalParamTypeFlow(position, paramType, index);

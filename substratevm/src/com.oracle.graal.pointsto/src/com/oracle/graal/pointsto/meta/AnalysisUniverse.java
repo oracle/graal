@@ -59,6 +59,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
@@ -113,7 +114,6 @@ public class AnalysisUniverse implements Universe {
     private SubstitutionProcessor[] featureNativeSubstitutions;
 
     private final MetaAccessProvider originalMetaAccess;
-    private final SnippetReflectionProvider originalSnippetReflection;
     private final SnippetReflectionProvider snippetReflection;
     private final AnalysisFactory analysisFactory;
     private final AnnotationExtractor annotationExtractor;
@@ -135,13 +135,12 @@ public class AnalysisUniverse implements Universe {
 
     @SuppressWarnings("unchecked")
     public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
-                    SnippetReflectionProvider originalSnippetReflection, SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory, AnnotationExtractor annotationExtractor) {
+                    SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory, AnnotationExtractor annotationExtractor) {
         this.hostVM = hostVM;
         this.wordKind = wordKind;
         this.analysisPolicy = analysisPolicy;
         this.substitutions = substitutions;
         this.originalMetaAccess = originalMetaAccess;
-        this.originalSnippetReflection = originalSnippetReflection;
         this.snippetReflection = snippetReflection;
         this.analysisFactory = analysisFactory;
         this.annotationExtractor = annotationExtractor;
@@ -278,7 +277,7 @@ public class AnalysisUniverse implements Universe {
         }
 
         try {
-            JavaKind storageKind = getStorageKind(type, originalMetaAccess);
+            JavaKind storageKind = originalMetaAccess.lookupJavaType(WordBase.class).isAssignableFrom(substitutions.resolve(type)) ? wordKind : type.getJavaKind();
             AnalysisType newValue = analysisFactory.createType(this, type, storageKind, objectClass, cloneableClass);
 
             synchronized (this) {
@@ -331,13 +330,6 @@ public class AnalysisUniverse implements Universe {
                 types.remove(type, claim);
             }
         }
-    }
-
-    public JavaKind getStorageKind(ResolvedJavaType type, MetaAccessProvider metaAccess) {
-        if (metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(substitutions.resolve(type))) {
-            return wordKind;
-        }
-        return type.getJavaKind();
     }
 
     @Override
@@ -477,8 +469,9 @@ public class AnalysisUniverse implements Universe {
     }
 
     @Override
-    public WrappedSignature lookup(Signature signature, WrappedJavaType defaultAccessingClass) {
+    public WrappedSignature lookup(Signature signature, ResolvedJavaType defaultAccessingClass) {
         assert !(signature instanceof WrappedSignature);
+        assert !(defaultAccessingClass instanceof WrappedJavaType);
         WrappedSignature result = signatures.get(signature);
         if (result == null) {
             WrappedSignature newValue = new WrappedSignature(this, signature, defaultAccessingClass);
@@ -489,8 +482,9 @@ public class AnalysisUniverse implements Universe {
     }
 
     @Override
-    public WrappedConstantPool lookup(ConstantPool constantPool, WrappedJavaType defaultAccessingClass) {
+    public WrappedConstantPool lookup(ConstantPool constantPool, ResolvedJavaType defaultAccessingClass) {
         assert !(constantPool instanceof WrappedConstantPool);
+        assert !(defaultAccessingClass instanceof WrappedJavaType);
         WrappedConstantPool result = constantPools.get(constantPool);
         if (result == null) {
             WrappedConstantPool newValue = new AnalysisConstantPool(this, constantPool, defaultAccessingClass);
@@ -505,7 +499,7 @@ public class AnalysisUniverse implements Universe {
         if (constant == null) {
             return null;
         } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            Object original = originalSnippetReflection.asObject(Object.class, constant);
+            Object original = GraalAccess.getOriginalSnippetReflection().asObject(Object.class, constant);
             if (original instanceof ImageHeapConstant) {
                 /*
                  * The value is an ImageHeapObject, i.e., it already has a build time
@@ -526,7 +520,7 @@ public class AnalysisUniverse implements Universe {
         if (constant == null) {
             return null;
         } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            return originalSnippetReflection.forObject(snippetReflection.asObject(Object.class, constant));
+            return GraalAccess.getOriginalSnippetReflection().forObject(snippetReflection.asObject(Object.class, constant));
         } else {
             return constant;
         }
@@ -681,10 +675,6 @@ public class AnalysisUniverse implements Universe {
     @Override
     public SnippetReflectionProvider getSnippetReflection() {
         return snippetReflection;
-    }
-
-    public SnippetReflectionProvider getOriginalSnippetReflection() {
-        return originalSnippetReflection;
     }
 
     @Override

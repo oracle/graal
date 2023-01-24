@@ -29,8 +29,4 @@ import java.lang.reflect.AnnotatedElement;
 public interface WrappedElement {
 
     AnnotatedElement getWrapped();
-
-    default AnnotatedElement getWrappedWithoutResolve() {
-        return getWrapped();
-    }
 }

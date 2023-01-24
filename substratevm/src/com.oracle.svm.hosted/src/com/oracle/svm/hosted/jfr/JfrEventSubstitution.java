@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.jfr.JfrEventWriterAccess;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.util.VMError;
@@ -147,8 +146,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
 
     private Boolean initEventClass(ResolvedJavaType eventType) throws RuntimeException {
         try {
-            Class<? extends jdk.internal.event.Event> newEventClass = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), eventType)
-                            .asSubclass(jdk.internal.event.Event.class);
+            Class<? extends jdk.internal.event.Event> newEventClass = OriginalClassProvider.getJavaClass(eventType).asSubclass(jdk.internal.event.Event.class);
             eventType.initialize();
 
             // It is crucial that mirror events are registered before the actual events.

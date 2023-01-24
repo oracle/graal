@@ -306,7 +306,7 @@ public class CachedReachableFallbackTest {
 
         @Specialization(guards = {"guardNode1.execute(obj)", "notTwo(obj)"}, rewriteOn = RuntimeException.class, assumptions = "createAssumption()", limit = "1")
         protected Object s1(int obj,
-                        @Cached(value = "create(1)", neverDefault = true) NotGuardNode guardNode1) {
+                        @Cached(value = "create(1)") NotGuardNode guardNode1) {
             assertAdopted(guardNode1);
             if (obj == 3) {
                 throw new RuntimeException();
