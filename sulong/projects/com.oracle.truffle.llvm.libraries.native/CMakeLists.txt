@@ -43,6 +43,7 @@ add_compile_options(-fdebug-prefix-map=${CMAKE_BINARY_DIR}=${CMAKE_PROJECT_NAME}
 add_library(sulong-native SHARED
     src/misc.c
     src/fp80.c
+    src/fp128.c
     src/globals.c
 )
 if(NOT WIN32)

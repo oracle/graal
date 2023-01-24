@@ -68,7 +68,7 @@ DECLARE_UNARY_INTRINSIC(exp2)
 DECLARE_UNARY_INTRINSIC(sin)
 DECLARE_UNARY_INTRINSIC(cos)
 
-long double __sulong_fp128_add(long double x, long double y) {
+/*long double __sulong_fp128_add(long double x, long double y) {
     return x + y;
 }
 
@@ -105,4 +105,4 @@ DECLARE_UNARY_INTRINSIC128(floor)
 DECLARE_UNARY_INTRINSIC128(exp)
 DECLARE_UNARY_INTRINSIC128(exp2)
 DECLARE_UNARY_INTRINSIC128(sin)
-DECLARE_UNARY_INTRINSIC128(cos)
+DECLARE_UNARY_INTRINSIC128(cos)*/
