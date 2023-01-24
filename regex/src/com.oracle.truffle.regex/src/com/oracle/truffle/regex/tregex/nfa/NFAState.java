@@ -186,6 +186,14 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
         return matchedConditionGroupsMap.get(t.getId());
     }
 
+    public TBitSet getMatchedConditionGroupsDebug() {
+        TBitSet matchedConditionGroups = new TBitSet(Long.SIZE);
+        for (RegexASTNode t : stateSet) {
+            matchedConditionGroups.union(matchedConditionGroupsMap.get(t.getId()));
+        }
+        return matchedConditionGroups;
+    }
+
     public boolean hasTransitionToAnchoredFinalState(boolean forward) {
         return getTransitionToAnchoredFinalStateId(forward) >= 0;
     }
