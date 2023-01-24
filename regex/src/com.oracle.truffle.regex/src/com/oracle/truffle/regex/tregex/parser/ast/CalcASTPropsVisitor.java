@@ -162,6 +162,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         visitor.runReverse(ast.getRoot());
         visitor.run(ast.getRoot());
         visitor.checkConditionalBackReferences();
+        visitor.registerConditionGroupsInLookAheadAssertions();
     }
 
     @Override
@@ -620,5 +621,22 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             b = b.getSubTreeParent();
         }
         return null;
+    }
+
+    private void registerConditionGroupsInLookAheadAssertions() {
+        for (int conditionGroupNumber : ast.getConditionGroups()) {
+            List<Group> references = conditionalBackReferences.get(conditionGroupNumber);
+            if (references != null) {
+                for (Group reference : references) {
+                    RegexASTSubtreeRootNode subtreeParent = reference.getSubTreeParent();
+                    while (subtreeParent != null) {
+                        if (subtreeParent.isLookAheadAssertion()) {
+                            subtreeParent.asLookAheadAssertion().registerReferencedConditionGroup(reference.asConditionalBackReferenceGroup().getReferencedGroupNumber());
+                        }
+                        subtreeParent = subtreeParent.getSubTreeParent();
+                    }
+                }
+            }
+        }
     }
 }

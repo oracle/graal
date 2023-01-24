@@ -186,6 +186,9 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     @Override
     protected void enterLookAhead(LookAheadAssertion assertion) {
         TBitSet currentMatchedConditionGroups = getCurrentMatchedConditionGroups();
+        // We don't care about the state of condition groups outside of this assertion, so we can
+        // clear them. This enables more reuse of the ASTStep lookAheadMap cache.
+        currentMatchedConditionGroups.intersect(assertion.getReferencedConditionGroups());
         ASTStepCacheKey key = new ASTStepCacheKey(assertion, canTraverseCaret(), getTraversableLookBehindAssertions(), currentMatchedConditionGroups);
         ASTStep laStep = lookAheadMap.get(key);
         if (laStep == null) {
