@@ -93,6 +93,21 @@ import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
  * enable exports to be used for AOT by setting {@link ExportLibrary#useForAOT()} to
  * <code>true</code>.
  *
+ * <h3>Deprecating Messages</h3>
+ *
+ * If a library message gets deprecated using the {@link Deprecated} annotation then all exports
+ * will get a deprecation warning. This can be useful to evolve libraries over time in a compatible
+ * way.
+ * <p>
+ * Sometimes it is needed to remove or modify types of parameters as part of evolution. In this case
+ * it is possible to declare multiple overloads of the same library message where all but one method
+ * are annotated with {@link Deprecated}. The non-deprecated method must use more generic or the
+ * same parameter types. For example, this allows to evolve message with parameter {@link String} to
+ * evolve into {@link Object}. It is also possible to add or remove parameter types in the
+ * non-deprecated method. These restrictions are necessary in order to ensure that exports of that
+ * message never export the new overload after recompilation unless the parameter types were
+ * updated.
+ *
  * @see DefaultExport to specify default exports.
  * @see Abstract to make messages abstract if they have a default implemetnation
  * @since 19.0

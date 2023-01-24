@@ -794,7 +794,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             CodeExecutableElement cachedExecute = null;
             if (cachedSpecializedNode == null) {
                 if (!export.isMethod()) {
-                    throw new AssertionError("Missing method export. Missed validation for " + export.getResolvedMessage().getSimpleName());
+                    throw new AssertionError("Missing method export. Missed validation for " + message.getSimpleName());
                 }
 
                 boolean isAccepts = message.getMessageElement().getSimpleName().toString().equals(ACCEPTS);
@@ -864,10 +864,13 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 if (!isFinalExports) {
                     // if this message might be extended we need to fully match the exception
                     // signature
-                    GeneratorUtils.addThrownExceptions(cachedExecute, export.getResolvedMessage().getExecutable().getThrownTypes());
+                    GeneratorUtils.addThrownExceptions(cachedExecute, message.getExecutable().getThrownTypes());
                 }
                 if (libraryExports.needsRewrites()) {
                     injectCachedAssertions(export.getExportsLibrary().getLibrary(), cachedExecute);
+                }
+                if (message.isDeprecated()) {
+                    GeneratorUtils.mergeSuppressWarnings(cachedExecute, "deprecation");
                 }
 
                 CodeTree originalBody = cachedExecute.getBodyTree();
@@ -1129,7 +1132,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
                     if (doCast) {
                         builder.cast(receiverClassType);
-                        constructor.addAnnotationMirror(LibraryGenerator.createSuppressWarningsUnchecked(context));
+
+                        GeneratorUtils.mergeSuppressWarnings(constructor, "unchecked");
                     }
                     if (cached || ElementUtils.isObject(receiverType)) {
                         builder.string(constructorReceiverName + ".getClass()").end();
@@ -1341,14 +1345,15 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     GeneratorUtils.addThrownExceptions(uncachedExecute, export.getResolvedMessage().getExecutable().getThrownTypes());
                 }
                 GeneratorUtils.addOverride(uncachedExecute);
+                if (message.isDeprecated()) {
+                    GeneratorUtils.mergeSuppressWarnings(uncachedExecute, "deprecation");
+                }
                 addAcceptsAssertion(b, null);
                 b.tree(originalBody);
             }
 
         }
-
         nodeConstants.prependToClass(uncachedClass);
-
         return uncachedClass;
 
     }

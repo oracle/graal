@@ -58,7 +58,7 @@ import com.oracle.truffle.dsl.processor.model.NodeData;
 public class ExportMessageData extends MessageContainer {
 
     private final ExportsLibrary exports;
-    private final LibraryMessage resolvedMessage;
+    private LibraryMessage resolvedMessage;
 
     private final Element element;
     private final AnnotationMirror annotation;
@@ -88,6 +88,13 @@ public class ExportMessageData extends MessageContainer {
 
     public boolean isOverriden() {
         return overriden;
+    }
+
+    public void updateOverload(LibraryMessage libraryMessage) {
+        if (!resolvedMessage.getDeprecatedOverloads().contains(libraryMessage)) {
+            throw new IllegalArgumentException("Not a valid overload");
+        }
+        this.resolvedMessage = libraryMessage;
     }
 
     @Override
