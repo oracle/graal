@@ -52,115 +52,115 @@ public class InlineAssemblyParser extends Parser {
 	protected static final PredictionContextCache _sharedContextCache =
 		new PredictionContextCache();
 	public static final int
-		T__0=1, T__1=2, T__2=3, T__3=4, T__4=5, T__5=6, T__6=7, T__7=8, T__8=9,
-		T__9=10, T__10=11, T__11=12, T__12=13, T__13=14, T__14=15, T__15=16, T__16=17,
-		T__17=18, T__18=19, T__19=20, T__20=21, T__21=22, T__22=23, T__23=24,
-		T__24=25, T__25=26, T__26=27, T__27=28, T__28=29, T__29=30, T__30=31,
-		T__31=32, T__32=33, T__33=34, T__34=35, T__35=36, T__36=37, T__37=38,
-		T__38=39, T__39=40, T__40=41, T__41=42, T__42=43, T__43=44, T__44=45,
-		T__45=46, T__46=47, T__47=48, T__48=49, T__49=50, T__50=51, T__51=52,
-		T__52=53, T__53=54, T__54=55, T__55=56, T__56=57, T__57=58, T__58=59,
-		T__59=60, T__60=61, T__61=62, T__62=63, T__63=64, T__64=65, T__65=66,
-		T__66=67, T__67=68, T__68=69, T__69=70, T__70=71, T__71=72, T__72=73,
-		T__73=74, T__74=75, T__75=76, T__76=77, T__77=78, T__78=79, T__79=80,
-		T__80=81, T__81=82, T__82=83, T__83=84, T__84=85, T__85=86, T__86=87,
-		T__87=88, T__88=89, T__89=90, T__90=91, T__91=92, T__92=93, T__93=94,
-		T__94=95, T__95=96, T__96=97, T__97=98, T__98=99, T__99=100, T__100=101,
-		T__101=102, T__102=103, T__103=104, T__104=105, T__105=106, T__106=107,
-		T__107=108, T__108=109, T__109=110, T__110=111, T__111=112, T__112=113,
-		T__113=114, T__114=115, T__115=116, T__116=117, T__117=118, T__118=119,
-		T__119=120, T__120=121, T__121=122, T__122=123, T__123=124, T__124=125,
-		T__125=126, T__126=127, T__127=128, T__128=129, T__129=130, T__130=131,
-		T__131=132, T__132=133, T__133=134, T__134=135, T__135=136, T__136=137,
-		T__137=138, T__138=139, T__139=140, T__140=141, T__141=142, T__142=143,
-		T__143=144, T__144=145, T__145=146, T__146=147, T__147=148, T__148=149,
-		T__149=150, T__150=151, T__151=152, T__152=153, T__153=154, T__154=155,
-		T__155=156, T__156=157, T__157=158, T__158=159, T__159=160, T__160=161,
-		T__161=162, T__162=163, T__163=164, T__164=165, T__165=166, T__166=167,
-		T__167=168, T__168=169, T__169=170, T__170=171, T__171=172, T__172=173,
-		T__173=174, T__174=175, T__175=176, T__176=177, T__177=178, T__178=179,
-		T__179=180, T__180=181, T__181=182, T__182=183, T__183=184, T__184=185,
-		T__185=186, T__186=187, T__187=188, T__188=189, T__189=190, T__190=191,
-		T__191=192, T__192=193, T__193=194, T__194=195, T__195=196, T__196=197,
-		T__197=198, T__198=199, T__199=200, T__200=201, T__201=202, T__202=203,
-		T__203=204, T__204=205, T__205=206, T__206=207, T__207=208, T__208=209,
-		T__209=210, T__210=211, T__211=212, T__212=213, T__213=214, T__214=215,
-		T__215=216, T__216=217, T__217=218, T__218=219, T__219=220, T__220=221,
-		T__221=222, T__222=223, T__223=224, T__224=225, T__225=226, T__226=227,
-		T__227=228, T__228=229, T__229=230, T__230=231, T__231=232, T__232=233,
-		T__233=234, T__234=235, T__235=236, T__236=237, T__237=238, T__238=239,
-		T__239=240, T__240=241, T__241=242, T__242=243, T__243=244, T__244=245,
-		T__245=246, T__246=247, T__247=248, T__248=249, T__249=250, T__250=251,
-		T__251=252, T__252=253, T__253=254, T__254=255, T__255=256, T__256=257,
-		T__257=258, T__258=259, T__259=260, T__260=261, T__261=262, T__262=263,
-		T__263=264, T__264=265, T__265=266, T__266=267, T__267=268, T__268=269,
-		T__269=270, T__270=271, T__271=272, T__272=273, T__273=274, T__274=275,
-		T__275=276, T__276=277, T__277=278, T__278=279, T__279=280, T__280=281,
-		T__281=282, T__282=283, T__283=284, T__284=285, T__285=286, T__286=287,
-		T__287=288, T__288=289, T__289=290, T__290=291, T__291=292, T__292=293,
-		T__293=294, T__294=295, T__295=296, T__296=297, T__297=298, T__298=299,
-		T__299=300, T__300=301, T__301=302, T__302=303, T__303=304, T__304=305,
-		T__305=306, T__306=307, T__307=308, T__308=309, T__309=310, T__310=311,
-		T__311=312, T__312=313, T__313=314, T__314=315, T__315=316, T__316=317,
-		T__317=318, T__318=319, T__319=320, T__320=321, T__321=322, T__322=323,
-		T__323=324, T__324=325, T__325=326, T__326=327, T__327=328, T__328=329,
-		T__329=330, T__330=331, T__331=332, T__332=333, T__333=334, T__334=335,
-		T__335=336, T__336=337, T__337=338, T__338=339, T__339=340, T__340=341,
-		T__341=342, T__342=343, T__343=344, T__344=345, T__345=346, T__346=347,
-		T__347=348, T__348=349, T__349=350, T__350=351, T__351=352, T__352=353,
-		T__353=354, T__354=355, T__355=356, T__356=357, T__357=358, T__358=359,
-		T__359=360, T__360=361, T__361=362, T__362=363, T__363=364, T__364=365,
-		T__365=366, T__366=367, T__367=368, T__368=369, T__369=370, T__370=371,
-		T__371=372, T__372=373, T__373=374, T__374=375, T__375=376, T__376=377,
-		T__377=378, T__378=379, T__379=380, T__380=381, T__381=382, T__382=383,
-		T__383=384, T__384=385, T__385=386, T__386=387, T__387=388, T__388=389,
-		T__389=390, T__390=391, T__391=392, T__392=393, T__393=394, T__394=395,
-		T__395=396, T__396=397, T__397=398, T__398=399, T__399=400, T__400=401,
-		T__401=402, T__402=403, T__403=404, T__404=405, T__405=406, T__406=407,
-		T__407=408, T__408=409, T__409=410, T__410=411, T__411=412, T__412=413,
-		T__413=414, T__414=415, T__415=416, T__416=417, T__417=418, T__418=419,
-		T__419=420, T__420=421, T__421=422, T__422=423, T__423=424, T__424=425,
-		T__425=426, T__426=427, T__427=428, T__428=429, T__429=430, T__430=431,
-		T__431=432, T__432=433, T__433=434, T__434=435, T__435=436, T__436=437,
-		T__437=438, T__438=439, T__439=440, T__440=441, T__441=442, T__442=443,
-		T__443=444, T__444=445, T__445=446, T__446=447, T__447=448, T__448=449,
-		T__449=450, T__450=451, T__451=452, T__452=453, T__453=454, T__454=455,
-		T__455=456, T__456=457, T__457=458, T__458=459, T__459=460, T__460=461,
-		T__461=462, T__462=463, T__463=464, T__464=465, T__465=466, T__466=467,
-		T__467=468, T__468=469, T__469=470, T__470=471, T__471=472, T__472=473,
-		T__473=474, T__474=475, T__475=476, T__476=477, T__477=478, T__478=479,
-		T__479=480, T__480=481, T__481=482, T__482=483, T__483=484, T__484=485,
-		T__485=486, T__486=487, T__487=488, T__488=489, T__489=490, T__490=491,
-		T__491=492, T__492=493, T__493=494, T__494=495, T__495=496, T__496=497,
-		T__497=498, T__498=499, T__499=500, T__500=501, T__501=502, T__502=503,
-		T__503=504, T__504=505, T__505=506, T__506=507, T__507=508, T__508=509,
-		T__509=510, T__510=511, T__511=512, T__512=513, T__513=514, T__514=515,
-		T__515=516, T__516=517, T__517=518, T__518=519, T__519=520, T__520=521,
-		T__521=522, T__522=523, T__523=524, T__524=525, T__525=526, T__526=527,
-		T__527=528, T__528=529, T__529=530, T__530=531, T__531=532, T__532=533,
-		T__533=534, T__534=535, T__535=536, T__536=537, T__537=538, T__538=539,
-		T__539=540, T__540=541, T__541=542, T__542=543, T__543=544, T__544=545,
-		T__545=546, T__546=547, T__547=548, T__548=549, T__549=550, T__550=551,
-		T__551=552, T__552=553, IDENT=554, BIN_NUMBER=555, HEX_NUMBER=556, NUMBER=557,
+		T__0=1, T__1=2, T__2=3, T__3=4, T__4=5, T__5=6, T__6=7, T__7=8, T__8=9, 
+		T__9=10, T__10=11, T__11=12, T__12=13, T__13=14, T__14=15, T__15=16, T__16=17, 
+		T__17=18, T__18=19, T__19=20, T__20=21, T__21=22, T__22=23, T__23=24, 
+		T__24=25, T__25=26, T__26=27, T__27=28, T__28=29, T__29=30, T__30=31, 
+		T__31=32, T__32=33, T__33=34, T__34=35, T__35=36, T__36=37, T__37=38, 
+		T__38=39, T__39=40, T__40=41, T__41=42, T__42=43, T__43=44, T__44=45, 
+		T__45=46, T__46=47, T__47=48, T__48=49, T__49=50, T__50=51, T__51=52, 
+		T__52=53, T__53=54, T__54=55, T__55=56, T__56=57, T__57=58, T__58=59, 
+		T__59=60, T__60=61, T__61=62, T__62=63, T__63=64, T__64=65, T__65=66, 
+		T__66=67, T__67=68, T__68=69, T__69=70, T__70=71, T__71=72, T__72=73, 
+		T__73=74, T__74=75, T__75=76, T__76=77, T__77=78, T__78=79, T__79=80, 
+		T__80=81, T__81=82, T__82=83, T__83=84, T__84=85, T__85=86, T__86=87, 
+		T__87=88, T__88=89, T__89=90, T__90=91, T__91=92, T__92=93, T__93=94, 
+		T__94=95, T__95=96, T__96=97, T__97=98, T__98=99, T__99=100, T__100=101, 
+		T__101=102, T__102=103, T__103=104, T__104=105, T__105=106, T__106=107, 
+		T__107=108, T__108=109, T__109=110, T__110=111, T__111=112, T__112=113, 
+		T__113=114, T__114=115, T__115=116, T__116=117, T__117=118, T__118=119, 
+		T__119=120, T__120=121, T__121=122, T__122=123, T__123=124, T__124=125, 
+		T__125=126, T__126=127, T__127=128, T__128=129, T__129=130, T__130=131, 
+		T__131=132, T__132=133, T__133=134, T__134=135, T__135=136, T__136=137, 
+		T__137=138, T__138=139, T__139=140, T__140=141, T__141=142, T__142=143, 
+		T__143=144, T__144=145, T__145=146, T__146=147, T__147=148, T__148=149, 
+		T__149=150, T__150=151, T__151=152, T__152=153, T__153=154, T__154=155, 
+		T__155=156, T__156=157, T__157=158, T__158=159, T__159=160, T__160=161, 
+		T__161=162, T__162=163, T__163=164, T__164=165, T__165=166, T__166=167, 
+		T__167=168, T__168=169, T__169=170, T__170=171, T__171=172, T__172=173, 
+		T__173=174, T__174=175, T__175=176, T__176=177, T__177=178, T__178=179, 
+		T__179=180, T__180=181, T__181=182, T__182=183, T__183=184, T__184=185, 
+		T__185=186, T__186=187, T__187=188, T__188=189, T__189=190, T__190=191, 
+		T__191=192, T__192=193, T__193=194, T__194=195, T__195=196, T__196=197, 
+		T__197=198, T__198=199, T__199=200, T__200=201, T__201=202, T__202=203, 
+		T__203=204, T__204=205, T__205=206, T__206=207, T__207=208, T__208=209, 
+		T__209=210, T__210=211, T__211=212, T__212=213, T__213=214, T__214=215, 
+		T__215=216, T__216=217, T__217=218, T__218=219, T__219=220, T__220=221, 
+		T__221=222, T__222=223, T__223=224, T__224=225, T__225=226, T__226=227, 
+		T__227=228, T__228=229, T__229=230, T__230=231, T__231=232, T__232=233, 
+		T__233=234, T__234=235, T__235=236, T__236=237, T__237=238, T__238=239, 
+		T__239=240, T__240=241, T__241=242, T__242=243, T__243=244, T__244=245, 
+		T__245=246, T__246=247, T__247=248, T__248=249, T__249=250, T__250=251, 
+		T__251=252, T__252=253, T__253=254, T__254=255, T__255=256, T__256=257, 
+		T__257=258, T__258=259, T__259=260, T__260=261, T__261=262, T__262=263, 
+		T__263=264, T__264=265, T__265=266, T__266=267, T__267=268, T__268=269, 
+		T__269=270, T__270=271, T__271=272, T__272=273, T__273=274, T__274=275, 
+		T__275=276, T__276=277, T__277=278, T__278=279, T__279=280, T__280=281, 
+		T__281=282, T__282=283, T__283=284, T__284=285, T__285=286, T__286=287, 
+		T__287=288, T__288=289, T__289=290, T__290=291, T__291=292, T__292=293, 
+		T__293=294, T__294=295, T__295=296, T__296=297, T__297=298, T__298=299, 
+		T__299=300, T__300=301, T__301=302, T__302=303, T__303=304, T__304=305, 
+		T__305=306, T__306=307, T__307=308, T__308=309, T__309=310, T__310=311, 
+		T__311=312, T__312=313, T__313=314, T__314=315, T__315=316, T__316=317, 
+		T__317=318, T__318=319, T__319=320, T__320=321, T__321=322, T__322=323, 
+		T__323=324, T__324=325, T__325=326, T__326=327, T__327=328, T__328=329, 
+		T__329=330, T__330=331, T__331=332, T__332=333, T__333=334, T__334=335, 
+		T__335=336, T__336=337, T__337=338, T__338=339, T__339=340, T__340=341, 
+		T__341=342, T__342=343, T__343=344, T__344=345, T__345=346, T__346=347, 
+		T__347=348, T__348=349, T__349=350, T__350=351, T__351=352, T__352=353, 
+		T__353=354, T__354=355, T__355=356, T__356=357, T__357=358, T__358=359, 
+		T__359=360, T__360=361, T__361=362, T__362=363, T__363=364, T__364=365, 
+		T__365=366, T__366=367, T__367=368, T__368=369, T__369=370, T__370=371, 
+		T__371=372, T__372=373, T__373=374, T__374=375, T__375=376, T__376=377, 
+		T__377=378, T__378=379, T__379=380, T__380=381, T__381=382, T__382=383, 
+		T__383=384, T__384=385, T__385=386, T__386=387, T__387=388, T__388=389, 
+		T__389=390, T__390=391, T__391=392, T__392=393, T__393=394, T__394=395, 
+		T__395=396, T__396=397, T__397=398, T__398=399, T__399=400, T__400=401, 
+		T__401=402, T__402=403, T__403=404, T__404=405, T__405=406, T__406=407, 
+		T__407=408, T__408=409, T__409=410, T__410=411, T__411=412, T__412=413, 
+		T__413=414, T__414=415, T__415=416, T__416=417, T__417=418, T__418=419, 
+		T__419=420, T__420=421, T__421=422, T__422=423, T__423=424, T__424=425, 
+		T__425=426, T__426=427, T__427=428, T__428=429, T__429=430, T__430=431, 
+		T__431=432, T__432=433, T__433=434, T__434=435, T__435=436, T__436=437, 
+		T__437=438, T__438=439, T__439=440, T__440=441, T__441=442, T__442=443, 
+		T__443=444, T__444=445, T__445=446, T__446=447, T__447=448, T__448=449, 
+		T__449=450, T__450=451, T__451=452, T__452=453, T__453=454, T__454=455, 
+		T__455=456, T__456=457, T__457=458, T__458=459, T__459=460, T__460=461, 
+		T__461=462, T__462=463, T__463=464, T__464=465, T__465=466, T__466=467, 
+		T__467=468, T__468=469, T__469=470, T__470=471, T__471=472, T__472=473, 
+		T__473=474, T__474=475, T__475=476, T__476=477, T__477=478, T__478=479, 
+		T__479=480, T__480=481, T__481=482, T__482=483, T__483=484, T__484=485, 
+		T__485=486, T__486=487, T__487=488, T__488=489, T__489=490, T__490=491, 
+		T__491=492, T__492=493, T__493=494, T__494=495, T__495=496, T__496=497, 
+		T__497=498, T__498=499, T__499=500, T__500=501, T__501=502, T__502=503, 
+		T__503=504, T__504=505, T__505=506, T__506=507, T__507=508, T__508=509, 
+		T__509=510, T__510=511, T__511=512, T__512=513, T__513=514, T__514=515, 
+		T__515=516, T__516=517, T__517=518, T__518=519, T__519=520, T__520=521, 
+		T__521=522, T__522=523, T__523=524, T__524=525, T__525=526, T__526=527, 
+		T__527=528, T__528=529, T__529=530, T__530=531, T__531=532, T__532=533, 
+		T__533=534, T__534=535, T__535=536, T__536=537, T__537=538, T__538=539, 
+		T__539=540, T__540=541, T__541=542, T__542=543, T__543=544, T__544=545, 
+		T__545=546, T__546=547, T__547=548, T__548=549, T__549=550, T__550=551, 
+		T__551=552, T__552=553, IDENT=554, BIN_NUMBER=555, HEX_NUMBER=556, NUMBER=557, 
 		WS=558, COMMENT=559, LINE_COMMENT=560;
 	public static final int
-		RULE_inline_assembly = 0, RULE_prefix = 1, RULE_assembly_instruction = 2,
-		RULE_int_value = 3, RULE_jump = 4, RULE_directive = 5, RULE_zero_op = 6,
-		RULE_imul_div = 7, RULE_unary_op8 = 8, RULE_unary_op16 = 9, RULE_unary_op32 = 10,
-		RULE_unary_op64 = 11, RULE_unary_op = 12, RULE_binary_op8 = 13, RULE_binary_op16 = 14,
-		RULE_binary_op32 = 15, RULE_binary_op64 = 16, RULE_binary_op = 17, RULE_operand8 = 18,
-		RULE_operand16 = 19, RULE_operand32 = 20, RULE_operand64 = 21, RULE_operand = 22,
-		RULE_memory_reference = 23, RULE_register8 = 24, RULE_register16 = 25,
-		RULE_register32 = 26, RULE_register64 = 27, RULE_registerXmm = 28, RULE_segment_register = 29,
+		RULE_inline_assembly = 0, RULE_prefix = 1, RULE_assembly_instruction = 2, 
+		RULE_int_value = 3, RULE_jump = 4, RULE_directive = 5, RULE_zero_op = 6, 
+		RULE_imul_div = 7, RULE_unary_op8 = 8, RULE_unary_op16 = 9, RULE_unary_op32 = 10, 
+		RULE_unary_op64 = 11, RULE_unary_op = 12, RULE_binary_op8 = 13, RULE_binary_op16 = 14, 
+		RULE_binary_op32 = 15, RULE_binary_op64 = 16, RULE_binary_op = 17, RULE_operand8 = 18, 
+		RULE_operand16 = 19, RULE_operand32 = 20, RULE_operand64 = 21, RULE_operand = 22, 
+		RULE_memory_reference = 23, RULE_register8 = 24, RULE_register16 = 25, 
+		RULE_register32 = 26, RULE_register64 = 27, RULE_registerXmm = 28, RULE_segment_register = 29, 
 		RULE_number = 30, RULE_immediate = 31, RULE_argument = 32;
 	private static String[] makeRuleNames() {
 		return new String[] {
-			"inline_assembly", "prefix", "assembly_instruction", "int_value", "jump",
-			"directive", "zero_op", "imul_div", "unary_op8", "unary_op16", "unary_op32",
-			"unary_op64", "unary_op", "binary_op8", "binary_op16", "binary_op32",
-			"binary_op64", "binary_op", "operand8", "operand16", "operand32", "operand64",
-			"operand", "memory_reference", "register8", "register16", "register32",
-			"register64", "registerXmm", "segment_register", "number", "immediate",
+			"inline_assembly", "prefix", "assembly_instruction", "int_value", "jump", 
+			"directive", "zero_op", "imul_div", "unary_op8", "unary_op16", "unary_op32", 
+			"unary_op64", "unary_op", "binary_op8", "binary_op16", "binary_op32", 
+			"binary_op64", "binary_op", "operand8", "operand16", "operand32", "operand64", 
+			"operand", "memory_reference", "register8", "register16", "register32", 
+			"register64", "registerXmm", "segment_register", "number", "immediate", 
 			"argument"
 		};
 	}
@@ -168,139 +168,139 @@ public class InlineAssemblyParser extends Parser {
 
 	private static String[] makeLiteralNames() {
 		return new String[] {
-			null, "'\"'", "';'", "'\n'", "'rep'", "'repz'", "'repe'", "'repne'",
-			"'repnz'", "'lock'", "'int'", "'call'", "'ja'", "'jae'", "'jb'", "'jbe'",
-			"'jc'", "'jcxz'", "'je'", "'jecxz'", "'jg'", "'jge'", "'jl'", "'jle'",
-			"'jmp'", "'jnae'", "'jnb'", "'jnbe'", "'jnc'", "'jne'", "'jng'", "'jnge'",
-			"'jnl'", "'jnle'", "'jno'", "'jnp'", "'jns'", "'jnz'", "'jo'", "'jp'",
-			"'jpe'", "'jpo'", "'js'", "'jz'", "'lcall'", "'loop'", "'loope'", "'loopne'",
-			"'loopnz'", "'loopz'", "'.p2align'", "','", "'clc'", "'cld'", "'cli'",
-			"'cmc'", "'lahf'", "'popf'", "'popfw'", "'pushf'", "'pushfw'", "'sahf'",
-			"'stc'", "'std'", "'sti'", "'nop'", "'rdtsc'", "'cpuid'", "'xgetbv'",
-			"'ud2'", "'mfence'", "'lfence'", "'sfence'", "'hlt'", "'syscall'", "'stosb'",
-			"'stosw'", "'stosd'", "'stosq'", "'pause'", "'idivb'", "'imulb'", "'idivw'",
-			"'imulw'", "'idivl'", "'imull'", "'idivq'", "'imulq'", "'idiv'", "'imul'",
-			"'incb'", "'decb'", "'negb'", "'notb'", "'divb'", "'mulb'", "'incw'",
-			"'decw'", "'negw'", "'notw'", "'divw'", "'mulw'", "'pushw'", "'popw'",
-			"'incl'", "'decl'", "'negl'", "'notl'", "'divl'", "'mull'", "'bswapl'",
-			"'pushl'", "'popl'", "'incq'", "'decq'", "'negq'", "'notq'", "'divq'",
-			"'mulq'", "'bswapq'", "'pushq'", "'popq'", "'inc'", "'dec'", "'neg'",
-			"'not'", "'bswap'", "'rdrand'", "'rdseed'", "'seta'", "'setae'", "'setb'",
-			"'setbe'", "'setc'", "'sete'", "'setg'", "'setge'", "'setl'", "'setle'",
-			"'setna'", "'setnae'", "'setnb'", "'setnbe'", "'setnc'", "'setne'", "'setng'",
-			"'setnge'", "'setnl'", "'setnle'", "'setno'", "'setnp'", "'setns'", "'setnz'",
-			"'seto'", "'setp'", "'setpe'", "'setpo'", "'sets'", "'setz'", "'push'",
-			"'pop'", "'cmpxchg8b'", "'cmpxchg16b'", "'fstcw'", "'fnstcw'", "'movb'",
-			"'xaddb'", "'xchgb'", "'adcb'", "'addb'", "'cmpb'", "'sbbb'", "'subb'",
-			"'andb'", "'orb'", "'xorb'", "'rclb'", "'rcrb'", "'rolb'", "'rorb'",
-			"'salb'", "'sarb'", "'shlb'", "'shrb'", "'testb'", "'cmpxchgb'", "'cmovaw'",
-			"'cmovaew'", "'cmovbw'", "'cmovbew'", "'cmovcw'", "'cmovew'", "'cmovgw'",
-			"'cmovgew'", "'cmovlw'", "'cmovlew'", "'cmovnaw'", "'cmovnaew'", "'cmovnbw'",
-			"'cmovnbew'", "'cmovncw'", "'cmovnew'", "'cmovngw'", "'cmovngew'", "'cmovnlw'",
-			"'cmovnlew'", "'cmovnow'", "'cmovnpw'", "'cmovnsw'", "'cmovnzw'", "'cmovow'",
-			"'cmovpw'", "'cmovpew'", "'cmovpow'", "'cmovsw'", "'cmovzw'", "'cmpxchgw'",
-			"'movw'", "'xaddw'", "'xchgw'", "'adcw'", "'addw'", "'cmpw'", "'sbbw'",
-			"'subw'", "'andw'", "'orw'", "'xorw'", "'testw'", "'bsfw'", "'bsrw'",
-			"'btw'", "'btcw'", "'btrw'", "'btsw'", "'rclw'", "'rcrw'", "'rolw'",
-			"'rorw'", "'salw'", "'sarw'", "'shlw'", "'shrw'", "'movsbw'", "'movzbw'",
-			"'cmoval'", "'cmovael'", "'cmovbl'", "'cmovbel'", "'cmovcl'", "'cmovel'",
-			"'cmovgl'", "'cmovgel'", "'cmovll'", "'cmovlel'", "'cmovnal'", "'cmovnael'",
-			"'cmovnbl'", "'cmovnbel'", "'cmovncl'", "'cmovnel'", "'cmovngl'", "'cmovngel'",
-			"'cmovnll'", "'cmovnlel'", "'cmovnol'", "'cmovnpl'", "'cmovnsl'", "'cmovnzl'",
-			"'cmovol'", "'cmovpl'", "'cmovpel'", "'cmovpol'", "'cmovsl'", "'cmovzl'",
-			"'cmpxchgl'", "'movl'", "'xaddl'", "'xchgl'", "'adcl'", "'addl'", "'cmpl'",
-			"'sbbl'", "'subl'", "'andl'", "'orl'", "'xorl'", "'testl'", "'bsfl'",
-			"'bsrl'", "'btl'", "'btcl'", "'btrl'", "'btsl'", "'rcll'", "'rcrl'",
-			"'roll'", "'rorl'", "'sall'", "'sarl'", "'shll'", "'shrl'", "'movsbl'",
-			"'movswl'", "'movzbl'", "'movzwl'", "'cmovaq'", "'cmovaeq'", "'cmovbq'",
-			"'cmovbeq'", "'cmovcq'", "'cmoveq'", "'cmovgq'", "'cmovgeq'", "'cmovlq'",
-			"'cmovleq'", "'cmovnaq'", "'cmovnaeq'", "'cmovnbq'", "'cmovnbeq'", "'cmovncq'",
-			"'cmovneq'", "'cmovngq'", "'cmovngeq'", "'cmovnlq'", "'cmovnleq'", "'cmovnoq'",
-			"'cmovnpq'", "'cmovnsq'", "'cmovnzq'", "'cmovoq'", "'cmovpq'", "'cmovpeq'",
-			"'cmovpoq'", "'cmovsq'", "'cmovzq'", "'cmpxchgq'", "'movq'", "'xaddq'",
-			"'xchgq'", "'adcq'", "'addq'", "'cmpq'", "'sbbq'", "'subq'", "'andq'",
-			"'orq'", "'xorq'", "'testq'", "'bsfq'", "'bsrq'", "'btq'", "'btcq'",
-			"'btrq'", "'btsq'", "'rclq'", "'rcrq'", "'rolq'", "'rorq'", "'salq'",
-			"'sarq'", "'shlq'", "'shrq'", "'movsbq'", "'movzbq'", "'movswq'", "'movzwq'",
-			"'movslq'", "'cmova'", "'cmovae'", "'cmovb'", "'cmovbe'", "'cmovc'",
-			"'cmove'", "'cmovg'", "'cmovge'", "'cmovl'", "'cmovle'", "'cmovna'",
-			"'cmovnae'", "'cmovnb'", "'cmovnbe'", "'cmovnc'", "'cmovne'", "'cmovng'",
-			"'cmovnge'", "'cmovnl'", "'cmovnle'", "'cmovno'", "'cmovnp'", "'cmovns'",
-			"'cmovnz'", "'cmovo'", "'cmovp'", "'cmovpe'", "'cmovpo'", "'cmovs'",
-			"'cmovz'", "'cmpxchg'", "'pmovmskb'", "'mov'", "'xadd'", "'xchg'", "'adc'",
-			"'add'", "'cmp'", "'div'", "'mul'", "'sbb'", "'sub'", "'and'", "'or'",
-			"'xor'", "'rcl'", "'rcr'", "'rol'", "'ror'", "'sal'", "'sar'", "'shl'",
-			"'shr'", "'lea'", "'bsf'", "'bsr'", "':'", "'('", "')'", "'%ah'", "'%al'",
-			"'%bh'", "'%bl'", "'%ch'", "'%cl'", "'%dh'", "'%dl'", "'%r0l'", "'%r1l'",
-			"'%r2l'", "'%r3l'", "'%r4l'", "'%r5l'", "'%r6l'", "'%r7l'", "'%r8l'",
-			"'%r9l'", "'%r10l'", "'%r11l'", "'%r12l'", "'%r13l'", "'%r14l'", "'%r15l'",
-			"'%ax'", "'%bx'", "'%cx'", "'%dx'", "'%si'", "'%di'", "'%bp'", "'%sp'",
-			"'%r0w'", "'%r1w'", "'%r2w'", "'%r3w'", "'%r4w'", "'%r5w'", "'%r6w'",
-			"'%r7w'", "'%r8w'", "'%r9w'", "'%r10w'", "'%r11w'", "'%r12w'", "'%r13w'",
-			"'%r14w'", "'%r15w'", "'%eax'", "'%ebx'", "'%ecx'", "'%edx'", "'%esi'",
-			"'%edi'", "'%ebp'", "'%esp'", "'%r0d'", "'%r1d'", "'%r2d'", "'%r3d'",
-			"'%r4d'", "'%r5d'", "'%r6d'", "'%r7d'", "'%r8d'", "'%r9d'", "'%r10d'",
-			"'%r11d'", "'%r12d'", "'%r13d'", "'%r14d'", "'%r15d'", "'%rax'", "'%rbx'",
-			"'%rcx'", "'%rdx'", "'%rsp'", "'%rbp'", "'%rsi'", "'%rdi'", "'%r0'",
-			"'%r1'", "'%r2'", "'%r3'", "'%r4'", "'%r5'", "'%r6'", "'%r7'", "'%r8'",
-			"'%r9'", "'%r10'", "'%r11'", "'%r12'", "'%r13'", "'%r14'", "'%r15'",
-			"'%xmm0'", "'%xmm1'", "'%xmm2'", "'%xmm3'", "'%xmm4'", "'%xmm5'", "'%xmm6'",
-			"'%xmm7'", "'%xmm8'", "'%xmm9'", "'%xmm10'", "'%xmm11'", "'%xmm12'",
-			"'%xmm13'", "'%xmm14'", "'%xmm15'", "'%cs'", "'%ds'", "'%es'", "'%fs'",
-			"'%gs'", "'%ss'", "'$$'", "'$'", "'{'", "'b'", "'h'", "'w'", "'k'", "'q'",
+			null, "'\"'", "';'", "'\n'", "'rep'", "'repz'", "'repe'", "'repne'", 
+			"'repnz'", "'lock'", "'int'", "'call'", "'ja'", "'jae'", "'jb'", "'jbe'", 
+			"'jc'", "'jcxz'", "'je'", "'jecxz'", "'jg'", "'jge'", "'jl'", "'jle'", 
+			"'jmp'", "'jnae'", "'jnb'", "'jnbe'", "'jnc'", "'jne'", "'jng'", "'jnge'", 
+			"'jnl'", "'jnle'", "'jno'", "'jnp'", "'jns'", "'jnz'", "'jo'", "'jp'", 
+			"'jpe'", "'jpo'", "'js'", "'jz'", "'lcall'", "'loop'", "'loope'", "'loopne'", 
+			"'loopnz'", "'loopz'", "'.p2align'", "','", "'clc'", "'cld'", "'cli'", 
+			"'cmc'", "'lahf'", "'popf'", "'popfw'", "'pushf'", "'pushfw'", "'sahf'", 
+			"'stc'", "'std'", "'sti'", "'nop'", "'rdtsc'", "'cpuid'", "'xgetbv'", 
+			"'ud2'", "'mfence'", "'lfence'", "'sfence'", "'hlt'", "'syscall'", "'stosb'", 
+			"'stosw'", "'stosd'", "'stosq'", "'pause'", "'idivb'", "'imulb'", "'idivw'", 
+			"'imulw'", "'idivl'", "'imull'", "'idivq'", "'imulq'", "'idiv'", "'imul'", 
+			"'incb'", "'decb'", "'negb'", "'notb'", "'divb'", "'mulb'", "'incw'", 
+			"'decw'", "'negw'", "'notw'", "'divw'", "'mulw'", "'pushw'", "'popw'", 
+			"'incl'", "'decl'", "'negl'", "'notl'", "'divl'", "'mull'", "'bswapl'", 
+			"'pushl'", "'popl'", "'incq'", "'decq'", "'negq'", "'notq'", "'divq'", 
+			"'mulq'", "'bswapq'", "'pushq'", "'popq'", "'inc'", "'dec'", "'neg'", 
+			"'not'", "'bswap'", "'rdrand'", "'rdseed'", "'seta'", "'setae'", "'setb'", 
+			"'setbe'", "'setc'", "'sete'", "'setg'", "'setge'", "'setl'", "'setle'", 
+			"'setna'", "'setnae'", "'setnb'", "'setnbe'", "'setnc'", "'setne'", "'setng'", 
+			"'setnge'", "'setnl'", "'setnle'", "'setno'", "'setnp'", "'setns'", "'setnz'", 
+			"'seto'", "'setp'", "'setpe'", "'setpo'", "'sets'", "'setz'", "'push'", 
+			"'pop'", "'cmpxchg8b'", "'cmpxchg16b'", "'fstcw'", "'fnstcw'", "'movb'", 
+			"'xaddb'", "'xchgb'", "'adcb'", "'addb'", "'cmpb'", "'sbbb'", "'subb'", 
+			"'andb'", "'orb'", "'xorb'", "'rclb'", "'rcrb'", "'rolb'", "'rorb'", 
+			"'salb'", "'sarb'", "'shlb'", "'shrb'", "'testb'", "'cmpxchgb'", "'cmovaw'", 
+			"'cmovaew'", "'cmovbw'", "'cmovbew'", "'cmovcw'", "'cmovew'", "'cmovgw'", 
+			"'cmovgew'", "'cmovlw'", "'cmovlew'", "'cmovnaw'", "'cmovnaew'", "'cmovnbw'", 
+			"'cmovnbew'", "'cmovncw'", "'cmovnew'", "'cmovngw'", "'cmovngew'", "'cmovnlw'", 
+			"'cmovnlew'", "'cmovnow'", "'cmovnpw'", "'cmovnsw'", "'cmovnzw'", "'cmovow'", 
+			"'cmovpw'", "'cmovpew'", "'cmovpow'", "'cmovsw'", "'cmovzw'", "'cmpxchgw'", 
+			"'movw'", "'xaddw'", "'xchgw'", "'adcw'", "'addw'", "'cmpw'", "'sbbw'", 
+			"'subw'", "'andw'", "'orw'", "'xorw'", "'testw'", "'bsfw'", "'bsrw'", 
+			"'btw'", "'btcw'", "'btrw'", "'btsw'", "'rclw'", "'rcrw'", "'rolw'", 
+			"'rorw'", "'salw'", "'sarw'", "'shlw'", "'shrw'", "'movsbw'", "'movzbw'", 
+			"'cmoval'", "'cmovael'", "'cmovbl'", "'cmovbel'", "'cmovcl'", "'cmovel'", 
+			"'cmovgl'", "'cmovgel'", "'cmovll'", "'cmovlel'", "'cmovnal'", "'cmovnael'", 
+			"'cmovnbl'", "'cmovnbel'", "'cmovncl'", "'cmovnel'", "'cmovngl'", "'cmovngel'", 
+			"'cmovnll'", "'cmovnlel'", "'cmovnol'", "'cmovnpl'", "'cmovnsl'", "'cmovnzl'", 
+			"'cmovol'", "'cmovpl'", "'cmovpel'", "'cmovpol'", "'cmovsl'", "'cmovzl'", 
+			"'cmpxchgl'", "'movl'", "'xaddl'", "'xchgl'", "'adcl'", "'addl'", "'cmpl'", 
+			"'sbbl'", "'subl'", "'andl'", "'orl'", "'xorl'", "'testl'", "'bsfl'", 
+			"'bsrl'", "'btl'", "'btcl'", "'btrl'", "'btsl'", "'rcll'", "'rcrl'", 
+			"'roll'", "'rorl'", "'sall'", "'sarl'", "'shll'", "'shrl'", "'movsbl'", 
+			"'movswl'", "'movzbl'", "'movzwl'", "'cmovaq'", "'cmovaeq'", "'cmovbq'", 
+			"'cmovbeq'", "'cmovcq'", "'cmoveq'", "'cmovgq'", "'cmovgeq'", "'cmovlq'", 
+			"'cmovleq'", "'cmovnaq'", "'cmovnaeq'", "'cmovnbq'", "'cmovnbeq'", "'cmovncq'", 
+			"'cmovneq'", "'cmovngq'", "'cmovngeq'", "'cmovnlq'", "'cmovnleq'", "'cmovnoq'", 
+			"'cmovnpq'", "'cmovnsq'", "'cmovnzq'", "'cmovoq'", "'cmovpq'", "'cmovpeq'", 
+			"'cmovpoq'", "'cmovsq'", "'cmovzq'", "'cmpxchgq'", "'movq'", "'xaddq'", 
+			"'xchgq'", "'adcq'", "'addq'", "'cmpq'", "'sbbq'", "'subq'", "'andq'", 
+			"'orq'", "'xorq'", "'testq'", "'bsfq'", "'bsrq'", "'btq'", "'btcq'", 
+			"'btrq'", "'btsq'", "'rclq'", "'rcrq'", "'rolq'", "'rorq'", "'salq'", 
+			"'sarq'", "'shlq'", "'shrq'", "'movsbq'", "'movzbq'", "'movswq'", "'movzwq'", 
+			"'movslq'", "'cmova'", "'cmovae'", "'cmovb'", "'cmovbe'", "'cmovc'", 
+			"'cmove'", "'cmovg'", "'cmovge'", "'cmovl'", "'cmovle'", "'cmovna'", 
+			"'cmovnae'", "'cmovnb'", "'cmovnbe'", "'cmovnc'", "'cmovne'", "'cmovng'", 
+			"'cmovnge'", "'cmovnl'", "'cmovnle'", "'cmovno'", "'cmovnp'", "'cmovns'", 
+			"'cmovnz'", "'cmovo'", "'cmovp'", "'cmovpe'", "'cmovpo'", "'cmovs'", 
+			"'cmovz'", "'cmpxchg'", "'pmovmskb'", "'mov'", "'xadd'", "'xchg'", "'adc'", 
+			"'add'", "'cmp'", "'div'", "'mul'", "'sbb'", "'sub'", "'and'", "'or'", 
+			"'xor'", "'rcl'", "'rcr'", "'rol'", "'ror'", "'sal'", "'sar'", "'shl'", 
+			"'shr'", "'lea'", "'bsf'", "'bsr'", "':'", "'('", "')'", "'%ah'", "'%al'", 
+			"'%bh'", "'%bl'", "'%ch'", "'%cl'", "'%dh'", "'%dl'", "'%r0l'", "'%r1l'", 
+			"'%r2l'", "'%r3l'", "'%r4l'", "'%r5l'", "'%r6l'", "'%r7l'", "'%r8l'", 
+			"'%r9l'", "'%r10l'", "'%r11l'", "'%r12l'", "'%r13l'", "'%r14l'", "'%r15l'", 
+			"'%ax'", "'%bx'", "'%cx'", "'%dx'", "'%si'", "'%di'", "'%bp'", "'%sp'", 
+			"'%r0w'", "'%r1w'", "'%r2w'", "'%r3w'", "'%r4w'", "'%r5w'", "'%r6w'", 
+			"'%r7w'", "'%r8w'", "'%r9w'", "'%r10w'", "'%r11w'", "'%r12w'", "'%r13w'", 
+			"'%r14w'", "'%r15w'", "'%eax'", "'%ebx'", "'%ecx'", "'%edx'", "'%esi'", 
+			"'%edi'", "'%ebp'", "'%esp'", "'%r0d'", "'%r1d'", "'%r2d'", "'%r3d'", 
+			"'%r4d'", "'%r5d'", "'%r6d'", "'%r7d'", "'%r8d'", "'%r9d'", "'%r10d'", 
+			"'%r11d'", "'%r12d'", "'%r13d'", "'%r14d'", "'%r15d'", "'%rax'", "'%rbx'", 
+			"'%rcx'", "'%rdx'", "'%rsp'", "'%rbp'", "'%rsi'", "'%rdi'", "'%r0'", 
+			"'%r1'", "'%r2'", "'%r3'", "'%r4'", "'%r5'", "'%r6'", "'%r7'", "'%r8'", 
+			"'%r9'", "'%r10'", "'%r11'", "'%r12'", "'%r13'", "'%r14'", "'%r15'", 
+			"'%xmm0'", "'%xmm1'", "'%xmm2'", "'%xmm3'", "'%xmm4'", "'%xmm5'", "'%xmm6'", 
+			"'%xmm7'", "'%xmm8'", "'%xmm9'", "'%xmm10'", "'%xmm11'", "'%xmm12'", 
+			"'%xmm13'", "'%xmm14'", "'%xmm15'", "'%cs'", "'%ds'", "'%es'", "'%fs'", 
+			"'%gs'", "'%ss'", "'$$'", "'$'", "'{'", "'b'", "'h'", "'w'", "'k'", "'q'", 
 			"'}'"
 		};
 	}
 	private static final String[] _LITERAL_NAMES = makeLiteralNames();
 	private static String[] makeSymbolicNames() {
 		return new String[] {
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, null, null, null, null, null, null, null, null, null, null,
-			null, null, "IDENT", "BIN_NUMBER", "HEX_NUMBER", "NUMBER", "WS", "COMMENT",
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, "IDENT", "BIN_NUMBER", "HEX_NUMBER", "NUMBER", "WS", "COMMENT", 
 			"LINE_COMMENT"
 		};
 	}
@@ -860,7 +860,7 @@ public class InlineAssemblyParser extends Parser {
 				case T__421:
 				case T__422:
 					{
-					 factory.setPrefix(null);
+					 factory.setPrefix(null); 
 					}
 					break;
 				default:
@@ -1325,7 +1325,7 @@ public class InlineAssemblyParser extends Parser {
 					case T__421:
 					case T__422:
 						{
-						 factory.setPrefix(null);
+						 factory.setPrefix(null); 
 						}
 						break;
 					default:
@@ -1352,7 +1352,7 @@ public class InlineAssemblyParser extends Parser {
 
 			setState(93);
 			match(T__0);
-			 root = factory.finishInline();
+			 root = factory.finishInline(); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -1392,7 +1392,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 factory.setPrefix(_localctx.op.getText());
+			 factory.setPrefix(_localctx.op.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -1992,7 +1992,7 @@ public class InlineAssemblyParser extends Parser {
 			match(T__9);
 			setState(117);
 			_localctx.immediate = immediate();
-			 factory.createInt(_localctx.immediate.op);
+			 factory.createInt(_localctx.immediate.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2142,7 +2142,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 factory.createOperation(_localctx.op.getText());
+			 factory.createOperation(_localctx.op.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2246,7 +2246,7 @@ public class InlineAssemblyParser extends Parser {
 				case T__1:
 				case T__2:
 					{
-					 factory.createUnaryOperation(_localctx.op1.getText(), _localctx.a1.op);
+					 factory.createUnaryOperation(_localctx.op1.getText(), _localctx.a1.op); 
 					}
 					break;
 				case T__50:
@@ -2262,7 +2262,7 @@ public class InlineAssemblyParser extends Parser {
 					case T__1:
 					case T__2:
 						{
-						 factory.createBinaryOperation(_localctx.op1.getText(), _localctx.a1.op, _localctx.b1.op);
+						 factory.createBinaryOperation(_localctx.op1.getText(), _localctx.a1.op, _localctx.b1.op); 
 						}
 						break;
 					case T__50:
@@ -2271,7 +2271,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__50);
 						setState(143);
 						_localctx.c1 = operand8();
-						 factory.createTernaryOperation(_localctx.op1.getText(), _localctx.a1.op, _localctx.b1.op, _localctx.c1.op);
+						 factory.createTernaryOperation(_localctx.op1.getText(), _localctx.a1.op, _localctx.b1.op, _localctx.c1.op); 
 						}
 						break;
 					default:
@@ -2307,7 +2307,7 @@ public class InlineAssemblyParser extends Parser {
 				case T__1:
 				case T__2:
 					{
-					 factory.createUnaryOperation(_localctx.op2.getText(), _localctx.a2.op);
+					 factory.createUnaryOperation(_localctx.op2.getText(), _localctx.a2.op); 
 					}
 					break;
 				case T__50:
@@ -2323,7 +2323,7 @@ public class InlineAssemblyParser extends Parser {
 					case T__1:
 					case T__2:
 						{
-						 factory.createBinaryOperation(_localctx.op2.getText(), _localctx.a2.op, _localctx.b2.op);
+						 factory.createBinaryOperation(_localctx.op2.getText(), _localctx.a2.op, _localctx.b2.op); 
 						}
 						break;
 					case T__50:
@@ -2332,7 +2332,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__50);
 						setState(157);
 						_localctx.c2 = operand16();
-						 factory.createTernaryOperation(_localctx.op2.getText(), _localctx.a2.op, _localctx.b2.op, _localctx.c2.op);
+						 factory.createTernaryOperation(_localctx.op2.getText(), _localctx.a2.op, _localctx.b2.op, _localctx.c2.op); 
 						}
 						break;
 					default:
@@ -2368,7 +2368,7 @@ public class InlineAssemblyParser extends Parser {
 				case T__1:
 				case T__2:
 					{
-					 factory.createUnaryOperation(_localctx.op3.getText(), _localctx.a3.op);
+					 factory.createUnaryOperation(_localctx.op3.getText(), _localctx.a3.op); 
 					}
 					break;
 				case T__50:
@@ -2384,7 +2384,7 @@ public class InlineAssemblyParser extends Parser {
 					case T__1:
 					case T__2:
 						{
-						 factory.createBinaryOperation(_localctx.op3.getText(), _localctx.a3.op, _localctx.b3.op);
+						 factory.createBinaryOperation(_localctx.op3.getText(), _localctx.a3.op, _localctx.b3.op); 
 						}
 						break;
 					case T__50:
@@ -2393,7 +2393,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__50);
 						setState(171);
 						_localctx.c3 = operand32();
-						 factory.createTernaryOperation(_localctx.op3.getText(), _localctx.a3.op, _localctx.b3.op, _localctx.c3.op);
+						 factory.createTernaryOperation(_localctx.op3.getText(), _localctx.a3.op, _localctx.b3.op, _localctx.c3.op); 
 						}
 						break;
 					default:
@@ -2429,7 +2429,7 @@ public class InlineAssemblyParser extends Parser {
 				case T__1:
 				case T__2:
 					{
-					 factory.createUnaryOperation(_localctx.op4.getText(), _localctx.a4.op);
+					 factory.createUnaryOperation(_localctx.op4.getText(), _localctx.a4.op); 
 					}
 					break;
 				case T__50:
@@ -2445,7 +2445,7 @@ public class InlineAssemblyParser extends Parser {
 					case T__1:
 					case T__2:
 						{
-						 factory.createBinaryOperation(_localctx.op4.getText(), _localctx.a4.op, _localctx.b4.op);
+						 factory.createBinaryOperation(_localctx.op4.getText(), _localctx.a4.op, _localctx.b4.op); 
 						}
 						break;
 					case T__50:
@@ -2454,7 +2454,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__50);
 						setState(185);
 						_localctx.c4 = operand64();
-						 factory.createTernaryOperation(_localctx.op4.getText(), _localctx.a4.op, _localctx.b4.op, _localctx.c4.op);
+						 factory.createTernaryOperation(_localctx.op4.getText(), _localctx.a4.op, _localctx.b4.op, _localctx.c4.op); 
 						}
 						break;
 					default:
@@ -2490,7 +2490,7 @@ public class InlineAssemblyParser extends Parser {
 				case T__1:
 				case T__2:
 					{
-					 factory.createUnaryOperation(_localctx.op5.getText(), _localctx.a5.op);
+					 factory.createUnaryOperation(_localctx.op5.getText(), _localctx.a5.op); 
 					}
 					break;
 				case T__50:
@@ -2506,7 +2506,7 @@ public class InlineAssemblyParser extends Parser {
 					case T__1:
 					case T__2:
 						{
-						 factory.createBinaryOperation(_localctx.op5.getText(), _localctx.a5.op, _localctx.b5.op);
+						 factory.createBinaryOperation(_localctx.op5.getText(), _localctx.a5.op, _localctx.b5.op); 
 						}
 						break;
 					case T__50:
@@ -2515,7 +2515,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__50);
 						setState(199);
 						_localctx.c5 = operand();
-						 factory.createTernaryOperation(_localctx.op5.getText(), _localctx.a5.op, _localctx.b5.op, _localctx.c5.op);
+						 factory.createTernaryOperation(_localctx.op5.getText(), _localctx.a5.op, _localctx.b5.op, _localctx.c5.op); 
 						}
 						break;
 					default:
@@ -2576,7 +2576,7 @@ public class InlineAssemblyParser extends Parser {
 			}
 			setState(209);
 			((Unary_op8Context)_localctx).operand8 = operand8();
-			 factory.createUnaryOperation(((Unary_op8Context)_localctx).op.getText(), ((Unary_op8Context)_localctx).operand8.op);
+			 factory.createUnaryOperation(((Unary_op8Context)_localctx).op.getText(), ((Unary_op8Context)_localctx).operand8.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2622,7 +2622,7 @@ public class InlineAssemblyParser extends Parser {
 			}
 			setState(213);
 			((Unary_op16Context)_localctx).operand16 = operand16();
-			 factory.createUnaryOperation(((Unary_op16Context)_localctx).op.getText(), ((Unary_op16Context)_localctx).operand16.op);
+			 factory.createUnaryOperation(((Unary_op16Context)_localctx).op.getText(), ((Unary_op16Context)_localctx).operand16.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2668,7 +2668,7 @@ public class InlineAssemblyParser extends Parser {
 			}
 			setState(217);
 			((Unary_op32Context)_localctx).operand32 = operand32();
-			 factory.createUnaryOperation(((Unary_op32Context)_localctx).op.getText(), ((Unary_op32Context)_localctx).operand32.op);
+			 factory.createUnaryOperation(((Unary_op32Context)_localctx).op.getText(), ((Unary_op32Context)_localctx).operand32.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2714,7 +2714,7 @@ public class InlineAssemblyParser extends Parser {
 			}
 			setState(221);
 			((Unary_op64Context)_localctx).operand64 = operand64();
-			 factory.createUnaryOperation(((Unary_op64Context)_localctx).op.getText(), ((Unary_op64Context)_localctx).operand64.op);
+			 factory.createUnaryOperation(((Unary_op64Context)_localctx).op.getText(), ((Unary_op64Context)_localctx).operand64.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2760,7 +2760,7 @@ public class InlineAssemblyParser extends Parser {
 			}
 			setState(225);
 			_localctx.operand = operand();
-			 factory.createUnaryOperationImplicitSize(_localctx.op.getText(), _localctx.operand.op);
+			 factory.createUnaryOperationImplicitSize(_localctx.op.getText(), _localctx.operand.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2814,7 +2814,7 @@ public class InlineAssemblyParser extends Parser {
 			match(T__50);
 			setState(231);
 			((Binary_op8Context)_localctx).b = operand8();
-			 factory.createBinaryOperation(((Binary_op8Context)_localctx).op.getText(), ((Binary_op8Context)_localctx).a.op, ((Binary_op8Context)_localctx).b.op);
+			 factory.createBinaryOperation(((Binary_op8Context)_localctx).op.getText(), ((Binary_op8Context)_localctx).a.op, ((Binary_op8Context)_localctx).b.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2929,7 +2929,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(237);
 				((Binary_op16Context)_localctx).b1 = operand16();
-				 factory.createBinaryOperation(((Binary_op16Context)_localctx).op1.getText(), ((Binary_op16Context)_localctx).a1.op, ((Binary_op16Context)_localctx).b1.op);
+				 factory.createBinaryOperation(((Binary_op16Context)_localctx).op1.getText(), ((Binary_op16Context)_localctx).a1.op, ((Binary_op16Context)_localctx).b1.op); 
 				}
 				break;
 			case T__234:
@@ -2959,7 +2959,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(243);
 				((Binary_op16Context)_localctx).b2 = operand16();
-				 factory.createBinaryOperation(((Binary_op16Context)_localctx).op2.getText(), ((Binary_op16Context)_localctx).a2.op, ((Binary_op16Context)_localctx).b2.op);
+				 factory.createBinaryOperation(((Binary_op16Context)_localctx).op2.getText(), ((Binary_op16Context)_localctx).a2.op, ((Binary_op16Context)_localctx).b2.op); 
 				}
 				break;
 			case T__242:
@@ -2983,7 +2983,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(249);
 				((Binary_op16Context)_localctx).b3 = operand16();
-				 factory.createBinaryOperation(((Binary_op16Context)_localctx).op3.getText(), ((Binary_op16Context)_localctx).a3.op, ((Binary_op16Context)_localctx).b3.op);
+				 factory.createBinaryOperation(((Binary_op16Context)_localctx).op3.getText(), ((Binary_op16Context)_localctx).a3.op, ((Binary_op16Context)_localctx).b3.op); 
 				}
 				break;
 			default:
@@ -3108,7 +3108,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(257);
 				((Binary_op32Context)_localctx).b1 = operand32();
-				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op1.getText(), ((Binary_op32Context)_localctx).a1.op, ((Binary_op32Context)_localctx).b1.op);
+				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op1.getText(), ((Binary_op32Context)_localctx).a1.op, ((Binary_op32Context)_localctx).b1.op); 
 				}
 				break;
 			case T__293:
@@ -3138,7 +3138,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(263);
 				((Binary_op32Context)_localctx).b2 = operand32();
-				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op2.getText(), ((Binary_op32Context)_localctx).a2.op, ((Binary_op32Context)_localctx).b2.op);
+				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op2.getText(), ((Binary_op32Context)_localctx).a2.op, ((Binary_op32Context)_localctx).b2.op); 
 				}
 				break;
 			case T__301:
@@ -3162,7 +3162,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(269);
 				((Binary_op32Context)_localctx).b3 = operand32();
-				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op3.getText(), ((Binary_op32Context)_localctx).a3.op, ((Binary_op32Context)_localctx).b3.op);
+				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op3.getText(), ((Binary_op32Context)_localctx).a3.op, ((Binary_op32Context)_localctx).b3.op); 
 				}
 				break;
 			case T__303:
@@ -3186,7 +3186,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(275);
 				((Binary_op32Context)_localctx).b4 = operand32();
-				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op4.getText(), ((Binary_op32Context)_localctx).a4.op, ((Binary_op32Context)_localctx).b4.op);
+				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op4.getText(), ((Binary_op32Context)_localctx).a4.op, ((Binary_op32Context)_localctx).b4.op); 
 				}
 				break;
 			default:
@@ -3317,7 +3317,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(283);
 				((Binary_op64Context)_localctx).b1 = operand64();
-				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op1.getText(), ((Binary_op64Context)_localctx).a1.op, ((Binary_op64Context)_localctx).b1.op);
+				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op1.getText(), ((Binary_op64Context)_localctx).a1.op, ((Binary_op64Context)_localctx).b1.op); 
 				}
 				break;
 			case T__354:
@@ -3347,7 +3347,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(289);
 				((Binary_op64Context)_localctx).b2 = operand64();
-				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op2.getText(), ((Binary_op64Context)_localctx).a2.op, ((Binary_op64Context)_localctx).b2.op);
+				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op2.getText(), ((Binary_op64Context)_localctx).a2.op, ((Binary_op64Context)_localctx).b2.op); 
 				}
 				break;
 			case T__362:
@@ -3371,7 +3371,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(295);
 				((Binary_op64Context)_localctx).b3 = operand64();
-				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op3.getText(), ((Binary_op64Context)_localctx).a3.op, ((Binary_op64Context)_localctx).b3.op);
+				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op3.getText(), ((Binary_op64Context)_localctx).a3.op, ((Binary_op64Context)_localctx).b3.op); 
 				}
 				break;
 			case T__364:
@@ -3395,7 +3395,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(301);
 				((Binary_op64Context)_localctx).b4 = operand64();
-				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op4.getText(), ((Binary_op64Context)_localctx).a4.op, ((Binary_op64Context)_localctx).b4.op);
+				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op4.getText(), ((Binary_op64Context)_localctx).a4.op, ((Binary_op64Context)_localctx).b4.op); 
 				}
 				break;
 			case T__366:
@@ -3409,7 +3409,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__50);
 				setState(307);
 				((Binary_op64Context)_localctx).b5 = operand64();
-				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op5.getText(), ((Binary_op64Context)_localctx).a5.op, ((Binary_op64Context)_localctx).b5.op);
+				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op5.getText(), ((Binary_op64Context)_localctx).a5.op, ((Binary_op64Context)_localctx).b5.op); 
 				}
 				break;
 			default:
@@ -3467,7 +3467,7 @@ public class InlineAssemblyParser extends Parser {
 			match(T__50);
 			setState(315);
 			_localctx.b = operand();
-			 factory.createBinaryOperationImplicitSize(_localctx.op.getText(), _localctx.a.op, _localctx.b.op);
+			 factory.createBinaryOperationImplicitSize(_localctx.op.getText(), _localctx.a.op, _localctx.b.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -3541,7 +3541,7 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(318);
 				((Operand8Context)_localctx).register8 = register8();
-				 ((Operand8Context)_localctx).op =  ((Operand8Context)_localctx).register8.op;
+				 ((Operand8Context)_localctx).op =  ((Operand8Context)_localctx).register8.op; 
 				}
 				break;
 			case T__424:
@@ -3558,21 +3558,21 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(321);
 				((Operand8Context)_localctx).memory_reference = memory_reference();
-				 ((Operand8Context)_localctx).op =  ((Operand8Context)_localctx).memory_reference.op;
+				 ((Operand8Context)_localctx).op =  ((Operand8Context)_localctx).memory_reference.op; 
 				}
 				break;
 			case T__544:
 				{
 				setState(324);
 				((Operand8Context)_localctx).immediate = immediate();
-				 ((Operand8Context)_localctx).op =  ((Operand8Context)_localctx).immediate.op;
+				 ((Operand8Context)_localctx).op =  ((Operand8Context)_localctx).immediate.op; 
 				}
 				break;
 			case T__545:
 				{
 				setState(327);
 				((Operand8Context)_localctx).argument = argument();
-				 ((Operand8Context)_localctx).op =  ((Operand8Context)_localctx).argument.op;
+				 ((Operand8Context)_localctx).op =  ((Operand8Context)_localctx).argument.op; 
 				}
 				break;
 			default:
@@ -3651,7 +3651,7 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(332);
 				((Operand16Context)_localctx).register16 = register16();
-				 ((Operand16Context)_localctx).op =  ((Operand16Context)_localctx).register16.op;
+				 ((Operand16Context)_localctx).op =  ((Operand16Context)_localctx).register16.op; 
 				}
 				break;
 			case T__424:
@@ -3668,21 +3668,21 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(335);
 				((Operand16Context)_localctx).memory_reference = memory_reference();
-				 ((Operand16Context)_localctx).op =  ((Operand16Context)_localctx).memory_reference.op;
+				 ((Operand16Context)_localctx).op =  ((Operand16Context)_localctx).memory_reference.op; 
 				}
 				break;
 			case T__544:
 				{
 				setState(338);
 				((Operand16Context)_localctx).immediate = immediate();
-				 ((Operand16Context)_localctx).op =  ((Operand16Context)_localctx).immediate.op;
+				 ((Operand16Context)_localctx).op =  ((Operand16Context)_localctx).immediate.op; 
 				}
 				break;
 			case T__545:
 				{
 				setState(341);
 				((Operand16Context)_localctx).argument = argument();
-				 ((Operand16Context)_localctx).op =  ((Operand16Context)_localctx).argument.op;
+				 ((Operand16Context)_localctx).op =  ((Operand16Context)_localctx).argument.op; 
 				}
 				break;
 			default:
@@ -3761,7 +3761,7 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(346);
 				((Operand32Context)_localctx).register32 = register32();
-				 ((Operand32Context)_localctx).op =  ((Operand32Context)_localctx).register32.op;
+				 ((Operand32Context)_localctx).op =  ((Operand32Context)_localctx).register32.op; 
 				}
 				break;
 			case T__424:
@@ -3778,21 +3778,21 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(349);
 				((Operand32Context)_localctx).memory_reference = memory_reference();
-				 ((Operand32Context)_localctx).op =  ((Operand32Context)_localctx).memory_reference.op;
+				 ((Operand32Context)_localctx).op =  ((Operand32Context)_localctx).memory_reference.op; 
 				}
 				break;
 			case T__544:
 				{
 				setState(352);
 				((Operand32Context)_localctx).immediate = immediate();
-				 ((Operand32Context)_localctx).op =  ((Operand32Context)_localctx).immediate.op;
+				 ((Operand32Context)_localctx).op =  ((Operand32Context)_localctx).immediate.op; 
 				}
 				break;
 			case T__545:
 				{
 				setState(355);
 				((Operand32Context)_localctx).argument = argument();
-				 ((Operand32Context)_localctx).op =  ((Operand32Context)_localctx).argument.op;
+				 ((Operand32Context)_localctx).op =  ((Operand32Context)_localctx).argument.op; 
 				}
 				break;
 			default:
@@ -3871,7 +3871,7 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(360);
 				((Operand64Context)_localctx).register64 = register64();
-				 ((Operand64Context)_localctx).op =  ((Operand64Context)_localctx).register64.op;
+				 ((Operand64Context)_localctx).op =  ((Operand64Context)_localctx).register64.op; 
 				}
 				break;
 			case T__424:
@@ -3888,21 +3888,21 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(363);
 				((Operand64Context)_localctx).memory_reference = memory_reference();
-				 ((Operand64Context)_localctx).op =  ((Operand64Context)_localctx).memory_reference.op;
+				 ((Operand64Context)_localctx).op =  ((Operand64Context)_localctx).memory_reference.op; 
 				}
 				break;
 			case T__544:
 				{
 				setState(366);
 				((Operand64Context)_localctx).immediate = immediate();
-				 ((Operand64Context)_localctx).op =  ((Operand64Context)_localctx).immediate.op;
+				 ((Operand64Context)_localctx).op =  ((Operand64Context)_localctx).immediate.op; 
 				}
 				break;
 			case T__545:
 				{
 				setState(369);
 				((Operand64Context)_localctx).argument = argument();
-				 ((Operand64Context)_localctx).op =  ((Operand64Context)_localctx).argument.op;
+				 ((Operand64Context)_localctx).op =  ((Operand64Context)_localctx).argument.op; 
 				}
 				break;
 			default:
@@ -3997,7 +3997,7 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(374);
 				_localctx.register8 = register8();
-				 _localctx.op =  _localctx.register8.op;
+				 _localctx.op =  _localctx.register8.op; 
 				}
 				break;
 			case T__450:
@@ -4027,7 +4027,7 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(377);
 				_localctx.register16 = register16();
-				 _localctx.op =  _localctx.register16.op;
+				 _localctx.op =  _localctx.register16.op; 
 				}
 				break;
 			case T__474:
@@ -4057,7 +4057,7 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(380);
 				_localctx.register32 = register32();
-				 _localctx.op =  _localctx.register32.op;
+				 _localctx.op =  _localctx.register32.op; 
 				}
 				break;
 			case T__498:
@@ -4087,7 +4087,7 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(383);
 				_localctx.register64 = register64();
-				 _localctx.op =  _localctx.register64.op;
+				 _localctx.op =  _localctx.register64.op; 
 				}
 				break;
 			case T__522:
@@ -4109,7 +4109,7 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(386);
 				_localctx.registerXmm = registerXmm();
-				 _localctx.op =  _localctx.registerXmm.op;
+				 _localctx.op =  _localctx.registerXmm.op; 
 				}
 				break;
 			case T__424:
@@ -4126,21 +4126,21 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(389);
 				_localctx.memory_reference = memory_reference();
-				 _localctx.op =  _localctx.memory_reference.op;
+				 _localctx.op =  _localctx.memory_reference.op; 
 				}
 				break;
 			case T__544:
 				{
 				setState(392);
 				_localctx.immediate = immediate();
-				 _localctx.op =  _localctx.immediate.op;
+				 _localctx.op =  _localctx.immediate.op; 
 				}
 				break;
 			case T__545:
 				{
 				setState(395);
 				_localctx.argument = argument();
-				 _localctx.op =  _localctx.argument.op;
+				 _localctx.op =  _localctx.argument.op; 
 				}
 				break;
 			default:
@@ -4198,7 +4198,7 @@ public class InlineAssemblyParser extends Parser {
 			                                                   String segment = null;
 			                                                   AsmOperand base = null;
 			                                                   AsmOperand offset = null;
-			                                                   int scale = 1;
+			                                                   int scale = 1; 
 			setState(405);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
@@ -4206,7 +4206,7 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(401);
 				_localctx.segment_register = segment_register();
-				 segment = _localctx.segment_register.reg;
+				 segment = _localctx.segment_register.reg; 
 				setState(403);
 				match(T__423);
 				}
@@ -4227,7 +4227,7 @@ public class InlineAssemblyParser extends Parser {
 					{
 					setState(407);
 					_localctx.i = match(IDENT);
-					 displacement = _localctx.i.getText();
+					 displacement = _localctx.i.getText(); 
 					}
 					break;
 				case BIN_NUMBER:
@@ -4236,7 +4236,7 @@ public class InlineAssemblyParser extends Parser {
 					{
 					setState(409);
 					_localctx.number = number();
-					 displacement = String.valueOf(_localctx.number.n);
+					 displacement = String.valueOf(_localctx.number.n); 
 					}
 					break;
 				default:
@@ -4256,7 +4256,7 @@ public class InlineAssemblyParser extends Parser {
 						{
 						setState(415);
 						_localctx.operand = operand();
-						 base = _localctx.operand.op;
+						 base = _localctx.operand.op; 
 						}
 					}
 
@@ -4269,7 +4269,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__50);
 						setState(421);
 						_localctx.operand = operand();
-						 offset = _localctx.operand.op;
+						 offset = _localctx.operand.op; 
 						setState(427);
 						_errHandler.sync(this);
 						_la = _input.LA(1);
@@ -4279,7 +4279,7 @@ public class InlineAssemblyParser extends Parser {
 							match(T__50);
 							setState(424);
 							_localctx.number = number();
-							 scale = (int) _localctx.number.n;
+							 scale = (int) _localctx.number.n; 
 							}
 						}
 
@@ -4304,7 +4304,7 @@ public class InlineAssemblyParser extends Parser {
 					{
 					setState(435);
 					_localctx.operand = operand();
-					 base = _localctx.operand.op;
+					 base = _localctx.operand.op; 
 					}
 				}
 
@@ -4317,7 +4317,7 @@ public class InlineAssemblyParser extends Parser {
 					match(T__50);
 					setState(441);
 					_localctx.operand = operand();
-					 offset = _localctx.operand.op;
+					 offset = _localctx.operand.op; 
 					setState(447);
 					_errHandler.sync(this);
 					_la = _input.LA(1);
@@ -4327,7 +4327,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__50);
 						setState(444);
 						_localctx.number = number();
-						 scale = (int) _localctx.number.n;
+						 scale = (int) _localctx.number.n; 
 						}
 					}
 
@@ -4341,7 +4341,7 @@ public class InlineAssemblyParser extends Parser {
 			default:
 				throw new NoViableAltException(this);
 			}
-			 _localctx.op =  new AsmMemoryOperand(segment, displacement, base, offset, scale);
+			 _localctx.op =  new AsmMemoryOperand(segment, displacement, base, offset, scale); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4382,7 +4382,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 ((Register8Context)_localctx).op =  new AsmRegisterOperand(((Register8Context)_localctx).r.getText());
+			 ((Register8Context)_localctx).op =  new AsmRegisterOperand(((Register8Context)_localctx).r.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4423,7 +4423,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 ((Register16Context)_localctx).op =  new AsmRegisterOperand(((Register16Context)_localctx).r.getText());
+			 ((Register16Context)_localctx).op =  new AsmRegisterOperand(((Register16Context)_localctx).r.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4464,7 +4464,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 ((Register32Context)_localctx).op =  new AsmRegisterOperand(((Register32Context)_localctx).r.getText());
+			 ((Register32Context)_localctx).op =  new AsmRegisterOperand(((Register32Context)_localctx).r.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4505,7 +4505,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 ((Register64Context)_localctx).op =  new AsmRegisterOperand(((Register64Context)_localctx).r.getText());
+			 ((Register64Context)_localctx).op =  new AsmRegisterOperand(((Register64Context)_localctx).r.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4546,7 +4546,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 _localctx.op =  new AsmRegisterOperand(_localctx.r.getText());
+			 _localctx.op =  new AsmRegisterOperand(_localctx.r.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4587,7 +4587,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 _localctx.reg =  _localctx.r.getText();
+			 _localctx.reg =  _localctx.r.getText(); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4626,21 +4626,21 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(474);
 				_localctx.num = match(NUMBER);
-				 _localctx.n =  Long.parseLong(_localctx.num.getText(), 10);
+				 _localctx.n =  Long.parseLong(_localctx.num.getText(), 10); 
 				}
 				break;
 			case BIN_NUMBER:
 				{
 				setState(476);
 				_localctx.num = match(BIN_NUMBER);
-				 _localctx.n =  Long.parseLong(_localctx.num.getText().substring(2), 2);
+				 _localctx.n =  Long.parseLong(_localctx.num.getText().substring(2), 2); 
 				}
 				break;
 			case HEX_NUMBER:
 				{
 				setState(478);
 				_localctx.num = match(HEX_NUMBER);
-				 _localctx.n =  Long.parseLong(_localctx.num.getText().substring(2), 16);
+				 _localctx.n =  Long.parseLong(_localctx.num.getText().substring(2), 16); 
 				}
 				break;
 			default:
@@ -4681,7 +4681,7 @@ public class InlineAssemblyParser extends Parser {
 			match(T__544);
 			setState(483);
 			_localctx.number = number();
-			 _localctx.op =  new AsmImmediateOperand(_localctx.number.n);
+			 _localctx.op =  new AsmImmediateOperand(_localctx.number.n); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4724,7 +4724,7 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(487);
 				_localctx.n = number();
-				 _localctx.op =  new AsmArgumentOperand((int) _localctx.n.n);
+				 _localctx.op =  new AsmArgumentOperand((int) _localctx.n.n); 
 				}
 				break;
 			case T__546:
@@ -4735,7 +4735,7 @@ public class InlineAssemblyParser extends Parser {
 				_localctx.n = number();
 				setState(492);
 				match(T__423);
-				 int size = -1; int shift = 0;
+				 int size = -1; int shift = 0; 
 				setState(504);
 				_errHandler.sync(this);
 				switch (_input.LA(1)) {
@@ -4743,41 +4743,41 @@ public class InlineAssemblyParser extends Parser {
 					{
 					setState(494);
 					match(T__547);
-					 size = 8;
+					 size = 8; 
 					}
 					break;
 				case T__548:
 					{
 					setState(496);
 					match(T__548);
-					 size = 8; shift = 8;
+					 size = 8; shift = 8; 
 					}
 					break;
 				case T__549:
 					{
 					setState(498);
 					match(T__549);
-					 size = 16;
+					 size = 16; 
 					}
 					break;
 				case T__550:
 					{
 					setState(500);
 					match(T__550);
-					 size = 32;
+					 size = 32; 
 					}
 					break;
 				case T__551:
 					{
 					setState(502);
 					match(T__551);
-					 size = 64;
+					 size = 64; 
 					}
 					break;
 				default:
 					throw new NoViableAltException(this);
 				}
-				 _localctx.op =  new AsmArgumentOperand((int) _localctx.n.n, size, shift);
+				 _localctx.op =  new AsmArgumentOperand((int) _localctx.n.n, size, shift); 
 				setState(507);
 				match(T__552);
 				}

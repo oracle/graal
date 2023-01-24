@@ -101,7 +101,7 @@ public abstract class LLVMX86_VectorMathNode {
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMX86_SSE_VectorMaxNode extends LLVMBuiltin { // mm_max_pd
+    public abstract static class LLVMX86_SSE_VectorMaxNode extends LLVMBuiltin { // mm_max_ps
         @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
         protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
             return LLVMFloatVector.create(new float[]{
@@ -115,7 +115,7 @@ public abstract class LLVMX86_VectorMathNode {
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMX86_SSE_VectorMaxsdNode extends LLVMBuiltin { // mm_max_sd
+    public abstract static class LLVMX86_SSE_VectorMaxsdNode extends LLVMBuiltin { // mm_max_ss
         @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
         protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
             return LLVMFloatVector.create(new float[]{
@@ -129,7 +129,7 @@ public abstract class LLVMX86_VectorMathNode {
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMX86_SSE_VectorMinNode extends LLVMBuiltin { // mm_min_pd
+    public abstract static class LLVMX86_SSE_VectorMinNode extends LLVMBuiltin { // mm_min_ps
         @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
         protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
             return LLVMFloatVector.create(new float[]{
@@ -143,7 +143,7 @@ public abstract class LLVMX86_VectorMathNode {
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMX86_SSE_VectorMinsdNode extends LLVMBuiltin { // mm_min_sd
+    public abstract static class LLVMX86_SSE_VectorMinsdNode extends LLVMBuiltin { // mm_min_ss
         @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
         protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
             return LLVMFloatVector.create(new float[]{
