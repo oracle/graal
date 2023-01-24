@@ -92,17 +92,17 @@ long double __sulong_fp128_pow(long double x, long double y) {
     return powl(x, y);
 }
 
-#define DECLARE_UNARY_INTRINSIC(fn)                                                                                                                  \
+#define DECLARE_UNARY_INTRINSIC128(fn)                                                                                                                  \
     long double __sulong_fp128_##fn(long double value) { return fn##l(value); }
 
-DECLARE_UNARY_INTRINSIC(sqrt)
-DECLARE_UNARY_INTRINSIC(log)
-DECLARE_UNARY_INTRINSIC(log2)
-DECLARE_UNARY_INTRINSIC(log10)
-DECLARE_UNARY_INTRINSIC(rint)
-DECLARE_UNARY_INTRINSIC(ceil)
-DECLARE_UNARY_INTRINSIC(floor)
-DECLARE_UNARY_INTRINSIC(exp)
-DECLARE_UNARY_INTRINSIC(exp2)
-DECLARE_UNARY_INTRINSIC(sin)
-DECLARE_UNARY_INTRINSIC(cos)
+DECLARE_UNARY_INTRINSIC128(sqrt)
+DECLARE_UNARY_INTRINSIC128(log)
+DECLARE_UNARY_INTRINSIC128(log2)
+DECLARE_UNARY_INTRINSIC128(log10)
+DECLARE_UNARY_INTRINSIC128(rint)
+DECLARE_UNARY_INTRINSIC128(ceil)
+DECLARE_UNARY_INTRINSIC128(floor)
+DECLARE_UNARY_INTRINSIC128(exp)
+DECLARE_UNARY_INTRINSIC128(exp2)
+DECLARE_UNARY_INTRINSIC128(sin)
+DECLARE_UNARY_INTRINSIC128(cos)
