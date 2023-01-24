@@ -381,6 +381,8 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
         access.registerObjectReplacer(this::processInlinedField);
 
+        StaticObjectSupport.duringSetup(access);
+
         HomeFinder hf = HomeFinder.getInstance();
         if (Options.CopyLanguageResources.getValue()) {
             if (!(hf instanceof DefaultHomeFinder)) {
@@ -726,6 +728,10 @@ public final class TruffleBaseFeature implements InternalFeature {
     private static final class StaticObjectSupport {
         private static final Method VALIDATE_CLASSES = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
 
+        static void duringSetup(DuringSetupAccess access) {
+            StaticObjectArrayBasedSupport.duringSetup(access);
+        }
+
         static void beforeAnalysis(BeforeAnalysisAccess access) {
             StaticObjectArrayBasedSupport.beforeAnalysis(access);
         }
@@ -777,14 +783,73 @@ public final class TruffleBaseFeature implements InternalFeature {
             private static final Class<?> GENERATOR_CLASS_LOADER_CLASS = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoader");
             private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(GENERATOR_CLASS_LOADER_CLASS, Class.class);
 
+            private static final Class<?> ARRAY_BASED_STATIC_SHAPE = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedStaticShape");
             private static final Class<?> ARRAY_BASED_SHAPE_GENERATOR = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
             private static final Method GET_ARRAY_BASED_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(ARRAY_BASED_SHAPE_GENERATOR, "getShapeGenerator", TruffleLanguage.class,
                             GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, String.class);
 
             private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
+            private static final int ALIGNMENT_CORRECTION;
             private static BeforeAnalysisAccess beforeAnalysisAccess;
 
             private static final IdentityHashMap<Object, Object> registeredShapeGenerators = new IdentityHashMap<>();
+
+            static {
+                int longIndexScale = ConfigurationValues.getObjectLayout().getArrayIndexScale(JavaKind.Long);
+                int misalignment = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte) % longIndexScale;
+                ALIGNMENT_CORRECTION = misalignment == 0 ? 0 : longIndexScale - misalignment;
+            }
+
+            static void duringSetup(DuringSetupAccess access) {
+                Map<Object, Object> replacements = ReflectionUtil.readField(ARRAY_BASED_STATIC_SHAPE, "replacements", null);
+                access.registerObjectReplacer(obj -> {
+                    Object replacement = replacements.get(obj);
+                    if (replacement != null) {
+                        // The `replacements` map is populated by the generated factories. The keys
+                        // of this map are the primitive byte arrays and the factory instances that
+                        // must be replaced, and the values are their replacements. Before a
+                        // replacement is computed, the value is identical to the key.
+                        if (replacement == obj) {
+                            // on first access: generate the replacement and register it
+                            if (obj instanceof byte[]) {
+                                // primitive storage array
+                                byte[] oldArray = (byte[]) obj;
+                                byte[] newArray = new byte[oldArray.length + ALIGNMENT_CORRECTION];
+                                System.arraycopy(oldArray, 0, newArray, ALIGNMENT_CORRECTION, oldArray.length);
+                                replacement = newArray;
+                            } else {
+                                // factory instance
+                                Class<?> factoryClass = obj.getClass();
+                                StaticShape<?> shape = ReflectionUtil.readField(factoryClass, "shape", obj);
+                                int primitiveArraySize = ReflectionUtil.readField(factoryClass, "primitiveArraySize", obj);
+                                int objectArraySize = ReflectionUtil.readField(factoryClass, "objectArraySize", obj);
+
+                                Constructor<?> constructor = ReflectionUtil.lookupConstructor(factoryClass,
+                                                shape.getClass(),
+                                                int.class,
+                                                int.class,
+                                                ConcurrentMap.class);
+
+                                Object newFactory = ReflectionUtil.newInstance(constructor,
+                                                shape,
+                                                primitiveArraySize + ALIGNMENT_CORRECTION,
+                                                objectArraySize,
+                                                null);
+
+                                replacement = newFactory;
+                            }
+                            Object prevReplacement = replacements.putIfAbsent(obj, replacement);
+                            if (prevReplacement != null) {
+                                // another thread already registered a replacement in the meanwhile.
+                                // Use that one.
+                                replacement = prevReplacement;
+                            }
+                        }
+                        return replacement;
+                    }
+                    return obj;
+                });
+            }
 
             static void beforeAnalysis(BeforeAnalysisAccess access) {
                 beforeAnalysisAccess = access;
@@ -797,7 +862,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                                 new ArrayBasedShapeGeneratorOffsetTransformer("shape"));
 
                 access.registerFieldValueTransformer(ReflectionUtil.lookupField(StaticProperty.class, "offset"),
-                                new StaticPropertyOffsetTransformer());
+                                new StaticPropertyOffsetTransformer(ALIGNMENT_CORRECTION));
             }
 
             static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
@@ -1023,7 +1088,11 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
      * substitution class since substitutions are present only at runtime
      */
     private static final Method GET_PROPERTY_TYPE = ReflectionUtil.lookupMethod(StaticProperty.class, "getPropertyType");
+    private final int primitiveAlignmentCorrection;
 
+    StaticPropertyOffsetTransformer(int primitiveAlignmentCorrection) {
+        this.primitiveAlignmentCorrection = primitiveAlignmentCorrection;
+    }
 
     @Override
     public ValueAvailability valueAvailability() {
@@ -1050,17 +1119,20 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
             throw VMError.shouldNotReachHere(e);
         }
 
+        JavaKind javaKind;
         int baseOffset;
         int indexScale;
-        JavaKind javaKind;
+        int svmAlignmentCorrection;
         if (propertyType.isPrimitive()) {
             javaKind = JavaKind.Byte;
             baseOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET;
             indexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
+            svmAlignmentCorrection = primitiveAlignmentCorrection;
         } else {
             javaKind = JavaKind.Object;
             baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
             indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+            svmAlignmentCorrection = 0;
         }
 
         assert offset >= baseOffset && (offset - baseOffset) % indexScale == 0;
@@ -1079,7 +1151,7 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
         /*
          * Redo the offset computation with the SVM array base offset and array index scale
          */
-        return svmArrayBaseOffset + svmArrayIndexScaleOffset * index;
+        return svmArrayBaseOffset + svmAlignmentCorrection + svmArrayIndexScaleOffset * index;
     }
 }
 
