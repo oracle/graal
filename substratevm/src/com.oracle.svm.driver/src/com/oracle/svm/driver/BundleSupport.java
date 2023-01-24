@@ -34,6 +34,10 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -693,6 +697,7 @@ final class BundleSupport {
 
         private static final String PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR = "BundleFileVersionMajor";
         private static final String PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR = "BundleFileVersionMinor";
+        private static final String PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP = "BundleFileCreationTimestamp";
         private static final String PROPERTY_KEY_IMAGE_BUILT = "ImageBuilt";
         private static final String PROPERTY_KEY_BUILT_WITH_CONTAINER = "BuiltWithContainer";
         private static final String PROPERTY_KEY_NATIVE_IMAGE_PLATFORM = "NativeImagePlatform";
@@ -739,14 +744,24 @@ final class BundleSupport {
             String currentVersion = bundleVersion.equals(NativeImage.getNativeImageVersion()) ? "" : " != '" + NativeImage.getNativeImageVersion() + "'";
             String bundlePlatform = properties.getOrDefault(PROPERTY_KEY_NATIVE_IMAGE_PLATFORM, "unknown");
             String currentPlatform = bundlePlatform.equals(NativeImage.platform) ? "" : " != '" + NativeImage.platform + "'";
+            String bundleCreationTimestamp = properties.getOrDefault(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, "");
+            String localDateStr;
+            try {
+                ZonedDateTime dateTime = ZonedDateTime.parse(bundleCreationTimestamp, DateTimeFormatter.ISO_DATE_TIME);
+                localDateStr = dateTime.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.FULL));
+            } catch (DateTimeParseException e) {
+                localDateStr = "unknown time";
+            }
             nativeImage.showNewline();
             nativeImage.showMessage(String.format("%sLoaded Bundle from %s", bundleInfoMessagePrefix, bundleFileName));
-            nativeImage.showMessage(String.format("%sVersion: '%s'%s, Platform: '%s'%s", bundleInfoMessagePrefix, bundleVersion, currentVersion, bundlePlatform, currentPlatform));
+            nativeImage.showMessage(String.format("%sBundle created at '%s'", bundleInfoMessagePrefix, localDateStr));
+            nativeImage.showMessage(String.format("%sUsing version: '%s'%s on platform: '%s'%s", bundleInfoMessagePrefix, bundleVersion, currentVersion, bundlePlatform, currentPlatform));
         }
 
         private void write() {
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR, String.valueOf(bundleFileFormatVersionMajor));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR, String.valueOf(bundleFileFormatVersionMinor));
+            properties.put(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, ZonedDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
             boolean imageBuilt = !nativeImage.isDryRun();
             properties.put(PROPERTY_KEY_IMAGE_BUILT, String.valueOf(imageBuilt));
             if (imageBuilt) {
