@@ -588,11 +588,12 @@ public final class CodeInfoDecoder {
             long entryOffset = lookupCodeInfoEntryOffset(info, CodeInfoAccess.relativeIP(info, ip));
             if (entryOffset >= 0) {
                 int entryFlags = loadEntryFlags(info, entryOffset);
-                int frameInfoIndex = NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFI(entryOffset, entryFlags));
-                frameInfoReader.setByteIndex(frameInfoIndex);
-                frameInfoReader.setData(CodeInfoAccess.getFrameInfoEncodings(info));
                 if (extractFI(entryFlags) == FI_NO_DEOPT) {
                     entryOffset = -1;
+                } else {
+                    int frameInfoIndex = NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFI(entryOffset, entryFlags));
+                    frameInfoReader.setByteIndex(frameInfoIndex);
+                    frameInfoReader.setData(CodeInfoAccess.getFrameInfoEncodings(info));
                 }
             }
             state.entryOffset = entryOffset;

@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -59,8 +60,16 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 
+import java.util.Collections;
+import java.util.List;
+
 @AutomaticallyRegisteredFeature
 class SubstrateSegfaultHandlerFeature implements InternalFeature {
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(IsolateListenerSupportFeature.class);
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(SubstrateSegfaultHandler.class)) {

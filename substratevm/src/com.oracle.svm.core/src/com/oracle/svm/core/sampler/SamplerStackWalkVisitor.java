@@ -45,21 +45,13 @@ public final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisito
     @Override
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
-        SamplerSampleWriterData writerData = JfrThreadLocal.getSamplerWriterData();
-        assert writerData.isNonNull();
-
-        boolean shouldSkipFrame = shouldSkipFrame(writerData);
-        boolean shouldContinueWalk = shouldContinueWalk(writerData);
-        if (!shouldSkipFrame && shouldContinueWalk) {
-            writerData.setHashCode(computeHash(writerData.getHashCode(), ip.rawValue()));
-            shouldContinueWalk = SamplerSampleWriter.putLong(writerData, ip.rawValue());
-        }
-        return shouldContinueWalk;
+        return recordIp(ip);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean shouldContinueWalk(SamplerSampleWriterData data) {
-        if (data.getNumFrames() >= data.getMaxDepth()) {
+        int numFrames = data.getNumFrames() - data.getSkipCount();
+        if (numFrames > data.getMaxDepth()) {
             /* The stack size exceeds given depth. Stop walk! */
             data.setTruncated(true);
             return false;
@@ -83,7 +75,25 @@ public final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisito
     @Override
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
+        /*
+         * The SIGPROF-based sampler may interrupt at any arbitrary code location. The stack
+         * information that we currently have is not always good enough to do a reliable stack walk.
+         */
         JfrThreadLocal.increaseUnparseableStacks();
         return false;
+    }
+
+    @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
+    private static boolean recordIp(CodePointer ip) {
+        SamplerSampleWriterData writerData = JfrThreadLocal.getSamplerWriterData();
+        assert writerData.isNonNull();
+
+        boolean shouldSkipFrame = shouldSkipFrame(writerData);
+        boolean shouldContinueWalk = shouldContinueWalk(writerData);
+        if (!shouldSkipFrame && shouldContinueWalk) {
+            writerData.setHashCode(computeHash(writerData.getHashCode(), ip.rawValue()));
+            shouldContinueWalk = SamplerSampleWriter.putLong(writerData, ip.rawValue());
+        }
+        return shouldContinueWalk;
     }
 }

@@ -52,7 +52,7 @@ public final class SamplerSampleWriter {
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     public static void begin(SamplerSampleWriterData data) {
-        assert isValid(data);
+        assert SamplerSampleWriterDataAccess.verify(data);
         assert getUncommittedSize(data).equal(0);
         assert data.getCurrentPos().unsignedRemainder(Long.BYTES).equal(0);
 
@@ -70,7 +70,7 @@ public final class SamplerSampleWriter {
         SamplerSampleWriter.putLong(data, JfrThreadState.getId(Thread.State.RUNNABLE));
 
         assert getHeaderSize() % Long.BYTES == 0;
-        assert getUncommittedSize(data).equal(getHeaderSize());
+        assert !isValid(data) || getUncommittedSize(data).equal(getHeaderSize());
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
@@ -169,14 +169,14 @@ public final class SamplerSampleWriter {
              * Sample is too big to fit into the size of one buffer i.e. we want to do
              * accommodations while nothing is committed into buffer.
              */
-            JfrThreadLocal.increaseMissedSamples();
+            cancel(data);
             return false;
         }
 
         /* Try to get a buffer. */
         SamplerBuffer newBuffer = SubstrateJVM.getSamplerBufferPool().acquireBuffer(data.getAllowBufferAllocation());
         if (newBuffer.isNull()) {
-            JfrThreadLocal.increaseMissedSamples();
+            cancel(data);
             return false;
         }
         JfrThreadLocal.setSamplerBuffer(newBuffer);
@@ -202,6 +202,12 @@ public final class SamplerSampleWriter {
         data.setStartPos(buffer.getPos());
         data.setCurrentPos(buffer.getPos());
         data.setEndPos(SamplerBufferAccess.getDataEnd(buffer));
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    private static void cancel(SamplerSampleWriterData data) {
+        data.setEndPos(WordFactory.nullPointer());
+        JfrThreadLocal.increaseMissedSamples();
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)

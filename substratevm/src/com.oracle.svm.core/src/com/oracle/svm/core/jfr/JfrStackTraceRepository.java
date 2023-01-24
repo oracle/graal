@@ -258,8 +258,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
 
     /**
      * NOTE: the returned value is only valid until the JFR epoch changes. So, this method may only
-     * be used from uninterruptible code. This method may return null if a new buffer needs to be
-     * allocated and the allocation fails.
+     * be called from uninterruptible code. Returns null if the buffer allocation failed.
      */
     @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
     public JfrBuffer getCurrentBuffer() {
@@ -268,6 +267,11 @@ public class JfrStackTraceRepository implements JfrConstantPool {
             epochData.stackTraceBuffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
         }
         return epochData.stackTraceBuffer;
+    }
+
+    @Uninterruptible(reason = "Prevent epoch change.", callerMustBe = true)
+    public void setCurrentBuffer(JfrBuffer value) {
+        getEpochData(false).stackTraceBuffer = value;
     }
 
     /**

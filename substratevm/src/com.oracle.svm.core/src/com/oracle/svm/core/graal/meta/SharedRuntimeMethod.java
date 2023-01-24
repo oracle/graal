@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.meta;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.meta.SharedMethod;
 
 /**
@@ -36,4 +37,8 @@ public interface SharedRuntimeMethod extends SharedMethod {
     default SharedRuntimeMethod getOriginal() {
         return this;
     }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    int getDeoptOffsetInImage();
 }

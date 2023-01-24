@@ -50,22 +50,37 @@ public final class SamplerBufferAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void reinitialize(SamplerBuffer buffer) {
+        assert buffer.isNonNull();
         Pointer dataStart = getDataStart(buffer);
         buffer.setPos(dataStart);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getDataStart(SamplerBuffer buffer) {
+        assert buffer.isNonNull();
         return ((Pointer) buffer).add(getHeaderSize());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isEmpty(SamplerBuffer buffer) {
+        assert buffer.isNonNull();
         return getDataStart(buffer).equal(buffer.getPos());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getDataEnd(SamplerBuffer buffer) {
+        assert buffer.isNonNull();
         return getDataStart(buffer).add(buffer.getSize());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean verify(SamplerBuffer buffer) {
+        if (buffer.isNull()) {
+            return false;
+        }
+
+        Pointer start = getDataStart(buffer);
+        Pointer end = getDataEnd(buffer);
+        return buffer.getPos().aboveOrEqual(start) && buffer.getPos().belowOrEqual(end);
     }
 }

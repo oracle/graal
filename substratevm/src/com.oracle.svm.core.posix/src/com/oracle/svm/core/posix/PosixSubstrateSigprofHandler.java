@@ -27,7 +27,6 @@ package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.posix.PosixSubstrateSigprofHandler.Options.SignalHandlerBasedExecutionSampler;
 
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.options.Option;
@@ -47,6 +46,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport;
+import com.oracle.svm.core.IsolateListenerSupportFeature;
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -106,9 +106,9 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
     private static void updateInterval(long ms) {
         Time.itimerval newValue = UnsafeStackValue.get(Time.itimerval.class);
         newValue.it_value().set_tv_sec(ms / TimeUtils.millisPerSecond);
-        newValue.it_value().set_tv_usec(ms % TimeUtils.millisPerSecond);
+        newValue.it_value().set_tv_usec((ms % TimeUtils.millisPerSecond) * 1000);
         newValue.it_interval().set_tv_sec(ms / TimeUtils.millisPerSecond);
-        newValue.it_interval().set_tv_usec(ms % TimeUtils.millisPerSecond);
+        newValue.it_interval().set_tv_usec((ms % TimeUtils.millisPerSecond) * 1000);
 
         int status = Time.NoTransitions.setitimer(Time.TimerTypeEnum.ITIMER_PROF, newValue, WordFactory.nullPointer());
         PosixUtils.checkStatusIs0(status, "setitimer(which, newValue, oldValue): wrong arguments.");
@@ -168,7 +168,7 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
 class PosixSubstrateSigProfHandlerFeature implements InternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(JfrFeature.class);
+        return List.of(IsolateListenerSupportFeature.class, JfrFeature.class);
     }
 
     @Override

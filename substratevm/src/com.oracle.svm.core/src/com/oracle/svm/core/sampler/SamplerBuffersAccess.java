@@ -67,17 +67,11 @@ public final class SamplerBuffersAccess {
     public static void processActiveBuffers() {
         assert VMOperation.isInProgressAtSafepoint();
 
-        JfrBuffer targetBuffer = SubstrateJVM.getStackTraceRepo().getCurrentBuffer();
-        if (targetBuffer.isNull()) {
-            /* Buffer allocation failed, so don't process any data. */
-            return;
-        }
-
         for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-            SamplerBuffer b = JfrThreadLocal.getSamplerBuffer(thread);
-            if (b.isNonNull()) {
-                serializeStackTraces(b, targetBuffer);
-                assert JfrThreadLocal.getSamplerBuffer(thread) == b;
+            SamplerBuffer buffer = JfrThreadLocal.getSamplerBuffer(thread);
+            if (buffer.isNonNull()) {
+                serializeStackTraces(buffer);
+                assert JfrThreadLocal.getSamplerBuffer(thread) == buffer;
             }
         }
     }
@@ -93,19 +87,14 @@ public final class SamplerBuffersAccess {
      */
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
     public static void processFullBuffers(boolean useSafepointChecks) {
-        JfrBuffer targetBuffer = SubstrateJVM.getStackTraceRepo().getCurrentBuffer();
-        if (targetBuffer.isNull()) {
-            /* Buffer allocation failed, so don't process any data. */
-            return;
-        }
-
         while (true) {
             SamplerBuffer buffer = SubstrateJVM.getSamplerBufferPool().popFullBuffer();
             if (buffer.isNull()) {
+                /* No more buffers. */
                 break;
             }
 
-            serializeStackTraces(buffer, targetBuffer);
+            serializeStackTraces(buffer);
             SubstrateJVM.getSamplerBufferPool().releaseBuffer(buffer);
 
             /* Do a safepoint check if the caller requested one. */
@@ -126,9 +115,8 @@ public final class SamplerBuffersAccess {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private static void serializeStackTraces(SamplerBuffer rawStackTraceBuffer, JfrBuffer targetBuffer) {
+    private static void serializeStackTraces(SamplerBuffer rawStackTraceBuffer) {
         assert rawStackTraceBuffer.isNonNull();
-        assert targetBuffer.isNonNull();
 
         Pointer end = rawStackTraceBuffer.getPos();
         Pointer current = SamplerBufferAccess.getDataStart(rawStackTraceBuffer);
@@ -167,14 +155,14 @@ public final class SamplerBuffersAccess {
 
             CIntPointer statusPtr = StackValue.get(CIntPointer.class);
             JfrStackTraceTableEntry entry = SubstrateJVM.getStackTraceRepo().getOrPutStackTrace(current, WordFactory.unsigned(sampleSize), sampleHash, statusPtr);
-            long stackTraceId = entry.getId();
+            long stackTraceId = entry.isNull() ? 0 : entry.getId();
 
             int status = statusPtr.read();
             if (status == JfrStackTraceTableEntryStatus.INSERTED || status == JfrStackTraceTableEntryStatus.EXISTING_RAW) {
                 /* Walk the IPs and serialize the stacktrace. */
                 assert current.add(sampleSize).belowThan(end);
-                boolean success = serializeStackTrace(targetBuffer, current, sampleSize, isTruncated, stackTraceId);
-                if (success) {
+                boolean serialized = serializeStackTrace(current, sampleSize, isTruncated, stackTraceId);
+                if (serialized) {
                     SubstrateJVM.getStackTraceRepo().commitSerializedStackTrace(entry);
                 }
             } else {
@@ -188,8 +176,12 @@ public final class SamplerBuffersAccess {
              * done here because the sampler can't emit the event directly.
              */
             long endMarker = current.readLong(0);
-            if (endMarker == SamplerSampleWriter.EXECUTION_SAMPLE_END && status != JfrStackTraceTableEntryStatus.INSERT_FAILED) {
-                ExecutionSampleEvent.writeExecutionSample(sampleTick, threadId, stackTraceId, threadState);
+            if (endMarker == SamplerSampleWriter.EXECUTION_SAMPLE_END) {
+                if (stackTraceId != 0) {
+                    ExecutionSampleEvent.writeExecutionSample(sampleTick, threadId, stackTraceId, threadState);
+                } else {
+                    JfrThreadLocal.increaseMissedSamples();
+                }
             } else {
                 assert endMarker == SamplerSampleWriter.JFR_STACK_TRACE_END;
             }
@@ -200,8 +192,13 @@ public final class SamplerBuffersAccess {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private static boolean serializeStackTrace(JfrBuffer targetBuffer, Pointer rawStackTrace, int sampleSize, boolean isTruncated, long stackTraceId) {
+    private static boolean serializeStackTrace(Pointer rawStackTrace, int sampleSize, boolean isTruncated, long stackTraceId) {
         assert sampleSize % Long.BYTES == 0;
+
+        JfrBuffer targetBuffer = SubstrateJVM.getStackTraceRepo().getCurrentBuffer();
+        if (targetBuffer.isNull()) {
+            return false;
+        }
 
         /*
          * One IP may correspond to multiple Java-level stack frames. We need to precompute the
@@ -209,6 +206,7 @@ public final class SamplerBuffersAccess {
          * (JfrNativeEventWriter.putInt() would not necessarily reserve enough bytes).
          */
         int numStackTraceElements = visitRawStackTrace(rawStackTrace, sampleSize, WordFactory.nullPointer());
+        assert numStackTraceElements > 0;
 
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initialize(data, targetBuffer);
@@ -216,8 +214,11 @@ public final class SamplerBuffersAccess {
         JfrNativeEventWriter.putBoolean(data, isTruncated);
         JfrNativeEventWriter.putInt(data, numStackTraceElements);
         visitRawStackTrace(rawStackTrace, sampleSize, data);
-        JfrNativeEventWriter.commit(data);
-        return true;
+        boolean success = JfrNativeEventWriter.commit(data);
+
+        /* Buffer can get replaced with a larger one. */
+        SubstrateJVM.getStackTraceRepo().setCurrentBuffer(data.getJfrBuffer());
+        return success;
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")

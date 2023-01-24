@@ -81,7 +81,7 @@ public final class JfrNativeEventWriter {
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void beginEvent(JfrNativeEventWriterData data, JfrEvent event, boolean large) {
         assert SubstrateJVM.get().isRecording();
-        assert isValid(data);
+        assert JfrNativeEventWriterDataAccess.verify(data) || !isValid(data);
         assert getUncommittedSize(data).equal(0);
         if (large) {
             reserve(data, Integer.BYTES);

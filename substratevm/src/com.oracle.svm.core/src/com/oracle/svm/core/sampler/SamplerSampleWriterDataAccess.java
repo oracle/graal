@@ -25,6 +25,8 @@
 
 package com.oracle.svm.core.sampler;
 
+import org.graalvm.word.Pointer;
+
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -62,7 +64,7 @@ public final class SamplerSampleWriterDataAccess {
      */
     @Uninterruptible(reason = "Accesses a sampler buffer", callerMustBe = true)
     private static void initialize0(SamplerSampleWriterData data, SamplerBuffer buffer, int skipCount, int maxDepth, boolean allowBufferAllocation) {
-        assert buffer.isNonNull();
+        assert SamplerBufferAccess.verify(buffer);
 
         data.setSamplerBuffer(buffer);
         data.setStartPos(buffer.getPos());
@@ -74,5 +76,20 @@ public final class SamplerSampleWriterDataAccess {
         data.setSkipCount(skipCount);
         data.setNumFrames(0);
         data.setAllowBufferAllocation(allowBufferAllocation);
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static boolean verify(SamplerSampleWriterData data) {
+        if (data.isNull() || !SamplerBufferAccess.verify(data.getSamplerBuffer())) {
+            return false;
+        }
+
+        SamplerBuffer buffer = data.getSamplerBuffer();
+        Pointer dataStart = SamplerBufferAccess.getDataStart(buffer);
+        Pointer dataEnd = SamplerBufferAccess.getDataEnd(buffer);
+
+        return data.getStartPos() == buffer.getPos() &&
+                        (data.getEndPos() == dataEnd || data.getEndPos().isNull()) &&
+                        data.getCurrentPos().aboveOrEqual(dataStart) && data.getCurrentPos().belowOrEqual(dataEnd) && data.getCurrentPos().aboveOrEqual(data.getStartPos());
     }
 }
