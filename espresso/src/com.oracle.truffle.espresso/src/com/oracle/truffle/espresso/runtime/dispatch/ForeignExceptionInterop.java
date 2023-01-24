@@ -33,6 +33,10 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 public class ForeignExceptionInterop extends ThrowableInterop {
 
+    private static Object getRawForeignObject(StaticObject object) {
+        assert object.getKlass() == getMeta().polyglot.ForeignException;
+        return getMeta().java_lang_Throwable_backtrace.getObject(object).rawForeignObject(object.getKlass().getContext().getLanguage());
+    }
     @ExportMessage
     public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject receiver) {
         return ExceptionType.RUNTIME_ERROR;
@@ -41,34 +45,31 @@ public class ForeignExceptionInterop extends ThrowableInterop {
     @ExportMessage
     public static boolean hasExceptionCause(StaticObject object) {
         object.checkNotForeign();
-        Object rawForeignException = getMeta().java_lang_Throwable_backtrace.getObject(object);
+        Object rawForeignException = getRawForeignObject(object);
         return InteropLibrary.getUncached().hasExceptionCause(rawForeignException);
     }
 
     @ExportMessage
     public static Object getExceptionCause(StaticObject object) throws UnsupportedMessageException {
         object.checkNotForeign();
-        Object rawForeignException = getMeta().java_lang_Throwable_backtrace.getObject(object);
-        return InteropLibrary.getUncached().getExceptionCause(rawForeignException);
+        return InteropLibrary.getUncached().getExceptionCause(getRawForeignObject(object));
     }
 
     @ExportMessage
     public static boolean hasExceptionMessage(StaticObject object) {
         object.checkNotForeign();
-        Object rawForeignException = getMeta().java_lang_Throwable_backtrace.getObject(object);
-        return InteropLibrary.getUncached().hasExceptionMessage(rawForeignException);
+        return InteropLibrary.getUncached().hasExceptionMessage(getRawForeignObject(object));
     }
 
     @ExportMessage
     public static Object getExceptionMessage(StaticObject object) throws UnsupportedMessageException {
         object.checkNotForeign();
-        Object rawForeignException = getMeta().java_lang_Throwable_backtrace.getObject(object);
-        return InteropLibrary.getUncached().getExceptionMessage(rawForeignException);
+        return InteropLibrary.getUncached().getExceptionMessage(getRawForeignObject(object));
     }
 
     @ExportMessage
     public static RuntimeException throwException(StaticObject object) {
         object.checkNotForeign();
-        throw (RuntimeException) getMeta().java_lang_Throwable_backtrace.getObject(object).rawForeignObject(object.getKlass().getContext().getLanguage());
+        throw (RuntimeException) getRawForeignObject(object);
     }
 }
