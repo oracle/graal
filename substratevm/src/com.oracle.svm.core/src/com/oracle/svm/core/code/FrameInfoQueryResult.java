@@ -221,9 +221,6 @@ public class FrameInfoQueryResult {
      * that there is no inlining in target methods, so the method + BCI is unique.
      */
     public int getDeoptMethodOffset() {
-        if (deoptMethod != null) {
-            return deoptMethod.getDeoptOffsetInImage();
-        }
         return deoptMethodOffset;
     }
 

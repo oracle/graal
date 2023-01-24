@@ -77,7 +77,7 @@ public class ThreadStackPrinter {
             }
 
             if (isFirst) {
-                /* No information was printed, so try to print less detailed information. */
+                /* The code above failed, so print less detailed information. */
                 super.logFrame(log, sp, ip, codeInfo, deoptFrame);
             }
         }

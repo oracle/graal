@@ -390,8 +390,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             processSamplerBuffers();
 
             /*
-             * Write unflushed data from the thread local buffers but do *not* reinitialize them.
-             * The thread local code will handle space reclamation on their own time.
+             * Write unflushed data from the thread-local event buffers to the output file. We do
+             * *not* reinitialize the thread-local buffers as the individual threads will handle
+             * space reclamation on their own time.
              */
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                 JfrBuffer buffer = JfrThreadLocal.getJavaBuffer(thread);
@@ -412,6 +413,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 write(buffer);
                 JfrBufferAccess.reinitialize(buffer);
             }
+
             JfrTraceIdEpoch.getInstance().changeEpoch();
 
             // Now that the epoch changed, re-register all running threads for the new epoch.

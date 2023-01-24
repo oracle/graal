@@ -60,7 +60,7 @@ import com.oracle.svm.core.thread.VMThreads;
  * and the isolate-thread, before preparing everything that is needed for a stack walk.
  */
 public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSampler implements IsolateListener, ThreadListener {
-    private static final CGlobalData<Pointer> signalHandlerIsolate = CGlobalDataFactory.createWord();
+    private static final CGlobalData<Pointer> SIGNAL_HANDLER_ISOLATE = CGlobalDataFactory.createWord();
     private UnsignedWord keyForNativeThreadLocal;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -70,11 +70,6 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     @Fold
     public static SubstrateSigprofHandler singleton() {
         return ImageSingletons.lookup(SubstrateSigprofHandler.class);
-    }
-
-    @Fold
-    public static boolean isSupported() {
-        return ImageSingletons.contains(SubstrateSigprofHandler.class);
     }
 
     @Override
@@ -131,12 +126,12 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Isolate getSignalHandlerIsolate() {
-        return signalHandlerIsolate.get().readWord(0);
+        return SIGNAL_HANDLER_ISOLATE.get().readWord(0);
     }
 
     private static void setSignalHandlerIsolate(Isolate isolate) {
         assert getSignalHandlerIsolate().isNull() || isolate.isNull();
-        signalHandlerIsolate.get().writeWord(0, isolate);
+        SIGNAL_HANDLER_ISOLATE.get().writeWord(0, isolate);
     }
 
     @Override
@@ -187,10 +182,10 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     protected abstract void deleteNativeThreadLocal(UnsignedWord key);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract void setNativeThreadLocal(UnsignedWord key, IsolateThread value);
+    protected abstract void setNativeThreadLocalValue(UnsignedWord key, IsolateThread value);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract IsolateThread getNativeThreadLocal(UnsignedWord key);
+    protected abstract IsolateThread getNativeThreadLocalValue(UnsignedWord key);
 
     /**
      * Called from the platform dependent sigprof handler to enter isolate.
@@ -211,7 +206,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
         /* We are keeping reference to isolate thread inside OS thread local area. */
         if (SubstrateOptions.MultiThreaded.getValue()) {
             UnsignedWord key = singleton().keyForNativeThreadLocal;
-            IsolateThread thread = singleton().getNativeThreadLocal(key);
+            IsolateThread thread = singleton().getNativeThreadLocalValue(key);
             if (thread.isNull()) {
                 /* Thread is not yet initialized or already detached from isolate. */
                 return false;
@@ -225,6 +220,6 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void storeIsolateThreadInNativeThreadLocal(IsolateThread isolateThread) {
-        setNativeThreadLocal(keyForNativeThreadLocal, isolateThread);
+        setNativeThreadLocalValue(keyForNativeThreadLocal, isolateThread);
     }
 }

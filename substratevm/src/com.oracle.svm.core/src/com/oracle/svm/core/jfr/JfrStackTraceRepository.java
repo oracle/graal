@@ -123,19 +123,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
                     CodePointer ip = FrameAccess.singleton().readReturnAddress(sp);
                     SamplerStackWalkVisitor visitor = ImageSingletons.lookup(SamplerStackWalkVisitor.class);
                     if (JavaStackWalker.walkCurrentThread(sp, ip, visitor) || data.getTruncated()) {
-                        /* Deduplicate and store the stack trace. */
-                        Pointer start = data.getStartPos().add(SamplerSampleWriter.getHeaderSize());
-                        UnsignedWord size = data.getCurrentPos().subtract(start);
-
-                        CIntPointer statusPtr = StackValue.get(CIntPointer.class);
-                        JfrStackTraceTableEntry epochSpecificEntry = getOrPutStackTrace(start, size, data.getHashCode(), statusPtr);
-                        if (epochSpecificEntry.isNonNull()) {
-                            /* Only commit the data in the thread-local buffer if it is new data. */
-                            if (statusPtr.read() == JfrStackTraceTableEntryStatus.INSERTED) {
-                                SamplerSampleWriter.end(data, SamplerSampleWriter.JFR_STACK_TRACE_END);
-                            }
-                            return epochSpecificEntry.getId();
-                        }
+                        return storeDeduplicatedStackTrace(data);
                     }
                 } finally {
                     JfrThreadLocal.setSamplerWriterData(WordFactory.nullPointer());
@@ -145,6 +133,27 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         } finally {
             JfrExecutionSampler.singleton().allowSamplingInCurrentThread();
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a sampler buffer.")
+    private long storeDeduplicatedStackTrace(SamplerSampleWriterData data) {
+        if (SamplerSampleWriter.isValid(data)) {
+            /* There is a valid stack trace in the buffer, so deduplicate and store it. */
+            Pointer start = data.getStartPos().add(SamplerSampleWriter.getHeaderSize());
+            UnsignedWord size = data.getCurrentPos().subtract(start);
+
+            CIntPointer statusPtr = StackValue.get(CIntPointer.class);
+            JfrStackTraceTableEntry epochSpecificEntry = getOrPutStackTrace(start, size, data.getHashCode(), statusPtr);
+            if (epochSpecificEntry.isNonNull()) {
+                /* Only commit the data in the thread-local buffer if it is new data. */
+                if (statusPtr.read() == JfrStackTraceTableEntryStatus.INSERTED) {
+                    boolean success = SamplerSampleWriter.end(data, SamplerSampleWriter.JFR_STACK_TRACE_END);
+                    assert success : "must succeed because data was valid earlier";
+                }
+                return epochSpecificEntry.getId();
+            }
+        }
+        return 0L;
     }
 
     /**

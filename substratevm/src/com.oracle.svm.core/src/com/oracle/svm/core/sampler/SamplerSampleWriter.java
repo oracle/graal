@@ -74,16 +74,14 @@ public final class SamplerSampleWriter {
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
-    public static void end(SamplerSampleWriterData data, long endMarker) {
-        assert isValid(data);
+    public static boolean end(SamplerSampleWriterData data, long endMarker) {
+        if (!isValid(data)) {
+            return false;
+        }
 
         UnsignedWord sampleSize = getSampleSize(data);
-        /*
-         * Put end marker.
-         *
-         * We need to distinguish between end of a sample and end of a regular stack walk (see
-         * com.oracle.svm.core.sampler.SamplerBuffersAccess.processSamplerBuffer)
-         */
+
+        /* ensureSize() guarantees that there is enough space for the end marker. */
         putUncheckedLong(data, endMarker);
 
         /* Patch data at start of entry. */
@@ -94,8 +92,8 @@ public final class SamplerSampleWriter {
         putUncheckedInt(data, (int) sampleSize.rawValue());
         data.setCurrentPos(currentPos);
 
-        assert getUncommittedSize(data).unsignedRemainder(Long.BYTES).equal(0);
         commit(data);
+        return true;
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
@@ -136,8 +134,10 @@ public final class SamplerSampleWriter {
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     private static void commit(SamplerSampleWriterData data) {
-        SamplerBuffer buffer = data.getSamplerBuffer();
         assert isValid(data);
+        assert getUncommittedSize(data).unsignedRemainder(Long.BYTES).equal(0);
+
+        SamplerBuffer buffer = data.getSamplerBuffer();
         assert buffer.getPos().equal(data.getStartPos());
         assert SamplerBufferAccess.getDataEnd(data.getSamplerBuffer()).equal(data.getEndPos());
 
@@ -205,7 +205,7 @@ public final class SamplerSampleWriter {
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
-    private static boolean isValid(SamplerSampleWriterData data) {
+    public static boolean isValid(SamplerSampleWriterData data) {
         return data.getEndPos().isNonNull();
     }
 

@@ -143,14 +143,14 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void setNativeThreadLocal(UnsignedWord key, IsolateThread value) {
+    protected void setNativeThreadLocalValue(UnsignedWord key, IsolateThread value) {
         int resultCode = Pthread.pthread_setspecific((Pthread.pthread_key_t) key, (VoidPointer) value);
         PosixUtils.checkStatusIs0(resultCode, "pthread_setspecific(key, value): wrong arguments.");
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected IsolateThread getNativeThreadLocal(UnsignedWord key) {
+    protected IsolateThread getNativeThreadLocalValue(UnsignedWord key) {
         /*
          * Although this method is not async-signal-safe in general we rely on
          * implementation-specific behavior here.

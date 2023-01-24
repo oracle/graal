@@ -441,6 +441,7 @@ public final class JavaThreads {
     }
 }
 
+/* GR-43733: this class can be removed when we drop the JDK 17 support. */
 @TargetClass(className = "jdk.internal.event.ThreadSleepEvent", onlyWith = JDK19OrLater.class)
 final class Target_jdk_internal_event_ThreadSleepEvent {
     @Alias public long time;

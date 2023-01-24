@@ -1021,11 +1021,6 @@ public abstract class PlatformThreads {
         return !(threadStatus == ThreadStatus.NEW || threadStatus == ThreadStatus.TERMINATED);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static boolean isTerminated(Thread thread) {
-        return getThreadStatus(thread) == ThreadStatus.TERMINATED;
-    }
-
     private static ThreadData acquireThreadData(Thread thread) {
         return toTarget(thread).threadData.acquire();
     }

@@ -411,6 +411,7 @@ public class FrameInfoDecoder {
                 if (deoptMethodIndex < 0) {
                     /* Negative number is a reference to the target method. */
                     cur.deoptMethod = (SharedMethod) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), -1 - deoptMethodIndex);
+                    cur.deoptMethodOffset = cur.deoptMethod.getDeoptOffsetInImage();
                 } else {
                     /* Positive number is a directly encoded method offset. */
                     cur.deoptMethodOffset = deoptMethodIndex;

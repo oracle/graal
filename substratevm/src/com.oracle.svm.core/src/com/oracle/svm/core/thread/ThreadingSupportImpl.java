@@ -242,7 +242,6 @@ public class ThreadingSupportImpl implements ThreadingSupport {
     @Override
     public void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback) {
         IsolateThread thread = CurrentIsolate.getCurrentThread();
-        removeRecurringCallback(thread);
         if (callback != null) {
             if (!SupportRecurringCallback.getValue()) {
                 VMError.shouldNotReachHere("Recurring callbacks must be enabled during image build with option " + enableSupportOption);
@@ -255,7 +254,9 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             }
 
             RecurringCallbackTimer timer = createRecurringCallbackTimer(intervalNanos, callback);
-            setRecurringCallback(thread, timer);
+            registerRecurringCallback0(thread, timer);
+        } else {
+            removeRecurringCallback(thread);
         }
     }
 
@@ -264,7 +265,13 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         return new RecurringCallbackTimer(intervalNanos, callback);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
+    private static void registerRecurringCallback0(IsolateThread thread, RecurringCallbackTimer timer) {
+        removeRecurringCallback(thread);
+        setRecurringCallback(thread, timer);
+    }
+
+    @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
     public static void setRecurringCallback(IsolateThread thread, RecurringCallbackTimer timer) {
         assert SupportRecurringCallback.getValue() && MultiThreaded.getValue();
         assert timer.targetIntervalNanos > 0;
@@ -274,7 +281,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         Safepoint.setSafepointRequested(thread, timer.requestedChecks);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.", callerMustBe = true)
     public static RecurringCallback getRecurringCallback(IsolateThread thread) {
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
 

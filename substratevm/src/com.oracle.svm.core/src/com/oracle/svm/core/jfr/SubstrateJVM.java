@@ -202,13 +202,9 @@ public class SubstrateJVM {
         }
     }
 
-    public static boolean isInitialized() {
-        return get().initialized;
-    }
-
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     protected boolean isRecording() {
-        return get().recording;
+        return recording;
     }
 
     /**
