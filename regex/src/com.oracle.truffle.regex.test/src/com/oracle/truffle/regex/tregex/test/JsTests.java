@@ -214,7 +214,7 @@ public class JsTests extends RegexTestBase {
 
     @Test
     public void gr43449() {
-        test("\\B[^\\bÂ\u008D](?=.)+?[^]|\\?*?|(?!(?:(.)))*?(?!\\3^){4}", "yi",
+        test("\\B[^\\b\u00C2\u008D](?=.)+?[^]|\\?*?|(?!(?:(.)))*?(?!\\3^){4}", "yi",
                         "\u7300\ud329\n\n\u969d\n\n\u00da\n\u7300\ud329\n\n\u969d\n\n\u00da\n\u7300\ud329\n\n\u969d\n\n\u00da\n\u7300\ud329\n\n\u969d\n\n\u00da\n\u7300\ud329\n\n\u969d\n\n\u00da\n", 0,
                         true, 0, 2, -1, -1);
     }
