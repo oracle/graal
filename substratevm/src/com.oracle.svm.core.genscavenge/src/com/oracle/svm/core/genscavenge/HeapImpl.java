@@ -37,7 +37,6 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -689,14 +688,9 @@ public final class HeapImpl extends Heap {
 
     @Uninterruptible(reason = "Ensure that no GC can move the object to another chunk.")
     @Override
-    public long getOrSetIdentityHashSalt(Object obj, long newSalt) {
+    public long getIdentityHashSalt(Object obj) {
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
-        long salt = chunk.getIdentityHashSalt();
-        if (salt == 0 && newSalt != 0) {
-            long existingSalt = ((Pointer) chunk).compareAndSwapLong(chunk.offsetOfIdentityHashSalt(), 0, newSalt, LocationIdentity.ANY_LOCATION);
-            salt = (existingSalt != 0) ? existingSalt : newSalt;
-        }
-        return salt;
+        return HeapChunk.getIdentityHashSalt(chunk).rawValue();
     }
 
     static Pointer getImageHeapStart() {

@@ -222,7 +222,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         UnsignedWord fromAddressState = IDHASH_STATE_FROM_ADDRESS.shiftLeft(IDHASH_STATE_SHIFT);
         UnsignedWord newHeader = oldHeader.and(IDHASH_STATE_BITS.not()).or(fromAddressState);
         writeHeaderToObject(o, newHeader);
-        assert hasIdentityHashFromAddress(o);
+        dynamicAssert(hasIdentityHashFromAddress(o), "header must reflect change");
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

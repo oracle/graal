@@ -196,7 +196,6 @@ public final class GCImpl implements GC {
         startCollectionOrExit();
 
         timers.resetAllExceptMutator();
-        collectionEpoch = collectionEpoch.add(1);
 
         /* Flush all TLAB chunks to eden. */
         ThreadLocalAllocation.disableAndFlushForAllThreads();
@@ -358,7 +357,7 @@ public final class GCImpl implements GC {
         Log verboseGCLog = Log.log();
         HeapImpl heap = HeapImpl.getHeapImpl();
         sizeBefore = ((SubstrateGCOptions.PrintGC.getValue() || SerialGCOptions.PrintHeapShape.getValue()) ? getChunkBytes() : WordFactory.zero());
-        if (SubstrateGCOptions.VerboseGC.getValue() && getCollectionEpoch().equal(1)) {
+        if (SubstrateGCOptions.VerboseGC.getValue() && getCollectionEpoch().equal(0)) {
             verboseGCLog.string("[Heap policy parameters: ").newline();
             verboseGCLog.string("  YoungGenerationSize: ").unsigned(getPolicy().getMaximumYoungGenerationSize()).newline();
             verboseGCLog.string("      MaximumHeapSize: ").unsigned(getPolicy().getMaximumHeapSize()).newline();
@@ -1151,6 +1150,7 @@ public final class GCImpl implements GC {
 
     private void finishCollection() {
         assert collectionInProgress;
+        collectionEpoch = collectionEpoch.add(1);
         collectionInProgress = false;
     }
 

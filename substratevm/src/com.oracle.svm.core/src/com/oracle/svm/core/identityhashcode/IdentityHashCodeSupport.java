@@ -26,12 +26,10 @@ package com.oracle.svm.core.identityhashcode;
 
 import java.util.SplittableRandom;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
-import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
@@ -42,8 +40,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -70,59 +66,20 @@ public final class IdentityHashCodeSupport {
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     public static int generateIdentityHashCode(Object obj) {
-        int newHashCode;
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
-        if (ol.hasFixedIdentityHashField()) {
-            newHashCode = computeRandomHashCode();
-
-            if (!Unsafe.getUnsafe().compareAndSetInt(obj, ol.getFixedIdentityHashOffset(), 0, newHashCode)) {
-                newHashCode = ObjectAccess.readInt(obj, ol.getFixedIdentityHashOffset(), IDENTITY_HASHCODE_LOCATION);
-            }
-        } else {
-            newHashCode = assignHashCodeFromAddress(obj, 0);
-            if (newHashCode == 0) {
-                long newSalt;
-                do {
-                    newSalt = ensureRandomGenerator().nextLong();
-                } while (newSalt == 0);
-                newHashCode = assignHashCodeFromAddress(obj, newSalt);
-            }
+        VMError.guarantee(ol.hasFixedIdentityHashField(), "Snippet must handle other cases");
+        int newHashCode = generateRandomHashCode();
+        if (!Unsafe.getUnsafe().compareAndSetInt(obj, ol.getFixedIdentityHashOffset(), 0, newHashCode)) {
+            newHashCode = ObjectAccess.readInt(obj, ol.getFixedIdentityHashOffset(), IDENTITY_HASHCODE_LOCATION);
         }
-        VMError.guarantee(newHashCode != 0, "Must not return 0 because it can mean 'hash code not computed yet'");
-        assert newHashCode > 0 : "The Java HotSpot VM only returns positive numbers for the identity hash code, so we want to have the same restriction on Substrate VM in order to not surprise users";
+        VMError.guarantee(newHashCode != 0, "Missing identity hash code");
         return newHashCode;
     }
 
     @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.")
-    private static int assignHashCodeFromAddress(Object obj, long newSalt) {
-        ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        if (oh.hasIdentityHashField(obj)) { // a GC has created the field since we last checked
-            return ObjectAccess.readInt(obj, LayoutEncoding.getOptionalIdentityHashOffset(obj), IDENTITY_HASHCODE_LOCATION);
-        } else {
-            long salt = Heap.getHeap().getOrSetIdentityHashSalt(obj, newSalt);
-            if (salt == 0) {
-                assert newSalt == 0;
-                return 0; // must call again with a salt computed outside of uninterruptible code
-            }
-            oh.setIdentityHashFromAddress(obj);
-            return computeHashCodeFromAddress(obj, salt);
-        }
-    }
-
-    @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.", callerMustBe = true)
     public static int computeHashCodeFromAddress(Object obj) {
-        long salt = Heap.getHeap().getOrSetIdentityHashSalt(obj, 0);
-        return computeHashCodeFromAddress(obj, salt);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static int computeHashCodeFromAddress(Object obj, long salt) {
-        if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.dynamicAssert(salt != 0, "must have salt");
-        } else {
-            assert salt != 0;
-        }
         Word address = Word.objectToUntrackedPointer(obj);
+        long salt = Heap.getHeap().getIdentityHashSalt(obj);
         SignedWord salted = WordFactory.signed(salt).xor(address);
         int hash = mix32(salted.rawValue()) >>> 1;
         return (hash == 0) ? 1 : hash;
@@ -136,7 +93,7 @@ public final class IdentityHashCodeSupport {
         return (int) (((z ^ (z >>> 28)) * 0xcb24d0a5c88c35b3L) >>> 32);
     }
 
-    private static SplittableRandom ensureRandomGenerator() {
+    private static int generateRandomHashCode() {
         SplittableRandom hashCodeGenerator = hashCodeGeneratorTL.get();
         if (hashCodeGenerator == null) {
             /*
@@ -146,14 +103,16 @@ public final class IdentityHashCodeSupport {
             hashCodeGenerator = new SplittableRandom();
             hashCodeGeneratorTL.set(hashCodeGenerator);
         }
-        return hashCodeGenerator;
-    }
 
-    private static int computeRandomHashCode() {
         /*
          * The range of nextInt(MAX_INT) includes 0 and excludes MAX_INT, so adding 1 gives us the
          * range [1, MAX_INT] that we want.
          */
-        return ensureRandomGenerator().nextInt(Integer.MAX_VALUE) + 1;
+        int hashCode = hashCodeGenerator.nextInt(Integer.MAX_VALUE) + 1;
+
+        assert hashCode != 0 : "Must not return 0 because it means 'hash code not computed yet' in the field that stores the hash code";
+        assert hashCode > 0 : "The Java HotSpot VM only returns positive numbers for the identity hash code, so we want to have the same restriction on Substrate VM in order to not surprise users";
+
+        return hashCode;
     }
 }

@@ -32,7 +32,6 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.ComparableWord;
@@ -171,13 +170,10 @@ public final class HeapChunk {
         void setOffsetToNextChunk(SignedWord newNext);
 
         @RawField
-        long getIdentityHashSalt();
+        UnsignedWord getIdentityHashSalt();
 
         @RawField
-        void setIdentityHashSalt(long value);
-
-        @RawFieldOffset
-        int offsetOfIdentityHashSalt();
+        void setIdentityHashSalt(UnsignedWord value);
     }
 
     public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord chunkSize) {
@@ -186,6 +182,13 @@ public final class HeapChunk {
         HeapChunk.setSpace(chunk, null);
         HeapChunk.setNext(chunk, WordFactory.nullPointer());
         HeapChunk.setPrevious(chunk, WordFactory.nullPointer());
+
+        /*
+         * The epoch is obviously not random, but cheap to use, and we cannot use a random number
+         * generator object in all contexts where we are called from, particularly during GC.
+         * Together with a good bit mixer function, it seems sufficient.
+         */
+        HeapChunk.setIdentityHashSalt(chunk, GCImpl.getGCImpl().getCollectionEpoch());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -256,6 +259,16 @@ public final class HeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends Header<T>> void setNext(Header<T> that, T newNext) {
         that.setOffsetToNextChunk(offsetFromPointer(that, newNext));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getIdentityHashSalt(Header<?> that) {
+        return that.getIdentityHashSalt();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setIdentityHashSalt(Header<?> that, UnsignedWord value) {
+        that.setIdentityHashSalt(value);
     }
 
     /**

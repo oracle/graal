@@ -246,13 +246,9 @@ public abstract class Heap {
     public abstract void dirtyAllReferencesOf(Object obj);
 
     /**
-     * Retrieves or assigns the salt value for computing the {@linkplain System#identityHashCode
-     * identity hash code} of the passed object (and potentially other objects) from its address.
-     *
-     * @param newSalt If no salt value is already assigned, a new salt value to assign. A value of 0
-     *            only attempts to get the existing value.
-     * @return the current salt value, or 0 if no value is assigned and 0 was passed. If a new salt
-     *         value was passed, the new value or a value which another thread assigned in a race.
+     * Retrieves a salt value for computing the {@linkplain System#identityHashCode identity hash
+     * code} of the passed object (and potentially other objects) from its address. The same salt
+     * value will be returned for this object at least until the next garbage collection.
      */
-    public abstract long getOrSetIdentityHashSalt(Object obj, long newSalt);
+    public abstract long getIdentityHashSalt(Object obj);
 }
