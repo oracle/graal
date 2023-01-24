@@ -386,7 +386,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         Label processTail = new Label();
         Label end = new Label();
 
-        ElementSize eSize = ElementSize.fromSize(stride.value * Byte.SIZE);
+        ElementSize eSize = ElementSize.fromStride(stride);
         if (variant == ArrayIndexOfVariant.table) {
             // in the table variant, searchValue0 is actually a pointer to a 32-byte array
             masm.fldp(128, vecTableHi, vecTableLo, AArch64Address.createPairBaseRegisterOnlyAddress(128, asRegister(searchValues[0])));
@@ -397,11 +397,6 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                 masm.neon.dupVG(FullReg, eSize, vecSearchValues[i], asRegister(searchValues[i]));
             }
         }
-        if (findTwoConsecutive) {
-            // initialize previous chunk tail vector to a value that can't match the first search
-            // value.
-            masm.neon.notVV(FullReg, vecLastArray2, vecSearchValues[0]);
-        }
         /*
          * 2.1 Set searchEnd pointing to byte after the last valid element in the array and
          * 'refAddress' pointing to the beginning of the last chunk.
@@ -410,6 +405,25 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         masm.sub(64, refAddress, searchEnd, chunkSize);
         /* Set 'array' pointing to the chunk from where the search begins. */
         masm.add(64, array, baseAddress, fromIndex, ExtendType.SXTW, stride.log2);
+
+        if (findTwoConsecutive) {
+            // initialize previous chunk tail vector to a value that can't match the first search
+            // value.
+            masm.neon.notVV(FullReg, vecLastArray2, vecSearchValues[0]);
+            // peel first loop iteration because in this variant the loop body depends on the last
+            // iteration's state, and we still want to align memory accesses
+            masm.cmp(64, refAddress, array);
+            masm.branchConditionally(ConditionFlag.LS, processTail);
+            masm.sub(64, currOffset, array, baseAddress);
+            masm.fldp(128, vecArray1, vecArray2, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array, 32));
+            emitSIMDMatch(masm, eSize, array, vecSearchValues, vecTmp, vecArray1, vecArray2, vecLastArray2, vecMask0x0f, vecTableHi, vecTableLo, matchInChunk);
+            // align address to 32-byte boundary
+            masm.bic(64, array, array, chunkSize - 1);
+            // fix vecLastArray2: load from array - 1 and move the resulting vector's first element
+            // to the last
+            masm.fldr(128, vecArray2, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_SIGNED_UNSCALED, array, -stride.value));
+            masm.neon.insXX(eSize, vecLastArray2, (FullReg.bytes() / stride.value) - 1, vecArray2, 0);
+        }
 
         masm.align(AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT);
         masm.bind(searchByChunkLoopHead);
@@ -421,7 +435,74 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         if (variant != ArrayIndexOfVariant.table) {
             masm.fldp(128, vecArray1, vecArray2, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array, 32));
         }
+        emitSIMDMatch(masm, eSize, array, vecSearchValues, vecTmp, vecArray1, vecArray2, vecLastArray2, vecMask0x0f, vecTableHi, vecTableLo, matchInChunk);
+        /* No match; jump to next loop iteration. */
+        if (!findTwoConsecutive) {
+            // align address to 32-byte boundary
+            masm.bic(64, array, array, chunkSize - 1);
+        }
+        masm.jmp(searchByChunkLoopHead);
 
+        masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
+        masm.bind(processTail);
+        masm.cmp(64, array, searchEnd);
+        masm.branchConditionally(ConditionFlag.HS, end);
+        if (findTwoConsecutive) {
+            masm.sub(64, array, searchEnd, chunkSize + stride.value);
+            // fix vecLastArray2 for last iteration: load from last chunk index - 1 and move the
+            // resulting vector's first element to the last
+            masm.fldr(128, vecArray2, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, array, stride.value));
+            masm.neon.insXX(eSize, vecLastArray2, (FullReg.bytes() / stride.value) - 1, vecArray2, 0);
+        } else {
+            masm.sub(64, array, searchEnd, chunkSize);
+        }
+        /*
+         * Set 'searchEnd' to zero because at the end of 'searchByChunkLoopTail', the 'array' will
+         * be rolled back to a 32-byte aligned addressed. Thus, unless 'searchEnd' is adjusted, the
+         * 'processTail' comparison condition 'array' >= 'searchEnd' may never be true.
+         */
+        masm.mov(64, searchEnd, zr);
+        masm.jmp(searchByChunkLoopTail);
+
+        /* 4. If the element is found in a 32-byte chunk then find its position. */
+        masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
+        masm.bind(matchInChunk);
+        if (variant == ArrayIndexOfVariant.table) {
+            // convert matching bytes to 0xff
+            masm.neon.cmtstVVV(FullReg, ElementSize.Byte, vecArray1, vecArray1, vecArray1);
+            masm.neon.cmtstVVV(FullReg, ElementSize.Byte, vecArray2, vecArray2, vecArray2);
+        }
+        try (ScratchRegister scratchReg = masm.getScratchRegister()) {
+            Register tmp = scratchReg.getRegister();
+            initCalcIndexOfFirstMatchMask(masm, vecTmp[0], tmp);
+            calcIndexOfFirstMatch(masm, tmp, vecArray1, vecArray2, vecTmp[0], false);
+            if (variant == ArrayIndexOfVariant.table) {
+                masm.asr(64, currOffset, currOffset, stride.log2);
+            }
+            masm.add(64, result, currOffset, tmp, ShiftType.ASR, 1);
+            if (findTwoConsecutive) {
+                masm.sub(64, result, result, 1);
+            }
+        }
+        if (getMatchResultStride().log2 != 0) {
+            /* Convert byte offset of searchElement to its array index */
+            masm.asr(64, result, result, getMatchResultStride().log2);
+        }
+        masm.bind(end);
+    }
+
+    private void emitSIMDMatch(AArch64MacroAssembler masm,
+                    ElementSize eSize,
+                    Register array,
+                    Register[] vecSearchValues,
+                    Register[] vecTmp,
+                    Register vecArray1,
+                    Register vecArray2,
+                    Register vecLastArray2,
+                    Register vecMask0x0f,
+                    Register vecTableHi,
+                    Register vecTableLo,
+                    Label matchInChunk) {
         if (findTwoConsecutive) {
             /*
              * In the findTwoConsecutive case, the first search element is compared the current
@@ -435,14 +516,12 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
             // save vecArray2 for next iteration
             masm.neon.moveVV(FullReg, vecLastArray2, vecArray2);
         }
-
         switch (variant) {
             case matchAny:
                 int nValues = vecSearchValues.length;
                 if (nValues == 1) {
                     masm.neon.cmeqVVV(FullReg, eSize, vecArray1, vecArray1, vecSearchValues[0]);
                     masm.neon.cmeqVVV(FullReg, eSize, vecArray2, vecArray2, vecSearchValues[0]);
-                    masm.neon.orrVVV(FullReg, vecTmp[0], vecArray1, vecArray2);
                 } else {
                     masm.neon.cmeqVVV(FullReg, eSize, vecTmp[0], vecArray1, vecSearchValues[0]);
                     masm.neon.cmeqVVV(FullReg, eSize, vecTmp[1], vecArray2, vecSearchValues[0]);
@@ -561,62 +640,14 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                 }
                 break;
         }
-        Stride matchResultStride = variant == ArrayIndexOfVariant.table ? Stride.S1 : stride;
         masm.neon.orrVVV(FullReg, vecTmp[0], vecArray1, vecArray2);
         /* If value != 0, then there was a match somewhere. */
-        vectorCheckZero(masm, ElementSize.fromStride(matchResultStride), vecTmp[0], vecTmp[0], variant != ArrayIndexOfVariant.table);
+        vectorCheckZero(masm, ElementSize.fromStride(getMatchResultStride()), vecTmp[0], vecTmp[0], variant != ArrayIndexOfVariant.table);
         masm.branchConditionally(ConditionFlag.NE, matchInChunk);
-        /* No match; jump to next loop iteration. */
-        // align address to 32-byte boundary
-        masm.bic(64, array, array, chunkSize - 1);
-        masm.jmp(searchByChunkLoopHead);
+    }
 
-        masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
-        masm.bind(processTail);
-        masm.cmp(64, array, searchEnd);
-        masm.branchConditionally(ConditionFlag.HS, end);
-        if (findTwoConsecutive) {
-            masm.sub(64, array, searchEnd, chunkSize + stride.value);
-            // fix vecLastArray2 for last iteration: load from last chunk index - 1 and move the
-            // resulting vector's first element to the last
-            masm.fldr(128, vecArray2, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_POST_INDEXED, array, stride.value));
-            masm.neon.insXX(eSize, vecLastArray2, (FullReg.bytes() / stride.value) - 1, vecArray2, 0);
-        } else {
-            masm.sub(64, array, searchEnd, chunkSize);
-        }
-        /*
-         * Set 'searchEnd' to zero because at the end of 'searchByChunkLoopTail', the 'array' will
-         * be rolled back to a 32-byte aligned addressed. Thus, unless 'searchEnd' is adjusted, the
-         * 'processTail' comparison condition 'array' >= 'searchEnd' may never be true.
-         */
-        masm.mov(64, searchEnd, zr);
-        masm.jmp(searchByChunkLoopTail);
-
-        /* 4. If the element is found in a 32-byte chunk then find its position. */
-        masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
-        masm.bind(matchInChunk);
-        if (variant == ArrayIndexOfVariant.table) {
-            // convert matching bytes to 0xff
-            masm.neon.cmtstVVV(FullReg, ElementSize.Byte, vecArray1, vecArray1, vecArray1);
-            masm.neon.cmtstVVV(FullReg, ElementSize.Byte, vecArray2, vecArray2, vecArray2);
-        }
-        try (ScratchRegister scratchReg = masm.getScratchRegister()) {
-            Register tmp = scratchReg.getRegister();
-            initCalcIndexOfFirstMatchMask(masm, vecTmp[0], tmp);
-            calcIndexOfFirstMatch(masm, tmp, vecArray1, vecArray2, vecTmp[0], false);
-            if (variant == ArrayIndexOfVariant.table) {
-                masm.asr(64, currOffset, currOffset, stride.log2);
-            }
-            masm.add(64, result, currOffset, tmp, ShiftType.ASR, 1);
-            if (findTwoConsecutive) {
-                masm.sub(64, result, result, 1);
-            }
-        }
-        if (matchResultStride.log2 != 0) {
-            /* Convert byte offset of searchElement to its array index */
-            masm.asr(64, result, result, matchResultStride.log2);
-        }
-        masm.bind(end);
+    private Stride getMatchResultStride() {
+        return variant == ArrayIndexOfVariant.table ? Stride.S1 : stride;
     }
 
     private int getSIMDLoopChunkSize() {
