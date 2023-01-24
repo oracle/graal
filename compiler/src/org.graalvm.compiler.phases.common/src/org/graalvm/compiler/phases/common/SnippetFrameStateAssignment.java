@@ -271,6 +271,7 @@ public class SnippetFrameStateAssignment {
                             GraalError.shouldNotReachHere("Snippet graphs containing loops with value proxies are not supported by snippet frame state assignment.");
                         }
                     }
+                    stateMapping.put(loop, NodeStateAssignment.AFTER_BCI_INVALID_FOR_DEOPTIMIZATION);
                     ReentrantNodeIterator.processLoop(this, loop, NodeStateAssignment.AFTER_BCI_INVALID_FOR_DEOPTIMIZATION);
                 }
             }
