@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
@@ -228,7 +229,7 @@ public final class PrimitiveType extends Type {
             case X86_FP80:
                 return CommonNodeFactory.createSimpleConstantNoArray(null, this);
             case F128:
-                return CommonNodeFactory.createSimpleConstantNoArray(null, this);
+                return CommonNodeFactory.createSimpleConstantNoArray(LLVM128BitFloat.POSITIVE_ZERO, this);
             default:
                 throw new LLVMParserException("Unsupported Type for Zero Constant: " + this);
         }
