@@ -116,7 +116,7 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
     }
 
     @Override
-    protected boolean canTraverseLookArounds() {
+    protected boolean isBuildingDFA() {
         return false;
     }
 }
