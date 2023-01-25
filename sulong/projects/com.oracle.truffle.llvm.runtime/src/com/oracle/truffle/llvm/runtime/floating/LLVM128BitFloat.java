@@ -1,5 +1,6 @@
 package com.oracle.truffle.llvm.runtime.floating;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
@@ -15,6 +16,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.memory.ByteArraySupport;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -147,8 +149,12 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         return fromLong(Math.abs(val), sign);
     }
 
-    public long getFractionPart() {
+    public long getSecondFractionPart() {
         return fraction;
+    }
+
+    public long getFirstFractionPart() {
+        return expSignFraction & FRACTION_MASK;
     }
 
     private long getUnbiasedExponent() {
@@ -290,6 +296,87 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     @Override
     public int hashCode() {
         return Arrays.hashCode(getBytes());
+    }
+
+    public static int compare(LLVM128BitFloat val1, LLVM128BitFloat val2) {
+        return val1.compareOrdered(val2);
+    }
+
+    int compareOrdered(LLVM128BitFloat val) {
+        if (isNegativeInfinity()) {
+            if (val.isNegativeInfinity()) {
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+
+        if (val.isNegativeInfinity()) {
+            return 1;
+        }
+
+        if (getSign() == val.getSign()) {
+            long expDifference = getExponent() - val.getExponent();
+            if (expDifference == 0) {
+                long fractionFirstPartDifference = getFirstFractionPart() - val.getFirstFractionPart();
+                if (fractionFirstPartDifference == 0) {
+                    long fractionSecondPartDifference = getSecondFractionPart() - val.getSecondFractionPart();
+                    if (fractionSecondPartDifference == 0) {
+                        return 0;
+                    } else if (fractionSecondPartDifference < 0) {
+                        return -1;
+                    } else {
+                        return 1;
+                    }
+                } else {
+                    return (int) fractionFirstPartDifference;
+                }
+            } else {
+                return (int) expDifference;
+            }
+        } else {
+            if (isZero() && val.isZero()) {
+                return 0;
+            } else if (getSign()) {
+                return -1;
+            } else {
+                return 1;
+            }
+        }
+    }
+
+    public boolean isZero() {
+        return isPositiveZero() || isNegativeZero();
+    }
+
+    private boolean isPositiveZero() {
+        return equals(POSITIVE_ZERO);
+    }
+
+    private boolean isNegativeZero() {
+        return equals(NEGATIVE_ZERO);
+    }
+
+    @ExplodeLoop
+    public static boolean areOrdered(LLVM128BitFloat... vals) {
+        CompilerAsserts.compilationConstant(vals.length);
+        for (LLVM128BitFloat val : vals) {
+            if (!val.isOrdered()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean isNaN() {
+        if (getExponent() == 0x7FFF) {
+            return !isInfinity() && (getSecondFractionPart() != 0L || getFirstFractionPart() != 0L);
+        }
+        return false;
+    }
+
+    public boolean isOrdered() {
+        return !isNaN();
     }
 
     // serialization for NFI

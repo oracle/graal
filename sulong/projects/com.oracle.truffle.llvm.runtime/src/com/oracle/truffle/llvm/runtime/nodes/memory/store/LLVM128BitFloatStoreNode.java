@@ -69,7 +69,7 @@ public abstract class LLVM128BitFloatStoreNode extends LLVMStoreNode {
                         @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
 
             long currentptr = address.getOffset() + offset;
-            nativeWrite.writeI64(address.getObject(), currentptr, value.getFractionPart());
+            nativeWrite.writeI64(address.getObject(), currentptr, value.getSecondFractionPart());
             currentptr += I64_SIZE_IN_BYTES;
             nativeWrite.writeI64(address.getObject(), currentptr, value.getExpSignFractionPart());
         }
@@ -97,7 +97,7 @@ public abstract class LLVM128BitFloatStoreNode extends LLVMStoreNode {
                     // @CachedLibrary("address.getObject()") here.
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         long currentptr = address.getOffset();
-        nativeWrite.writeI64(address.getObject(), currentptr, value.getFractionPart());
+        nativeWrite.writeI64(address.getObject(), currentptr, value.getSecondFractionPart());
         currentptr += I64_SIZE_IN_BYTES;
         nativeWrite.writeI64(address.getObject(), currentptr, value.getExpSignFractionPart());
     }
