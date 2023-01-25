@@ -59,6 +59,9 @@ public class ThrowableInterop extends EspressoInterop {
     @ExportMessage
     public static Object getExceptionCause(StaticObject object) throws UnsupportedMessageException {
         object.checkNotForeign();
+        if (!hasExceptionCause(object)) {
+            throw UnsupportedMessageException.create();
+        }
         return getMeta().java_lang_Throwable_cause.getObject(object);
     }
 
@@ -71,6 +74,9 @@ public class ThrowableInterop extends EspressoInterop {
     @ExportMessage
     public static Object getExceptionMessage(StaticObject object) throws UnsupportedMessageException {
         object.checkNotForeign();
+        if (!hasExceptionMessage(object)) {
+            throw UnsupportedMessageException.create();
+        }
         return getMeta().java_lang_Throwable_detailMessage.getObject(object);
     }
 
