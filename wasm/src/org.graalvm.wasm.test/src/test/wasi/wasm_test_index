@@ -11,3 +11,5 @@ fd_fdstat_get-file
 fd_filestat_get-file
 fd_fdstat_set_flags-file
 path_open-existing-file
+random_get
+sched_yield

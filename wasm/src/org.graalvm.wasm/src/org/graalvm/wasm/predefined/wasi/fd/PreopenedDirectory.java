@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -117,7 +117,12 @@ final class PreopenedDirectory {
 
         final TruffleFile resolvedVirtualTruffleFile = containedVirtualFile(virtualTruffleFile);
         if (resolvedVirtualTruffleFile != null) {
-            final String relativePathToRoot = resolvedVirtualTruffleFile.getPath().substring(virtualPath.getPath().length() + 1);
+            int virtualPathLength = virtualPath.getPath().length();
+            if (virtualPathLength != 1) {
+                // Not the root directory. Also remove last slash.
+                virtualPathLength++;
+            }
+            final String relativePathToRoot = resolvedVirtualTruffleFile.getPath().substring(virtualPathLength);
             return containedHostFile(hostPath.resolve(relativePathToRoot));
         }
         return null;
