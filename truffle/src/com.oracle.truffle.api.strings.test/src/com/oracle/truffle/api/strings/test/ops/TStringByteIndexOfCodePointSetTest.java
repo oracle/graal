@@ -57,6 +57,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.strings.CodePointSetParameter;
+import com.oracle.truffle.api.strings.JavaStringUtils;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.test.Encodings;
 import com.oracle.truffle.api.strings.test.TStringTestBase;
@@ -66,10 +67,13 @@ import com.oracle.truffle.api.strings.test.TStringTestUtil;
 public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
 
     @Parameter public TruffleString.ByteIndexOfCodePointSetNode node;
+    @Parameter(1) public JavaStringUtils.CharIndexOfCodePointSetNode nodeJavaString;
 
     @Parameters(name = "{0}")
-    public static Iterable<TruffleString.ByteIndexOfCodePointSetNode> data() {
-        return Arrays.asList(TruffleString.ByteIndexOfCodePointSetNode.create(), TruffleString.ByteIndexOfCodePointSetNode.getUncached());
+    public static Iterable<Object[]> data() {
+        return Arrays.asList(
+                        new Object[]{TruffleString.ByteIndexOfCodePointSetNode.create(), JavaStringUtils.CharIndexOfCodePointSetNode.create()},
+                        new Object[]{TruffleString.ByteIndexOfCodePointSetNode.getUncached(), JavaStringUtils.CharIndexOfCodePointSetNode.getUncached()});
     }
 
     @Test
@@ -200,13 +204,20 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
                 for (int i = 0; i < strings.length; i++) {
                     int expected = indexOfRanges(codepoints[i], ranges, byteIndices[i]);
                     int actual = node.execute(strings[i], 0, strings[i].byteLength(encoding), codePointSet);
-                    if (expected < 0) {
-                        Assert.assertTrue(actual < 0);
-                    } else {
-                        Assert.assertEquals(expected, actual);
+                    checkEqual(expected, actual);
+                    if (encoding == UTF_16) {
+                        checkEqual(expected, nodeJavaString.execute(strings[i].toJavaStringUncached(), 0, strings[i].byteLength(encoding) >> 1, codePointSet) << 1);
                     }
                 }
             }
+        }
+    }
+
+    private static void checkEqual(int expected, int actual) {
+        if (expected < 0) {
+            Assert.assertTrue(actual < 0);
+        } else {
+            Assert.assertEquals(expected, actual);
         }
     }
 

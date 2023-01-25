@@ -79,10 +79,10 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
     // Checkstyle: resume
 
     private static final Map<String, ParameterSet> benchmarks = createMap(new ParameterSet[]{
-// new ParameterSet("ignoreCase", "Julian", "i", names),
-// new ParameterSet("URL", "(((\\w+):\\/\\/)([^\\/:]*)(:(\\d+))?)?([^#?]*)(\\?([^#]*))?(#(.*))?",
-// "", "https://lafo.ssw.uni-linz.ac.at/?computer=15"),
-                    new ParameterSet("vovels", "([aeiouAEIOU]+)", "", "eeeeeeeeeeeeeeiiiiiiiiiiiiiiiiiiieeeeeeeeeeeeeeeeeeeeeeeiiiiiiiiiiiiiiieeeeeeeeeeeee"),
+                    new ParameterSet("ignoreCase", "Julian", "i", names),
+                    new ParameterSet("URL", "(((\\w+):\\/\\/)([^\\/:]*)(:(\\d+))?)?([^#?]*)(\\?([^#]*))?(#(.*))?",
+                                    "", "https://lafo.ssw.uni-linz.ac.at/?computer=15"),
+                    new ParameterSet("vowels", "([aeiouAEIOU]+)", "", "eeeeeeeeeeeeeeiiiiiiiiiiiiiiiiiiieeeeeeeeeeeeeeeeeeeeeeeiiiiiiiiiiiiiiieeeeeeeeeeeee"),
                     new ParameterSet("date",
                                     "((([1-3][0-9])|[1-9])\\/((1[0-2])|0?[1-9])\\/[0-9]{4})|((([1-3][0-9])|[1-9])-((1[0-2])|0?[1-9])-[0-9]{4})|((([1-3][0-9])|[1-9])\\.((1[0-2])|0?[1-9])\\.[0-9]{4})",
                                     "",
@@ -121,8 +121,9 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
     @State(Scope.Benchmark)
     public static class BenchState {
 
-// @Param({"ignoreCase", "URL"}) String benchName;
-        @Param({"vovels", "date", "ipv4", "ipv6_1", "ipv6_2", "email", "email_dfa", "apache_log"}) String benchName;
+        // excluded by default:
+        // {"vowels", "date", "ipv4", "ipv6_1", "ipv6_2", "email", "email_dfa", "apache_log"}
+        @Param({"ignoreCase", "URL"}) String benchName;
         Context context;
         Pattern javaPattern;
         Value tregexBool;
@@ -169,10 +170,10 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
         }
     }
 
-// @Benchmark
-// public boolean javaPattern(BenchState state) {
-// return state.javaPattern.matcher(state.input).find();
-// }
+    @Benchmark
+    public boolean javaPattern(BenchState state) {
+        return state.javaPattern.matcher(state.input).find();
+    }
 
     @Benchmark
     public boolean tregex(BenchState state) {
