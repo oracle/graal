@@ -603,6 +603,15 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
+        protected boolean needsExplicitIncompatibleClassChangeError() {
+            /*
+             * For AOT compilation, incompatible class change checks must be BytecodeExceptionNode.
+             * For JIT compilation at image run time, they must be guards.
+             */
+            return needsExplicitException();
+        }
+
+        @Override
         public boolean isPluginEnabled(GraphBuilderPlugin plugin) {
             return true;
         }
