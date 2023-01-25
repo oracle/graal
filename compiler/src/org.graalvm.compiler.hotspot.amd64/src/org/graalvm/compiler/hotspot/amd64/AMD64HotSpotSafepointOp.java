@@ -49,7 +49,6 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -87,16 +86,7 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
             temp = Value.ILLEGAL;
         }
         EnumSet<CPUFeature> features = ((AMD64) tool.getLIRGeneratorTool().target().arch).getFeatures();
-        if (JavaVersionUtil.JAVA_SPEC < 17 && features.contains(AMD64.CPUFeature.AVX512F)) {
-            /*
-             * Hotspot doesn't save AVX512 opmask registers on JDK11. Mark them as killed to force
-             * spilling around safepoints.
-             */
-            killedMaskRegisters = MASK_REGISTERS;
-        } else {
-            killedMaskRegisters = AllocatableValue.NONE;
-        }
-
+        killedMaskRegisters = AllocatableValue.NONE;
     }
 
     @Override

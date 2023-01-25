@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  */
 public final class JVMCIVersionCheck {
 
-    private static final Version JVMCI_MIN_VERSION = new Version(20, 2, 1);
+    private static final Version JVMCI_MIN_VERSION = new Version(22, 3, 11);
 
     public static class Version {
         private final int major;
@@ -126,7 +126,7 @@ public final class JVMCIVersionCheck {
         if (javaSpecVersion.compareTo("11") == 0 && vmVersion.contains("-jvmci-")) {
             errorMessage.format("Download the latest Labs OpenJDK from " + OPEN_LABSJDK_RELEASE_URL_PATTERN);
         } else {
-            errorMessage.format("Download JDK 11 or later.");
+            errorMessage.format("Download JDK 17 or later.");
         }
         String value = System.getenv("JVMCI_VERSION_CHECK");
         if ("warn".equals(value)) {
@@ -168,8 +168,8 @@ public final class JVMCIVersionCheck {
     }
 
     private void run(boolean exitOnFailure, Version minVersion, boolean quiet) {
-        if (javaSpecVersion.compareTo("11") < 0) {
-            failVersionCheck(exitOnFailure, "Graal requires JDK 11 or later.%n");
+        if (javaSpecVersion.compareTo("17") < 0) {
+            failVersionCheck(exitOnFailure, "Graal requires JDK 17 or later.%n");
         } else {
             if (vmVersion.contains("SNAPSHOT")) {
                 return;
@@ -193,7 +193,7 @@ public final class JVMCIVersionCheck {
                 failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal.%n" +
                                 "Cannot read JVMCI version from java.vm.version property: %s.%n", vmVersion);
             } else {
-                // Graal is compatible with all JDK versions as of 11 GA.
+                // Graal is compatible with all JDK versions as of 17 GA.
             }
         }
     }

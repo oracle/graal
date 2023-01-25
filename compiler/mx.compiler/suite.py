@@ -580,6 +580,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "JVMCI_HOTSPOT",
+        "JFR",
         "org.graalvm.compiler.api.runtime",
         "org.graalvm.compiler.printer",
         "org.graalvm.compiler.replacements",
@@ -597,32 +598,6 @@ suite = {
         "GRAAL_PROCESSOR",
       ],
       "javaCompliance" : "17+",
-      "workingSets" : "Graal,HotSpot",
-    },
-
-    "org.graalvm.compiler.hotspot.jdk17" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies": [
-        "org.graalvm.compiler.hotspot",
-        "JVMCI_HOTSPOT",
-        "JFR",
-      ],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.hotspot",
-          "jdk.vm.ci.meta",
-          "jdk.vm.ci.services",
-        ],
-      },
-      "annotationProcessors" : [
-        "GRAAL_PROCESSOR",
-      ],
-      "overlayTarget" : "org.graalvm.compiler.hotspot",
-      "multiReleaseJarVersion" : "17",
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "17+",
-      "checkPackagePrefix" : "false",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -727,26 +702,6 @@ suite = {
         "GRAAL_PROCESSOR"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "17+",
-      "workingSets" : "Graal,HotSpot,Test",
-    },
-
-    "org.graalvm.compiler.hotspot.jdk17.test" : {
-      "testProject" : True,
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.replacements.test",
-      ],
-      "requiresConcealed" : {
-        "java.base" : [
-          "jdk.internal.misc",
-        ],
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.meta",
-        ],
-      },
-      "checkstyle": "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
       "workingSets" : "Graal,HotSpot,Test",
     },
@@ -1865,21 +1820,6 @@ suite = {
       "workingSets" : "Graal,Truffle",
     },
 
-    "org.graalvm.compiler.truffle.runtime.hotspot.jdk17" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.truffle.runtime",
-        "JVMCI_HOTSPOT",
-      ],
-      "checkPackagePrefix" : "false",
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "17+",
-      "multiReleaseJarVersion" : "17",
-      "overlayTarget" : "org.graalvm.compiler.truffle.runtime.hotspot",
-      "workingSets" : "Graal,Truffle",
-    },
-
     "org.graalvm.compiler.truffle.compiler.hotspot.amd64" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1988,7 +1928,6 @@ suite = {
         "org.graalvm.compiler.hotspot.aarch64.test",
         "org.graalvm.compiler.hotspot.amd64.test",
         "org.graalvm.compiler.hotspot.lir.test",
-        "org.graalvm.compiler.hotspot.jdk17.test",
         "org.graalvm.compiler.options.test",
         "org.graalvm.compiler.jtt",
         "org.graalvm.compiler.lir.jtt",

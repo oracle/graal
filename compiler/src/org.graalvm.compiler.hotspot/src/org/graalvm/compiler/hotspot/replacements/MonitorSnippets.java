@@ -63,7 +63,6 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.pageSize;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.prototypeMarkWordOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.stackBias;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.unlockedMask;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.useBiasedLocking;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
@@ -316,7 +315,7 @@ public class MonitorSnippets implements Snippets {
                 // assuming both the stack pointer and page_size have their least
                 // significant 2 bits cleared and page_size is a power of 2
                 final Word alignedMask = unsigned(wordSize() - 1);
-                final Word stackPointer = registerAsWord(stackPointerRegister).add(stackBias(INJECTED_VMCONFIG));
+                final Word stackPointer = registerAsWord(stackPointerRegister);
                 if (probability(FAST_PATH_PROBABILITY, currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize(INJECTED_VMCONFIG))).equal(0))) {
                     // Recursively locked => write 0 to the lock slot
                     lock.writeWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), zero(), DISPLACED_MARK_WORD_LOCATION);

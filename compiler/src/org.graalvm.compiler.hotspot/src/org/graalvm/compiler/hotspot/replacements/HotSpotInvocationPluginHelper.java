@@ -33,7 +33,6 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MODIFIER_FLAGS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_KLASS_LOCATION;
-import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.function.Function;
 
@@ -117,7 +116,6 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         KLASS_MODIFIER_FLAGS_OFFSET(config -> config.klassModifierFlagsOffset, KLASS_MODIFIER_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
         KLASS_SUPER_KLASS_OFFSET(config -> config.klassSuperKlassOffset, KLASS_SUPER_KLASS_LOCATION, KlassPointerStamp.klass()),
         CLASS_ARRAY_KLASS_OFFSET(config -> config.arrayKlassOffset, CLASS_ARRAY_KLASS_LOCATION, KlassPointerStamp.klassNonNull()),
-        OS_THREAD_INTERRUPTED_OFFSET(config -> config.osThreadInterruptedOffset, any(), StampFactory.forKind(JavaKind.Int)),
         JAVA_THREAD_OSTHREAD_OFFSET(config -> config.osThreadOffset, JAVA_THREAD_OSTHREAD_LOCATION),
         JAVA_THREAD_THREAD_OBJECT(config -> config.threadCurrentThreadObjectOffset, JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION, null),
         KLASS_ACCESS_FLAGS_OFFSET(config -> config.klassAccessFlagsOffset, KLASS_ACCESS_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
@@ -228,12 +226,5 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
      */
     public ValueNode readOsThread(CurrentJavaThreadNode thread) {
         return readLocation(thread, HotSpotVMConfigField.JAVA_THREAD_OSTHREAD_OFFSET);
-    }
-
-    /**
-     * Reads {@code OSThread::_interrupted}.
-     */
-    public ValueNode readOsThreadInterrupted(ValueNode osThread) {
-        return readLocation(osThread, HotSpotVMConfigField.OS_THREAD_INTERRUPTED_OFFSET);
     }
 }

@@ -527,7 +527,7 @@ public class StandardGraphBuilderPlugins {
     }
 
     private static String[] getKindNames(boolean isSunMiscUnsafe, JavaKind kind) {
-        if (kind == JavaKind.Object && !isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 17) {
+        if (kind == JavaKind.Object && !isSunMiscUnsafe) {
             /*
              * JDK 17 renamed all Object-type-related methods in jdk.internal.misc.Unsafe from
              * "Object" to "Reference", but kept the "Object" version as deprecated. We want to
@@ -1595,11 +1595,6 @@ public class StandardGraphBuilderPlugins {
             b.add(new CacheWritebackSyncNode(isPreSync));
             return true;
         }
-
-        @Override
-        public boolean isOptional() {
-            return JavaVersionUtil.JAVA_SPEC < 14;
-        }
     }
 
     private static final SpeculationReasonGroup DIRECTIVE_SPECULATIONS = new SpeculationReasonGroup("GraalDirective", BytecodePosition.class);
@@ -2074,12 +2069,7 @@ public class StandardGraphBuilderPlugins {
     private static void registerPreconditionsPlugins(InvocationPlugins plugins, Replacements replacements) {
         final Registration preconditions = new Registration(plugins, "jdk.internal.util.Preconditions", replacements);
         preconditions.register(new CheckIndexPlugin(int.class));
-        preconditions.register(new CheckIndexPlugin(long.class) {
-            @Override
-            public boolean isOptional() {
-                return JavaVersionUtil.JAVA_SPEC < 16;
-            }
-        });
+        preconditions.register(new CheckIndexPlugin(long.class));
     }
 
     /**
