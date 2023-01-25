@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
@@ -94,6 +95,62 @@ public abstract class LLVMX86_VectorMathNode {
             return LLVMDoubleVector.create(new double[]{
                             Math.min(v1.getValue(0), v2.getValue(0)),
                             v1.getValue(1)
+            });
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_SSE_VectorMaxNode extends LLVMBuiltin { // mm_max_ps
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
+            return LLVMFloatVector.create(new float[]{
+                            Math.max(v1.getValue(0), v2.getValue(0)),
+                            Math.max(v1.getValue(1), v2.getValue(1)),
+                            Math.max(v1.getValue(2), v2.getValue(2)),
+                            Math.max(v1.getValue(3), v2.getValue(3))
+            });
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_SSE_VectorMaxsdNode extends LLVMBuiltin { // mm_max_ss
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
+            return LLVMFloatVector.create(new float[]{
+                            Math.max(v1.getValue(0), v2.getValue(0)),
+                            v1.getValue(1),
+                            v1.getValue(2),
+                            v1.getValue(3)
+            });
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_SSE_VectorMinNode extends LLVMBuiltin { // mm_min_ps
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
+            return LLVMFloatVector.create(new float[]{
+                            Math.min(v1.getValue(0), v2.getValue(0)),
+                            Math.min(v1.getValue(1), v2.getValue(1)),
+                            Math.min(v1.getValue(2), v2.getValue(2)),
+                            Math.min(v1.getValue(3), v2.getValue(3))
+            });
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_SSE_VectorMinsdNode extends LLVMBuiltin { // mm_min_ss
+        @Specialization(guards = {"v1.getLength() == 4", "v2.getLength() == 4"})
+        protected LLVMFloatVector doM128(LLVMFloatVector v1, LLVMFloatVector v2) {
+            return LLVMFloatVector.create(new float[]{
+                            Math.min(v1.getValue(0), v2.getValue(0)),
+                            v1.getValue(1),
+                            v1.getValue(2),
+                            v1.getValue(3)
             });
         }
     }
