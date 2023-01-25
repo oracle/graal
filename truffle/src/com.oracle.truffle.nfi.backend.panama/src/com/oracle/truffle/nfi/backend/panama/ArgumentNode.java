@@ -1,11 +1,13 @@
 package com.oracle.truffle.nfi.backend.panama;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
 import java.lang.foreign.MemoryAddress;
 import java.lang.foreign.MemorySession;
@@ -118,18 +120,37 @@ abstract class ArgumentNode extends Node {
             super(type);
         }
 
-        @Specialization(limit = "3") //, rewriteOn = UnsupportedTypeException.class)
-        long doConvert(Object value,
-                       @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
+        @Specialization(limit = "3", guards = "interop.isPointer(arg)", rewriteOn = UnsupportedMessageException.class)
+        long putPointer(Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop) throws UnsupportedMessageException {
+            return interop.asPointer(arg);
+        }
+
+        @Specialization(limit = "3", guards = {"!interop.isPointer(arg)", "interop.isNull(arg)"})
+        long putNull(@SuppressWarnings("unused") Object arg,
+                     @SuppressWarnings("unused") @CachedLibrary("arg") InteropLibrary interop) {
+            return NativePointer.NULL.asPointer();
+        }
+
+        @Specialization(limit = "3", replaces = {"putPointer", "putNull"})
+        long putGeneric(Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop,
+                        @Cached BranchProfile exception) throws UnsupportedTypeException {
             try {
-                if (interop.isPointer(value)) {
-                    return interop.asPointer(value);
-                } else {
-                    return NativePointer.NULL.asPointer();
+                if (!interop.isPointer(arg)) {
+                    interop.toNative(arg);
                 }
-            } catch (UnsupportedMessageException e) {
-                throw new RuntimeException(e);
+                if (interop.isPointer(arg)) {
+                    return interop.asPointer(arg);
+                }
+            } catch (UnsupportedMessageException ex) {
+                // fallthrough
             }
+            exception.enter();
+            if (interop.isNull(arg)) {
+                return NativePointer.NULL.asPointer();
+            }
+            throw UnsupportedTypeException.create(new Object[]{arg});
         }
     }
 
