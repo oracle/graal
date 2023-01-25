@@ -100,15 +100,8 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * </li>
  * </ul>
  * </li>
- * <li>{@link RegexAST#getReachableCarets()}/{@link RegexAST#getReachableDollars()}: all
- * caret/dollar {@link PositionAssertion} that are not dead are added to these lists.</li>
- * <li>{@link RegexAST#getSubtrees()}}: all reachable {@link RegexASTSubtreeRootNode}s are added to
- * these lists.</li>
  * </ul>
  *
- * @see RegexAST#getReachableCarets()
- * @see RegexAST#getReachableDollars()
- * @see RegexAST#getSubtrees()
  * @see RegexASTNode#hasCaret()
  * @see RegexASTNode#hasDollar()
  * @see RegexASTNode#startsWithCaret()
@@ -313,7 +306,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 LookAroundAssertion lookAround = term.asLookAroundAssertion();
                 if (lookAround.isNegated() && lookAround.isDead()) {
                     sequence.removeTerm(i, compilationBuffer);
-                    RemoveReachablePositionAssertions.run(ast, lookAround);
                     continue;
                 }
             }
@@ -333,31 +325,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         }
     }
 
-    private static final class RemoveReachablePositionAssertions extends DepthFirstTraversalRegexASTVisitor {
-
-        private final RegexAST ast;
-
-        private RemoveReachablePositionAssertions(RegexAST ast) {
-            this.ast = ast;
-        }
-
-        private static void run(RegexAST ast, LookAroundAssertion root) {
-            new RemoveReachablePositionAssertions(ast).run(root);
-        }
-
-        @Override
-        protected void visit(PositionAssertion assertion) {
-            switch (assertion.type) {
-                case CARET:
-                    ast.getReachableCarets().remove(assertion);
-                    break;
-                case DOLLAR:
-                    ast.getReachableDollars().remove(assertion);
-                    break;
-            }
-        }
-    }
-
     @Override
     protected void visit(PositionAssertion assertion) {
         switch (assertion.type) {
@@ -368,7 +335,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                         assertion.markAsDead();
                         assertion.getParent().markAsDead();
                     } else {
-                        ast.getReachableCarets().add(assertion);
                         assertion.getParent().setStartsWithCaret();
                     }
                 }
@@ -380,7 +346,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                         assertion.markAsDead();
                         assertion.getParent().markAsDead();
                     } else {
-                        ast.getReachableDollars().add(assertion);
                         assertion.getParent().setEndsWithDollar();
                     }
                 }
@@ -456,8 +421,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     protected void leave(AtomicGroup atomicGroup) {
         if (isForward() && !atomicGroup.isDead()) {
             ast.getProperties().setAtomicGroups();
-            ast.getSubtrees().add(atomicGroup);
-            atomicGroup.getSubTreeParent().getSubtrees().add(atomicGroup);
         }
         leaveSubtreeRootNode(atomicGroup, CHANGED_FLAGS);
         atomicGroup.getParent().setMinPath(atomicGroup.getMinPath());
@@ -465,10 +428,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     }
 
     private void leaveLookAroundAssertion(LookAroundAssertion assertion) {
-        if (isForward() && !assertion.isDead()) {
-            ast.getSubtrees().add(assertion);
-            assertion.getSubTreeParent().getSubtrees().add(assertion);
-        }
         if (assertion.hasCaptureGroups()) {
             ast.getProperties().setCaptureGroupsInLookAroundAssertions();
         }

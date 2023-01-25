@@ -156,6 +156,11 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             maxTransitions = Math.max(maxTransitions, s.getSuccessors(isForward()).length);
             s.initIsDeterministic(isForward(), compilationBuffer);
         }
+        for (TRegexExecutorBaseNode subExecutor : subExecutors) {
+            if (subExecutor instanceof TRegexBacktrackingNFAExecutorNode) {
+                maxTransitions = Math.max(maxTransitions, ((TRegexBacktrackingNFAExecutorNode) subExecutor).maxNTransitions);
+            }
+        }
         this.maxNTransitions = maxTransitions;
     }
 
