@@ -68,6 +68,18 @@ public class ForeignExceptionInterop extends ThrowableInterop {
     }
 
     @ExportMessage
+    public static boolean hasExceptionStackTrace(StaticObject object) {
+        object.checkNotForeign();
+        return InteropLibrary.getUncached().hasExceptionStackTrace(getRawForeignObject(object));
+    }
+
+    @ExportMessage
+    public static Object getExceptionStackTrace(StaticObject object) throws UnsupportedMessageException {
+        object.checkNotForeign();
+        return InteropLibrary.getUncached().getExceptionStackTrace(getRawForeignObject(object));
+    }
+
+    @ExportMessage
     public static RuntimeException throwException(StaticObject object) {
         object.checkNotForeign();
         throw (RuntimeException) getRawForeignObject(object);
