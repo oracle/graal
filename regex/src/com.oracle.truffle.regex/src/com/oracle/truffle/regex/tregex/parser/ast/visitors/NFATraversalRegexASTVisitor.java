@@ -245,10 +245,10 @@ public abstract class NFATraversalRegexASTVisitor {
         }
         TBitSet currentMatchedConditionGroups = matchedConditionGroups.copy();
         for (int conditionGroup : ast.getConditionGroups()) {
-            if (captureGroupClears.get(2 * conditionGroup + 1)) {
+            if (captureGroupClears.get(Group.groupNumberToBoundaryIndexEnd(conditionGroup))) {
                 currentMatchedConditionGroups.clear(conditionGroup);
             }
-            if (captureGroupUpdates.get(2 * conditionGroup + 1)) {
+            if (captureGroupUpdates.get(Group.groupNumberToBoundaryIndexEnd(conditionGroup))) {
                 currentMatchedConditionGroups.set(conditionGroup);
             }
         }
@@ -416,8 +416,8 @@ public abstract class NFATraversalRegexASTVisitor {
             final Sequence sequence = (Sequence) cur;
             if (sequence.getParent().isConditionalBackReferenceGroup() && isBuildingDFA()) {
                 int referencedGroupNumber = sequence.getParent().asConditionalBackReferenceGroup().getReferencedGroupNumber();
-                boolean groupMatched = (getMatchedConditionGroups().get(referencedGroupNumber) && !captureGroupClears.get(referencedGroupNumber * 2 + 1)) ||
-                                captureGroupUpdates.get(referencedGroupNumber * 2 + 1);
+                boolean groupMatched = (getMatchedConditionGroups().get(referencedGroupNumber) && !captureGroupClears.get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber))) ||
+                                captureGroupUpdates.get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber));
                 if (groupMatched != sequence.isFirstInGroup()) {
                     return retreat();
                 }
