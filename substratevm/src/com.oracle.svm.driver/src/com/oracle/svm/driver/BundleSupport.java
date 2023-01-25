@@ -132,14 +132,14 @@ final class BundleSupport {
                 case apply:
                     if (nativeImage.useBundle()) {
                         if (nativeImage.bundleSupport.loadBundle) {
-                            throw NativeImage.showError(String.format("Native-image allows option %s to be specified only once.", applyOptionStr));
+                            throw NativeImage.showError(String.format("native-image allows option %s to be specified only once.", applyOptionStr));
                         }
                         if (nativeImage.bundleSupport.writeBundle) {
-                            throw NativeImage.showError(String.format("Native-image option %s is not allowed to be used after option %s.", applyOptionStr, createOptionStr));
+                            throw NativeImage.showError(String.format("native-image option %s is not allowed to be used after option %s.", applyOptionStr, createOptionStr));
                         }
                     }
                     if (bundleFilename == null) {
-                        throw NativeImage.showError(String.format("Native-image option %s requires a bundle file argument. E.g. %s=bundle-file.nib.", applyOptionStr, applyOptionStr));
+                        throw NativeImage.showError(String.format("native-image option %s requires a bundle file argument. E.g. %s=bundle-file.nib.", applyOptionStr, applyOptionStr));
                     }
                     bundleSupport = new BundleSupport(nativeImage, bundleFilename);
                     /* Inject the command line args from the loaded bundle in-place */
@@ -154,7 +154,7 @@ final class BundleSupport {
                 case create:
                     if (nativeImage.useBundle()) {
                         if (nativeImage.bundleSupport.writeBundle) {
-                            throw NativeImage.showError(String.format("Native-image allows option %s to be specified only once.", bundleArg));
+                            throw NativeImage.showError(String.format("native-image allows option %s to be specified only once.", bundleArg));
                         } else {
                             bundleSupport = nativeImage.bundleSupport;
                             bundleSupport.writeBundle = true;

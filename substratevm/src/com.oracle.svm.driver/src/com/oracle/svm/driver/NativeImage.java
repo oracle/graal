@@ -1149,7 +1149,7 @@ public class NativeImage {
         if (useBundle()) {
             /*
              * In creation-mode, we are at the point where we know the final imagePath and imageName
-             * that we can now use to derive a bundle name in case non was set so far.
+             * that we can now use to derive a bundle name in case none was set so far.
              */
             String bundleName = imageName.endsWith(BundleSupport.BUNDLE_FILE_EXTENSION) ? imageName : imageName + BundleSupport.BUNDLE_FILE_EXTENSION;
             bundleSupport.updateBundleLocation(imagePath.resolve(bundleName), false);
