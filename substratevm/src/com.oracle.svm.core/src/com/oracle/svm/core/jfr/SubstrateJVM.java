@@ -206,7 +206,8 @@ public class SubstrateJVM {
     }
 
     /**
-     * Use for time saving checks, not as a check before doing an operation that could result in races.
+     * Use for time saving checks, not as a check before doing an operation that could result in
+     * races.
      */
     public static boolean isRecordingInterruptible() {
         return get().recording;
@@ -654,8 +655,8 @@ public class SubstrateJVM {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean shouldCommit(JfrEvent event) {
-        //find the right throttler for the event (each event should have its own)like in hotspot
-        //if none found, return true.
+        // find the right throttler for the event (each event should have its own)like in hotspot
+        // if none found, return true.
         // call into throttler code
         return jfrThrottlerSupport.shouldCommit(event.getId());
     }
@@ -664,7 +665,7 @@ public class SubstrateJVM {
     public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
         // find the right throttler for the event and set the new params there
         return jfrThrottlerSupport.setThrottle(eventTypeId, eventSampleSize, periodMs);
-        //TODO: why would it ever return false? Maybe if the throttler doesn't exist?
+        // TODO: why would it ever return false? Maybe if the throttler doesn't exist?
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
