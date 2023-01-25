@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,13 @@ import org.graalvm.compiler.options.OptionType;
 
 public enum SpectrePHTMitigations {
     None,
-    AllTargets,
     GuardTargets,
     NonDeoptGuardTargets;
 
     public static class Options {
         // @formatter:off
+        @Option(help = "Mitigate speculative execution on all conditional branch targets with execution barrier instructions.", stability = OptionStability.STABLE)
+        public static final OptionKey<Boolean> SpeculativeExecutionBarriers = new OptionKey<>(false);
         @Option(help = "file:doc-files/MitigateSpeculativeExecutionAttacksHelp.txt")
         public static final EnumOptionKey<SpectrePHTMitigations> SpectrePHTBarriers = new EnumOptionKey<>(None);
         @Option(help = "Mask indices to scope access to allocation size after bounds check.", type = OptionType.User, stability = OptionStability.STABLE)
