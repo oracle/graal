@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,11 @@ package org.graalvm.nativeimage.impl;
 import java.util.EnumSet;
 
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
-import org.graalvm.options.OptionDescriptors;
 
 public interface RuntimeOptionsSupport {
     void set(String optionName, Object value);
 
     <T> T get(String optionName);
 
-    OptionDescriptors getOptions(EnumSet<OptionClass> classes);
+    <T> T getOptions(EnumSet<OptionClass> classes);
 }

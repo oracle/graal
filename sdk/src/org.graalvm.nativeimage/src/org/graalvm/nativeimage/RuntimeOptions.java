@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package org.graalvm.nativeimage;
 import java.util.EnumSet;
 
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
-import org.graalvm.options.OptionDescriptors;
 
 /**
  * Used for manipulating options at run time.
@@ -88,7 +87,7 @@ public final class RuntimeOptions {
      *
      * @since 19.0
      */
-    public static OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
+    public static <T> T getOptions(EnumSet<OptionClass> classes) {
         return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions(classes);
     }
 
@@ -97,7 +96,7 @@ public final class RuntimeOptions {
      *
      * @since 19.0
      */
-    public static OptionDescriptors getOptions() {
+    public static <T> T getOptions() {
         return getOptions(EnumSet.allOf(OptionClass.class));
     }
 

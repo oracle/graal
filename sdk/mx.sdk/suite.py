@@ -247,6 +247,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.collections",
         "org.graalvm.home",
+        "org.graalvm.options",
       ],
       "requires" : [
         "java.logging",
@@ -271,7 +272,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.word",
-        "org.graalvm.options",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "11+",

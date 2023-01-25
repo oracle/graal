@@ -113,8 +113,9 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         return optionKey.getValue(RuntimeOptionValues.singleton());
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
+    public <T> T getOptions(EnumSet<OptionClass> classes) {
         Iterable<OptionDescriptor> descriptors = RuntimeOptionParser.singleton().getDescriptors();
         List<org.graalvm.options.OptionDescriptor> graalvmDescriptors = new ArrayList<>();
         for (OptionDescriptor descriptor : descriptors) {
@@ -131,7 +132,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
                 graalvmDescriptors.add(builder.build());
             }
         }
-        return OptionDescriptors.create(graalvmDescriptors);
+        return (T) OptionDescriptors.create(graalvmDescriptors);
     }
 
     private static OptionClass getOptionClass(OptionDescriptor descriptor) {
