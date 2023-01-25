@@ -37,6 +37,7 @@ public class ForeignExceptionInterop extends ThrowableInterop {
         assert object.getKlass() == getMeta().polyglot.ForeignException;
         return getMeta().java_lang_Throwable_backtrace.getObject(object).rawForeignObject(object.getKlass().getContext().getLanguage());
     }
+
     @ExportMessage
     public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject receiver) {
         return ExceptionType.RUNTIME_ERROR;
