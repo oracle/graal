@@ -50,6 +50,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -604,10 +605,7 @@ final class BundleSupport {
         Path bundleFilePath = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION);
         try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(bundleFilePath), createManifest())) {
             try (Stream<Path> walk = Files.walk(rootDir)) {
-                walk.forEach(bundleEntry -> {
-                    if (Files.isDirectory(bundleEntry)) {
-                        return;
-                    }
+                walk.filter(Predicate.not(Files::isDirectory)).forEach(bundleEntry -> {
                     String jarEntryName = rootDir.relativize(bundleEntry).toString();
                     JarEntry entry = new JarEntry(jarEntryName.replace(File.separator, "/"));
                     try {
