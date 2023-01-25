@@ -3623,7 +3623,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @param a An {@link AbstractTruffleString} whose encoding matches the encoding set in
          *            {@code codePointSet}.
-         * @param codePointSet The codepoint set to search for. This parameter is expected to be
+         * @param codePointSet The codepoint set to search for. This parameter must be
          *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
          *            constant}.
          *

@@ -52,10 +52,18 @@ import com.oracle.truffle.api.nodes.Node;
 /**
  * Self-optimizing parameter object for {@link TruffleString.ByteIndexOfCodePointSetNode} and
  * {@link JavaStringUtils.CharIndexOfCodePointSetNode}.
- * 
+ *
  * @since 23.0
  */
 public final class CodePointSetParameter {
+
+    private static final int[] EMPTY_RANGES = {};
+    private static final int[] ASCII_RANGE = {0, 0x7f};
+    private static final int[] LATIN_RANGE = {0, 0xff};
+    private static final int[] BMP_WITHOUT_SURROGATES = {0x0000, 0xd7ff, 0xe000, 0xffff};
+    private static final int[] ALL_WITHOUT_SURROGATES = {0x0000, 0xd7ff, 0xe000, 0x10ffff};
+    private static final int[] ALL = {0x0000, 0x10ffff};
+    private static final int TABLE_SIZE = 16;
 
     @CompilationFinal(dimensions = 1) final IndexOfCall[] indexOfCalls;
     final TruffleString.Encoding encoding;
@@ -86,7 +94,7 @@ public final class CodePointSetParameter {
     /**
      * Returns {@code true} if the search for this codepoint set may be accelerated with SIMD
      * instructions on strings with the given code range.
-     * 
+     *
      * @since 23.0
      */
     public boolean isFast(TruffleString.CodeRange codeRange) {
@@ -101,7 +109,7 @@ public final class CodePointSetParameter {
     /**
      * Creates a new {@link CodePointSetParameter} object from a given sorted list of codepoint
      * ranges. This operation may be expensive, it is recommended to cache the result.
-     * 
+     *
      * @param ranges a sorted list of non-adjacent codepoint ranges. For every two consecutive array
      *            elements, the first is interpreted as the range's inclusive lower bound, and the
      *            second element is the range's inclusive upper bound. Example: an array
@@ -111,7 +119,6 @@ public final class CodePointSetParameter {
      *            {@link CodePointSetParameter} object is specialized to this encoding and cannot be
      *            used with strings of other encodings.
      * @return a new {@link CodePointSetParameter} object.
-     * 
      * @since 23.0
      */
     @TruffleBoundary
@@ -215,13 +222,6 @@ public final class CodePointSetParameter {
                 return Integer.MAX_VALUE;
         }
     }
-
-    private static final int[] EMPTY_RANGES = {};
-    private static final int[] ASCII_RANGE = {0, 0x7f};
-    private static final int[] LATIN_RANGE = {0, 0xff};
-    private static final int[] BMP_WITHOUT_SURROGATES = {0x0000, 0xd7ff, 0xe000, 0xffff};
-    private static final int[] ALL_WITHOUT_SURROGATES = {0x0000, 0xd7ff, 0xe000, 0x10ffff};
-    private static final int[] ALL = {0x0000, 0x10ffff};
 
     private static void checkIllegalCodepoint(int c, int maxCodePoint) {
         if (Integer.toUnsignedLong(c) > maxCodePoint) {
@@ -334,30 +334,52 @@ public final class CodePointSetParameter {
         return ranges.length == 0;
     }
 
+    /**
+     * Returns the number of ranges in the given list of ranges.
+     */
     private static int size(int[] ranges) {
         return ranges.length >> 1;
     }
 
+    /**
+     * Returns the lower bound of range {@code i}.
+     */
     private static int getLo(int[] ranges, int i) {
         return ranges[i << 1];
     }
 
+    /**
+     * Returns the upper bound of range {@code i}.
+     */
     private static int getHi(int[] ranges, int i) {
         return ranges[(i << 1) + 1];
     }
 
+    /**
+     * Returns the minimum value contained in the given list of ranges.
+     */
     private static int getMin(int[] ranges) {
         return ranges[0];
     }
 
+    /**
+     * Returns the maximum value contained in the given list of ranges.
+     */
     private static int getMax(int[] ranges) {
         return ranges[ranges.length - 1];
     }
 
+    /**
+     * Returns {@code true} if the given list of range contains only one value, i.e. it consists of
+     * only one single-value range.
+     */
     private static boolean isSingleValue(int[] ranges) {
         return ranges.length == 2 && ranges[0] == ranges[1];
     }
 
+    /**
+     * Returns the number of values contained in the given list of ranges.
+     */
     private static int valueCount(int[] ranges) {
         int count = 0;
         for (int i = 0; i < ranges.length; i += 2) {
@@ -366,6 +388,22 @@ public final class CodePointSetParameter {
         return count;
     }
 
+    /**
+     * Returns {@code true} if the given list of ranges contains value {@code v}.
+     */
+    private static boolean contains(int[] ranges, int v) {
+        for (int i = 0; i < ranges.length; i += 2) {
+            if (ranges[i] <= v && v <= ranges[i + 1]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Converts the given list of ranges to an array of values, e.g.
+     * {@code [1-3, 5-6] -> [1, 2, 3, 5, 6]}.
+     */
     private static int[] toValues(int[] ranges, int valueCount) {
         int[] values = new int[valueCount];
         int index = 0;
@@ -405,11 +443,14 @@ public final class CodePointSetParameter {
             CompilerAsserts.partialEvaluationConstant(this);
             CompilerAsserts.partialEvaluationConstant(encoding);
             int codepointLength = 1;
+            // iterate codepoints
             for (int i = fromIndex; i < toIndex; i += codepointLength) {
                 final int codepoint;
                 if (encoding == TruffleString.Encoding.US_ASCII || encoding == TruffleString.Encoding.ISO_8859_1 || encoding == TruffleString.Encoding.BYTES || TSCodeRange.isFixedWidth(codeRangeA)) {
+                    // fixed-width encoding: just read the next array element
                     codepoint = TStringOps.readValue(arrayA, offsetA, lengthA, strideA, i);
                 } else if (encoding == TruffleString.Encoding.UTF_8) {
+                    // utf-8 decode
                     if (TSCodeRange.isValidMultiByte(codeRangeA)) {
                         int firstByte = TStringOps.readS0(arrayA, offsetA, lengthA, i);
                         codepointLength = firstByte <= 0x7f ? 1 : Encodings.utf8CodePointLength(firstByte);
@@ -419,6 +460,7 @@ public final class CodePointSetParameter {
                         codepoint = Encodings.utf8DecodeBroken(arrayA, offsetA, lengthA, i, TruffleString.ErrorHandling.BEST_EFFORT);
                     }
                 } else {
+                    // utf-16 decode
                     assert encoding == TruffleString.Encoding.UTF_16;
                     if (TSCodeRange.isValidMultiByte(codeRangeA)) {
                         codepointLength = Encodings.isUTF16HighSurrogate(TStringOps.readS1(arrayA, offsetA, lengthA, i)) ? 2 : 1;
@@ -428,6 +470,7 @@ public final class CodePointSetParameter {
                         codepoint = Encodings.utf16DecodeBroken(arrayA, offsetA, lengthA, i, TruffleString.ErrorHandling.BEST_EFFORT);
                     }
                 }
+                // check if the decoded codepoint is contained in the codepoint set
                 if (match(codepoint)) {
                     return i;
                 }
@@ -498,8 +541,6 @@ public final class CodePointSetParameter {
         }
     }
 
-    private static final int TABLE_SIZE = 16;
-
     /**
      * Optimized search for bit set.
      */
@@ -555,20 +596,24 @@ public final class CodePointSetParameter {
             return new IndexOfBitSetCall(bitSet);
         }
 
-        private static void setRange(long[] bs, int lo, int hi) {
+        /**
+         * Sets all values contained in range {@code [lo-hi]} (inclusive) to {@code 1} in the given
+         * long-array based bit set.
+         */
+        private static void setRange(long[] bitSet, int lo, int hi) {
             int wordIndexLo = lo >> 6;
             int wordIndexHi = hi >> 6;
             long rangeLo = (~0L) << lo;
             long rangeHi = (~0L) >>> (63 - (hi & 63));
             if (wordIndexLo == wordIndexHi) {
-                bs[wordIndexLo] |= rangeLo & rangeHi;
+                bitSet[wordIndexLo] |= rangeLo & rangeHi;
                 return;
             }
-            bs[wordIndexLo] |= rangeLo;
+            bitSet[wordIndexLo] |= rangeLo;
             for (int i = wordIndexLo + 1; i < wordIndexHi; i++) {
-                bs[i] = ~0L;
+                bitSet[i] = ~0L;
             }
-            bs[wordIndexHi] |= rangeHi;
+            bitSet[wordIndexHi] |= rangeHi;
         }
     }
 
@@ -598,15 +643,34 @@ public final class CodePointSetParameter {
         }
     }
 
+    /**
+     * Converts a given list of ranges to a lookup table suitable for {@link IndexOfTableCall}.
+     *
+     * @return the lookup table, or {@code null} if no suitable lookup table could be generated.
+     */
     private static byte[] generateTable(int[] ranges) {
-        byte[] tables = new byte[TABLE_SIZE * 2];
         assert getMax(ranges) <= 0xff;
-        // convert set to a 16x16 bit set
+        /*
+         * Convert ranges to a 16x16 bit set. Matching a byte with this bit set would work like
+         * this:
+         *
+         * byte v = readByte(...);
+         *
+         * boolean match = (bitSet[v >>> 4] & (1 << (v & 0xf)) != 0;
+         *
+         * Now we have to transform this bit set to a 32-byte lookup table that can be matched like
+         * this:
+         *
+         * boolean match = (table[v >>> 4] & table[16 + (v & 0xf)]) != 0;
+         *
+         * In the following (v >>> 4) is referred to as the "upper nibble" and (v & 0xf) is referred
+         * to as the "lower nibble".
+         */
         char[] bitSet = new char[16];
         for (int i = 0; i < ranges.length; i += 2) {
             setRange(bitSet, ranges[i], ranges[i + 1]);
         }
-        // find equal bit sets
+        // find equal 16-bit values in the 16x16 bit set
         char[] uniqueValues = new char[16];
         int nUniqueValues = 0;
         for (char c : bitSet) {
@@ -615,121 +679,140 @@ public final class CodePointSetParameter {
             }
         }
         if (nUniqueValues <= 8) {
-            for (int i = 0; i < TABLE_SIZE; i++) {
-                if (bitSet[i] != 0) {
-                    byte value = (byte) (1 << ArrayUtils.indexOf(uniqueValues, 0, nUniqueValues, bitSet[i]));
-                    tables[i] = value;
-                    for (int j = 0; j < TABLE_SIZE; j++) {
-                        if ((bitSet[i] & (1 << j)) != 0) {
-                            tables[TABLE_SIZE + j] |= value;
-                        }
-                    }
-                }
-            }
+            return generateTableDirectMapping(ranges, bitSet, uniqueValues, nUniqueValues);
         } else {
-            // if we still have more than 8 bit sets, try to reduce them further by decomposition
-            CompositeBitSet[] bitSets = new CompositeBitSet[nUniqueValues];
-            for (int i = 0; i < nUniqueValues; i++) {
-                bitSets[i] = new CompositeBitSet();
-            }
-            int nComponents = nUniqueValues;
-            ArrayList<CompositeBitSet> components = new ArrayList<>();
-            for (int i = 0; i < bitSets.length; i++) {
-                char cur = uniqueValues[i];
-                char compositeValue = 0;
-                components.clear();
-                for (int j = 0; j < bitSets.length; j++) {
-                    if (j == i) {
-                        continue;
+            return generateTableTryDecomposition(ranges, bitSet, uniqueValues, nUniqueValues);
+        }
+    }
+
+    private static byte[] generateTableDirectMapping(int[] ranges, char[] bitSet, char[] uniqueValues, int nUniqueValues) {
+        byte[] tables = new byte[TABLE_SIZE * 2];
+        // If there are no more than 8 unique values, we can assign one unique bit per upper
+        // nibble values:
+        // iterate all possible upper nibble values
+        for (int upperNibble = 0; upperNibble < TABLE_SIZE; upperNibble++) {
+            if (bitSet[upperNibble] != 0) {
+                // get the unique bit corresponding to the current upper nibble value
+                byte uniqueBit = (byte) (1 << ArrayUtils.indexOf(uniqueValues, 0, nUniqueValues, bitSet[upperNibble]));
+                // set upper nibble entry
+                tables[upperNibble] = uniqueBit;
+                // add the unique bit to all lower nibble entries that should match in
+                // conjunction with the current upper nibble
+                for (int lowerNibble = 0; lowerNibble < TABLE_SIZE; lowerNibble++) {
+                    if ((bitSet[upperNibble] & (1 << lowerNibble)) != 0) {
+                        tables[TABLE_SIZE + lowerNibble] |= uniqueBit;
                     }
-                    if ((cur | uniqueValues[j]) == cur) {
-                        compositeValue |= uniqueValues[j];
-                        components.add(bitSets[j]);
-                    }
-                }
-                if (compositeValue == cur) {
-                    bitSets[i].components = components.toArray(CompositeBitSet[]::new);
-                    nComponents--;
-                }
-            }
-            if (nComponents > 8) {
-                // if there are still more than 8 bit sets after decomposition, give up.
-                return null;
-            }
-            byte value = 1;
-            for (int i = 0; i < bitSets.length; i++) {
-                CompositeBitSet cbs = bitSets[i];
-                if (cbs.components == null) {
-                    assert value != 0;
-                    cbs.value = value;
-                    for (int j = 0; j < TABLE_SIZE; j++) {
-                        if ((uniqueValues[i] & (1 << j)) != 0) {
-                            tables[TABLE_SIZE + j] |= value;
-                        }
-                    }
-                    value <<= 1;
-                }
-            }
-            for (CompositeBitSet cbs : bitSets) {
-                if (cbs.components != null) {
-                    for (CompositeBitSet component : cbs.components) {
-                        cbs.value |= component.value;
-                    }
-                }
-            }
-            for (int i = 0; i < TABLE_SIZE; i++) {
-                if (bitSet[i] != 0) {
-                    tables[i] = bitSets[ArrayUtils.indexOf(uniqueValues, 0, nUniqueValues, bitSet[i])].value;
                 }
             }
         }
-        verify1ByteTable(ranges, tables);
+        verifyTable(ranges, tables);
+        return tables;
+    }
+
+    private static byte[] generateTableTryDecomposition(int[] ranges, char[] bitSet, char[] uniqueValues, int nUniqueValues) {
+        assert nUniqueValues > 8;
+        byte[] tables = new byte[TABLE_SIZE * 2];
+        // if we have more than 8 unique bit set values, try to reduce them by decomposition, i.e.
+        // try to find values that can be expressed as a union of other values in the bit set
+        CompositeBitSet[] bitSets = new CompositeBitSet[nUniqueValues];
+        for (int i = 0; i < nUniqueValues; i++) {
+            bitSets[i] = new CompositeBitSet();
+        }
+        int nComponents = nUniqueValues;
+        ArrayList<CompositeBitSet> components = new ArrayList<>();
+        for (int i = 0; i < bitSets.length; i++) {
+            char cur = uniqueValues[i];
+            char compositeValue = 0;
+            components.clear();
+            for (int j = 0; j < bitSets.length; j++) {
+                if (j == i) {
+                    continue;
+                }
+                if ((cur | uniqueValues[j]) == cur) {
+                    // uniqueValues[j] is a subset of cur, add it to the list of components
+                    compositeValue |= uniqueValues[j];
+                    components.add(bitSets[j]);
+                }
+            }
+            if (compositeValue == cur) {
+                // we found a list of components whose union is exactly _cur_, save it
+                bitSets[i].components = components.toArray(CompositeBitSet[]::new);
+                nComponents--;
+            }
+        }
+        if (nComponents > 8) {
+            // if there are still more than 8 unique bit set values after decomposition, give up.
+            return null;
+        }
+        byte uniqueBit = 1;
+        for (int i = 0; i < bitSets.length; i++) {
+            CompositeBitSet cbs = bitSets[i];
+            if (cbs.components == null) {
+                assert uniqueBit != 0;
+                // assign one unique bit per component that could _not_ be decomposed.
+                cbs.uniqueBit = uniqueBit;
+                // add the unique bit to all lower nibble entries that should match in
+                // conjunction with the current upper nibble
+                for (int lowerNibble = 0; lowerNibble < TABLE_SIZE; lowerNibble++) {
+                    if ((uniqueValues[i] & (1 << lowerNibble)) != 0) {
+                        tables[TABLE_SIZE + lowerNibble] |= uniqueBit;
+                    }
+                }
+                uniqueBit <<= 1;
+            }
+        }
+        for (CompositeBitSet cbs : bitSets) {
+            if (cbs.components != null) {
+                // assign union of subcomponent's unique bits to decomposed values
+                for (CompositeBitSet component : cbs.components) {
+                    cbs.uniqueBit |= component.uniqueBit;
+                }
+            }
+        }
+        // write upper nibble mapping to table
+        for (int upperNibble = 0; upperNibble < TABLE_SIZE; upperNibble++) {
+            if (bitSet[upperNibble] != 0) {
+                tables[upperNibble] = bitSets[ArrayUtils.indexOf(uniqueValues, 0, nUniqueValues, bitSet[upperNibble])].uniqueBit;
+            }
+        }
+        verifyTable(ranges, tables);
         return tables;
     }
 
     private static final class CompositeBitSet {
-        private byte value;
+        private byte uniqueBit;
         private CompositeBitSet[] components;
     }
 
-    private static void setRange(char[] bs, int lo, int hi) {
+    /**
+     * Sets all values contained in range {@code [lo-hi]} (inclusive) to {@code 1} in the given
+     * char-array based bit set.
+     */
+    private static void setRange(char[] bitSet, int lo, int hi) {
         int wordIndexLo = lo >> 4;
         int wordIndexHi = hi >> 4;
         char rangeLo = (char) (0xffff << (lo & 0xf));
         char rangeHi = (char) (0xffff >>> (15 - (hi & 0xf)));
         if (wordIndexLo == wordIndexHi) {
-            bs[wordIndexLo] |= (char) (rangeLo & rangeHi);
+            bitSet[wordIndexLo] |= (char) (rangeLo & rangeHi);
             return;
         }
-        bs[wordIndexLo] |= rangeLo;
+        bitSet[wordIndexLo] |= rangeLo;
         for (int i = wordIndexLo + 1; i < wordIndexHi; i++) {
-            bs[i] = (char) ~0;
+            bitSet[i] = (char) ~0;
         }
-        bs[wordIndexHi] |= rangeHi;
+        bitSet[wordIndexHi] |= rangeHi;
     }
 
-    private static void verify1ByteTable(int[] expectedRanges, byte[] tables) {
+    private static void verifyTable(int[] expectedRanges, byte[] tables) {
+        assert verifyTableInner(expectedRanges, tables);
+    }
+
+    private static boolean verifyTableInner(int[] expectedRanges, byte[] tables) {
         for (int i = 0; i <= 0xff; i++) {
-            assert contains(expectedRanges, i) == match1Byte(tables, (byte) i);
+            assert contains(expectedRanges, i) == ((tables[(i >>> 4) & 0xf] & tables[TABLE_SIZE + (i & 0xf)]) != 0);
         }
+        return true;
     }
 
-    private static boolean contains(int[] ranges, int v) {
-        for (int i = 0; i < ranges.length; i += 2) {
-            if (ranges[i] <= v && v <= ranges[i + 1]) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean match1Byte(byte[] tables, byte b) {
-        return performLookup(tables, (byte) 0xff, 0, b) != 0;
-    }
-
-    private static byte performLookup(byte[] tables, byte match, int iByte, byte currentByte) {
-        byte tableHi = tables[iByte * TABLE_SIZE * 2 + ((currentByte >>> 4) & 0xf)];
-        byte tableLo = tables[iByte * TABLE_SIZE * 2 + TABLE_SIZE + (currentByte & 0xf)];
-        return (byte) (match & tableHi & tableLo);
-    }
 }
