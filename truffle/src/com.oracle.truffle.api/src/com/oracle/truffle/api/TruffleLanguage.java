@@ -2740,7 +2740,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -2763,7 +2763,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -2800,7 +2800,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -2825,7 +2825,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -2942,7 +2942,7 @@ public abstract class TruffleLanguage<C> {
                 } catch (UnsupportedOperationException e) {
                     throw e;
                 } catch (Throwable t) {
-                    throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+                    throw TruffleFile.wrapHostException(t, fileSystemContext);
                 }
             }
 
@@ -2995,7 +2995,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+                throw TruffleFile.wrapHostException(t, fileSystemContext);
             }
         }
 
@@ -3012,7 +3012,7 @@ public abstract class TruffleLanguage<C> {
             try {
                 return fs.fileSystem.getSeparator();
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -3030,7 +3030,7 @@ public abstract class TruffleLanguage<C> {
             try {
                 return fs.fileSystem.getPathSeparator();
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -3149,7 +3149,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException | IOException | SecurityException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -3185,7 +3185,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException | IOException | SecurityException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 

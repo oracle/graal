@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,28 +25,56 @@
 package org.graalvm.nativebridge.processor.test.hstonative;
 
 import org.graalvm.nativebridge.GenerateHotSpotToNativeBridge;
-import org.graalvm.nativebridge.Idempotent;
 import org.graalvm.nativebridge.NativeIsolate;
 import org.graalvm.nativebridge.NativeObject;
 import org.graalvm.nativebridge.Out;
-import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
+import org.graalvm.nativebridge.processor.test.OutParameterService;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 @GenerateHotSpotToNativeBridge(jniConfig = TestJNIConfig.class, include = CEntryPoint.NotIncludedAutomatically.class)
-abstract class NativeCustomMarshallerTest extends NativeObject implements CustomMarshallerService {
+abstract class NativeOutParameterService extends NativeObject implements OutParameterService {
 
-    NativeCustomMarshallerTest(NativeIsolate isolate, long handle) {
+    NativeOutParameterService(NativeIsolate isolate, long handle) {
         super(isolate, handle);
     }
 
-    @Idempotent
     @Override
-    public abstract Map<String, String> getProperties();
+    public abstract int singleOutParameterPrimitive(@Out List<String> p1);
 
     @Override
-    public abstract void fillDurations(@Out Duration[] durations);
+    public abstract int[] singleOutParameterArray(@Out List<String> p1);
+
+    @Override
+    public abstract void singleOutParameterVoid(@Out List<String> p1);
+
+    @Override
+    public abstract Map<String, String> singleOutParameterCustom(@Out List<String> p1);
+
+    @Override
+    public abstract int multipleOutParametersPrimitive(@Out List<String> p1, @Out List<String> p2);
+
+    @Override
+    public abstract int[] multipleOutParametersArray(@Out List<String> p1, @Out List<String> p2);
+
+    @Override
+    public abstract void multipleOutParametersVoid(@Out List<String> p1, @Out List<String> p2);
+
+    @Override
+    public abstract Map<String, String> multipleOutParametersCustom(@Out List<String> p1, @Out List<String> p2);
+
+    @Override
+    public abstract void mixedParametersVoid(List<String> p1, @Out List<String> p2, List<String> p3, @Out List<String> p4);
+
+    @Override
+    public abstract int mixedParametersPrimitive(List<String> p1, @Out List<String> p2, List<String> p3, @Out List<String> p4);
+
+    @Override
+    public abstract int[] mixedParametersArray(List<String> p1, @Out List<String> p2, List<String> p3, @Out List<String> p4);
+
+    @Override
+    public abstract Map<String, String> mixedParametersCustom(List<String> p1, @Out List<String> p2, List<String> p3, @Out List<String> p4);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.nativetohs;
+package org.graalvm.nativebridge.processor.test.common;
 
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JNIEnv;
@@ -31,22 +31,21 @@ import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
 import org.graalvm.nativebridge.Idempotent;
 import org.graalvm.nativebridge.Out;
 import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
+import org.graalvm.nativebridge.processor.test.ExpectError;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
 import java.time.Duration;
-import java.util.Map;
 
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class HSCustomMarshallerTest extends HSObject implements CustomMarshallerService {
+abstract class InvalidIdempotentTest extends HSObject implements CustomMarshallerService {
 
-    HSCustomMarshallerTest(JNIEnv env, JObject handle) {
+    InvalidIdempotentTest(JNIEnv env, JObject handle) {
         super(env, handle);
     }
 
+    @ExpectError("A method with a cached return value cannot have an `Out` parameter.%n" +
+                    "To fix this, remove the `Idempotent` annotation.")
+    @Override
     @Idempotent
-    @Override
-    public abstract Map<String, String> getProperties();
-
-    @Override
-    public abstract void fillDurations(@Out Duration[] durations);
+    public abstract Duration[] getSetDurations(@Out Duration[] durations);
 }

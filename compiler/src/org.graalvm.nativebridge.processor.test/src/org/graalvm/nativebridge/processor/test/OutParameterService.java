@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.nativetohs;
+package org.graalvm.nativebridge.processor.test;
 
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNI.JObject;
-import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.Idempotent;
-import org.graalvm.nativebridge.Out;
-import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
-
-import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class HSCustomMarshallerTest extends HSObject implements CustomMarshallerService {
+public interface OutParameterService {
 
-    HSCustomMarshallerTest(JNIEnv env, JObject handle) {
-        super(env, handle);
-    }
+    void singleOutParameterVoid(List<String> p1);
 
-    @Idempotent
-    @Override
-    public abstract Map<String, String> getProperties();
+    int singleOutParameterPrimitive(List<String> p1);
 
-    @Override
-    public abstract void fillDurations(@Out Duration[] durations);
+    int[] singleOutParameterArray(List<String> p1);
+
+    Map<String, String> singleOutParameterCustom(List<String> p1);
+
+    void multipleOutParametersVoid(List<String> p1, List<String> p2);
+
+    int multipleOutParametersPrimitive(List<String> p1, List<String> p2);
+
+    int[] multipleOutParametersArray(List<String> p1, List<String> p2);
+
+    Map<String, String> multipleOutParametersCustom(List<String> p1, List<String> p2);
+
+    void mixedParametersVoid(List<String> p1, List<String> p2, List<String> p3, List<String> p4);
+
+    int mixedParametersPrimitive(List<String> p1, List<String> p2, List<String> p3, List<String> p4);
+
+    int[] mixedParametersArray(List<String> p1, List<String> p2, List<String> p3, List<String> p4);
+
+    Map<String, String> mixedParametersCustom(List<String> p1, List<String> p2, List<String> p3, List<String> p4);
 }

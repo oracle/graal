@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge.processor.test.nativetohs;
+package org.graalvm.nativebridge;
 
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNI.JObject;
-import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
-import org.graalvm.nativebridge.Idempotent;
-import org.graalvm.nativebridge.Out;
-import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import java.time.Duration;
-import java.util.Map;
-
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class HSCustomMarshallerTest extends HSObject implements CustomMarshallerService {
-
-    HSCustomMarshallerTest(JNIEnv env, JObject handle) {
-        super(env, handle);
-    }
-
-    @Idempotent
-    @Override
-    public abstract Map<String, String> getProperties();
-
-    @Override
-    public abstract void fillDurations(@Out Duration[] durations);
+/**
+ * Container for repeated {@link AlwaysByReference} annotations.
+ */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.SOURCE)
+public @interface AlwaysByReferenceRepeated {
+    AlwaysByReference[] value();
 }

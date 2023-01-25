@@ -476,9 +476,7 @@ public abstract class Accessor {
 
         public abstract Object findMetaObjectForLanguage(Object polyglotLanguageContext, Object value);
 
-        public abstract boolean isInternal(FileSystem fs);
-
-        public abstract boolean hasAllAccess(FileSystem fs);
+        public abstract boolean isInternal(Object engineObject, FileSystem fs);
 
         public abstract boolean hasNoAccess(FileSystem fs);
 
