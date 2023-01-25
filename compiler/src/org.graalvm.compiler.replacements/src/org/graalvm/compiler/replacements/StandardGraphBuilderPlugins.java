@@ -244,7 +244,7 @@ public class StandardGraphBuilderPlugins {
         registerMethodHandleImplPlugins(plugins, replacements);
         registerPreconditionsPlugins(plugins, replacements);
         registerJcovCollectPlugins(plugins, replacements);
-        registerThreadPlugin(plugins, replacements);
+        registerThreadPlugins(plugins, replacements);
 
         if (supportsStubBasedPlugins) {
             registerArraysPlugins(plugins, replacements);
@@ -2336,15 +2336,16 @@ public class StandardGraphBuilderPlugins {
         return true;
     }
 
-    private static void registerThreadPlugin(InvocationPlugins plugins, Replacements replacements) {
-        InvocationPlugin threadPlugin = new InvocationPlugin("ensureMaterializedForStackWalk", Object.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                b.add(new BlackholeNode(object, "ensureMaterializedForStackWalk"));
-                return true;
-            }
-        };
+    private static void registerThreadPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Thread.class, replacements);
-        r.registerConditional(hasEnsureMaterializedForStackWalk(), threadPlugin);
+        if (hasEnsureMaterializedForStackWalk()) {
+            r.register(new InvocationPlugin("ensureMaterializedForStackWalk", Object.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                    b.add(new BlackholeNode(object, "ensureMaterializedForStackWalk"));
+                    return true;
+                }
+            });
+        }
     }
 }
