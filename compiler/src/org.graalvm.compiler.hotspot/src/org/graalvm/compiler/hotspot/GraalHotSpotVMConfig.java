@@ -106,7 +106,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useAESCTRIntrinsics = getFlag("UseAESCTRIntrinsics", Boolean.class);
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
     public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class); // JDK-8073583
-    public final boolean useThreadLocalPolling = true;
     private final boolean useMultiplyToLenIntrinsic = getFlag("UseMultiplyToLenIntrinsic", Boolean.class);
     private final boolean useSHA1Intrinsics = getFlag("UseSHA1Intrinsics", Boolean.class);
     private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
@@ -484,8 +483,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      * throw an exception during code installation.
      */
     public final int maxOopMapStackOffset = getFieldValue("CompilerToVM::Data::_max_oop_map_stack_offset", Integer.class, "int");
-
-    public final long safepointPollingAddress = getFieldValue("os::_polling_page", Long.class, "address");
 
     // G1 Collector Related Values.
     public final byte dirtyCardValue;
