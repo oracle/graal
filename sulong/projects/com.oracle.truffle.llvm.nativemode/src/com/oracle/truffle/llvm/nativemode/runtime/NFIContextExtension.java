@@ -412,6 +412,8 @@ public final class NFIContextExtension extends NativeContextExtension {
                     return "DOUBLE";
                 case X86_FP80:
                     return "FP80";
+                case F128:
+                    return "FP128";
                 default:
                     throw new UnsupportedNativeTypeException(primitiveType);
 
