@@ -87,7 +87,6 @@ class Checker:
                         print(self)
                         print(text)
                         sys.exit(1)
-                        return matches
                 else:
                     matches.append(match)
                 line_idx += 1
@@ -96,7 +95,6 @@ class Checker:
             print(self)
             print(text)
             sys.exit(1)
-            return matches
         print(text)
         return matches
 
