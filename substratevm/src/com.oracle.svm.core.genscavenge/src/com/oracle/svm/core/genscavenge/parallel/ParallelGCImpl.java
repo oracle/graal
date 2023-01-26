@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import java.util.List;
@@ -59,7 +60,7 @@ public class ParallelGCImpl extends ParallelGC {
 
     public static final int UNALIGNED_BIT = 0x01;
 
-    private List<Thread> workers;
+    private Thread[] workers;
     private int busyWorkers;
 
     /**
@@ -69,6 +70,8 @@ public class ParallelGCImpl extends ParallelGC {
             FastThreadLocalFactory.createWord("ParallelGCImpl.allocChunkTL");
     private static final FastThreadLocalWord<AlignedHeapChunk.AlignedHeader> scannedChunkTL =
             FastThreadLocalFactory.createWord("ParallelGCImpl.scannedChunkTL");
+    private static final FastThreadLocalWord<UnsignedWord> allocChunkScanOffsetTL =
+            FastThreadLocalFactory.createWord("ParallelGCImpl.allocChunkScanOffsetTL");
 
     public static final VMMutex mutex = new VMMutex("ParallelGCImpl");
     private final VMCondition seqPhase = new VMCondition(mutex);
@@ -86,11 +89,6 @@ public class ParallelGCImpl extends ParallelGC {
         return singleton().inParallelPhase;
     }
 
-    public static AlignedHeapChunk.AlignedHeader getScannedChunk() {
-        assert ParallelGCImpl.isEnabled() && GCImpl.getGCImpl().isCompleteCollection();
-        return scannedChunkTL.get();
-    }
-
     public static AlignedHeapChunk.AlignedHeader getAllocationChunk() {
         return allocChunkTL.get();
     }
@@ -98,6 +96,7 @@ public class ParallelGCImpl extends ParallelGC {
     public static void setAllocationChunk(AlignedHeapChunk.AlignedHeader chunk) {
         assert chunk.isNonNull();
         allocChunkTL.set(chunk);
+        allocChunkScanOffsetTL.set(AlignedHeapChunk.getObjectsStartOffset());
     }
 
     public void push(Pointer ptr) {
@@ -108,12 +107,23 @@ public class ParallelGCImpl extends ParallelGC {
         }
     }
 
+    public void pushAllocChunk(AlignedHeapChunk.AlignedHeader chunk) {
+        assert ParallelGCImpl.isEnabled() && GCImpl.getGCImpl().isCompleteCollection();
+        if (chunk.notEqual(scannedChunkTL.get())) {
+            UnsignedWord scanOffset = allocChunkScanOffsetTL.get();
+            assert scanOffset.aboveThan(0);
+            if (chunk.getTopOffset().aboveThan(scanOffset)) {
+                push(HeapChunk.asPointer(chunk).add(scanOffset));
+            }
+        }
+    }
+
     @Override
     public void startWorkerThreadsImpl() {
         buffer = new ChunkBuffer();
         int workerCount = getWorkerCount();
         busyWorkers = workerCount;
-        workers = IntStream.range(0, workerCount).mapToObj(this::startWorkerThread).toList();
+        workers = IntStream.range(0, workerCount).mapToObj(this::startWorkerThread).toArray(Thread[]::new);
     }
 
     private int getWorkerCount() {
@@ -137,7 +147,7 @@ public class ParallelGCImpl extends ParallelGC {
                 while (true) {
                     try {
                         Pointer ptr;
-                        while (!inParallelPhase || (ptr = buffer.pop()).isNull() && allocChunkTL.get().isNull()) {
+                        while (!inParallelPhase || (ptr = buffer.pop()).isNull() && !allocChunkNeedsScanning()) {
                             mutex.lock();
                             try {
                                 if (--busyWorkers == 0) {
@@ -174,7 +184,6 @@ public class ParallelGCImpl extends ParallelGC {
     public void waitForIdle() {
         assert allocChunkTL.get().isNonNull();
         push(HeapChunk.asPointer(allocChunkTL.get()));
-        allocChunkTL.set(WordFactory.nullPointer());
 
         mutex.lock();
         try {
@@ -194,6 +203,11 @@ public class ParallelGCImpl extends ParallelGC {
         } finally {
             mutex.unlock();
         }
+        // clean up thread local allocation chunks
+        allocChunkTL.set(WordFactory.nullPointer());
+        for (Thread t: workers) {
+            allocChunkTL.set(PlatformThreads.getIsolateThreadUnsafe(t), WordFactory.nullPointer());
+        }
     }
 
     private void scanChunk(Pointer ptr) {
@@ -202,23 +216,35 @@ public class ParallelGCImpl extends ParallelGC {
             if (ptr.and(UNALIGNED_BIT).notEqual(0)) {
                 UnalignedHeapChunk.walkObjectsInline((UnalignedHeapChunk.UnalignedHeader) ptr.and(~UNALIGNED_BIT), getVisitor());
             } else {
-                AlignedHeapChunk.walkObjectsInline((AlignedHeapChunk.AlignedHeader) ptr, getVisitor());
+                AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(ptr);
+                if (chunk.equal(ptr)) {
+                    ptr = ptr.add(AlignedHeapChunk.getObjectsStartOffset());
+                }
+                HeapChunk.walkObjectsFromInline(chunk, ptr, getVisitor());
             }
         }
     }
 
     private void scanAllocChunk() {
-        AlignedHeapChunk.AlignedHeader allocChunk = allocChunkTL.get();
-        if (allocChunk.isNonNull()) {
-            debugLog().string("WW scan alloc=").zhex(allocChunk).newline();
+        if (allocChunkNeedsScanning()) {
+            AlignedHeapChunk.AlignedHeader allocChunk = allocChunkTL.get();
+            UnsignedWord scanOffset = allocChunkScanOffsetTL.get();
+            assert scanOffset.aboveThan(0);
+            Pointer scanPointer = HeapChunk.asPointer(allocChunk).add(scanOffset);
+            debugLog().string("WW scan alloc=").zhex(allocChunk).string(" from offset ").unsigned(scanOffset).newline();
             scannedChunkTL.set(allocChunk);
-            AlignedHeapChunk.walkObjectsInline(allocChunk, getVisitor());
+            HeapChunk.walkObjectsFromInline(allocChunk, scanPointer, getVisitor());
+            scannedChunkTL.set(WordFactory.nullPointer());
             if (allocChunkTL.get().equal(allocChunk)) {
-                // this allocation chunk is now black, retire it
-                allocChunkTL.set(WordFactory.nullPointer());
+                // remember top offset so that we don't scan the same objects again
+                allocChunkScanOffsetTL.set(allocChunk.getTopOffset());
             }
         }
-        scannedChunkTL.set(WordFactory.nullPointer());
+    }
+
+    private boolean allocChunkNeedsScanning() {
+        AlignedHeapChunk.AlignedHeader allocChunk = allocChunkTL.get();
+        return allocChunk.isNonNull() && allocChunk.getTopOffset().aboveThan(allocChunkScanOffsetTL.get());
     }
 
     private GreyToBlackObjectVisitor getVisitor() {
@@ -228,7 +254,9 @@ public class ParallelGCImpl extends ParallelGC {
     @Uninterruptible(reason = "Tear-down in progress.", calleeMustBe = false)
     public void tearDown() {
         buffer.release();
-        workers.forEach(PlatformThreads::exit);
+        for (Thread t: workers) {
+            PlatformThreads.exit(t);
+        }
     }
 
     private static Log verboseGCLog() {
