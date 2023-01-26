@@ -48,7 +48,11 @@ import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNo
 import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor;
+
+import java.util.Arrays;
+import java.util.function.BiPredicate;
 
 /**
  * An implementation of the Ruby regex flavor.
@@ -58,9 +62,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * features:
  * </p>
  * <ul>
- * <li>case-insensitive backreferences: In Ruby, case-insensitive matching has to be implemented by
- * case-folding. However, there is no way we can case-fold a backreference, since we don't know
- * which string it will match.</li>
  * <li>\G escape sequence: In Ruby regular expressions, \G can be used to assert that we are still
  * at the initial index. TRegex only provides limited support for this feature by handling cases
  * when \G appears at the beginning of all top-level alternatives.</li>
@@ -235,5 +236,10 @@ public final class RubyFlavor extends RegexFlavor {
     @Override
     public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
         return RubyRegexParser.createParser(language, source, compilationBuffer);
+    }
+
+    @Override
+    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
+        return (codePointA, codePointB) -> Arrays.equals(RubyCaseFolding.caseFold(codePointA), RubyCaseFolding.caseFold(codePointB));
     }
 }

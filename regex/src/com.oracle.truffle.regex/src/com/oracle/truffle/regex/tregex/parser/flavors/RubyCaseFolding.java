@@ -119,15 +119,19 @@ public class RubyCaseFolding {
         astBuilder.popGroup();
     }
 
+    public static int[] caseFold(int codePoint) {
+        if (RubyCaseFoldingData.CASE_FOLD.containsKey(codePoint)) {
+            return RubyCaseFoldingData.CASE_FOLD.get(codePoint);
+        } else {
+            return new int[]{codePoint};
+        }
+    }
+
     private static List<Integer> caseFold(int[] codepoints) {
         List<Integer> caseFolded = new ArrayList<>();
         for (int codepoint : codepoints) {
-            if (RubyCaseFoldingData.CASE_FOLD.containsKey(codepoint)) {
-                for (int caseFoldedCodepoint : RubyCaseFoldingData.CASE_FOLD.get(codepoint)) {
-                    caseFolded.add(caseFoldedCodepoint);
-                }
-            } else {
-                caseFolded.add(codepoint);
+            for (int folded : caseFold(codepoint)) {
+                caseFolded.add(folded);
             }
         }
         return caseFolded;
