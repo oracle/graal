@@ -1073,7 +1073,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             iBR = locals.getNextIndex();
             int codePointI = inputReadAndDecode(locals, i);
             i = locals.getNextIndex();
-            if (injectBranchProbability(EXIT_PROBABILITY, !(backReference.isIgnoreCaseReference() ? equalsIgnoreCase.test(codePointBR, codePointI) : codePointBR == codePointI))) {
+            if (injectBranchProbability(EXIT_PROBABILITY, !(backReference.isIgnoreCaseReference() ? equalsIgnoreCase(codePointBR, codePointI) : codePointBR == codePointI))) {
                 locals.setNextIndex(saveNextIndex);
                 return -1;
             }
@@ -1092,6 +1092,11 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
 
     private boolean inputBoundsCheck(int i, int min, int max) {
         return isForward() ? i < max : i > min;
+    }
+
+    @TruffleBoundary
+    private boolean equalsIgnoreCase(int a, int b) {
+        return equalsIgnoreCase.test(a, b);
     }
 
     private static int setFlag(int flags, int flag, boolean value) {
