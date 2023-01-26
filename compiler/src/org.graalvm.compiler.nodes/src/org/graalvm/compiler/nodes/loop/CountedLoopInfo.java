@@ -225,7 +225,12 @@ public class CountedLoopInfo {
      *
      * THIS VALUE SHOULD BE TREATED AS UNSIGNED.
      *
+     * Warning: In order to calculate the max trip count it can be necessary to perform a devision
+     * operation in the generated code before the loop header. If {@code stride is not a power of 2}
+     * we have to perform an integer division of the range of the induction variable and the stride.
+     *
      * @param assumeLoopEntered if true the check that the loop is entered at all will be omitted.
+     *
      */
     public ValueNode maxTripCountNode(boolean assumeLoopEntered, IntegerHelper integerHelper, ValueNode initNode, ValueNode tripCountLimit) {
         StructuredGraph graph = getBodyIV().valueNode().graph();

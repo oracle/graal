@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.GuardedValueNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -448,6 +449,42 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 this.initTest = initTest;
                 this.extremumTest = extremumTest;
             }
+
+            private static boolean isLogicConstant(ValueNode v) {
+                return v instanceof LogicConstantNode;
+            }
+
+            private boolean constantInitTestOrValue(boolean value) {
+                if (initTestIsConstant()) {
+                    return initTestAsConstant();
+                }
+                return value;
+            }
+
+            private boolean constantExtremumTestOrValue(boolean value) {
+                if (extremumTestIsConstant()) {
+                    return extremumTestAsConstant();
+                }
+                return value;
+            }
+
+            private boolean initTestAsConstant() {
+                assert isLogicConstant(initTest);
+                return ((LogicConstantNode) initTest).getValue();
+            }
+
+            private boolean extremumTestAsConstant() {
+                assert isLogicConstant(extremumTest);
+                return ((LogicConstantNode) extremumTest).getValue();
+            }
+
+            private boolean initTestIsConstant() {
+                return isLogicConstant(initTest);
+            }
+
+            private boolean extremumTestIsConstant() {
+                return isLogicConstant(extremumTest);
+            }
         }
 
         private LogicNode createLoopEnterCheck(CountedLoopInfo countedLoop, LogicNode newCompare) {
@@ -632,16 +669,17 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                     InductionVariable countedLoopInitModifiedIV = iv.getLoop().counted().getBodyIV();
                     boolean initIsParentIV = false;
                     boolean initIsParentPhi = false;
+                    ValueNode currentRootInit = currentIv.getRootIV().initNode();
                     while (currentLoop.parent() != null &&
                                     // init is outer IV node
-                                    ((initIsParentIV = currentLoop.parent().getInductionVariables().containsKey(currentIv.getRootIV().initNode())) ||
+                                    ((initIsParentIV = currentLoop.parent().getInductionVariables().containsKey(currentRootInit)) ||
                                                     // init is outer phi but not IV
-                                                    (initIsParentPhi = currentLoop.parent().loopBegin().isPhiAtMerge(currentIv.getRootIV().initNode())))) {
+                                                    (initIsParentPhi = currentLoop.parent().loopBegin().isPhiAtMerge(currentRootInit)))) {
                         if (initIsParentIV) {
-                            InductionVariable parentIv = currentLoop.parent().getInductionVariables().get(currentIv.getRootIV().initNode());
+                            InductionVariable parentIv = currentLoop.parent().getInductionVariables().get(currentRootInit);
                             currentIv = currentIv.duplicateWithNewInit(parentIv.entryTripValue());
                         } else if (initIsParentPhi) {
-                            currentIv = currentIv.duplicateWithNewInit(((PhiNode) currentIv.getRootIV().initNode()).valueAt(0));
+                            currentIv = currentIv.duplicateWithNewInit(((PhiNode) currentRootInit).valueAt(0));
                         } else {
                             throw GraalError.shouldNotReachHere("Must have never entered loop");
                         }
@@ -649,6 +687,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                             InductionVariable parentIVBodyRef = currentLoop.parent().getInductionVariables().get(countedLoopInitModifiedIV.getRootIV().initNode());
                             countedLoopInitModifiedIV = countedLoopInitModifiedIV.duplicateWithNewInit(parentIVBodyRef.entryTripValue());
                         }
+                        currentRootInit = currentIv.getRootIV().initNode();
                         currentLoop = currentLoop.parent();
                     }
                     if (currentLoop != iv.getLoop()) {
@@ -662,7 +701,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                         OptimizedCompareTests testStripMinedIV = computeNewCompareGuards(compare, duplicateOriginalLoopIV, bound, mirrored, iv.getLoop().counted().getOverFlowGuard(),
                                         outerLoopInitBasedMaxTripCount);
                         if (optimizedCompareUnconditionalDeopt(guard, testStripMinedIV)) {
-                            debug.log("shouldOptimizeCompare(%s): guard would immediately deopt in strip mined inner loop", compare);
+                            debug.log("shouldOptimizeCompare(%s): guard would immediately deopt in loop", compare);
                             return null;
                         }
                     }
@@ -681,10 +720,10 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
          * fail or not.
          */
         private static boolean optimizedCompareUnconditionalDeopt(GuardNode guard, OptimizedCompareTests tests) {
-            if (tests.extremumTest.isJavaConstant() || tests.initTest.isJavaConstant()) {
+            if (tests.extremumTestIsConstant() || tests.initTestIsConstant()) {
                 // true is the neutral value of &&
-                final boolean t1 = tests.extremumTest.isConstant() ? tests.extremumTest.asJavaConstant().asBoolean() : true;
-                final boolean t2 = tests.initTest.isConstant() ? tests.initTest.asJavaConstant().asBoolean() : true;
+                final boolean t1 = tests.constantExtremumTestOrValue(true);
+                final boolean t2 = tests.constantInitTestOrValue(true);
                 final boolean result = t1 && t2;
                 return result == guard.deoptsOnTrue();
             }
