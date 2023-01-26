@@ -113,7 +113,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         return optionKey.getValue(RuntimeOptionValues.singleton());
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "deprecation"})
     @Override
     public <T> T getOptions(EnumSet<OptionClass> classes) {
         Iterable<OptionDescriptor> descriptors = RuntimeOptionParser.singleton().getDescriptors();
@@ -135,6 +135,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         return (T) OptionDescriptors.create(graalvmDescriptors);
     }
 
+    @SuppressWarnings("deprecation")
     private static OptionClass getOptionClass(OptionDescriptor descriptor) {
         if (descriptor.getOptionKey() instanceof RuntimeOptionKey) {
             return OptionClass.VM;
