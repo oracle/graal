@@ -599,11 +599,9 @@ public class NativeImageGenerator {
         OptionValues options = HostedOptionValues.singleton();
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
 
-        final boolean supportsStubBasedPlugins = this.isStubBasedPluginsSupported();
-
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(originalSnippetReflection)).build();
                         DebugCloseable featureCleanup = () -> featureHandler.forEachFeature(Feature::cleanup)) {
-            setupNativeImage(options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, originalSnippetReflection, debug, supportsStubBasedPlugins);
+            setupNativeImage(options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, originalSnippetReflection, debug);
             reporter.printFeatures(featureHandler.getUserSpecificFeatures());
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
@@ -632,11 +630,12 @@ public class NativeImageGenerator {
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
                 runtime = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess, bb.getProviders(), nativeLibraries, classInitializationSupport,
                                 GraalAccess.getOriginalProviders().getLoopsDataProvider(), platformConfig).build();
+
                 registerGraphBuilderPlugins(featureHandler, runtime.getRuntimeConfig(), (HostedProviders) runtime.getRuntimeConfig().getProviders(), bb.getMetaAccess(), aUniverse,
                                 hMetaAccess, hUniverse,
                                 nativeLibraries, loader, ParsingReason.AOTCompilation, bb.getAnnotationSubstitutionProcessor(),
                                 new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()),
-                                ConfigurationValues.getTarget(), supportsStubBasedPlugins);
+                                ConfigurationValues.getTarget(), this.isStubBasedPluginsSupported());
 
                 if (NativeImageOptions.PrintUniverse.getValue()) {
                     printTypes();
@@ -856,8 +855,7 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("try")
     protected void setupNativeImage(OptionValues options, Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport,
-                    SubstitutionProcessor harnessSubstitutions, ForkJoinPool analysisExecutor, SnippetReflectionProvider originalSnippetReflection, DebugContext debug,
-                    boolean supportsStubBasedPlugins) {
+                    SubstitutionProcessor harnessSubstitutions, ForkJoinPool analysisExecutor, SnippetReflectionProvider originalSnippetReflection, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer ignored1 = TimerCollection.createTimerAndStart(TimerCollection.Registry.SETUP)) {
                 SubstrateTargetDescription target = createTarget();
@@ -959,7 +957,7 @@ public class NativeImageGenerator {
                 }
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
-                                new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()), supportsStubBasedPlugins);
+                                new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()), this.isStubBasedPluginsSupported());
                 registerEntryPointStubs(entryPoints);
             }
 
