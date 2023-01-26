@@ -89,7 +89,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int hugeMethodLimit = getFlag("HugeMethodLimit", Integer.class);
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
-    public final boolean inlineNotify = true;
     public final boolean useFastLocking = getFlag("JVMCIUseFastLocking", Boolean.class);
     public final boolean forceUnreachable = getFlag("ForceUnreachable", Boolean.class);
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
@@ -164,11 +163,11 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     }
 
     public boolean inlineNotify() {
-        return inlineNotify && notifyAddress != 0;
+        return notifyAddress != 0;
     }
 
     public boolean inlineNotifyAll() {
-        return inlineNotify && notifyAllAddress != 0;
+        return notifyAllAddress != 0;
     }
 
     public boolean useCRC32Intrinsics() {
@@ -233,13 +232,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int secondarySuperCacheOffset = getFieldOffset("Klass::_secondary_super_cache", Integer.class, "Klass*");
     public final int secondarySupersOffset = getFieldOffset("Klass::_secondary_supers", Integer.class, "Array<Klass*>*");
 
-    public final boolean classMirrorIsHandle;
-    public final int classMirrorOffset;
-    {
-        // JDK-8186777
-        classMirrorIsHandle = true;
-        classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "OopHandle");
-    }
+    // JDK-8186777
+    public final int classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "OopHandle");
 
     public final int klassSuperKlassOffset = getFieldOffset("Klass::_super", Integer.class, "Klass*");
     public final int klassModifierFlagsOffset = getFieldOffset("Klass::_modifier_flags", Integer.class, "jint");
@@ -301,20 +295,14 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int javaThreadAnchorOffset = getFieldOffset("JavaThread::_anchor", Integer.class, "JavaFrameAnchor");
     public final int javaThreadShouldPostOnExceptionsFlagOffset = getFieldOffset("JavaThread::_should_post_on_exceptions_flag", Integer.class, "int");
 
-    public final boolean threadObjectFieldIsHandle;
     /**
      * The offset of the {@code JavaThread} field containing the reference to the current thread.
      */
     public final int threadCurrentThreadObjectOffset;
     {
-        if (JDK <= 15) {
-            threadObjectFieldIsHandle = false;
-            threadCurrentThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "oop");
-        } else if (JDK < 19) {
-            threadObjectFieldIsHandle = true;
+        if (JDK < 19) {
             threadCurrentThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
         } else {
-            threadObjectFieldIsHandle = true;
             /*
              * With virtual threads, the value returned by Thread.currentThread() is the new
              * _vthread field. The _threadObj field is still present but refers to the carrier

@@ -26,8 +26,8 @@ package org.graalvm.compiler.hotspot.replacements;
 
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.ARRAY_KLASS_COMPONENT_MIRROR;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_OSTHREAD_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
@@ -210,14 +210,13 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
     public ValueNode readCurrentThreadObject(CurrentJavaThreadNode thread) {
         // JavaThread::_threadObj is never compressed
         ObjectStamp threadStamp = StampFactory.objectNonNull(TypeReference.create(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Thread.class)));
-        Stamp fieldStamp = config.threadObjectFieldIsHandle ? StampFactory.forKind(getWordKind()) : threadStamp;
+        Stamp fieldStamp = StampFactory.forKind(getWordKind());
         ValueNode value = readLocation(thread, HotSpotVMConfigField.JAVA_THREAD_THREAD_OBJECT, fieldStamp);
-        if (config.threadObjectFieldIsHandle) {
-            // Read the Object from the OopHandle
-            ValueNode handleOffset = ConstantNode.forIntegerKind(getWordKind(), 0, b.getGraph());
-            AddressNode handleAddress = b.add(new OffsetAddressNode(value, handleOffset));
-            value = b.add(new ReadNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, threadStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
-        }
+
+        // Read the Object from the OopHandle
+        ValueNode handleOffset = ConstantNode.forIntegerKind(getWordKind(), 0, b.getGraph());
+        AddressNode handleAddress = b.add(new OffsetAddressNode(value, handleOffset));
+        value = b.add(new ReadNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, threadStamp, BarrierType.NONE, MemoryOrderMode.PLAIN));
         return value;
     }
 
