@@ -104,6 +104,9 @@ final class BundleSupport {
 
     private final BundleProperties bundleProperties;
 
+    static boolean allowBundleSupport;
+    static final String UNLOCK_BUNDLE_SUPPORT_OPTION = "--enable-experimental-bundle-support";
+
     static final String BUNDLE_OPTION = "--bundle";
     static final String BUNDLE_FILE_EXTENSION = ".nib";
 
@@ -113,6 +116,10 @@ final class BundleSupport {
     }
 
     static BundleSupport create(NativeImage nativeImage, String bundleArg, NativeImage.ArgumentQueue args) {
+        if (!allowBundleSupport) {
+            throw NativeImage.showError("Bundle support is still experimental and needs to be unlocked with " + UNLOCK_BUNDLE_SUPPORT_OPTION);
+        }
+
         if (!nativeImage.userConfigProperties.isEmpty()) {
             throw NativeImage.showError("Bundle support cannot be combined with " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + " environment variable use.");
         }
@@ -573,6 +580,9 @@ final class BundleSupport {
         try (JsonWriter writer = new JsonWriter(buildArgsFile)) {
             ArrayList<String> cleanBuildArgs = new ArrayList<>();
             for (String buildArg : updatedBuildArgs != null ? updatedBuildArgs : buildArgs) {
+                if (buildArg.equals(UNLOCK_BUNDLE_SUPPORT_OPTION)) {
+                    continue;
+                }
                 if (buildArg.startsWith(BUNDLE_OPTION)) {
                     continue;
                 }

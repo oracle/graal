@@ -142,6 +142,10 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 String optionNames = args.poll();
                 nativeImage.setPrintFlagsWithExtraHelpOptionQuery(optionNames);
                 return true;
+            case BundleSupport.UNLOCK_BUNDLE_SUPPORT_OPTION:
+                args.poll();
+                BundleSupport.allowBundleSupport = true;
+                return true;
             case verboseServerOption:
                 args.poll();
                 NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
