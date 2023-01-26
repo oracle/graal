@@ -120,18 +120,19 @@ public class RubyCaseFolding {
     }
 
     public static int[] caseFold(int codePoint) {
-        if (RubyCaseFoldingData.CASE_FOLD.containsKey(codePoint)) {
-            return RubyCaseFoldingData.CASE_FOLD.get(codePoint);
-        } else {
-            return new int[]{codePoint};
-        }
+        return RubyCaseFoldingData.CASE_FOLD.get(codePoint);
     }
 
     private static List<Integer> caseFold(int[] codepoints) {
         List<Integer> caseFolded = new ArrayList<>();
         for (int codepoint : codepoints) {
-            for (int folded : caseFold(codepoint)) {
-                caseFolded.add(folded);
+            int[] folded = caseFold(codepoint);
+            if (folded == null) {
+                caseFolded.add(codepoint);
+            } else {
+                for (int foldedElem : folded) {
+                    caseFolded.add(foldedElem);
+                }
             }
         }
         return caseFolded;

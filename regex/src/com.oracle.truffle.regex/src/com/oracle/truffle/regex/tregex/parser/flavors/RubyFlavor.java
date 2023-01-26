@@ -240,6 +240,20 @@ public final class RubyFlavor extends RegexFlavor {
 
     @Override
     public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
-        return (codePointA, codePointB) -> Arrays.equals(RubyCaseFolding.caseFold(codePointA), RubyCaseFolding.caseFold(codePointB));
+        return RubyFlavor::equalsIgnoreCase;
+    }
+
+    private static boolean equalsIgnoreCase(int codePointA, int codePointB) {
+        int[] foldedA = RubyCaseFolding.caseFold(codePointA);
+        int[] foldedB = RubyCaseFolding.caseFold(codePointB);
+        if (foldedA == null && foldedB == null) {
+            return codePointA == codePointB;
+        } else if (foldedA == null) {
+            return foldedB.length == 1 && codePointA == foldedB[0];
+        } else if (foldedB == null) {
+            return foldedA.length == 1 && foldedA[0] == codePointB;
+        } else {
+            return Arrays.equals(foldedA, foldedB);
+        }
     }
 }
