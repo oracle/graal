@@ -450,8 +450,6 @@ public final class UnimplementedGraalIntrinsics {
             add(toBeInvestigated,
                             "com/sun/crypto/provider/ChaCha20Cipher.implChaCha20Block([I[B)I",
                             "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V",
-                            "java/lang/Float.float16ToFloat(S)F",
-                            "java/lang/Float.floatToFloat16(F)S",
                             "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
                             "java/lang/Thread.scopedValueCache()[Ljava/lang/Object;",
                             "java/lang/Thread.setScopedValueCache([Ljava/lang/Object;)V",
@@ -470,6 +468,11 @@ public final class UnimplementedGraalIntrinsics {
                 add(toBeInvestigated,
                                 "java/lang/Integer.reverse(I)I",
                                 "java/lang/Long.reverse(J)J");
+
+                // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8289552
+                add(toBeInvestigated,
+                                "java/lang/Float.float16ToFloat(S)F",
+                                "java/lang/Float.floatToFloat16(F)S");
             }
         }
 

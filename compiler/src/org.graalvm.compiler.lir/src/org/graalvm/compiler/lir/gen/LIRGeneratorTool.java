@@ -209,6 +209,16 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
     }
 
+    @SuppressWarnings("unused")
+    default Variable emitHalfFloatToFloat(Value operand) {
+        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitFloatToHalfFloat(Value operand) {
+        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
+    }
+
     default Variable emitUnsignedCompare(Value x, Value y) {
         throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
     }

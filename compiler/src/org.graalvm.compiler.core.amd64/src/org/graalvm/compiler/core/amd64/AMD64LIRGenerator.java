@@ -109,7 +109,9 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestByteBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64CounterModeAESCryptOp;
 import org.graalvm.compiler.lir.amd64.AMD64EncodeArrayOp;
+import org.graalvm.compiler.lir.amd64.AMD64FloatToHalfFloatOp;
 import org.graalvm.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
+import org.graalvm.compiler.lir.amd64.AMD64HalfFloatToFloatOp;
 import org.graalvm.compiler.lir.amd64.AMD64HasNegativesOp;
 import org.graalvm.compiler.lir.amd64.AMD64LFenceOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
@@ -610,7 +612,21 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitBitSwap(Value input) {
         Variable result = newVariable(LIRKind.combine(input));
-        append(new AMD64BitSwapOp(this, result, input));
+        append(new AMD64BitSwapOp(this, result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitHalfFloatToFloat(Value input) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.SINGLE));
+        append(new AMD64HalfFloatToFloatOp(result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitFloatToHalfFloat(Value input) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(new AMD64FloatToHalfFloatOp(this, result, asAllocatable(input)));
         return result;
     }
 

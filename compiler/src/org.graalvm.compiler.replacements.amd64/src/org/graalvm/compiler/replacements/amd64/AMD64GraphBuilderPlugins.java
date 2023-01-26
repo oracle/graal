@@ -88,7 +88,9 @@ import org.graalvm.compiler.replacements.nodes.BitCountNode;
 import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
 import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
+import org.graalvm.compiler.replacements.nodes.FloatToHalfFloatNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
+import org.graalvm.compiler.replacements.nodes.HalfFloatToFloatNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -119,6 +121,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, arch, replacements);
                 registerFloatDoublePlugins(invocationPlugins, JavaKind.Float, arch, replacements);
                 registerFloatDoublePlugins(invocationPlugins, JavaKind.Double, arch, replacements);
+                registerFloatPlugins(invocationPlugins, arch, replacements);
 
                 if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
@@ -191,6 +194,26 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 b.addPush(kind, new ReverseBitsNode(arg).canonical(null));
+                return true;
+            }
+        });
+    }
+
+    private static void registerFloatPlugins(InvocationPlugins plugins, AMD64 arch, Replacements replacements) {
+        Registration r = new Registration(plugins, Float.class, replacements);
+
+        // TODO F16C may not be resolved in older JVMCI
+        r.registerConditional(arch.getFeatures().contains(CPUFeature.F16C), new InvocationPlugin("float16ToFloat", short.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
+                return true;
+            }
+        });
+        r.registerConditional(arch.getFeatures().contains(CPUFeature.F16C), new InvocationPlugin("floatToFloat16", float.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));
                 return true;
             }
         });
