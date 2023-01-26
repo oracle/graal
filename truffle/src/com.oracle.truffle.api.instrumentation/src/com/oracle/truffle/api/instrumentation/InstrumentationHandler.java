@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,6 +103,7 @@ final class InstrumentationHandler {
 
     /* Enable trace output to stdout. */
     static final boolean TRACE = Boolean.getBoolean("truffle.instrumentation.trace");
+    private static final Object NOT_ENTERED = new Object();
 
     private final Object polyglotEngine;
 
@@ -1133,6 +1134,7 @@ final class InstrumentationHandler {
         visitor.rootBits = RootNodeBits.get(root);
         visitor.setExecutedRootNodeBit = setExecutedRootNodeBit;
         visitor.preVisit(root, node, firstExecution);
+        Object prevRootVisit = NOT_ENTERED;
         try {
             Lock lock = InstrumentAccessor.nodesAccess().getLock(node);
             lock.lock();
@@ -1143,6 +1145,7 @@ final class InstrumentationHandler {
                     if (TRACE) {
                         trace("BEGIN: Traverse root %s for %s%n", root.toString(), visitor);
                     }
+                    prevRootVisit = InstrumentAccessor.engineAccess().enterRootNodeVisit(root);
                     if (forceRootBitComputation) {
                         visitor.computingRootNodeBits = RootNodeBits.isUninitialized(visitor.rootBits) ? RootNodeBits.getAll() : visitor.rootBits;
                     } else if (RootNodeBits.isUninitialized(visitor.rootBits)) {
@@ -1168,7 +1171,13 @@ final class InstrumentationHandler {
                 lock.unlock();
             }
         } finally {
-            visitor.postVisit();
+            try {
+                visitor.postVisit();
+            } finally {
+                if (prevRootVisit != NOT_ENTERED) {
+                    InstrumentAccessor.engineAccess().leaveRootNodeVisit(root, prevRootVisit);
+                }
+            }
         }
 
         if (TRACE) {
