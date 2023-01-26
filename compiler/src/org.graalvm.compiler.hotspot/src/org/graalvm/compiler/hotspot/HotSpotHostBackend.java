@@ -130,17 +130,15 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements LIRGe
     }
 
     public void emitStackOverflowCheck(CompilationResultBuilder crb) {
-        // Each code entry causes one stack bang n pages down the stack where n
-        // is configurable by StackShadowPages. The setting depends on the maximum
-        // depth of VM call stack or native before going back into java code,
-        // since only java code can raise a stack overflow exception using the
-        // stack banging mechanism. The VM and native code does not detect stack
-        // overflow.
-        // The code in JavaCalls::call() checks that there is at least n pages
-        // available, so all entry code needs to do is bang once for the end of
-        // this shadow zone.
-        // The entry code may need to bang additional pages if the framesize
-        // is greater than a page.
+        /*
+         * Each code entry causes one stack bang n pages down the stack where n is configurable by
+         * StackShadowPages. The setting depends on the maximum depth of VM call stack or native
+         * before going back into java code, since only java code can raise a stack overflow
+         * exception using the stack banging mechanism. The VM and native code does not detect stack
+         * overflow. The code in JavaCalls::call() checks that there is at least n pages available,
+         * so all entry code needs to do is bang once for the end of this shadow zone. The entry
+         * code may need to bang additional pages if the framesize is greater than a page.
+         */
 
         int pageSize = config.vmPageSize;
         int bangEnd = NumUtil.roundUp(config.stackShadowPages * 4 * K, pageSize);
