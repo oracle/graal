@@ -726,44 +726,15 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     // Checkstyle: resume
 
-    private static void checkForMissingRequiredValue(HotSpotMarkId markId, boolean required) {
-        if (!markId.isAvailable() && required) {
-            GraalHotSpotVMConfigAccess.reportError("Unsupported Mark " + markId);
-        }
-    }
-
     private void populateMarkConstants() {
         Map<String, Long> constants = getStore().getConstants();
         for (HotSpotMarkId markId : HotSpotMarkId.values()) {
-            Integer value = null;
             String key = "CodeInstaller::" + markId.name();
             Long result = constants.get(key);
-            if (result != null) {
-                value = result.intValue();
+            if (result == null) {
+                GraalHotSpotVMConfigAccess.reportError("Unsupported Mark " + markId);
             }
-            markId.setValue(value);
-            switch (markId) {
-                case FRAME_COMPLETE:
-                    checkForMissingRequiredValue(markId, true);
-                    break;
-                case DEOPT_MH_HANDLER_ENTRY:
-                    checkForMissingRequiredValue(markId, true);
-                    break;
-                case NARROW_KLASS_BASE_ADDRESS:
-                case CRC_TABLE_ADDRESS:
-                case NARROW_OOP_BASE_ADDRESS:
-                case LOG_OF_HEAP_REGION_GRAIN_BYTES:
-                    checkForMissingRequiredValue(markId, true);
-                    break;
-                case VERIFY_OOPS:
-                case VERIFY_OOP_BITS:
-                case VERIFY_OOP_MASK:
-                case VERIFY_OOP_COUNT_ADDRESS:
-                    checkForMissingRequiredValue(markId, true);
-                    break;
-                default:
-                    checkForMissingRequiredValue(markId, true);
-            }
+            markId.setValue(result.intValue());
         }
     }
 
