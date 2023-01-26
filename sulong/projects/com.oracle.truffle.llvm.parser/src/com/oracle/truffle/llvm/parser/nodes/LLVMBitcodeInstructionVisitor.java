@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -1433,6 +1433,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private void assignSourceLocation(LLVMInstrumentableNode node, Instruction sourceInstruction, SourceInstrumentationStrategy instrumentationStrategy) {
         if (node == null) {
+            return;
+        }
+
+        if (!node.isAdoptable()) {
+            // don't assign source sections to cacheable nodes
             return;
         }
 

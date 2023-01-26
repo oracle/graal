@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -559,7 +559,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
     }
 
     private void allocateNativeAreas(StackAllocationNode stackAllocationNode, Frame frame) {
-        this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
+        this.overflowArgAreaBaseNativePtr = overflowArgArea == null ? null : stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
         this.gpSaveAreaNativePtr = stackAllocationNode.executeWithTarget(Aarch64BitVarArgs.GP_LIMIT, frame);
         gpSaveAreaNativePtr = gpSaveAreaNativePtr.increment(Aarch64BitVarArgs.GP_LIMIT);
         this.fpSaveAreaNativePtr = stackAllocationNode.executeWithTarget(Aarch64BitVarArgs.FP_LIMIT, frame);
@@ -693,7 +693,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
             dest.gpSaveAreaPtr = source.gpSaveAreaPtr;
             dest.fpSaveArea = source.fpSaveArea;
             dest.fpSaveAreaPtr = source.fpSaveAreaPtr;
-            dest.overflowArgArea = source.overflowArgArea.clone();
+            dest.overflowArgArea = source.overflowArgArea == null ? null : source.overflowArgArea.clone();
 
             dest.allocateNativeAreas(stackAllocationNode, frame);
         }
@@ -701,6 +701,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
         @Specialization(guards = {"source.isNativized()", "source.overflowArgArea != null"})
         static void copyNativeToManaged(LLVMLinuxAarch64VaListStorage source, LLVMLinuxAarch64VaListStorage dest, Frame frame,
                         @CachedLibrary(limit = "1") LLVMManagedReadLibrary srcReadLib,
+                        @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLib,
                         @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode) {
             // The destination va_list will be in the managed state, even if the source has been
             // nativized. We need to read some state from the native memory, though.
@@ -709,7 +710,19 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
             dest.fpOffset = srcReadLib.readI32(source, Aarch64BitVarArgs.FP_OFFSET);
             dest.gpOffset = srcReadLib.readI32(source, Aarch64BitVarArgs.GP_OFFSET);
-            dest.overflowArgArea.setOffset(getArgPtrFromNativePtr(source, srcReadLib));
+
+            LLVMPointer overflowArgArea = srcReadLib.readPointer(source, Aarch64BitVarArgs.OVERFLOW_ARG_AREA);
+            LLVMPointer regFpSaveArea = srcReadLib.readPointer(source, Aarch64BitVarArgs.FP_SAVE_AREA);
+            LLVMPointer regGpSaveArea = srcReadLib.readPointer(source, Aarch64BitVarArgs.GP_SAVE_AREA);
+            dest.nativized = true; // otherwise the following writes will fail:
+            writeLib.writeI32(dest, Aarch64BitVarArgs.FP_OFFSET, dest.fpOffset);
+            writeLib.writeI32(dest, Aarch64BitVarArgs.GP_OFFSET, dest.gpOffset);
+            writeLib.writePointer(dest, Aarch64BitVarArgs.OVERFLOW_ARG_AREA, overflowArgArea);
+            writeLib.writePointer(dest, Aarch64BitVarArgs.FP_SAVE_AREA, regFpSaveArea);
+            writeLib.writePointer(dest, Aarch64BitVarArgs.GP_SAVE_AREA, regGpSaveArea);
+            if (dest.overflowArgArea != null) {
+                dest.overflowArgArea.setOffset(getArgPtrFromNativePtr(source, srcReadLib));
+            }
         }
 
         @Specialization(guards = {"source.isNativized()", "source.overflowArgArea == null"})
