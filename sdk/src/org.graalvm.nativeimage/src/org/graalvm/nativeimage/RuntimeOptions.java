@@ -87,6 +87,7 @@ public final class RuntimeOptions {
      *
      * @since 19.0
      */
+    @Deprecated(since = "23.0", forRemoval = true)
     public static <T> T getOptions(EnumSet<OptionClass> classes) {
         return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions(classes);
     }
@@ -96,6 +97,7 @@ public final class RuntimeOptions {
      *
      * @since 19.0
      */
+    @Deprecated(since = "23.0", forRemoval = true)
     public static <T> T getOptions() {
         return getOptions(EnumSet.allOf(OptionClass.class));
     }

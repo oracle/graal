@@ -434,7 +434,9 @@ CLSS public final org.graalvm.nativeimage.RuntimeOptions
 innr public final static !enum OptionClass
 meth public static <%0 extends java.lang.Object> {%%0} get(java.lang.String)
 meth public static <%0 extends java.lang.Object> {%%0} getOptions()
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="23.0")
 meth public static <%0 extends java.lang.Object> {%%0} getOptions(java.util.EnumSet<org.graalvm.nativeimage.RuntimeOptions$OptionClass>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="23.0")
 meth public static void set(java.lang.String,java.lang.Object)
 supr java.lang.Object
 
