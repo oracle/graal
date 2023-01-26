@@ -1690,7 +1690,7 @@ public class NativeImage {
         }
     }
 
-    public List<Path> expandAsteriskClassPathElement(String cp) {
+    public static List<Path> expandAsteriskClassPathElement(String cp) {
         String separators = Pattern.quote(File.separator);
         if (OS.getCurrent().equals(OS.WINDOWS)) {
             separators += "/"; /* on Windows also / is accepted as valid separator */
