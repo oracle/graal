@@ -65,7 +65,7 @@ public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Sco
         return false;
     }
 
-    protected S createTopScope() {
+    protected S createRootScope() {
         return null;
     }
 

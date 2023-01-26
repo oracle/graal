@@ -57,7 +57,7 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
 
         private final S policyScope;
 
-        protected boolean inliningAborted;
+        private boolean inliningAborted;
 
         InlineBeforeAnalysisMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method,
                         InvokeData invokeData, int inliningDepth, ValueNode[] arguments) {
@@ -68,28 +68,21 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
                  * The root method that we are decoding, i.e., inlining into. No policy, because the
                  * whole method must of course be decoded.
                  */
-                policyScope = null;
-            } else if (caller.caller == null) {
-                /*
-                 * The first level of method inlining, i.e., the top scope from the inlining policy
-                 * point of view.
-                 */
-                policyScope = policy.createTopScope();
+                policyScope = policy.createRootScope();
                 if (graph.getDebug().isLogEnabled()) {
-                    graph.getDebug().logv(repeat("  ", inliningDepth) + "createTopScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
+                    graph.getDebug().logv("  ".repeat(inliningDepth) + "createRootScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
             } else {
-                /* Nested inlining. */
                 policyScope = policy.openCalleeScope((cast(caller)).policyScope);
                 if (graph.getDebug().isLogEnabled()) {
-                    graph.getDebug().logv(repeat("  ", inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
+                    graph.getDebug().logv("  ".repeat(inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
             }
         }
     }
 
-    private final BigBang bb;
-    private final InlineBeforeAnalysisPolicy<S> policy;
+    protected final BigBang bb;
+    protected final InlineBeforeAnalysisPolicy<S> policy;
 
     protected InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph) {
         super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, bb.getProviders(), null,
@@ -120,7 +113,7 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
     @Override
     protected Node addFloatingNode(MethodScope methodScope, LoopScope loopScope, Node node) {
         assert node.isUnregistered() : "If node is already in the graph, we would count it twice";
-        maybeAbortInlining(methodScope, node);
+        maybeAbortInlining(methodScope, loopScope, node);
         return super.addFloatingNode(methodScope, loopScope, node);
     }
 
@@ -135,29 +128,35 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
          * was already counted when it was added.
          */
         if (canonical == node || (canonical != null && canonical.isUnregistered())) {
-            maybeAbortInlining(methodScope, canonical);
+            maybeAbortInlining(methodScope, loopScope, canonical);
         }
         return canonical;
     }
 
     @Override
     protected void handleNonInlinedInvoke(MethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
-        maybeAbortInlining(methodScope, invokeData.callTarget);
+        maybeAbortInlining(methodScope, loopScope, invokeData.invoke.asNode());
         super.handleNonInlinedInvoke(methodScope, loopScope, invokeData);
     }
 
-    private void maybeAbortInlining(MethodScope ms, Node node) {
+    protected void maybeAbortInlining(MethodScope ms, @SuppressWarnings("unused") LoopScope loopScope, Node node) {
         InlineBeforeAnalysisMethodScope methodScope = cast(ms);
         if (!methodScope.inliningAborted && methodScope.isInlinedMethod()) {
             if (graph.getDebug().isLogEnabled()) {
-                graph.getDebug().logv(repeat("  ", methodScope.inliningDepth) + "  node " + node + ": " + methodScope.policyScope);
+                graph.getDebug().logv("  ".repeat(methodScope.inliningDepth) + "  node " + node + ": " + methodScope.policyScope);
             }
             if (!policy.processNode(bb.getMetaAccess(), methodScope.method, methodScope.policyScope, node)) {
-                if (graph.getDebug().isLogEnabled()) {
-                    graph.getDebug().logv(repeat("  ", methodScope.inliningDepth) + "    abort!");
-                }
-                methodScope.inliningAborted = true;
+                abortInlining(methodScope);
             }
+        }
+    }
+
+    protected void abortInlining(InlineBeforeAnalysisMethodScope methodScope) {
+        if (!methodScope.inliningAborted) {
+            if (graph.getDebug().isLogEnabled()) {
+                graph.getDebug().logv("  ".repeat(methodScope.inliningDepth) + "    abort!");
+            }
+            methodScope.inliningAborted = true;
         }
     }
 
@@ -186,7 +185,7 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
 
         if (inlineScope.inliningAborted) {
             if (graph.getDebug().isLogEnabled()) {
-                graph.getDebug().logv(repeat("  ", callerScope.inliningDepth) + "  aborted " + invokeData.callTarget.targetMethod().format("%H.%n(%p)") + ": " + inlineScope.policyScope);
+                graph.getDebug().logv("  ".repeat(callerScope.inliningDepth) + "  aborted " + invokeData.callTarget.targetMethod().format("%H.%n(%p)") + ": " + inlineScope.policyScope);
             }
             if (callerScope.policyScope != null) {
                 policy.abortCalleeScope(callerScope.policyScope, inlineScope.policyScope);
@@ -210,7 +209,7 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
         }
 
         if (graph.getDebug().isLogEnabled()) {
-            graph.getDebug().logv(repeat("  ", callerScope.inliningDepth) + "  committed " + invokeData.callTarget.targetMethod().format("%H.%n(%p)") + ": " + inlineScope.policyScope);
+            graph.getDebug().logv("  ".repeat(callerScope.inliningDepth) + "  committed " + invokeData.callTarget.targetMethod().format("%H.%n(%p)") + ": " + inlineScope.policyScope);
         }
         if (callerScope.policyScope != null) {
             policy.commitCalleeScope(callerScope.policyScope, inlineScope.policyScope);
@@ -220,15 +219,6 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
         ((AnalysisMethod) invokeData.callTarget.targetMethod()).registerAsInlined(reason);
 
         super.finishInlining(inlineScope);
-    }
-
-    /* String.repeat is only available in JDK 11 and later, so need to do our own. */
-    private static String repeat(String s, int count) {
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < count; i++) {
-            result.append(s);
-        }
-        return result.toString();
     }
 
     /**
@@ -295,7 +285,7 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
      * at the cost of this ugly cast.
      */
     @SuppressWarnings("unchecked")
-    private InlineBeforeAnalysisMethodScope cast(MethodScope methodScope) {
+    protected InlineBeforeAnalysisMethodScope cast(MethodScope methodScope) {
         return (InlineBeforeAnalysisMethodScope) methodScope;
     }
 }
