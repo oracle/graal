@@ -45,12 +45,10 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -67,12 +65,6 @@ public class NIOFileSystemIsolationTest {
     private static final String RESOURCE_NAME = "/resources/file";
     private static final String CONTENT_1 = "context_1";
     private static final String CONTENT_2 = "context_2";
-
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        // PolyglotIsolate does not support custom file system yet.
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-    }
 
     @Test
     public void testFileSystemIsolation() throws IOException {

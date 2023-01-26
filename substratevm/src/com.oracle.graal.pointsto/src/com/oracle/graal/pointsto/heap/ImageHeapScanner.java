@@ -435,14 +435,14 @@ public abstract class ImageHeapScanner {
     }
 
     JavaConstant onFieldValueReachable(AnalysisField field, ImageHeapInstance receiver, ValueSupplier<JavaConstant> rawValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        AnalysisError.guarantee(field.isReachable(), "Field value is only reachable when field is reachable " + field.format("%H.%n"));
+        AnalysisError.guarantee(field.isReachable(), "Field value is only reachable when field is reachable: %s", field);
 
         /*
          * Check if the field value is available. If not, trying to access it is an error. This
          * forces the callers to only trigger the execution of the future task when the value is
          * ready to be materialized.
          */
-        AnalysisError.guarantee(rawValue.isAvailable(), "Value not yet available for " + field.format("%H.%n"));
+        AnalysisError.guarantee(rawValue.isAvailable(), "Value not yet available for %s", field);
 
         JavaConstant transformedValue;
         try {
@@ -544,7 +544,7 @@ public abstract class ImageHeapScanner {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void snapshotFieldValue(AnalysisField field, Object fieldTask) {
         if (fieldTask instanceof AnalysisFuture<?>) {
-            AnalysisError.guarantee(field.isReachable(), "Field value snapshot computed for field not reachable " + field.format("%H.%n"));
+            AnalysisError.guarantee(field.isReachable(), "Field value snapshot computed for field not reachable: %s", field);
             postTask((AnalysisFuture<JavaConstant>) fieldTask);
         }
     }

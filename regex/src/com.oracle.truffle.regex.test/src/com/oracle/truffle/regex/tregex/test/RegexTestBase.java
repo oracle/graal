@@ -45,6 +45,7 @@ import static org.junit.Assert.assertEquals;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -129,8 +130,9 @@ public abstract class RegexTestBase {
         assertEquals(isMatch, result.getMember("isMatch").asBoolean());
         if (isMatch) {
             assertEquals(captureGroupBoundsAndLastGroup.length / 2, groupCount);
-            for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
-                if (captureGroupBoundsAndLastGroup[i * 2] != result.invokeMember("getStart", i).asInt() || captureGroupBoundsAndLastGroup[i * 2 + 1] != result.invokeMember("getEnd", i).asInt()) {
+            for (int i = 0; i < groupCount; i++) {
+                if (captureGroupBoundsAndLastGroup[Group.groupNumberToBoundaryIndexStart(i)] != result.invokeMember("getStart", i).asInt() ||
+                                captureGroupBoundsAndLastGroup[Group.groupNumberToBoundaryIndexEnd(i)] != result.invokeMember("getEnd", i).asInt()) {
                     fail(result, captureGroupBoundsAndLastGroup);
                 }
             }

@@ -27,10 +27,11 @@ package com.oracle.graal.pointsto.infrastructure;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnalysisConstantPool extends WrappedConstantPool {
 
-    public AnalysisConstantPool(Universe universe, ConstantPool wrapped, WrappedJavaType defaultAccessingClass) {
+    public AnalysisConstantPool(Universe universe, ConstantPool wrapped, ResolvedJavaType defaultAccessingClass) {
         super(universe, wrapped, defaultAccessingClass);
     }
 

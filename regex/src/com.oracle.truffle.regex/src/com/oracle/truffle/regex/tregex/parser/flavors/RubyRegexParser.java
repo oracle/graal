@@ -2410,6 +2410,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         if (!match(")")) {
             throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
+        popGroup();
         canHaveQuantifier = true;
     }
 

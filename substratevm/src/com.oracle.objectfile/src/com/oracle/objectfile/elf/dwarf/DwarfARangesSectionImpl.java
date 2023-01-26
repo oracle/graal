@@ -38,7 +38,7 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.debugentry.Range;
+import com.oracle.objectfile.debugentry.range.Range;
 
 /**
  * Section generator for debug_aranges section.

@@ -60,8 +60,7 @@ public abstract class MemberEntry {
         }
     }
 
-    @SuppressWarnings("unused")
-    String getFullFileName() {
+    public String getFullFileName() {
         if (fileEntry != null) {
             return fileEntry.getFullName();
         } else {

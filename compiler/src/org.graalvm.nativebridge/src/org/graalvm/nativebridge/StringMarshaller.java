@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.lir.gen;
+package org.graalvm.nativebridge;
 
-import org.graalvm.compiler.core.common.cfg.BasicBlock;
+/**
+ * BinaryMarshaller used to marshall string array components.
+ */
+final class StringMarshaller implements BinaryMarshaller<String> {
 
-import jdk.vm.ci.meta.Value;
+    private static final int STRING_SIZE_ESTIMATE = 32;
 
-public interface BlockValueMap {
+    @Override
+    public String read(BinaryInput in) {
+        return in.readUTF();
+    }
 
-    void accessOperand(Value operand, BasicBlock<?> block);
+    @Override
+    public void write(BinaryOutput out, String str) {
+        out.writeUTF(str);
+    }
 
-    void defineOperand(Value operand, BasicBlock<?> block);
-
+    @Override
+    public int inferSize(String object) {
+        return STRING_SIZE_ESTIMATE;
+    }
 }

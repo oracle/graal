@@ -32,7 +32,7 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DebugInfoBase;
 
 import com.oracle.objectfile.debugentry.MethodEntry;
-import com.oracle.objectfile.debugentry.Range;
+import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;

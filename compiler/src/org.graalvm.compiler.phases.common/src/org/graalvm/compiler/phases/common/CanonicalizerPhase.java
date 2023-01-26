@@ -172,10 +172,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         return new CanonicalizerPhase(defaultFeaturesWithout(READ_CANONICALIZATION));
     }
 
-    public static CanonicalizerPhase createWithoutGVN() {
-        return new CanonicalizerPhase(defaultFeaturesWithout(GVN));
-    }
-
     public static CanonicalizerPhase createWithoutCFGSimplification() {
         return new CanonicalizerPhase(defaultFeaturesWithout(CFG_SIMPLIFICATION));
     }

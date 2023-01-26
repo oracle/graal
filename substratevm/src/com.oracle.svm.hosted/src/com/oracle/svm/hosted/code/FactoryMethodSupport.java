@@ -88,12 +88,12 @@ public class FactoryMethodSupport {
              */
             ResolvedJavaType[] unwrappedParameterTypes = new ResolvedJavaType[aConstructor.getSignature().getParameterCount(false)];
             for (int i = 0; i < unwrappedParameterTypes.length; i++) {
-                unwrappedParameterTypes[i] = ((AnalysisType) aConstructor.getSignature().getParameterType(i, null)).getWrappedWithoutResolve();
+                unwrappedParameterTypes[i] = ((AnalysisType) aConstructor.getSignature().getParameterType(i, null)).getWrapped();
             }
-            ResolvedJavaType unwrappedReturnType = (throwAllocatedObject ? aMetaAccess.lookupJavaType(void.class) : aConstructor.getDeclaringClass()).getWrappedWithoutResolve();
+            ResolvedJavaType unwrappedReturnType = (throwAllocatedObject ? aMetaAccess.lookupJavaType(void.class) : aConstructor.getDeclaringClass()).getWrapped();
             Signature unwrappedSignature = new SimpleSignature(unwrappedParameterTypes, unwrappedReturnType);
             ResolvedJavaMethod unwrappedConstructor = aConstructor.getWrapped();
-            ResolvedJavaType unwrappedDeclaringClass = (aMetaAccess.lookupJavaType(throwAllocatedObject ? FactoryThrowMethodHolder.class : FactoryMethodHolder.class)).getWrappedWithoutResolve();
+            ResolvedJavaType unwrappedDeclaringClass = (aMetaAccess.lookupJavaType(throwAllocatedObject ? FactoryThrowMethodHolder.class : FactoryMethodHolder.class)).getWrapped();
             ConstantPool unwrappedConstantPool = unwrappedConstructor.getConstantPool();
             return new FactoryMethod(name, unwrappedConstructor, unwrappedDeclaringClass, unwrappedSignature, unwrappedConstantPool, throwAllocatedObject);
         });

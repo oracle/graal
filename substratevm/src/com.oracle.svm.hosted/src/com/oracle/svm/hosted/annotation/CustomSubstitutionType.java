@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -289,7 +288,7 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalClassProvider.getJavaClass(original);
     }
 
 }

@@ -64,7 +64,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateAnnotationInvocationHandler;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -605,7 +604,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
         }
 
         private static Class<?> getJavaClass(ResolvedJavaType type) {
-            return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), type);
+            return OriginalClassProvider.getJavaClass(type);
         }
     }
 

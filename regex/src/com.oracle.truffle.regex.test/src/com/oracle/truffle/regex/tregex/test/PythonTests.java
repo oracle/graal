@@ -409,6 +409,8 @@ public class PythonTests extends RegexTestBase {
         test("(foo)?(?(1)bar|baz)", "", "foxbar", 0, false);
         test("(foo)?(?(1)bar|baz)", "", "foxbaz", 0, true, 3, 6, -1, -1, -1);
 
+        // GR-42252
+        test("(?P<quote>)(?(quote))", "", "", 0, true, 0, 0, 0, 0, 1);
         // GR-42254
         test("(?P<a>x)(?P=a)(?(a)y)", "", "xxy", 0, true, 0, 3, 0, 1, 1);
         test("(?P<a1>x)(?P=a1)(?(a1)y)", "", "xxy", 0, true, 0, 3, 0, 1, 1);
@@ -421,6 +423,7 @@ public class PythonTests extends RegexTestBase {
         // test_groupref_exists
         test("^(\\()?([^()]+)(?(1)\\))$", "", "a", 0, true, 0, 1, -1, -1, 0, 1, 2);
         // test_lookahead
+        test("(?:(a)|(x))b(?=(?(1)c|x))c", "", "abc", 0, true, 0, 3, 0, 1, -1, -1, 1);
         test("(?:(a)|(x))b(?=(?(2)x|c))c", "", "abc", 0, true, 0, 3, 0, 1, -1, -1, 1);
         test("(a)b(?=(?(2)x|c))(c)", "", "abc", 0, true, 0, 3, 0, 1, 2, 3, 2);
         // test_lookbehind
@@ -429,6 +432,29 @@ public class PythonTests extends RegexTestBase {
         // Test that we respect the order of capture group updates and condition checks
         test("(?(1)()a|b)", "", "a", 0, false);
         test("(?(1)()a|b)", "", "b", 0, true, 0, 1, -1, -1, -1);
+    }
+
+    @Test
+    public void testConditionalBackReferencesWithLookArounds() {
+        /// Test temporal ordering of lookaround assertions and conditional back-references in DFAs.
+        test("(?=(?(1)a|b))(b)", "", "b", 0, true, 0, 1, 0, 1, 1);
+        test("(?=x(?(1)a|b))(x)b", "", "xb", 0, true, 0, 2, 0, 1, 1);
+        test("(?=xy(?(1)a|b))(x)yb", "", "xyb", 0, true, 0, 3, 0, 1, 1);
+
+        // All following currently tests use back-tracking because the presence of capture groups in
+        // lookarounds in Python force the use of backtracking due to the calculation of lastGroup.
+        test("(?=(a))(?(1)a|b)", "", "a", 0, true, 0, 1, 0, 1, 1);
+        test("(?=a(x))(?(1)a|b)x", "", "ax", 0, true, 0, 2, 1, 2, 1);
+        test("(?=ax(y))(?(1)a|b)xy", "", "axy", 0, true, 0, 3, 2, 3, 1);
+        test("(?(1)a|b)(?<=(b))", "", "b", 0, true, 0, 1, 0, 1, 1);
+        test("x(?(1)a|b)(?<=(x)b)", "", "xb", 0, true, 0, 2, 0, 1, 1);
+        test("xy(?(1)a|b)(?<=(x)yb)", "", "xyb", 0, true, 0, 3, 0, 1, 1);
+
+        // Conditional back-reference and capture group within lookahead.
+        test("(?=(a)(?(1)a|b))", "", "aa", 0, true, 0, 0, 0, 1, 1);
+        test("(?=(a)x(?(1)a|b))", "", "axa", 0, true, 0, 0, 0, 1, 1);
+        test("(?=(a)xy(?(1)a|b))", "", "axya", 0, true, 0, 0, 0, 1, 1);
+        test("(?=(?(1)a|b)())", "", "b", 0, true, 0, 0, 1, 1, 1);
     }
 
     @Test

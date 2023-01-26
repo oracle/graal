@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.debug;
+package org.graalvm.nativebridge.processor.test.references;
 
-/**
- * Tracks memory usage within a scope using {@code com.sun.management.ThreadMXBean}. This facility
- * should be employed using the try-with-resources pattern:
- *
- * <pre>
- * try (DebugMemUseTracker.Closeable a = memUseTracker.start()) {
- *     // the code to measure
- * }
- * </pre>
- */
-public interface DebugMemUseTracker {
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.nativebridge.AlwaysByReference;
+import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
-    /**
-     * Creates a point from which memory usage will be recorded if memory use tracking is
-     * {@linkplain DebugContext#isMemUseTrackingEnabled() enabled}.
-     *
-     * @return an object that must be closed once the activity has completed to add the memory used
-     *         since this call to the total for this tracker
-     */
-    DebugCloseable start();
-
-    /**
-     * Gets the current value of this tracker.
-     */
-    long getCurrentValue();
+@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+@AlwaysByReference(type = Context.class, startPointClass = NativeContext.class)
+@AlwaysByReference(type = LanguageAPI.class, startPointClass = NativeCustomLanguageDispatch.class)
+@AlwaysByReference(type = Record.class, startPointClass = NativeRecord.class)
+abstract class HSAlwaysByReferenceHandler extends HSObject implements Handler {
+    HSAlwaysByReferenceHandler(JNIEnv env, JObject handle) {
+        super(env, handle);
+    }
 }

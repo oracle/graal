@@ -1196,7 +1196,7 @@ public class CompileQueue {
                 Suites suites = method.isDeoptTarget() ? deoptTargetSuites : regularSuites;
                 LIRSuites lirSuites = method.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
 
-                CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.format("%H.%n(%p)"));
+                CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());
 
                 try (Indent indent = debug.logAndIndent("compile %s", method);
                                 DebugCloseable l = graph.getOptimizationLog().listen(new StableMethodNameFormatter(backend.getProviders(), graph.getDebug()))) {

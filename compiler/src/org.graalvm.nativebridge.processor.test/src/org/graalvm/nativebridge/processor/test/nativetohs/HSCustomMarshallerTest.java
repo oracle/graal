@@ -29,9 +29,11 @@ import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
 import org.graalvm.nativebridge.Idempotent;
+import org.graalvm.nativebridge.Out;
 import org.graalvm.nativebridge.processor.test.CustomMarshallerService;
 import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
+import java.time.Duration;
 import java.util.Map;
 
 @GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
@@ -44,4 +46,7 @@ abstract class HSCustomMarshallerTest extends HSObject implements CustomMarshall
     @Idempotent
     @Override
     public abstract Map<String, String> getProperties();
+
+    @Override
+    public abstract void fillDurations(@Out Duration[] durations);
 }

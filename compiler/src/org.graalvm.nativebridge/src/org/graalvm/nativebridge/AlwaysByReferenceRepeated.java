@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package org.graalvm.nativebridge;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
-public class NativeImageUtil {
-
-    public static ResolvedJavaMethod toOriginal(ResolvedJavaMethod method) {
-        if (method instanceof HostedMethod) {
-            return ((HostedMethod) method).wrapped.wrapped;
-        } else if (method instanceof AnalysisMethod) {
-            return ((AnalysisMethod) method).wrapped;
-        } else {
-            return method;
-        }
-    }
-
-    public static ResolvedJavaType toOriginal(ResolvedJavaType type) {
-        if (type instanceof HostedType) {
-            return ((HostedType) type).getWrapped().getWrapped();
-        } else if (type instanceof AnalysisType) {
-            return ((AnalysisType) type).getWrapped();
-        } else {
-            return type;
-        }
-    }
-
+/**
+ * Container for repeated {@link AlwaysByReference} annotations.
+ */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.SOURCE)
+public @interface AlwaysByReferenceRepeated {
+    AlwaysByReference[] value();
 }

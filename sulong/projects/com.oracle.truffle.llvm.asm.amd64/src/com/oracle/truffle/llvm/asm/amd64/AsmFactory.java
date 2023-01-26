@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -223,6 +223,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackSaveNodeGe
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMI16LiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen;
@@ -751,7 +752,7 @@ public class AsmFactory {
                             throw invalidOperandType(dstType);
                     }
                 }
-            case "bswap":
+            case "bswap": {
                 LLVMExpressionNode src = getOperandLoad(dstType, operand);
                 switch (getPrimitiveType(dstType)) {
                     case I32:
@@ -764,6 +765,13 @@ public class AsmFactory {
                         throw invalidOperandType(dstType);
                 }
                 break;
+            }
+            case "fstcw":
+            case "fnstcw": {
+                assert getPrimitiveType(dstType) == PrimitiveKind.I16;
+                statements.add(getOperandStore(dstType, operand, LLVMI16LiteralNodeGen.create((short) 0)));
+                return;
+            }
             default:
                 statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;

@@ -38,7 +38,8 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.Range;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 
 /**
  * Section generator for debug_line section.
@@ -503,14 +504,14 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Now write a row for each subrange lo and hi.
          */
-        Iterator<Range> iterator = compiledEntry.leafRangeIterator();
+        Iterator<SubRange> iterator = compiledEntry.leafRangeIterator();
         if (prologueRange != null) {
             // skip already processed range
-            Range first = iterator.next();
+            SubRange first = iterator.next();
             assert first == prologueRange;
         }
         while (iterator.hasNext()) {
-            Range subrange = iterator.next();
+            SubRange subrange = iterator.next();
             assert subrange.getLo() >= primaryRange.getLo();
             assert subrange.getHi() <= primaryRange.getHi();
             FileEntry subFileEntry = subrange.getFileEntry();
@@ -656,10 +657,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private static Range prologueLeafRange(CompiledMethodEntry compiledEntry) {
-        Iterator<Range> iterator = compiledEntry.leafRangeIterator();
+    private static SubRange prologueLeafRange(CompiledMethodEntry compiledEntry) {
+        Iterator<SubRange> iterator = compiledEntry.leafRangeIterator();
         if (iterator.hasNext()) {
-            Range range = iterator.next();
+            SubRange range = iterator.next();
             if (range.getLo() == compiledEntry.getPrimary().getLo()) {
                 return range;
             }

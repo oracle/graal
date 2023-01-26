@@ -37,7 +37,6 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
@@ -257,6 +256,6 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
 
     @Override
     public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalMethodProvider.getJavaMethod(original);
     }
 }

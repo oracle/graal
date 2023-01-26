@@ -282,7 +282,7 @@ public interface DebugInfoProvider {
 
     /**
      * Access details of a compiled top level or inline method producing the code in a specific
-     * {@link com.oracle.objectfile.debugentry.Range}.
+     * {@link com.oracle.objectfile.debugentry.range.Range}.
      */
     public interface DebugRangeInfo extends DebugMethodInfo {
 
@@ -357,6 +357,8 @@ public interface DebugInfoProvider {
          *         variables present in the frame of the current range.
          */
         DebugLocalValueInfo[] getLocalValueInfo();
+
+        boolean isLeaf();
     }
 
     /**

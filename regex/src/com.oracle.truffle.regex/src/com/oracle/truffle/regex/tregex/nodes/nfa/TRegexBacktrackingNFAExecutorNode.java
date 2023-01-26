@@ -156,6 +156,11 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             maxTransitions = Math.max(maxTransitions, s.getSuccessors(isForward()).length);
             s.initIsDeterministic(isForward(), compilationBuffer);
         }
+        for (TRegexExecutorBaseNode subExecutor : subExecutors) {
+            if (subExecutor instanceof TRegexBacktrackingNFAExecutorNode) {
+                maxTransitions = Math.max(maxTransitions, ((TRegexBacktrackingNFAExecutorNode) subExecutor).maxNTransitions);
+            }
+        }
         this.maxNTransitions = maxTransitions;
     }
 
@@ -753,12 +758,14 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     }
                     break;
                 case checkGroupMatched:
-                    if (getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) == -1 || getBackRefBoundary(locals, transition, guard.getIndex() * 2 + 1, index) == -1) {
+                    if (getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexStart(guard.getIndex()), index) == -1 ||
+                                    getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexEnd(guard.getIndex()), index) == -1) {
                         return false;
                     }
                     break;
                 case checkGroupNotMatched:
-                    if (getBackRefBoundary(locals, transition, guard.getIndex() * 2, index) != -1 && getBackRefBoundary(locals, transition, guard.getIndex() * 2 + 1, index) != -1) {
+                    if (getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexStart(guard.getIndex()), index) != -1 &&
+                                    getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexEnd(guard.getIndex()), index) != -1) {
                         return false;
                     }
                     break;
@@ -780,8 +787,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 }
             case PureNFAState.KIND_BACK_REFERENCE:
                 if (canInlineBackReferenceIntoTransition()) {
-                    int start = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2, index);
-                    int end = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2 + 1, index);
+                    int start = getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexStart(target.getBackRefNumber()), index);
+                    int end = getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexEnd(target.getBackRefNumber()), index);
                     if (start < 0 || end < 0) {
                         return !isBackrefWithNullTargetFails();
                     }
@@ -892,8 +899,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 break;
             case PureNFAState.KIND_BACK_REFERENCE:
                 if (canInlineBackReferenceIntoTransition()) {
-                    int start = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2, index);
-                    int end = getBackRefBoundary(locals, transition, target.getBackRefNumber() * 2 + 1, index);
+                    int start = getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexStart(target.getBackRefNumber()), index);
+                    int end = getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexEnd(target.getBackRefNumber()), index);
                     if ((start < 0 || end < 0) && isBackrefWithNullTargetFails()) {
                         return false;
                     }

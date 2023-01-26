@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -129,13 +129,6 @@ public abstract class DominatorOptimizationProblem<E extends Enum<E>, C> {
             // mark block
             bitSet.set(b.getId());
         }
-    }
-
-    /**
-     * Returns a {@link Stream} of flags associated with {@code block}.
-     */
-    public final Stream<E> getFlagsForBlock(BasicBlock<?> block) {
-        return getFlags().stream().filter(flag -> get(flag, block));
     }
 
     /**

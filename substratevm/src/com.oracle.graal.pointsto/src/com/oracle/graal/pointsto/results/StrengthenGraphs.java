@@ -468,7 +468,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 setInvokeProfiles(invoke, typeProfile, methodProfile);
             }
 
-            if (!methodFlow.getMethod().isDeoptTarget()) {
+            if (getAnalysis().optimizeReturnedParameter() && !methodFlow.getMethod().isDeoptTarget()) {
                 /*
                  * Optimizing the return parameter can make new values live across deoptimization
                  * entrypoints.
@@ -530,8 +530,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 InliningUtil.nonNullReceiver(invoke);
             }
 
-            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + invoke +
-                            ": empty list of callees for call to " + invoke.callTarget().targetMethod().format("%H.%n(%P)"));
+            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + ((AnalysisMethod) graph.method()).getQualifiedName() + ", node " + invoke +
+                            ": empty list of callees for call to " + ((AnalysisMethod) invoke.callTarget().targetMethod()).getQualifiedName());
         }
 
         /**
@@ -668,14 +668,15 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
              */
             List<AnalysisType> typeStateTypes = new ArrayList<>(nodeTypeState.typesCount());
             for (AnalysisType typeStateType : nodeTypeState.types(pta)) {
-                if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isAssignableFrom(typeStateType))) {
+                if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isJavaLangObject() || oldType.isAssignableFrom(typeStateType))) {
                     typeStateTypes.add(typeStateType);
                 }
             }
 
             if (typeStateTypes.size() == 0) {
                 if (nonNull) {
-                    makeUnreachable(anchorPoint.next(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + node + ": empty stamp when strengthening oldStamp " + oldStamp);
+                    makeUnreachable(anchorPoint.next(), tool,
+                                    () -> "method " + ((AnalysisMethod) graph.method()).getQualifiedName() + ", node " + node + ": empty stamp when strengthening oldStamp " + oldStamp);
                     return null;
                 } else {
                     return StampFactory.alwaysNull();
@@ -699,6 +700,9 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 assert typeStateTypes.size() > 1;
                 AnalysisType baseType = typeStateTypes.get(0);
                 for (int i = 1; i < typeStateTypes.size(); i++) {
+                    if (baseType.isJavaLangObject()) {
+                        break;
+                    }
                     baseType = baseType.findLeastCommonAncestor(typeStateTypes.get(i));
                 }
 

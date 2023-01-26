@@ -28,7 +28,6 @@ import java.lang.reflect.AnnotatedElement;
 import java.util.Arrays;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -276,7 +275,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalClassProvider.getJavaClass(original);
     }
 
     @Override

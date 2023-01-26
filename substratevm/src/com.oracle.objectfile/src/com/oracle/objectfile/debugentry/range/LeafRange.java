@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +23,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.options;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+package com.oracle.objectfile.debugentry.range;
 
-/**
- * Used to suppress <a href="https://spotbugs.readthedocs.io">SpotBugs</a> warnings.
- */
-@Retention(RetentionPolicy.CLASS)
-@interface SuppressFBWarnings {
-    /**
-     * @see "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html"
-     */
-    String[] value();
+import com.oracle.objectfile.debugentry.MethodEntry;
 
-    /**
-     * Reason why the warning is suppressed. Use a SpotBugs issue id where appropriate.
-     */
+class LeafRange extends SubRange {
+    protected LeafRange(MethodEntry methodEntry, int lo, int hi, int line, PrimaryRange primary, Range caller) {
+        super(methodEntry, lo, hi, line, primary, caller);
+    }
 
-    String justification();
+    @Override
+    protected void addCallee(SubRange callee) {
+        assert false : "should never be adding callees to a leaf range!";
+    }
+
+    @Override
+    public SubRange getFirstCallee() {
+        return null;
+    }
+
+    @Override
+    public boolean isLeaf() {
+        return true;
+    }
 }

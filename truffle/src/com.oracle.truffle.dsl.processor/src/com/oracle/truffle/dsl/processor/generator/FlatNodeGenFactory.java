@@ -738,6 +738,16 @@ public class FlatNodeGenFactory {
         return false;
     }
 
+    public static boolean isLayoutBenefittingFromNeverDefault(SpecializationData specialization) {
+        if (specialization.hasMultipleInstances()) {
+            return false;
+        }
+        if (specialization.isGuardBindsCache() && FlatNodeGenFactory.guardUseInstanceField(specialization)) {
+            return false;
+        }
+        return !FlatNodeGenFactory.shouldUseSpecializationClassBySize(specialization);
+    }
+
     /* Whether a new class should be generated for specialization instance fields. */
     public static boolean useSpecializationClass(SpecializationData specialization) {
         if (shouldUseSpecializationClassBySize(specialization)) {
@@ -757,6 +767,7 @@ public class FlatNodeGenFactory {
                  */
                 return true;
             }
+
             for (CacheExpression cache : specialization.getCaches()) {
                 if (cache.isEncodedEnum()) {
                     continue;
@@ -1168,6 +1179,8 @@ public class FlatNodeGenFactory {
             if (isGenerateAOT()) {
                 generateAOT(inlined, true);
             }
+
+            generateStatisticsFields(inlined);
 
             clazz.add(inlined);
         }
