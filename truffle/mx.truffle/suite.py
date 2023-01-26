@@ -295,20 +295,6 @@ suite = {
       "jacoco" : "exclude",
     },
 
-    "com.oracle.truffle.api.test.jdk17": {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.api.test",
-      ],
-      "checkstyle": "com.oracle.truffle.api",
-      "javaCompliance" : "17+",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "API,Truffle,Test",
-      "jacoco" : "exclude",
-      "testProject" : True,
-    },
-
     "com.oracle.truffle.api.benchmark" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -587,34 +573,6 @@ suite = {
       "workingSets" : "API,Truffle",
     },
 
-    "com.oracle.truffle.api.staticobject.jdk11" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.api.staticobject"
-      ],
-      "overlayTarget" : "com.oracle.truffle.api.staticobject",
-      "checkPackagePrefix" : "false",
-      "multiReleaseJarVersion" : "11",
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "17+",
-      "workingSets" : "API,Truffle",
-    },
-
-    "com.oracle.truffle.api.staticobject.jdk17" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.api.staticobject"
-      ],
-      "overlayTarget" : "com.oracle.truffle.api.staticobject",
-      "checkPackagePrefix" : "false",
-      "multiReleaseJarVersion" : "17",
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "17+",
-      "workingSets" : "API,Truffle",
-    },
-
     "com.oracle.truffle.api.staticobject.test": {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -622,19 +580,6 @@ suite = {
         "com.oracle.truffle.api.staticobject",
         "TRUFFLE_API",
         "mx:JUNIT"
-      ],
-      "checkstyle": "com.oracle.truffle.api",
-      "javaCompliance" : "17+",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "API,Truffle,Test",
-      "testProject" : True,
-    },
-
-    "com.oracle.truffle.api.staticobject.test.jdk17": {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.api.staticobject.test",
       ],
       "checkstyle": "com.oracle.truffle.api",
       "javaCompliance" : "17+",
@@ -1418,21 +1363,6 @@ suite = {
       ],
       "maven" : False,
      },
-
-    "TRUFFLE_TEST_17" : {
-      "subDir" : "src",
-      "javaCompliance" : "17+",
-      "dependencies" : [
-        "com.oracle.truffle.api.staticobject.test.jdk17",
-        "com.oracle.truffle.api.test.jdk17",
-      ],
-      "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
-      "distDependencies" : [
-        "TRUFFLE_TEST",
-      ],
-      "testDistribution" : True,
-      "maven" : False,
-    },
 
      "TRUFFLE_TEST_NATIVE" : {
        "native" : True,
