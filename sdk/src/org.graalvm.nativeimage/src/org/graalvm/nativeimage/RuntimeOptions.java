@@ -73,10 +73,11 @@ public final class RuntimeOptions {
     }
 
     /**
-     * Classes of options that can be queried through {@link #getOptions(EnumSet)}.
+     * Classes of options that can be queried through {@code getOptions(EnumSet)}.
      *
      * @since 19.0
      */
+    @Deprecated(since = "23.0", forRemoval = true)
     public enum OptionClass {
         VM,
         Compiler
