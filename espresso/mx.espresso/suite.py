@@ -109,7 +109,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "8+",
             "checkstyle": "com.oracle.truffle.espresso.polyglot",
             "checkstyleVersion": "8.8",
             "license": "UPL",
@@ -120,7 +120,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "8+",
             "checkstyle": "com.oracle.truffle.espresso.polyglot",
             "license": "UPL",
         },
