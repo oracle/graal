@@ -272,7 +272,7 @@ public abstract class ImageHeapScanner {
                     instance.setFieldTask(field, new AnalysisFuture<>(() -> {
                         /*
                          * After scanning a field of an injected ImageHeapInstance that references a
-                         * regular JavaConstant object should the field value be replaced with the
+                         * regular JavaConstant object, should the field value be replaced with the
                          * snapshot version, i.e., an ImageHeapInstance, or should it keep pointing
                          * to the original value? In the long term it should be replaced, but that's
                          * not yet generally possible. First ImageHeapInstance needs to have

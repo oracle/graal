@@ -645,7 +645,7 @@ public class ObjectScanner {
      * Furthermore it also serializes on the object put until the method release is called with this
      * object. So each object goes through two states:
      * <li>In flight: counter = sequence - 1
-     * <li>Commited: counter = sequence
+     * <li>Committed: counter = sequence
      *
      * If the object is in state in flight, all other calls with this object to putAndAcquire will
      * block until release with the object is called.

@@ -679,6 +679,9 @@ public class NativeImageGenerator {
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtime, DeoptTester.enabled(), bb.getProviders().getSnippetReflection(),
                                 compilationExecutor);
+                if (ImageSingletons.contains(RuntimeCompilationSupport.class)) {
+                    ImageSingletons.lookup(RuntimeCompilationSupport.class).onCompileQueueCreation(hUniverse, compileQueue);
+                }
                 compileQueue.finish(debug);
 
                 /* release memory taken by graphs for the image writing */

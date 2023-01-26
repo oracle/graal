@@ -1098,7 +1098,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * the array gets visible.
      *
      * Although all elements are of type AnalysisField, we set this array to be of type
-     * ResolvedJavaField so that runtime compilation does not need to convert the array itself.
+     * ResolvedJavaField so that runtime compilation does not need to convert the array type.
      */
     private volatile ResolvedJavaField[] instanceFieldsWithSuper;
     private volatile ResolvedJavaField[] instanceFieldsWithoutSuper;

@@ -27,9 +27,9 @@ package com.oracle.graal.pointsto;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 /**
- * The heap crawling algorithm used for updating type flow is is mostly implemented in
+ * The heap crawling algorithm used for updating type flow is mostly implemented in
  * {@link AnalysisObjectScanner} and its superclass {@link ObjectScanner}.
- * 
+ *
  * This interface is a first small step in a bigger effort to separate heap crawling from the
  * analysis. If these two parts are cleanly separated, it should allow mixing different algorithms
  * and configurations more easily.
