@@ -45,6 +45,12 @@ import java.util.Objects;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
+/**
+ * This class provides methods that can be called during native image generation to define system
+ * property setting for image runtime.
+ *
+ * @since 23.0
+ */
 public final class RuntimeSystemProperties {
 
     /**
