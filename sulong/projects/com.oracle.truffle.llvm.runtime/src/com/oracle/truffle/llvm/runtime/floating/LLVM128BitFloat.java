@@ -213,12 +213,12 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         } else if (isNegativeInfinity()) {
             return FloatHelper.NEGATIVE_INFINITY;
         } else {
-            int floatExponent = (int) getUnbiasedExponent() + FLOAT_EXPONENT_BIAS;
-            int floatFraction = (int) (expSignFraction & FRACTION_MASK) >>> (EXPONENT_POSITION - FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
-            int shiftedSignBit = (getSign() ? 1 : 0) << FloatHelper.FLOAT_SIGN_POS;
-            int shiftedExponent = floatExponent << FloatHelper.FLOAT_FRACTION_BIT_WIDTH;
-            int rawVal = floatFraction | shiftedExponent | shiftedSignBit;
-            return Float.intBitsToFloat(rawVal);
+            long floatExponent = getUnbiasedExponent() + FLOAT_EXPONENT_BIAS;
+            long floatFraction =  (expSignFraction & FRACTION_MASK) >>> (EXPONENT_POSITION - FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
+            long shiftedSignBit = (getSign() ? 1 : 0) << FloatHelper.FLOAT_SIGN_POS;
+            long shiftedExponent = floatExponent << FloatHelper.FLOAT_FRACTION_BIT_WIDTH;
+            long rawVal = floatFraction | shiftedExponent | shiftedSignBit;
+            return Float.intBitsToFloat((int) rawVal);
         }
     }
 
