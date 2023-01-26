@@ -674,7 +674,7 @@ public class NativeImage {
                                 return path;
                             }
                         })
-                        .map(ClasspathUtils::classpathToString)
+                        .map(Path::toString)
                         .collect(Collectors.joining(File.pathSeparator));
         if (!isPortable[0]) {
             showWarning("The produced fallback image will not be portable, because not all classpath entries" +
@@ -927,23 +927,6 @@ public class NativeImage {
         return option;
     }
 
-    static void processManifestMainAttributes(Path path, BiConsumer<Path, Attributes> manifestConsumer) {
-        if (path.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
-            if (!Files.isDirectory(path.getParent())) {
-                throw NativeImage.showError("Cannot expand wildcard: '" + path + "' is not a directory");
-            }
-            try {
-                Files.list(path.getParent())
-                                .filter(ClasspathUtils::isJar)
-                                .forEach(p -> processJarManifestMainAttributes(p, manifestConsumer));
-            } catch (IOException e) {
-                throw NativeImage.showError("Error while expanding wildcard for '" + path + "'", e);
-            }
-        } else if (ClasspathUtils.isJar(path)) {
-            processJarManifestMainAttributes(path, manifestConsumer);
-        }
-    }
-
     static boolean processJarManifestMainAttributes(Path jarFilePath, BiConsumer<Path, Attributes> manifestConsumer) {
         try (JarFile jarFile = new JarFile(jarFilePath.toFile())) {
             Manifest manifest = jarFile.getManifest();
@@ -971,7 +954,7 @@ public class NativeImage {
         /* Missing Class-Path Attribute is tolerable */
         if (classPathValue != null) {
             for (String cp : classPathValue.split(" +")) {
-                Path manifestClassPath = ClasspathUtils.stringToClasspath(cp);
+                Path manifestClassPath = Path.of(cp);
                 if (!manifestClassPath.isAbsolute()) {
                     /* Resolve relative manifestClassPath against directory containing jar */
                     manifestClassPath = jarFilePath.getParent().resolve(manifestClassPath);
@@ -1333,7 +1316,7 @@ public class NativeImage {
         List<String> result = new ArrayList<>();
         if (!imagecp.isEmpty()) {
             result.add(SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
-            result.add(imagecp.stream().map(ClasspathUtils::classpathToString).collect(Collectors.joining(File.pathSeparator)));
+            result.add(imagecp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
         }
         if (!imagemp.isEmpty()) {
             result.add(SubstrateOptions.IMAGE_MODULEPATH_PREFIX);
@@ -1570,24 +1553,14 @@ public class NativeImage {
         if (!strict) {
             return bundleSupport != null ? bundleSupport.recordCanonicalization(path, absolutePath) : absolutePath;
         }
-        boolean hasWildcard = absolutePath.endsWith(ClasspathUtils.cpWildcardSubstitute);
-        if (hasWildcard) {
-            absolutePath = absolutePath.getParent();
-        }
         try {
             Path realPath = absolutePath.toRealPath();
             if (!Files.isReadable(realPath)) {
-                showError("Path entry " + ClasspathUtils.classpathToString(path) + " is not readable");
-            }
-            if (hasWildcard) {
-                if (!Files.isDirectory(realPath)) {
-                    showError("Path entry with wildcard " + ClasspathUtils.classpathToString(path) + " is not a directory");
-                }
-                realPath = realPath.resolve(ClasspathUtils.cpWildcardSubstitute);
+                showError("Path entry " + path + " is not readable");
             }
             return bundleSupport != null ? bundleSupport.recordCanonicalization(path, realPath) : realPath;
         } catch (IOException e) {
-            throw showError("Invalid Path entry " + ClasspathUtils.classpathToString(path), e);
+            throw showError("Invalid Path entry " + path, e);
         }
     }
 
@@ -1712,7 +1685,32 @@ public class NativeImage {
      * strings same as java -cp (is tolerant against invalid classpath entries).
      */
     void addCustomImageClasspath(String classpath) {
-        addImageClasspathEntry(customImageClasspath, ClasspathUtils.stringToClasspath(classpath), false);
+        for (Path path : expandAsteriskClassPathElement(classpath)) {
+            addImageClasspathEntry(customImageClasspath, path, false);
+        }
+    }
+
+    public List<Path> expandAsteriskClassPathElement(String cp) {
+        String separators = Pattern.quote(File.separator);
+        if (OS.getCurrent().equals(OS.WINDOWS)) {
+            separators += "/"; /* on Windows also / is accepted as valid separator */
+        }
+        List<String> components = new ArrayList<>(List.of(cp.split("[" + separators + "]")));
+        int lastElementIndex = components.size() - 1;
+        if (lastElementIndex >= 0 && "*".equals(components.get(lastElementIndex))) {
+            components.remove(lastElementIndex);
+            Path searchDir = Path.of(String.join(File.separator, components));
+            try (Stream<Path> filesInSearchDir = Files.list(searchDir)) {
+                return filesInSearchDir.filter(NativeImage::hasJarFileSuffix).collect(Collectors.toList());
+            } catch (IOException e) {
+                throw NativeImage.showError("Class path element asterisk (*) expansion failed for directory " + searchDir);
+            }
+        }
+        return List.of(Path.of(cp));
+    }
+
+    private static boolean hasJarFileSuffix(Path p) {
+        return p.getFileName().toString().toLowerCase().endsWith(".jar");
     }
 
     /**
@@ -1743,7 +1741,9 @@ public class NativeImage {
         Path classpathEntryFinal = bundleSupport != null ? bundleSupport.substituteModulePath(classpathEntry) : classpathEntry;
         if (!imageClasspath.contains(classpathEntryFinal) && !customImageClasspath.contains(classpathEntryFinal)) {
             destination.add(classpathEntryFinal);
-            processManifestMainAttributes(classpathEntryFinal, (jarFilePath, attributes) -> handleClassPathAttribute(destination, jarFilePath, attributes));
+            if (ClasspathUtils.isJar(classpathEntryFinal)) {
+                processJarManifestMainAttributes(classpathEntryFinal, (jarFilePath, attributes) -> handleClassPathAttribute(destination, jarFilePath, attributes));
+            }
             processClasspathNativeImageMetaInf(classpathEntryFinal);
         }
     }

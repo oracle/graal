@@ -71,7 +71,6 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.util.ClassUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -90,6 +89,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -218,7 +218,7 @@ public class NativeImageClassLoaderSupport {
     protected static class Util {
 
         static URL[] verifyClassPathAndConvertToURLs(String[] classpath) {
-            Stream<Path> pathStream = new LinkedHashSet<>(Arrays.asList(classpath)).stream().flatMap(Util::toClassPathEntries);
+            Stream<Path> pathStream = new LinkedHashSet<>(Arrays.asList(classpath)).stream().map(Path::of).filter(Util::verifyClassPathEntry);
             return pathStream.map(v -> {
                 try {
                     return toRealPath(v).toUri().toURL();
@@ -236,19 +236,14 @@ public class NativeImageClassLoaderSupport {
             }
         }
 
-        static Stream<Path> toClassPathEntries(String classPathEntry) {
-            Path entry = ClasspathUtils.stringToClasspath(classPathEntry);
-            if (entry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
-                try {
-                    return Files.list(entry.getParent()).filter(ClasspathUtils::isJar);
-                } catch (IOException e) {
-                    return Stream.empty();
-                }
+        private static boolean verifyClassPathEntry(Path cpEntry) {
+            if (ClasspathUtils.isJar(cpEntry)) {
+                return true;
             }
-            if (Files.isReadable(entry)) {
-                return Stream.of(entry);
+            if (Files.isDirectory(cpEntry) && Files.isReadable(cpEntry)) {
+                return true;
             }
-            return Stream.empty();
+            return false;
         }
 
         static Path urlToPath(URL url) {
