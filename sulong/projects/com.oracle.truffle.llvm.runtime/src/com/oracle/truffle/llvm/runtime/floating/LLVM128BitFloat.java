@@ -129,6 +129,13 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         return isPositiveInfinity() || isNegativeInfinity();
     }
 
+    public byte[] getBytesBigEndian() {
+        byte[] array = new byte[BYTE_WIDTH];
+        ByteArraySupport.bigEndian().putLong(array, 0, expSignFraction);
+        ByteArraySupport.bigEndian().putLong(array, 8, fraction);
+        return array;
+    }
+
     public static LLVM128BitFloat createPositiveZero() {
         if (CompilerDirectives.inCompiledCode()) {
             return LLVM128BitFloat.fromRawValues(false, 0, 0);
