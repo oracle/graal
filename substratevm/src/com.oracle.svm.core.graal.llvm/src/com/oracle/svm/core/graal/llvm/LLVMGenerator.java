@@ -36,6 +36,7 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.getVal;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -45,6 +46,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -85,10 +87,13 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
+import com.oracle.graal.pointsto.heap.ImageHeapArray;
+import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -148,6 +153,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -546,7 +552,19 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             constants.put(constant, symbolName);
 
             Constant storedConstant = uncompressedObject ? ((CompressibleConstant) constant).compress() : constant;
-            DataSectionReference reference = compilationResult.getDataSection().insertData(dataBuilder.createDataItem(storedConstant));
+            DataSection.Data data;
+            if (constant instanceof ImageHeapArray || constant instanceof ImageHeapInstance) {
+                int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+                data = new DataSection.Data(referenceSize, referenceSize) {
+                    @Override
+                    protected void emit(ByteBuffer buffer, DataSection.Patches patches) {
+                        SubstrateDataBuilder.ObjectData.emit(buffer, patches, getSize(), (VMConstant) constant);
+                    }
+                };
+            } else {
+                data = dataBuilder.createDataItem(storedConstant);
+            }
+            DataSectionReference reference = compilationResult.getDataSection().insertData(data);
             compilationResult.recordDataPatchWithNote(0, reference, symbolName);
         }
         return builder.getExternalObject(symbolName, isUncompressedObjectConstant(constant));
