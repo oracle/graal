@@ -709,7 +709,9 @@ public final class Target_java_lang_Thread {
     private static class HasExtentLocalCache implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return ReflectionUtil.lookupMethod(true, Thread.class, "extentLocalCache") != null;
+            boolean result = ReflectionUtil.lookupMethod(true, Thread.class, "extentLocalCache") != null;
+            assert !result || JavaVersionUtil.JAVA_SPEC == 19 : "extentLocalCache should not exist as of JDK 20";
+            return result;
         }
     }
 
