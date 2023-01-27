@@ -357,7 +357,7 @@ final class PanamaSignature {
                 Object result = (Object) handle.invokeExact(args);
                 if (result == null) {
                     if (retType.type == NativeSimpleType.VOID) {
-                        return null;
+                        return NativePointer.NULL;
                     } else {
                         return NativePointer.NULL;
                     }
