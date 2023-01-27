@@ -291,6 +291,10 @@ local devkits = common_json.devkits;
     targets+: ['daily'],
   },
 
+  daily_vm_windows_jdk19: self.vm_windows_jdk19 + {
+    targets+: ['daily'],
+  },
+
   weekly_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['weekly'],
   },
@@ -312,6 +316,10 @@ local devkits = common_json.devkits;
   },
 
   weekly_vm_windows_jdk17: self.vm_windows_jdk17 + {
+    targets+: ['weekly'],
+  },
+
+  weekly_vm_windows_jdk19: self.vm_windows_jdk19 + {
     targets+: ['weekly'],
   },
 
@@ -344,6 +352,10 @@ local devkits = common_json.devkits;
   },
 
   ondemand_deploy_vm_windows_jdk17: self.vm_windows_jdk17 + {
+    targets+: ['ondemand', 'deploy'],
+  },
+
+  ondemand_deploy_vm_windows_jdk19: self.vm_windows_jdk19 + {
     targets+: ['ondemand', 'deploy'],
   },
 
@@ -621,14 +633,14 @@ local devkits = common_json.devkits;
     #
     # Gates
     #
-    vm.vm_java_17 + common_json.downloads.eclipse + common_json.downloads.jdt + self.gate_vm_linux_amd64 + {
+    vm.vm_java_19 + common_json.downloads.eclipse + common_json.downloads.jdt + self.gate_vm_linux_amd64 + {
      run: [
        ['mx', 'gate', '-B=--force-deprecation-as-warning', '--tags', 'style,fullbuild'],
      ],
-     name: 'gate-vm-style-jdk17-linux-amd64',
+     name: 'gate-vm-style-jdk19-linux-amd64',
     },
 
-    vm.vm_java_17 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
+    vm.vm_java_19 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
      run: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],

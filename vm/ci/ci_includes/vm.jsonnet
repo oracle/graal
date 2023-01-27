@@ -133,7 +133,7 @@ local jdks = common_json.jdks;
      ],
      name: 'gate-vm-unittest-windows-amd64',
     }, ["sdk", "truffle", "vm"]),
-    self.vm_java_17 + vm_common.gate_vm_linux_amd64 + vm_common.sulong_linux + {
+    self.vm_java_19 + vm_common.gate_vm_linux_amd64 + vm_common.sulong_linux + {
      environment+: {
        DYNAMIC_IMPORTS: '/tools,/substratevm,/sulong',
        NATIVE_IMAGES: 'polyglot',
