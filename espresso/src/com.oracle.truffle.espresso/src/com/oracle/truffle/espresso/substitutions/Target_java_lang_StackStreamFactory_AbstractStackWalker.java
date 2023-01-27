@@ -33,6 +33,11 @@ public final class Target_java_lang_StackStreamFactory_AbstractStackWalker {
     private Target_java_lang_StackStreamFactory_AbstractStackWalker() {
     }
 
+    /*
+     * As of JDK 19+, The native signature for these VM methods changed. This substitution bypasses
+     * the native linking of these methods to their 'JVM_*' counterparts.
+     */
+
     @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java19OrLater.class)
     public static @JavaType(Object.class) StaticObject callStackWalk(
                     @JavaType(internalName = "Ljava/lang/StackStreamFactory$AbstractStackWalker;") StaticObject stackStream,
