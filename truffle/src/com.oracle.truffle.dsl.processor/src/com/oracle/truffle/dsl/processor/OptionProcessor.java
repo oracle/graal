@@ -454,16 +454,19 @@ public class OptionProcessor extends AbstractProcessor {
             }
 
             for (var entry : groupedOptions.entrySet()) {
-                for (String optionName : entry.getValue()) {
-                    builder.startCase().doubleQuote(optionName).end().startCaseBlock();
-                    builder.startReturn().type(types.SandboxPolicy).string(".", entry.getKey()).end();
-                    builder.end();
+                if (!entry.getKey().equals(maxEntry)) {
+                    for (String optionName : entry.getValue()) {
+                        builder.startCase().doubleQuote(optionName).end().startCaseBlock();
+                        builder.startReturn().type(types.SandboxPolicy).string(".", entry.getKey()).end();
+                        builder.end();
+                    }
                 }
             }
 
             // it makes sense to use the default block for the policy with the most entries.
             builder.caseDefault().startCaseBlock();
-            builder.startReturn().type(types.SandboxPolicy).string(maxEntry).end();
+            builder.startReturn().type(types.SandboxPolicy).string(".", maxEntry).end();
+            builder.end();
             builder.end();
         }
 

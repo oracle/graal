@@ -142,6 +142,16 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     }
 
     @Override
+    public Set<String> getExplicitlyPermittedLanguages(Object oreceiver) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
+        try {
+            return receiver.getExplicitlyPermittedLanguages();
+        } catch (Throwable t) {
+            throw PolyglotImpl.guestToHostException(receiver, t);
+        }
+    }
+
+    @Override
     public OptionDescriptors getOptions(Object oreceiver) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {

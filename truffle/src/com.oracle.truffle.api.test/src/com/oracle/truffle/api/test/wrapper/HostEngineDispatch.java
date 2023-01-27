@@ -133,6 +133,11 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
     }
 
     @Override
+    public Set<String> getExplicitlyPermittedLanguages(Object receiver) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public OptionDescriptors getOptions(Object receiver) {
         throw new UnsupportedOperationException();
     }

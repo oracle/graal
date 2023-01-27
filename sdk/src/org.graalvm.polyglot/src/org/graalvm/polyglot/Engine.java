@@ -647,7 +647,7 @@ public final class Engine implements AutoCloseable {
             if (sandboxPolicy == SandboxPolicy.TRUSTED) {
                 return;
             }
-            if (permittedLanguages == null || permittedLanguages.length == 0) {
+            if (permittedLanguages.length == 0) {
                 throw new IllegalArgumentException(
                                 String.format("If the sandbox policy %s is set, the number of languages needs to be set for the engine. For example, Engine.newBuilder(\"js\").", this.sandboxPolicy));
             }

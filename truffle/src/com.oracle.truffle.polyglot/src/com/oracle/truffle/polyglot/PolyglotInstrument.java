@@ -170,7 +170,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         if (!created) {
             if (getSandboxPolicy().ordinal() < engine.sandboxPolicy.ordinal()) {
                 throw PolyglotEngineException.illegalArgument(
-                                String.format("Instrument %s can be used in an engine with at least %s sandbox policy, but the %s sandbox policy is set for an engine.\", " +
+                                String.format("Instrument %s can be used in an engine with at most %s sandbox policy, but the %s sandbox policy is set for an engine.\", ",
                                                 getId(), getSandboxPolicy(), engine.sandboxPolicy));
             }
             PolyglotContextImpl[] contexts = null;

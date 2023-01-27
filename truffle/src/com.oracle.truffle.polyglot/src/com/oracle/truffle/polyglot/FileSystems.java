@@ -1466,6 +1466,11 @@ final class FileSystems {
         }
 
         @Override
+        public boolean isHost() {
+            return (delegateFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) delegateFileSystem).isHost();
+        }
+
+        @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
             Set<AccessMode> writeModes = new HashSet<>(modes);
             writeModes.removeAll(READ_MODES);

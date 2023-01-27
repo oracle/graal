@@ -1318,6 +1318,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return idToPublicLanguage;
     }
 
+    Set<String> getExplicitlyPermittedLanguages() {
+        checkState();
+        return Set.of(permittedLanguages);
+    }
+
     public OptionDescriptors getOptions() {
         checkState();
         return engineOptionValues.getDescriptors();
@@ -2261,15 +2266,13 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     static void validateOptionsSandbox(SandboxPolicy sandboxPolicy, OptionValuesImpl optionValues) {
         OptionDescriptors optionDescriptors = optionValues.getDescriptors();
-        if (optionDescriptors instanceof TruffleOptionDescriptors) {
-            TruffleOptionDescriptors truffleOptionDescriptors = (TruffleOptionDescriptors) optionDescriptors;
-            for (OptionDescriptor descriptor : optionValues.getDescriptors()) {
-                if (optionValues.hasBeenSet(descriptor.getKey())) {
-                    SandboxPolicy optionSandboxPolicy = truffleOptionDescriptors.getSandboxPolicy(descriptor.getName());
-                    if (optionSandboxPolicy.ordinal() < sandboxPolicy.ordinal()) {
-                        PolyglotEngineException.illegalArgument(String.format("The option %s requires at least the %s sandbox policy, but the %s sandbox policy is set for a context.",
-                                        descriptor.getName(), optionSandboxPolicy, sandboxPolicy));
-                    }
+        TruffleOptionDescriptors truffleOptionDescriptors = optionDescriptors instanceof TruffleOptionDescriptors ? (TruffleOptionDescriptors) optionDescriptors : null;
+        for (OptionDescriptor descriptor : optionDescriptors) {
+            if (optionValues.hasBeenSet(descriptor.getKey())) {
+                SandboxPolicy optionSandboxPolicy = truffleOptionDescriptors != null ? truffleOptionDescriptors.getSandboxPolicy(descriptor.getName()) : SandboxPolicy.TRUSTED;
+                if (optionSandboxPolicy.ordinal() < sandboxPolicy.ordinal()) {
+                    throw PolyglotEngineException.illegalArgument(String.format("The option %s requires at most the %s sandbox policy, but the %s sandbox policy is set for a context.",
+                                    descriptor.getName(), optionSandboxPolicy, sandboxPolicy));
                 }
             }
         }

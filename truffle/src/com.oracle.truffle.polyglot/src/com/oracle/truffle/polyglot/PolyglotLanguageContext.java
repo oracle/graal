@@ -567,7 +567,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (!created) {
             if (language.getSandboxPolicy().ordinal() < context.config.sandboxPolicy.ordinal()) {
                 throw PolyglotEngineException.illegalArgument(
-                                String.format("Language %s can be used in a context with at least %s sandbox policy, but the %s sandbox policy is set for a context.\", " +
+                                String.format("Language %s can be used in a context with at most %s sandbox policy, but the %s sandbox policy is set for a context.\", ",
                                                 language.getId(), language.getSandboxPolicy(), context.config.sandboxPolicy));
             }
             checkAccess(accessingLanguage);

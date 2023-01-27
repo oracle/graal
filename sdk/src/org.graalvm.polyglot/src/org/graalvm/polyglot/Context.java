@@ -1792,8 +1792,7 @@ public final class Context implements AutoCloseable {
                 return;
             }
             if (sandboxPolicy.ordinal() >= SandboxPolicy.RELAXED.ordinal()) {
-                // TODO permittedLanguages can maybe inferred with an explicit engine?
-                if (permittedLanguages == null || permittedLanguages.length == 0) {
+                if (permittedLanguages.length == 0 && (sharedEngine == null || sharedEngine.dispatch.getExplicitlyPermittedLanguages(sharedEngine.receiver).isEmpty())) {
                     throw new IllegalArgumentException(
                                     String.format("If the sandbox policy %s is set, the number of languages needs to be set for a context. For example, Context.newBuilder(\"js\").",
                                                     this.sandboxPolicy));
@@ -2016,6 +2015,9 @@ public final class Context implements AutoCloseable {
                     engineBuilder.logHandler((Handler) customLogHandler);
                 } else if (customLogHandler instanceof OutputStream) {
                     engineBuilder.logHandler((OutputStream) customLogHandler);
+                }
+                if (sandboxPolicy != null) {
+                    engineBuilder.sandbox(sandboxPolicy);
                 }
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
