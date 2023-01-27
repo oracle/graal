@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
+import jdk.vm.ci.meta.JavaTypeProfile;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.graph.Node;
@@ -95,10 +96,11 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
         private final Integer invokeOrderId;
         private final ResolvedJavaMethod target;
         private final boolean indirect;
+        private final JavaTypeProfile typeProfile;
 
         private EncodedCallsite(List<InliningLog.Decision> decisions, List<EncodedCallsite> children, int bci,
                         EncodedCallsite originalCallsite, Integer invokeOrderId, ResolvedJavaMethod target,
-                        boolean indirect) {
+                        boolean indirect, JavaTypeProfile typeProfile) {
             this.decisions = decisions;
             this.children = children;
             this.bci = bci;
@@ -106,6 +108,7 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
             this.invokeOrderId = invokeOrderId;
             this.target = target;
             this.indirect = indirect;
+            this.typeProfile = typeProfile;
         }
     }
 
@@ -148,7 +151,7 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
             Integer invokableNode = encodeInvokable(replacementSite.getInvoke(), mapper);
             EncodedCallsite originalCallsite = replacementSite.getOriginalCallsite() == null ? null : mapping.get(replacementSite.getOriginalCallsite());
             EncodedCallsite site = new EncodedCallsite(new ArrayList<>(replacementSite.getDecisions()), new ArrayList<>(), replacementSite.getBci(),
-                            originalCallsite, invokableNode, replacementSite.getTarget(), replacementSite.isIndirect());
+                            originalCallsite, invokableNode, replacementSite.getTarget(), replacementSite.isIndirect(), replacementSite.getTargetTypeProfile());
             mapping.put(replacementSite, site);
             for (InliningLog.Callsite replacementChild : replacementSite.getChildren()) {
                 site.children.add(encodeSubtree(replacementChild, mapper, mapping));
@@ -202,7 +205,7 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
         private InliningLog.Callsite decodeSubtree(InliningLog.Callsite parent, EncodedCallsite replacementSite, EconomicMap<EncodedCallsite, InliningLog.Callsite> replacements) {
             InliningLog.Callsite originalCallsite = replacementSite.originalCallsite == null ? null : replacements.get(replacementSite.originalCallsite);
             InliningLog.Callsite site = new InliningLog.Callsite(parent, originalCallsite, null, replacementSite.target,
-                            replacementSite.bci, replacementSite.indirect);
+                            replacementSite.bci, replacementSite.indirect, replacementSite.typeProfile);
             if (replacementSite.invokeOrderId != null) {
                 orderIdToCallsite.put(replacementSite.invokeOrderId, site);
             }

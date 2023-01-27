@@ -35,9 +35,13 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 
+import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.util.CollectionsUtil;
 
 /**
  * This class contains all inlining decisions performed on a graph during the compilation.
@@ -130,7 +134,7 @@ public class InliningLog {
 
         /**
          * The target method of the callsite. This field should reflect the correct target method at
-         * the end of compilation.
+         * the end of a compilation.
          */
         private ResolvedJavaMethod target;
 
@@ -141,7 +145,7 @@ public class InliningLog {
          *
          * @see #copyTree(Callsite, Callsite, UnmodifiableEconomicMap, EconomicMap)
          */
-        private int bci;
+        private final int bci;
 
         /**
          * {@code true} if the call was known to be indirect at the time of the last inlining
@@ -165,7 +169,13 @@ public class InliningLog {
          */
         private final Callsite originalCallsite;
 
-        Callsite(Callsite parent, Callsite originalCallsite, Invokable invoke, ResolvedJavaMethod target, int bci, boolean indirect) {
+        /**
+         * The last non-null type profile of the call target or {@code null}. The value is updated
+         * on each inlining decision.
+         */
+        private JavaTypeProfile targetTypeProfile;
+
+        Callsite(Callsite parent, Callsite originalCallsite, Invokable invoke, ResolvedJavaMethod target, int bci, boolean indirect, JavaTypeProfile targetTypeProfile) {
             this.parent = parent;
             this.bci = bci;
             this.indirect = indirect;
@@ -174,13 +184,15 @@ public class InliningLog {
             this.invoke = invoke;
             this.target = target;
             this.originalCallsite = originalCallsite;
+            this.targetTypeProfile = targetTypeProfile;
             if (parent != null) {
                 parent.children.add(this);
             }
         }
 
         /**
-         * Adds an inlining decision, updates the target method, bci, and the indirect field.
+         * Adds an inlining decision, updates the target method, the type profile, and the indirect
+         * field.
          *
          * @param decision the decision to be added
          */
@@ -188,7 +200,10 @@ public class InliningLog {
             decisions.add(decision);
             target = invoke.getTargetMethod();
             indirect = !decision.positive && invokeIsIndirect(invoke);
-            bci = invoke.bci();
+            JavaTypeProfile newTypeProfile = targetTypeProfile(invoke);
+            if (newTypeProfile != null) {
+                targetTypeProfile = newTypeProfile;
+            }
         }
 
         /**
@@ -209,6 +224,41 @@ public class InliningLog {
         }
 
         /**
+         * Returns the type profile associated with the call target of the provided invoke or
+         * {@code null}.
+         *
+         * @param invokable an invokable
+         * @return the type profile of the call target or {@code null}
+         */
+        private static JavaTypeProfile targetTypeProfile(Invokable invokable) {
+            if (!(invokable instanceof Invoke)) {
+                return null;
+            }
+            CallTargetNode callTarget = ((Invoke) invokable).callTarget();
+            if (!(callTarget instanceof MethodCallTargetNode)) {
+                return null;
+            }
+            return ((MethodCallTargetNode) callTarget).getTypeProfile();
+        }
+
+        /**
+         * Returns the bci of the provided invoke. Prefers the bci from a node source position over
+         * {@link Invokable#bci()}.
+         *
+         * @param invokable an invokable
+         * @return the bci of the invokable
+         */
+        private static int invokeBCI(Invokable invokable) {
+            if (invokable instanceof Node) {
+                NodeSourcePosition position = ((Node) invokable).getNodeSourcePosition();
+                if (position != null) {
+                    return position.getBCI();
+                }
+            }
+            return invokable.bci();
+        }
+
+        /**
          * Creates and adds a child call-tree node (callsite) to this node.
          *
          * @param childInvoke the invoke which represents the child callsite to be added
@@ -217,7 +267,7 @@ public class InliningLog {
          * @return the created callsite for the child
          */
         private Callsite addChild(Invokable childInvoke, Callsite childOriginalCallsite) {
-            return new Callsite(this, childOriginalCallsite, childInvoke, childInvoke.getTargetMethod(), childInvoke.bci(), invokeIsIndirect(childInvoke));
+            return new Callsite(this, childOriginalCallsite, childInvoke, childInvoke.getTargetMethod(), invokeBCI(childInvoke), invokeIsIndirect(childInvoke), targetTypeProfile(childInvoke));
         }
 
         public String positionString() {
@@ -336,6 +386,20 @@ public class InliningLog {
         public boolean isIndirect() {
             return indirect;
         }
+
+        /**
+         * Returns the last non-null type profile of the call target or {@code null}.
+         */
+        public JavaTypeProfile getTargetTypeProfile() {
+            return targetTypeProfile;
+        }
+
+        /**
+         * Returns {@code true} if the callsite is inlined.
+         */
+        public boolean isInlined() {
+            return CollectionsUtil.anyMatch(decisions, InliningLog.Decision::isPositive);
+        }
     }
 
     private Callsite root;
@@ -343,7 +407,7 @@ public class InliningLog {
     private final EconomicMap<Invokable, Callsite> leaves;
 
     public InliningLog(ResolvedJavaMethod rootMethod) {
-        this.root = new Callsite(null, null, null, rootMethod, Callsite.ROOT_CALLSITE_BCI, false);
+        this.root = new Callsite(null, null, null, rootMethod, Callsite.ROOT_CALLSITE_BCI, false, null);
         this.leaves = EconomicMap.create();
     }
 
@@ -457,7 +521,7 @@ public class InliningLog {
             }
         }
         Callsite originalCallsite = replacementSite.originalCallsite == null ? null : mapping.get(replacementSite.originalCallsite);
-        Callsite site = new Callsite(parent, originalCallsite, invoke, replacementSite.target, replacementSite.bci, replacementSite.indirect);
+        Callsite site = new Callsite(parent, originalCallsite, invoke, replacementSite.target, replacementSite.bci, replacementSite.indirect, replacementSite.targetTypeProfile);
         site.decisions.addAll(replacementSite.decisions);
         mapping.put(replacementSite, site);
         for (Callsite replacementChild : replacementSite.children) {

@@ -36,6 +36,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -55,6 +56,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.util.CollectionsUtil;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Test;
@@ -181,12 +183,44 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
         test("doTest", EconomicMap.create(), getInitialOptions());
     }
 
+    /**
+     * Tests that the optimization log and inlining log are decoded correctly. The inlining log is
+     * enabled automatically by enabling the optimization log. The respective codecs
+     * {@link org.graalvm.compiler.nodes.CompanionObjectCodec#verify verify} that the logs are
+     * correctly decoded, i.e., the decoded logs match what was encoded in the first place.
+     *
+     * The test also checks that inlining decisions made in the decoder are properly logged. We
+     * compare a decoder that inlines everything with a {@link #parseAndInlineAll parser that
+     * inlines everything}. The resulting inlining logs should have
+     * {@link #assertInlinedMethodsEqual the same methods inlined}.
+     */
     @Test
     public void inliningLogAndOptimizationLogDecodedCorrectly() {
         EconomicSet<DebugOptions.OptimizationLogTarget> targets = EconomicSet.create();
         targets.add(DebugOptions.OptimizationLogTarget.Stdout);
         OptionValues optionValues = new OptionValues(getInitialOptions(), DebugOptions.OptimizationLog, targets);
-        test("doTest", EconomicMap.create(), optionValues);
+        String methodName = "doTest";
+        InliningLog actualInliningLog = test(methodName, EconomicMap.create(), optionValues).getInliningLog();
+        InliningLog expectedInliningLog = parseAndInlineAll(methodName, optionValues).getInliningLog();
+        assertInlinedMethodsEqual(expectedInliningLog.getRootCallsite(), actualInliningLog.getRootCallsite());
+    }
+
+    private StructuredGraph parseAndInlineAll(String methodName, OptionValues optionValues) {
+        GraphBuilderConfiguration.Plugins plugins = getDefaultGraphBuilderPlugins();
+        plugins.appendInlineInvokePlugin(new InlineAll());
+        GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
+        graphBuilderConfig = editGraphBuilderConfiguration(graphBuilderConfig);
+        registerPlugins(graphBuilderConfig.getPlugins().getInvocationPlugins());
+        return parse(builder(getResolvedJavaMethod(methodName), AllowAssumptions.YES, optionValues), getCustomGraphBuilderSuite(graphBuilderConfig));
+    }
+
+    private static void assertInlinedMethodsEqual(InliningLog.Callsite expected, InliningLog.Callsite actual) {
+        Assert.assertEquals(expected.isInlined(), actual.isInlined());
+        Assert.assertEquals(expected.getTarget(), actual.getTarget());
+        Assert.assertEquals(expected.getChildren().size(), actual.getChildren().size());
+        for (var pair : CollectionsUtil.zipLongest(expected.getChildren(), actual.getChildren())) {
+            assertInlinedMethodsEqual(pair.getLeft(), pair.getRight());
+        }
     }
 
     @SuppressWarnings("try")

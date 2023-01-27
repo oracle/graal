@@ -884,10 +884,9 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
         EconomicMap<String, Object> typeProfileMap = EconomicMap.create();
         typeProfileMap.put(MATURE_PROPERTY, profilingInfo.isMature());
-        JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(callsite.getBci());
-        if (typeProfile != null) {
+        if (callsite.getTargetTypeProfile() != null) {
             List<EconomicMap<String, Object>> profiledTypes = new ArrayList<>();
-            for (JavaTypeProfile.ProfiledType profiledType : typeProfile.getTypes()) {
+            for (JavaTypeProfile.ProfiledType profiledType : callsite.getTargetTypeProfile().getTypes()) {
                 EconomicMap<String, Object> profiledTypeMap = EconomicMap.create();
                 profiledTypeMap.put(TYPE_NAME_PROPERTY, profiledType.getType().toJavaName(true));
                 profiledTypeMap.put(PROBABILITY_PROPERTY, profiledType.getProbability());
