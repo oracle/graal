@@ -565,7 +565,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
     private void addBackReference(int groupNumber, boolean namedReference) {
         if (!silent) {
-            astBuilder.addBackReference(groupNumber, namedReference);
+            astBuilder.addBackReference(groupNumber, namedReference, getLocalFlags().isIgnoreCase());
         }
     }
 
@@ -1448,8 +1448,6 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             // Ruby syntax allows references to an open capture group. However, such a reference can
             // never match anything as the capture group is reset on entry.
             addDeadNode();
-        } else if (getLocalFlags().isIgnoreCase()) {
-            bailOut("case insensitive backreferences not supported");
         } else {
             addBackReference(groupNumber, namedReference);
         }

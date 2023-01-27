@@ -537,8 +537,8 @@ public final class RegexASTBuilder {
         }
     }
 
-    public void addBackReference(int groupNumber, boolean namedReference) {
-        addBackReference(Token.createBackReference(groupNumber, namedReference));
+    public void addBackReference(int groupNumber, boolean namedReference, boolean ignoreCase) {
+        addBackReference(Token.createBackReference(groupNumber, namedReference), ignoreCase);
     }
 
     private static boolean isNestedBackReference(BackReference backReference) {

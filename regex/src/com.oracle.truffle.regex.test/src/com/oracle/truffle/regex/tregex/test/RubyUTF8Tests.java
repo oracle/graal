@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.parser.flavors;
+package com.oracle.truffle.regex.tregex.test;
 
-import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
-import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
-import com.oracle.truffle.regex.tregex.parser.JSRegexValidator;
-import com.oracle.truffle.regex.tregex.parser.RegexParser;
-import com.oracle.truffle.regex.tregex.parser.RegexValidator;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import org.junit.Test;
 
-import java.util.function.BiPredicate;
+public class RubyUTF8Tests extends RegexTestBase {
 
-public final class ECMAScriptFlavor extends RegexFlavor {
-
-    public static final ECMAScriptFlavor INSTANCE = new ECMAScriptFlavor();
-
-    private ECMAScriptFlavor() {
-        super(0);
+    @Override
+    String getEngineOptions() {
+        return "Flavor=Ruby";
     }
 
     @Override
-    public RegexValidator createValidator(RegexSource source) {
-        return new JSRegexValidator(source);
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.UTF_8;
     }
 
-    @Override
-    public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
-        return new JSRegexParser(language, source, compilationBuffer);
-    }
-
-    @Override
-    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
-        if (ast.getFlags().isUnicode()) {
-            return CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode.getEqualsPredicate();
-        } else {
-            return CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode.getEqualsPredicate();
-        }
+    @Test
+    public void ignoreCaseBackReferences() {
+        test("^(\uff21)(a)\\1\\2$", "i", "\uff21a\uff41A", 0, true, 0, 8, 0, 3, 3, 4);
     }
 }
