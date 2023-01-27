@@ -69,7 +69,10 @@ public abstract class HotSpotGraalCompilerTest extends GraalCompilerTest {
     }
 
     protected InstalledCode compileAndInstallSubstitution(Class<?> c, String methodName) {
-        ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(getMethod(c, methodName));
+        return compileAndInstallSubstitution(getMetaAccess().lookupJavaMethod(getMethod(c, methodName)));
+    }
+
+    protected InstalledCode compileAndInstallSubstitution(ResolvedJavaMethod method) {
         HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
         HotSpotProviders providers = rt.getHostBackend().getProviders();
         CompilationIdentifier compilationId = runtime().getHostBackend().getCompilationIdentifier(method);

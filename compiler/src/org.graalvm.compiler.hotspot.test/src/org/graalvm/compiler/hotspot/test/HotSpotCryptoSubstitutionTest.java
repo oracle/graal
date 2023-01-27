@@ -67,20 +67,26 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         input = readClassfile16(getClass());
     }
 
-    private void testEncryptDecrypt(String className, String methodName, String generatorAlgorithm, int keySize, String algorithm) throws GeneralSecurityException {
-        Class<?> klass = null;
-        try {
-            klass = Class.forName(className);
-        } catch (ClassNotFoundException e) {
-            // It's ok to not find the class - a different security provider
-            // may have been installed
-            return;
-        }
+    private ResolvedJavaMethod getResovledJavaMethod(String className, String methodName) throws ClassNotFoundException {
+        Class<?> klass = Class.forName(className);
+        return getMetaAccess().lookupJavaMethod(getMethod(klass, methodName));
+    }
+
+    private ResolvedJavaMethod getResovledJavaMethod(String className, String methodName, Class<?>... paramterTypes) throws ClassNotFoundException {
+        Class<?> klass = Class.forName(className);
+        return getMetaAccess().lookupJavaMethod(getMethod(klass, methodName, paramterTypes));
+    }
+
+    private void testEncryptDecrypt(String className, String methodName, String generatorAlgorithm, int keySize, String algorithm) throws GeneralSecurityException, ClassNotFoundException {
+        testEncryptDecrypt(getResovledJavaMethod(className, methodName), generatorAlgorithm, keySize, algorithm);
+    }
+
+    private void testEncryptDecrypt(ResolvedJavaMethod intrinsicMethod, String generatorAlgorithm, int keySize, String algorithm) throws GeneralSecurityException {
         KeyGenerator gen = KeyGenerator.getInstance(generatorAlgorithm);
         gen.init(keySize);
         SecretKey key = gen.generateKey();
         Result expected = runEncryptDecrypt(key, algorithm);
-        InstalledCode intrinsic = compileAndInstallSubstitution(klass, methodName);
+        InstalledCode intrinsic = compileAndInstallSubstitution(intrinsicMethod);
         Assert.assertTrue("missing intrinsic", intrinsic != null);
         Result actual = runEncryptDecrypt(key, algorithm);
         assertEquals(expected, actual);
@@ -181,6 +187,28 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         testEncryptDecrypt("com.sun.crypto.provider.GaloisCounterMode", "implGCMCrypt0", "AES", 128, "AES/GCM/PKCS5Padding");
         testEncryptDecrypt("com.sun.crypto.provider.GaloisCounterMode", "implGCMCrypt0", "DESede", 168, "DESede/GCM/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.GaloisCounterMode", "implGCMCrypt0", "DESede", 168, "DESede/GCM/PKCS5Padding");
+    }
+
+    @Test
+    public void testPoly1305() throws Exception {
+        Assume.assumeTrue(runtime().getVMConfig().poly1305ProcessBlocks != 0L);
+        testEncryptDecrypt(getResovledJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
+                        "ChaCha20", 256, "ChaCha20-Poly1305/None/NoPadding");
+        testEncryptDecrypt(getResovledJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
+                        "ChaCha20", 256, "ChaCha20-Poly1305/ECB/NoPadding");
+        testEncryptDecrypt(getResovledJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
+                        "ChaCha20", 256, "ChaCha20-Poly1305/None/PKCS5Padding");
+        testEncryptDecrypt(getResovledJavaMethod("com.sun.crypto.provider.Poly1305", "processMultipleBlocks", byte[].class, int.class, int.class, long[].class, long[].class),
+                        "ChaCha20", 256, "ChaCha20-Poly1305/ECB/PKCS5Padding");
+    }
+
+    @Test
+    public void testChaCha20() throws Exception {
+        Assume.assumeTrue(runtime().getVMConfig().chacha20Block != 0L);
+        testEncryptDecrypt("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", "ChaCha20", 256, "ChaCha20-Poly1305/None/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", "ChaCha20", 256, "ChaCha20-Poly1305/ECB/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", "ChaCha20", 256, "ChaCha20-Poly1305/None/PKCS5Padding");
+        testEncryptDecrypt("com.sun.crypto.provider.ChaCha20Cipher", "implChaCha20Block", "ChaCha20", 256, "ChaCha20-Poly1305/ECB/PKCS5Padding");
     }
 
     AlgorithmParameters algorithmParameters;

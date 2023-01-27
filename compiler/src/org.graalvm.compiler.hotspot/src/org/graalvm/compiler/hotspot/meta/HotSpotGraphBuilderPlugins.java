@@ -27,10 +27,12 @@ package org.graalvm.compiler.hotspot.meta;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.CHACHA20Block;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CRC_TABLE_LOCATION;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.POLY1305_PROCESSBLOCKS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
@@ -240,6 +242,8 @@ public class HotSpotGraphBuilderPlugins {
                     p.registerInvocationPlugins(target.arch, plugins.getInvocationPlugins(), replacements);
                 }
                 registerContinuationPlugins(invocationPlugins, config, replacements);
+                registerPoly1305Plugins(invocationPlugins, config, replacements);
+                registerChaCha20Plugins(invocationPlugins, config, replacements);
             }
 
         });
@@ -1063,6 +1067,48 @@ public class HotSpotGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode addr, ValueNode off, ValueNode end) {
                 ValueNode bufAddr = b.add(new AddNode(addr, new SignExtendNode(off, 32, 64)));
                 b.addPush(JavaKind.Int, new ForeignCallNode(UPDATE_BYTES_CRC32C, crc, bufAddr, new SubNode(end, off)));
+                return true;
+            }
+        });
+    }
+
+    private static void registerPoly1305Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.Poly1305", replacements);
+        r.registerConditional(config.poly1305ProcessBlocks != 0L, new InvocationPlugin("processMultipleBlocks", Receiver.class, byte[].class, int.class, int.class, long[].class, long[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input, ValueNode offset, ValueNode length, ValueNode aLimbs, ValueNode rLimbs) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode inputNotNull = b.nullCheckedValue(input);
+                    ValueNode aLimbsNotNull = b.nullCheckedValue(aLimbs);
+                    ValueNode rLimbsNotNull = b.nullCheckedValue(rLimbs);
+
+                    ValueNode inputStart = helper.arrayElementPointer(inputNotNull, JavaKind.Byte, offset);
+                    ValueNode aLimbsStart = helper.arrayStart(aLimbsNotNull, JavaKind.Long);
+                    ValueNode rLimbsStart = helper.arrayStart(rLimbsNotNull, JavaKind.Long);
+
+                    ForeignCallNode call = b.add(new ForeignCallNode(POLY1305_PROCESSBLOCKS, inputStart, length, aLimbsStart, rLimbsStart));
+                    b.add(call);
+                }
+                return true;
+            }
+        });
+    }
+
+    private static void registerChaCha20Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.ChaCha20Cipher", replacements);
+        r.registerConditional(config.chacha20Block != 0L, new InvocationPlugin("implChaCha20Block", int[].class, byte[].class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode initState, ValueNode result) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode stateNotNull = b.nullCheckedValue(initState);
+                    ValueNode resultNotNull = b.nullCheckedValue(result);
+
+                    ValueNode stateStart = helper.arrayStart(stateNotNull, JavaKind.Int);
+                    ValueNode resultStart = helper.arrayStart(resultNotNull, JavaKind.Byte);
+
+                    ForeignCallNode call = b.add(new ForeignCallNode(CHACHA20Block, stateStart, resultStart));
+                    b.addPush(JavaKind.Int, call);
+                }
                 return true;
             }
         });

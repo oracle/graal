@@ -305,6 +305,12 @@ public final class UnimplementedGraalIntrinsics {
         if (config.contDoYield == 0L && JAVA_SPEC == 19) {
             add(ignore, "jdk/internal/vm/Continuation.doYield()I");
         }
+        if (config.poly1305ProcessBlocks == 0L) {
+            add(ignore, "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V");
+        }
+        if (config.chacha20Block == 0L) {
+            add(ignore, "com/sun/crypto/provider/ChaCha20Cipher.implChaCha20Block([I[B)I");
+        }
 
         if (JAVA_SPEC >= 16) {
             // JDK-8258558
@@ -448,8 +454,6 @@ public final class UnimplementedGraalIntrinsics {
 
         if (JAVA_SPEC >= 20) {
             add(toBeInvestigated,
-                            "com/sun/crypto/provider/ChaCha20Cipher.implChaCha20Block([I[B)I",
-                            "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V",
                             "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
                             "java/lang/Thread.scopedValueCache()[Ljava/lang/Object;",
                             "java/lang/Thread.setScopedValueCache([Ljava/lang/Object;)V",
