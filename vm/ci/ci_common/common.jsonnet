@@ -51,7 +51,6 @@ local devkits = common_json.devkits;
     },
   },
 
-  common_vm_windows_jdk11: self.common_vm_windows + devkits['windows-jdk11'],
   common_vm_windows_jdk17: self.common_vm_windows + devkits['windows-jdk17'],
   common_vm_windows_jdk19: self.common_vm_windows + devkits['windows-jdk19'],
 
@@ -60,15 +59,6 @@ local devkits = common_json.devkits;
     downloads+: {
       NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
     },
-  },
-
-  js_windows_jdk11: self.js_windows_common + {
-    setup+: [
-      # Keep in sync with the 'devkits' object defined in the top level common.json file.
-      # When this file has been converted to jsonnet, the value can be computed instead
-      # using Jsonnet std lib functions.
-      ['set-export', 'DEVKIT_VERSION', '2017'],
-    ],
   },
 
   js_windows_jdk17: self.js_windows_common + {
@@ -203,7 +193,6 @@ local devkits = common_json.devkits;
   },
 
   vm_windows: self.common_vm_windows + graal_common.windows_server_2016_amd64,
-  vm_windows_jdk11: self.common_vm_windows_jdk11 + graal_common.windows_server_2016_amd64,
   vm_windows_jdk17: self.common_vm_windows_jdk17 + graal_common.windows_server_2016_amd64,
   vm_windows_jdk19: self.common_vm_windows_jdk19 + graal_common.windows_server_2016_amd64,
 
@@ -270,10 +259,6 @@ local devkits = common_json.devkits;
     targets+: ['daily', 'deploy'],
   },
 
-  deploy_daily_vm_windows_jdk11: self.vm_windows_jdk11 + {
-    targets+: ['daily', 'deploy'],
-  },
-
   deploy_daily_vm_windows_jdk17: self.vm_windows_jdk17 + {
     targets+: ['daily', 'deploy'],
   },
@@ -302,10 +287,6 @@ local devkits = common_json.devkits;
     targets+: ['daily'],
   },
 
-  daily_vm_windows_jdk11: self.vm_windows_jdk11 + {
-    targets+: ['daily'],
-  },
-
   daily_vm_windows_jdk17: self.vm_windows_jdk17 + {
     targets+: ['daily'],
   },
@@ -327,10 +308,6 @@ local devkits = common_json.devkits;
   },
 
   weekly_vm_windows: self.vm_windows + {
-    targets+: ['weekly'],
-  },
-
-  weekly_vm_windows_jdk11: self.vm_windows_jdk11 + {
     targets+: ['weekly'],
   },
 
@@ -363,10 +340,6 @@ local devkits = common_json.devkits;
   },
 
   ondemand_deploy_vm_darwin_aarch64: self.vm_darwin_aarch64 + {
-    targets+: ['ondemand', 'deploy'],
-  },
-
-  ondemand_deploy_vm_windows_jdk11: self.vm_windows_jdk11 + {
     targets+: ['ondemand', 'deploy'],
   },
 
