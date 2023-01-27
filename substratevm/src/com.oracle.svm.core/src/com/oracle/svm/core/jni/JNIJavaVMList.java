@@ -48,7 +48,7 @@ import com.oracle.svm.core.jni.headers.JNIJavaVMPointer;
  * are linked together, using compare-and-set operations for modifications. This data structure
  * never shrinks.
  */
-public class JNIJavaVMList {
+public final class JNIJavaVMList {
     /*-
      *
      * HEAD  -->  +------------------------+
@@ -135,6 +135,11 @@ public class JNIJavaVMList {
             }
             p = p.read(capacity.add(1)); // next
         }
-        totalCountPointer.write(totalCount);
+        if (totalCountPointer.isNonNull()) {
+            totalCountPointer.write(totalCount);
+        }
+    }
+
+    private JNIJavaVMList() {
     }
 }

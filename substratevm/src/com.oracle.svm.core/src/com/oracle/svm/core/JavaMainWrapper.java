@@ -167,6 +167,7 @@ public class JavaMainWrapper {
                 ImageSingletons.lookup(ProfilingSampler.class).registerSampler();
             }
 
+            // Ensure that native code using JNI_GetCreatedJavaVMs finds this isolate.
             JNIJavaVMList.addJavaVM(JNIFunctionTables.singleton().getGlobalJavaVM());
 
             /*
