@@ -31,7 +31,6 @@ import java.lang.invoke.MethodType;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
-import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
 import org.junit.Test;
 
@@ -135,16 +134,9 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
     public void testThreadSubstitutions() {
         GraalHotSpotVMConfig config = ((HotSpotBackend) getBackend()).getRuntime().getVMConfig();
         testGraph("currentThread");
-        if (config.osThreadInterruptedOffset != Integer.MAX_VALUE) {
-            assertInGraph(testGraph("threadIsInterrupted", "isInterrupted", true), IfNode.class);
-            assertInGraph(testGraph("threadInterrupted", "isInterrupted", true), IfNode.class);
-        }
 
         Thread currentThread = Thread.currentThread();
         test("currentThread", currentThread);
-        if (config.osThreadInterruptedOffset != Integer.MAX_VALUE) {
-            test("threadIsInterrupted", currentThread);
-        }
     }
 
     @SuppressWarnings("all")

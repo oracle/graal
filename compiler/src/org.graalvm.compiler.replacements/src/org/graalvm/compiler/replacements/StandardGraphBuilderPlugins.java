@@ -46,8 +46,6 @@ import java.util.function.BiFunction;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
@@ -168,7 +166,6 @@ import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
@@ -527,7 +524,7 @@ public class StandardGraphBuilderPlugins {
     }
 
     private static String[] getKindNames(boolean isSunMiscUnsafe, JavaKind kind) {
-        if (kind == JavaKind.Object && !isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 17) {
+        if (kind == JavaKind.Object && !isSunMiscUnsafe) {
             /*
              * JDK 17 renamed all Object-type-related methods in jdk.internal.misc.Unsafe from
              * "Object" to "Reference", but kept the "Object" version as deprecated. We want to
@@ -1595,11 +1592,6 @@ public class StandardGraphBuilderPlugins {
             b.add(new CacheWritebackSyncNode(isPreSync));
             return true;
         }
-
-        @Override
-        public boolean isOptional() {
-            return JavaVersionUtil.JAVA_SPEC < 14;
-        }
     }
 
     private static final SpeculationReasonGroup DIRECTIVE_SPECULATIONS = new SpeculationReasonGroup("GraalDirective", BytecodePosition.class);
@@ -2074,12 +2066,7 @@ public class StandardGraphBuilderPlugins {
     private static void registerPreconditionsPlugins(InvocationPlugins plugins, Replacements replacements) {
         final Registration preconditions = new Registration(plugins, "jdk.internal.util.Preconditions", replacements);
         preconditions.register(new CheckIndexPlugin(int.class));
-        preconditions.register(new CheckIndexPlugin(long.class) {
-            @Override
-            public boolean isOptional() {
-                return JavaVersionUtil.JAVA_SPEC < 16;
-            }
-        });
+        preconditions.register(new CheckIndexPlugin(long.class));
     }
 
     /**
@@ -2097,36 +2084,6 @@ public class StandardGraphBuilderPlugins {
                 return false;
             }
         });
-    }
-
-    public static class StringLatin1IndexOfCharPlugin extends InvocationPlugin {
-
-        public StringLatin1IndexOfCharPlugin() {
-            super("indexOf", byte[].class, int.class, int.class);
-        }
-
-        @SuppressWarnings("try")
-        @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode origFromIndex) {
-            if (!b.canMergeIntrinsicReturns()) {
-                return false;
-            }
-            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                ConstantNode zero = ConstantNode.forInt(0);
-                // if (ch >>> 8 != 0) return -1
-                helper.emitReturnIf(helper.ushr(ch, 8), Condition.NE, zero, ConstantNode.forInt(-1), GraalDirectives.UNLIKELY_PROBABILITY);
-                ValueNode nonNullValue = b.nullCheckedValue(value);
-
-                // if (fromIndex >= value.length) return -1
-                ValueNode length = helper.arraylength(nonNullValue);
-                helper.emitReturnIf(origFromIndex, Condition.GE, length, ConstantNode.forInt(-1), GraalDirectives.UNLIKELY_PROBABILITY);
-                LogicNode condition = helper.createCompare(origFromIndex, CanonicalCondition.LT, zero);
-                // fromIndex = max(fromIndex, 0)
-                ValueNode fromIndex = ConditionalNode.create(condition, zero, origFromIndex, NodeView.DEFAULT);
-                helper.emitFinalReturn(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(b, JavaKind.Byte, Stride.S1, nonNullValue, length, fromIndex, ch));
-            }
-            return true;
-        }
     }
 
     public abstract static class AESCryptPluginBase extends InvocationPlugin {

@@ -54,7 +54,6 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.code.Register;
 
@@ -941,19 +940,17 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
         // Note: Math.pow(Double.MAX_VALUE, 0.5) changes from 0x5ff0000000000000 to
         // 0x5fefffffffffffff on Java 17, possibly due to the change in macroAssembler_x86_pow.cpp
         // as ported below (JDK-8265325).
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            // Special case: pow(x, 0.5) => sqrt(x)
-            // For pow(x, y), check whether y == 0.5
-            masm.cmpq(tmp1, recordExternalAddress(crb, double0Point5));
-            masm.jccb(ConditionFlag.NotEqual, block58);
-            masm.movdq(tmp2, xmm0);
-            // pow(x, 0.5) => sqrt(x) only for x >= 0.0 or x is +inf/NaN
-            masm.cmpq(tmp2, recordExternalAddress(crb, double0));
-            masm.jccb(ConditionFlag.Less, block58);
-            masm.sqrtsd(xmm0, xmm0);
-            masm.jmp(block56);
-            masm.bind(block58);
-        }
+        // Special case: pow(x, 0.5) => sqrt(x)
+        // For pow(x, y), check whether y == 0.5
+        masm.cmpq(tmp1, recordExternalAddress(crb, double0Point5));
+        masm.jccb(ConditionFlag.NotEqual, block58);
+        masm.movdq(tmp2, xmm0);
+        // pow(x, 0.5) => sqrt(x) only for x >= 0.0 or x is +inf/NaN
+        masm.cmpq(tmp2, recordExternalAddress(crb, double0));
+        masm.jccb(ConditionFlag.Less, block58);
+        masm.sqrtsd(xmm0, xmm0);
+        masm.jmp(block56);
+        masm.bind(block58);
 
         masm.pextrw(rax, xmm0, 3);
         masm.xorpd(xmm2, xmm2);

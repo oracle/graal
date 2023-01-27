@@ -36,8 +36,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version;
-import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
@@ -124,23 +122,13 @@ public class GraalHotSpotVMConfigAccess {
     public final String osArch;
 
     protected static final Version JVMCI_23_0_b04 = new Version(23, 0, 4);
-    protected static final Version JVMCI_22_1_b01 = new Version(22, 1, 1);
-    protected static final Version JVMCI_21_1_b02 = new Version(21, 1, 2);
-    public static final Version JVMCI_20_3_b04 = new Version(20, 3, 4);
-    protected static final Version JVMCI_20_2_b04 = new Version(20, 2, 4);
-    protected static final Version JVMCI_20_2_b01 = new Version(20, 2, 1);
-    protected static final Version JVMCI_20_1_b01 = new Version(20, 1, 1);
-    protected static final Version JVMCI_20_0_b03 = new Version(20, 0, 3);
-    protected static final Version JVMCI_19_3_b03 = new Version(19, 3, 3);
-    protected static final Version JVMCI_19_3_b04 = new Version(19, 3, 4);
-    protected static final Version JVMCI_19_3_b07 = new Version(19, 3, 7);
 
     public static boolean jvmciGE(Version v) {
         return JVMCI && !JVMCI_VERSION.isLessThan(v);
     }
 
-    public static final int JDK = JavaVersionUtil.JAVA_SPEC;
-    public static final int JDK_UPDATE = GraalServices.getJavaUpdateVersion();
+    static final int JDK = Runtime.version().feature();
+    static final int JDK_UPDATE = Runtime.version().update();
     public static final boolean IS_OPENJDK = getProperty("java.vm.name", "").startsWith("OpenJDK");
     public static final Version JVMCI_VERSION;
     public static final boolean JVMCI;

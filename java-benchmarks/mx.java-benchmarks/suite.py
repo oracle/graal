@@ -360,7 +360,7 @@ suite = {
       "dependencies" : [
         "mx:JMH_1_21",
       ],
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -373,7 +373,7 @@ suite = {
       "dependencies" : [
         "mx:JMH_1_21",
       ],
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -386,7 +386,7 @@ suite = {
       "dependencies" : [
         "SCALAFMT"
       ],
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "checkPackagePrefix" : "false",
       "workingSets" : "Graal,Bench",
       "testProject" : True,

@@ -109,7 +109,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
             ],
-            "javaCompliance": "11+",
+            "javaCompliance" : "8+",
             "checkstyle": "com.oracle.truffle.espresso.polyglot",
             "checkstyleVersion": "8.8",
             "license": "UPL",
@@ -120,7 +120,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
             ],
-            "javaCompliance": "11+",
+            "javaCompliance" : "8+",
             "checkstyle": "com.oracle.truffle.espresso.polyglot",
             "license": "UPL",
         },
@@ -139,7 +139,7 @@ suite = {
                 "jdk.unsupported", # sun.misc.Signal
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
-            "javaCompliance": "11+",
+            "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
             "checkstyleVersion": "8.8",
         },
@@ -164,7 +164,7 @@ suite = {
             "requires": [
                 "java.compiler"
             ],
-            "javaCompliance": "11+",
+            "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -175,7 +175,7 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "sdk:LAUNCHER_COMMON",
             ],
-            "javaCompliance": "11+",
+            "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -189,7 +189,7 @@ suite = {
             "requires": [
                 "java.logging",
             ],
-            "javaCompliance": "11+",
+            "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -201,7 +201,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "javaCompliance": "11+",
+            "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso.jdwp",
         },
 

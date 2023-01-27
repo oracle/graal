@@ -1059,7 +1059,7 @@ public class GraphUtil {
             if (getLowerer() != null) {
                 return getLowerer().divisionOverflowIsJVMSCompliant();
             } else {
-                // prevent accidental floating of divs if we dont know the target arch
+                // prevent accidental floating of divs if we don't know the target arch
                 return false;
             }
         }
