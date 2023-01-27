@@ -1913,19 +1913,12 @@ public class FlatNodeGenFactory {
 
             List<Element> specializationClassElements = useSpecializationClass ? new ArrayList<>() : nodeElements;
             for (CacheExpression cache : specialization.getCaches()) {
-                if (sharedCaches.containsKey(cache) && !hasCacheParentAccess(cache)) {
+                boolean shared = sharedCaches.containsKey(cache);
+                if (shared && !hasCacheParentAccess(cache)) {
                     continue;
                 }
-                boolean generateFields;
-                String sharedKey = sharedCaches.get(cache);
-                if (sharedKey != null) {
-                    generateFields = !expressions.contains(sharedKey);
-                } else {
-                    generateFields = true;
-                }
-
                 createCachedFieldsImpl(nodeElements, specializationClassElements,
-                                specialization, specializationState, cache, generateFields);
+                                specialization, specializationState, cache, !shared);
             }
 
             for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
@@ -2213,34 +2206,34 @@ public class FlatNodeGenFactory {
                     String inlinedFieldName = createCachedInlinedFieldName(specialization, cache, field);
 
                     TypeMirror type = field.getType();
-                    CodeVariableElement inlinedCacheField;
-                    if (isAssignable(type, types().Node)) {
-                        inlinedCacheField = createNodeField(Modifier.PRIVATE, types.Node, inlinedFieldName, types().Node_Child);
-                    } else if (isAssignable(type, types().NodeInterface)) {
-                        inlinedCacheField = createNodeField(Modifier.PRIVATE, types.NodeInterface, inlinedFieldName, types().Node_Child);
-                    } else if (isNodeArray(type)) {
-                        inlinedCacheField = createNodeField(Modifier.PRIVATE, new ArrayCodeTypeMirror(types.Node), inlinedFieldName, types().Node_Children);
-                    } else {
-                        inlinedCacheField = createNodeField(Modifier.PRIVATE, type, inlinedFieldName, null);
-                        addCompilationFinalAnnotation(inlinedCacheField, field.getDimensions());
-                    }
+
                     if (generateInlinedFields) {
+                        CodeVariableElement inlinedCacheField;
+                        if (isAssignable(type, types().Node)) {
+                            inlinedCacheField = createNodeField(Modifier.PRIVATE, types.Node, inlinedFieldName, types().Node_Child);
+                        } else if (isAssignable(type, types().NodeInterface)) {
+                            inlinedCacheField = createNodeField(Modifier.PRIVATE, types.NodeInterface, inlinedFieldName, types().Node_Child);
+                        } else if (isNodeArray(type)) {
+                            inlinedCacheField = createNodeField(Modifier.PRIVATE, new ArrayCodeTypeMirror(types.Node), inlinedFieldName, types().Node_Children);
+                        } else {
+                            inlinedCacheField = createNodeField(Modifier.PRIVATE, type, inlinedFieldName, null);
+                            addCompilationFinalAnnotation(inlinedCacheField, field.getDimensions());
+                        }
                         if (specialization != null && useSpecializationClass(specialization) && canCacheBeStoredInSpecialializationClass(cache)) {
                             specializationClassElements.add(inlinedCacheField);
                         } else {
                             nodeElements.add(inlinedCacheField);
                         }
+                        GeneratorUtils.markUnsafeAccessed(inlinedCacheField);
+
+                        CodeTreeBuilder javadoc = inlinedCacheField.createDocBuilder();
+                        javadoc.startJavadoc();
+                        addSourceDoc(javadoc, specialization, cache, field);
+                        javadoc.end();
+
+                        // never directly used, so will produce a warning.
+                        GeneratorUtils.mergeSuppressWarnings(inlinedCacheField, "unused");
                     }
-
-                    GeneratorUtils.markUnsafeAccessed(inlinedCacheField);
-
-                    CodeTreeBuilder javadoc = inlinedCacheField.createDocBuilder();
-                    javadoc.startJavadoc();
-                    addSourceDoc(javadoc, specialization, cache, field);
-                    javadoc.end();
-
-                    // never directly used, so will produce a warning.
-                    GeneratorUtils.mergeSuppressWarnings(inlinedCacheField, "unused");
 
                     builder.startStaticCall(field.getFieldType(), "create");
                     if (specialization != null && useSpecializationClass(specialization) && canCacheBeStoredInSpecialializationClass(cache)) {
