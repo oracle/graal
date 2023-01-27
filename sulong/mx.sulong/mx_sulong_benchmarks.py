@@ -163,6 +163,10 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 return [re.compile(r'.*', re.MULTILINE)]
         return []
 
+    def flakySuccessPatterns(self):
+        # bzip2 is known to have a compiler error during OSR compilation, but peak numbers are still valid
+        return [re.compile(r'Compilation of sendMTFValues<OSR@\d+> failed')]  # GR-38646
+
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.use_polybench:
             return self.polybenchRules(out, benchmarks, bmSuiteArgs)
