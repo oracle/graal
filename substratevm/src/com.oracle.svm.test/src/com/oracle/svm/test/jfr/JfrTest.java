@@ -87,11 +87,10 @@ public abstract class JfrTest {
     protected abstract String[] getTestedEvents();
 
     private void enableEvents() {
+        /* Additionally, enable all events that the test case wants to test explicitly. */
         String[] events = getTestedEvents();
-        if (events != null) {
-            for (String event : events) {
-                recording.enable(event);
-            }
+        for (String event : events) {
+            recording.enable(event);
         }
     }
 

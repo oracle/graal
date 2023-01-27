@@ -28,6 +28,7 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.svm.core.jfr.JfrEvent;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -48,7 +49,7 @@ public class TestJavaMonitorWaitTimeoutEvent extends JfrTest {
 
     @Override
     public String[] getTestedEvents() {
-        return new String[]{"jdk.JavaMonitorWait"};
+        return new String[]{JfrEvent.JavaMonitorWait.getName()};
     }
 
     @Override

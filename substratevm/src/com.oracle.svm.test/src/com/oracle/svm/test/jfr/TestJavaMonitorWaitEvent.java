@@ -30,6 +30,7 @@ import static java.lang.Math.abs;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.svm.core.jfr.JfrEvent;
 import org.junit.Test;
 
 import jdk.jfr.consumer.RecordedClass;
@@ -46,7 +47,7 @@ public class TestJavaMonitorWaitEvent extends JfrTest {
 
     @Override
     public String[] getTestedEvents() {
-        return new String[]{"jdk.JavaMonitorWait"};
+        return new String[]{JfrEvent.JavaMonitorWait.getName()};
     }
 
     @Override

@@ -34,9 +34,7 @@ public class TestClassEvent extends JfrTest {
 
     @Override
     public String[] getTestedEvents() {
-        return new String[]{
-                        ClassEvent.class.getName()
-        };
+        return new String[]{ClassEvent.class.getName()};
     }
 
     @Test

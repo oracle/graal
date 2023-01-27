@@ -35,9 +35,7 @@ import com.oracle.svm.test.jfr.events.StackTraceEvent;
 public class TestStackTraceEvent extends JfrTest {
     @Override
     public String[] getTestedEvents() {
-        return new String[]{
-                        StackTraceEvent.class.getName()
-        };
+        return new String[]{StackTraceEvent.class.getName()};
     }
 
     @Test

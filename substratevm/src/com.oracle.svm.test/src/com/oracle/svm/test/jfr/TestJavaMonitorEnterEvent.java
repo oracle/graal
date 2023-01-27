@@ -28,6 +28,7 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.svm.core.jfr.JfrEvent;
 import org.junit.Test;
 
 import jdk.jfr.consumer.RecordedClass;
@@ -44,7 +45,7 @@ public class TestJavaMonitorEnterEvent extends JfrTest {
 
     @Override
     public String[] getTestedEvents() {
-        return new String[]{"jdk.JavaMonitorEnter"};
+        return new String[]{JfrEvent.JavaMonitorEnter.getName()};
     }
 
     @Override

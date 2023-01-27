@@ -29,6 +29,7 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.svm.core.jfr.JfrEvent;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -39,7 +40,7 @@ import jdk.jfr.consumer.RecordedThread;
 public class TestJavaMonitorWaitInterruptEvent extends JfrTest {
     private static final int MILLIS = 50;
 
-    private Helper helper = new Helper();
+    private final Helper helper = new Helper();
     private Thread interruptedThread;
     private Thread interrupterThread;
     private Thread simpleWaitThread;
@@ -49,7 +50,7 @@ public class TestJavaMonitorWaitInterruptEvent extends JfrTest {
 
     @Override
     public String[] getTestedEvents() {
-        return new String[]{"jdk.JavaMonitorWait"};
+        return new String[]{JfrEvent.JavaMonitorWait.getName()};
     }
 
     @Override
