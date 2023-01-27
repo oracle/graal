@@ -1005,7 +1005,7 @@ public class FlatNodeGenFactory {
 
             SpecializationData fallback = node.getFallbackSpecialization();
             if (fallback.getMethod() != null && fallback.isReachable()) {
-                clazz.add(createFallbackGuard());
+                clazz.add(createFallbackGuard(false));
             }
 
             for (ExecutableTypeData type : genericExecutableTypes) {
@@ -1120,7 +1120,7 @@ public class FlatNodeGenFactory {
 
             SpecializationData fallback = node.getFallbackSpecialization();
             if (fallback.getMethod() != null && fallback.isReachable()) {
-                inlined.add(createFallbackGuard());
+                inlined.add(createFallbackGuard(true));
             }
 
             for (SpecializationData specialization : node.getReachableSpecializations()) {
@@ -1890,11 +1890,11 @@ public class FlatNodeGenFactory {
     private List<Element> createCachedFields(CodeTypeElement baseType) {
         List<Element> nodeElements = new ArrayList<>();
 
+        Set<String> expressions = new HashSet<>();
         if (primaryNode) {
             /*
              * We only generated shared cached fields once for the primary node.
              */
-            Set<String> expressions = new HashSet<>();
             for (Entry<CacheExpression, String> entry : sharedCaches.entrySet()) {
                 CacheExpression cache = entry.getKey();
                 String fieldName = entry.getValue();
@@ -1903,7 +1903,7 @@ public class FlatNodeGenFactory {
                 }
                 expressions.add(fieldName);
 
-                createCachedFieldsImpl(nodeElements, nodeElements, null, null, cache);
+                createCachedFieldsImpl(nodeElements, nodeElements, null, null, cache, true);
             }
         }
 
@@ -1916,7 +1916,16 @@ public class FlatNodeGenFactory {
                 if (sharedCaches.containsKey(cache) && !hasCacheParentAccess(cache)) {
                     continue;
                 }
-                createCachedFieldsImpl(nodeElements, specializationClassElements, specialization, specializationState, cache);
+                boolean generateFields;
+                String sharedKey = sharedCaches.get(cache);
+                if (sharedKey != null) {
+                    generateFields = !expressions.contains(sharedKey);
+                } else {
+                    generateFields = true;
+                }
+
+                createCachedFieldsImpl(nodeElements, specializationClassElements,
+                                specialization, specializationState, cache, generateFields);
             }
 
             for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
@@ -2162,7 +2171,8 @@ public class FlatNodeGenFactory {
                     List<Element> specializationClassElements,
                     SpecializationData specialization,
                     MultiStateBitSet specializationState,
-                    CacheExpression cache) {
+                    CacheExpression cache,
+                    boolean generateInlinedFields) {
         if (cache.isAlwaysInitialized()) {
             return;
         } else if (cache.isEncodedEnum()) {
@@ -2185,24 +2195,16 @@ public class FlatNodeGenFactory {
 
             for (InlineFieldData field : inline.getFields()) {
 
+                builder.startGroup();
                 if (field.isState()) {
                     BitSet specializationBitSet = findInlinedState(specializationState, field);
                     CodeVariableElement updaterField = createStateUpdaterField(specialization, specializationState, field, specializationClassElements);
                     String updaterFieldName = updaterField.getName();
-                    builder.startGroup();
                     builder.startCall(updaterFieldName, "subUpdater");
                     BitRange range = specializationBitSet.getStates().queryRange(StateQuery.create(InlinedNodeState.class, field));
                     builder.string(String.valueOf(range.offset));
                     builder.string(String.valueOf(range.length));
                     builder.end();
-
-                    if (specialization != null && parentAccess) {
-                        builder.startCall(".createParentAccessor");
-                        builder.typeLiteral(createSpecializationClassReferenceType(specialization));
-                        builder.end();
-                    }
-                    builder.end();
-
                 } else {
                     /*
                      * All other fields need fields to get inlined. We do not support specialization
@@ -2222,10 +2224,12 @@ public class FlatNodeGenFactory {
                         inlinedCacheField = createNodeField(Modifier.PRIVATE, type, inlinedFieldName, null);
                         addCompilationFinalAnnotation(inlinedCacheField, field.getDimensions());
                     }
-                    if (specialization != null && useSpecializationClass(specialization)) {
-                        specializationClassElements.add(inlinedCacheField);
-                    } else {
-                        nodeElements.add(inlinedCacheField);
+                    if (generateInlinedFields) {
+                        if (specialization != null && useSpecializationClass(specialization) && canCacheBeStoredInSpecialializationClass(cache)) {
+                            specializationClassElements.add(inlinedCacheField);
+                        } else {
+                            nodeElements.add(inlinedCacheField);
+                        }
                     }
 
                     GeneratorUtils.markUnsafeAccessed(inlinedCacheField);
@@ -2239,7 +2243,7 @@ public class FlatNodeGenFactory {
                     GeneratorUtils.mergeSuppressWarnings(inlinedCacheField, "unused");
 
                     builder.startStaticCall(field.getFieldType(), "create");
-                    if (specialization != null && useSpecializationClass(specialization)) {
+                    if (specialization != null && useSpecializationClass(specialization) && canCacheBeStoredInSpecialializationClass(cache)) {
                         builder.tree(createLookupNodeType(createSpecializationClassReferenceType(specialization), specializationClassElements));
                     } else {
                         builder.startStaticCall(context.getType(MethodHandles.class), "lookup").end();
@@ -2250,8 +2254,16 @@ public class FlatNodeGenFactory {
                         builder.typeLiteral(field.getType());
                     }
 
+                    builder.end(); // static call
+                }
+
+                if (specialization != null && parentAccess) {
+                    builder.startCall(".createParentAccessor");
+                    builder.typeLiteral(createSpecializationClassReferenceType(specialization));
                     builder.end();
                 }
+                builder.end();
+
             }
             builder.end();
             builder.end();
@@ -2476,7 +2488,7 @@ public class FlatNodeGenFactory {
         return fallbackState;
     }
 
-    private Element createFallbackGuard() {
+    private Element createFallbackGuard(boolean inlined) {
         boolean frameUsed = false;
 
         List<SpecializationData> specializations = getFallbackSpecializations();
@@ -2504,6 +2516,8 @@ public class FlatNodeGenFactory {
                                                                                     // loaded
         multiState.addParametersTo(frameState, method);
         frameState.addParametersTo(method, Integer.MAX_VALUE, FRAME_VALUE);
+
+        frameState.setInlinedNode(inlined);
 
         Set<TypeMirror> thrownTypes = new LinkedHashSet<>();
         for (SpecializationData specialization : specializations) {
