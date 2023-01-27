@@ -145,7 +145,7 @@ public class OptionValues {
     /**
      * Returns whether byte code indices should be printed in the long form.
      */
-    public boolean isBciLongForm() {
+    public boolean isBCILongForm() {
         return bciLongForm;
     }
 
