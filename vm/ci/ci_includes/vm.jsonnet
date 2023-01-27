@@ -94,8 +94,11 @@ local jdks = common_json.jdks;
       {name: 'daily-deploy-vm-installable-java17-windows-amd64'},
       {name: 'daily-deploy-vm-installable-java19-windows-amd64'},
       {name: 'daily-deploy-vm-ruby-java17-linux-amd64'},
+      {name: 'daily-deploy-vm-ruby-java19-linux-amd64'},
       {name: 'daily-deploy-vm-ruby-java17-darwin-amd64'},
+      {name: 'daily-deploy-vm-ruby-java19-darwin-amd64'},
       {name: 'daily-deploy-vm-ruby-java17-darwin-aarch64'},
+      {name: 'daily-deploy-vm-ruby-java19-darwin-aarch64'},
     ],
     targets+: ['daily'],
     notify_groups:: ['deploy'],
@@ -220,11 +223,14 @@ local jdks = common_json.jdks;
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java19_windows_amd64),
 
     #
-    # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
+    # Deploy the GraalVM Ruby image (GraalVM Base + ruby )
     #
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_linux_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java19_linux_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java19_darwin_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_darwin_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java19_darwin_aarch64),
 
     # Trigger the releaser service
     self.notify_releaser_build,
