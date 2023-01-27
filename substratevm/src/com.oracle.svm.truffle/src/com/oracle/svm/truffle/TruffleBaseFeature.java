@@ -463,6 +463,11 @@ public final class TruffleBaseFeature implements InternalFeature {
         markAsUnsafeAccessed = null;
     }
 
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
+        StaticObjectSupport.beforeImageWrite(access);
+    }
+
     public static void preInitializeEngine() {
         invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine",
                         Collections.emptyList());
@@ -736,6 +741,10 @@ public final class TruffleBaseFeature implements InternalFeature {
             StaticObjectArrayBasedSupport.beforeAnalysis(access);
         }
 
+        static void beforeImageWrite(BeforeImageWriteAccess access) {
+            StaticObjectArrayBasedSupport.beforeImageWrite(access);
+        }
+
         static void registerInvocationPlugins(Plugins plugins, ParsingReason reason) {
             if (reason.duringAnalysis()) {
                 InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), StaticShape.Builder.class);
@@ -838,11 +847,9 @@ public final class TruffleBaseFeature implements InternalFeature {
 
                                 replacement = newFactory;
                             }
-                            Object prevReplacement = replacements.putIfAbsent(obj, replacement);
-                            if (prevReplacement != null) {
-                                // another thread already registered a replacement in the meanwhile.
-                                // Use that one.
-                                replacement = prevReplacement;
+                            if (!replacements.replace(obj, obj, replacement)) {
+                                // another thread already registered a replacement in the meanwhile. Use that one.
+                                replacement = replacements.get(obj);
                             }
                         }
                         return replacement;
@@ -910,6 +917,11 @@ public final class TruffleBaseFeature implements InternalFeature {
                 if (requiresIteration) {
                     access.requireAnalysisIteration();
                 }
+            }
+
+            static void beforeImageWrite(BeforeImageWriteAccess access) {
+                Map<Object, Object> replacements = ReflectionUtil.readField(ARRAY_BASED_STATIC_SHAPE, "replacements", null);
+                replacements.clear();
             }
 
             private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) throws ReflectiveOperationException {
