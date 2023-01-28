@@ -426,25 +426,21 @@ public class OptionProcessor extends AbstractProcessor {
         sandboxPolicyMethod.renameArguments("optionName");
 
         // TODO also test this code
-        Map<String, List<String>> groupedOptions = new LinkedHashMap<>();
+        Map<String, List<OptionInfo>> groupedOptions = new LinkedHashMap<>();
         for (OptionInfo info : model.options) {
-            if (info.optionMap) {
-                // TODO handle optionMap for policies
-                continue;
-            }
-            groupedOptions.computeIfAbsent(info.sandboxPolicy, (s) -> new ArrayList<>()).add(info.name);
+            groupedOptions.computeIfAbsent(info.sandboxPolicy, (s) -> new ArrayList<>()).add(info);
         }
 
         builder = sandboxPolicyMethod.createBuilder();
         builder.startAssert().string("get(optionName) != null").end();
 
+        String defaultSandboxPolicy = null;
+        String maxEntry = null;
         if (groupedOptions.size() == 0) {
-            builder.startReturn().type(types.SandboxPolicy).string(".TRUSTED").end();
+            defaultSandboxPolicy = "TRUSTED";
         } else if (groupedOptions.size() == 1) {
-            builder.startReturn().type(types.SandboxPolicy).string(".", groupedOptions.keySet().iterator().next()).end();
+            defaultSandboxPolicy = groupedOptions.keySet().iterator().next();
         } else {
-            builder.startSwitch().string("optionName").end().startBlock();
-            String maxEntry = null;
             int maxSize = -1;
             for (var entry : groupedOptions.entrySet()) {
                 if (entry.getValue().size() > maxSize) {
@@ -452,11 +448,32 @@ public class OptionProcessor extends AbstractProcessor {
                     maxEntry = entry.getKey();
                 }
             }
-
+        }
+        assert defaultSandboxPolicy != null ^ maxEntry != null;
+        groupedOptions.remove(defaultSandboxPolicy);
+        groupedOptions.remove(maxEntry);
+        elseIf = false;
+        for (var entry : groupedOptions.entrySet()) {
+            for (OptionInfo optionInfo : entry.getValue()) {
+                if (optionInfo.optionMap) {
+                    elseIf = builder.startIf(elseIf);
+                    builder.startCall(nameVariableName, "startsWith").doubleQuote(optionInfo.name + ".").end();
+                    builder.string(" || ");
+                    builder.startCall(nameVariableName, "equals").doubleQuote(optionInfo.name).end();
+                    builder.end().startBlock();
+                    builder.startReturn().type(types.SandboxPolicy).string(".", entry.getKey()).end();
+                    builder.end();
+                }
+            }
+        }
+        if (defaultSandboxPolicy != null) {
+            builder.startReturn().type(types.SandboxPolicy).string(".", defaultSandboxPolicy).end();
+        } else {
+            builder.startSwitch().string("optionName").end().startBlock();
             for (var entry : groupedOptions.entrySet()) {
-                if (!entry.getKey().equals(maxEntry)) {
-                    for (String optionName : entry.getValue()) {
-                        builder.startCase().doubleQuote(optionName).end().startCaseBlock();
+                for (OptionInfo optionInfo : entry.getValue()) {
+                    if (!optionInfo.optionMap) {
+                        builder.startCase().doubleQuote(optionInfo.name).end().startCaseBlock();
                         builder.startReturn().type(types.SandboxPolicy).string(".", entry.getKey()).end();
                         builder.end();
                     }

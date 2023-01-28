@@ -46,6 +46,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionMap;
 import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -200,6 +201,18 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.RELAXED, sandboxPolicy);
         }
         try (Context context = newRelaxedContextBuilder(RelaxedLanguage.ID).option(RelaxedLanguage.ID + ".TrustedOption", "true").sandbox(sandboxPolicy).build()) {
+            assertAtMost(SandboxPolicy.TRUSTED, sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            assertAtLeast(SandboxPolicy.RELAXED, sandboxPolicy);
+        }
+
+        try (Context context = newRelaxedContextBuilder(RelaxedLanguage.ID).option(RelaxedLanguage.ID + ".RelaxedOptionMap", "true").sandbox(sandboxPolicy).build()) {
+            assertAtMost(SandboxPolicy.RELAXED, sandboxPolicy);
+        }
+        try (Context context = newRelaxedContextBuilder(RelaxedLanguage.ID).option(RelaxedLanguage.ID + ".UntrustedOptionMap", "true").sandbox(sandboxPolicy).build()) {
+            assertAtMost(SandboxPolicy.RELAXED, sandboxPolicy);
+        }
+        try (Context context = newRelaxedContextBuilder(RelaxedLanguage.ID).option(RelaxedLanguage.ID + ".TrustedOptionMap", "true").sandbox(sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             assertAtLeast(SandboxPolicy.RELAXED, sandboxPolicy);
@@ -454,14 +467,23 @@ public class SandboxPolicyTest {
         private static final String ID = "lang_sandbox_relaxed";
         private static final String MIME = "text/x-" + ID;
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted policy") static final OptionKey<Boolean> TrustedOption = new OptionKey<>(
-                        false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted policy")//
+        static final OptionKey<Boolean> TrustedOption = new OptionKey<>(false);
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted and relaxed policy", sandbox = SandboxPolicy.RELAXED) static final OptionKey<Boolean> RelaxedOption = new OptionKey<>(
-                        false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted and relaxed policy", sandbox = SandboxPolicy.RELAXED)//
+        static final OptionKey<Boolean> RelaxedOption = new OptionKey<>(false);
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in all policies", sandbox = SandboxPolicy.UNTRUSTED) static final OptionKey<Boolean> UntrustedOption = new OptionKey<>(
-                        false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed in all policies", sandbox = SandboxPolicy.UNTRUSTED)//
+        static final OptionKey<Boolean> UntrustedOption = new OptionKey<>(false);
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "OptionMap allowed only in trusted policy")//
+        static final OptionKey<OptionMap<String>> TrustedOptionMap = OptionKey.mapOf(String.class);
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "OptionMap allowed only in trusted and relaxed policy", sandbox = SandboxPolicy.RELAXED)//
+        static final OptionKey<OptionMap<String>> RelaxedOptionMap = OptionKey.mapOf(String.class);
+
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "OptionMap allowed in all policies", sandbox = SandboxPolicy.UNTRUSTED)//
+        static final OptionKey<OptionMap<String>> UntrustedOptionMap = OptionKey.mapOf(String.class);
 
         @Override
         protected Env createContext(Env env) {
@@ -479,8 +501,8 @@ public class SandboxPolicyTest {
 
         private static final String ID = "tool_sandbox_trusted";
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Enables instrument", sandbox = SandboxPolicy.RELAXED) static final OptionKey<Boolean> Enable = new OptionKey<>(
-                        false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Enables instrument", sandbox = SandboxPolicy.RELAXED)//
+        static final OptionKey<Boolean> Enable = new OptionKey<>(false);
 
         @Override
         protected void onCreate(Env env) {
@@ -497,17 +519,17 @@ public class SandboxPolicyTest {
 
         private static final String ID = "tool_sandbox_relaxed";
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Enables instrument", sandbox = SandboxPolicy.RELAXED) static final OptionKey<Boolean> Enable = new OptionKey<>(
-                        false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Enables instrument", sandbox = SandboxPolicy.RELAXED)//
+        static final OptionKey<Boolean> Enable = new OptionKey<>(false);
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted policy") static final OptionKey<Boolean> TrustedOption = new OptionKey<>(
-                        false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted policy")//
+        static final OptionKey<Boolean> TrustedOption = new OptionKey<>(false);
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted and relaxed policy", sandbox = SandboxPolicy.RELAXED) static final OptionKey<Boolean> RelaxedOption = new OptionKey<>(
-                        false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted and relaxed policy", sandbox = SandboxPolicy.RELAXED)//
+        static final OptionKey<Boolean> RelaxedOption = new OptionKey<>(false);
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in all policies", sandbox = SandboxPolicy.UNTRUSTED) static final OptionKey<Boolean> UntrustedOption = new OptionKey<>(
-                        false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed in all policies", sandbox = SandboxPolicy.UNTRUSTED)//
+        static final OptionKey<Boolean> UntrustedOption = new OptionKey<>(false);
 
         @Override
         protected void onCreate(Env env) {
@@ -532,7 +554,7 @@ public class SandboxPolicyTest {
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted and relaxed policy", sandbox = SandboxPolicy.RELAXED) static final OptionKey<Boolean> ContextRelaxedOption = new OptionKey<>(
                         false);
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in all policies", sandbox = SandboxPolicy.UNTRUSTED) static final OptionKey<Boolean> ContextUntrustedOption = new OptionKey<>(
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed in all policies", sandbox = SandboxPolicy.UNTRUSTED) static final OptionKey<Boolean> ContextUntrustedOption = new OptionKey<>(
                         false);
     }
 
