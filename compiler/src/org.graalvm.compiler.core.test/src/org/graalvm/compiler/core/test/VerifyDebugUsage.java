@@ -153,7 +153,7 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
              * The optimization log dumps at a parametrized level, but it must be at least
              * OptimizationLog.MINIMUM_LOG_LEVEL.
              */
-            String optimizationEntryClassName = OptimizationLogImpl.OptimizationNode.class.getName();
+            String optimizationEntryClassName = OptimizationLogImpl.OptimizationEntryImpl.class.getName();
             String callerClassName = callerGraph.method().asStackTraceElement(debugCallTarget.invoke().bci()).getClassName();
             if (!optimizationEntryClassName.equals(callerClassName)) {
                 int dumpLevel = verifyDumpLevelParameter(callerGraph, debugCallTarget, verifiedCallee, args.get(1));
