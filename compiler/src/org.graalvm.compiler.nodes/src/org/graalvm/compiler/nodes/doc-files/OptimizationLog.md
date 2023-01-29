@@ -138,6 +138,41 @@ for this decision. There may be several negative decisions until a method is fin
 the methods invoked in the method represented by the node. The bci of the callsite is also stored for each method in the
 tree.
 
+As an example, consider the following set of methods:
+
+```
+void a() { b(); c(); }
+void b() { }
+void c() { d(); e(); }
+void d() { }
+void e() { }
+```
+
+Inlining everything in a compilation of the method `a()` yields the inlining tree below. The prefixes in parentheses
+mark the *callsite kind* of an inlining-tree node. Callsite kinds will be explained later.
+
+```
+            (root) a()
+         ______/  \____
+       /                \
+(inlined) b()       (inlined) c()
+  at bci 0            at bci 3
+                  ______/  \_____
+                /                 \
+         (inlined) d()        (inlined) e()
+            at bci 0            at bci 3
+```
+
+In the preorder notation used by profdiff, the above inlining tree can be formatted as follows.
+
+```
+(root) a()
+    (inlined) b() at bci 0
+    (inlined) c() at bci 3
+        (inlined) d() at bci 0
+         (inlined) e() at bci 3
+```
+
 Each node except the root represents an invoke node in Graal IR. An invoke node may be deleted as a result of
 optimization. The call target of a callsite may be indirect. An indirect callsite cannot be directly inlined, but it may
 be devirtualized by the compiler. Devirtualized invokes are represented as the children of an indirect callsite in the
@@ -152,6 +187,39 @@ Using all the properties described above, we classify each inlining-tree node in
 - `deleted` - a deleted method invocation
 - `devirtualized` - an indirect method invocation that was devirtualized to at least one direct call and then deleted
 
+When an invoke node is added to a Graal graph, it represents either a `direct` or an `indirect` callsite. A `direct`
+callsite may be inlined. When an invoke is inlined, it is deleted and the body of the call target is inserted in its
+place. The callsite is then marked `inlined`. Alternatively, a `direct` or an `indirect` callsite may be deleted, for
+example as a result of dead-code elimination. In that case, we mark the callsite `deleted`. Note that the classification
+of a callsite changes during compilation. The inlining tree captures the final state at the end of a compilation.
+
+An `indirect` callsite cannot be directly inlined. If there is only one recorded receiver type for an invoke, the
+compiler might (speculatively) relink the invoke to the recorded receiver, effectively making the call direct and
+inlinable. Such a call would be classified as `inlined` in the inlining tree. As another option, the compiler might
+insert a type switch for the receiver type. Each branch of the switch leads to a direct inlinable call and possibly to a
+virtual call or deoptimization as a fallback. In that case, the invokes created for the branches of the type switch are
+the children of the original invoke in the inlining tree. The original invoke is either marked `indirect` if it is alive
+or `devirtualized` if it is deleted.
+
+As an example of devirtualization, consider the snippet from profdiff below. The call to the `read()` method is
+indirect. The recorded receiver types are `ByteArrayInputStream` and `BufferedInputStream`. Both receiver types
+implement the `read()` method. We can see that the compiler inlined both implementations of `read()`. Read more about
+profdiff and indirect calls in `Profdiff.md`.
+
+```
+(devirtualized) java.io.InputStream.read() at bci 4
+    |_ receiver-type profile
+            97.30% java.io.ByteArrayInputStream -> java.io.ByteArrayInputStream.read()
+             2.70% java.io.BufferedInputStream -> java.io.BufferedInputStream.read()
+    (inlined) java.io.ByteArrayInputStream.read() at bci 4
+    (inlined) java.io.BufferedInputStream.read() at bci 4
+        (inlined) jdk.internal.misc.InternalLock.lock() at bci 11
+            (inlined) java.util.concurrent.locks.ReentrantLock.lock() at bci 4
+                (direct) java.util.concurrent.locks.ReentrantLock$Sync.lock() at bci 4
+        (direct) java.io.BufferedInputStream.implRead() at bci 15
+        (direct) jdk.internal.misc.InternalLock.unlock() at bci 23
+```
+
 ## Example: optimization log of a benchmark
 
 Run a benchmark with the flag `-Dgraal.OptimizationLog=Directory` to produce an output and save it to the directory
@@ -160,7 +228,7 @@ that optimizations can be linked with a source position.
 
 ```sh
 mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$(pwd)/optimization_log
+  -Dgraal.OptimizationLogPath=$PWD/optimization_log
 ```
 
 An equivalent set of commands for Native Image is:
@@ -169,8 +237,9 @@ An equivalent set of commands for Native Image is:
 cd ../vm
 mx --env ni-ce build
 mx --env ni-ce benchmark renaissance-native-image:scrabble -- --jvm=native-image --jvm-config=default-ce \
+  -Dnative-image.benchmark.extra-image-build-argument=-H:+TrackNodeSourcePosition \
   -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLog=Directory \
-  -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLogPath=$(pwd)/optimization_log
+  -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLogPath=$PWD/optimization_log
 ```
 
 Now, we can use `mx profdiff` to explore the compilation units in a human-friendly format.

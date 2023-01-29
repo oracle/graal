@@ -32,7 +32,7 @@ optimization log to correlate individual optimizations with a position in the by
 
 ```sh
 mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$(pwd)/scrabble_log
+  -Dgraal.OptimizationLogPath=$PWD/scrabble_log
 ```
 
 It is not necessary to specify `-Dgraal.TrackNodeSourcePositions=true`, because it is inserted implicitly by
@@ -57,7 +57,7 @@ otherwise the logs will get merged together.
 
 ```sh
 mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$(pwd)/scrabble_log
+  -Dgraal.OptimizationLogPath=$PWD/scrabble_log
 ```
 
 If the application subject to experiment is not a benchmark supported by `mx benchmark`, use `mx profrecord` as per
@@ -83,7 +83,7 @@ JSON.
 
 ```sh
 mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$(pwd)/scrabble_log
+  -Dgraal.OptimizationLogPath=$PWD/scrabble_log
 mx profjson -E proftool_scrabble_2022-07-05_140847 -o scrabble_prof.json
 ```
 
@@ -92,7 +92,7 @@ experiment again and get a slightly different result, which is caused by the inh
 
 ```sh
 mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$(pwd)/scrabble_log2
+  -Dgraal.OptimizationLogPath=$PWD/scrabble_log2
 mx profjson -E proftool_scrabble_2022-07-05_141855 -o scrabble_prof2.json
 ```
 
@@ -108,7 +108,7 @@ Start with a profiled JIT benchmark and convert the proftool data:
 
 ```sh
 mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$(pwd)/jit_scrabble_log
+  -Dgraal.OptimizationLogPath=$PWD/jit_scrabble_log
 mx profjson -E proftool_scrabble_2022-07-05_140847 -o scrabble_prof.json
 ```
 
@@ -118,8 +118,9 @@ Run the AOT version of the benchmark from the `vm` directory:
 cd ../vm
 mx --env ni-ce build
 mx --env ni-ce benchmark renaissance-native-image:scrabble -- --jvm=native-image --jvm-config=default-ce \
+  -Dnative-image.benchmark.extra-image-build-argument=-H:+TrackNodeSourcePosition \
   -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLog=Directory \
-  -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLogPath=$(pwd)/aot_scrabble_log
+  -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLogPath=$PWD/aot_scrabble_log
 ```
 
 Finally, compare the logs. The profiles from the JIT run determine hot methods in AOT.
@@ -142,8 +143,9 @@ upper and lower bounds, respectively, on the number of hot compilations. `--hot-
 execution period taken up by hot compilations. Read the section about hot compilations for more information.
 
 The option `--optimization-context-tree` enables the optimization-context tree. The optimization-context tree visualizes
-optimizations in their inlining context and replaces the inlining and optimization tree. This is not enabled by default.
-Read the separate section about the optimization-context tree to learn more.
+optimizations in their inlining context. An optimization-context tree is constructed by combining an inlining tree and
+optimization tree. If this option is enabled, optimization-context trees replace inlining and optimization trees in the
+output. This is not enabled by default. Read the separate section about the optimization-context tree to learn more.
 
 If `--diff-compilations` is enabled, all pairs of hot compilations of the same method in two experiments are diffed. If
 it is not enabled, all compilations are printed without any diffing. `--diff-compilations` is enabled by default. Read
@@ -240,7 +242,7 @@ method called for the given receiver type (an implementation of `java.util.Itera
 is the fraction of calls having this exact receiver type.
 
 The compiler may devirtualize an indirect call. The log always shows the last known state. For example, if there is an
-indirect call with just one possible receiver, the compiler can reroute the call to the concrete receiver and the call
+indirect call with just one possible receiver, the compiler can link the call to the concrete receiver and the call
 appears in the log as a direct call.
 
 ## Optimization-context tree

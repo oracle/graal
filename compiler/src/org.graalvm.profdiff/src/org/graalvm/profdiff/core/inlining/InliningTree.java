@@ -51,26 +51,27 @@ import org.graalvm.profdiff.core.optimization.Optimization;
  * After inlining everything in {@code a()}, we obtain the inlining tree below:
  *
  * <pre>
- *          a()
- *       at bci -1
- *      ___/  \_____
- *     /            \
- *    b()           c()
- * at bci 0       at bci 1
- *               __/  \__
- *             /         \
- *           d()         e()
- *        at bci 0     at bci 1
+ *             (root) a()
+ *              at bci -1
+ *          ______/  \_____
+ *        /                \
+ * (inlined) b()       (inlined) c()
+ *   at bci 0            at bci 1
+ *                   ______/  \______
+ *                 /                 \
+ *          (inlined) d()        (inlined) e()
+ *             at bci 0            at bci 1
  * </pre>
  *
  * In preorder, the tree corresponds to the following:
  *
  * <pre>
- *     a() at bci -1
- *         b() at bci 0
- *         c() at bci 1
- *             d() at bci 0
- *             e() at bci 1
+ * Inlining tree
+ *     (root) a() at bci -1
+ *         (inlined) b() at bci 0
+ *         (inlined) c() at bci 1
+ *             (inlined) d() at bci 0
+ *             (inlined) e() at bci 1
  * </pre>
  *
  * Note that the root uses bci -1 as a placeholder, because it represents the root method rather
