@@ -125,7 +125,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
         OptimizationLogImpl.OptimizationPhaseNode rootPhase = optimizationLog.getCurrentPhase();
         Assert.assertEquals(OptimizationLogImpl.ROOT_PHASE_NAME, rootPhase.getPhaseName());
 
-        OptimizationLogImpl.OptimizationPhaseNode reportNodePhaseScope = (OptimizationLogImpl.OptimizationPhaseNode) rootPhase.getChildren().get(0);
+        OptimizationLogImpl.OptimizationPhaseNode reportNodePhaseScope = (OptimizationLogImpl.OptimizationPhaseNode) rootPhase.getChildren().get(rootPhase.getChildren().size() - 1);
         Assert.assertEquals(new ClassTypeSequence(ReportNodePhase.class).toString(), reportNodePhaseScope.getPhaseName().toString());
         Assert.assertEquals(3, reportNodePhaseScope.getChildren().count());
 
