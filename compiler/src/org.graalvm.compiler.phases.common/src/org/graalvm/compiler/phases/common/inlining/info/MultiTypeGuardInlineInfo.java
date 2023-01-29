@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -405,8 +406,12 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
         return calleeEntryNode;
     }
 
+    @SuppressWarnings("try")
     private static Invoke duplicateInvokeForInlining(StructuredGraph graph, Invoke invoke, AbstractMergeNode exceptionMerge, PhiNode exceptionObjectPhi, boolean useForInlining) {
-        Invoke result = (Invoke) invoke.asNode().copyWithInputs();
+        Invoke result;
+        try (InliningLog.UpdateScope updateScope = InliningLog.openUpdateScopeTrackingOriginalCallsites(graph.getInliningLog())) {
+            result = (Invoke) invoke.asNode().copyWithInputs();
+        }
         Node callTarget = result.callTarget().copyWithInputs();
         result.asNode().replaceFirstInput(result.callTarget(), callTarget);
         result.setUseForInlining(useForInlining);

@@ -198,7 +198,7 @@ public class InliningLog {
          */
         private void addDecision(Decision decision) {
             decisions.add(decision);
-            target = invoke.getTargetMethod();
+            target = decision.target;
             indirect = !decision.positive && invokeIsIndirect(invoke);
             JavaTypeProfile newTypeProfile = targetTypeProfile(invoke);
             if (newTypeProfile != null) {
@@ -418,11 +418,11 @@ public class InliningLog {
      * logged after replacing an {@link Invoke} with a graph. In this case, the node replacement map
      * and the {@link InliningLog} of the inlined graph must be provided.
      */
-    void addDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
+    void addDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, ResolvedJavaMethod inlineeMethod, String reason, Object... args) {
         assert leaves.containsKey(invoke) : invoke;
         assert !positive || Objects.isNull(replacements) == Objects.isNull(calleeLog);
         Callsite callsite = leaves.get(invoke);
-        callsite.addDecision(new Decision(positive, String.format(reason, args), phase, invoke.getTargetMethod()));
+        callsite.addDecision(new Decision(positive, String.format(reason, args), phase, inlineeMethod));
         if (positive) {
             leaves.removeKey(invoke);
             if (calleeLog == null) {

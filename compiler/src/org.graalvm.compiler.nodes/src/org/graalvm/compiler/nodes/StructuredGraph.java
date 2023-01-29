@@ -560,12 +560,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      *            {@code positive == false}
      * @param calleeOptimizationLog the optimization log of the inlined graph, ignored if
      *            {@code positive == false}
+     * @param inlineeMethod the actual method considered for inlining
      * @param reason format string that along with {@code args} provides the reason for decision
      */
     public void notifyInliningDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements,
-                    InliningLog calleeInliningLog, OptimizationLog calleeOptimizationLog, String reason, Object... args) {
+                    InliningLog calleeInliningLog, OptimizationLog calleeOptimizationLog, ResolvedJavaMethod inlineeMethod,
+                    String reason, Object... args) {
         if (inliningLog != null) {
-            inliningLog.addDecision(invoke, positive, phase, replacements, calleeInliningLog, reason, args);
+            inliningLog.addDecision(invoke, positive, phase, replacements, calleeInliningLog, inlineeMethod, reason, args);
         }
         if (positive && calleeOptimizationLog != null && optimizationLog.isOptimizationLogEnabled()) {
             FixedNode invokeNode = invoke.asFixedNodeOrNull();
@@ -573,7 +575,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
         if (getDebug().hasCompilationListener()) {
             String message = String.format(reason, args);
-            getDebug().notifyInlining(invoke.getContextMethod(), invoke.getTargetMethod(), positive, message, invoke.bci());
+            getDebug().notifyInlining(invoke.getContextMethod(), inlineeMethod, positive, message, invoke.bci());
         }
     }
 
