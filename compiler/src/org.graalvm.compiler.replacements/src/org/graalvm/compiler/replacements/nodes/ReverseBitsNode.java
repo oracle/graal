@@ -78,17 +78,6 @@ public final class ReverseBitsNode extends UnaryNode implements LIRLowerable {
         if (forValue instanceof ReverseBitsNode) {
             return ((ReverseBitsNode) forValue).getValue();
         }
-        JavaConstant c = forValue.asJavaConstant();
-        if (c != null) {
-            switch (c.getJavaKind()) {
-                case Int:
-                    return ConstantNode.forInt(Integer.reverse(c.asInt()));
-                case Long:
-                    return ConstantNode.forLong(Long.reverse(c.asLong()));
-                default:
-                    throw GraalError.unimplemented("Unhandled byte reverse on constant of kind " + c.getJavaKind());
-            }
-        }
         return this;
     }
 

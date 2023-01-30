@@ -31,17 +31,15 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
@@ -85,23 +83,6 @@ public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue instanceof ReverseBytesNode) {
             return ((ReverseBytesNode) forValue).getValue();
-        }
-        JavaConstant c = forValue.asJavaConstant();
-        if (c != null) {
-            switch (c.getJavaKind()) {
-                case Byte:
-                    return ConstantNode.forByte((byte) c.asInt(), forValue.graph());
-                case Short:
-                    return ConstantNode.forShort(Short.reverseBytes((short) c.asInt()), forValue.graph());
-                case Char:
-                    return ConstantNode.forChar(Character.reverseBytes((char) c.asInt()), forValue.graph());
-                case Int:
-                    return ConstantNode.forInt(Integer.reverseBytes(c.asInt()));
-                case Long:
-                    return ConstantNode.forLong(Long.reverseBytes(c.asLong()));
-                default:
-                    throw GraalError.unimplemented("Unhandled byte reverse on constant of kind " + c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
-            }
         }
         return this;
     }
