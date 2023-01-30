@@ -36,8 +36,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -72,8 +70,7 @@ public final class ArrayIndexOfMacroNode extends MacroNode {
     @Override
     public void lower(LoweringTool tool) {
         Architecture arch = tool.getLowerer().getTarget().arch;
-        if (arch instanceof AMD64 && ((AMD64) arch).getFeatures().containsAll(ArrayIndexOfNode.minFeaturesAMD64(stride, variant)) ||
-                        arch instanceof AArch64 && ((AArch64) arch).getFeatures().containsAll(ArrayIndexOfNode.minFeaturesAARCH64())) {
+        if (ArrayIndexOfNode.isSupported(arch, stride, variant)) {
             // some arguments of the original method are unused in the intrinsic. original args:
             // 0: Node location
             // 1: array
@@ -84,7 +81,7 @@ public final class ArrayIndexOfMacroNode extends MacroNode {
             // 6: fromIndex
             // 7-11: values
             ValueNode[] searchValues = getArguments().subList(7).toArray(ValueNode[]::new);
-            if (variant == LIRGeneratorTool.ArrayIndexOfVariant.table) {
+            if (variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) {
                 ValueNode array = searchValues[0];
                 ConstantNode offset = ConstantNode.forLong(tool.getMetaAccess().getArrayBaseOffset(JavaKind.Byte));
                 assert offset.getStackKind() == tool.getReplacements().getWordKind();
@@ -98,11 +95,12 @@ public final class ArrayIndexOfMacroNode extends MacroNode {
                             searchValues // values
             ));
             graph().replaceFixedWithFixed(this, replacement);
-            if (variant == LIRGeneratorTool.ArrayIndexOfVariant.table) {
+            if (variant == LIRGeneratorTool.ArrayIndexOfVariant.Table) {
                 graph().addBeforeFixed(replacement, (ComputeObjectAddressNode) searchValues[0]);
             }
         } else {
             super.lower(tool);
         }
     }
+
 }

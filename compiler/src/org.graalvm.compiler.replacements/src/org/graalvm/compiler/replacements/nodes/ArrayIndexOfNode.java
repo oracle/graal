@@ -53,6 +53,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -147,11 +148,11 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     ValueNode arrayPointer, ValueNode arrayOffset, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
         super(c, StampFactory.forKind(JavaKind.Int), runtimeCheckedCPUFeatures, locationIdentity);
         GraalError.guarantee(stride.value <= 4, "unsupported stride");
-        GraalError.guarantee(variant != ArrayIndexOfVariant.matchAny || searchValues.length > 0 && searchValues.length <= 4, "indexOfAny requires 1 - 4 search values");
-        GraalError.guarantee(variant != ArrayIndexOfVariant.matchRange || searchValues.length == 2 || searchValues.length == 4, "indexOfRange requires exactly two or four search values");
-        GraalError.guarantee(variant != ArrayIndexOfVariant.withMask || searchValues.length == 2, "indexOf with mask requires exactly two search values");
-        GraalError.guarantee(variant != ArrayIndexOfVariant.findTwoConsecutive || searchValues.length == 2, "findTwoConsecutive without mask requires exactly two search values");
-        GraalError.guarantee(variant != ArrayIndexOfVariant.findTwoConsecutiveWithMask || searchValues.length == 4, "findTwoConsecutive with mask requires exactly four search values");
+        GraalError.guarantee(variant != ArrayIndexOfVariant.MatchAny || searchValues.length > 0 && searchValues.length <= 4, "indexOfAny requires 1 - 4 search values");
+        GraalError.guarantee(variant != ArrayIndexOfVariant.MatchRange || searchValues.length == 2 || searchValues.length == 4, "indexOfRange requires exactly two or four search values");
+        GraalError.guarantee(variant != ArrayIndexOfVariant.WithMask || searchValues.length == 2, "indexOf with mask requires exactly two search values");
+        GraalError.guarantee(variant != ArrayIndexOfVariant.FindTwoConsecutive || searchValues.length == 2, "findTwoConsecutive without mask requires exactly two search values");
+        GraalError.guarantee(variant != ArrayIndexOfVariant.FindTwoConsecutiveWithMask || searchValues.length == 4, "findTwoConsecutive with mask requires exactly four search values");
         this.stride = stride;
         this.variant = variant;
         this.arrayPointer = arrayPointer;
@@ -163,7 +164,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
 
     public static ArrayIndexOfNode createIndexOfSingle(GraphBuilderContext b, JavaKind arrayKind, Stride stride, ValueNode array, ValueNode arrayLength, ValueNode fromIndex, ValueNode searchValue) {
         ValueNode baseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(arrayKind), b.getGraph());
-        return new ArrayIndexOfNode(TYPE, stride, ArrayIndexOfVariant.matchAny, null, defaultLocationIdentity(arrayKind),
+        return new ArrayIndexOfNode(TYPE, stride, ArrayIndexOfVariant.MatchAny, null, defaultLocationIdentity(arrayKind),
                         array, baseOffset, arrayLength, fromIndex, searchValue);
     }
 
@@ -173,18 +174,18 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
 
     public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64(Stride stride, ArrayIndexOfVariant variant) {
         switch (variant) {
-            case matchAny:
-            case withMask:
-            case findTwoConsecutive:
-            case findTwoConsecutiveWithMask:
+            case MatchAny:
+            case WithMask:
+            case FindTwoConsecutive:
+            case FindTwoConsecutiveWithMask:
                 return EnumSet.of(AMD64.CPUFeature.SSE2);
-            case matchRange:
+            case MatchRange:
                 if (stride == Stride.S1) {
                     return EnumSet.of(AMD64.CPUFeature.SSE2);
                 } else {
                     return amd64FeaturesSSE41();
                 }
-            case table:
+            case Table:
                 return amd64FeaturesSSE41();
             default:
                 throw GraalError.shouldNotReachHere();
@@ -201,6 +202,11 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
 
     public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
         return EnumSet.noneOf(AArch64.CPUFeature.class);
+    }
+
+    static boolean isSupported(Architecture arch, Stride stride, ArrayIndexOfVariant variant) {
+        return arch instanceof AMD64 && ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64(stride, variant)) ||
+                        arch instanceof AArch64 && ((AArch64) arch).getFeatures().containsAll(minFeaturesAARCH64());
     }
 
     public ArrayIndexOfVariant getVariant() {
@@ -283,7 +289,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
         if (tool.allUsagesAvailable() && hasNoUsages()) {
             return null;
         }
-        if (variant == ArrayIndexOfVariant.table) {
+        if (variant == ArrayIndexOfVariant.Table) {
             // TODO
             return this;
         }
@@ -312,7 +318,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
             }
             if (arrayLengthConstant * stride.value < GraalOptions.StringIndexOfConstantLimit.getValue(tool.getOptions())) {
                 switch (variant) {
-                    case matchAny:
+                    case MatchAny:
                         for (int i = fromIndexConstant; i < arrayLengthConstant; i++) {
                             int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
                             for (int searchValue : valuesConstant) {
@@ -322,7 +328,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                             }
                         }
                         break;
-                    case matchRange:
+                    case MatchRange:
                         for (int i = fromIndexConstant; i < arrayLengthConstant; i++) {
                             int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
                             for (int j = 0; j < valuesConstant.length; j += 2) {
@@ -332,7 +338,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                             }
                         }
                         break;
-                    case withMask:
+                    case WithMask:
                         for (int i = fromIndexConstant; i < arrayLengthConstant; i++) {
                             int value = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
                             if ((value | valuesConstant[1]) == valuesConstant[0]) {
@@ -340,7 +346,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                             }
                         }
                         break;
-                    case findTwoConsecutive:
+                    case FindTwoConsecutive:
                         for (int i = fromIndexConstant; i < arrayLengthConstant - 1; i++) {
                             int v0 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
                             int v1 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i + 1));
@@ -349,7 +355,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                             }
                         }
                         break;
-                    case findTwoConsecutiveWithMask:
+                    case FindTwoConsecutiveWithMask:
                         for (int i = fromIndexConstant; i < arrayLengthConstant - 1; i++) {
                             int v0 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i));
                             int v1 = ConstantReflectionUtil.readTypePunned(provider, arrayConstant, constantArrayKind, stride, (int) (arrayOffsetConstant + i + 1));

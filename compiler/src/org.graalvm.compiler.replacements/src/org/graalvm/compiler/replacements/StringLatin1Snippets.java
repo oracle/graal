@@ -76,7 +76,7 @@ public class StringLatin1Snippets implements Snippets {
             return -1;
         }
         if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 1)) {
-            return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S1, ArrayIndexOfVariant.matchAny, source, byteArrayOffset(0), sourceCount, fromIndex,
+            return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S1, ArrayIndexOfVariant.MatchAny, source, byteArrayOffset(0), sourceCount, fromIndex,
                             Byte.toUnsignedInt(getByte(target, 0)));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
@@ -85,7 +85,7 @@ public class StringLatin1Snippets implements Snippets {
                 byte b1 = getByte(target, 0);
                 byte b2 = getByte(target, 1);
                 do {
-                    int indexOfResult = ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S1, ArrayIndexOfVariant.findTwoConsecutive, source, byteArrayOffset(0), haystackLength, offset,
+                    int indexOfResult = ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S1, ArrayIndexOfVariant.FindTwoConsecutive, source, byteArrayOffset(0), haystackLength, offset,
                                     Byte.toUnsignedInt(b1),
                                     Byte.toUnsignedInt(b2));
                     if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {

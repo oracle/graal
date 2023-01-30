@@ -87,7 +87,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         GraalError.guarantee(arrayOffset.getPlatformKind() == AArch64Kind.QWORD, "long value expected");
         GraalError.guarantee(arrayLength.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
         GraalError.guarantee(fromIndex.getPlatformKind() == AArch64Kind.DWORD, "int value expected");
-        if (variant == ArrayIndexOfVariant.table) {
+        if (variant == ArrayIndexOfVariant.Table) {
             GraalError.guarantee(searchValues.length == 1 && searchValues[0].getPlatformKind() == AArch64Kind.QWORD, "single pointer value expected");
         } else {
             GraalError.guarantee(Arrays.stream(searchValues).allMatch(sv -> sv.getPlatformKind() == AArch64Kind.DWORD), "int values expected");
@@ -95,8 +95,8 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
 
         this.stride = stride;
         this.variant = variant;
-        this.findTwoConsecutive = variant == ArrayIndexOfVariant.findTwoConsecutive || variant == ArrayIndexOfVariant.findTwoConsecutiveWithMask;
-        this.withMask = variant == ArrayIndexOfVariant.withMask || variant == ArrayIndexOfVariant.findTwoConsecutiveWithMask;
+        this.findTwoConsecutive = variant == ArrayIndexOfVariant.FindTwoConsecutive || variant == ArrayIndexOfVariant.FindTwoConsecutiveWithMask;
+        this.withMask = variant == ArrayIndexOfVariant.WithMask || variant == ArrayIndexOfVariant.FindTwoConsecutiveWithMask;
         resultValue = result;
         arrayPtrValue = arrayPtr;
         arrayOffsetValue = arrayOffset;
@@ -105,21 +105,21 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         this.searchValues = searchValues;
 
         temp = allocateTempRegisters(tool, 5);
-        vectorTemp = allocateVectorRegisters(tool, getNumberOfRequiredVectorRegisters(variant, stride, nValues), variant == ArrayIndexOfVariant.table);
+        vectorTemp = allocateVectorRegisters(tool, getNumberOfRequiredVectorRegisters(variant, stride, nValues), variant == ArrayIndexOfVariant.Table);
     }
 
     private static int getNumberOfRequiredVectorRegisters(ArrayIndexOfVariant variant, Stride stride, int nValues) {
         switch (variant) {
-            case matchAny:
+            case MatchAny:
                 return nValues + (nValues > 1 ? 6 : 3);
-            case matchRange:
+            case MatchRange:
                 return nValues + 6;
-            case withMask:
+            case WithMask:
                 return nValues + 3;
-            case findTwoConsecutive:
-            case findTwoConsecutiveWithMask:
+            case FindTwoConsecutive:
+            case FindTwoConsecutiveWithMask:
                 return nValues + 5;
-            case table:
+            case Table:
                 switch (stride) {
                     case S1:
                         return 7;
@@ -196,13 +196,13 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         masm.bind(searchByElementLoop);
         masm.ldr(memAccessSize, curValue, AArch64Address.createRegisterOffsetAddress(memAccessSize, baseAddress, curIndex, false));
         switch (variant) {
-            case matchAny:
+            case MatchAny:
                 for (AllocatableValue searchValue : searchValues) {
                     masm.cmp(compareSize, asRegister(searchValue), curValue);
                     masm.branchConditionally(ConditionFlag.EQ, match);
                 }
                 break;
-            case matchRange:
+            case MatchRange:
                 for (int i = 0; i < searchValues.length; i += 2) {
                     Label noMatch = new Label();
                     masm.cmp(compareSize, curValue, asRegister(searchValues[i]));
@@ -212,17 +212,17 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                     masm.bind(noMatch);
                 }
                 break;
-            case withMask:
-            case findTwoConsecutiveWithMask:
+            case WithMask:
+            case FindTwoConsecutiveWithMask:
                 masm.orr(compareSize, curValue, curValue, maskReg);
                 masm.cmp(compareSize, searchValueReg, curValue);
                 masm.branchConditionally(ConditionFlag.EQ, match);
                 break;
-            case findTwoConsecutive:
+            case FindTwoConsecutive:
                 masm.cmp(compareSize, searchValueReg, curValue);
                 masm.branchConditionally(ConditionFlag.EQ, match);
                 break;
-            case table:
+            case Table:
                 Label greaterThan0xff = new Label();
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register tmp = sc.getRegister();
@@ -331,7 +331,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         Register vecTableHi;
         Register vecTableLo;
 
-        if (variant == ArrayIndexOfVariant.table) {
+        if (variant == ArrayIndexOfVariant.Table) {
             vecMask0x0f = asRegister(vectorTemp[0]);
             vecTableHi = asRegister(vectorTemp[1]);
             vecTableLo = asRegister(vectorTemp[2]);
@@ -387,7 +387,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         Label end = new Label();
 
         ElementSize eSize = ElementSize.fromStride(stride);
-        if (variant == ArrayIndexOfVariant.table) {
+        if (variant == ArrayIndexOfVariant.Table) {
             // in the table variant, searchValue0 is actually a pointer to a 32-byte array
             masm.fldp(128, vecTableHi, vecTableLo, AArch64Address.createPairBaseRegisterOnlyAddress(128, asRegister(searchValues[0])));
             masm.neon.moveVI(FullReg, ElementSize.Byte, vecMask0x0f, 0x0f);
@@ -432,7 +432,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         masm.bind(searchByChunkLoopTail);
         masm.sub(64, currOffset, array, baseAddress);
 
-        if (variant != ArrayIndexOfVariant.table) {
+        if (variant != ArrayIndexOfVariant.Table) {
             masm.fldp(128, vecArray1, vecArray2, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array, 32));
         }
         emitSIMDMatch(masm, eSize, array, vecSearchValues, vecTmp, vecArray1, vecArray2, vecLastArray2, vecMask0x0f, vecTableHi, vecTableLo, matchInChunk);
@@ -467,7 +467,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         /* 4. If the element is found in a 32-byte chunk then find its position. */
         masm.align(AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT);
         masm.bind(matchInChunk);
-        if (variant == ArrayIndexOfVariant.table) {
+        if (variant == ArrayIndexOfVariant.Table) {
             // convert matching bytes to 0xff
             masm.neon.cmtstVVV(FullReg, ElementSize.Byte, vecArray1, vecArray1, vecArray1);
             masm.neon.cmtstVVV(FullReg, ElementSize.Byte, vecArray2, vecArray2, vecArray2);
@@ -476,7 +476,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
             Register tmp = scratchReg.getRegister();
             initCalcIndexOfFirstMatchMask(masm, vecTmp[0], tmp);
             calcIndexOfFirstMatch(masm, tmp, vecArray1, vecArray2, vecTmp[0], false);
-            if (variant == ArrayIndexOfVariant.table) {
+            if (variant == ArrayIndexOfVariant.Table) {
                 masm.asr(64, currOffset, currOffset, stride.log2);
             }
             masm.add(64, result, currOffset, tmp, ShiftType.ASR, 1);
@@ -517,7 +517,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
             masm.neon.moveVV(FullReg, vecLastArray2, vecArray2);
         }
         switch (variant) {
-            case matchAny:
+            case MatchAny:
                 int nValues = vecSearchValues.length;
                 if (nValues == 1) {
                     masm.neon.cmeqVVV(FullReg, eSize, vecArray1, vecArray1, vecSearchValues[0]);
@@ -533,7 +533,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                     }
                 }
                 break;
-            case matchRange:
+            case MatchRange:
                 // match first range
                 // check if array elements are greater or equal to lower bound
                 masm.neon.cmhsVVV(FullReg, eSize, vecTmp[0], vecArray1, vecSearchValues[0]);
@@ -566,13 +566,13 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                     masm.neon.andVVV(FullReg, vecArray2, vecTmp[1], vecTmp[3]);
                 }
                 break;
-            case withMask:
+            case WithMask:
                 masm.neon.orrVVV(FullReg, vecArray1, vecArray1, vecSearchValues[1]);
                 masm.neon.orrVVV(FullReg, vecArray2, vecArray2, vecSearchValues[1]);
                 masm.neon.cmeqVVV(FullReg, eSize, vecArray1, vecArray1, vecSearchValues[0]);
                 masm.neon.cmeqVVV(FullReg, eSize, vecArray2, vecArray2, vecSearchValues[0]);
                 break;
-            case findTwoConsecutive:
+            case FindTwoConsecutive:
                 masm.neon.cmeqVVV(FullReg, eSize, vecTmp[0], vecTmp[0], vecSearchValues[0]);
                 masm.neon.cmeqVVV(FullReg, eSize, vecTmp[1], vecTmp[1], vecSearchValues[0]);
                 masm.neon.cmeqVVV(FullReg, eSize, vecArray1, vecArray1, vecSearchValues[1]);
@@ -580,7 +580,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                 masm.neon.andVVV(FullReg, vecArray1, vecArray1, vecTmp[0]);
                 masm.neon.andVVV(FullReg, vecArray2, vecArray2, vecTmp[1]);
                 break;
-            case findTwoConsecutiveWithMask:
+            case FindTwoConsecutiveWithMask:
                 masm.neon.orrVVV(FullReg, vecTmp[0], vecTmp[0], vecSearchValues[2]);
                 masm.neon.orrVVV(FullReg, vecTmp[1], vecTmp[1], vecSearchValues[2]);
                 masm.neon.orrVVV(FullReg, vecArray1, vecArray1, vecSearchValues[3]);
@@ -592,7 +592,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                 masm.neon.andVVV(FullReg, vecArray1, vecArray1, vecTmp[0]);
                 masm.neon.andVVV(FullReg, vecArray2, vecArray2, vecTmp[1]);
                 break;
-            case table:
+            case Table:
                 switch (stride) {
                     case S1:
                         masm.fldp(128, vecArray1, vecArray2, AArch64Address.createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, array, 32));
@@ -642,16 +642,16 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
         }
         masm.neon.orrVVV(FullReg, vecTmp[0], vecArray1, vecArray2);
         /* If value != 0, then there was a match somewhere. */
-        vectorCheckZero(masm, ElementSize.fromStride(getMatchResultStride()), vecTmp[0], vecTmp[0], variant != ArrayIndexOfVariant.table);
+        vectorCheckZero(masm, ElementSize.fromStride(getMatchResultStride()), vecTmp[0], vecTmp[0], variant != ArrayIndexOfVariant.Table);
         masm.branchConditionally(ConditionFlag.NE, matchInChunk);
     }
 
     private Stride getMatchResultStride() {
-        return variant == ArrayIndexOfVariant.table ? Stride.S1 : stride;
+        return variant == ArrayIndexOfVariant.Table ? Stride.S1 : stride;
     }
 
     private int getSIMDLoopChunkSize() {
-        return variant == ArrayIndexOfVariant.table ? 32 * stride.value : 32;
+        return variant == ArrayIndexOfVariant.Table ? 32 * stride.value : 32;
     }
 
     private static void performTableLookup(AArch64MacroAssembler masm,

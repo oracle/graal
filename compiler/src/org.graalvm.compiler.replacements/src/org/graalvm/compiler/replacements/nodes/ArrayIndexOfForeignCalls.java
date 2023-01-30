@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
+
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.stream.Stream;
@@ -33,10 +37,6 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.amd64.AMD64;
-
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
 
 public class ArrayIndexOfForeignCalls {
 
@@ -55,10 +55,6 @@ public class ArrayIndexOfForeignCalls {
         }
         return ForeignCalls.pureFunctionForeignCallDescriptor(name, int.class, argTypes);
     }
-
-    public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_S1 = foreignCallDescriptor("indexOfTwoConsecutiveS1", 2);
-    public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_S2 = foreignCallDescriptor("indexOfTwoConsecutiveS2", 2);
-    public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_S4 = foreignCallDescriptor("indexOfTwoConsecutiveS4", 2);
 
     public static final ForeignCallDescriptor STUB_INDEX_OF_1_S1 = foreignCallDescriptor("indexOf1S1", 1);
     public static final ForeignCallDescriptor STUB_INDEX_OF_2_S1 = foreignCallDescriptor("indexOf2S1", 2);
@@ -82,6 +78,9 @@ public class ArrayIndexOfForeignCalls {
     public static final ForeignCallDescriptor STUB_INDEX_OF_WITH_MASK_S1 = foreignCallDescriptor("indexOfWithMaskS1", 2);
     public static final ForeignCallDescriptor STUB_INDEX_OF_WITH_MASK_S2 = foreignCallDescriptor("indexOfWithMaskS2", 2);
     public static final ForeignCallDescriptor STUB_INDEX_OF_WITH_MASK_S4 = foreignCallDescriptor("indexOfWithMaskS4", 2);
+    public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_S1 = foreignCallDescriptor("indexOfTwoConsecutiveS1", 2);
+    public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_S2 = foreignCallDescriptor("indexOfTwoConsecutiveS2", 2);
+    public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_S4 = foreignCallDescriptor("indexOfTwoConsecutiveS4", 2);
     public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S1 = foreignCallDescriptor("indexOfTwoConsecutiveWithMaskS1", 4);
     public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S2 = foreignCallDescriptor("indexOfTwoConsecutiveWithMaskS2", 4);
     public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S4 = foreignCallDescriptor("indexOfTwoConsecutiveWithMaskS4", 4);
@@ -89,6 +88,12 @@ public class ArrayIndexOfForeignCalls {
     public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_S2 = foreignCallDescriptor("indexOfTableS2", 1, byte[].class);
     public static final ForeignCallDescriptor STUB_INDEX_OF_TABLE_S4 = foreignCallDescriptor("indexOfTableS4", 1, byte[].class);
 
+    /**
+     * CAUTION: the ordering here is important: ever entry's index must be 4 * log2(stride) +
+     * [number of values] - 1.
+     *
+     * @see #getStub(ArrayIndexOfNode)
+     */
     private static final ForeignCallDescriptor[] STUBS_INDEX_OF_ANY = new ForeignCallDescriptor[]{
                     STUB_INDEX_OF_1_S1,
                     STUB_INDEX_OF_2_S1,
@@ -104,26 +109,25 @@ public class ArrayIndexOfForeignCalls {
                     STUB_INDEX_OF_4_S4,
     };
 
-    public static final ForeignCallDescriptor[] STUBS = Stream.concat(Stream.of(
+    public static final ForeignCallDescriptor[] STUBS = Stream.concat(Arrays.stream(STUBS_INDEX_OF_ANY), Stream.of(
                     STUB_INDEX_OF_RANGE_1_S1,
                     STUB_INDEX_OF_RANGE_1_S2,
                     STUB_INDEX_OF_RANGE_1_S4,
                     STUB_INDEX_OF_RANGE_2_S1,
                     STUB_INDEX_OF_RANGE_2_S2,
                     STUB_INDEX_OF_RANGE_2_S4,
-                    STUB_INDEX_OF_TWO_CONSECUTIVE_S1,
-                    STUB_INDEX_OF_TWO_CONSECUTIVE_S2,
-                    STUB_INDEX_OF_TWO_CONSECUTIVE_S4,
                     STUB_INDEX_OF_WITH_MASK_S1,
                     STUB_INDEX_OF_WITH_MASK_S2,
                     STUB_INDEX_OF_WITH_MASK_S4,
+                    STUB_INDEX_OF_TWO_CONSECUTIVE_S1,
+                    STUB_INDEX_OF_TWO_CONSECUTIVE_S2,
+                    STUB_INDEX_OF_TWO_CONSECUTIVE_S4,
                     STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S1,
                     STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S2,
                     STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S4,
                     STUB_INDEX_OF_TABLE_S1,
                     STUB_INDEX_OF_TABLE_S2,
-                    STUB_INDEX_OF_TABLE_S4),
-                    Arrays.stream(STUBS_INDEX_OF_ANY)).toArray(ForeignCallDescriptor[]::new);
+                    STUB_INDEX_OF_TABLE_S4)).toArray(ForeignCallDescriptor[]::new);
 
     public static EnumSet<AMD64.CPUFeature> getMinimumFeaturesAMD64(ForeignCallDescriptor foreignCallDescriptor) {
         if (foreignCallDescriptor.getName().startsWith("indexOfRange") || foreignCallDescriptor.getName().startsWith("indexOfTable")) {
@@ -136,10 +140,10 @@ public class ArrayIndexOfForeignCalls {
         Stride stride = indexOfNode.getStride();
         int valueCount = indexOfNode.getNumberOfValues();
         switch (indexOfNode.getVariant()) {
-            case matchAny:
+            case MatchAny:
                 int index = (4 * stride.log2) + (valueCount - 1);
                 return STUBS_INDEX_OF_ANY[index];
-            case matchRange:
+            case MatchRange:
                 switch (stride) {
                     case S1:
                         return valueCount == 2 ? STUB_INDEX_OF_RANGE_1_S1 : STUB_INDEX_OF_RANGE_2_S1;
@@ -150,7 +154,7 @@ public class ArrayIndexOfForeignCalls {
                     default:
                         throw GraalError.shouldNotReachHere();
                 }
-            case withMask:
+            case WithMask:
                 switch (stride) {
                     case S1:
                         return STUB_INDEX_OF_WITH_MASK_S1;
@@ -161,7 +165,7 @@ public class ArrayIndexOfForeignCalls {
                     default:
                         throw GraalError.shouldNotReachHere();
                 }
-            case findTwoConsecutive:
+            case FindTwoConsecutive:
                 switch (stride) {
                     case S1:
                         return STUB_INDEX_OF_TWO_CONSECUTIVE_S1;
@@ -172,7 +176,7 @@ public class ArrayIndexOfForeignCalls {
                     default:
                         throw GraalError.shouldNotReachHere();
                 }
-            case findTwoConsecutiveWithMask:
+            case FindTwoConsecutiveWithMask:
                 switch (stride) {
                     case S1:
                         return STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S1;
@@ -183,7 +187,7 @@ public class ArrayIndexOfForeignCalls {
                     default:
                         throw GraalError.shouldNotReachHere();
                 }
-            case table:
+            case Table:
                 switch (stride) {
                     case S1:
                         return STUB_INDEX_OF_TABLE_S1;

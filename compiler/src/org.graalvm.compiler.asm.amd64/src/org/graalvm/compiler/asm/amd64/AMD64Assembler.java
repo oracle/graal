@@ -3321,12 +3321,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         OR.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
 
-    // Insn: VPACKUSWB xmm1, xmm2, xmm3/m128
-    // -----
-    // Insn: VPACKUSWB xmm1, xmm1, xmm2
-
     public final void packuswb(Register dst, Register src) {
-        GraalError.guarantee(supports(CPUFeature.SSE4_1), "PACKUSBW requires SSE2");
         assert inRC(XMM, dst) && inRC(XMM, src);
         // Code: VEX.NDS.128.66.0F.WIG 67 /r
         simdPrefix(dst, dst, src, PD, P_0F, false);

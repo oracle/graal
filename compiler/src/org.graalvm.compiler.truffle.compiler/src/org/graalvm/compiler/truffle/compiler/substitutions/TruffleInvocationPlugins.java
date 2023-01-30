@@ -142,21 +142,21 @@ public class TruffleInvocationPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
-                return arrayUtilsIndexOf(b, JavaKind.Byte, Stride.S1, ArrayIndexOfVariant.findTwoConsecutive, array, fromIndex, maxIndex, v0, v1);
+                return arrayUtilsIndexOf(b, JavaKind.Byte, Stride.S1, ArrayIndexOfVariant.FindTwoConsecutive, array, fromIndex, maxIndex, v0, v1);
             }
         });
         r.register(new InlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS2", byte[].class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
-                return arrayUtilsIndexOf(b, JavaKind.Byte, Stride.S2, ArrayIndexOfVariant.findTwoConsecutive, array, fromIndex, maxIndex, v0, v1);
+                return arrayUtilsIndexOf(b, JavaKind.Byte, Stride.S2, ArrayIndexOfVariant.FindTwoConsecutive, array, fromIndex, maxIndex, v0, v1);
             }
         });
         r.register(new InlineOnlyInvocationPlugin("stubIndexOf2ConsecutiveS2", char[].class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode v0, ValueNode v1) {
-                return arrayUtilsIndexOf(b, JavaKind.Char, Stride.S2, ArrayIndexOfVariant.findTwoConsecutive, array, fromIndex, maxIndex, v0, v1);
+                return arrayUtilsIndexOf(b, JavaKind.Char, Stride.S2, ArrayIndexOfVariant.FindTwoConsecutive, array, fromIndex, maxIndex, v0, v1);
             }
         });
 
@@ -184,13 +184,13 @@ public class TruffleInvocationPlugins {
     }
 
     private static boolean arrayUtilsIndexOfAny(GraphBuilderContext b, JavaKind arrayKind, Stride stride, ValueNode array, ValueNode fromIndex, ValueNode maxIndex, ValueNode... values) {
-        return arrayUtilsIndexOf(b, arrayKind, stride, ArrayIndexOfVariant.matchAny, array, fromIndex, maxIndex, values);
+        return arrayUtilsIndexOf(b, arrayKind, stride, ArrayIndexOfVariant.MatchAny, array, fromIndex, maxIndex, values);
     }
 
     public static boolean arrayUtilsIndexOf(GraphBuilderContext b, JavaKind arrayKind, Stride stride, ArrayIndexOfVariant variant, ValueNode array, ValueNode fromIndex,
                     ValueNode maxIndex, ValueNode... values) {
         ValueNode baseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(arrayKind), b.getGraph());
-        GraalError.guarantee(variant != ArrayIndexOfVariant.matchRange && variant != ArrayIndexOfVariant.table,
+        GraalError.guarantee(variant != ArrayIndexOfVariant.MatchRange && variant != ArrayIndexOfVariant.Table,
                         "ArrayIndexOf variants \"matchRange\" and \"table\" require more CPU features than just SSE2 and must be inserted via ArrayIndexOfMacroNode");
         b.addPush(JavaKind.Int, new ArrayIndexOfNode(stride, variant, null, getArrayLocation(arrayKind), array, baseOffset, maxIndex, fromIndex, values));
         return true;
@@ -273,21 +273,21 @@ public class TruffleInvocationPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0) {
-                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.matchAny, location, array, offset, length, stride, isNative, fromIndex, v0);
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchAny, location, array, offset, length, stride, isNative, fromIndex, v0);
             }
         });
         r.register(new InlineOnlyInvocationPlugin("runIndexOfAny2", Node.class, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1) {
-                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.matchAny, location, array, offset, length, stride, isNative, fromIndex, v0, v1);
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchAny, location, array, offset, length, stride, isNative, fromIndex, v0, v1);
             }
         });
         r.register(new InlineOnlyInvocationPlugin("runIndexOfAny3", Node.class, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1, ValueNode v2) {
-                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.matchAny, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2);
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchAny, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2);
             }
         });
         r.register(new InlineOnlyInvocationPlugin("runIndexOfAny4", Node.class, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class, int.class, int.class) {
@@ -295,14 +295,14 @@ public class TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1, ValueNode v2,
                             ValueNode v3) {
-                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.matchAny, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchAny, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
             }
         });
         r.register(new InlineOnlyInvocationPlugin("runIndexOfRange1", Node.class, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1) {
-                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.matchRange, location, array, offset, length, stride, isNative, fromIndex, v0, v1);
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchRange, location, array, offset, length, stride, isNative, fromIndex, v0, v1);
             }
         });
         r.register(new InlineOnlyInvocationPlugin("runIndexOfRange2", Node.class, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class, int.class,
@@ -311,21 +311,21 @@ public class TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1, ValueNode v2,
                             ValueNode v3) {
-                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.matchRange, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchRange, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
             }
         });
         r.register(new InlineOnlyInvocationPlugin("runIndexOfTable", Node.class, byte[].class, long.class, int.class, int.class, boolean.class, int.class, byte[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode tables) {
-                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.table, location, array, offset, length, stride, isNative, fromIndex, tables);
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.Table, location, array, offset, length, stride, isNative, fromIndex, tables);
             }
         });
         r.register(new InlineOnlyInvocationPlugin("runIndexOf2ConsecutiveWithStride", Node.class, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1) {
-                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.findTwoConsecutive, location, array, offset, length, stride, isNative, fromIndex, v0, v1);
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.FindTwoConsecutive, location, array, offset, length, stride, isNative, fromIndex, v0, v1);
             }
         });
 
@@ -480,7 +480,7 @@ public class TruffleInvocationPlugins {
                     ValueNode location, ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode... values) {
         Stride constStride = constantStrideParam(stride);
         LocationIdentity locationIdentity = inferLocationIdentity(isNative);
-        if (variant == ArrayIndexOfVariant.matchRange || variant == ArrayIndexOfVariant.table) {
+        if (variant == ArrayIndexOfVariant.MatchRange || variant == ArrayIndexOfVariant.Table) {
             // matchRange and table variants require more that just baseline features, so we have to
             // use a MacroNode here
             ValueNode[] args = new ValueNode[7 + values.length];
