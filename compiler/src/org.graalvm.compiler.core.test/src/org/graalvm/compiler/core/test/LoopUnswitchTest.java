@@ -390,4 +390,90 @@ public class LoopUnswitchTest extends GraalCompilerTest {
             throw debug.handle(e);
         }
     }
+
+    public static int manySwitch(int limit, int foo) {
+        int result = 0;
+        for (int i = 0; i < limit; i++) {
+            switch (foo) {
+                case -1:
+                    result += -1;
+                    break;
+                case 0:
+                    result += 0;
+                    break;
+                case 1:
+                    result += 1;
+                    break;
+                case 2:
+                    result += 2;
+                    break;
+                case 3:
+                    result += 3;
+                    break;
+                case 4:
+                    result += 4;
+                    break;
+                case 5:
+                    result += 5;
+                    break;
+                case 6:
+                    result += 6;
+                    break;
+                case 7:
+                    result += 7;
+                    break;
+                case 8:
+                    result += 8;
+                    break;
+                case 9:
+                    result += 9;
+                    break;
+                case 10:
+                    result += 10;
+                    break;
+                case 11:
+                    result += 11;
+                    break;
+                case 12:
+                    result += 12;
+                    break;
+                case 13:
+                    result += 13;
+                    break;
+                case 14:
+                    result += 14;
+                    break;
+                case 15:
+                    result += 15;
+                    break;
+                case 16:
+                    result += 16;
+                    break;
+                case 17:
+                    result += 17;
+                    break;
+                case 18:
+                    result += 18;
+                    break;
+                case 19:
+                    result += 19;
+                    break;
+                case 20:
+                    result += 20;
+                    break;
+                default:
+                    break;
+            }
+
+            result++;
+        }
+        return result;
+    }
+
+    @Test
+    public void test05() {
+        final StructuredGraph graph = parseEager("manySwitch", AllowAssumptions.NO);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        new LoopUnswitchingPhase(new DefaultLoopPolicies(), canonicalizer).apply(graph, getDefaultHighTierContext());
+    }
 }
