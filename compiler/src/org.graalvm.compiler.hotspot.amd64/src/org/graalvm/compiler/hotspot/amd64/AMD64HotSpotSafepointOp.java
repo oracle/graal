@@ -26,8 +26,6 @@ package org.graalvm.compiler.hotspot.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.rax;
 
-import java.util.EnumSet;
-
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -40,8 +38,6 @@ import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.site.InfopointReason;
@@ -56,7 +52,6 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
 
     @State protected LIRFrameState state;
     @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private AllocatableValue temp;
-    @Temp({OperandFlag.REG}) private AllocatableValue[] killedMaskRegisters;
 
     private final GraalHotSpotVMConfig config;
     private final Register thread;
@@ -67,8 +62,6 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
         this.config = config;
         this.thread = thread;
         temp = tool.getLIRGeneratorTool().newVariable(LIRKind.value(tool.getLIRGeneratorTool().target().arch.getWordKind()));
-        EnumSet<CPUFeature> features = ((AMD64) tool.getLIRGeneratorTool().target().arch).getFeatures();
-        killedMaskRegisters = AllocatableValue.NONE;
     }
 
     @Override
