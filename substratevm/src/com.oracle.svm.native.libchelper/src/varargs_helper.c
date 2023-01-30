@@ -28,10 +28,10 @@
 #include <stdio.h>
 #include <fcntl.h>
 
-/* GR-43444: On some platforms the varargs calling convention doesn't match
- * regular calls (e.g. darwin-aarch64 or linux-riscv). Instead of
- * implementing varargs support for @CFunction we add C helpers so that the
- * C compiler resolves the ABI specifics for us.
+/* On some platforms the varargs calling convention doesn't match regular calls
+ * (e.g. darwin-aarch64 or linux-riscv). Instead of implementing varargs
+ * support for @CFunction we add C helpers so that the C compiler resolves the
+ * ABI specifics for us.
  */
 
 int fprintfSD(FILE *stream, const char *format, char *arg0, int arg1)
@@ -39,7 +39,7 @@ int fprintfSD(FILE *stream, const char *format, char *arg0, int arg1)
     return fprintf(stream, format, arg0, arg1);
 }
 
-/* open(2) has a variadic signature on darwin:
+/* open(2) has a variadic signature on POSIX:
  *
  *    int open(const char *path, int oflag, ...);
  */
