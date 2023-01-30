@@ -23,6 +23,8 @@
  * questions.
  */
 
+#ifndef _WIN64
+
 #include <stdio.h>
 #include <fcntl.h>
 
@@ -45,3 +47,5 @@ int openSII(const char *pathname, int flags, int mode)
 {
     return open(pathname, flags, mode);
 }
+
+#endif
