@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -297,8 +297,8 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? NamedLocationIdentity.immutable("JavaThread::_threadObj")
                     : NamedLocationIdentity.mutable("JavaThread::_vthread");
 
-    // TODO mutable? https://github.com/openjdk/jdk/blob/master/src/hotspot/share/opto/library_call.cpp#L938-L941
-    public static final LocationIdentity JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_threadObj");
+    public static final LocationIdentity JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION
+                    : NamedLocationIdentity.mutable("JavaThread::_threadObj");
 
     public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.mutable("JavaThread::_osthread");
 

@@ -221,20 +221,23 @@ public class HalfFloatTest extends JTTTest {
             // close as either of its neighbors to the original value
             // of f.
 
-            float f_prime_down = (Float) f162f.executeVarargs(fAsBin16Down);
-            float f_prime = (Float) f162f.executeVarargs(fAsBin16);
-            float f_prime_up = (Float) f162f.executeVarargs(fAsBin16Up);
+            float fPrimeDown = (Float) f162f.executeVarargs(fAsBin16Down);
+            float fPrime = (Float) f162f.executeVarargs(fAsBin16);
+            float fPrimeUp = (Float) f162f.executeVarargs(fAsBin16Up);
 
-            float f_prime_diff = Math.abs(f - f_prime);
-            if (f_prime_diff == 0.0) {
+            float fPrimeDiff = Math.abs(f - fPrime);
+            if (fPrimeDiff == 0.0) {
                 continue;
             }
-            float f_prime_down_diff = Math.abs(f - f_prime_down);
-            float f_prime_up_diff = Math.abs(f - f_prime_up);
+            float fPrimeDownDiff = Math.abs(f - fPrimeDown);
+            float fPrimeUpDiff = Math.abs(f - fPrimeUp);
 
-            assertTrue(f_prime_diff <= f_prime_down_diff && f_prime_diff <= f_prime_up_diff, "Round-to-nearest violation on converting %s to binary16 and back.", Float.toHexString(f));
+            assertTrue(fPrimeDiff <= fPrimeDownDiff && fPrimeDiff <= fPrimeUpDiff, "Round-to-nearest violation on converting %s to binary16 and back.", Float.toHexString(f));
         }
     }
+
+    private static final int NAN_EXPONENT = 0x7c00;
+    private static final int SIGN_BIT = 0x8000;
 
     /*
      * Put all 16-bit NaN values through a conversion loop and make sure the significand, sign, and
@@ -243,8 +246,6 @@ public class HalfFloatTest extends JTTTest {
     @Ignore("https://bugs.openjdk.org/browse/JDK-8289552?focusedCommentId=14554746&page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-14554746")
     @Test
     public void binary16NaNRoundTrip() {
-        final int NAN_EXPONENT = 0x7c00;
-        final int SIGN_BIT = 0x8000;
 
         // A NaN has a nonzero significand
         for (int i = 1; i <= 0x3ff; i++) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1115,9 +1115,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         MASK_XMM_XMM_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_VL, MASK, XMM, XMM, null),
         AVX1_128ONLY_CLMUL(CPUFeature.AVX, null, CPUFeature.CLMUL, null, XMM, XMM, XMM, XMM),
         AVX1_128ONLY_AES(CPUFeature.AVX, null, CPUFeature.AES, null, XMM, XMM, XMM, XMM),
-        // TODO GFNI F16C may not be resolved in older JVMCI
-        AVX1_GFNI_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX, CPUFeature.GFNI, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null),
-        F16C_AVX512F_VL(CPUFeature.F16C, CPUFeature.F16C, null, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null);
+        AVX1_GFNI_AVX512F_VL(asCPUFeature("GFNI"), asCPUFeature("GFNI"), CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null),
+        F16C_AVX512F_VL(asCPUFeature("F16C"), asCPUFeature("F16C"), null, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null);
 
         private final CPUFeature l128feature;
         private final CPUFeature l256feature;
@@ -1460,11 +1459,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMIOp RORXQ            = new VexRMIOp("RORXQ",            P_F2, M_0F3A, W1,  0xF0, VEXOpAssertion.BMI2);
         // @formatter:on
 
-        private VexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
+        protected VexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
             super(opcode, pp, mmmmm, w, op, assertion, EVEXTuple.INVALID, WIG);
         }
 
-        private VexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
+        protected VexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex);
         }
 
@@ -3670,7 +3669,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void gf2p8affineqb(Register dst, Register src, int imm8) {
-        assert supports(CPUFeature.GFNI);
+        GraalError.guarantee(supportsCPUFeature("GFNI"), "gf2p8affineqb requires GFNI");
         assert inRC(XMM, dst) && inRC(XMM, src);
 
         if (supports(CPUFeature.AVX)) {
@@ -3684,14 +3683,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void vcvtps2ph(Register dst, Register src, int imm8) {
-        assert supports(CPUFeature.F16C);
+        GraalError.guarantee(supportsCPUFeature("F16C"), "vcvtps2ph requires F16C");
         assert inRC(XMM, dst) && inRC(XMM, src);
 
         VCVTPS2PH.emit(this, AVXSize.XMM, dst, src, imm8);
     }
 
     public final void vcvtph2ps(Register dst, Register src) {
-        assert supports(CPUFeature.F16C);
+        GraalError.guarantee(supportsCPUFeature("F16C"), "vcvtph2ps requires F16C");
         assert inRC(XMM, dst) && inRC(XMM, src);
 
         VCVTPH2PS.emit(this, AVXSize.XMM, dst, src);

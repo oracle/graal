@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -175,20 +175,22 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             }
         });
 
-        r.registerConditional(arch.getFeatures().contains(CPUFeature.BMI2), new InvocationPlugin("compress", type, type) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
-                b.push(kind, b.append(new ShuffleBitsNode(value, mask, COMPRESS)));
-                return true;
-            }
-        });
-        r.registerConditional(arch.getFeatures().contains(CPUFeature.BMI2), new InvocationPlugin("expand", type, type) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
-                b.push(kind, b.append(new ShuffleBitsNode(value, mask, EXPAND)));
-                return true;
-            }
-        });
+        if (JavaVersionUtil.JAVA_SPEC >= 20) {
+            r.registerConditional(arch.getFeatures().contains(CPUFeature.BMI2), new InvocationPlugin("compress", type, type) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
+                    b.push(kind, b.append(new ShuffleBitsNode(value, mask, COMPRESS)));
+                    return true;
+                }
+            });
+            r.registerConditional(arch.getFeatures().contains(CPUFeature.BMI2), new InvocationPlugin("expand", type, type) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
+                    b.push(kind, b.append(new ShuffleBitsNode(value, mask, EXPAND)));
+                    return true;
+                }
+            });
+        }
 
         r.register(new InvocationPlugin("reverse", type) {
             @Override
@@ -199,18 +201,27 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
+    private static boolean supportsF16C(AMD64 arch) {
+        try {
+            return arch.getFeatures().contains(CPUFeature.valueOf("F16C"));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     private static void registerFloatPlugins(InvocationPlugins plugins, AMD64 arch, Replacements replacements) {
         Registration r = new Registration(plugins, Float.class, replacements);
 
-        // TODO F16C may not be resolved in older JVMCI
-        r.registerConditional(arch.getFeatures().contains(CPUFeature.F16C), new InvocationPlugin("float16ToFloat", short.class) {
+        boolean supportsF16C = supportsF16C(arch);
+
+        r.registerConditional(supportsF16C, new InvocationPlugin("float16ToFloat", short.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Float, b.append(new HalfFloatToFloatNode(value)));
                 return true;
             }
         });
-        r.registerConditional(arch.getFeatures().contains(CPUFeature.F16C), new InvocationPlugin("floatToFloat16", float.class) {
+        r.registerConditional(supportsF16C, new InvocationPlugin("floatToFloat16", float.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Short, b.append(new FloatToHalfFloatNode(value)));

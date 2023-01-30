@@ -32,13 +32,13 @@ import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
@@ -68,7 +68,7 @@ public final class AMD64BitSwapOp extends AMD64LIRInstruction {
 
         this.rtmpValue = tool.newVariable(dstValue.getValueKind());
 
-        if (tool.target().arch.getFeatures().contains(AMD64.CPUFeature.GFNI)) {
+        if (supportsGFNI(tool.target().arch)) {
             this.rtmp2Value = Value.ILLEGAL;
 
             LIRKind lirKind = LIRKind.value(AMD64Kind.DOUBLE);
@@ -86,6 +86,14 @@ public final class AMD64BitSwapOp extends AMD64LIRInstruction {
         }
     }
 
+    private static boolean supportsGFNI(Architecture arch) {
+        try {
+            return arch.getFeatures().contains(AMD64.CPUFeature.valueOf("GFNI"));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Register dst = asRegister(dstValue);
@@ -94,7 +102,7 @@ public final class AMD64BitSwapOp extends AMD64LIRInstruction {
 
         switch ((AMD64Kind) dstValue.getPlatformKind()) {
             case DWORD:
-                if (masm.supports(AMD64.CPUFeature.GFNI)) {
+                if (masm.supportsCPUFeature("GFNI")) {
                     // Galois field instruction based bit reversal based on following algorithm.
                     // http://0x80.pl/articles/avx512-galois-field-for-bit-shuffling.html
                     Register xtmp1 = asRegister(xtmp1Value);
@@ -135,7 +143,7 @@ public final class AMD64BitSwapOp extends AMD64LIRInstruction {
                 masm.bswapl(dst);
                 break;
             case QWORD:
-                if (masm.supports(AMD64.CPUFeature.GFNI)) {
+                if (masm.supportsCPUFeature("GFNI")) {
                     // Galois field instruction based bit reversal based on following algorithm.
                     // http://0x80.pl/articles/avx512-galois-field-for-bit-shuffling.html
                     Register xtmp1 = asRegister(xtmp1Value);
