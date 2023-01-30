@@ -75,6 +75,9 @@ public final class RuntimeOptions {
 
     /**
      * Classes of options that can be queried through {@code getOptions(EnumSet)}.
+     * 
+     * @deprecated This class was mistakenly made API and will be removed in a future version. If
+     *             your codebase depends on it, let us know by creating an issue on GitHub.
      *
      * @since 19.0
      */
@@ -87,6 +90,10 @@ public final class RuntimeOptions {
     /**
      * Returns available run time options for the selected {@linkplain OptionClass option classes}.
      *
+     * @deprecated This method was mistakenly made an API method and will be removed in a future
+     *             version. If your codebase depends on it, let us know by creating an issue on
+     *             GitHub.
+     *
      * @since 19.0
      */
     @Deprecated(since = "23.0", forRemoval = true)
@@ -96,6 +103,10 @@ public final class RuntimeOptions {
 
     /**
      * Returns all available run time options.
+     *
+     * @deprecated This method was mistakenly made an API method and will be removed in a future
+     *             version. If your codebase depends on it, let us know by creating an issue on
+     *             GitHub.
      *
      * @since 19.0
      */
