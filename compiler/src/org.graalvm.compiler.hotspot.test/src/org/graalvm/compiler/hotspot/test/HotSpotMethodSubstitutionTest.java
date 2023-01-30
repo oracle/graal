@@ -131,6 +131,7 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
     }
 
     @Test
+    @SuppressWarnings("unused")
     public void testThreadSubstitutions() {
         GraalHotSpotVMConfig config = ((HotSpotBackend) getBackend()).getRuntime().getVMConfig();
         testGraph("currentThread");

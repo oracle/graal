@@ -61,6 +61,7 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     private final GraalHotSpotVMConfig config;
     private final Register thread;
 
+    @SuppressWarnings("unused")
     public AMD64HotSpotSafepointOp(LIRFrameState state, GraalHotSpotVMConfig config, NodeLIRBuilderTool tool, Register thread) {
         super(TYPE);
         this.state = state;

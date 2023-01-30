@@ -44,11 +44,10 @@ public class HotSpotGraalServices {
     // NOTE: The use of reflection to access JVMCI API is to support
     // compiling on JDKs with varying versions of JVMCI.
 
-    private static final Method runtimeExitHotSpot;
-    private static final Method scopeOpenLocalScope;
-    private static final Method scopeEnterGlobalScope;
-
-    private static final Constructor<? extends HotSpotSpeculationLog> hotSpotSpeculationLogConstructor;
+    @SuppressWarnings("unused") private static final Method runtimeExitHotSpot;
+    @SuppressWarnings("unused") private static final Method scopeOpenLocalScope;
+    @SuppressWarnings("unused") private static final Method scopeEnterGlobalScope;
+    @SuppressWarnings("unused") private static final Constructor<? extends HotSpotSpeculationLog> hotSpotSpeculationLogConstructor;
 
     static {
         Method enterGlobalScope = null;
