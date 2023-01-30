@@ -184,15 +184,23 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
         this.noDeoptSuccessorPosition = noDeoptSuccessorPosition;
     }
 
+    public boolean willDeoptUnconditionally() {
+        return willDeoptUnconditionally(getCondition(), negated);
+    }
+
     /**
      * Determine if the this guard will lead to an unconditional {@link DeoptimizeNode} because its
      * condition is a constant.
      */
-    public boolean willDeoptUnconditionally() {
-        if (getCondition() instanceof LogicConstantNode) {
-            LogicConstantNode c = (LogicConstantNode) getCondition();
+    public static boolean willDeoptUnconditionally(LogicNode l, boolean negated) {
+        if (l instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) l;
             return c.getValue() == negated;
         }
         return false;
+    }
+
+    public boolean deoptsOnTrue() {
+        return isNegated();
     }
 }
