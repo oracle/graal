@@ -56,6 +56,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -365,12 +366,19 @@ public final class InlineSupport {
             CompilerAsserts.partialEvaluationConstant(node);
 
             // produces better error messages when assertions are enabled.
-            Object receiver;
+            Node receiver = node;
             if (parentField != null) {
-                receiver = parentField.get(node);
-            } else {
-                receiver = node;
+                receiver = resolveParent(receiver);
             }
+            return receiver;
+        }
+
+        @ExplodeLoop
+        private Node resolveParent(Node node) {
+            Node receiver = node;
+            do {
+                receiver = parentField.get(receiver);
+            } while (receiver != null && !receiverClass.isInstance(receiver));
             return receiver;
         }
 
