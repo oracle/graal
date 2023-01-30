@@ -556,7 +556,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Controls how much of a priority should be given to first tier compilations (default 15.0).", usageSyntax = "[0.0, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Double> TraversingQueueFirstTierBonus = new OptionKey<>(15.0);
 
-    @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue (default: true).", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
+    @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue (default: true).", usageSyntax = "true|false", category = OptionCategory.INTERNAL, sandbox = SandboxPolicy.UNTRUSTED) //
     public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);
 
     @Option(help = "Enables hotness propagation to lexical parent to lexically parent single callers.", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //

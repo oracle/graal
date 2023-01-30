@@ -319,7 +319,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     private void validateSandbox(SandboxPolicy sandboxPolicy) {
-        if (sandboxPolicy.ordinal() > SandboxPolicy.RELAXED.ordinal()) {
+        // When The PolyglotImpl is used as a root polyglot it supports at most the RELAXED
+        // sandboxing policy . When it's used as a delegate of other polyglot it needs to support
+        // all sandboxing policies.
+        if (this == getRootImpl() && sandboxPolicy.ordinal() > SandboxPolicy.RELAXED.ordinal()) {
             throw PolyglotEngineException.illegalArgument(String.format("The sandbox policy %s is not supported by the GraalVM community edition.", sandboxPolicy));
         }
     }

@@ -1851,7 +1851,8 @@ public final class Context implements AutoCloseable {
                 }
                 if (environmentAccess != EnvironmentAccess.NONE) {
                     throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, the allowEnvironmentAccess value for the context must be set to EnvironmentAccess.NONE. For example, Context.newBuilder(\"js\").allowEnvironmentAccess(EnvironmentAccess.NONE).",
+                                    String.format("If the sandbox policy %s is set, the allowEnvironmentAccess value for the context must be set to EnvironmentAccess.NONE. " +
+                                                    "For example, Context.newBuilder(\"js\").allowEnvironmentAccess(EnvironmentAccess.NONE).",
                                                     this.sandboxPolicy));
                 }
                 if (Boolean.TRUE.equals(allowHostAccess)) {
@@ -1860,7 +1861,8 @@ public final class Context implements AutoCloseable {
                 }
                 if (hostClassFilter == UNSET_HOST_LOOKUP) {
                     throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, allowHostClassLookup needs to be set for a context. For example, Context.newBuilder(\"js\").allowHostClassLookup(cn -> cn.startsWith(\"com.mycompany.hostclasses.\")).",
+                                    String.format("If the sandbox policy %s is set, allowHostClassLookup needs to be set for a context. " +
+                                                    "For example, Context.newBuilder(\"js\").allowHostClassLookup(cn -> cn.startsWith(\"com.mycompany.hostclasses.\")).",
                                                     this.sandboxPolicy));
                 }
                 if (hostAccess != null) {
@@ -1885,7 +1887,7 @@ public final class Context implements AutoCloseable {
                 }
             }
             if (sandboxPolicy.ordinal() >= SandboxPolicy.ISOLATED.ordinal()) {
-                if (hostAccess != null && hostAccess.isMethodScopingEnabled()) {
+                if (hostAccess != null && !hostAccess.isMethodScopingEnabled()) {
                     throw new IllegalArgumentException(
                                     String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must have the methodScoping set.",
                                                     this.sandboxPolicy));
