@@ -141,7 +141,9 @@ public final class SamplerSampleWriter {
         assert buffer.getPos().equal(data.getStartPos());
         assert SamplerBufferAccess.getDataEnd(data.getSamplerBuffer()).equal(data.getEndPos());
 
-        buffer.setPos(data.getCurrentPos());
+        Pointer newPosition = data.getCurrentPos();
+        buffer.setPos(newPosition);
+        data.setStartPos(newPosition);
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)

@@ -180,7 +180,13 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
         threadsInSignalHandler().incrementAndGet();
         try {
             if (isExecutionSamplingAllowedInCurrentThread()) {
-                doUninterruptibleStackWalk(ip, sp);
+                /* Prevent recursive sampler invocations during the stack walk. */
+                JfrExecutionSampler.singleton().preventSamplingInCurrentThread();
+                try {
+                    doUninterruptibleStackWalk(ip, sp);
+                } finally {
+                    JfrExecutionSampler.singleton().allowSamplingInCurrentThread();
+                }
             } else {
                 JfrThreadLocal.increaseMissedSamples();
             }

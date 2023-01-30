@@ -122,8 +122,12 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
 
     @Override
     protected void uninstallSignalHandler() {
+        /*
+         * Only disable the sampling but do not replace the signal handler with the default one
+         * because a signal might be pending for some thread (the default signal handler would print
+         * "Profiling timer expired" to the output).
+         */
         updateInterval(0);
-        registerSigprofSignal((Signal.AdvancedSignalDispatcher) Signal.SIG_DFL());
     }
 
     @Override

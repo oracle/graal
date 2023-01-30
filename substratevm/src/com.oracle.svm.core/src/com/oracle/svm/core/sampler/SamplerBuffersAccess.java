@@ -206,7 +206,9 @@ public final class SamplerBuffersAccess {
          * (JfrNativeEventWriter.putInt() would not necessarily reserve enough bytes).
          */
         int numStackTraceElements = visitRawStackTrace(rawStackTrace, sampleSize, WordFactory.nullPointer());
-        assert numStackTraceElements > 0;
+        if (numStackTraceElements == 0) {
+            return false;
+        }
 
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initialize(data, targetBuffer);

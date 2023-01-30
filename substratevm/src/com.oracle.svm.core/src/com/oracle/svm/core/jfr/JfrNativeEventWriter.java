@@ -351,20 +351,22 @@ public final class JfrNativeEventWriter {
         if (!isValid(data)) {
             return false;
         }
-        return commitEvent(data);
+
+        commitEvent(data);
+        return true;
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    private static boolean commitEvent(JfrNativeEventWriterData data) {
-        JfrBuffer buffer = data.getJfrBuffer();
+    private static void commitEvent(JfrNativeEventWriterData data) {
         assert isValid(data);
+
+        JfrBuffer buffer = data.getJfrBuffer();
         assert buffer.getPos().equal(data.getStartPos());
         assert JfrBufferAccess.getDataEnd(data.getJfrBuffer()).equal(data.getEndPos());
 
         Pointer newPosition = data.getCurrentPos();
         buffer.setPos(newPosition);
         data.setStartPos(newPosition);
-        return true;
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
