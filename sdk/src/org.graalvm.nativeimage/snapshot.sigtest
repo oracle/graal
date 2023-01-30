@@ -9,6 +9,14 @@ meth public abstract void close() throws java.lang.Exception
 CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
 meth public abstract int compareTo({java.lang.Comparable%0})
 
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, MODULE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean forRemoval()
+meth public abstract !hasdefault java.lang.String since()
+
 CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
 cons protected init(java.lang.String,int)
 innr public final static EnumDesc
@@ -442,6 +450,7 @@ supr java.lang.Object
 
 CLSS public final static !enum org.graalvm.nativeimage.RuntimeOptions$OptionClass
  outer org.graalvm.nativeimage.RuntimeOptions
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="23.0")
 fld public final static org.graalvm.nativeimage.RuntimeOptions$OptionClass Compiler
 fld public final static org.graalvm.nativeimage.RuntimeOptions$OptionClass VM
 meth public static org.graalvm.nativeimage.RuntimeOptions$OptionClass valueOf(java.lang.String)
