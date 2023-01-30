@@ -63,6 +63,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -522,6 +523,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public LogHandler newLogHandler(Object logHandlerOrStream) {
         return PolyglotLoggers.asLogHandler(this, logHandlerOrStream);
+    }
+
+    @Override
+    public OptionDescriptors createUnionOptionDescriptors(OptionDescriptors... optionDescriptors) {
+        return TruffleOptionDescriptors.createUnion(optionDescriptors);
     }
 
     @Override

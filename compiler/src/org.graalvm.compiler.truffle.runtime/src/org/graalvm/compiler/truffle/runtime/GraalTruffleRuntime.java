@@ -51,6 +51,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -184,7 +185,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         EngineCacheSupport support = loadGraalRuntimeServiceProvider(EngineCacheSupport.class, options, false);
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
         options.add(PolyglotCompilerOptions.getDescriptors());
-        this.engineOptions = OptionDescriptors.createUnion(options.toArray(new OptionDescriptors[options.size()]));
+        this.engineOptions = TruffleOptionDescriptors.createUnion(options.toArray(new OptionDescriptors[options.size()]));
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
     }
 

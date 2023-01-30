@@ -40,11 +40,122 @@
  */
 package com.oracle.truffle.api;
 
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.SandboxPolicy;
 
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Objects;
+
 public interface TruffleOptionDescriptors extends OptionDescriptors {
+
+    TruffleOptionDescriptors EMPTY = new TruffleOptionDescriptors() {
+
+        public Iterator<OptionDescriptor> iterator() {
+            return Collections.<OptionDescriptor> emptyList().iterator();
+        }
+
+        public OptionDescriptor get(String key) {
+            return null;
+        }
+
+        @Override
+        public SandboxPolicy getSandboxPolicy(String key) {
+            return null;
+        }
+    };
 
     SandboxPolicy getSandboxPolicy(String key);
 
+    static TruffleOptionDescriptors createUnion(OptionDescriptors... descriptors) {
+        switch (descriptors.length) {
+            case 0:
+                return EMPTY;
+            case 1:
+                return TruffleOptionDescriptorsAdapter.wrap(descriptors[0]);
+            default:
+                OptionDescriptors singleNonEmpty = null;
+                for (int i = 0; i < descriptors.length; i++) {
+                    OptionDescriptors d = descriptors[i];
+                    if (d != EMPTY && d != OptionDescriptors.EMPTY) {
+                        if (singleNonEmpty == null) {
+                            singleNonEmpty = d;
+                        } else {
+                            return new UnionTruffleOptionDescriptors(descriptors);
+                        }
+                    }
+                }
+                if (singleNonEmpty == null) {
+                    return EMPTY;
+                } else {
+                    return TruffleOptionDescriptorsAdapter.wrap(singleNonEmpty);
+                }
+        }
+    }
+}
+
+final class TruffleOptionDescriptorsAdapter implements TruffleOptionDescriptors {
+    private final OptionDescriptors delegate;
+
+    private TruffleOptionDescriptorsAdapter(OptionDescriptors delegate) {
+        this.delegate = Objects.requireNonNull(delegate);
+    }
+
+    @Override
+    public OptionDescriptor get(String optionName) {
+        return delegate.get(optionName);
+    }
+
+    @Override
+    public Iterator<OptionDescriptor> iterator() {
+        return delegate.iterator();
+    }
+
+    @Override
+    public SandboxPolicy getSandboxPolicy(String key) {
+        return SandboxPolicy.TRUSTED;
+    }
+
+    static TruffleOptionDescriptors wrap(OptionDescriptors optionDescriptors) {
+        return optionDescriptors instanceof TruffleOptionDescriptors ? (TruffleOptionDescriptors) optionDescriptors : new TruffleOptionDescriptorsAdapter(optionDescriptors);
+    }
+}
+
+final class UnionTruffleOptionDescriptors implements TruffleOptionDescriptors {
+
+    private final OptionDescriptors delegate;
+    private final OptionDescriptors[] descriptorsList;
+
+    UnionTruffleOptionDescriptors(OptionDescriptors[] descriptorsList) {
+        this.delegate = OptionDescriptors.createUnion(descriptorsList);
+        this.descriptorsList = descriptorsList;
+    }
+
+    @Override
+    public Iterator<OptionDescriptor> iterator() {
+        return delegate.iterator();
+    }
+
+    @Override
+    public OptionDescriptor get(String optionName) {
+        return delegate.get(optionName);
+    }
+
+    @Override
+    public SandboxPolicy getSandboxPolicy(String key) {
+        for (OptionDescriptors descriptors : descriptorsList) {
+            if (descriptors.get(key) != null) {
+                if (descriptors instanceof TruffleOptionDescriptors) {
+                    SandboxPolicy res = ((TruffleOptionDescriptors) descriptors).getSandboxPolicy(key);
+                    if (res != null) {
+                        return res;
+                    }
+                } else {
+                    return SandboxPolicy.TRUSTED;
+                }
+            }
+        }
+        return null;
+    }
 }

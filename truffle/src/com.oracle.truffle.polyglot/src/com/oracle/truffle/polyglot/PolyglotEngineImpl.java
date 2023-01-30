@@ -608,7 +608,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     static OptionDescriptors createEngineOptionDescriptors() {
         OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
         OptionDescriptors compilerOptionDescriptors = EngineAccessor.RUNTIME.getEngineOptionDescriptors();
-        return OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
+        return TruffleOptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
     }
 
     void patch(SandboxPolicy newSandboxPolicy,
@@ -1363,7 +1363,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     for (PolyglotInstrument instrument : idToInstrument.values()) {
                         allDescriptors.add(instrument.getAllOptionsInternal());
                     }
-                    allOptions = OptionDescriptors.createUnion(allDescriptors.toArray(new OptionDescriptors[0]));
+                    allOptions = TruffleOptionDescriptors.createUnion(allDescriptors.toArray(new OptionDescriptors[0]));
                 }
             }
         }

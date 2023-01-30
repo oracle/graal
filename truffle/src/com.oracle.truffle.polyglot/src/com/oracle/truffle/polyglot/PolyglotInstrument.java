@@ -44,6 +44,7 @@ import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Instrument;
@@ -138,7 +139,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
                         assert verifyNoOverlap(eOptions, cOptions);
                         this.engineOptions = eOptions;
                         this.contextOptions = cOptions;
-                        this.allOptions = OptionDescriptors.createUnion(eOptions, cOptions);
+                        this.allOptions = TruffleOptionDescriptors.createUnion(eOptions, cOptions);
                     } catch (Exception e) {
                         throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'. Message: %s.", cache.getId(), cache.getClassName(), e.getMessage()), e);
                     }

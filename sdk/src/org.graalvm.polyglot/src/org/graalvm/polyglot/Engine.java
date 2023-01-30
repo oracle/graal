@@ -1138,6 +1138,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public OptionDescriptors createUnionOptionDescriptors(OptionDescriptors... optionDescriptors) {
+            return OptionDescriptors.createUnion(optionDescriptors);
+        }
+
+        @Override
         public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence) {
             return new Object();
         }

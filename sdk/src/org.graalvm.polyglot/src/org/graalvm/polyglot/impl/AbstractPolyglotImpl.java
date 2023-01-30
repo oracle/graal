@@ -1183,6 +1183,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newLogHandler(logHandlerOrStream);
     }
 
+    public OptionDescriptors createUnionOptionDescriptors(OptionDescriptors... optionDescriptors) {
+        return getNext().createUnionOptionDescriptors(optionDescriptors);
+    }
+
     /**
      * Creates a union of all available option descriptors including prev implementations. This
      * allows to validate the full set of options.
@@ -1194,7 +1198,7 @@ public abstract class AbstractPolyglotImpl {
         }
         OptionDescriptors union = OptionDescriptors.EMPTY;
         while (current != null) {
-            union = OptionDescriptors.createUnion(current.createEngineOptionDescriptors(), union);
+            union = createUnionOptionDescriptors(current.createEngineOptionDescriptors(), union);
             current = current.next;
         }
         return union;
