@@ -480,13 +480,12 @@ public final class Meta extends ContextAccessImpl {
         java_security_AccessController = knownKlass(Type.java_security_AccessController);
 
         java_lang_invoke_MethodType = knownKlass(Type.java_lang_invoke_MethodType);
-        java_lang_invoke_MethodType_toMethodDescriptorString = java_lang_invoke_MethodType.requireDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
-        java_lang_invoke_MethodType_fromMethodDescriptorString = java_lang_invoke_MethodType.requireDeclaredMethod(Name.fromMethodDescriptorString, Signature.MethodType_String_ClassLoader);
+        java_lang_invoke_MethodType_ptypes = java_lang_invoke_MethodType.requireDeclaredField(Name.ptypes, Type.java_lang_Class_array);
+        java_lang_invoke_MethodType_rtype = java_lang_invoke_MethodType.requireDeclaredField(Name.rtype, Type.java_lang_Class);
 
         java_lang_invoke_MemberName = knownKlass(Type.java_lang_invoke_MemberName);
         HIDDEN_VMINDEX = java_lang_invoke_MemberName.requireHiddenField(Name.HIDDEN_VMINDEX);
         HIDDEN_VMTARGET = java_lang_invoke_MemberName.requireHiddenField(Name.HIDDEN_VMTARGET);
-        java_lang_invoke_MemberName_getSignature = java_lang_invoke_MemberName.requireDeclaredMethod(Name.getSignature, Signature.String);
         java_lang_invoke_MemberName_clazz = java_lang_invoke_MemberName.requireDeclaredField(Name.clazz, Type.java_lang_Class);
         java_lang_invoke_MemberName_name = java_lang_invoke_MemberName.requireDeclaredField(Name.name, Type.java_lang_String);
         java_lang_invoke_MemberName_type = java_lang_invoke_MemberName.requireDeclaredField(Name.type, Type.java_lang_Object);
@@ -1297,11 +1296,10 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_security_AccessController;
 
     public final ObjectKlass java_lang_invoke_MethodType;
-    public final Method java_lang_invoke_MethodType_toMethodDescriptorString;
-    public final Method java_lang_invoke_MethodType_fromMethodDescriptorString;
+    public final Field java_lang_invoke_MethodType_ptypes;
+    public final Field java_lang_invoke_MethodType_rtype;
 
     public final ObjectKlass java_lang_invoke_MemberName;
-    public final Method java_lang_invoke_MemberName_getSignature;
 
     public final Field HIDDEN_VMTARGET;
     public final Field HIDDEN_VMINDEX;

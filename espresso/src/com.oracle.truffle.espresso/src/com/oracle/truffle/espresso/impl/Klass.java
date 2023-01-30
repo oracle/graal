@@ -917,7 +917,8 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         if (this.isPrimitive() || other.isPrimitive()) {
             // Reference equality is enough within the same context.
             assert this.getContext() == other.getContext();
-            return this == other;
+            assert this != other;
+            return false;
         }
         if (this.isArray()) {
             if (other.isArray()) {
@@ -925,7 +926,8 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
         } else {
             if (this.isFinalFlagSet()) {
-                return this == other;
+                assert this != other;
+                return false;
             }
         }
         if (Modifier.isInterface(getModifiers())) {

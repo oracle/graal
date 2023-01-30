@@ -344,7 +344,6 @@ public final class Symbol<T> extends ByteSequence {
         // MemberName
         public static final Symbol<Name> flags = StaticSymbols.putName("flags");
         public static final Symbol<Name> form = StaticSymbols.putName("form");
-        public static final Symbol<Name> getSignature = StaticSymbols.putName("getSignature");
 
         // MethodHandle
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
@@ -370,8 +369,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
 
         // MethodType
-        public static final Symbol<Name> fromMethodDescriptorString = StaticSymbols.putName("fromMethodDescriptorString");
-        public static final Symbol<Name> toMethodDescriptorString = StaticSymbols.putName("toMethodDescriptorString");
+        public static final Symbol<Name> ptypes = StaticSymbols.putName("ptypes");
+        public static final Symbol<Name> rtype = StaticSymbols.putName("rtype");
 
         // j.l.ref.Finalizer
         public static final Symbol<Name> finalize = StaticSymbols.putName("finalize");
