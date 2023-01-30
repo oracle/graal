@@ -56,20 +56,16 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
 
     @State protected LIRFrameState state;
     @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private AllocatableValue temp;
-    @Temp({OperandFlag.REG}) private AllocatableValue[] killedMaskRegisters;
 
     private final GraalHotSpotVMConfig config;
     private final Register thread;
 
-    @SuppressWarnings("unused")
     public AMD64HotSpotSafepointOp(LIRFrameState state, GraalHotSpotVMConfig config, NodeLIRBuilderTool tool, Register thread) {
         super(TYPE);
         this.state = state;
         this.config = config;
         this.thread = thread;
         temp = tool.getLIRGeneratorTool().newVariable(LIRKind.value(tool.getLIRGeneratorTool().target().arch.getWordKind()));
-        EnumSet<CPUFeature> features = ((AMD64) tool.getLIRGeneratorTool().target().arch).getFeatures();
-        killedMaskRegisters = AllocatableValue.NONE;
     }
 
     @Override

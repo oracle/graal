@@ -29,8 +29,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
 import org.junit.Test;
 
@@ -131,11 +129,8 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
     }
 
     @Test
-    @SuppressWarnings("unused")
     public void testThreadSubstitutions() {
-        GraalHotSpotVMConfig config = ((HotSpotBackend) getBackend()).getRuntime().getVMConfig();
         testGraph("currentThread");
-
         Thread currentThread = Thread.currentThread();
         test("currentThread", currentThread);
     }
