@@ -469,14 +469,6 @@ final class BundleSupport {
     }
 
     void complete() {
-        final boolean[] firstMessage = {!nativeImage.isDryRun()};
-        Runnable outputNewline = () -> {
-            if (firstMessage[0]) {
-                nativeImage.showNewline();
-                firstMessage[0] = false;
-            }
-        };
-
         boolean writeOutput;
         try (Stream<Path> pathOutputFiles = Files.list(imagePathOutputDir); Stream<Path> auxiliaryOutputFiles = Files.list(auxiliaryOutputDir)) {
             writeOutput = pathOutputFiles.findAny().isPresent() || auxiliaryOutputFiles.findAny().isPresent();
@@ -493,17 +485,19 @@ final class BundleSupport {
             bundleName = "unknown";
         }
 
+        if (!nativeImage.isDryRun() && (writeOutput || writeBundle)) {
+            nativeImage.showNewline();
+        }
+
         if (writeOutput) {
             Path externalOutputDir = bundlePath.resolve(bundleName + "." + outputDir.getFileName());
             copyFiles(outputDir, externalOutputDir, true);
-            outputNewline.run();
             nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle build output written to " + externalOutputDir);
         }
 
         try {
             if (writeBundle) {
                 Path bundleFilePath = writeBundle();
-                outputNewline.run();
                 nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle written to " + bundleFilePath);
             }
         } finally {
