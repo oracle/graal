@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -190,8 +190,6 @@ final class LLDBMemoryValue implements LLVMDebugValue {
 
         return unavailable(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL);
     }
-
-    // TODO: FP128
 
     @Override
     public Object readAddress(long bitOffset) {

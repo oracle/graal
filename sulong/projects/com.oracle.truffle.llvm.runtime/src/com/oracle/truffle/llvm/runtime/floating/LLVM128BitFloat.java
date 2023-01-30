@@ -1,3 +1,33 @@
+/*
+ * Copyright (c) 2023, Oracle and/or its affiliates.
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ * conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+ * conditions and the following disclaimer in the documentation and/or other materials provided
+ * with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+ * endorse or promote products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 package com.oracle.truffle.llvm.runtime.floating;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -62,16 +92,6 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         } else {
             return String.format("0xK%016x%016x", value.expSignFraction, value.fraction);
         }
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static String getBinaryString(int bitWidth, long number) {
-        return String.format("%" + bitWidth + "s", Long.toBinaryString(number)).replace(" ", "0");
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static String getHexString(int bitWidth, long number) {
-        return String.format("%" + bitWidth + "x", number).replace(" ", "0");
     }
 
     private final long expSignFraction; // 64 bit -- the left over of the fraction goes into here.
@@ -207,7 +227,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
             long doubleFraction = (expSignFraction & FRACTION_MASK) << (DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH - EXPONENT_POSITION);
             doubleFraction |= fraction >>> (Long.SIZE - (DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH - EXPONENT_POSITION));
             long shiftedSignBit = (getSign() ? 1L : 0L) << DoubleHelper.DOUBLE_SIGN_POS;
-            //TODO(PLi): test overflow.
+            // TODO(PLi): test overflow.
             long shiftedExponent = doubleExponent << DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH;
             long rawVal = doubleFraction | shiftedExponent | shiftedSignBit;
             return Double.longBitsToDouble(rawVal);
@@ -221,7 +241,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
             return FloatHelper.NEGATIVE_INFINITY;
         } else {
             long floatExponent = getUnbiasedExponent() + FLOAT_EXPONENT_BIAS;
-            long floatFraction =  (expSignFraction & FRACTION_MASK) >>> (EXPONENT_POSITION - FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
+            long floatFraction = (expSignFraction & FRACTION_MASK) >>> (EXPONENT_POSITION - FloatHelper.FLOAT_FRACTION_BIT_WIDTH);
             long shiftedSignBit = (getSign() ? 1 : 0) << FloatHelper.FLOAT_SIGN_POS;
             long shiftedExponent = floatExponent << FloatHelper.FLOAT_FRACTION_BIT_WIDTH;
             long rawVal = floatFraction | shiftedExponent | shiftedSignBit;
@@ -240,13 +260,6 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         assert bytes.length == BYTE_WIDTH;
         long fraction = ByteArraySupport.bigEndian().getLong(bytes, 0);
         long expSignFraction = ByteArraySupport.bigEndian().getLong(bytes, 8);
-        return new LLVM128BitFloat(expSignFraction, fraction);
-    }
-
-    public static LLVM128BitFloat fromBytes(byte[] bytes) {
-        assert bytes.length == BYTE_WIDTH;
-        long fraction = ByteArraySupport.littleEndian().getLong(bytes, 0);
-        long expSignFraction = ByteArraySupport.littleEndian().getLong(bytes, 8);
         return new LLVM128BitFloat(expSignFraction, fraction);
     }
 
@@ -295,7 +308,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
             long doubleFraction = rawValue & DoubleHelper.FRACTION_MASK;
             long shiftAmount = FRACTION_BIT_WIDTH - DoubleHelper.DOUBLE_FRACTION_BIT_WIDTH;
             long fraction = doubleFraction << (shiftAmount);
-            long biasedExponentFraction = ((long) biasedExponent << EXPONENT_POSITION) | (doubleFraction >> (Long.SIZE - shiftAmount)); 
+            long biasedExponentFraction = ((long) biasedExponent << EXPONENT_POSITION) | (doubleFraction >> (Long.SIZE - shiftAmount));
             return LLVM128BitFloat.fromRawValues(sign, biasedExponentFraction, fraction);
         }
     }
@@ -570,5 +583,4 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
     public static FP128Node createUnary(String name, LLVMExpressionNode x) {
         return LLVM128BitFloatUnaryNativeCallNodeGen.create(name, x);
     }
-
 }

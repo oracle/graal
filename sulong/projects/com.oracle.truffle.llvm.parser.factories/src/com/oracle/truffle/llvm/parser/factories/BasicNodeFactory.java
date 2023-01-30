@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.config.CommonLanguageOptions;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -229,6 +230,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMArrayLiteralNode
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMI8ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.literal.LLVMStructArrayLiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVM128BitFloatLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVM80BitFloatLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNodeGen;
@@ -808,7 +810,8 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMDoubleLoadNodeGen.create(targetAddress);
                 case X86_FP80:
                     return LLVM80BitFloatLoadNodeGen.create(targetAddress);
-                // TODO: FP128
+                case F128:
+                    return LLVM128BitFloatLoadNodeGen.create(targetAddress);
                 default:
                     throw new AssertionError(type);
             }
@@ -1463,6 +1466,23 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.cos.f80":
                     String[] split = intrinsicName.split("\\.");
                     return LLVM80BitFloat.createUnary(split[1], args[1]);
+                case "llvm.pow.f128":
+                case "llvm.powi.f128":
+                case "llvm.powi.f128.i32":
+                    return LLVM128BitFloat.createPowNode(args[1], args[2]);
+                case "llvm.sqrt.f128":
+                case "llvm.log.f128":
+                case "llvm.log2.f128":
+                case "llvm.log10.f128":
+                case "llvm.rint.f128":
+                case "llvm.ceil.f128":
+                case "llvm.floor.f128":
+                case "llvm.exp.f128":
+                case "llvm.exp2.f128":
+                case "llvm.sin.f128":
+                case "llvm.cos.f128":
+                    split = intrinsicName.split("\\.");
+                    return LLVM128BitFloat.createUnary(split[1], args[1]);
                 case "llvm.round.f32":
                 case "llvm.round.f64":
                 case "llvm.round.f80":
