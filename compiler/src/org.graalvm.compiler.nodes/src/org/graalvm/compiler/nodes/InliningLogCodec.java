@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * callsites are reconstructed at the time of {@link InliningLogDecoder#registerNode node
  * registration}.
  *
- * If the graph does not track inlining, we decode the {@link InliningLog} as {@code null}.
+ * If the graph does not track inlining, we encode the {@link InliningLog} as {@code null}.
  *
  * <h2>Decoding an inlining log</h2>
  *

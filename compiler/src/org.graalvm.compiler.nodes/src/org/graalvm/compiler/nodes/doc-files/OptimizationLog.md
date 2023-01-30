@@ -309,9 +309,9 @@ compilation unit.
 `inliningTree` contains the root of the inlining tree, i.e, the name of the root method matches `methodName`.
 `invokes` are the invoked methods which were considered for inlining. The final result of the inlining decisions is
 reflected by the `inlined` property. Its value equals `true` if the method was inlined, otherwise it is `false`. The
-reasons for the decisions, in their original order, are listed in the `reason` property. The property `alive` is `true`
-iff the associated invoke node was not deleted at the end of the compilation. Finally, `callsiteBci` is the byte code
-index of the invoke node in the callsite.
+reasons for the decisions, in their original order, are listed in the `reason` property. The property `alive` is `false`
+iff the associated invoke node was deleted during the compilation (e.g. as a result of dead code elimination).
+Finally, `callsiteBci` is the byte code index of the invoke node in the callsite.
 
 The `indirect` property is `true` iff the call is known to be indirect, i.e., it is an invoke through an
 interface or a virtual method call. Indirect calls contain

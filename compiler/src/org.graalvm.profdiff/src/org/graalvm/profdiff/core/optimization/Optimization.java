@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -189,13 +189,13 @@ public class Optimization extends OptimizationTreeNode {
      * An example of the output in the long form is:
      *
      * <pre>
-     * DeadCodeElimination NodeRemoval at bci {b(): 53, a(): 13} with {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
+     * Canonicalizer CanonicalReplacement at bci {b(): 53, a(): 13} with {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
      * </pre>
      *
      * The short form prints a bci relative to an enclosing method.
      *
      * <pre>
-     * DeadCodeElimination NodeRemoval at bci 53 with {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
+     * Canonicalizer CanonicalReplacement at bci 53 with {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
      * </pre>
      *
      * If {@code enclosingMethod} is {@code null}, the method prints the bci of the innermost

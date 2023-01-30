@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -531,17 +531,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     public InliningLog getInliningLog() {
         return inliningLog;
-    }
-
-    /**
-     * Sets the inlining log associated with this graph. The new instance should be {@code null} iff
-     * it is expected to be {@code null} according to the {@link #getOptions() options}.
-     *
-     * @param newInliningLog the new inlining log instance
-     */
-    public void setInliningLog(InliningLog newInliningLog) {
-        assert (inliningLog == null) == (newInliningLog == null) : "the new inlining log must be null iff the previous is null";
-        inliningLog = newInliningLog;
     }
 
     /**
@@ -1221,5 +1210,16 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public void setOptimizationLog(OptimizationLog newOptimizationLog) {
         assert newOptimizationLog != null : "the optimization log must not be null";
         optimizationLog = newOptimizationLog;
+    }
+
+    /**
+     * Sets the inlining log associated with this graph. The new instance should be {@code null} iff
+     * it is expected to be {@code null} according to the {@link #getOptions() options}.
+     *
+     * @param newInliningLog the new inlining log instance
+     */
+    public void setInliningLog(InliningLog newInliningLog) {
+        assert (inliningLog == null) == (newInliningLog == null) : "the new inlining log must be null iff the previous is null";
+        inliningLog = newInliningLog;
     }
 }

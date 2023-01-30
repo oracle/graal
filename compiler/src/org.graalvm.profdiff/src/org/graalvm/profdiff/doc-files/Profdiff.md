@@ -35,10 +35,8 @@ mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraa
   -Dgraal.OptimizationLogPath=$PWD/scrabble_log
 ```
 
-It is not necessary to specify `-Dgraal.TrackNodeSourcePositions=true`, because it is inserted implicitly by
-the `mx benchmark` infrastructure. The dump path is explicitly specified as an absolute path to avoid any surprises.
-
-Use the tool to display the logs in the `scrabble_log` directory:
+The dump path is explicitly specified as an absolute path to avoid any surprises. Use the tool to display the logs in
+the `scrabble_log` directory:
 
 ```sh
 mx profdiff report scrabble_log

@@ -79,7 +79,7 @@ public class AOTAOTCommand implements Command {
         explanationWriter.explain();
 
         writer.writeln();
-        Experiment jit = ExperimentParser.parseOrExit(ExperimentId.ZERO, Experiment.CompilationKind.JIT, proftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
+        Experiment jit = ExperimentParser.parseOrExit(ExperimentId.AUXILIARY, Experiment.CompilationKind.JIT, proftoolArgument.getValue(), jitOptimizationLogArgument.getValue(), writer);
         writer.getOptionValues().getHotCompilationUnitPolicy().markHotCompilationUnits(jit);
         jit.writeExperimentSummary(writer);
 

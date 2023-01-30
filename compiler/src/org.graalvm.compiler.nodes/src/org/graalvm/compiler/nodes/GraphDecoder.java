@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -143,7 +143,7 @@ public class GraphDecoder {
 
         /**
          * The stateful decoder for the {@link #inliningLog}, which is needed to map order IDs back
-         * to decoded graph nodes. The decoder also responsible for tracking new callsites in the
+         * to decoded graph nodes. The decoder is also responsible for tracking new callsites in the
          * inlining log. {@code null} if the inlining log is not being decoded.
          */
         public CompanionObjectCodec.Decoder<InliningLog> inliningLogDecoder;

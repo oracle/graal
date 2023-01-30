@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -363,7 +363,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return false;
     }
 
-    protected static boolean shouldDumpAfterAtBasicLevel() {
+    protected boolean shouldDumpAfterAtBasicLevel() {
         return false;
     }
 
@@ -406,10 +406,10 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope(getName(), this);
-             CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
-             DebugCloseable l = graph.getOptimizationLog().enterPhase(getName());
-             DebugCloseable a = timer.start(debug);
-             DebugCloseable c = memUseTracker.start(debug)) {
+                        CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
+                        DebugCloseable l = graph.getOptimizationLog().enterPhase(getName());
+                        DebugCloseable a = timer.start(debug);
+                        DebugCloseable c = memUseTracker.start(debug)) {
 
             int sizeBefore = 0;
             int edgesBefore = graph.getEdgeModificationCount();

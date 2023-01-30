@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Encodes and decodes an object bound with a {@link StructuredGraph} (a companion object).
+ * Encodes and decodes an object bound to a {@link StructuredGraph} (a companion object).
  *
  * A companion object is a non-trivial field of the {@link StructuredGraph}. It may point to graph
  * nodes, which require special handling during encoding/decoding. An example of a companion object
@@ -39,16 +39,15 @@ import java.util.function.Function;
  *
  * The expected order of operations to encode a graph is the following:
  * <ol>
- * <li>{@link #prepare} is called,</li>
+ * <li>each companion object's {@link #prepare} is called,</li>
  * <li>the {@link StructuredGraph} is encoded,</li>
- * <li>{@link #encode} is called,</li>
- * <li>optionally, the encoding is {@link #verify verified}.</li>
+ * <li>each companion object's {@link #encode} is called,</li>
+ * <li>optionally, each companion object's encoding is {@link #verify verified}.</li>
  * </ol>
  *
  * In the {@link #prepare} phase, an instance of the encoded representation is created and added to
- * the list of encoded objects. The instance is initially empty and will get filled later. After the
- * graph is encoded, {@link #encode} fills the instance with the encoded representation. At this
- * point, graph nodes can be mapped to order IDs.
+ * the list of encoded objects. After the graph is encoded, {@link #encode} fills the instance with
+ * the encoded representation. At this point, graph nodes can be mapped to order IDs.
  *
  * The expected order of operations to decode a graph is:
  * <ol>
