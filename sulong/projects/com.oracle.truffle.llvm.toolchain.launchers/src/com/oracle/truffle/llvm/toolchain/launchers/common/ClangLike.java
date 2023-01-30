@@ -60,7 +60,9 @@ public class ClangLike extends ClangLikeBase {
         // Add libc++ unconditionally as C++ might be compiled via clang [GR-23036]
         sulongArgs.add("-stdlib=libc++");
         // Suppress warning because of libc++
-        sulongArgs.add("-Wno-unused-command-line-argument");
+        if (tool != Tool.Flang) {
+            sulongArgs.add("-Wno-unused-command-line-argument");
+        }
         if (tool != Tool.ClangCL) {
             // clang-cl does not support any of these when using CMakeTestCCompiler.cmake
             // set CMAKE_C_FLAGS or CMAKE_CXX_FLAGS instead
