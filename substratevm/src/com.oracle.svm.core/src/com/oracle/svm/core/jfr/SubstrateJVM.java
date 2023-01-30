@@ -570,6 +570,13 @@ public class SubstrateJVM {
     }
 
     /**
+     * See {@link JVM#logEvent}.
+     */
+    public void logEvent(int level, String[] lines, boolean system) {
+        jfrLogging.logEvent(level, lines, system);
+    }
+
+    /**
      * See {@link JVM#subscribeLogLevel}.
      */
     public void subscribeLogLevel(@SuppressWarnings("unused") LogTag lt, @SuppressWarnings("unused") int tagSetId) {
