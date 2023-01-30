@@ -56,7 +56,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.strings.CodePointSetParameter;
 import com.oracle.truffle.api.strings.JavaStringUtils;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.test.Encodings;
@@ -200,13 +199,12 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
                 if (!isUTF(encoding) && ranges[ranges.length - 1] > 0x7f) {
                     continue;
                 }
-                CodePointSetParameter codePointSet = CodePointSetParameter.fromRanges(ranges, encoding);
                 for (int i = 0; i < strings.length; i++) {
                     int expected = indexOfRanges(codepoints[i], ranges, byteIndices[i]);
-                    int actual = node.execute(strings[i], 0, strings[i].byteLength(encoding), codePointSet);
+                    int actual = node.execute(strings[i], 0, strings[i].byteLength(encoding), ranges, encoding);
                     checkEqual(expected, actual);
                     if (encoding == UTF_16) {
-                        checkEqual(expected, nodeJavaString.execute(strings[i].toJavaStringUncached(), 0, strings[i].byteLength(encoding) >> 1, codePointSet) << 1);
+                        checkEqual(expected, nodeJavaString.execute(strings[i].toJavaStringUncached(), 0, strings[i].byteLength(encoding) >> 1, ranges) << 1);
                     }
                 }
             }
@@ -234,13 +232,13 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
 
     @Test
     public void testNull() throws Exception {
-        checkNullSE((s, e) -> node.execute(s, 0, 1, CodePointSetParameter.fromRanges(new int[]{0, 0}, e)));
-        expectNullPointerException(() -> node.execute(S_UTF8, 0, 1, CodePointSetParameter.fromRanges(null, UTF_8)));
+        checkNullSE((s, e) -> node.execute(s, 0, 1, new int[]{0, 0}, e));
+        expectNullPointerException(() -> node.execute(S_UTF8, 0, 1, null, UTF_8));
     }
 
     @Test
     public void testOutOfBounds() throws Exception {
         checkOutOfBoundsFromTo(true, 0, Encodings.PRIMARY_ENCODINGS,
-                        (a, fromIndex, toIndex, encoding) -> node.execute(a, fromIndex, toIndex, CodePointSetParameter.fromRanges(new int[]{0, 0}, encoding)));
+                        (a, fromIndex, toIndex, encoding) -> node.execute(a, fromIndex, toIndex, new int[]{0, 0}, encoding));
     }
 }

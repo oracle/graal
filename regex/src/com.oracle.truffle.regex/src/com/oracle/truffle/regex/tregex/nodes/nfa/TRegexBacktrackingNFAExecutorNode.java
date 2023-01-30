@@ -460,7 +460,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             }
         }
         if (curState.isBackReference() && !canInlineBackReferenceIntoTransition(curState)) {
-            int backrefResult = matchBackReferenceGeneric(locals, curState);
+            int backrefResult = matchBackReferenceGeneric(locals, curState, codeRange);
             if (injectBranchProbability(EXIT_PROBABILITY, backrefResult < 0)) {
                 return IP_BACKTRACK;
             } else {
@@ -1057,7 +1057,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         return regionMatchesNode.execute(locals.getInput(), backrefStart, locals.getInput(), isForward() ? index : index - backrefLength, backrefLength, null, getEncoding());
     }
 
-    private int matchBackReferenceGeneric(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState backReference) {
+    private int matchBackReferenceGeneric(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState backReference, TruffleString.CodeRange codeRange) {
         assert backReference.isBackReference();
         assert !canInlineBackReferenceIntoTransition(backReference);
         int backrefStart = locals.getCaptureGroupStart(backReference.getBackRefNumber());
@@ -1074,9 +1074,9 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 locals.setNextIndex(saveNextIndex);
                 return -1;
             }
-            int codePointBR = inputReadAndDecode(locals, iBR);
+            int codePointBR = inputReadAndDecode(locals, iBR, codeRange);
             iBR = locals.getNextIndex();
-            int codePointI = inputReadAndDecode(locals, i);
+            int codePointI = inputReadAndDecode(locals, i, codeRange);
             i = locals.getNextIndex();
             if (injectBranchProbability(EXIT_PROBABILITY, !(backReference.isIgnoreCaseReference() ? equalsIgnoreCase(codePointBR, codePointI) : codePointBR == codePointI))) {
                 locals.setNextIndex(saveNextIndex);

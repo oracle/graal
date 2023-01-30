@@ -158,11 +158,11 @@ supr java.lang.Object
 hfds DEBUG_ALWAYS_CREATE_JAVA_STRING,DEBUG_NON_ZERO_OFFSET,DEBUG_STRICT_ENCODING_CHECKS,data,encoding,flags,hashCode,length,offset,stride
 hcls LazyConcat,LazyLong,NativePointer
 
-CLSS public final com.oracle.truffle.api.strings.CodePointSetParameter
+CLSS public final com.oracle.truffle.api.strings.IndexOfCodePointSet
 meth public boolean isFast(com.oracle.truffle.api.strings.TruffleString$CodeRange)
-meth public static com.oracle.truffle.api.strings.CodePointSetParameter fromRanges(int[],com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public static com.oracle.truffle.api.strings.IndexOfCodePointSet fromRanges(int[],com.oracle.truffle.api.strings.TruffleString$Encoding)
 supr java.lang.Object
-hfds ALL,ALL_WITHOUT_SURROGATES,ASCII_RANGE,BMP_WITHOUT_SURROGATES,EMPTY_RANGES,LATIN_RANGE,TABLE_SIZE,encoding,indexOfCalls
+hfds ALL,ALL_WITHOUT_SURROGATES,ASCII_RANGE,BMP_WITHOUT_SURROGATES,EMPTY_RANGES,LATIN_RANGE,TABLE_SIZE,encoding,indexOfNodes
 hcls AnyMatch,CompositeBitSet,IndexOfAnyRangeCall,IndexOfAnyValueCall,IndexOfBitSetCall,IndexOfCall,IndexOfRangesCall,IndexOfStringCall,IndexOfTableCall,NoMatch,OptimizedIndexOfCall,ScalarIndexOfCall
 
 CLSS public final com.oracle.truffle.api.strings.InternalByteArray
@@ -181,7 +181,7 @@ supr java.lang.Object
 
 CLSS public abstract static com.oracle.truffle.api.strings.JavaStringUtils$CharIndexOfCodePointSetNode
  outer com.oracle.truffle.api.strings.JavaStringUtils
-meth public abstract int execute(java.lang.String,int,int,com.oracle.truffle.api.strings.CodePointSetParameter)
+meth public abstract int execute(java.lang.String,int,int,com.oracle.truffle.api.strings.IndexOfCodePointSet)
 meth public static com.oracle.truffle.api.strings.JavaStringUtils$CharIndexOfCodePointSetNode create()
 meth public static com.oracle.truffle.api.strings.JavaStringUtils$CharIndexOfCodePointSetNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -416,7 +416,7 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfCodePointSetNode
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,int,com.oracle.truffle.api.strings.CodePointSetParameter)
+meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,int,com.oracle.truffle.api.strings.IndexOfCodePointSet)
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfCodePointSetNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfCodePointSetNode getUncached()
 supr com.oracle.truffle.api.nodes.Node

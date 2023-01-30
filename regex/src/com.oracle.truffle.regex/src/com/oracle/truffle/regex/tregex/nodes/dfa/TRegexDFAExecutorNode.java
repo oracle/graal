@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.strings.CodePointSetParameter;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.RegexSource;
@@ -73,11 +72,12 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     public static final int NO_MATCH = -2;
     private final TRegexDFAExecutorProperties props;
     private final int maxNumberOfNFAStates;
+    @CompilationFinal(dimensions = 2) private final int[][] indexOfParameters;
     @CompilationFinal(dimensions = 1) private final DFAAbstractStateNode[] states;
     @CompilationFinal(dimensions = 1) private final int[] cgResultOrder;
     private final TRegexDFAExecutorDebugRecorder debugRecorder;
 
-    @Child private InputIndexOfNode indexOfNode;
+    @Children private InputIndexOfNode[] indexOfNodes;
     @Child private InputIndexOfStringNode indexOfStringNode;
     @Child private TRegexDFAExecutorNode innerLiteralPrefixMatcher;
 
@@ -86,10 +86,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     TRegexDFAExecutorProperties props,
                     int numberOfCaptureGroups,
                     int maxNumberOfNFAStates,
+                    int[][] indexOfParameters,
                     DFAAbstractStateNode[] states,
                     TRegexDFAExecutorDebugRecorder debugRecorder,
                     TRegexDFAExecutorNode innerLiteralPrefixMatcher) {
-        this(source, props, numberOfCaptureGroups, calcNumberOfTransitions(states), maxNumberOfNFAStates, states,
+        this(source, props, numberOfCaptureGroups, calcNumberOfTransitions(states), maxNumberOfNFAStates, indexOfParameters, states,
                         props.isGenericCG() && maxNumberOfNFAStates > 1 ? initResultOrder(maxNumberOfNFAStates, numberOfCaptureGroups, props) : null, debugRecorder,
                         innerLiteralPrefixMatcher);
     }
@@ -100,6 +101,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     int numberOfCaptureGroups,
                     int numberOfTransitions,
                     int maxNumberOfNFAStates,
+                    int[][] indexOfParameters,
                     DFAAbstractStateNode[] states,
                     int[] cgResultOrder,
                     TRegexDFAExecutorDebugRecorder debugRecorder,
@@ -107,6 +109,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         super(source, numberOfCaptureGroups, numberOfTransitions);
         this.props = props;
         this.maxNumberOfNFAStates = maxNumberOfNFAStates;
+        this.indexOfParameters = indexOfParameters;
         this.states = states;
         this.cgResultOrder = cgResultOrder;
         this.debugRecorder = debugRecorder;
@@ -114,7 +117,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     private TRegexDFAExecutorNode(TRegexDFAExecutorNode copy, TRegexDFAExecutorNode innerLiteralPrefixMatcher) {
-        this(copy.getSource(), copy.props, copy.getNumberOfCaptureGroups(), copy.getNumberOfTransitions(), copy.maxNumberOfNFAStates, copy.states, copy.cgResultOrder, copy.debugRecorder,
+        this(copy.getSource(), copy.props, copy.getNumberOfCaptureGroups(), copy.getNumberOfTransitions(), copy.maxNumberOfNFAStates, copy.indexOfParameters, copy.states, copy.cgResultOrder,
+                        copy.debugRecorder,
                         innerLiteralPrefixMatcher);
     }
 
@@ -194,12 +198,16 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return debugRecorder;
     }
 
-    InputIndexOfNode getIndexOfNode() {
-        if (indexOfNode == null) {
+    InputIndexOfNode getIndexOfNode(int index) {
+        if (indexOfNodes == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            indexOfNode = insert(InputIndexOfNode.create());
+            InputIndexOfNode[] nodes = new InputIndexOfNode[indexOfParameters.length];
+            for (int i = 0; i < nodes.length; i++) {
+                nodes[i] = InputIndexOfNode.create();
+            }
+            indexOfNodes = insert(nodes);
         }
-        return indexOfNode;
+        return indexOfNodes[index];
     }
 
     InputIndexOfStringNode getIndexOfStringNode() {
@@ -361,9 +369,13 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     inputAdvance(locals);
                     state.beforeFindSuccessor(locals, this);
                     if (injectBranchProbability(CONTINUE_PROBABILITY, isForward() && state.canDoIndexOf(codeRange) && inputHasNext(locals))) {
-                        CodePointSetParameter indexOfCallParam = state.indexOfCallParam;
-                        CompilerAsserts.partialEvaluationConstant(indexOfCallParam);
-                        int indexOfResult = getIndexOfNode().execute(locals.getInput(), locals.getIndex(), getMaxIndex(locals), indexOfCallParam, getEncoding());
+                        int indexOfNodeId = state.getIndexOfNodeId();
+                        InputIndexOfNode indexOfNode = getIndexOfNode(indexOfNodeId);
+                        int[] indexOfParameter = indexOfParameters[indexOfNodeId];
+                        CompilerAsserts.partialEvaluationConstant(indexOfNodeId);
+                        CompilerAsserts.partialEvaluationConstant(indexOfNode);
+                        CompilerAsserts.partialEvaluationConstant(indexOfParameter);
+                        int indexOfResult = indexOfNode.execute(locals.getInput(), locals.getIndex(), getMaxIndex(locals), indexOfParameter, getEncoding());
                         int postLoopIndex = indexOfResult < 0 ? getMaxIndex(locals) : indexOfResult;
                         state.afterIndexOf(locals, this, locals.getIndex(), postLoopIndex, codeRange);
                         assert locals.getIndex() == postLoopIndex;

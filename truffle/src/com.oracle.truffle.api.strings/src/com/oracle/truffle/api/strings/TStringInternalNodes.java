@@ -76,7 +76,9 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -943,36 +945,50 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class IndexOfCodePointSetNode extends AbstractInternalNode {
+    @ImportStatic({TStringGuards.class, Encoding.class})
+    abstract static class IndexOfCodePointSetNode extends Node {
 
-        static final int POSSIBLE_CODE_RANGE_VALUES = 5;
         static final int POSSIBLE_STRIDE_VALUES = 3;
-        static final int POSSIBLE_CODE_RANGE_STRIDE_VALUES = POSSIBLE_CODE_RANGE_VALUES * POSSIBLE_STRIDE_VALUES;
 
-        abstract int execute(Node node, Object arrayA, int offsetA, int lengthA, int strideA, int fromIndex, int toIndex, int codeRange, CodePointSetParameter codePointSet);
+        @Children IndexOfCodePointSet.IndexOfNode[] indexOfNodes;
+        final Encoding encoding;
 
-        @Specialization(guards = {"!isUTF16Or32(cps.encoding)", "cps.indexOfCalls.length == 1"})
-        int stride0Single(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int fromIndex, int toIndex, int codeRange, CodePointSetParameter cps) {
-            return cps.indexOfCalls[0].execute(this, arrayA, offsetA, lengthA, 0, codeRange, fromIndex, toIndex, cps.encoding);
+        IndexOfCodePointSetNode(IndexOfCodePointSet.IndexOfNode[] indexOfNodes, Encoding encoding) {
+            this.indexOfNodes = insert(indexOfNodes);
+            this.encoding = encoding;
         }
 
-        @Specialization(guards = {"!isUTF16Or32(cps.encoding)", "cps.indexOfCalls.length > 1", "codeRange == cachedCodeRange"}, limit = "POSSIBLE_CODE_RANGE_VALUES")
-        int stride0(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int fromIndex, int toIndex, @SuppressWarnings("unused") int codeRange, CodePointSetParameter cps,
-                        @Cached(value = "codeRange", allowUncached = true) int cachedCodeRange) {
-            return cps.indexOfCalls[cachedCodeRange].execute(this, arrayA, offsetA, lengthA, 0, cachedCodeRange, fromIndex, toIndex, cps.encoding);
+        abstract int execute(Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex);
+
+        @Specialization(guards = "!isUTF16Or32(encoding)")
+        int stride0(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int codeRangeA, int fromIndex, int toIndex) {
+            return doIndexOf(arrayA, offsetA, lengthA, 0, codeRangeA, fromIndex, toIndex);
         }
 
-        @Specialization(guards = {"isUTF16Or32(cps.encoding)", "cps.indexOfCalls.length == 1", "strideA == cachedStride"}, limit = "POSSIBLE_STRIDE_VALUES")
-        int withCompactionSingle(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int fromIndex, int toIndex, int codeRange, CodePointSetParameter cps,
+        @Specialization(guards = {"isUTF16Or32(encoding)", "strideA == cachedStride"}, limit = "POSSIBLE_STRIDE_VALUES")
+        int dynamicStride(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int codeRangeA, int fromIndex, int toIndex,
                         @Cached(value = "strideA", allowUncached = true) int cachedStride) {
-            return cps.indexOfCalls[0].execute(this, arrayA, offsetA, lengthA, cachedStride, codeRange, fromIndex, toIndex, cps.encoding);
+            return doIndexOf(arrayA, offsetA, lengthA, cachedStride, codeRangeA, fromIndex, toIndex);
         }
 
-        @Specialization(guards = {"isUTF16Or32(cps.encoding)", "cps.indexOfCalls.length > 1", "codeRange == cachedCodeRange", "strideA == cachedStride"}, limit = "POSSIBLE_CODE_RANGE_STRIDE_VALUES")
-        int utf16(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int fromIndex, int toIndex, @SuppressWarnings("unused") int codeRange, CodePointSetParameter cps,
-                        @Cached("codeRange") int cachedCodeRange,
-                        @Cached(value = "strideA", allowUncached = true) int cachedStride) {
-            return cps.indexOfCalls[cachedCodeRange].execute(this, arrayA, offsetA, lengthA, cachedStride, cachedCodeRange, fromIndex, toIndex, cps.encoding);
+        @ExplodeLoop
+        private int doIndexOf(Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex) {
+            CompilerAsserts.partialEvaluationConstant(indexOfNodes);
+            // generate an if-else cascade checking increasing code range values
+            for (int i = 0; i < indexOfNodes.length - 1; i++) {
+                CompilerAsserts.partialEvaluationConstant(i);
+                IndexOfCodePointSet.IndexOfNode node = indexOfNodes[i];
+                CompilerAsserts.partialEvaluationConstant(node);
+                if (codeRangeA <= Byte.toUnsignedInt(node.maxCodeRange)) {
+                    return node.execute(this, arrayA, offsetA, lengthA, strideA, codeRangeA, fromIndex, toIndex, encoding);
+                }
+            }
+            // last node is always the else-branch
+            return indexOfNodes[indexOfNodes.length - 1].execute(this, arrayA, offsetA, lengthA, strideA, codeRangeA, fromIndex, toIndex, encoding);
+        }
+
+        static IndexOfCodePointSetNode create(int[] ranges, Encoding encoding) {
+            return IndexOfCodePointSet.fromRanges(ranges, encoding);
         }
     }
 

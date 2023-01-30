@@ -40,17 +40,15 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
-
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.strings.CodePointSetParameter;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
@@ -65,22 +63,24 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     private final byte flags;
     private final short loopTransitionIndex;
-    protected final CodePointSetParameter indexOfCallParam;
+    private final short indexOfNodeId;
+    private final byte indexOfIsFast;
     private final Matchers matchers;
     private final DFASimpleCG simpleCG;
 
     DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
-        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopTransitionIndex, nodeSplitCopy.indexOfCallParam,
-                        Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length),
+        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopTransitionIndex, nodeSplitCopy.indexOfNodeId,
+                        nodeSplitCopy.indexOfIsFast, Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length),
                         nodeSplitCopy.getMatchers(), nodeSplitCopy.simpleCG);
     }
 
-    public DFAStateNode(short id, byte flags, short loopTransitionIndex, CodePointSetParameter indexOfCallParam, short[] successors, Matchers matchers, DFASimpleCG simpleCG) {
+    public DFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers, DFASimpleCG simpleCG) {
         super(id, successors);
         assert id > 0;
         this.flags = flags;
         this.loopTransitionIndex = loopTransitionIndex;
-        this.indexOfCallParam = indexOfCallParam;
+        this.indexOfNodeId = indexOfNodeId;
+        this.indexOfIsFast = indexOfIsFast;
         this.matchers = matchers;
         this.simpleCG = simpleCG;
     }
@@ -156,13 +156,21 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return (AllTransitionsInOneTreeMatcher) matchers;
     }
 
+    public boolean hasIndexOfNodeId() {
+        return indexOfNodeId >= 0;
+    }
+
+    public int getIndexOfNodeId() {
+        return indexOfNodeId;
+    }
+
     /**
-     * Returns {@code true} if this state has a {@link CodePointSetParameter}.
+     * Returns {@code true} if this state has a {@link InputIndexOfNode}.
      */
     boolean canDoIndexOf(TruffleString.CodeRange codeRange) {
         CompilerAsserts.partialEvaluationConstant(codeRange);
         CompilerAsserts.partialEvaluationConstant(codeRange.ordinal());
-        return hasLoopToSelf() && indexOfCallParam != null && indexOfCallParam.isFast(codeRange);
+        return hasLoopToSelf() && hasIndexOfNodeId() && (indexOfIsFast & (1 << codeRange.ordinal())) != 0;
     }
 
     /**
@@ -175,8 +183,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
      * Gets called after every call to
-     * {@link InputIndexOfNode#execute(Object, int, int, CodePointSetParameter, Encoding)}, which we
-     * call an {@code indexOf}-operation.
+     * {@link InputIndexOfNode#execute(Object, int, int, int[], Encodings.Encoding)}, which we call
+     * an {@code indexOf}-operation.
      *
      * @param preLoopIndex the starting index of the {@code indexOf}-operation.
      * @param postLoopIndex the index found by the {@code indexOf}-operation. If the {@code indexOf}

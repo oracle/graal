@@ -45,17 +45,24 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.AnyMatchNodeGen;
+import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfAnyRangeNodeGen;
+import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfAnyValueNodeGen;
+import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfBitSetNodeGen;
+import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfRangesNodeGen;
+import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfStringNodeGen;
+import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.IndexOfTableNodeGen;
+import com.oracle.truffle.api.strings.IndexOfCodePointSetFactory.NoMatchNodeGen;
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
-/**
- * Self-optimizing parameter object for {@link TruffleString.ByteIndexOfCodePointSetNode} and
- * {@link JavaStringUtils.CharIndexOfCodePointSetNode}.
- *
- * @since 23.0
- */
-public final class CodePointSetParameter {
+final class IndexOfCodePointSet {
 
     private static final int[] EMPTY_RANGES = {};
     private static final int[] ASCII_RANGE = {0, 0x7f};
@@ -65,64 +72,13 @@ public final class CodePointSetParameter {
     private static final int[] ALL = {0x0000, 0x10ffff};
     private static final int TABLE_SIZE = 16;
 
-    @CompilationFinal(dimensions = 1) final IndexOfCall[] indexOfCalls;
-    final TruffleString.Encoding encoding;
-
-    private CodePointSetParameter(IndexOfCall[] indexOfCalls, TruffleString.Encoding encoding) {
-        this.indexOfCalls = indexOfCalls;
-        this.encoding = encoding;
-        assert containsIndexOfCallForAllApplicableCodeRanges();
-    }
-
-    private boolean containsIndexOfCallForAllApplicableCodeRanges() {
-        assert getIndexOfCall(TruffleString.CodeRange.ASCII) != null;
-        if (encoding == TruffleString.Encoding.UTF_16 || encoding == TruffleString.Encoding.UTF_32 || encoding == TruffleString.Encoding.ISO_8859_1) {
-            assert getIndexOfCall(TruffleString.CodeRange.LATIN_1) != null;
-        }
-        if (encoding == TruffleString.Encoding.UTF_16 || encoding == TruffleString.Encoding.UTF_32) {
-            assert getIndexOfCall(TruffleString.CodeRange.BMP) != null;
-        }
-        assert getIndexOfCall(TruffleString.CodeRange.VALID) != null;
-        assert getIndexOfCall(TruffleString.CodeRange.BROKEN) != null;
-        return true;
-    }
-
-    TruffleString.Encoding getEncoding() {
-        return encoding;
-    }
-
-    /**
-     * Returns {@code true} if the search for this codepoint set may be accelerated with SIMD
-     * instructions on strings with the given code range.
-     *
-     * @since 23.0
-     */
-    public boolean isFast(TruffleString.CodeRange codeRange) {
-        IndexOfCall indexOfCall = getIndexOfCall(codeRange);
-        return indexOfCall != null && indexOfCall.isFast();
-    }
-
-    private IndexOfCall getIndexOfCall(TruffleString.CodeRange codeRange) {
-        return indexOfCalls[codeRange.ordinal()];
-    }
-
-    /**
-     * Creates a new {@link CodePointSetParameter} object from a given sorted list of codepoint
-     * ranges. This operation may be expensive, it is recommended to cache the result.
-     *
-     * @param ranges a sorted list of non-adjacent codepoint ranges. For every two consecutive array
-     *            elements, the first is interpreted as the range's inclusive lower bound, and the
-     *            second element is the range's inclusive upper bound. Example: an array
-     *            {@code [1, 4, 8, 10]} represents the inclusive ranges {@code [1-4]} and
-     *            {@code [8-10]}.
-     * @param encoding The encoding of strings the codepoint set will be used with. The
-     *            {@link CodePointSetParameter} object is specialized to this encoding and cannot be
-     *            used with strings of other encodings.
-     * @return a new {@link CodePointSetParameter} object.
-     * @since 23.0
-     */
     @TruffleBoundary
-    public static CodePointSetParameter fromRanges(int[] ranges, TruffleString.Encoding encoding) {
+    static TStringInternalNodes.IndexOfCodePointSetNode fromRanges(int[] ranges, Encoding encoding) {
+        checkRangesArray(ranges, encoding);
+        return TStringInternalNodesFactory.IndexOfCodePointSetNodeGen.create(extractIndexOfNodes(ranges, encoding), encoding);
+    }
+
+    static void checkRangesArray(int[] ranges, Encoding encoding) {
         if ((ranges.length & 1) != 0) {
             throw new IllegalArgumentException("ranges must have an even number of elements");
         }
@@ -144,68 +100,76 @@ public final class CodePointSetParameter {
             }
             lastHi = hi;
         }
-        return new CodePointSetParameter(extractIndexOfCalls(ranges, encoding), encoding);
     }
 
-    private static IndexOfCall[] extractIndexOfCalls(int[] ranges, TruffleString.Encoding encoding) {
-        if (encoding == TruffleString.Encoding.US_ASCII || encoding == TruffleString.Encoding.ISO_8859_1 || encoding == TruffleString.Encoding.BYTES || getMax(ranges) <= 0x7f) {
-            return extractIndexOfCalls1ByteEncoding(ranges);
-        } else if (encoding == TruffleString.Encoding.UTF_8) {
+    static boolean canOptimize(int[] ranges, TruffleString.CodeRange codeRange, Encoding encoding) {
+        IndexOfNode[] indexOfNodes = extractIndexOfNodes(ranges, encoding);
+        for (int i = 0; i < indexOfNodes.length - 1; i++) {
+            IndexOfNode node = indexOfNodes[i];
+            if (node.maxCodeRange >= codeRange.ordinal()) {
+                return node.isFast();
+            }
+        }
+        return indexOfNodes[indexOfNodes.length - 1].isFast();
+    }
+
+    private static IndexOfNode[] extractIndexOfNodes(int[] ranges, Encoding encoding) {
+        if (encoding == Encoding.US_ASCII || encoding == Encoding.ISO_8859_1 || encoding == Encoding.BYTES || getMax(ranges) <= 0x7f) {
+            return extractIndexOfNodes1ByteEncoding(ranges);
+        } else if (encoding == Encoding.UTF_8) {
             if (isSingleValue(ranges)) {
                 int codepoint = getMin(ranges);
                 byte[] encoded = Encodings.utf8Encode(codepoint);
                 int codeRange = Encodings.isUTF16Surrogate(codepoint) ? TSCodeRange.getBrokenMultiByte() : TSCodeRange.getValidMultiByte();
                 int codepointLength = Encodings.isUTF16Surrogate(codepoint) ? encoded.length : 1;
-                return createIndexOfCallArray(new IndexOfStringCall(TruffleString.createFromByteArray(encoded, encoded.length, 0, TruffleString.Encoding.UTF_8, codepointLength, codeRange)));
+                return new IndexOfNode[]{IndexOfStringNodeGen.create(TSCodeRange.getBrokenMultiByte(),
+                                TruffleString.createFromByteArray(encoded, encoded.length, 0, Encoding.UTF_8, codepointLength, codeRange))};
             } else {
-                IndexOfCall[] ret = createIndexOfCallArray(new IndexOfRangesCall(ranges));
-                ret[TSCodeRange.get7Bit()] = extractIndexOfCallFixedWidth(ranges, ASCII_RANGE);
-                return ret;
+                IndexOfNode ascii = extractIndexOfNodeFixedWidth(TSCodeRange.get7Bit(), ranges, ASCII_RANGE);
+                IndexOfRangesNode nonAscii = IndexOfRangesNodeGen.create(TSCodeRange.getBrokenMultiByte(), ranges);
+                return ascii.codeEquals(nonAscii) ? new IndexOfNode[]{nonAscii} : new IndexOfNode[]{ascii, nonAscii};
             }
-        } else if (encoding == TruffleString.Encoding.UTF_16) {
-            IndexOfCall[] ret = createIndexOfCallArray();
-            IndexOfCall bmpCall = extractIndexOfCallFixedWidth(ranges, BMP_WITHOUT_SURROGATES);
-            ret[TSCodeRange.get7Bit()] = extractIndexOfCallFixedWidth(ranges, ASCII_RANGE);
-            ret[TSCodeRange.get8Bit()] = extractIndexOfCallFixedWidth(ranges, LATIN_RANGE);
-            ret[TSCodeRange.get16Bit()] = bmpCall;
-            if (Arrays.equals(intersect(ranges, BMP_WITHOUT_SURROGATES), ranges)) {
-                ret[TSCodeRange.getValidMultiByte()] = bmpCall;
-                ret[TSCodeRange.getBrokenMultiByte()] = bmpCall;
-            } else if (isSingleValue(ranges)) {
-                int codepoint = getMin(ranges);
-                final IndexOfCall astralCall;
-                if (Encodings.isUTF16Surrogate(codepoint)) {
-                    astralCall = new IndexOfAnyValueCall(new int[]{codepoint});
-                } else {
-                    assert codepoint > 0xffff;
-                    byte[] encoded = Encodings.utf16Encode(codepoint);
-                    astralCall = new IndexOfStringCall(TruffleString.createFromByteArray(encoded, encoded.length >> 1, 1, TruffleString.Encoding.UTF_16, 1, TSCodeRange.getValidMultiByte()));
+        } else {
+            ArrayList<IndexOfNode> nodes = new ArrayList<>();
+            nodes.add(extractIndexOfNodeFixedWidth(TSCodeRange.get7Bit(), ranges, ASCII_RANGE));
+            addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.get8Bit(), ranges, LATIN_RANGE));
+            addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.get16Bit(), ranges, BMP_WITHOUT_SURROGATES));
+            if (encoding == Encoding.UTF_16) {
+                if (!Arrays.equals(intersect(ranges, BMP_WITHOUT_SURROGATES), ranges)) {
+                    if (isSingleValue(ranges)) {
+                        int codepoint = getMin(ranges);
+                        if (Encodings.isUTF16Surrogate(codepoint)) {
+                            addOrReplaceLast(nodes, IndexOfAnyValueNodeGen.create(TSCodeRange.getBrokenMultiByte(), new int[]{codepoint}));
+                        } else {
+                            assert codepoint > 0xffff;
+                            byte[] encoded = Encodings.utf16Encode(codepoint);
+                            addOrReplaceLast(nodes, IndexOfStringNodeGen.create(TSCodeRange.getBrokenMultiByte(),
+                                            TruffleString.createFromByteArray(encoded, encoded.length >> 1, 1, Encoding.UTF_16, 1, TSCodeRange.getValidMultiByte())));
+                        }
+                    } else {
+                        addOrReplaceLast(nodes, IndexOfRangesNodeGen.create(TSCodeRange.getBrokenMultiByte(), ranges));
+                    }
                 }
-                ret[TSCodeRange.getValidMultiByte()] = astralCall;
-                ret[TSCodeRange.getBrokenMultiByte()] = astralCall;
-            } else {
-                IndexOfRangesCall astralCall = new IndexOfRangesCall(ranges);
-                ret[TSCodeRange.getValidMultiByte()] = astralCall;
-                ret[TSCodeRange.getBrokenMultiByte()] = astralCall;
-            }
-            // for #isFast(TruffleString.CodeRange)
-            ret[TSCodeRange.getValidFixedWidth()] = ret[TSCodeRange.getValidMultiByte()];
-            ret[TSCodeRange.getBrokenFixedWidth()] = ret[TSCodeRange.getBrokenMultiByte()];
-            return ret;
 
-        } else if (encoding == TruffleString.Encoding.UTF_32) {
-            IndexOfCall[] ret = createIndexOfCallArray();
-            ret[TSCodeRange.get7Bit()] = extractIndexOfCallFixedWidth(ranges, ASCII_RANGE);
-            ret[TSCodeRange.get8Bit()] = extractIndexOfCallFixedWidth(ranges, LATIN_RANGE);
-            ret[TSCodeRange.get16Bit()] = extractIndexOfCallFixedWidth(ranges, BMP_WITHOUT_SURROGATES);
-            ret[TSCodeRange.getValidFixedWidth()] = extractIndexOfCallFixedWidth(ranges, ALL_WITHOUT_SURROGATES);
-            ret[TSCodeRange.getBrokenFixedWidth()] = extractIndexOfCallFixedWidth(ranges, ALL);
-            return ret;
+            } else if (encoding == Encoding.UTF_32) {
+                addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.getValidFixedWidth(), ranges, ALL_WITHOUT_SURROGATES));
+                addOrReplaceLast(nodes, extractIndexOfNodeFixedWidth(TSCodeRange.getBrokenFixedWidth(), ranges, ALL));
+            } else {
+                throw new UnsupportedOperationException();
+            }
+            return nodes.toArray(IndexOfNode[]::new);
         }
-        throw new UnsupportedOperationException();
     }
 
-    private static int maxCodePoint(TruffleString.Encoding encoding) {
+    private static void addOrReplaceLast(ArrayList<IndexOfNode> nodes, IndexOfNode node) {
+        if (nodes.get(nodes.size() - 1).codeEquals(node)) {
+            assert nodes.get(nodes.size() - 1).maxCodeRange < node.maxCodeRange;
+            nodes.remove(nodes.size() - 1);
+        }
+        nodes.add(node);
+    }
+
+    private static int maxCodePoint(Encoding encoding) {
         switch (encoding) {
             case US_ASCII:
                 return 0x7f;
@@ -229,12 +193,10 @@ public final class CodePointSetParameter {
         }
     }
 
-    private static IndexOfCall[] extractIndexOfCalls1ByteEncoding(int[] ranges) {
-        IndexOfCall ascii = extractIndexOfCallFixedWidth(ranges, ASCII_RANGE);
-        IndexOfCall latin = extractIndexOfCallFixedWidth(ranges, LATIN_RANGE);
-        IndexOfCall[] ret = createIndexOfCallArray(latin);
-        ret[TSCodeRange.get7Bit()] = ascii;
-        return ret;
+    private static IndexOfNode[] extractIndexOfNodes1ByteEncoding(int[] ranges) {
+        IndexOfNode ascii = extractIndexOfNodeFixedWidth(TSCodeRange.get7Bit(), ranges, ASCII_RANGE);
+        IndexOfNode latin = extractIndexOfNodeFixedWidth(TSCodeRange.get8Bit(), ranges, LATIN_RANGE);
+        return ascii.codeEquals(latin) ? new IndexOfNode[]{latin} : new IndexOfNode[]{ascii, latin};
     }
 
     private static int[] intersect(int[] rangesA, int[] rangesB) {
@@ -306,28 +268,28 @@ public final class CodePointSetParameter {
         return intersection;
     }
 
-    private static IndexOfCall extractIndexOfCallFixedWidth(int[] ranges, int[] bounds) {
+    private static IndexOfNode extractIndexOfNodeFixedWidth(int maxCodeRange, int[] ranges, int[] bounds) {
         int[] intersection = intersect(ranges, bounds);
         if (intersection.length == 0) {
-            return NoMatch.INSTANCE;
+            return NoMatchNodeGen.create(maxCodeRange);
         }
         if (Arrays.equals(intersection, bounds)) {
-            return AnyMatch.INSTANCE;
+            return AnyMatchNodeGen.create(maxCodeRange);
         }
         int valueCount = valueCount(intersection);
         if (valueCount <= 4) {
-            return new IndexOfAnyValueCall(toValues(intersection, valueCount));
+            return IndexOfAnyValueNodeGen.create(maxCodeRange, toValues(intersection, valueCount));
         } else if (size(intersection) <= 2) {
-            return new IndexOfAnyRangeCall(intersection);
+            return IndexOfAnyRangeNodeGen.create(maxCodeRange, intersection);
         } else if (getMax(intersection) <= 0xff) {
             byte[] tables = generateTable(intersection);
             if (tables != null) {
-                return new IndexOfTableCall(tables);
+                return IndexOfTableNodeGen.create(maxCodeRange, tables);
             } else {
-                return IndexOfBitSetCall.fromRanges(intersection);
+                return IndexOfBitSetNode.fromRanges(maxCodeRange, intersection);
             }
         }
-        return new IndexOfRangesCall(intersection);
+        return IndexOfRangesNodeGen.create(maxCodeRange, intersection);
     }
 
     private static boolean isEmpty(int[] ranges) {
@@ -415,41 +377,67 @@ public final class CodePointSetParameter {
         return values;
     }
 
-    private static IndexOfCall[] createIndexOfCallArray(IndexOfCall fill) {
-        IndexOfCall[] ret = createIndexOfCallArray();
-        Arrays.fill(ret, fill);
-        return ret;
-    }
+    abstract static class IndexOfNode extends Node {
 
-    private static IndexOfCall[] createIndexOfCallArray() {
-        return new IndexOfCall[TSCodeRange.valueCount()];
-    }
+        final byte maxCodeRange;
 
-    abstract static class IndexOfCall {
-        abstract int execute(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.Encoding encoding);
+        IndexOfNode(int maxCodeRange) {
+            assert TSCodeRange.isCodeRange(maxCodeRange);
+            this.maxCodeRange = (byte) maxCodeRange;
+        }
+
+        abstract int execute(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding);
+
+        @Specialization
+        int doWithConditionProfile(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding,
+                        @Cached InlinedBranchProfile branchProfile) {
+            branchProfile.enter(this);
+            return runSearch(location, arrayA, offsetA, lengthA, strideA, codeRangeA, fromIndex, toIndex, encoding);
+        }
+
+        @SuppressWarnings("unused")
+        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        @SuppressWarnings("unused")
+        boolean codeEquals(IndexOfNode other) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
+        final byte getMaxCodeRange() {
+            return maxCodeRange;
+        }
 
         final boolean isFast() {
-            return this instanceof OptimizedIndexOfCall;
+            return this instanceof OptimizedIndexOfNode;
         }
     }
 
-    abstract static class OptimizedIndexOfCall extends IndexOfCall {
+    abstract static class OptimizedIndexOfNode extends IndexOfNode {
+        OptimizedIndexOfNode(int maxCodeRange) {
+            super(maxCodeRange);
+        }
     }
 
-    abstract static class ScalarIndexOfCall extends IndexOfCall {
+    abstract static class ScalarIndexOfNode extends IndexOfNode {
+
+        ScalarIndexOfNode(int maxCodeRange) {
+            super(maxCodeRange);
+        }
 
         @Override
-        int execute(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.Encoding encoding) {
+        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             CompilerAsserts.partialEvaluationConstant(this);
             CompilerAsserts.partialEvaluationConstant(encoding);
             int codepointLength = 1;
             // iterate codepoints
             for (int i = fromIndex; i < toIndex; i += codepointLength) {
                 final int codepoint;
-                if (encoding == TruffleString.Encoding.US_ASCII || encoding == TruffleString.Encoding.ISO_8859_1 || encoding == TruffleString.Encoding.BYTES || TSCodeRange.isFixedWidth(codeRangeA)) {
+                if (encoding == Encoding.US_ASCII || encoding == Encoding.ISO_8859_1 || encoding == Encoding.BYTES || TSCodeRange.isFixedWidth(codeRangeA)) {
                     // fixed-width encoding: just read the next array element
                     codepoint = TStringOps.readValue(arrayA, offsetA, lengthA, strideA, i);
-                } else if (encoding == TruffleString.Encoding.UTF_8) {
+                } else if (encoding == Encoding.UTF_8) {
                     // utf-8 decode
                     if (TSCodeRange.isValidMultiByte(codeRangeA)) {
                         int firstByte = TStringOps.readS0(arrayA, offsetA, lengthA, i);
@@ -461,7 +449,7 @@ public final class CodePointSetParameter {
                     }
                 } else {
                     // utf-16 decode
-                    assert encoding == TruffleString.Encoding.UTF_16;
+                    assert encoding == Encoding.UTF_16;
                     if (TSCodeRange.isValidMultiByte(codeRangeA)) {
                         codepointLength = Encodings.isUTF16HighSurrogate(TStringOps.readS1(arrayA, offsetA, lengthA, i)) ? 2 : 1;
                         codepoint = Encodings.utf16DecodeValid(arrayA, offsetA, lengthA, i);
@@ -478,106 +466,148 @@ public final class CodePointSetParameter {
             return -1;
         }
 
-        abstract boolean match(int codepoint);
+        @SuppressWarnings("unused")
+        boolean match(int codepoint) {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     /**
      * No match possible.
      */
-    static final class NoMatch extends OptimizedIndexOfCall {
+    abstract static class NoMatch extends OptimizedIndexOfNode {
 
-        static final NoMatch INSTANCE = new NoMatch();
+        NoMatch(int maxCodeRange) {
+            super(maxCodeRange);
+        }
 
         @Override
-        int execute(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.Encoding encoding) {
+        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             return -1;
+        }
+
+        @Override
+        boolean codeEquals(IndexOfNode other) {
+            return other instanceof NoMatch;
         }
     }
 
     /**
      * Will always match immediately.
      */
-    static final class AnyMatch extends OptimizedIndexOfCall {
+    abstract static class AnyMatch extends OptimizedIndexOfNode {
 
-        static final AnyMatch INSTANCE = new AnyMatch();
+        AnyMatch(int maxCodeRange) {
+            super(maxCodeRange);
+        }
 
         @Override
-        int execute(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.Encoding encoding) {
+        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             return fromIndex;
+        }
+
+        @Override
+        boolean codeEquals(IndexOfNode other) {
+            return other instanceof AnyMatch;
         }
     }
 
     /**
      * Match any of up to four values, without decoding.
      */
-    static final class IndexOfAnyValueCall extends OptimizedIndexOfCall {
+    abstract static class IndexOfAnyValueNode extends OptimizedIndexOfNode {
 
         @CompilationFinal(dimensions = 1) final int[] values;
 
-        IndexOfAnyValueCall(int[] values) {
+        IndexOfAnyValueNode(int maxCodeRange, int[] values) {
+            super(maxCodeRange);
             this.values = values;
         }
 
         @Override
-        int execute(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.Encoding encoding) {
+        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             return TStringOps.indexOfAnyInt(location, arrayA, offsetA, strideA, fromIndex, toIndex, values);
+        }
+
+        @Override
+        boolean codeEquals(IndexOfNode other) {
+            return other instanceof IndexOfAnyValueNode && Arrays.equals(values, ((IndexOfAnyValueNode) other).values);
         }
     }
 
     /**
      * Match any of up to two ranges, without decoding.
      */
-    static final class IndexOfAnyRangeCall extends OptimizedIndexOfCall {
+    abstract static class IndexOfAnyRangeNode extends OptimizedIndexOfNode {
 
-        @CompilationFinal(dimensions = 1) final int[] values;
+        @CompilationFinal(dimensions = 1) final int[] ranges;
 
-        IndexOfAnyRangeCall(int[] values) {
-            this.values = values;
+        IndexOfAnyRangeNode(int maxCodeRange, int[] ranges) {
+            super(maxCodeRange);
+            this.ranges = ranges;
         }
 
         @Override
-        int execute(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.Encoding encoding) {
-            return TStringOps.indexOfAnyIntRange(location, arrayA, offsetA, strideA, fromIndex, toIndex, values);
+        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+            return TStringOps.indexOfAnyIntRange(location, arrayA, offsetA, strideA, fromIndex, toIndex, ranges);
+        }
+
+        @Override
+        boolean codeEquals(IndexOfNode other) {
+            return other instanceof IndexOfAnyRangeNode && Arrays.equals(ranges, ((IndexOfAnyRangeNode) other).ranges);
         }
     }
 
     /**
      * Optimized search for bit set.
      */
-    static final class IndexOfTableCall extends OptimizedIndexOfCall {
+    abstract static class IndexOfTableNode extends OptimizedIndexOfNode {
 
         @CompilationFinal(dimensions = 1) final byte[] tables;
 
-        IndexOfTableCall(byte[] tables) {
+        IndexOfTableNode(int maxCodeRange, byte[] tables) {
+            super(maxCodeRange);
             assert tables.length == TABLE_SIZE * 2;
             this.tables = tables;
         }
 
         @Override
-        int execute(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.Encoding encoding) {
+        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             return TStringOps.indexOfTable(location, arrayA, offsetA, strideA, fromIndex, toIndex, tables);
-        }
-    }
-
-    static final class IndexOfStringCall extends OptimizedIndexOfCall {
-
-        final TruffleString b;
-
-        IndexOfStringCall(TruffleString string) {
-            this.b = string;
         }
 
         @Override
-        int execute(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, TruffleString.Encoding encoding) {
-            return TStringOps.indexOfStringWithOrMaskWithStride(location, arrayA, offsetA, lengthA, strideA, b.data(), b.offset(), b.length(), b.stride(), fromIndex, toIndex, null);
+        boolean codeEquals(IndexOfNode other) {
+            return other instanceof IndexOfTableNode && Arrays.equals(tables, ((IndexOfTableNode) other).tables);
         }
     }
 
-    static final class IndexOfBitSetCall extends ScalarIndexOfCall {
+    abstract static class IndexOfStringNode extends OptimizedIndexOfNode {
+
+        final TruffleString str;
+
+        IndexOfStringNode(int maxCodeRange, TruffleString string) {
+            super(maxCodeRange);
+            this.str = string;
+        }
+
+        @Override
+        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+            return TStringOps.indexOfStringWithOrMaskWithStride(location, arrayA, offsetA, lengthA, strideA, str.data(), str.offset(), str.length(), str.stride(), fromIndex, toIndex, null);
+        }
+
+        @Override
+        boolean codeEquals(IndexOfNode other) {
+            return other instanceof IndexOfStringNode && str.equals(((IndexOfStringNode) other).str);
+        }
+    }
+
+    abstract static class IndexOfBitSetNode extends ScalarIndexOfNode {
 
         @CompilationFinal(dimensions = 1) final long[] bitSet;
 
-        IndexOfBitSetCall(long[] bitSet) {
+        IndexOfBitSetNode(int maxCodeRange, long[] bitSet) {
+            super(maxCodeRange);
             this.bitSet = bitSet;
         }
 
@@ -587,13 +617,18 @@ public final class CodePointSetParameter {
             return wordIndex < bitSet.length && (bitSet[wordIndex] & 1L << (codepoint & 63)) != 0;
         }
 
-        static IndexOfBitSetCall fromRanges(int[] ranges) {
+        @Override
+        boolean codeEquals(IndexOfNode other) {
+            return other instanceof IndexOfBitSetNode && Arrays.equals(bitSet, ((IndexOfBitSetNode) other).bitSet);
+        }
+
+        static IndexOfBitSetNode fromRanges(int maxCodeRange, int[] ranges) {
             assert getMax(ranges) <= 0xff;
             long[] bitSet = new long[4];
             for (int i = 0; i < ranges.length; i += 2) {
                 setRange(bitSet, ranges[i], ranges[i + 1]);
             }
-            return new IndexOfBitSetCall(bitSet);
+            return IndexOfBitSetNodeGen.create(maxCodeRange, bitSet);
         }
 
         /**
@@ -617,16 +652,21 @@ public final class CodePointSetParameter {
         }
     }
 
-    static final class IndexOfRangesCall extends ScalarIndexOfCall {
+    abstract static class IndexOfRangesNode extends ScalarIndexOfNode {
 
         @CompilationFinal(dimensions = 1) final int[] ranges;
 
-        IndexOfRangesCall(int[] ranges) {
+        IndexOfRangesNode(int maxCodeRange, int[] ranges) {
+            super(maxCodeRange);
             this.ranges = ranges;
         }
 
         @Override
         boolean match(int c) {
+            return rangesContain(ranges, c);
+        }
+
+        static boolean rangesContain(int[] ranges, int c) {
             int fromIndex = 0;
             int toIndex = (ranges.length >>> 1) - 1;
             while (fromIndex <= toIndex) {
@@ -641,10 +681,15 @@ public final class CodePointSetParameter {
             }
             return false;
         }
+
+        @Override
+        boolean codeEquals(IndexOfNode other) {
+            return other instanceof IndexOfRangesNode && Arrays.equals(ranges, ((IndexOfRangesNode) other).ranges);
+        }
     }
 
     /**
-     * Converts a given list of ranges to a lookup table suitable for {@link IndexOfTableCall}.
+     * Converts a given list of ranges to a lookup table suitable for {@link IndexOfTableNode}.
      *
      * @return the lookup table, or {@code null} if no suitable lookup table could be generated.
      */

@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import com.oracle.truffle.api.strings.CodePointSetParameter;
-
 public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
 
     public static final byte NO_PRE_CALC_RESULT = (byte) 0xff;
@@ -49,9 +47,9 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
     private final byte preCalculatedUnAnchoredResult;
     private final byte preCalculatedAnchoredResult;
 
-    public TraceFinderDFAStateNode(short id, byte flags, short loopTransitionIndex, CodePointSetParameter indexOfCallParam, short[] successors, Matchers matchers,
+    public TraceFinderDFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers,
                     byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
-        super(id, flags, loopTransitionIndex, indexOfCallParam, successors, matchers, null);
+        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, null);
         this.preCalculatedUnAnchoredResult = preCalculatedUnAnchoredResult;
         this.preCalculatedAnchoredResult = initPreCalculatedAnchoredResult(preCalculatedUnAnchoredResult, preCalculatedAnchoredResult);
     }

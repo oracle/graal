@@ -40,12 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import com.oracle.truffle.api.strings.CodePointSetParameter;
-
 public class BackwardDFAStateNode extends DFAStateNode {
 
-    public BackwardDFAStateNode(short id, byte flags, short loopTransitionIndex, CodePointSetParameter indexOfCallParam, short[] successors, Matchers matchers, DFASimpleCG simpleCG) {
-        super(id, flags, loopTransitionIndex, indexOfCallParam, successors, matchers, simpleCG);
+    public BackwardDFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, Matchers matchers, DFASimpleCG simpleCG) {
+        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, simpleCG);
     }
 
     protected BackwardDFAStateNode(BackwardDFAStateNode copy, short copyID) {

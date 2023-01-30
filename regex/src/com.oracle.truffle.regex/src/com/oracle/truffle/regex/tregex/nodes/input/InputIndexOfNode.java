@@ -40,31 +40,33 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.strings.CodePointSetParameter;
 import com.oracle.truffle.api.strings.JavaStringUtils;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public abstract class InputIndexOfNode extends Node {
 
+    public abstract int execute(Object input, int fromIndex, int maxIndex, int[] ranges, Encoding encoding);
+
+    @Specialization
+    public int doString(String input, int fromIndex, int maxIndex, int[] ranges, @SuppressWarnings("unused") Encoding encoding,
+                    @Cached JavaStringUtils.CharIndexOfCodePointSetNode indexOfNode) {
+        CompilerAsserts.partialEvaluationConstant(ranges);
+        return indexOfNode.execute(input, fromIndex, maxIndex, ranges);
+    }
+
+    @Specialization
+    public int doTString(TruffleString input, int fromIndex, int maxIndex, int[] ranges, Encoding encoding,
+                    @Cached TruffleString.ByteIndexOfCodePointSetNode indexOfNode) {
+        CompilerAsserts.partialEvaluationConstant(ranges);
+        return indexOfNode.execute(input, fromIndex << encoding.getStride(), maxIndex << encoding.getStride(), ranges, encoding.getTStringEncoding()) >> encoding.getStride();
+    }
+
     public static InputIndexOfNode create() {
         return InputIndexOfNodeGen.create();
-    }
-
-    public abstract int execute(Object input, int fromIndex, int maxIndex, CodePointSetParameter cps, Encoding encoding);
-
-    @Specialization
-    public int doString(String input, int fromIndex, int maxIndex, CodePointSetParameter cps, @SuppressWarnings("unused") Encoding encoding,
-                    @Cached JavaStringUtils.CharIndexOfCodePointSetNode indexOfNode) {
-        return indexOfNode.execute(input, fromIndex, maxIndex, cps);
-    }
-
-    @Specialization
-    public int doTString(TruffleString input, int fromIndex, int maxIndex, CodePointSetParameter cps, @SuppressWarnings("unused") Encoding encoding,
-                    @Cached TruffleString.ByteIndexOfCodePointSetNode indexOfNode) {
-        return indexOfNode.execute(input, fromIndex << encoding.getStride(), maxIndex << encoding.getStride(), cps) >> encoding.getStride();
     }
 }

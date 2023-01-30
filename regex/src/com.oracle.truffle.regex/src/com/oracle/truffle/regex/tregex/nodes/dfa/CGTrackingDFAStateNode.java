@@ -42,7 +42,6 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.strings.CodePointSetParameter;
 import com.oracle.truffle.api.strings.TruffleString;
 
 public class CGTrackingDFAStateNode extends DFAStateNode {
@@ -58,8 +57,8 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     public CGTrackingDFAStateNode(short id,
                     byte flags,
                     short loopTransitionIndex,
-                    CodePointSetParameter indexOfCallParam,
-                    short[] successors,
+                    short indexOfNodeId,
+                    byte indexOfIsFast, short[] successors,
                     Matchers matchers,
                     short[] lastTransitionIndex,
                     DFACaptureGroupLazyTransition[] lazyTransitions,
@@ -68,7 +67,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
                     DFACaptureGroupPartialTransition anchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition unAnchoredFinalStateTransition,
                     DFACaptureGroupPartialTransition cgLoopToSelf) {
-        super(id, flags, loopTransitionIndex, indexOfCallParam, successors, matchers, null);
+        super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matchers, null);
         this.anchoredFinalStateTransition = anchoredFinalStateTransition;
         this.unAnchoredFinalStateTransition = unAnchoredFinalStateTransition;
         this.lastTransitionIndex = lastTransitionIndex;

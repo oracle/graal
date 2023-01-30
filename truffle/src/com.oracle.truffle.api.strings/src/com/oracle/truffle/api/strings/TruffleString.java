@@ -83,6 +83,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -3607,49 +3608,91 @@ public final class TruffleString extends AbstractTruffleString {
 
     /**
      * Node to find the byte index of the first occurrence of a codepoint present in a given
-     * codepoint set. See {@link #execute(AbstractTruffleString, int, int, CodePointSetParameter)}
-     * for details.
+     * codepoint set. See {@link #execute(AbstractTruffleString, int, int, int[], Encoding)} for
+     * details.
      *
      * @since 23.0
      */
+    @ReportPolymorphism
     public abstract static class ByteIndexOfCodePointSetNode extends AbstractPublicNode {
 
         ByteIndexOfCodePointSetNode() {
         }
 
+        public static boolean canOptimize(int[] ranges, Encoding encoding, CodeRange codeRange) {
+            return IndexOfCodePointSet.canOptimize(ranges, codeRange, encoding);
+        }
+
         /**
-         * Returns the byte index of the first codepoint present in the given
-         * {@link CodePointSetParameter codepoint set}.
+         * Returns the byte index of the first codepoint present in the given list of ranges.
          *
-         * @param a An {@link AbstractTruffleString} whose encoding matches the encoding set in
-         *            {@code codePointSet}.
-         * @param codePointSet The codepoint set to search for. This parameter must be
-         *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-         *            constant}.
+         * @param ranges a sorted list of non-adjacent codepoint ranges. Note: <b>This array is
+         *            assumed to be immutable.</b> For every two consecutive array elements, the
+         *            first is interpreted as the range's inclusive lower bound, and the second
+         *            element is the range's inclusive upper bound. Example: an array
+         *            {@code [1, 4, 8, 10]} represents the inclusive ranges {@code [1-4]} and
+         *            {@code [8-10]}. {@link ByteIndexOfCodePointSetNode} will specialize on the
+         *            given list of ranges + expected encoding. If more than one unique tuple of
+         *            {@code ranges + expectedEncoding} is passed, the node will immediately fall
+         *            back to a generic search loop and try to trigger method splitting via
+         *            {@link ReportPolymorphism}.
          *
          * @since 23.0
          */
-        public abstract int execute(AbstractTruffleString a, int fromByteIndex, int maxByteIndex, CodePointSetParameter codePointSet);
+        public abstract int execute(AbstractTruffleString a, int fromByteIndex, int maxByteIndex, int[] ranges, Encoding expectedEncoding);
 
-        @Specialization
-        int indexOfRaw(AbstractTruffleString a, int fromByteIndex, int maxByteIndex, CodePointSetParameter codePointSet,
-                        @Cached ToIndexableNode toIndexableNode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
-                        @Cached TStringInternalNodes.IndexOfCodePointSetNode indexOfCodePointSetNode) {
-            CompilerAsserts.partialEvaluationConstant(codePointSet);
-            a.checkEncoding(codePointSet.getEncoding());
+        @Specialization(guards = {"ranges == cachedRanges", "expectedEncoding == cachedEncoding"}, limit = "1")
+        static int indexOfSpecialized(AbstractTruffleString a, int fromByteIndex, int maxByteIndex, @SuppressWarnings("unused") int[] ranges, @SuppressWarnings("unused") Encoding expectedEncoding,
+                        @Bind("this") Node node,
+                        @Cached @Shared ToIndexableNode toIndexableNode,
+                        @Cached @Shared TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
+                        @Cached(value = "ranges", dimensions = 0) @SuppressWarnings("unused") int[] cachedRanges,
+                        @Cached("expectedEncoding") @SuppressWarnings("unused") Encoding cachedEncoding,
+                        @Cached("create(cachedRanges, cachedEncoding)") TStringInternalNodes.IndexOfCodePointSetNode internalNode) {
+            CompilerAsserts.partialEvaluationConstant(cachedEncoding);
+            a.checkEncoding(cachedEncoding);
             if (a.isEmpty()) {
                 return -1;
             }
-            int fromIndex = rawIndex(fromByteIndex, codePointSet.getEncoding());
-            int maxIndex = rawIndex(maxByteIndex, codePointSet.getEncoding());
+            int fromIndex = rawIndex(fromByteIndex, cachedEncoding);
+            int maxIndex = rawIndex(maxByteIndex, cachedEncoding);
+            a.boundsCheckRaw(fromIndex, maxIndex);
+            if (fromIndex == maxIndex) {
+                return -1;
+            }
+            Object arrayA = toIndexableNode.execute(node, a, a.data());
+            return byteIndex(internalNode.execute(arrayA, a.offset(), a.length(), a.stride(), getCodeRangeNode.execute(node, a), fromIndex, maxIndex), cachedEncoding);
+        }
+
+        @ReportPolymorphism.Megamorphic
+        @Specialization(replaces = "indexOfSpecialized")
+        int indexOfGeneric(AbstractTruffleString a, int fromByteIndex, int maxByteIndex, int[] ranges, Encoding expectedEncoding,
+                        @Cached @Shared ToIndexableNode toIndexableNode,
+                        @Cached @Shared TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
+                        @Cached TruffleStringIterator.InternalNextNode nextNode) {
+            IndexOfCodePointSet.checkRangesArray(ranges, expectedEncoding);
+            a.checkEncoding(expectedEncoding);
+            if (a.isEmpty()) {
+                return -1;
+            }
+            int fromIndex = rawIndex(fromByteIndex, expectedEncoding);
+            int maxIndex = rawIndex(maxByteIndex, expectedEncoding);
             a.boundsCheckRaw(fromIndex, maxIndex);
             if (fromIndex == maxIndex) {
                 return -1;
             }
             Object arrayA = toIndexableNode.execute(this, a, a.data());
-            return byteIndex(indexOfCodePointSetNode.execute(this, arrayA, a.offset(), a.length(), a.stride(), fromIndex, maxIndex, getCodeRangeNode.execute(this, a), codePointSet),
-                            codePointSet.getEncoding());
+            int codeRangeA = getCodeRangeNode.execute(this, a);
+            TruffleStringIterator it = forwardIterator(a, arrayA, codeRangeA, expectedEncoding);
+            it.setRawIndex(fromIndex);
+            while (it.getRawIndex() < maxIndex) {
+                assert it.hasNext();
+                int index = it.getByteIndex();
+                if (IndexOfCodePointSet.IndexOfRangesNode.rangesContain(ranges, nextNode.execute(this, it))) {
+                    return index;
+                }
+            }
+            return -1;
         }
 
         /**

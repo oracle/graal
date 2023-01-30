@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.api.strings;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 
 /**
@@ -77,25 +77,17 @@ public final class JavaStringUtils {
 
         /**
          * Returns the char index of the first codepoint present in the given
-         * {@link CodePointSetParameter codepoint set}.
-         *
-         * @param codePointSet The codepoint set to search for. Must be specialized to
-         *            {@link TruffleString.Encoding#UTF_16}. This parameter is expected to be
-         *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-         *            constant}.
+         * {@link IndexOfCodePointSet codepoint set}.
          *
          * @see TruffleString.ByteIndexOfCodePointSetNode
          * @since 23.0
          */
-        public abstract int execute(String a, int fromCharIndex, int maxCharIndex, CodePointSetParameter codePointSet);
+        public abstract int execute(String a, int fromCharIndex, int maxCharIndex, int[] ranges);
 
-        @Specialization
-        int indexOfRaw(String a, int fromIndex, int maxIndex, CodePointSetParameter codePointSet,
-                        @Cached TStringInternalNodes.IndexOfCodePointSetNode indexOfCodePointSetNode) {
-            CompilerAsserts.partialEvaluationConstant(codePointSet);
-            if (codePointSet.getEncoding() != TruffleString.Encoding.UTF_16) {
-                throw InternalErrors.illegalArgument("codePointSet parameter encoding must be UTF-16");
-            }
+        @Specialization(guards = "ranges == cachedRanges", limit = "1")
+        int indexOfCached(String a, int fromIndex, int maxIndex, @SuppressWarnings("unused") int[] ranges,
+                        @Cached(value = "ranges", dimensions = 0) @SuppressWarnings("unused") int[] cachedRanges,
+                        @Cached("create(cachedRanges, UTF_16)") TStringInternalNodes.IndexOfCodePointSetNode internalNode) {
             if (a.isEmpty()) {
                 return -1;
             }
@@ -105,7 +97,29 @@ public final class JavaStringUtils {
             }
             int stride = TStringUnsafe.getJavaStringStride(a);
             int codeRange = stride == 0 ? TSCodeRange.get8Bit() : TSCodeRange.getValidMultiByte();
-            return indexOfCodePointSetNode.execute(this, TStringUnsafe.getJavaStringArray(a), 0, a.length(), stride, fromIndex, maxIndex, codeRange, codePointSet);
+            return internalNode.execute(TStringUnsafe.getJavaStringArray(a), 0, a.length(), stride, codeRange, fromIndex, maxIndex);
+        }
+
+        @ReportPolymorphism.Megamorphic
+        @Specialization(replaces = "indexOfCached")
+        int indexOfUncached(String a, int fromIndex, int maxIndex, int[] ranges) {
+            IndexOfCodePointSet.checkRangesArray(ranges, TruffleString.Encoding.UTF_16);
+            if (a.isEmpty()) {
+                return -1;
+            }
+            AbstractTruffleString.boundsCheckI(fromIndex, maxIndex, a.length());
+            if (fromIndex == maxIndex) {
+                return -1;
+            }
+            int i = fromIndex;
+            while (i < maxIndex) {
+                int codepoint = a.codePointAt(i);
+                if (IndexOfCodePointSet.IndexOfRangesNode.rangesContain(ranges, codepoint)) {
+                    return i;
+                }
+                i += codepoint > 0xffff ? 2 : 1;
+            }
+            return -1;
         }
 
         /**
