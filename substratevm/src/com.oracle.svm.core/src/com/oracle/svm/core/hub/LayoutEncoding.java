@@ -202,7 +202,7 @@ public class LayoutEncoding {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         if (withOptionalIdHashField && !ol.hasFixedIdentityHashField()) {
             int afterIdHashField = hub.getOptionalIdentityHashOffset() + Integer.BYTES;
-            if (size.belowThan(afterIdHashField)) {
+            if (size.belowThan(afterIdHashField)) { // fits in a gap between fields
                 size = WordFactory.unsigned(ol.alignUp(afterIdHashField));
             }
         }

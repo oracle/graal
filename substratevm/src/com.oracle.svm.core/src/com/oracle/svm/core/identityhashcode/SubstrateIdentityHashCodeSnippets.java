@@ -38,6 +38,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
 import org.graalvm.compiler.word.ObjectAccess;
 
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -60,13 +61,13 @@ final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
         if (probability(LIKELY_PROBABILITY, oh.hasIdentityHashField(obj))) {
             int offset = LayoutEncoding.getOptionalIdentityHashOffset(obj);
             identityHashCode = ObjectAccess.readInt(obj, offset, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
-            if (probability(SLOW_PATH_PROBABILITY, identityHashCode == 0)) {
+            if (ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && probability(SLOW_PATH_PROBABILITY, identityHashCode == 0)) {
                 identityHashCode = generateIdentityHashCode(GENERATE_IDENTITY_HASH_CODE, obj);
             }
         } else {
             identityHashCode = IdentityHashCodeSupport.computeHashCodeFromAddress(obj);
             if (probability(NOT_FREQUENT_PROBABILITY, !oh.hasIdentityHashFromAddress(obj))) {
-                // Note: this write leads to frame state issues that break scheduling if moved up.
+                // Note this write leads to frame state issues that break scheduling if done earlier
                 oh.setIdentityHashFromAddress(obj);
             }
         }

@@ -250,5 +250,6 @@ public abstract class Heap {
      * code} of the passed object (and potentially other objects) from its address. The same salt
      * value will be returned for this object at least until the next garbage collection.
      */
+    @Uninterruptible(reason = "Ensure that no GC can occur between this call and usage of the salt.", callerMustBe = true)
     public abstract long getIdentityHashSalt(Object obj);
 }

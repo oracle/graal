@@ -28,10 +28,12 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -686,9 +688,14 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    @Uninterruptible(reason = "Ensure that no GC can move the object to another chunk.")
     @Override
+    @Uninterruptible(reason = "Ensure that no GC can move the object to another chunk.", callerMustBe = true)
     public long getIdentityHashSalt(Object obj) {
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(!isInImageHeap(obj), "Image heap object have identity hash code fields");
+        } else {
+            assert !isInImageHeap(obj) : "Image heap object have identity hash code fields";
+        }
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         return HeapChunk.getIdentityHashSalt(chunk).rawValue();
     }

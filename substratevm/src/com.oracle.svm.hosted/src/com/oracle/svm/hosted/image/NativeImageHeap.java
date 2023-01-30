@@ -138,8 +138,8 @@ public final class NativeImageHeap implements ImageHeap {
         this.objectLayout = ConfigurationValues.getObjectLayout();
         this.heapLayouter = heapLayouter;
 
-        this.minInstanceSize = objectLayout.getMinimumInstanceObjectSize(true);
-        this.minArraySize = objectLayout.getMinimumArraySize(true);
+        this.minInstanceSize = objectLayout.getMinImageHeapInstanceSize();
+        this.minArraySize = objectLayout.getMinImageHeapArraySize();
         assert assertFillerObjectSizes();
 
         if (ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue()) {

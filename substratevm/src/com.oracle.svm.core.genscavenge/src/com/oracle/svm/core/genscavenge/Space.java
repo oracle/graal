@@ -364,9 +364,8 @@ public final class Space {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(originalObj);
 
-        ObjectHeaderImpl objectHeader = ObjectHeaderImpl.getObjectHeaderImpl();
         UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInline(originalObj, false);
-        boolean addIdentityHashField = objectHeader.hasIdentityHashFromAddress(originalObj);
+        boolean addIdentityHashField = ObjectHeaderImpl.hasIdentityHashFromAddressDuringGC(originalObj);
         UnsignedWord copySize = originalSize;
         if (probability(SLOW_PATH_PROBABILITY, addIdentityHashField)) {
             copySize = LayoutEncoding.getSizeFromObjectInline(originalObj, true);
@@ -391,7 +390,7 @@ public final class Space {
             int value = IdentityHashCodeSupport.computeHashCodeFromAddress(originalObj);
             int offset = LayoutEncoding.getOptionalIdentityHashOffset(copy);
             ObjectAccess.writeInt(copy, offset, value, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
-            objectHeader.setIdentityHashInField(copy);
+            ObjectHeaderImpl.setIdentityHashInField(copy);
         }
         if (isOldSpace()) {
             // If the object was promoted to the old gen, we need to take care of the remembered

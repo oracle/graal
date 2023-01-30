@@ -98,6 +98,11 @@ public class HeapDumpUtils {
     public int instanceSizeOf(Class<?> cls) {
         final int encoding = DynamicHub.fromClass(cls).getLayoutEncoding();
         if (LayoutEncoding.isPureInstance(encoding)) {
+            /*
+             * May underestimate the object size if the identity hashcode field is optional. This is
+             * the best that what can do because the HPROF format does not support that instances of
+             * one class have different object sizes.
+             */
             return (int) LayoutEncoding.getPureInstanceAllocationSize(encoding).rawValue();
         } else {
             return 0;

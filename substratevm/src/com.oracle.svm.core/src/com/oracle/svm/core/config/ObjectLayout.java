@@ -207,21 +207,21 @@ public final class ObjectLayout {
         return alignUp(size);
     }
 
-    public int getMinimumInstanceObjectSize(boolean withOptionalIdHashField) {
+    public int getMinImageHeapInstanceSize() {
         int unalignedSize = firstFieldOffset; // assumes no always-present "synthetic fields"
-        if (withOptionalIdHashField && !hasFixedIdentityHashField()) {
+        if (!hasFixedIdentityHashField()) {
             int idHashOffset = NumUtil.roundUp(unalignedSize, Integer.BYTES);
             unalignedSize = idHashOffset + Integer.BYTES;
         }
         return alignUp(unalignedSize);
     }
 
-    public int getMinimumArraySize(boolean withOptionalIdHashField) {
-        return NumUtil.safeToInt(getArraySize(JavaKind.Byte, 0, withOptionalIdHashField));
+    public int getMinImageHeapArraySize() {
+        return NumUtil.safeToInt(getArraySize(JavaKind.Byte, 0, true));
     }
 
-    public int getMinimumObjectSize(boolean withOptionalIdHashField) {
-        return Math.min(getMinimumArraySize(withOptionalIdHashField), getMinimumInstanceObjectSize(withOptionalIdHashField));
+    public int getMinImageHeapObjectSize() {
+        return Math.min(getMinImageHeapArraySize(), getMinImageHeapInstanceSize());
     }
 
     public static JavaKind getCallSignatureKind(boolean isEntryPoint, ResolvedJavaType type, MetaAccessProvider metaAccess, TargetDescription target) {

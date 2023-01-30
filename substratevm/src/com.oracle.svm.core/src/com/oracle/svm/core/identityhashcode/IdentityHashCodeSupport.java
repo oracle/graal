@@ -81,8 +81,8 @@ public final class IdentityHashCodeSupport {
         Word address = Word.objectToUntrackedPointer(obj);
         long salt = Heap.getHeap().getIdentityHashSalt(obj);
         SignedWord salted = WordFactory.signed(salt).xor(address);
-        int hash = mix32(salted.rawValue()) >>> 1;
-        return (hash == 0) ? 1 : hash;
+        int hash = mix32(salted.rawValue()) >>> 1; // shift: ensure positive, same as on HotSpot
+        return (hash == 0) ? 1 : hash; // ensure nonzero
     }
 
     /** Avalanching bit mixer, from {@link SplittableRandom}. */
