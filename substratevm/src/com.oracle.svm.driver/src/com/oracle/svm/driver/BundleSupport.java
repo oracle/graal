@@ -92,12 +92,12 @@ final class BundleSupport {
     boolean loadBundle;
     boolean writeBundle;
 
-    private static final int bundleFileFormatVersionMajor = 0;
-    private static final int bundleFileFormatVersionMinor = 9;
+    private static final int BUNDLE_FILE_FORMAT_VERSION_MAJOR = 0;
+    private static final int BUNDLE_FILE_FORMAT_VERSION_MINOR = 9;
 
-    private static final String bundleInfoMessagePrefix = "GraalVM Native Image Bundle Support: ";
-    private static final String bundleTempDirPrefix = "bundleRoot-";
-    private static final String originalDirExtension = ".orig";
+    private static final String BUNDLE_INFO_MESSAGE_PREFIX = "GraalVM Native Image Bundle Support: ";
+    private static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
+    private static final String ORIGINAL_DIR_EXTENSION = ".orig";
 
     private Path bundlePath;
     private String bundleName;
@@ -154,7 +154,7 @@ final class BundleSupport {
                     for (int i = buildArgs.size() - 1; i >= 0; i--) {
                         args.push(buildArgs.get(i));
                     }
-                    nativeImage.showVerboseMessage(nativeImage.isVerbose(), bundleInfoMessagePrefix + "Inject args: '" + String.join(" ", buildArgs) + "'");
+                    nativeImage.showVerboseMessage(nativeImage.isVerbose(), BUNDLE_INFO_MESSAGE_PREFIX + "Inject args: '" + String.join(" ", buildArgs) + "'");
                     /* Snapshot args after in-place expansion (includes also args after this one) */
                     bundleSupport.updatedBuildArgs = args.snapshot();
                     break;
@@ -193,7 +193,7 @@ final class BundleSupport {
         loadBundle = false;
         writeBundle = true;
         try {
-            rootDir = Files.createTempDirectory(bundleTempDirPrefix);
+            rootDir = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
             bundleProperties = new BundleProperties();
 
             Path inputDir = rootDir.resolve("input");
@@ -222,11 +222,11 @@ final class BundleSupport {
         updateBundleLocation(Path.of(bundleFilenameArg), false);
 
         try {
-            rootDir = Files.createTempDirectory(bundleTempDirPrefix);
+            rootDir = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
             bundleProperties = new BundleProperties();
 
             outputDir = rootDir.resolve("output");
-            String originalOutputDirName = outputDir.getFileName().toString() + originalDirExtension;
+            String originalOutputDirName = outputDir.getFileName().toString() + ORIGINAL_DIR_EXTENSION;
 
             Path bundleFilePath = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION);
             try (JarFile archive = new JarFile(bundleFilePath.toFile())) {
@@ -497,14 +497,14 @@ final class BundleSupport {
             Path externalOutputDir = bundlePath.resolve(bundleName + "." + outputDir.getFileName());
             copyFiles(outputDir, externalOutputDir, true);
             outputNewline.run();
-            nativeImage.showMessage(bundleInfoMessagePrefix + "Bundle build output written to " + externalOutputDir);
+            nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle build output written to " + externalOutputDir);
         }
 
         try {
             if (writeBundle) {
                 Path bundleFilePath = writeBundle();
                 outputNewline.run();
-                nativeImage.showMessage(bundleInfoMessagePrefix + "Bundle written to " + bundleFilePath);
+                nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Bundle written to " + bundleFilePath);
             }
         } finally {
             nativeImage.showNewline();
@@ -550,7 +550,7 @@ final class BundleSupport {
     }
 
     private Path writeBundle() {
-        String originalOutputDirName = outputDir.getFileName().toString() + originalDirExtension;
+        String originalOutputDirName = outputDir.getFileName().toString() + ORIGINAL_DIR_EXTENSION;
         Path originalOutputDir = rootDir.resolve(originalOutputDirName);
         if (Files.exists(originalOutputDir)) {
             nativeImage.deleteAllFiles(originalOutputDir);
@@ -589,10 +589,10 @@ final class BundleSupport {
                 if (buildArg.startsWith(nativeImage.oHPath)) {
                     continue;
                 }
-                if (buildArg.equals(CmdLineOptionHandler.verboseOption)) {
+                if (buildArg.equals(CmdLineOptionHandler.VERBOSE_OPTION)) {
                     continue;
                 }
-                if (buildArg.equals(CmdLineOptionHandler.dryRunOption)) {
+                if (buildArg.equals(CmdLineOptionHandler.DRY_RUN_OPTION)) {
                     continue;
                 }
                 if (buildArg.startsWith("-Dllvm.bin.dir=")) {
@@ -737,11 +737,11 @@ final class BundleSupport {
                 fileVersionKey = PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR;
                 int minor = Integer.parseInt(properties.getOrDefault(fileVersionKey, "-1"));
                 String message = String.format("The given bundle file %s was created with newer bundle-file-format version %d.%d" +
-                                " (current %d.%d). Update to the latest version of native-image.", bundleFileName, major, minor, bundleFileFormatVersionMajor, bundleFileFormatVersionMinor);
-                if (major > bundleFileFormatVersionMajor) {
+                                " (current %d.%d). Update to the latest version of native-image.", bundleFileName, major, minor, BUNDLE_FILE_FORMAT_VERSION_MAJOR, BUNDLE_FILE_FORMAT_VERSION_MINOR);
+                if (major > BUNDLE_FILE_FORMAT_VERSION_MAJOR) {
                     throw NativeImage.showError(message);
-                } else if (major == bundleFileFormatVersionMajor) {
-                    if (minor > bundleFileFormatVersionMinor) {
+                } else if (major == BUNDLE_FILE_FORMAT_VERSION_MAJOR) {
+                    if (minor > BUNDLE_FILE_FORMAT_VERSION_MINOR) {
                         NativeImage.showWarning(message);
                     }
                 }
@@ -761,14 +761,14 @@ final class BundleSupport {
                 localDateStr = "unknown time";
             }
             nativeImage.showNewline();
-            nativeImage.showMessage(String.format("%sLoaded Bundle from %s", bundleInfoMessagePrefix, bundleFileName));
-            nativeImage.showMessage(String.format("%sBundle created at '%s'", bundleInfoMessagePrefix, localDateStr));
-            nativeImage.showMessage(String.format("%sUsing version: '%s'%s on platform: '%s'%s", bundleInfoMessagePrefix, bundleVersion, currentVersion, bundlePlatform, currentPlatform));
+            nativeImage.showMessage(String.format("%sLoaded Bundle from %s", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName));
+            nativeImage.showMessage(String.format("%sBundle created at '%s'", BUNDLE_INFO_MESSAGE_PREFIX, localDateStr));
+            nativeImage.showMessage(String.format("%sUsing version: '%s'%s on platform: '%s'%s", BUNDLE_INFO_MESSAGE_PREFIX, bundleVersion, currentVersion, bundlePlatform, currentPlatform));
         }
 
         private void write() {
-            properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR, String.valueOf(bundleFileFormatVersionMajor));
-            properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR, String.valueOf(bundleFileFormatVersionMinor));
+            properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MAJOR));
+            properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MINOR));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, ZonedDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
             boolean imageBuilt = !nativeImage.isDryRun();
             properties.put(PROPERTY_KEY_IMAGE_BUILT, String.valueOf(imageBuilt));

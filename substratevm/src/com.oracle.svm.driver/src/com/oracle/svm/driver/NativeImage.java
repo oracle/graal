@@ -1259,7 +1259,7 @@ public class NativeImage {
 
         if (!agentOptions.isEmpty()) {
             if (useDebugAttach()) {
-                throw NativeImage.showError(CmdLineOptionHandler.debugAttachOption + " cannot be used with class initialization/object instantiation tracing (" + oHTraceClassInitialization +
+                throw NativeImage.showError(CmdLineOptionHandler.DEBUG_ATTACH_OPTION + " cannot be used with class initialization/object instantiation tracing (" + oHTraceClassInitialization +
                                 "/ + " + oHTraceObjectInstantiation + ").");
             }
             args.add("-agentlib:native-image-diagnostics-agent=" + agentOptions);

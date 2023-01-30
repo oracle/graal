@@ -38,17 +38,17 @@ import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 
 class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
-    private static final String helpText = NativeImage.getResource("/Help.txt");
-    private static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
+    private static final String HELP_TEXT = NativeImage.getResource("/Help.txt");
+    private static final String HELP_EXTRA_TEXT = NativeImage.getResource("/HelpExtra.txt");
 
-    static final String verboseOption = "--verbose";
-    static final String dryRunOption = "--dry-run";
-    static final String debugAttachOption = "--debug-attach";
+    static final String VERBOSE_OPTION = "--verbose";
+    static final String DRY_RUN_OPTION = "--dry-run";
+    static final String DEBUG_ATTACH_OPTION = "--debug-attach";
     /* Defunct legacy options that we have to accept to maintain backward compatibility */
-    private static final String verboseServerOption = "--verbose-server";
-    private static final String serverOptionPrefix = "--server-";
+    private static final String VERBOSE_SERVER_OPTION = "--verbose-server";
+    private static final String SERVER_OPTION_PREFIX = "--server-";
 
-    private static final String javaRuntimeVersion = System.getProperty("java.runtime.version");
+    private static final String JAVA_RUNTIME_VERSION = System.getProperty("java.runtime.version");
 
     boolean useDebugAttach = false;
 
@@ -73,7 +73,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--help":
                 args.poll();
                 singleArgumentCheck(args, headArg);
-                nativeImage.showMessage(helpText);
+                nativeImage.showMessage(HELP_TEXT);
                 nativeImage.showNewline();
                 nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, false);
                 nativeImage.showNewline();
@@ -85,14 +85,14 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 singleArgumentCheck(args, headArg);
                 String message = NativeImage.getNativeImageVersion();
-                message += " (Java Version " + javaRuntimeVersion + ")";
+                message += " (Java Version " + JAVA_RUNTIME_VERSION + ")";
                 nativeImage.showMessage(message);
                 System.exit(ExitStatus.OK.getValue());
                 return true;
             case "--help-extra":
                 args.poll();
                 singleArgumentCheck(args, headArg);
-                nativeImage.showMessage(helpExtraText);
+                nativeImage.showMessage(HELP_EXTRA_TEXT);
                 nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, true);
                 nativeImage.showNewline();
                 nativeImage.optionRegistry.showOptions(OptionUtils.MacroOptionKind.Macro, true, nativeImage::showMessage);
@@ -121,11 +121,11 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
                 nativeImage.addExcludeConfig(Pattern.compile(excludeJar), Pattern.compile(excludeConfig));
                 return true;
-            case verboseOption:
+            case VERBOSE_OPTION:
                 args.poll();
                 nativeImage.addVerbose();
                 return true;
-            case dryRunOption:
+            case DRY_RUN_OPTION:
                 args.poll();
                 nativeImage.setDryRun(true);
                 return true;
@@ -146,7 +146,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 BundleSupport.allowBundleSupport = true;
                 return true;
-            case verboseServerOption:
+            case VERBOSE_SERVER_OPTION:
                 args.poll();
                 NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
                 return true;
@@ -157,13 +157,13 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return true;
         }
 
-        if (headArg.startsWith(debugAttachOption)) {
+        if (headArg.startsWith(DEBUG_ATTACH_OPTION)) {
             if (useDebugAttach) {
-                throw NativeImage.showError("The " + debugAttachOption + " option can only be used once.");
+                throw NativeImage.showError("The " + DEBUG_ATTACH_OPTION + " option can only be used once.");
             }
             useDebugAttach = true;
             String debugAttachArg = args.poll();
-            String addressSuffix = debugAttachArg.substring(debugAttachOption.length());
+            String addressSuffix = debugAttachArg.substring(DEBUG_ATTACH_OPTION.length());
             String address = addressSuffix.isEmpty() ? "8000" : addressSuffix.substring(1);
             /* Using agentlib to allow interoperability with other agents */
             nativeImage.addImageBuilderJavaArgs("-agentlib:jdwp=transport=dt_socket,server=y,address=" + address + ",suspend=y");
@@ -172,10 +172,10 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return true;
         }
 
-        if (headArg.startsWith(serverOptionPrefix)) {
+        if (headArg.startsWith(SERVER_OPTION_PREFIX)) {
             args.poll();
             NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
-            String serverOptionCommand = headArg.substring(serverOptionPrefix.length());
+            String serverOptionCommand = headArg.substring(SERVER_OPTION_PREFIX.length());
             if (!serverOptionCommand.startsWith("session=")) {
                 /*
                  * All but the --server-session=... option used to exit(0). We want to simulate that
@@ -198,7 +198,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     @Override
     void addFallbackBuildArgs(List<String> buildArgs) {
         if (nativeImage.isVerbose()) {
-            buildArgs.add(verboseOption);
+            buildArgs.add(VERBOSE_OPTION);
         }
     }
 }
