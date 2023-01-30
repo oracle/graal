@@ -31,9 +31,12 @@ import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
 import static com.oracle.svm.test.NativeImageResourceUtils.ROOT_DIRECTORY;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToPath;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURI;
+import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.SeekableByteChannel;
@@ -184,6 +187,29 @@ public class NativeImageResourceFileSystemProviderTest {
         } catch (IOException e) {
             Assert.fail("IOException occurred during file system operation.");
         }
+    }
+
+    /**
+     * Query a resource's last-modified timestamps and content length. Test inspired by issues:
+     * <a href="https://github.com/oracle/graal/issues/2253">2253</a>
+     */
+    @Test
+    public void githubIssue2253() {
+        URL resource = resourceNameToURL(RESOURCE_FILE_1, true);
+        Assert.assertNotNull(resource);
+
+        URLConnection connection = null;
+        try {
+            connection = resource.openConnection();
+        } catch (IOException e) {
+            Assert.fail("URL#openConnection threw an exception: " + e.getMessage());
+        }
+
+        int contentLength = connection.getContentLength();
+        Assert.assertTrue("Non-positive content-length.", contentLength > 0);
+
+        long lastModified = connection.getLastModified();
+        Assert.assertTrue("Non-positive last-modified.", lastModified > 0);
     }
 
     /**
