@@ -26,7 +26,6 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
-import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.None;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
 import static org.graalvm.compiler.options.OptionType.Debug;
@@ -159,7 +158,6 @@ public class SubstrateOptions {
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String WATCHPID_PREFIX = "-watchpid";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
-    private static ValueUpdateHandler<Integer> debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
 
     @Fold
     public static boolean getSourceLevelDebug() {
@@ -203,6 +201,8 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             OptimizationLevel newLevel = parseOptimizationLevel(newValue);
+            // `-g -O0` is recommended for a better debugging experience
+            GraalOptions.TrackNodeSourcePosition.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.SourceLevelDebug.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.AOTTrivialInline.update(values, newLevel != OptimizationLevel.O0);
@@ -261,10 +261,6 @@ public class SubstrateOptions {
 
     public static void setOptimizeValueUpdateHandler(ValueUpdateHandler<OptimizationLevel> updateHandler) {
         SubstrateOptions.optimizeValueUpdateHandler = updateHandler;
-    }
-
-    public static void setDebugInfoValueUpdateHandler(ValueUpdateHandler<Integer> updateHandler) {
-        SubstrateOptions.debugInfoValueUpdateHandler = updateHandler;
     }
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
@@ -621,18 +617,12 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            debugInfoValueUpdateHandler.onValueUpdate(values, newValue);
+            if (OS.WINDOWS.isCurrent()) {
+                /* Keep symbols on Windows. The symbol table is part of the pdb-file. */
+                DeleteLocalSymbols.update(values, newValue == 0);
+            }
         }
     };
-
-    public static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, Integer newValue) {
-        /* Force update of TrackNodeSourcePosition */
-        TrackNodeSourcePosition.update(values, newValue > 0);
-        if (OS.WINDOWS.isCurrent()) {
-            /* Keep symbols on Windows. The symbol table is part of the pdb-file. */
-            DeleteLocalSymbols.update(values, newValue == 0);
-        }
-    }
 
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
@@ -647,6 +637,9 @@ public class SubstrateOptions {
             throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot %s", DebugInfoSourceCacheRoot.getValue());
         }
     }
+
+    @Option(help = "Strip debug info from the binary.")//
+    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(true);
 
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
     public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);

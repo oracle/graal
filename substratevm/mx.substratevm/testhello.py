@@ -87,7 +87,6 @@ class Checker:
                         print(self)
                         print(text)
                         sys.exit(1)
-                        return matches
                 else:
                     matches.append(match)
                 line_idx += 1
@@ -96,7 +95,6 @@ class Checker:
             print(self)
             print(text)
             sys.exit(1)
-            return matches
         print(text)
         return matches
 
@@ -161,9 +159,7 @@ def test():
 
     musl = os.environ.get('debuginfotest_musl', 'no') == 'yes'
 
-    isolates = False
-    if os.environ.get('debuginfotest_isolates', 'no') == 'yes':
-        isolates = True
+    isolates = os.environ.get('debuginfotest_isolates', 'no') == 'yes'
         
     arch = os.environ.get('debuginfotest_arch', 'amd64')
         
@@ -219,7 +215,7 @@ def test():
                        r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#3%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#4%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#4%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#5%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
                       ]
     if musl:
@@ -463,7 +459,7 @@ def test():
                        r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#3%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#4%scom\.oracle\.svm\.core\.JavaMainWrapper::doRun%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, param_types_pattern, arg_values_pattern, package_pattern),
-                       r"#5%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
+                       r"#5%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::run%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#6%scom\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s %s"%(spaces_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern)
                       ]
     if musl:
@@ -590,17 +586,17 @@ def test():
     rexp = [r"128%sinlineA\(\);"%spaces_pattern]
     checker = Checker('list inlineIs', rexp)
     checker.check(execute("list inlineIs"))
-    rexp = [r'file: "hello/Hello\.java", line number: 133, symbol: "hello\.Hello::inlineA\(\)"',
-            r"133%snoInlineTest\(\);"%spaces_pattern,
-            r'file: "hello/Hello\.java", line number: 134, symbol: "hello\.Hello::inlineA\(\)"',
-            r"134%s}"%spaces_pattern]
+    # List inlineA may actually return more locations dependening on inlining decisions, but noInlineTest
+    # always needs to be listed
+    rexp = [r"133%snoInlineTest\(\);"%spaces_pattern]
     checker = Checker('list inlineA', rexp)
     checker.check(execute("list inlineA"))
 
     execute("delete breakpoints")
     # Set breakpoint at inlined method and step through its nested inline methods
     exec_string = execute("break hello.Hello::inlineIs")
-    rexp = r"Breakpoint %s at %s: hello\.Hello::inlineIs\. \(2 locations\)"%(digits_pattern, address_pattern)
+    # Dependening on inlining decisions, there are either two or one locations
+    rexp = r"Breakpoint %s at %s: (hello\.Hello::inlineIs\. \(2 locations\)|file hello/Hello\.java, line 128\.)"%(digits_pattern, address_pattern)
     checker = Checker('break inlineIs', rexp)
     checker.check(exec_string, skip_fails=False)
 
@@ -664,17 +660,17 @@ def test():
     exec_string = execute("backtrace 14")
     rexp = [r"#0%shello\.Hello::inlineMixTo%s %s at hello/Hello\.java:160"%(spaces_pattern, param_types_pattern, arg_values_pattern),
             r"#1%shello\.Hello::noInlineHere%s %s at hello/Hello\.java:152"%(spaces_pattern, param_types_pattern, arg_values_pattern),
-            r"#2%s%s in hello\.Hello::inlineMixTo%s %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
+            r"#2%s(%s in)? hello\.Hello::inlineMixTo%s %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
             r"#3%shello\.Hello::noInlineHere%s %s at hello/Hello\.java:152"%(spaces_pattern, param_types_pattern, arg_values_pattern),
-            r"#4%s%s in hello\.Hello::inlineMixTo%s %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
+            r"#4%s(%s in)? hello\.Hello::inlineMixTo%s %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
             r"#5%shello\.Hello::noInlineHere%s %s at hello/Hello\.java:152"%(spaces_pattern, param_types_pattern, arg_values_pattern),
-            r"#6%s%s in hello\.Hello::inlineMixTo%s %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
+            r"#6%s(%s in)? hello\.Hello::inlineMixTo%s %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
             r"#7%shello\.Hello::noInlineHere%s %s at hello/Hello\.java:152"%(spaces_pattern, param_types_pattern, arg_values_pattern),
-            r"#8%s%s in hello\.Hello::inlineMixTo%s %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
+            r"#8%s(%s in)? hello\.Hello::inlineMixTo%s %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
             r"#9%shello\.Hello::noInlineHere%s %s at hello/Hello\.java:152"%(spaces_pattern, param_types_pattern, arg_values_pattern),
-            r"#10%s%s in hello\.Hello::inlineMixTo%s %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
+            r"#10%s(%s in)? hello\.Hello::inlineMixTo%s %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
             r"#11%shello\.Hello::noInlineHere%s %s at hello/Hello\.java:152"%(spaces_pattern, param_types_pattern, arg_values_pattern),
-            r"#12%s%s in hello\.Hello::inlineFrom%s %s at hello/Hello\.java:144"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern),
+            r"#12%s(%s in)? hello\.Hello::inlineFrom%s %s at hello/Hello\.java:144"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern),
             r"#13%shello\.Hello::main%s %s at hello/Hello\.java:94"%(spaces_pattern, param_types_pattern, arg_values_pattern)]
     checker = Checker('backtrace in recursive inlineMixTo', rexp)
     checker.check(exec_string, skip_fails=False)
@@ -694,7 +690,7 @@ def test():
     # one build to the next. so we use a generic match after the
     # first pair.
     rexp = [r"#0%shello\.Hello::inlineTo%s %s at hello/Hello\.java:173"%(spaces_pattern, param_types_pattern, arg_values_pattern),
-            r"#1%s%s in hello\.Hello::inlineHere%s %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
+            r"#1%s(%s in)? hello\.Hello::inlineHere%s %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern),
             r"#2%shello\.Hello::inlineTo%s %s at hello/Hello\.java:171"%(wildcard_pattern, param_types_pattern, arg_values_pattern),
             r"#3%shello\.Hello::inlineHere%s %s at hello/Hello\.java:165"%(wildcard_pattern, param_types_pattern, arg_values_pattern),
             r"#4%shello\.Hello::inlineTo%s %s at hello/Hello\.java:171"%(wildcard_pattern, param_types_pattern, arg_values_pattern),
@@ -783,30 +779,39 @@ def test():
            r"f11 = 12.375"]
     checker = Checker('info args', rexp)
     checker.check(exec_string)
-    
-    exec_string = execute("x/i $pc")
-    if arch == 'aarch64':
-        rexp = r"%ssub%ssp, sp, #0x%s"%(wildcard_pattern, spaces_pattern, hex_digits_pattern)
-    else:
-        rexp = r"%ssub %s\$0x%s,%%rsp"%(wildcard_pattern, spaces_pattern, hex_digits_pattern)
-    checker = Checker('x/i $pc', rexp)
-    checker.check(exec_string)
 
-    if arch == 'aarch64':
-        exec_string = execute("stepi")
-        print(exec_string)
-        # n.b. stack param offsets will be wrong here because
-        # aarch64 creates the frame in two steps, a sub of
-        # the frame size followed by a stack push of [lr,sp]
-        # (needs fixing in the initial frame location info split
-        # in the generator not here)
+    # proceed to the next infopoint, which is at the end of the method prologue.
+    # since the compiler may emit different instruction sequences, we step
+    # through the instructions until we find and execute the first instruction
+    # that adjusts the stack pointer register, which concludes the prologue.
+    if arch == "aarch64":
+        instruction_adjusts_sp_register_pattern = r"%s sp%s"%(wildcard_pattern, wildcard_pattern)
+    else:
+        instruction_adjusts_sp_register_pattern = r"%s,%%rsp"%(wildcard_pattern)
+    instruction_adjusts_sp_register_regex = re.compile(instruction_adjusts_sp_register_pattern)
+    max_num_stepis = 6
+    num_stepis = 0
+    while True:
         exec_string = execute("x/i $pc")
         print(exec_string)
-        exec_string = execute("stepi")
+        execute("stepi")
+        num_stepis += 1
+        if instruction_adjusts_sp_register_regex.match(exec_string):
+            print("reached end of method prologue successfully")
+            break
+        if num_stepis >= max_num_stepis:
+            print("method prologue is unexpectedly long, did not reach end after %s stepis" % num_stepis)
+            sys.exit(1)
+    if arch == "aarch64":
+        # on aarch64 the stack build sequence requires both a stack extend and
+        # then a save of sp to fp. therefore, step into one more instruction.
+        exec_string = execute("x/i $pc")
         print(exec_string)
-    else:
-        exec_string = execute("stepi")
-
+        execute("stepi")
+        if "sp" not in exec_string:
+            print("failed to reach method prologue, last instruction was expected to modify sp register but did not")
+            sys.exit(1)
+    
     exec_string = execute("info args")
     rexp =[r"i0 = 0",
            r"i1 = 1",
