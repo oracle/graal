@@ -24,47 +24,34 @@
  */
 package org.graalvm.compiler.hotspot.jdk20.test;
 
-import static org.junit.Assume.assumeTrue;
+import java.io.IOException;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
-import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.api.test.ModuleSupport;
-import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.core.test.SubprocessTest;
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
-import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.AddExports;
+import org.graalvm.compiler.test.SubprocessUtil;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 
 @AddExports("java.base/jdk.internal.misc")
-public class LoomSupportsTest extends HotSpotGraalCompilerTest {
+public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
+
+    @Before
+    public void checkJavaAgent() {
+        Assume.assumeFalse("Java Agent found -> skipping", SubprocessUtil.isJavaAgentAttached());
+    }
+
+    public void testGetCarrierThread() {
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
+        compileAndInstallSubstitution(Thread.class, "currentCarrierThread");
+
+        CarrierThreadTest.test();
+    }
 
     @Test
-    public void testScopedValue() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        assumeTrue(((HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class)).getVMConfig().threadScopedValueCacheOffset != -1);
-
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
-
-        Method get = Thread.class.getDeclaredMethod("scopedValueCache");
-        get.setAccessible(true);
-        Object[] originalCache = (Object[]) get.invoke(null);
-
-        // set extent cache with compiled Thread.setScopedValueCache
-        compileAndInstallSubstitution(Thread.class, "setScopedValueCache");
-
-        Object[] cache = new Object[1];
-        Method set = Thread.class.getDeclaredMethod("setScopedValueCache", Object[].class);
-        set.setAccessible(true);
-        set.invoke(null, cache);
-
-        // validate extent cache with interpreted Thread.scopedValueCache
-        assumeTrue(cache == get.invoke(null));
-
-        // validate extent cache with compiled Thread.scopedValueCache
-        compileAndInstallSubstitution(Thread.class, "scopedValueCache");
-        assumeTrue(cache == get.invoke(null));
-
-        set.invoke(null, originalCache);
+    public void testInSubprocess() throws IOException, InterruptedException {
+        SubprocessTest.launchSubprocess(getClass(), this::testGetCarrierThread, "--enable-preview");
     }
 }

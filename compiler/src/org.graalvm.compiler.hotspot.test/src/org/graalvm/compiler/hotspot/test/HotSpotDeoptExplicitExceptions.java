@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package org.graalvm.compiler.hotspot.test;
 import static org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode.CheckAll;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.graalvm.compiler.core.test.SubprocessTest;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
@@ -65,16 +64,11 @@ public class HotSpotDeoptExplicitExceptions extends SubprocessTest {
         test("classCastSnippet", Boolean.TRUE);
     }
 
-    @Override
-    public void configSubprocess(List<String> vmArgs) {
-        vmArgs.add("-Dgraal.HotSpotDeoptExplicitExceptions=true");
-    }
-
     @Test
     public void explicitExceptions() throws IOException, InterruptedException {
         Assume.assumeTrue("required entry point is missing", ((HotSpotBackend) getBackend()).getRuntime().getVMConfig().deoptBlobUnpackWithExceptionInTLS != 0);
         if (!CreateExceptionStub.Options.HotSpotDeoptExplicitExceptions.getValue(getInitialOptions())) {
-            launchSubprocess(this::testBody);
+            launchSubprocess(this::testBody, "-Dgraal.HotSpotDeoptExplicitExceptions=true");
         } else {
             testBody();
         }
