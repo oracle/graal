@@ -24,7 +24,22 @@
  */
 package com.oracle.svm.util;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 public final class ClassUtil {
+
+    public static final Path CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT = Paths.get("/");
+    public static final Set<Path> CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES = getClassModulePathExcludeDirectories();
+
+    private static Set<Path> getClassModulePathExcludeDirectories() {
+        return Stream.of("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
+                        .map(CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT::resolve).collect(Collectors.toUnmodifiableSet());
+    }
+
     /**
      * Alternative to {@link Class#getSimpleName} that does not probe an enclosing class or method,
      * which can fail when they cannot be loaded.
