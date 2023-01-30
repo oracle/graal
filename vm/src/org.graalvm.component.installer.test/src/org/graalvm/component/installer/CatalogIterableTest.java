@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -301,7 +302,7 @@ public class CatalogIterableTest extends CommandTestBase {
         URL u = getClass().getResource(relSpec);
         Handler.bind(TEST_CATALOG_URL, u);
 
-        downloader = new RemoteCatalogDownloader(this, this, new URL(TEST_CATALOG_URL));
+        downloader = new RemoteCatalogDownloader(this, this, URI.create(TEST_CATALOG_URL).toURL());
         this.registry = new CatalogContents(this, downloader.getStorage(), getLocalRegistry());
     }
 

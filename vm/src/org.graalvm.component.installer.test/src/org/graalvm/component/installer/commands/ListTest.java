@@ -32,6 +32,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -74,7 +75,7 @@ public class ListTest extends CommandTestBase {
                         this, getLocalRegistry(), catalogContents,
                         "linux_amd64",
                         Version.fromString("1.0.0-rc3-dev"),
-                        new URL("http://go.to/graalvm"));
+                        URI.create("http://go.to/graalvm").toURL());
         this.registry = new CatalogContents(this, remoteStorage, localRegistry);
     }
 
@@ -216,7 +217,7 @@ public class ListTest extends CommandTestBase {
                         this, getLocalRegistry(), catalogContents,
                         "linux_amd64",
                         v,
-                        new URL("http://go.to/graalvm"));
+                        URI.create("http://go.to/graalvm").toURL());
         this.registry = new CatalogContents(this, remoteStorage, localRegistry);
 
         AvailableCommand inst = new AvailableCommand() {

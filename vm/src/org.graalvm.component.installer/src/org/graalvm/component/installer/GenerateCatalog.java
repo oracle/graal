@@ -30,6 +30,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -278,7 +279,7 @@ public final class GenerateCatalog {
                     f = null;
                     u = spec;
                     // create an URI, just to fail fast, if URI is wrong:
-                    URL check = new URL(spec);
+                    URL check = URI.create(spec).toURL();
                     // ... and use it somehow, so ECJ does not fail the gate.
                     assert check.toString() != null;
                 }
@@ -297,11 +298,11 @@ public final class GenerateCatalog {
         componentSpecs.add(spc);
     }
 
-    private URL createURL(String spec) throws MalformedURLException {
+    private URL createURL(String spec) throws IllegalArgumentException, MalformedURLException {
         if (urlPrefix != null) {
-            return new URL(new URL(urlPrefix), spec);
+            return URI.create(urlPrefix).resolve(spec).toURL();
         } else {
-            return new URL(spec);
+            return URI.create(spec).toURL();
         }
     }
 

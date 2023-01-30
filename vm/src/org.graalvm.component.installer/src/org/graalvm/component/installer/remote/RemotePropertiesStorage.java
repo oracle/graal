@@ -25,6 +25,7 @@
 package org.graalvm.component.installer.remote;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.MessageFormat;
 import java.util.HashMap;
@@ -212,8 +213,11 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         if (s == null) {
             return null;
         }
-        // try {
-        downloadURL = new URL(baseURL, s);
+        try {
+            downloadURL = baseURL.toURI().resolve(s).toURL();
+        } catch (IllegalArgumentException | URISyntaxException ex) {
+            throw new IOException(ex);
+        }
         String prefix = versoPrefix + id.toLowerCase() + "-"; // NOI18N
         String hashS = filtered.getProperty(prefix + PROPERTY_HASH);
         byte[] hash = hashS == null ? null : toHashBytes(id, hashS);

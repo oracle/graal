@@ -58,6 +58,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.MalformedURLException;
 import java.net.URL;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -197,7 +198,7 @@ public class GDSChannelTest extends CommandTestBase {
     @Test
     public void testInterceptDownloadException() throws Exception {
         String mockUrlString = "http://some.mock.url/";
-        URL url = new URL(mockUrlString);
+        URL url = URI.create(mockUrlString).toURL();
         channel.setIndexURL(url);
         IOException ioExc = new IOException("some Exception.");
         FileDownloader fd = new FileDownloader("something", url, this);

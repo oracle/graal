@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.graalvm.component.installer.gds.GdsCommands;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 
 /**
@@ -76,11 +77,11 @@ public class GDSChannelFactory implements SoftwareChannel.Factory {
         URL u;
         try {
             if (rest.startsWith("http") || rest.startsWith("file:") || rest.startsWith("test:")) {
-                u = new URL(rest);
+                u = URI.create(rest).toURL();
             } else {
-                u = new URL(PROTOCOL_HTTTPS_PREFIX + rest);
+                u = URI.create(PROTOCOL_HTTTPS_PREFIX + rest).toURL();
             }
-        } catch (MalformedURLException ex) {
+        } catch (IllegalArgumentException | MalformedURLException ex) {
             throw output.failure("YUM_InvalidLocation", ex, urlString, ex.getLocalizedMessage());
         }
         GDSChannel ch = new GDSChannel(input, output, input.getLocalRegistry());

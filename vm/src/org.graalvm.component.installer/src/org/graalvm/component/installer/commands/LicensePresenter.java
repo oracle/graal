@@ -29,7 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URL;
+import java.net.URI;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -327,7 +327,7 @@ public class LicensePresenter {
     File downloadLicenseText(String label, String url) throws IOException {
         FileDownloader dn = new FileDownloader(
                         label,
-                        new URL(url),
+                        URI.create(url).toURL(),
                         feedback);
 
         dn.download();

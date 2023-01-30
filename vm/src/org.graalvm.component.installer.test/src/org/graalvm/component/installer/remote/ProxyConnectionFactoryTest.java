@@ -25,6 +25,7 @@
 package org.graalvm.component.installer.remote;
 
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.net.URL;
 import java.util.List;
 import org.graalvm.component.installer.TestBase;
@@ -52,7 +53,7 @@ public class ProxyConnectionFactoryTest extends TestBase {
 
     @Before
     public void setUp() throws Exception {
-        URL u = new URL(RESOURCE_URL);
+        URL u = URI.create(RESOURCE_URL).toURL();
         instance = new ProxyConnectionFactory(this, u);
         // override proxies which may be loaded from testsuite environment:
         instance.setProxy(true, null);

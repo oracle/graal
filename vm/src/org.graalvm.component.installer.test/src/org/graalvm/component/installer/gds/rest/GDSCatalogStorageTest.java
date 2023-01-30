@@ -31,6 +31,7 @@ import org.graalvm.component.installer.model.ComponentInfo;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -52,7 +53,7 @@ public class GDSCatalogStorageTest extends CommandTestBase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        mockUrl = new URL(MOCK_URL);
+        mockUrl = URI.create(MOCK_URL).toURL();
     }
 
     @Test

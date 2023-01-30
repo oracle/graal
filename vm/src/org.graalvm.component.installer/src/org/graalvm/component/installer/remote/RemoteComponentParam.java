@@ -26,6 +26,7 @@ package org.graalvm.component.installer.remote;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -316,7 +317,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
             desc = remote;
         }
         try {
-            URL u = new URL(remote);
+            URL u = URI.create(remote).toURL();
             FileDownloader dn = createFileDownloader(u, feedback.l10n("LICENSE_RemoteLicenseDescription", desc), false);
             dn.download();
             String s = String.join("\n", Files.readAllLines(dn.getLocalFile().toPath()));

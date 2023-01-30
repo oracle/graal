@@ -25,6 +25,7 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -663,7 +664,7 @@ public class UpgradeTest extends CommandTestBase {
      */
     @Test
     public void testUpgradeRespectsTargetCatalogURLs() throws Exception {
-        URL u = new URL("test://catalog-19.3.properties");
+        URL u = URI.create("test://catalog-19.3.properties").toURL();
         Handler.bind(u.toString(), dataFile("../repo/catalog-19.3.properties").toUri().toURL());
 
         initVersion("1.0.0.0", "../repo/catalog-19.3.properties");

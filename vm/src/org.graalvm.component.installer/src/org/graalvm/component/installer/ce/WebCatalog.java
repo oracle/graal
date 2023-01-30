@@ -170,8 +170,8 @@ public class WebCatalog implements SoftwareChannel {
         sb.append(SystemUtils.patternOsArch(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase()));
 
         try {
-            catalogURL = new URL(urlString);
-        } catch (MalformedURLException ex) {
+            catalogURL = URI.create(urlString).toURL();
+        } catch (IllegalArgumentException | MalformedURLException ex) {
             throw feedback.failure("REMOTE_InvalidURL", ex, catalogURL, ex.getLocalizedMessage());
         }
 
@@ -189,7 +189,7 @@ public class WebCatalog implements SoftwareChannel {
             if (savedException != null) {
                 throw savedException;
             }
-            catalogURL = new URL(urlString);
+            catalogURL = URI.create(urlString).toURL();
             String l = source.getLabel();
             dn = new FileDownloader(feedback.l10n(l == null || l.isEmpty() ? "REMOTE_CatalogLabel2" : "REMOTE_CatalogLabel", l), catalogURL, feedback);
             dn.download();

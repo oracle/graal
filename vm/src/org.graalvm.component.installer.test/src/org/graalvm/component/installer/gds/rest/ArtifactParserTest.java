@@ -141,7 +141,7 @@ public class ArtifactParserTest extends TestBase {
             ap = new ArtifactParser(jo);
             fail("StringIndexOutOfBoundsException expected.");
         } catch (StringIndexOutOfBoundsException ex) {
-            assertEquals(makeSubstringExceptionMessage(0,-1,15), ex.getMessage());
+            assertEquals(makeSubstringExceptionMessage(0, -1, 15), ex.getMessage());
             // expected
         }
         jo.put(JSON_KEY_DISP_NAME, JSON_VAL_DISP_NAME + SystemUtils.OS.get().getName());

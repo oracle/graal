@@ -39,8 +39,7 @@ import static org.graalvm.component.installer.CommonConstants.SYSPROP_OS_NAME;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -827,16 +826,12 @@ public class SystemUtils {
      * @return true, if the path is actually an URL.
      */
     public static boolean isRemotePath(String pathOrURL) {
-        try {
-            URL u = new URL(pathOrURL);
-            String proto = u.getProtocol();
-            if ("file".equals(proto)) { // NOI18N
-                throw new IllegalArgumentException("Absolute file:// URLs are not permitted.");
-            } else {
-                return true;
-            }
-        } catch (MalformedURLException ex) {
-            // expected
+        URI u = URI.create(pathOrURL);
+        String proto = u.getScheme();
+        if ("file".equals(proto)) { // NOI18N
+            throw new IllegalArgumentException("Absolute file:// URLs are not permitted.");
+        } else if (proto != null) {
+            return true;
         }
         // will fail with an exception if the relative path contains bad chars or traverses up
         fromCommonRelative(pathOrURL);

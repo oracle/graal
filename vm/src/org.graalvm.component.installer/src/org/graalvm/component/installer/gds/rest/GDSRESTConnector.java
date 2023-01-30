@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -89,8 +90,8 @@ class GDSRESTConnector {
         }
         URL url = null;
         try {
-            url = new URL(baseURL);
-        } catch (MalformedURLException ex) {
+            url = URI.create(baseURL).toURL();
+        } catch (IllegalArgumentException | MalformedURLException ex) {
             throw new IllegalArgumentException("Base URL String must be convertible to URL.");
         }
         this.baseURL = url.toString();
@@ -177,7 +178,7 @@ class GDSRESTConnector {
         try {
             GDSRequester tr = getGDSRequester(acceptLicLink, licID);
             token = email != null ? tr.obtainConfig(email) : tr.acceptLic(config);
-        } catch (IOException ex) {
+        } catch (IllegalArgumentException | IOException ex) {
             throw feedback.failure("ERR_VerificationEmail", ex, email == null ? feedback.l10n("MSG_YourEmail") : email);
         }
         return token;
@@ -207,8 +208,8 @@ class GDSRESTConnector {
     URL makeArtifactDownloadURL(String id) {
         String url = baseURL + ENDPOINT_ARTIFACTS + id + ENDPOINT_DOWNLOAD;
         try {
-            return new URL(url);
-        } catch (MalformedURLException ex) {
+            return URI.create(url).toURL();
+        } catch (IllegalArgumentException | MalformedURLException ex) {
             feedback.error("ERR_MalformedArtifactUrl", ex, url);
         }
         return null;
@@ -219,12 +220,12 @@ class GDSRESTConnector {
         try {
             FileDownloader dn = new FileDownloader(
                             feedback.l10n("OLDS_ReleaseFile"),
-                            new URL(SystemUtils.buildUrlStringWithParameters(baseURL + endpoint, getParams())),
+                            URI.create(SystemUtils.buildUrlStringWithParameters(baseURL + endpoint, getParams())).toURL(),
                             feedback);
             fillBasics(dn);
             dn.download();
             return dn;
-        } catch (IOException ex) {
+        } catch (IllegalArgumentException | IOException ex) {
             throw feedback.failure("ERR_CouldNotLoadGDS", ex, baseURL, ex.getLocalizedMessage());
         } finally {
             params.clear();
@@ -274,8 +275,8 @@ class GDSRESTConnector {
         fd.addRequestHeader(HEADER_ENCODING, HEADER_VAL_GZIP);
     }
 
-    GDSRequester getGDSRequester(String acceptLicLink, String licID) throws MalformedURLException {
-        return new GDSRequester(new URL(acceptLicLink), licID);
+    GDSRequester getGDSRequester(String acceptLicLink, String licID) throws IllegalArgumentException, MalformedURLException {
+        return new GDSRequester(URI.create(acceptLicLink).toURL(), licID);
     }
 
     class GDSRequester {
@@ -380,9 +381,9 @@ class GDSRESTConnector {
             };
         }
 
-        URLConnectionFactory getConnectionFactory() throws MalformedURLException {
+        URLConnectionFactory getConnectionFactory() throws IllegalArgumentException, MalformedURLException {
             if (factory == null) {
-                factory = new ProxyConnectionFactory(feedback, new URL(baseURL));
+                factory = new ProxyConnectionFactory(feedback, URI.create(baseURL).toURL());
             }
             return factory;
         }

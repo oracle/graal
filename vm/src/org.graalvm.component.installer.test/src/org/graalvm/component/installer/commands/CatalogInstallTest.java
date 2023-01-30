@@ -25,6 +25,7 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Path;
@@ -102,7 +103,7 @@ public class CatalogInstallTest extends CommandTestBase {
         }
         Handler.bind(TEST_CATALOG_URL, u);
 
-        downloader = new RemoteCatalogDownloader(this, this, new URL(TEST_CATALOG_URL));
+        downloader = new RemoteCatalogDownloader(this, this, URI.create(TEST_CATALOG_URL).toURL());
         this.registry = new CatalogContents(this, downloader.getStorage(), getLocalRegistry());
     }
 
@@ -122,7 +123,7 @@ public class CatalogInstallTest extends CommandTestBase {
     public void testRejectMismatchingCatalog() throws Exception {
         setupVersion("1.0.0-rc1");
 
-        URL rubyURL = new URL("test://release/graalvm-ruby.zip");
+        URL rubyURL = URI.create("test://release/graalvm-ruby.zip").toURL();
         Handler.bind(rubyURL.toString(), new URLConnection(rubyURL) {
             @Override
             public void connect() throws IOException {
@@ -150,7 +151,7 @@ public class CatalogInstallTest extends CommandTestBase {
     public void testRejectMetaDontDownloadPackage() throws Exception {
         setupVersion("0.33-dev");
 
-        URL rubyURL = new URL("test://release/graalvm-ruby.zip");
+        URL rubyURL = URI.create("test://release/graalvm-ruby.zip").toURL();
         Handler.bind(rubyURL.toString(), new URLConnection(rubyURL) {
             @Override
             public void connect() throws IOException {
@@ -175,7 +176,7 @@ public class CatalogInstallTest extends CommandTestBase {
     public void testCheckPostinstMessageLoaded() throws Exception {
         setupVersion("0.33");
         URL x = getClass().getResource("postinst2.jar");
-        URL rubyURL = new URL("test://release/postinst2.jar");
+        URL rubyURL = URI.create("test://release/postinst2.jar").toURL();
         Handler.bind(rubyURL.toString(), x);
 
         setupCatalog(null);
@@ -197,7 +198,7 @@ public class CatalogInstallTest extends CommandTestBase {
     public void testPostinstMessagePrinted() throws Exception {
         setupVersion("0.33");
         URL x = getClass().getResource("postinst2.jar");
-        URL rubyURL = new URL("test://release/postinst2.jar");
+        URL rubyURL = URI.create("test://release/postinst2.jar").toURL();
         Handler.bind(rubyURL.toString(), x);
 
         setupCatalog(null);

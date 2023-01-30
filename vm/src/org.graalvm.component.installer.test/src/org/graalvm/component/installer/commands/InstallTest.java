@@ -27,6 +27,7 @@ package org.graalvm.component.installer.commands;
 import java.io.File;
 import org.graalvm.component.installer.CommandTestBase;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -236,12 +237,12 @@ public class InstallTest extends CommandTestBase {
         ComponentInfo fakeInfo = new ComponentInfo("ruby", "Fake ruby", "1.0");
         storage.installed.add(fakeInfo);
 
-        URL u = new URL("test://graalvm.io/download/catalog");
-        URL u2 = new URL(u, "graalvm-ruby.zip");
+        URI u = URI.create("test://graalvm.io/download/catalog");
+        URL u2 = u.resolve("graalvm-ruby.zip").toURL();
 
         Handler.bind(u.toString(), getClass().getResource("catalog"));
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
-        initCatalogIterable(u);
+        initCatalogIterable(u.toURL());
         textParams.add("ruby");
         options.put(Commands.OPTION_FAIL_EXISTING, "");
         files.clear();
@@ -272,13 +273,13 @@ public class InstallTest extends CommandTestBase {
         ComponentInfo fakeInfo = new ComponentInfo("ruby", "Fake ruby", "1.0");
         storage.installed.add(fakeInfo);
 
-        URL u = new URL("test://graalvm.io/download/catalog");
-        URL u2 = new URL(u, "graalvm-ruby.zip");
+        URI u = URI.create("test://graalvm.io/download/catalog");
+        URL u2 = u.resolve("graalvm-ruby.zip").toURL();
 
         Handler.bind(u.toString(), getClass().getResource("catalog"));
         Handler.bind(u2.toString(), getClass().getResource("graalvm-ruby.zip"));
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
-        initCatalogIterable(u);
+        initCatalogIterable(u.toURL());
         textParams.add("ruby");
         files.clear();
         inst = new InstallCommand();

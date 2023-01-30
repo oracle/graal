@@ -25,6 +25,7 @@
 package org.graalvm.component.installer.remote;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,7 +63,7 @@ public class CatalogCompatTest extends CommandTestBase {
 
     void setupCatalogFormat1(String res) throws Exception {
         URL clu = getClass().getResource(res);
-        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+        URL u = URI.create("test://graalvm.io/download/truffleruby.zip").toURL();
         Handler.bind(u.toString(),
                         clu);
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);

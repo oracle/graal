@@ -26,6 +26,7 @@ package org.graalvm.component.installer;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -89,7 +90,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
 
     protected void initRemoteComponent(String relativeJar, String u, String disp, String spec) throws IOException {
         clu = getClass().getResource(relativeJar);
-        url = new URL(u);
+        url = URI.create(u).toURL();
         Handler.bind(url.toString(), clu);
 
         File f = dataFile(relativeJar).toFile();
@@ -104,7 +105,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
 
     protected void initURLComponent(String relativeJar, String spec) throws IOException {
         clu = getClass().getResource(relativeJar);
-        url = new URL(spec);
+        url = URI.create(spec).toURL();
         Handler.bind(url.toString(), clu);
 
         File f = dataFile(relativeJar).toFile();

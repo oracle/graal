@@ -25,6 +25,7 @@
 package org.graalvm.component.installer.persist;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -205,7 +206,7 @@ public class DirectoryCatalogProviderTest extends CommandTestBase {
     @Test
     public void testNoErrorsWithLocalCatalogs() throws Exception {
         URL clu = getClass().getResource("data/catalog");
-        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+        URL u = URI.create("test://graalvm.io/download/truffleruby.zip").toURL();
         Handler.bind(u.toString(),
                         clu);
 

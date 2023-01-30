@@ -25,6 +25,7 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -394,7 +395,7 @@ public class LicensePresenterTest extends CommandTestBase {
         addLoader("license.ruby");
         URL licURL = getClass().getResource("license.ruby/license.txt");
 
-        URL remoteUrl = new URL("test://somewhere.org/license.txt");
+        URL remoteUrl = URI.create("test://somewhere.org/license.txt").toURL();
         Handler.bind(remoteUrl.toString(), licURL);
         licensedInfo.setLicensePath(remoteUrl.toString());
 
