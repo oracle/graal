@@ -697,7 +697,6 @@ public class AnalysisUniverse implements Universe {
 
     public void onTypeReachable(AnalysisType type) {
         hostVM.onTypeReachable(type);
-        type.onTypeReachable();
         if (bb != null) {
             bb.onTypeReachable(type);
         }

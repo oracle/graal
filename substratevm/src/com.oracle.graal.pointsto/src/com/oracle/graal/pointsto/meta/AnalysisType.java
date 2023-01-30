@@ -678,24 +678,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         onTypeReachableTask.ensureDone();
     }
 
-    /**
-     * Called when the {@link AnalysisType} initialization task is processed. This doesn't mean that
-     * the underlying {@link Class} is actually initialized, i.e., it may be initialized at run
-     * time.
-     */
-    public void onTypeReachable() {
-        if (isInitialized()) {
-            /*
-             * This type is initialized at build time, so the class initializer, if any, cannot be
-             * reachable at run time. Notify the reachability callbacks for the class initializer.
-             */
-            AnalysisMethod clinit = this.getClassInitializer();
-            if (clinit != null) {
-                clinit.notifyReachabilityCallbacks(universe, new ArrayList<>());
-            }
-        }
-    }
-
     public boolean getReachabilityListenerNotified() {
         return reachabilityListenerNotified;
     }
