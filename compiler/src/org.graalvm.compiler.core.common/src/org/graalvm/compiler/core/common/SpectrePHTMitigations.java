@@ -24,23 +24,72 @@
  */
 package org.graalvm.compiler.core.common;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 
 public enum SpectrePHTMitigations {
     None,
+    AllTargets,
     GuardTargets,
     NonDeoptGuardTargets;
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Mitigate speculative execution on all conditional branch targets with execution barrier instructions.", stability = OptionStability.STABLE)
-        public static final OptionKey<Boolean> SpeculativeExecutionBarriers = new OptionKey<>(false);
+
+        @Option(help = "Stop speculative execution on all branch targets with execution barrier instructions.", stability = OptionStability.STABLE)
+        public static final OptionKey<Boolean> SpeculativeExecutionBarriers = new OptionKey<>(false) {
+
+            @Override
+            public Boolean getValue(OptionValues values) {
+                // Do not use getValue to avoid an infinite recursion
+                if (values.getMap().get(SpectrePHTBarriers) == AllTargets) {
+                    return true;
+                }
+                return super.getValue(values);
+            }
+
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                if (values.containsKey(SpectrePHTBarriers)) {
+                    Object otherValue = values.get(SpectrePHTBarriers);
+                    if (newValue && otherValue != AllTargets || (!newValue && otherValue == AllTargets)) {
+                        throw new IllegalArgumentException("SpectrePHTBarriers can be set to 'AllTargets' if and only if SpeculativeExecutionBarriers is enabled or unspecified.");
+                    }
+                }
+            }
+        };
+
         @Option(help = "file:doc-files/MitigateSpeculativeExecutionAttacksHelp.txt")
-        public static final EnumOptionKey<SpectrePHTMitigations> SpectrePHTBarriers = new EnumOptionKey<>(None);
+        public static final EnumOptionKey<SpectrePHTMitigations> SpectrePHTBarriers = new EnumOptionKey<>(None) {
+            private boolean isSpeculativeExecutionBarriersEnabled(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+                Object value = values.get(SpeculativeExecutionBarriers);
+                return value != null && (boolean) value;
+            }
+
+            @Override
+            public SpectrePHTMitigations getValue(OptionValues values) {
+                if (isSpeculativeExecutionBarriersEnabled(values.getMap())) {
+                    return AllTargets;
+                }
+                return super.getValue(values);
+            }
+
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, SpectrePHTMitigations oldValue, SpectrePHTMitigations newValue) {
+                if (values.containsKey(SpeculativeExecutionBarriers)) {
+                    boolean otherIsEnabled = isSpeculativeExecutionBarriersEnabled(values);
+                    if (otherIsEnabled && newValue != AllTargets || (!otherIsEnabled && newValue == AllTargets)) {
+                        throw new IllegalArgumentException("SpectrePHTBarriers can be set to 'AllTargets' if and only if SpeculativeExecutionBarriers is enabled or unspecified.");
+                    }
+                }
+            }
+        };
+
         @Option(help = "Mask indices to scope access to allocation size after bounds check.", type = OptionType.User, stability = OptionStability.STABLE)
         public static final OptionKey<Boolean> SpectrePHTIndexMasking = new OptionKey<>(false);
         // @formatter:on
