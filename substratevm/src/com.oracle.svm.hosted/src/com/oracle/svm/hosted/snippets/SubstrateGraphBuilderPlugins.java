@@ -62,6 +62,7 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
@@ -941,6 +942,32 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerClassPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
+        Registration r = new Registration(plugins, Class.class);
+        /*
+         * The field DynamicHub.name cannot be final, so we ensure early constant folding using an
+         * invocation plugin.
+         */
+        r.register(new InvocationPlugin.InlineOnlyInvocationPlugin("getName", Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                JavaConstant constantReceiver = receiver.get(false).asJavaConstant();
+                if (constantReceiver != null) {
+                    ResolvedJavaType type = b.getConstantReflection().asJavaType(constantReceiver);
+                    if (type != null) {
+                        /*
+                         * Class names must be interned according to the Java specification. This
+                         * also ensures we get the same String instance that is stored in
+                         * DynamicHub.name without having a dependency on DynamicHub.
+                         */
+                        String className = type.toClassName().intern();
+                        b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getConstantReflection().forString(className), b.getMetaAccess()));
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+
         registerClassDesiredAssertionStatusPlugin(plugins, snippetReflection);
     }
 
