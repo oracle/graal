@@ -43,6 +43,7 @@ package org.graalvm.nativeimage;
 import java.util.EnumSet;
 
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
+import org.graalvm.options.OptionDescriptors;
 
 /**
  * Used for manipulating options at run time.
@@ -89,7 +90,7 @@ public final class RuntimeOptions {
      * @since 19.0
      */
     @Deprecated(since = "23.0", forRemoval = true)
-    public static <T> T getOptions(EnumSet<OptionClass> classes) {
+    public static OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
         return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions(classes);
     }
 
@@ -99,7 +100,7 @@ public final class RuntimeOptions {
      * @since 19.0
      */
     @Deprecated(since = "23.0", forRemoval = true)
-    public static <T> T getOptions() {
+    public static OptionDescriptors getOptions() {
         return getOptions(EnumSet.allOf(OptionClass.class));
     }
 

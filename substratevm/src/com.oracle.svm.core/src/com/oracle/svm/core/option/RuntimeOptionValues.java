@@ -115,7 +115,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
     @SuppressWarnings({"unchecked", "deprecation"})
     @Override
-    public <T> T getOptions(EnumSet<OptionClass> classes) {
+    public OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
         Iterable<OptionDescriptor> descriptors = RuntimeOptionParser.singleton().getDescriptors();
         List<org.graalvm.options.OptionDescriptor> graalvmDescriptors = new ArrayList<>();
         for (OptionDescriptor descriptor : descriptors) {
@@ -132,7 +132,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
                 graalvmDescriptors.add(builder.build());
             }
         }
-        return (T) OptionDescriptors.create(graalvmDescriptors);
+        return OptionDescriptors.create(graalvmDescriptors);
     }
 
     @SuppressWarnings("deprecation")

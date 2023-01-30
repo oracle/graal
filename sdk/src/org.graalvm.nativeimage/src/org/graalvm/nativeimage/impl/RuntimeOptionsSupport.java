@@ -43,11 +43,13 @@ package org.graalvm.nativeimage.impl;
 import java.util.EnumSet;
 
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
+import org.graalvm.options.OptionDescriptors;
 
 public interface RuntimeOptionsSupport {
     void set(String optionName, Object value);
 
     <T> T get(String optionName);
 
-    <T> T getOptions(EnumSet<OptionClass> classes);
+    @SuppressWarnings("deprecation")
+    OptionDescriptors getOptions(EnumSet<OptionClass> classes);
 }
