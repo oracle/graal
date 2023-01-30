@@ -785,7 +785,10 @@ def test():
     # through the instructions until we find and execute the first instruction
     # that adjusts the stack pointer register, which concludes the prologue.
     if arch == "aarch64":
-        instruction_adjusts_sp_register_pattern = r"%s sp%s"%(wildcard_pattern, wildcard_pattern)
+        # on aarch64 the stack build sequence requires both a stack extend and
+        # then a save of sp to fp. therefore, match the second instruction,
+        # which is expected to be a store pair (stp).
+        instruction_adjusts_sp_register_pattern = r"%sstp%sx%s, x%s, \[sp,"%(wildcard_pattern, spaces_pattern, digits_pattern, digits_pattern)
     else:
         instruction_adjusts_sp_register_pattern = r"%s,%%rsp"%(wildcard_pattern)
     instruction_adjusts_sp_register_regex = re.compile(instruction_adjusts_sp_register_pattern)
@@ -801,15 +804,6 @@ def test():
             break
         if num_stepis >= max_num_stepis:
             print("method prologue is unexpectedly long, did not reach end after %s stepis" % num_stepis)
-            sys.exit(1)
-    if arch == "aarch64":
-        # on aarch64 the stack build sequence requires both a stack extend and
-        # then a save of sp to fp. therefore, step into one more instruction.
-        exec_string = execute("x/i $pc")
-        print(exec_string)
-        execute("stepi")
-        if "sp" not in exec_string:
-            print("failed to reach method prologue, last instruction was expected to modify sp register but did not")
             sys.exit(1)
     
     exec_string = execute("info args")
