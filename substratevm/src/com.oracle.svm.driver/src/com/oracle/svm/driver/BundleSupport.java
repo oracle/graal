@@ -312,16 +312,13 @@ final class BundleSupport {
     }
 
     Path substituteAuxiliaryPath(Path origPath, BundleMember.Role bundleMemberRole) {
-        Path destinationDir;
-        switch (bundleMemberRole) {
-            case Input:
-                destinationDir = auxiliaryDir;
-                break;
-            case Output:
-                destinationDir = auxiliaryOutputDir;
-                break;
-            default:
-                return origPath;
+        Path destinationDir = switch (bundleMemberRole) {
+            case Input -> auxiliaryDir;
+            case Output -> auxiliaryOutputDir;
+            case Ignore -> null;
+        };
+        if (destinationDir == null) {
+            return origPath;
         }
         return substitutePath(origPath, destinationDir);
     }
