@@ -411,6 +411,15 @@ JVM_ExtentLocalCache(JNIEnv *env, jclass threadClass);
 JNIEXPORT void JNICALL
 JVM_SetExtentLocalCache(JNIEnv *env, jclass threadClass, jobject theCache);
 
+JNIEXPORT jobject JNICALL
+JVM_ScopedValueCache(JNIEnv *env, jclass threadClass);
+
+JNIEXPORT void JNICALL
+JVM_SetScopedValueCache(JNIEnv *env, jclass threadClass, jobject theCache);
+
+JNIEXPORT jobject JNICALL
+JVM_FindScopedValueBindings(JNIEnv *env, jclass threadClass);
+
 JNIEXPORT jlong JNICALL
 JVM_GetNextThreadIdOffset(JNIEnv *env, jclass threadClass);
 
@@ -942,6 +951,8 @@ JVM_GetInheritedAccessControlContext(JNIEnv *env, jclass cls);
 #define JVM_EnsureMaterializedForStackWalk(env, value) \
     do {} while(0) // Nothing to do.  The fact that the value escaped
                    // through a native method is enough.
+JNIEXPORT void JNICALL
+JVM_EnsureMaterializedForStackWalk_func(JNIEnv* env, jobject vthread, jobject value);
 
 JNIEXPORT jobject JNICALL
 JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls);
@@ -2032,8 +2043,10 @@ typedef struct JDK1_1InitArgs {
     jint debugPort;
 } JDK1_1InitArgs;
 
+
 #ifdef __cplusplus
 } /* extern "C" */
+
 #endif /* __cplusplus */
 
 #endif /* !_JAVASOFT_JVM_H_ */

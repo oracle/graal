@@ -348,8 +348,9 @@ typedef uint64_t julong;
     V(JVM_CurrentCarrierThread) \
     V(JVM_SetCurrentThread) \
     V(JVM_GetStackTrace) \
-    V(JVM_ExtentLocalCache) \
-    V(JVM_SetExtentLocalCache) \
+    V(JVM_ScopedValueCache) \
+    V(JVM_SetScopedValueCache) \
+    V(JVM_FindScopedValueBindings) \
     V(JVM_GetNextThreadIdOffset) \
     V(JVM_RegisterContinuationMethods) \
     /* V(JVM_DumpClassListToFile) */ \
@@ -360,7 +361,10 @@ typedef uint64_t julong;
     /* V(JVM_VirtualThreadUnmountEnd) */ \
     /* Java 20 VM methods */ \
     /* V(JVM_VirtualThreadHideFrames) */ \
-    /* V(JVM_GetClassFileVersion) */
+    /* V(JVM_GetClassFileVersion) */ \
+    V(JVM_ScopedValueCache) \
+    V(JVM_SetScopedValueCache) \
+    V(JVM_FindScopedValueBindings) \
 
 #ifdef __cplusplus
 extern "C" {
@@ -958,6 +962,12 @@ jobject (*JVM_GetStackTrace)(JNIEnv *env, jobject thread);
 jobject (*JVM_ExtentLocalCache)(JNIEnv *env, jclass threadClass);
 
 void (*JVM_SetExtentLocalCache)(JNIEnv *env, jclass threadClass, jobject theCache);
+
+jobject (*JVM_ScopedValueCache)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_SetScopedValueCache)(JNIEnv *env, jclass threadClass, jobject theCache);
+
+jobject (*JVM_FindScopedValueBindings)(JNIEnv *env, jclass threadClass);
 
 jlong (*JVM_GetNextThreadIdOffset)(JNIEnv *env, jclass threadClass);
 

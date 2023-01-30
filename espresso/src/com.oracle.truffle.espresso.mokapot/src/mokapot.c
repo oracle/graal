@@ -437,6 +437,20 @@ JNIEXPORT void JNICALL JVM_SetExtentLocalCache(JNIEnv *env, jclass threadClass, 
   UNIMPLEMENTED(JVM_SetExtentLocalCache);
 }
 
+JNIEXPORT jobject JNICALL JVM_ScopedValueCache(JNIEnv *env, jclass threadClass) {
+    UNIMPLEMENTED(JVM_ScopedValueCache);
+    return NULL;
+}
+
+JNIEXPORT void JNICALL JVM_SetScopedValueCache(JNIEnv *env, jclass threadClass, jobject theCache) {
+UNIMPLEMENTED(JVM_SetScopedValueCache);
+}
+
+JNIEXPORT jobject JNICALL JVM_FindScopedValueBindings(JNIEnv *env, jclass threadClass) {
+    UNIMPLEMENTED(JVM_FindScopedValueBindings);
+    return NULL;
+}
+
 JNIEXPORT jlong JNICALL JVM_GetNextThreadIdOffset(JNIEnv *env, jclass threadClass) {
   UNIMPLEMENTED(JVM_GetNextThreadIdOffset);
   return 0L;
@@ -792,6 +806,10 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
 JNIEXPORT jobject JNICALL JVM_GetInheritedAccessControlContext(JNIEnv *env, jclass cls) {
   IMPLEMENTED(JVM_GetInheritedAccessControlContext);
   return (*getEnv())->JVM_GetInheritedAccessControlContext(env, cls);
+}
+
+JNIEXPORT void JNICALL JVM_EnsureMaterializedForStackWalk_func(JNIEnv* env, jobject vthread, jobject value) {
+    UNIMPLEMENTED(JVM_EnsureMaterializedForStackWalk_func);
 }
 
 JNIEXPORT jobject JNICALL JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls) {
