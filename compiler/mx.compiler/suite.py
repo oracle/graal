@@ -1950,12 +1950,7 @@ suite = {
         "org.graalvm.compiler.hotspot.aarch64.test",
         "org.graalvm.compiler.hotspot.amd64.test",
         "org.graalvm.compiler.hotspot.lir.test",
-<<<<<<< HEAD
-        "org.graalvm.compiler.hotspot.jdk19.test",
-=======
-        "org.graalvm.compiler.hotspot.jdk17.test",
         "org.graalvm.compiler.hotspot.jdk20.test",
->>>>>>> 4157731ce5b (Add intrinsics for Float.float16ToFloat/floatToFloat16.)
         "org.graalvm.compiler.options.test",
         "org.graalvm.compiler.jtt",
         "org.graalvm.compiler.lir.jtt",

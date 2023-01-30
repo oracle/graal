@@ -336,10 +336,10 @@ public final class UnimplementedGraalIntrinsics {
         }
 
         if (JAVA_SPEC >= 19) {
-            if (config.threadExtentLocalCacheOffset == -1L) {
+            if (config.threadScopedValueCacheOffset == -1L) {
                 add(ignore,
-                                "java/lang/Thread.extentLocalCache()[Ljava/lang/Object;",
-                                "java/lang/Thread.setExtentLocalCache([Ljava/lang/Object;)V");
+                                "java/lang/Thread.scopedValueCache()[Ljava/lang/Object;",
+                                "java/lang/Thread.setScopedValueCache([Ljava/lang/Object;)V");
             }
 
             if (arch instanceof AMD64) {
@@ -455,8 +455,6 @@ public final class UnimplementedGraalIntrinsics {
         if (JAVA_SPEC >= 20) {
             add(toBeInvestigated,
                             "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
-                            "java/lang/Thread.scopedValueCache()[Ljava/lang/Object;",
-                            "java/lang/Thread.setScopedValueCache([Ljava/lang/Object;)V",
                             "jdk/internal/vm/Continuation.doYield()I",
                             // @formatter:off
                             "jdk/internal/vm/vector/VectorSupport.indexVector(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$IndexOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;");

@@ -27,12 +27,12 @@ package org.graalvm.compiler.hotspot.replacements;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.ARRAY_KLASS_COMPONENT_MIRROR;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_EXTENT_LOCAL_CACHE_HANDLE_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_EXTENT_LOCAL_CACHE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_OSTHREAD_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MODIFIER_FLAGS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_KLASS_LOCATION;
@@ -125,7 +125,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         JAVA_THREAD_OSTHREAD_OFFSET(config -> config.osThreadOffset, JAVA_THREAD_OSTHREAD_LOCATION),
         JAVA_THREAD_THREAD_OBJECT(config -> config.threadCurrentThreadObjectOffset, JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION, null),
         JAVA_THREAD_CARRIER_THREAD_OBJECT(config -> config.threadCarrierThreadObjectOffset, JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION, null),
-        JAVA_THREAD_EXTENT_LOCAL_CACHE_OFFSET(config -> config.threadExtentLocalCacheOffset, JAVA_THREAD_EXTENT_LOCAL_CACHE_LOCATION, null),
+        JAVA_THREAD_SCOPED_VALUE_CACHE_OFFSET(config -> config.threadScopedValueCacheOffset, JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION, null),
         KLASS_ACCESS_FLAGS_OFFSET(config -> config.klassAccessFlagsOffset, KLASS_ACCESS_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
         HOTSPOT_OOP_HANDLE_VALUE(config -> 0, HOTSPOT_OOP_HANDLE_LOCATION, StampFactory.forKind(JavaKind.Object));
 
@@ -239,28 +239,28 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         // TODO JFR_ONLY(extend_setCurrentThread(thread, arr);)
     }
 
-    private AddressNode extentLocalCacheHelper() {
+    private AddressNode scopedValueCacheHelper() {
         CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(getWordKind()));
-        ValueNode extentLocalCacheHandle = readLocation(javaThread, HotSpotVMConfigField.JAVA_THREAD_EXTENT_LOCAL_CACHE_OFFSET, StampFactory.forKind(getWordKind()));
-        return b.add(OffsetAddressNode.create(extentLocalCacheHandle));
+        ValueNode scopedValueCacheHandle = readLocation(javaThread, HotSpotVMConfigField.JAVA_THREAD_SCOPED_VALUE_CACHE_OFFSET, StampFactory.forKind(getWordKind()));
+        return b.add(OffsetAddressNode.create(scopedValueCacheHandle));
     }
 
     /**
-     * Reads {@code JavaThread::_extentLocalCache}.
+     * Reads {@code JavaThread::_scopedValueCache}.
      */
-    public ValueNode readThreadExtentLocalCache() {
-        AddressNode handleAddress = extentLocalCacheHelper();
+    public ValueNode readThreadScopedValueCache() {
+        AddressNode handleAddress = scopedValueCacheHelper();
         ObjectStamp stamp = StampFactory.object(TypeReference.create(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Object[].class)));
-        return b.add(new ReadNode(handleAddress, HOTSPOT_JAVA_THREAD_EXTENT_LOCAL_CACHE_HANDLE_LOCATION, stamp,
-                        barrierSet.readBarrierType(HOTSPOT_JAVA_THREAD_EXTENT_LOCAL_CACHE_HANDLE_LOCATION, handleAddress, stamp), MemoryOrderMode.PLAIN));
+        return b.add(new ReadNode(handleAddress, HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION, stamp,
+                        barrierSet.readBarrierType(HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION, handleAddress, stamp), MemoryOrderMode.PLAIN));
     }
 
     /**
-     * Sets {@code cache} into {@code JavaThread::_extentLocalCache}.
+     * Sets {@code cache} into {@code JavaThread::_scopedValueCache}.
      */
-    public void setThreadExtentLocalCache(ValueNode cache) {
-        AddressNode handleAddress = extentLocalCacheHelper();
-        b.add(new WriteNode(handleAddress, HOTSPOT_JAVA_THREAD_EXTENT_LOCAL_CACHE_HANDLE_LOCATION, cache, BarrierType.NONE, MemoryOrderMode.PLAIN));
+    public void setThreadScopedValueCache(ValueNode cache) {
+        AddressNode handleAddress = scopedValueCacheHelper();
+        b.add(new WriteNode(handleAddress, HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION, cache, BarrierType.NONE, MemoryOrderMode.PLAIN));
     }
 
     /**

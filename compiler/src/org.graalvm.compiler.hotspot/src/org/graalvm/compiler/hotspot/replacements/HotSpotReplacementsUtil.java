@@ -304,7 +304,7 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_held_monitor_count");
 
-    public static final LocationIdentity JAVA_THREAD_EXTENT_LOCAL_CACHE_LOCATION = NamedLocationIdentity.immutable("JavaThread::_extentLocalCache");
+    public static final LocationIdentity JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION = NamedLocationIdentity.immutable("JavaThread::_scopedValueCache");
 
     @Fold
     public static JavaKind getWordKind() {
@@ -871,7 +871,7 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? HOTSPOT_OOP_HANDLE_LOCATION
                     : NamedLocationIdentity.mutable("_vthread OopHandle contents");
 
-    public static final LocationIdentity HOTSPOT_JAVA_THREAD_EXTENT_LOCAL_CACHE_HANDLE_LOCATION = NamedLocationIdentity.mutable("_extentLocalCache OopHandle contents");
+    public static final LocationIdentity HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION = NamedLocationIdentity.mutable("_scopedValueCache OopHandle contents");
 
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {

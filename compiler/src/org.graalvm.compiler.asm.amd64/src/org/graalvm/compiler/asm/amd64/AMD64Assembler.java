@@ -3698,6 +3698,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void push(Register src) {
+        assert inRC(CPU, src);
         prefix(src);
         emitByte(0x50 + encode(src));
     }

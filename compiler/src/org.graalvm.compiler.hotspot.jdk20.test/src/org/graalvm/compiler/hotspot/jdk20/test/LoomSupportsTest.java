@@ -68,26 +68,26 @@ public class LoomSupportsTest extends HotSpotGraalCompilerTest {
     }
 
     @Test
-    public void testExtentLocal() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        assumeTrue(((HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class)).getVMConfig().threadExtentLocalCacheOffset != -1);
+    public void testScopedValue() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        assumeTrue(((HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class)).getVMConfig().threadScopedValueCacheOffset != -1);
 
-        Method get = Thread.class.getDeclaredMethod("extentLocalCache");
+        Method get = Thread.class.getDeclaredMethod("scopedValueCache");
         get.setAccessible(true);
         Object[] originalCache = (Object[]) get.invoke(null);
 
-        // set extent cache with compiled Thread.setExtentLocalCache
-        compileAndInstallSubstitution(Thread.class, "setExtentLocalCache");
+        // set extent cache with compiled Thread.setScopedValueCache
+        compileAndInstallSubstitution(Thread.class, "setScopedValueCache");
 
         Object[] cache = new Object[1];
-        Method set = Thread.class.getDeclaredMethod("setExtentLocalCache", Object[].class);
+        Method set = Thread.class.getDeclaredMethod("setScopedValueCache", Object[].class);
         set.setAccessible(true);
         set.invoke(null, cache);
 
-        // validate extent cache with interpreted Thread.extentLocalCache
+        // validate extent cache with interpreted Thread.scopedValueCache
         assumeTrue(cache == get.invoke(null));
 
-        // validate extent cache with compiled Thread.extentLocalCache
-        compileAndInstallSubstitution(Thread.class, "extentLocalCache");
+        // validate extent cache with compiled Thread.scopedValueCache
+        compileAndInstallSubstitution(Thread.class, "scopedValueCache");
         assumeTrue(cache == get.invoke(null));
 
         set.invoke(null, originalCache);

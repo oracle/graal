@@ -307,7 +307,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         }
     }
     public final int threadCarrierThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
-    public final int threadExtentLocalCacheOffset = getFieldOffset("JavaThread::_extentLocalCache", Integer.class, "OopHandle", -1, JVMCI ? jvmciGE(JVMCI_23_0_b04) : JDK >= 20);
+    public final int threadScopedValueCacheOffset = getFieldOffset("JavaThread::_scopedValueCache", Integer.class, "OopHandle", -1, JVMCI ? jvmciGE(JVMCI_23_0_b04) : JDK >= 20);
 
     public final int osThreadOffset = getFieldOffset("JavaThread::_osthread", Integer.class, "OSThread*");
     public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result", Integer.class, "oop");
@@ -587,7 +587,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final long galoisCounterModeCrypt = getFieldValue("StubRoutines::_galoisCounterMode_AESCrypt", Long.class, "address");
 
-    public final long poly1305ProcessBlocks = getFieldValue("StubRoutines::_poly1305_processBlocks", Long.class, "address");
+    public final long poly1305ProcessBlocks = getFieldValue("StubRoutines::_poly1305_processBlocks", Long.class, "address", 0L, JVMCI ? jvmciGE(JVMCI_23_0_b07) : JDK >= 21);
     public final long chacha20Block = getFieldValue("StubRoutines::_chacha20Block", Long.class, "address");
 
     public final long throwDelayedStackOverflowErrorEntry = getFieldValue("StubRoutines::_throw_delayed_StackOverflowError_entry", Long.class, "address");

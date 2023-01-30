@@ -51,7 +51,6 @@ import java.util.zip.CRC32;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
@@ -627,11 +626,11 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
 
-        r.registerConditional(config.threadExtentLocalCacheOffset != -1, new InvocationPlugin("extentLocalCache") {
+        r.registerConditional(config.threadScopedValueCacheOffset != -1, new InvocationPlugin("scopedValueCache") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    b.push(JavaKind.Object, helper.readThreadExtentLocalCache());
+                    b.push(JavaKind.Object, helper.readThreadScopedValueCache());
                 }
                 return true;
             }
@@ -642,11 +641,11 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
 
-        r.registerConditional(config.threadExtentLocalCacheOffset != -1, new InvocationPlugin("setExtentLocalCache", Object[].class) {
+        r.registerConditional(config.threadScopedValueCacheOffset != -1, new InvocationPlugin("setScopedValueCache", Object[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode cache) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    helper.setThreadExtentLocalCache(cache);
+                    helper.setThreadScopedValueCache(cache);
                 }
                 return true;
             }

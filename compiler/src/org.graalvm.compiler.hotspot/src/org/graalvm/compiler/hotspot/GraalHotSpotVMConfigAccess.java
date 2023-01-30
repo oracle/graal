@@ -121,6 +121,7 @@ public class GraalHotSpotVMConfigAccess {
      */
     public final String osArch;
 
+    protected static final Version JVMCI_23_0_b07 = new Version(23, 0, 7);
     protected static final Version JVMCI_23_0_b04 = new Version(23, 0, 4);
     protected static final Version JVMCI_23_0_b05 = new Version(23, 0, 5);
     protected static final Version JVMCI_23_0_b07 = new Version(23, 0, 7);
