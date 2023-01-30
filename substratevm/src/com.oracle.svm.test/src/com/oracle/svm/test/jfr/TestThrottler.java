@@ -32,17 +32,20 @@ import org.junit.Assert;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class TestThrottler {
 
-    private final long WINDOWS_PER_PERIOD = 5; // Based on hardcoded value in the throttler class.
-                                               // Can change later.
-    private final long WINDOW_DURATION_MS = 10; // Arbitrary. It doesn't matter what this is.
+    // Based on hardcoded value in the throttler class.
+    private final long WINDOWS_PER_PERIOD = 5;
+    // Arbitrary. It doesn't matter what this is.
+    private final long WINDOW_DURATION_MS = 200;
     private final long SAMPLES_PER_WINDOW = 10;
 
     /**
-     * This test ensures that sampling stops after the cap is hit. Single thread.
+     * This is the simplest test that ensures that sampling stops after the cap is hit. Single thread.
+     * All sampling is done within the first window. No rotations.
      */
     @Test
     public void testCapSingleThread() {
@@ -52,11 +55,8 @@ public class TestThrottler {
         throttler.setThrottle(SAMPLES_PER_WINDOW * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         for (int i = 0; i < SAMPLES_PER_WINDOW * WINDOWS_PER_PERIOD; i++) {
             boolean sample = throttler.sample();
-            if (i < SAMPLES_PER_WINDOW && !sample) {
-                Assert.fail("failed! should take sample if under window limit");
-            } else if (i >= SAMPLES_PER_WINDOW && sample) {
-                Assert.fail("failed! should not take sample if over window limit");
-            }
+            assertFalse("failed! should take sample if under window limit", i < SAMPLES_PER_WINDOW && !sample);
+            assertFalse("failed! should not take sample if over window limit", i >= SAMPLES_PER_WINDOW && sample);
         }
     }
 
@@ -89,26 +89,22 @@ public class TestThrottler {
         secondThread.join();
         thirdThread.join();
 
-        if (count.get() > samplesPerWindow) {
-            Assert.fail("failed! Too many samples taken! " + count.get());
-        }
+        assertFalse("failed! Too many samples taken! " + count.get(), count.get() > samplesPerWindow);
         // Previous measured population should be 3*samplesPerWindow
         // Force window rotation and repeat.
         count.set(0);
         throttler.setThrottle(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
-        Thread firstThread1 = new Thread(doSampling);
-        Thread secondThread1 = new Thread(doSampling);
-        Thread thirdThread1 = new Thread(doSampling);
-        firstThread1.start();
-        secondThread1.start();
-        thirdThread1.start();
-        firstThread1.join();
-        secondThread1.join();
-        thirdThread1.join();
+        Thread fourthThread = new Thread(doSampling);
+        Thread fifthThread = new Thread(doSampling);
+        Thread sixthThread = new Thread(doSampling);
+        fourthThread.start();
+        fifthThread.start();
+        sixthThread.start();
+        fourthThread.join();
+        fifthThread.join();
+        sixthThread.join();
 
-        if (count.get() > samplesPerWindow) {
-            Assert.fail("failed! Too many samples taken (after rotation)! " + count.get());
-        }
+        assertFalse("failed! Too many samples taken (after rotation)! " + count.get(), count.get() > samplesPerWindow);
     }
 
     /**
@@ -139,30 +135,21 @@ public class TestThrottler {
     }
 
     /**
-     * This test check that the projected population and sampling interval after a window rotation
-     * is as expected.
+     * This test checks that the projected population and sampling interval after a window rotation
+     * is as expected. Window lookback for this test is 5.
+     *
+     * Will be low rate, which results in lookback of 5, because window duration is period.
      */
     @Test
     public void testEWMA() {
-        final long samplesPerWindow = 10;
+        final long samplesPerWindow = 1000;
         JfrThrottler throttler = new JfrThrottler();
-        throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOWS_PER_PERIOD * 60 * 1000); // period
-                                                                                                    // is
-                                                                                                    // 5
-                                                                                                    // min
-                                                                                                    // resulting
-                                                                                                    // in
-                                                                                                    // a
-                                                                                                    // lookback
-                                                                                                    // of
-                                                                                                    // 5
-                                                                                                    // windows
+        // Period is 5min resulting in a lookback of 5 windows
+        throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD,  60 * 1000);
+
         int[] population = {21, 41, 61, 31, 91, 42, 77, 29, 88, 64, 22, 11, 33, 59}; // Arbitrary
-        double[] actualProjections = {4.2, 11.56, 21.44, 23.35, 36.88, 37.90, 45.72, 42.38, 51.50, 54.00, 47.60, 40.28, 38.82, 42.86}; // used
-                                                                                                                                       // EMWA
-                                                                                                                                       // calculator
-                                                                                                                                       // to
-                                                                                                                                       // determine
+        // Used EWMA calculator to confirm actualProjections
+        double[] actualProjections = {4.2, 11.56, 21.44, 23.35, 36.88, 37.90, 45.72, 42.38, 51.50, 54.00, 47.60, 40.28, 38.82, 42.86};
 
         for (int p = 0; p < population.length; p++) {
             for (int i = 0; i < population[p]; i++) {
@@ -177,34 +164,23 @@ public class TestThrottler {
     /**
      * Note: computeAccumulatedDebtCarryLimit depends on window duration.
      *
-     * Window lookback for this test is 5. Window duration is 1 minute. Window divisor is default of
-     * 5.
+     * Window lookback for this test is 25. Window duration is 1 second. Window divisor is default of 5.
      */
     @Test
     public void testDebt() {
         final long samplesPerWindow = 10;
         final long actualSamplesPerWindow = 50;
         JfrThrottler throttler = new JfrThrottler();
-        throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOWS_PER_PERIOD * 60 * 1000); // period
-                                                                                                    // is
-                                                                                                    // 5
-                                                                                                    // min
-                                                                                                    // resulting
-                                                                                                    // in
-                                                                                                    // a
-                                                                                                    // lookback
-                                                                                                    // of
-                                                                                                    // 5
-                                                                                                    // windows
+        throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOWS_PER_PERIOD * WINDOW_DURATION_MS);
 
-        for (int p = 0; p < 10; p++) {
+        for (int p = 0; p < 50; p++) {
             for (int i = 0; i < actualSamplesPerWindow; i++) {
                 throttler.sample();
             }
             expireAndRotate(throttler);
         }
         // now the sampling interval must be 50 / 10 = 5
-        assertTrue("Sampling interval is incorrect", throttler.getActiveWindowSamplingInterval() == 5);
+        assertTrue("Sampling interval is incorrect:"+ throttler.getActiveWindowSamplingInterval(), throttler.getActiveWindowSamplingInterval() == 5);
 
         // create debt by under sampling. Instead of 50, only sample 20 times. Debt should be 6
         // samples
@@ -226,13 +202,28 @@ public class TestThrottler {
     }
 
     /**
+     * Tests normalization of sample size and period.
+     */
+    @Test
+    public void testNormalization() {
+        long sampleSize = 10 * 600;
+        long periodMs = 60*1000;
+        JfrThrottler throttler = new JfrThrottler();
+        throttler.beginTest(sampleSize, periodMs);
+        assertTrue(throttler.getPeriodNs()+" "+ throttler.getEventSampleSize(),throttler.getEventSampleSize()==sampleSize/60 && throttler.getPeriodNs() == 1000000000);
+
+        sampleSize = 10*3600;
+        periodMs = 3600*1000;
+        throttler.setThrottle(sampleSize, periodMs);
+        assertTrue(throttler.getPeriodNs()+" "+ throttler.getEventSampleSize(), throttler.getEventSampleSize()==sampleSize/3600 && throttler.getPeriodNs() == 1000000000);
+    }
+
+    /**
      * Helper method that expires and rotates a throttler's active window
      */
     private void expireAndRotate(JfrThrottler throttler) {
         throttler.expireActiveWindow();
         assertTrue("should be expired", throttler.IsActiveWindowExpired());
-        if (throttler.sample()) {
-            Assert.fail("Should have rotated not sampled!");
-        }
+        assertFalse("Should have rotated not sampled!", throttler.sample());
     }
 }

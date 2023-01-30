@@ -21,24 +21,34 @@ import com.oracle.svm.core.util.VMError;
  * allocation slow path. Maybe the map can be created in hosted mode before any allocation happens
  */
 public class JfrThrottler {
-    public UninterruptibleUtils.AtomicBoolean disabled; // already volatile
+    public UninterruptibleUtils.AtomicBoolean disabled; // Already volatile
     private JfrThrottlerWindow window0; // Race allowed
     private JfrThrottlerWindow window1; // Race allowed
     private volatile JfrThrottlerWindow activeWindow;
     public volatile long eventSampleSize;  // Race allowed
     public volatile long periodNs; // Race allowed
-    private double ewmaPopulationSizeAlpha = 0; // only accessed in critical section
-    private double avgPopulationSize = 0; // only accessed in critical section
-
-    private final int windowDivisor = 5; // Copied from hotspot
-    private volatile boolean reconfigure; // does it have to be volatile? The same thread will set
-                                          // and check this.
-    private final UninterruptibleUtils.AtomicPointer<IsolateThread> lock; // Can't use reentrant
-                                                                          // lock because it could
-                                                                          // allocate
+    // Only accessed in critical section
+    private double ewmaPopulationSizeAlpha = 0;
+    // Only accessed in critical section
+    private double avgPopulationSize = 0;
+    // Copied from hotspot
+    private final int windowDivisor = 5;
+    // does it have to be volatile? The same thread will set and check this.
+    private volatile boolean reconfigure;
+    // Can't use reentrant lock because it allocates
+    private final UninterruptibleUtils.AtomicPointer<IsolateThread> lock;
 
     private static final long SECOND_IN_NS = 1000000000;
+    private static final long SECOND_IN_MS = 1000;
     private static final long MINUTE_IN_NS = SECOND_IN_NS * 60;
+    private static final long MINUTE_IN_MS = SECOND_IN_MS *60;
+    private static final long HOUR_IN_MS = MINUTE_IN_MS * 60;
+    private static final long HOUR_IN_NS = MINUTE_IN_NS * 60;
+    private static final long DAY_IN_MS = HOUR_IN_MS * 24;
+    private static final long DAY_IN_NS = HOUR_IN_NS * 24;
+    private static final long TEN_PER_S_IN_MINUTES = 600;
+    private static final long TEN_PER_S_IN_HOURS = 36000;
+    private static final long TEN_PER_S_IN_DAYS = 864000;
     private long accumulatedDebtCarryLimit;
     private long accumulatedDebtCarryCount;
 
@@ -55,15 +65,60 @@ public class JfrThrottler {
                                 // are created before program execution.
     }
 
+    /**
+     * Convert rate to samples/second if possible.
+     * Want to avoid long period with large windows with a large number of samples per window
+     * in favor of many smaller windows.
+     * This is in the critical section because setting the sample size and period must be done together atomically.
+     * Otherwise, we risk a window's params being set with only one of the two updated.
+     */
+    private void normalize1(long eventSampleSize, long periodMs){
+        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        // Do we want more than 10samples/s ? If so convert to samples/s
+        if (periodMs <= SECOND_IN_MS){
+            //nothing
+        } else if (periodMs <= MINUTE_IN_MS) {
+            if (eventSampleSize >= TEN_PER_S_IN_MINUTES) {
+                eventSampleSize /= 60;
+                periodMs /= 60;
+            }
+        } else if (periodMs <= HOUR_IN_MS) {
+            if (eventSampleSize >=TEN_PER_S_IN_HOURS) {
+                eventSampleSize /= 3600;
+                periodMs /= 3600;
+            }
+        } else if (periodMs <= DAY_IN_MS) {
+            if (eventSampleSize >=TEN_PER_S_IN_DAYS) {
+                eventSampleSize /= 86400;
+                periodMs /= 86400;
+            }
+        }
+        this.eventSampleSize = eventSampleSize;
+        this.periodNs = periodMs * 1000000;
+    }
+    private void normalize(double samplesPerPeriod, double periodMs){
+        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        // Do we want more than 10samples/s ? If so convert to samples/s
+        double periodsPerSecond = 1000.0/ periodMs;
+        double samplesPerSecond = samplesPerPeriod * periodsPerSecond;
+        if (samplesPerSecond >= 10) {
+            this.periodNs = SECOND_IN_NS;
+            this.eventSampleSize = (long) samplesPerSecond;
+            return;
+        }
+
+        this.eventSampleSize = eventSampleSize;
+        this.periodNs = (long) periodMs * 1000000;
+    }
+
     public boolean setThrottle(long eventSampleSize, long periodMs) {
         if (eventSampleSize == 0) {
             disabled.set(true);
         }
 
-        this.eventSampleSize = eventSampleSize;
-        this.periodNs = periodMs * 1000000;
         // Blocking lock because new settings MUST be applied.
         lock();
+        normalize(eventSampleSize, periodMs);
         reconfigure = true;
         rotateWindow(); // could omit this and choose to wait until next rotation.
         unlock();
@@ -133,6 +188,7 @@ public class JfrThrottler {
     }
 
     private long computeAccumulatedDebtCarryLimit(long windowDurationNs) {
+        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
         if (periodNs == 0 || windowDurationNs > MINUTE_IN_NS) {
             return 1;
         }
@@ -140,6 +196,7 @@ public class JfrThrottler {
     }
 
     private long amortizeDebt(JfrThrottlerWindow lastWindow) {
+        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
         if (accumulatedDebtCarryCount == accumulatedDebtCarryLimit) {
             accumulatedDebtCarryCount = 1;
             return 0; // reset because new settings have been applied
@@ -151,33 +208,64 @@ public class JfrThrottler {
                                                                          // taken
     }
 
+    /**
+     * Handles the case where the sampling rate is very low.
+     */
+    private void setSamplePointsAndWindowDuration1(){
+        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        VMError.guarantee(reconfigure, "Should only modify sample size and window duration during reconfigure.");
+        JfrThrottlerWindow next = getNextWindow();
+        long samplesPerWindow = eventSampleSize / windowDivisor;
+        long windowDurationNs = periodNs / windowDivisor;
+        if (eventSampleSize < 10
+        || periodNs >= MINUTE_IN_NS && eventSampleSize < TEN_PER_S_IN_MINUTES
+        || periodNs >= HOUR_IN_NS && eventSampleSize < TEN_PER_S_IN_HOURS
+        || periodNs >= DAY_IN_NS && eventSampleSize < TEN_PER_S_IN_DAYS){
+            samplesPerWindow = eventSampleSize;
+            windowDurationNs = periodNs;
+        }
+        activeWindow.samplesPerWindow = samplesPerWindow;
+        activeWindow.windowDurationNs = windowDurationNs;
+        next.samplesPerWindow = samplesPerWindow;
+        next.windowDurationNs = windowDurationNs;
+    }
+    private void setSamplePointsAndWindowDuration(){
+        VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
+        VMError.guarantee(reconfigure, "Should only modify sample size and window duration during reconfigure.");
+        JfrThrottlerWindow next = getNextWindow();
+        long samplesPerWindow = eventSampleSize / windowDivisor;
+        long windowDurationNs = periodNs / windowDivisor;
+        // If period isn't 1s, then we're effectively taking under 10 samples/s
+        // because the values have already undergone normalization.
+        if (eventSampleSize < 10 || periodNs > SECOND_IN_NS){
+            samplesPerWindow = eventSampleSize;
+            windowDurationNs = periodNs;
+        }
+        activeWindow.samplesPerWindow = samplesPerWindow;
+        activeWindow.windowDurationNs = windowDurationNs;
+        next.samplesPerWindow = samplesPerWindow;
+        next.windowDurationNs = windowDurationNs;
+    }
+
     public void configure() {
         VMError.guarantee(lock.get().equal(CurrentIsolate.getCurrentThread()), "Throttler lock must be acquired in critical section.");
         JfrThrottlerWindow next = getNextWindow();
 
         // Store updated params to both windows.
         if (reconfigure) {
-            long windowDurationNs = periodNs / windowDivisor;
-            accumulatedDebtCarryLimit = computeAccumulatedDebtCarryLimit(windowDurationNs);
+            setSamplePointsAndWindowDuration();
+            accumulatedDebtCarryLimit = computeAccumulatedDebtCarryLimit(next.windowDurationNs);
             accumulatedDebtCarryCount = accumulatedDebtCarryLimit;
-            activeWindow.samplesPerWindow = eventSampleSize / windowDivisor;  // TODO: handle low
-                                                                              // rate so we don't
-                                                                              // always undersample
-            activeWindow.windowDurationNs = windowDurationNs;
-            next.samplesPerWindow = eventSampleSize / windowDivisor;
-            next.windowDurationNs = windowDurationNs;
             // compute alpha and debt
             avgPopulationSize = 0;
             ewmaPopulationSizeAlpha = (double) 1 / windowLookback(next); // lookback count;
             reconfigure = false;
         }
-        next.projectedPopSize = projectPopulationSize(activeWindow.measuredPopSize.get());
 
-        next.configure(amortizeDebt(activeWindow));
+        next.configure(amortizeDebt(activeWindow), projectPopulationSize(activeWindow.measuredPopSize.get()));
     }
 
     private double windowLookback(JfrThrottlerWindow window) {
-
         if (window.windowDurationNs <= SECOND_IN_NS) {
             return 25.0;
         } else if (window.windowDurationNs <= MINUTE_IN_NS) {
@@ -185,7 +273,6 @@ public class JfrThrottler {
         } else {
             return 1.0;
         }
-
     }
 
     private double projectPopulationSize(long lastWindowMeasuredPop) {
@@ -241,11 +328,21 @@ public class JfrThrottler {
     public boolean IsActiveWindowExpired() {
         return activeWindow.isExpired();
     }
-
+    /** Visible for testing. */
+    public long getPeriodNs() {
+        return periodNs;
+    }
+    /** Visible for testing. */
+    public long getEventSampleSize() {
+        return eventSampleSize;
+    }
     /** Visible for testing. */
     public void expireActiveWindow() {
+        if (eventSampleSize < 10 || periodNs > SECOND_IN_NS){
+            window0.testCurrentNanos += periodNs;
+            window1.testCurrentNanos += periodNs;
+        }
         window0.testCurrentNanos += periodNs / windowDivisor;
         window1.testCurrentNanos += periodNs / windowDivisor;
     }
-
 }

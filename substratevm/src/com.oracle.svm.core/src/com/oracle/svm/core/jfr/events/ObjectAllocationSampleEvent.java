@@ -43,7 +43,7 @@ public class ObjectAllocationSampleEvent {
     private static final FastThreadLocalLong lastAllocationSize = FastThreadLocalFactory.createLong("ObjectAllocationSampleEvent.lastAllocationSize");
     public static void emit(long startTicks, Class clazz) {
         if (HasJfrSupport.get()) {
-            // TODO: consider moving this to after the isRecording check in emit0 to avoid duplicate checks. Might be a pain to deal with uninterruptibility though.
+            // TODO: consider moving this to after the isRecording check in emit0 to avoid duplicate checks. Might be a pain to deal with uninterruptibility though. Also we want to minimize uninterruptible code usage.
             // Doesn't hurt to check twice, might save us some time doing the sampling
             if (SubstrateJVM.isRecordingInterruptible() && SubstrateJVM.get().isEnabled(JfrEvent.ObjectAllocationSample) && SubstrateJVM.get().shouldCommit(JfrEvent.ObjectAllocationSample)) {
                 emit0(startTicks, clazz);

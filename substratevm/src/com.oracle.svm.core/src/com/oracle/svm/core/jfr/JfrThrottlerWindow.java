@@ -6,11 +6,11 @@ import com.oracle.svm.core.jfr.JfrTicks;
 public class JfrThrottlerWindow {
     // reset every rotation
     public UninterruptibleUtils.AtomicLong measuredPopSize; // already volatile
-    public double projectedPopSize;
     public UninterruptibleUtils.AtomicLong endTicks; // already volatile
 
     // Calculated every rotation based on params set by user and results from previous windows
     public long samplingInterval;
+    public double projectedPopSize;
 
     // params set by user
     public long samplesPerWindow;
@@ -57,18 +57,14 @@ public class JfrThrottlerWindow {
         return samplesPerWindow + debt;
     }
 
-    public void configure(long debt) {
+    public void configure(long debt, double projectedPopSize) {
         this.debt = debt;
+        this.projectedPopSize = projectedPopSize;
         if (projectedPopSize <= samplesPerWindow) {
             samplingInterval = 1;
         } else {
             // It's important to round *up* otherwise we risk violating the upper bound
-            samplingInterval = (long) Math.ceil(projectedPopSize / (double) samplesExpected()); // TODO:
-                                                                                                // needs
-                                                                                                // to
-                                                                                                // be
-                                                                                                // more
-                                                                                                // advanced.
+            samplingInterval = (long) Math.ceil(projectedPopSize / (double) samplesExpected());
         }
         // reset
         measuredPopSize.set(0);
