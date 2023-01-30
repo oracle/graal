@@ -147,6 +147,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         return version >= 19;
     }
 
+    public boolean java20OrLater() {
+        return version >= 20;
+    }
+
     public boolean inRange(int low, int high) {
         return version >= low && version <= high;
     }

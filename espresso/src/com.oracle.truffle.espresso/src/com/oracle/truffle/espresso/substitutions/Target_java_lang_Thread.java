@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.substitutions;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -301,5 +302,10 @@ public final class Target_java_lang_Thread {
     @Substitution(versionFilter = VersionFilter.Java19OrLater.class)
     public static @JavaType(Object.class) StaticObject getStackTrace0(@JavaType(Thread.class) StaticObject self) {
         throw EspressoError.unimplemented("async_get_stacktrace");
+    }
+
+    @Substitution(versionFilter = VersionFilter.Java20OrLater.class, isTrivial = true)
+    public static void ensureMaterializedForStackWalk(@JavaType(Object.class) StaticObject obj) {
+        CompilerDirectives.blackhole(obj);
     }
 }
