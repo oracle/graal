@@ -165,7 +165,7 @@ public final class PointsToAnalyzer {
         aUniverse.getTypes().forEach(t -> {
             t.registerAsAssignable(bigbang);
             if (t.isReachable()) {
-                bigbang.onTypeInitialized(t);
+                bigbang.onTypeReachable(t);
             }
         });
         /*

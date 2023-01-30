@@ -178,7 +178,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         Reachable;
     }
 
-    private final AnalysisFuture<Void> initializationTask;
+    private final AnalysisFuture<Void> onTypeReachableTask;
     /**
      * Additional information that is only available for types that are marked as reachable.
      */
@@ -293,7 +293,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
 
         /* The registration task initializes the type. */
-        this.initializationTask = new AnalysisFuture<>(() -> universe.initializeType(this), null);
+        this.onTypeReachableTask = new AnalysisFuture<>(() -> universe.onTypeReachable(this), null);
         this.typeData = new AnalysisFuture<>(() -> {
             AnalysisError.guarantee(universe.getHeapScanner() != null, "Heap scanner is not available.");
             return universe.getHeapScanner().computeTypeData(this);
@@ -572,7 +572,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              */
             registerAsAllocated("All array types are marked as instantiated eagerly.");
         }
-        ensureInitialized();
+        ensureOnTypeReachableTaskDone();
     }
 
     public void registerSubtypeReachabilityNotification(SubtypeReachableNotification notification) {
@@ -673,9 +673,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return this.typeData.ensureDone();
     }
 
-    public void ensureInitialized() {
+    public void ensureOnTypeReachableTaskDone() {
         /* Run the registration and wait for it to complete, if necessary. */
-        initializationTask.ensureDone();
+        onTypeReachableTask.ensureDone();
     }
 
     /**
@@ -683,7 +683,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * the underlying {@link Class} is actually initialized, i.e., it may be initialized at run
      * time.
      */
-    public void onInitialized() {
+    public void onTypeReachable() {
         if (isInitialized()) {
             /*
              * This type is initialized at build time, so the class initializer, if any, cannot be

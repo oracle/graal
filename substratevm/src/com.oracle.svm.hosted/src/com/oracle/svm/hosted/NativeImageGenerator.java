@@ -937,7 +937,7 @@ public class NativeImageGenerator {
                 aUniverse.getTypes().forEach(t -> {
                     t.registerAsAssignable(bb);
                     if (t.isReachable()) {
-                        bb.onTypeInitialized(t);
+                        bb.onTypeReachable(t);
                     }
                 });
 

@@ -262,7 +262,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public void initializeType(AnalysisType analysisType) {
+    public void onTypeReachable(AnalysisType analysisType) {
         if (!analysisType.isReachable()) {
             throw VMError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + analysisType);
         }
