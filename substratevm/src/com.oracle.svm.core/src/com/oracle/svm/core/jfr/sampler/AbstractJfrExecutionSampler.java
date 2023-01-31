@@ -203,8 +203,9 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
             JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
             if (anchor.isNull()) {
                 /*
-                 * The anchor is still null if the function is interrupted during prologue. See:
-                 * com.oracle.svm.core.graal.snippets.CFunctionSnippets.prologueSnippet
+                 * The anchor is still null if the function is interrupted during prologue (see:
+                 * com.oracle.svm.core.graal.snippets.CFunctionSnippets.prologueSnippet) or if java
+                 * calls a native method without transition and without previous anchors.
                  */
                 return;
             }

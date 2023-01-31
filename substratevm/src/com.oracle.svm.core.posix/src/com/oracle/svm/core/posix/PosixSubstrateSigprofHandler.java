@@ -103,15 +103,15 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
 
     @Override
     protected void updateInterval() {
-        updateInterval(newIntervalMillis);
+        updateInterval(TimeUtils.millisToMicros(newIntervalMillis));
     }
 
-    private static void updateInterval(long ms) {
+    public static void updateInterval(long us) {
         Time.itimerval newValue = UnsafeStackValue.get(Time.itimerval.class);
-        newValue.it_value().set_tv_sec(ms / TimeUtils.millisPerSecond);
-        newValue.it_value().set_tv_usec((ms % TimeUtils.millisPerSecond) * 1000);
-        newValue.it_interval().set_tv_sec(ms / TimeUtils.millisPerSecond);
-        newValue.it_interval().set_tv_usec((ms % TimeUtils.millisPerSecond) * 1000);
+        newValue.it_value().set_tv_sec(us / TimeUtils.microsPerSecond);
+        newValue.it_value().set_tv_usec(us % TimeUtils.microsPerSecond);
+        newValue.it_interval().set_tv_sec(us / TimeUtils.microsPerSecond);
+        newValue.it_interval().set_tv_usec(us % TimeUtils.microsPerSecond);
 
         int status = Time.NoTransitions.setitimer(Time.TimerTypeEnum.ITIMER_PROF, newValue, WordFactory.nullPointer());
         PosixUtils.checkStatusIs0(status, "setitimer(which, newValue, oldValue): wrong arguments.");
