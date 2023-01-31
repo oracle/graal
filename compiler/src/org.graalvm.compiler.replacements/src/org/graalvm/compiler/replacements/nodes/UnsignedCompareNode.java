@@ -73,14 +73,14 @@ public final class UnsignedCompareNode extends BinaryNode implements LIRLowerabl
             IntegerStamp integerStampY = (IntegerStamp) stampY;
 
             if (integerStampX.getBits() == 32) {
-                GraalError.guarantee(integerStampY.getBits() == 32, "incompatible stampY: %s", stampY.toString());
+                GraalError.guarantee(integerStampY.getBits() == 32, "incompatible stampY: %s", stampY);
                 if (Integer.compareUnsigned((int) integerStampX.downMask(), (int) integerStampY.upMask()) > 0) {
                     return StampFactory.forConstant(JavaConstant.INT_1);
                 } else if (Integer.compareUnsigned((int) integerStampX.upMask(), (int) integerStampY.downMask()) < 0) {
                     return StampFactory.forConstant(JavaConstant.INT_MINUS_1);
                 }
             } else {
-                GraalError.guarantee(integerStampX.getBits() == 64 && integerStampY.getBits() == 64, "incompatible stamps: %s %s", stampX.toString(), stampY.toString());
+                GraalError.guarantee(integerStampX.getBits() == 64 && integerStampY.getBits() == 64, "incompatible stamps: %s %s", stampX, stampY);
                 if (Long.compareUnsigned(integerStampX.downMask(), integerStampY.upMask()) > 0) {
                     return StampFactory.forConstant(JavaConstant.INT_1);
                 } else if (Long.compareUnsigned(integerStampX.upMask(), integerStampY.downMask()) < 0) {

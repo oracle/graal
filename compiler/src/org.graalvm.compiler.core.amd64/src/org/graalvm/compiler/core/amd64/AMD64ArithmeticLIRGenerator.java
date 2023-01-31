@@ -1465,7 +1465,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (input.getPlatformKind() == AMD64Kind.DOUBLE) {
             getLIRGen().append(new AMD64VectorUnary.FloatPointClassTestOp(getLIRGen(), OperandSize.SD, POS_INF | NEG_INF, result, asAllocatable(input)));
         } else {
-            GraalError.guarantee(input.getPlatformKind() == AMD64Kind.SINGLE, "Unsupported value kind " + input.getPlatformKind());
+            GraalError.guarantee(input.getPlatformKind() == AMD64Kind.SINGLE, "Unsupported value kind %s", input.getPlatformKind());
             getLIRGen().append(new AMD64VectorUnary.FloatPointClassTestOp(getLIRGen(), OperandSize.SS, POS_INF | NEG_INF, result, asAllocatable(input)));
         }
         return result;

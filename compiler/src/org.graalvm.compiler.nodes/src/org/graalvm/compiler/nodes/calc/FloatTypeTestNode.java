@@ -54,7 +54,7 @@ public final class FloatTypeTestNode extends UnaryNode implements ArithmeticLIRL
 
     public FloatTypeTestNode(ValueNode value, FloatTypeTestOp op) {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean), value);
-        GraalError.guarantee(value.getStackKind().isNumericFloat(), "float type test on incompatible value " + value);
+        GraalError.guarantee(value.getStackKind().isNumericFloat(), "float type test on incompatible value %s", value);
 
         this.op = op;
     }

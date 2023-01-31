@@ -58,7 +58,7 @@ public class AMD64UnsignedCompareOp extends AMD64LIRInstruction {
         if (x.getPlatformKind() == AMD64Kind.DWORD) {
             masm.cmpl(asRegister(x), asRegister(y));
         } else {
-            GraalError.guarantee(x.getPlatformKind() == AMD64Kind.QWORD, "unsupported value kind %s", x.getPlatformKind().toString());
+            GraalError.guarantee(x.getPlatformKind() == AMD64Kind.QWORD, "unsupported value kind %s", x.getPlatformKind());
             masm.cmpq(asRegister(x), asRegister(y));
         }
         masm.movl(asRegister(result), -1);

@@ -30,6 +30,7 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
@@ -60,9 +61,13 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
         testConditionalElimination(snippet, referenceSnippet, false, false);
     }
 
+    protected OptionValues getOptions() {
+        return getInitialOptions();
+    }
+
     @SuppressWarnings("try")
     protected void testConditionalElimination(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference, boolean applyLowering) {
-        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES, getOptions());
         DebugContext debug = graph.getDebug();
         debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
         CoreProviders context = getProviders();

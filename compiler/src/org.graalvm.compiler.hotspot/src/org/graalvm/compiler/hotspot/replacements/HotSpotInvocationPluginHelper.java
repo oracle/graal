@@ -236,7 +236,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         ValueNode threadObjectHandle = readLocation(javaThread, HotSpotVMConfigField.JAVA_THREAD_THREAD_OBJECT, StampFactory.forKind(getWordKind()));
         AddressNode handleAddress = b.add(OffsetAddressNode.create(threadObjectHandle));
         b.add(new WriteNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, thread, BarrierType.NONE, MemoryOrderMode.PLAIN));
-        // TODO JFR_ONLY(extend_setCurrentThread(thread, arr);)
+        // TODO (GR-42398) add JFR notification for setCurrentThread
     }
 
     private AddressNode scopedValueCacheHelper() {

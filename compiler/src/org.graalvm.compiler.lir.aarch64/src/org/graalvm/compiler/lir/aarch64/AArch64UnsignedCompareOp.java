@@ -56,7 +56,7 @@ public class AArch64UnsignedCompareOp extends AArch64LIRInstruction {
         if (x.getPlatformKind() == AArch64Kind.DWORD) {
             masm.cmp(32, asRegister(x), asRegister(y));
         } else {
-            GraalError.guarantee(x.getPlatformKind() == AArch64Kind.QWORD, "unsupported value kind %s", x.getPlatformKind().toString());
+            GraalError.guarantee(x.getPlatformKind() == AArch64Kind.QWORD, "unsupported value kind %s", x.getPlatformKind());
             masm.cmp(64, asRegister(x), asRegister(y));
         }
         masm.cset(32, asRegister(result), ConditionFlag.NE);
