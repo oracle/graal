@@ -127,7 +127,6 @@ import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
-import com.oracle.truffle.espresso.overlay.ReferenceSupport;
 import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.Classpath;
@@ -3547,7 +3546,7 @@ public final class VM extends NativeEnv {
         }
         assert host instanceof Reference : host;
         // Call host's refersTo. Not available in 8 or 11.
-        return ReferenceSupport.phantomReferenceRefersTo((Reference) host, object);
+        return ((Reference<StaticObject>) host).refersTo(object);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -3570,7 +3569,7 @@ public final class VM extends NativeEnv {
             }
             assert host instanceof Reference : host;
             // Call host's refersTo. Not available in 8 or 11.
-            return ReferenceSupport.referenceRefersTo((Reference) host, object);
+            return ((Reference<StaticObject>) host).refersTo(object);
         } else {
             StaticObject referent = (StaticObject) meta.java_lang_ref_Reference_referent.get(ref);
             return InterpreterToVM.referenceIdentityEqual(referent, object, language);
