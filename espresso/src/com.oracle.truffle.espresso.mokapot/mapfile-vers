@@ -344,6 +344,14 @@ SUNWprivate_1.1 {
                 JVM_VirtualThreadUnmountBegin;
                 JVM_VirtualThreadUnmountEnd;
 
+                # JDK 20
+                JVM_VirtualThreadHideFrames;
+                JVM_GetClassFileVersion;
+                JVM_ScopedValueCache;
+                JVM_SetScopedValueCache;
+                JVM_FindScopedValueBindings;
+                JVM_EnsureMaterializedForStackWalk_func;
+
                 # miscellaneous functions
                 jio_fprintf;
                 jio_printf;

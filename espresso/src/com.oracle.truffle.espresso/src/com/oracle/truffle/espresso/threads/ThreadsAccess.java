@@ -119,13 +119,25 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
             return meta.java_lang_Thread_threadStatus.getInt(guest);
         } else {
             StaticObject holder = meta.java_lang_Thread_holder.getObject(guest);
+            if (StaticObject.isNull(holder)) {
+                return State.NEW.value;
+            }
             return meta.java_lang_Thread$FieldHolder_threadStatus.getInt(holder);
+        }
+    }
+
+    void setPriority(StaticObject thread, int priority) {
+        if (meta.getJavaVersion().java17OrEarlier()) {
+            meta.java_lang_Thread_priority.setInt(thread, priority);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
+            meta.java_lang_Thread$FieldHolder_priority.setInt(holder, priority);
         }
     }
 
     int fromRunnable(StaticObject self, State state) {
         int old = getState(self);
-        assert (old & State.RUNNABLE.value) != 0;
+        assert (old & State.RUNNABLE.value) != 0 || old == State.NEW.value : old;
         setState(self, state.value);
         fullSafePoint(self);
         return old;
@@ -148,15 +160,6 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         }
     }
 
-    void setPriority(StaticObject thread, int priority) {
-        if (meta.getJavaVersion().java17OrEarlier()) {
-            meta.java_lang_Thread_priority.setInt(thread, priority);
-        } else {
-            StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
-            meta.java_lang_Thread$FieldHolder_priority.setInt(holder, priority);
-        }
-    }
-
     int getPriority(StaticObject thread) {
         if (getJavaVersion().java17OrEarlier()) {
             return meta.java_lang_Thread_priority.getInt(thread);
@@ -166,12 +169,21 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         }
     }
 
-    boolean getDaemon(StaticObject thread) {
+    public boolean isDaemon(StaticObject thread) {
         if (getJavaVersion().java17OrEarlier()) {
             return meta.java_lang_Thread_daemon.getBoolean(thread);
         } else {
             StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
             return meta.java_lang_Thread$FieldHolder_daemon.getBoolean(holder);
+        }
+    }
+
+    public void setDaemon(StaticObject thread, boolean daemon) {
+        if (getJavaVersion().java17OrEarlier()) {
+            meta.java_lang_Thread_daemon.setBoolean(thread, daemon);
+        } else {
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
+            meta.java_lang_Thread$FieldHolder_daemon.setBoolean(holder, daemon);
         }
     }
 
@@ -307,7 +319,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         Thread host = getContext().getEnv().createThread(new GuestRunnable(getContext(), guest, exit, dispatch));
         initializeHiddenFields(guest, host, true);
         // Prepare host thread
-        host.setDaemon(getDaemon(guest));
+        host.setDaemon(isDaemon(guest));
         host.setPriority(getPriority(guest));
         if (isInterrupted(guest, false)) {
             host.interrupt();
@@ -464,15 +476,6 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         return support;
     }
 
-    public void setThreadGroup(StaticObject guestThread, StaticObject threadGroup) {
-        if (meta.getJavaVersion().java17OrEarlier()) {
-            meta.java_lang_ThreadGroup_add.invokeDirect(threadGroup, guestThread);
-        } else {
-            StaticObject holder = meta.java_lang_Thread_holder.getObject(guestThread);
-            meta.java_lang_Thread$FieldHolder_group.setObject(holder, threadGroup);
-        }
-    }
-
     private final class DeprecationSupport {
 
         private final StaticObject thread;
@@ -580,7 +583,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
                             throw new EspressoExitException(meta.getContext().getExitStatus());
                         }
                         // Stop status has been cleared somewhere else.
-                        assert s == NORMAL || s == EXITING;
+                        assert s == NORMAL || s == EXITING : s;
                         return;
                     }
                 case KILL:
