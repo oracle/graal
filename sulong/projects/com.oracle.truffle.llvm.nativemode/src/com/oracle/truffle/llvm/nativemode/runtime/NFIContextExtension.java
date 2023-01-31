@@ -76,7 +76,7 @@ public final class NFIContextExtension extends NativeContextExtension {
      * The current well-known functions that are used through this interface are:
      *
      * <pre>
-     * - `__sulong_fp80_*` (5 operations)
+     * - `__sulong_fp80_*` or `__sulong_fp128_*` (5 operations)
      * - `__sulong_posix_syscall`
      * - `identity`
      * </pre>
