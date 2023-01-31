@@ -63,6 +63,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo128BitFloatingNodeGen.LLVMSignedCastToLLVM128BitFloatNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo128BitFloatingNodeGen.LLVMUnsignedCastToLLVM128BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMBitcastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMSignedCastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMUnsignedCastToLLVM80BitFloatNodeGen;
@@ -190,6 +191,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAbstractCompareNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNode.LLVMAbstractI64ArithmeticNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMDoubleArithmeticNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMFP128ArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMFP80ArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMFloatArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI16ArithmeticNodeGen;
@@ -842,6 +844,8 @@ public class CommonNodeFactory {
                 return ToDoubleNodeGen.create();
             case FP80:
                 return ToFP80NodeGen.create();
+            case FP128:
+                return ToFP128NodeGen.create();
             case POINTER:
                 return ToPointer.create();
             default:
@@ -922,6 +926,8 @@ public class CommonNodeFactory {
                     return LLVMDoubleArithmeticNodeGen.create(op, left, right);
                 case X86_FP80:
                     return LLVMFP80ArithmeticNodeGen.create(op, left, right);
+                case F128:
+                    return LLVMFP128ArithmeticNodeGen.create(op, left, right);
                 default:
                     throw new AssertionError(type);
             }
@@ -1230,6 +1236,8 @@ public class CommonNodeFactory {
                 return LLVMUnsignedCastToDoubleNodeGen.create(fromNode);
             case X86_FP80:
                 return LLVMUnsignedCastToLLVM80BitFloatNodeGen.create(fromNode);
+            case F128:
+                return LLVMUnsignedCastToLLVM128BitFloatNodeGen.create(fromNode);
             default:
                 throw unsupportedCast(kind);
         }
