@@ -48,7 +48,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
-
 import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
 
 /**
@@ -80,7 +79,6 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<JfrBufferNode> javaBufferNode = FastThreadLocalFactory.createWord("JfrThreadLocal.javaBufferNode");
     private static final FastThreadLocalWord<JfrBufferNode> nativeBufferNode = FastThreadLocalFactory.createWord("JfrThreadLocal.nativeBufferNode");
     private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord("JfrThreadLocal.dataLost");
-    private static final FastThreadLocalLong threadId = FastThreadLocalFactory.createLong("JfrThreadLocal.threadId");
     private static final FastThreadLocalInt excluded = FastThreadLocalFactory.createInt("JfrThreadLocal.excluded");
 
     /* Stacktrace-related thread-locals. */
@@ -147,30 +145,29 @@ public class JfrThreadLocal implements ThreadListener {
         JfrBufferNode jbn = javaBufferNode.get(isolateThread);
         JfrBufferNode nbn = nativeBufferNode.get(isolateThread);
 
-        if (jbn.isNonNull()&& flushBuffers) {
+        if (jbn.isNonNull() && flushBuffers) {
             if (getJavaBufferList().lockSection(jbn)) {
                 JfrBuffer jb = jbn.getValue();
                 assert jb.isNonNull() && jbn.getAlive();
 
-                if (SubstrateJVM.get().isRecording()) {
-                    if (jb.isNonNull()) {
-                        flush(jb, WordFactory.unsigned(0), 0);
-                    }
+                if (jb.isNonNull()) {
+                    flush(jb, WordFactory.unsigned(0), 0);
                 }
+
                 getJavaBufferList().removeNode(jbn, false); // also releases locks
             } else {
                 jbn.setAlive(false);
             }
         }
-        if (nbn.isNonNull()&& flushBuffers) {
+        if (nbn.isNonNull() && flushBuffers) {
             if (getNativeBufferList().lockSection(nbn)) {
                 JfrBuffer nb = nbn.getValue();
                 assert nb.isNonNull() && nbn.getAlive();
-                if (SubstrateJVM.get().isRecording()) {
-                    if (nb.isNonNull()) {
-                        flush(nb, WordFactory.unsigned(0), 0);
-                    }
+
+                if (nb.isNonNull()) {
+                    flush(nb, WordFactory.unsigned(0), 0);
                 }
+
                 getNativeBufferList().removeNode(nbn, false);
             } else {
                 nbn.setAlive(false);

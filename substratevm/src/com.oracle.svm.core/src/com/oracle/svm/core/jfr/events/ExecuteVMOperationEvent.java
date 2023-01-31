@@ -43,6 +43,7 @@ public class ExecuteVMOperationEvent {
         if (!HasJfrSupport.get()) {
             return;
         }
+
         emit0(vmOperation, requestingThreadId, startTicks);
     }
 

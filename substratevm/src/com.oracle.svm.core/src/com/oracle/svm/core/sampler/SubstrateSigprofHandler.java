@@ -42,7 +42,6 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
-
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.sampler.AbstractJfrExecutionSampler;
 import com.oracle.svm.core.thread.ThreadListener;
@@ -186,7 +185,6 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     protected abstract void setNativeThreadLocalValue(UnsignedWord key, IsolateThread value);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-
     protected abstract IsolateThread getNativeThreadLocalValue(UnsignedWord key);
 
     /**

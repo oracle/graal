@@ -540,7 +540,6 @@ public class SubstrateJVM {
         }
     }
 
-
     /**
      * See {@link JVM#setRepositoryLocation}.
      */
