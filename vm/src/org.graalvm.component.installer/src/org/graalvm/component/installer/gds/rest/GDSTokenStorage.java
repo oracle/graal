@@ -199,10 +199,6 @@ public class GDSTokenStorage {
     }
 
     public void revokeAllTokens(String email) {
-        email = MailStorage.checkEmailAddress(email, feedback);
-        if (email == null || email.isEmpty()) {
-            return;
-        }
         GDSRESTConnector connector = makeConnector();
         if (connector == null) {
             feedback.message("MSG_NoGDSAddress");

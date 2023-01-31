@@ -169,67 +169,67 @@ public class GDSTokenStorageTest extends CommandTestBase {
         options.put(GdsCommands.OPTION_GDS_CONFIG, tstPath.toString());
         store(tstPath, GRAAL_EE_DOWNLOAD_TOKEN, MOCK_TOKEN_USER);
         ts.printToken();
-        mf.checkMem( Case.MSG, "MSG_EmptyToken", null, "");
-        mf.checkMem( Case.FRM, "MSG_PrintTokenFile", testPath.toString());
-        mf.checkMem( Case.MSG, "MSG_PrintToken", MOCK_TOKEN_DEFAULT, "MSG_PrintTokenFile");
-        mf.checkMem( Case.FRM, "MSG_PrintTokenEnv", GRAAL_EE_DOWNLOAD_TOKEN);
-        mf.checkMem( Case.MSG, "MSG_PrintToken", MOCK_TOKEN_ENV, "MSG_PrintTokenEnv");
-        mf.checkMem( Case.FRM, "MSG_PrintTokenCmdFile", tstPath.toString());
-        mf.checkMem( Case.MSG, "MSG_PrintToken", MOCK_TOKEN_USER, "MSG_PrintTokenCmdFile");
+        mf.checkMem(Case.MSG, "MSG_EmptyToken", null, "");
+        mf.checkMem(Case.FRM, "MSG_PrintTokenFile", testPath.toString());
+        mf.checkMem(Case.MSG, "MSG_PrintToken", MOCK_TOKEN_DEFAULT, "MSG_PrintTokenFile");
+        mf.checkMem(Case.FRM, "MSG_PrintTokenEnv", GRAAL_EE_DOWNLOAD_TOKEN);
+        mf.checkMem(Case.MSG, "MSG_PrintToken", MOCK_TOKEN_ENV, "MSG_PrintTokenEnv");
+        mf.checkMem(Case.FRM, "MSG_PrintTokenCmdFile", tstPath.toString());
+        mf.checkMem(Case.MSG, "MSG_PrintToken", MOCK_TOKEN_USER, "MSG_PrintTokenCmdFile");
     }
 
     @Test
     public void testRevokeToken() {
         ts.revokeToken(null);
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoRevokableToken");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoRevokableToken");
 
         ts.revokeToken("");
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoRevokableToken");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoRevokableToken");
 
         ts.revokeToken(MOCK_TOKEN_DEFAULT);
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "GDSRESTConnector.revokeToken:" + MOCK_TOKEN_DEFAULT);
-        mf.checkMem( Case.MSG, "MSG_AcceptRevoke");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "GDSRESTConnector.revokeToken:" + MOCK_TOKEN_DEFAULT);
+        mf.checkMem(Case.MSG, "MSG_AcceptRevoke");
 
         ts.setToken(MOCK_TOKEN_DEFAULT);
         assertEquals(MOCK_TOKEN_DEFAULT, ts.getToken());
         ts.revokeToken(null);
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "GDSRESTConnector.revokeToken:" + MOCK_TOKEN_DEFAULT);
-        mf.checkMem( Case.MSG, "MSG_AcceptRevoke");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "GDSRESTConnector.revokeToken:" + MOCK_TOKEN_DEFAULT);
+        mf.checkMem(Case.MSG, "MSG_AcceptRevoke");
 
         ts.makeConn = false;
 
         ts.revokeToken(null);
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoGDSAddress");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoGDSAddress");
 
         ts.revokeToken("");
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoGDSAddress");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoGDSAddress");
 
         ts.revokeToken(MOCK_TOKEN_DEFAULT);
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoGDSAddress");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoGDSAddress");
 
         ts.setToken(MOCK_TOKEN_DEFAULT);
         assertEquals(MOCK_TOKEN_DEFAULT, ts.getToken());
         ts.revokeToken(null);
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoGDSAddress");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoGDSAddress");
     }
 
     @Test
     public void testRevokeAllTokens() {
         ts.revokeAllTokens(null);
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoEmail");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoEmail");
 
         ts.revokeAllTokens("");
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoEmail");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoEmail");
 
         try {
             ts.revokeAllTokens(MOCK_TOKEN_DEFAULT);
@@ -237,30 +237,30 @@ public class GDSTokenStorageTest extends CommandTestBase {
         } catch (org.graalvm.component.installer.FailedOperationException ex) {
             assertEquals("ERR_EmailNotValid", ex.getMessage());
         }
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
 
         ts.revokeAllTokens(MOCK_EMAIL);
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "GDSRESTConnector.revokeTokens:" + MOCK_EMAIL);
-        mf.checkMem( Case.MSG, "MSG_AcceptRevoke");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "GDSRESTConnector.revokeTokens:" + MOCK_EMAIL);
+        mf.checkMem(Case.MSG, "MSG_AcceptRevoke");
 
         ts.makeConn = false;
 
         ts.revokeAllTokens(null);
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoGDSAddress");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoGDSAddress");
 
         ts.revokeAllTokens("");
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoGDSAddress");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoGDSAddress");
 
         ts.revokeAllTokens(MOCK_TOKEN_DEFAULT);
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoGDSAddress");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoGDSAddress");
 
         ts.revokeAllTokens(MOCK_EMAIL);
-        mf.checkMem( Case.MSG, "GDSTokenStorage.makeConnector");
-        mf.checkMem( Case.MSG, "MSG_NoGDSAddress");
+        mf.checkMem(Case.MSG, "GDSTokenStorage.makeConnector");
+        mf.checkMem(Case.MSG, "MSG_NoGDSAddress");
     }
 
     private void assertTokenSource(String tkn, Source src) {
