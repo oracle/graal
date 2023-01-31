@@ -28,6 +28,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
@@ -53,7 +55,22 @@ public class ThrowableInterop extends EspressoInterop {
     @ExportMessage
     public static boolean hasExceptionCause(StaticObject object) {
         object.checkNotForeign();
-        return getMeta().java_lang_Throwable_cause.getObject(object) != StaticObject.NULL;
+        Method resolvedMessageMethod = object.getKlass().lookupMethod(Symbol.Name.getCause, Symbol.Signature.Throwable);
+        if (resolvedMessageMethod == getMeta().java_lang_Throwable_getCause) {
+            // not overridden, then we can trust the field value
+            StaticObject guestCause = getMeta().java_lang_Throwable_cause.getObject(object);
+            return guestCause != StaticObject.NULL && guestCause != object;
+        } else if (resolvedMessageMethod.isInlinableGetter()) {
+            // only call the method for a 'has' interop message if it's simple
+            Object guestCause = resolvedMessageMethod.invokeDirect(object);
+            return guestCause != StaticObject.NULL && guestCause != object;
+        } else {
+            /*
+             * not a simple method, so we might end up returning guest null for
+             * 'getExceptionMessage' which is OK in this case
+             */
+            return true;
+        }
     }
 
     @ExportMessage
@@ -62,13 +79,26 @@ public class ThrowableInterop extends EspressoInterop {
         if (!hasExceptionCause(object)) {
             throw UnsupportedMessageException.create();
         }
-        return getMeta().java_lang_Throwable_cause.getObject(object);
+        return object.getKlass().lookupMethod(Symbol.Name.getCause, Symbol.Signature.Throwable).invokeDirect(object);
     }
 
     @ExportMessage
     public static boolean hasExceptionMessage(StaticObject object) {
         object.checkNotForeign();
-        return getMeta().java_lang_Throwable_detailMessage.getObject(object) != StaticObject.NULL;
+        Method resolvedMessageMethod = object.getKlass().lookupMethod(Symbol.Name.getMessage, Symbol.Signature.String);
+        if (resolvedMessageMethod == getMeta().java_lang_Throwable_getMessage) {
+            // not overridden, then we can trust the field value
+            return getMeta().java_lang_Throwable_detailMessage.getObject(object) != StaticObject.NULL;
+        } else if (resolvedMessageMethod.isInlinableGetter()) {
+            // only call the method for a 'has' interop message if it's simple
+            return resolvedMessageMethod.invokeDirect(object) != StaticObject.NULL;
+        } else {
+            /*
+             * not a simple method, so we might end up returning guest null for
+             * 'getExceptionMessage' which is OK in this case
+             */
+            return true;
+        }
     }
 
     @ExportMessage
@@ -77,7 +107,7 @@ public class ThrowableInterop extends EspressoInterop {
         if (!hasExceptionMessage(object)) {
             throw UnsupportedMessageException.create();
         }
-        return getMeta().java_lang_Throwable_detailMessage.getObject(object);
+        return object.getKlass().lookupMethod(Symbol.Name.getMessage, Symbol.Signature.String).invokeDirect(object);
     }
 
 }
