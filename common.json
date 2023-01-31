@@ -108,26 +108,20 @@
   },
   "sulong": {
     "deps": {
-      "common": {},
-      "linux": {
-        "packages": {
-          "cmake": "==3.15.2"
-        }
-      },
-      "darwin_amd64": {
-        "packages": {
-          "cmake": "==3.15.2"
-        }
-      },
-      "darwin_aarch64": {
+      "common": {
         "packages": {
           "cmake": "==3.22.2"
         }
       },
+      "linux": {
+      },
+      "darwin_amd64": {
+      },
+      "darwin_aarch64": {
+      },
       "windows": {
         "packages": {
-          "msvc_source": "==14.0",
-          "pip:cmake": "==3.18.4"
+          "msvc_source": "==14.0"
         }
       }
     }
@@ -149,7 +143,7 @@
       "linux": {
         "packages": {
           "00:devtoolset": "==7",
-          "cmake": "==3.15.2"
+          "cmake": "==3.22.2"
         }
       },
       "darwin": {}
