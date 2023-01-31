@@ -483,6 +483,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
 
         @ExportMessage
+        @SuppressWarnings("static-method")
         boolean hasDeclaringMetaObject() {
             return true;
         }
