@@ -366,7 +366,7 @@ public class AnalysisUniverse implements Universe {
              */
             AnalysisType declaringType = lookup(field.getDeclaringClass());
             declaringType.registerAsReachable(field);
-            declaringType.ensureInitialized();
+            declaringType.ensureOnTypeReachableTaskDone();
 
             /*
              * Ensure that all reachability handler that were present at the time the type was
@@ -695,11 +695,10 @@ public class AnalysisUniverse implements Universe {
         bb.onTypeInstantiated(type, usage);
     }
 
-    public void initializeType(AnalysisType type) {
-        hostVM.initializeType(type);
-        type.onInitialized();
+    public void onTypeReachable(AnalysisType type) {
+        hostVM.onTypeReachable(type);
         if (bb != null) {
-            bb.onTypeInitialized(type);
+            bb.onTypeReachable(type);
         }
     }
 
