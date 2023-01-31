@@ -29,8 +29,6 @@ package com.oracle.svm.core.monitor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
-import org.graalvm.nativeimage.CurrentIsolate;
-
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -411,7 +409,7 @@ abstract class JavaMonitorQueuedSynchronizer {
                     lastWaiter = null;
                 }
                 if ((first.getAndUnsetStatus(COND) & COND) != 0) {
-                    first.notifierJfrTid = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
+                    first.notifierJfrTid = SubstrateJVM.getCurrentThreadId();
                     enqueue(first);
                     if (!all) {
                         break;

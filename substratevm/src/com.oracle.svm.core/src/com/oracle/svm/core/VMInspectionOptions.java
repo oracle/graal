@@ -96,6 +96,11 @@ public final class VMInspectionOptions {
         return hasAllOrKeywordMonitoringSupport(MONITORING_HEAPDUMP_NAME) && !Platform.includedIn(WINDOWS.class);
     }
 
+    /**
+     * Use {@link com.oracle.svm.core.jfr.HasJfrSupport#get()} instead and don't call this method
+     * directly because the VM inspection options are only one of multiple ways to enable the JFR
+     * support.
+     */
     @Fold
     public static boolean hasJfrSupport() {
         return hasAllOrKeywordMonitoringSupport(MONITORING_JFR_NAME) && !Platform.includedIn(WINDOWS.class);

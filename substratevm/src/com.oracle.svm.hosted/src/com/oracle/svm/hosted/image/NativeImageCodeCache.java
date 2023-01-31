@@ -608,7 +608,7 @@ public abstract class NativeImageCodeCache {
 
         @Override
         protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry) {
-            if (ImageSingletons.contains(ProfilingSampler.class) && ImageSingletons.lookup(ProfilingSampler.class).isCollectingActive()) {
+            if (ImageSingletons.contains(ProfilingSampler.class)) {
                 return true;
             }
 
