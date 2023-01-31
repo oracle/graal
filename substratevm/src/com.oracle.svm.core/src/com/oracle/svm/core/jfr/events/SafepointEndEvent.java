@@ -47,11 +47,7 @@ public class SafepointEndEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(UnsignedWord safepointId, long startTick) {
-<<<<<<< HEAD
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.SafepointEnd) && !SubstrateJVM.get().isCurrentThreadExcluded()) {
-=======
         if (JfrEvent.SafepointEnd.shouldEmit()) {
->>>>>>> 74db4491f2a7a81eee4828c22da73d8217457191
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 

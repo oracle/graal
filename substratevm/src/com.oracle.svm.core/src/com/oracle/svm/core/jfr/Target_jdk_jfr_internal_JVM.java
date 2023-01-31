@@ -353,12 +353,6 @@ public final class Target_jdk_jfr_internal_JVM {
         return SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
     }
 
-    /** See {@link JVM#flush}. */
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class) //
-    public void flush() {
-        // Temporarily do nothing. This is used for JFR streaming.
-    }
 
     /** See {@link JVM#setRepositoryLocation}. */
     @Substitute
@@ -507,6 +501,7 @@ public final class Target_jdk_jfr_internal_JVM {
     public void markChunkFinal() {
         SubstrateJVM.get().markChunkFinal();
     }
+    @Substitute
     @TargetElement(onlyWith = JDK20OrLater.class) //
     public long hostTotalMemory() {
         /* Not implemented at the moment. */

@@ -152,7 +152,7 @@ public class JfrThreadLocal implements ThreadListener {
                 JfrBuffer jb = jbn.getValue();
                 assert jb.isNonNull() && jbn.getAlive();
 
-                if (SubstrateJVM.isRecording()) {
+                if (SubstrateJVM.get().isRecording()) {
                     if (jb.isNonNull()) {
                         flush(jb, WordFactory.unsigned(0), 0);
                     }
@@ -166,7 +166,7 @@ public class JfrThreadLocal implements ThreadListener {
             if (getNativeBufferList().lockSection(nbn)) {
                 JfrBuffer nb = nbn.getValue();
                 assert nb.isNonNull() && nbn.getAlive();
-                if (SubstrateJVM.isRecording()) {
+                if (SubstrateJVM.get().isRecording()) {
                     if (nb.isNonNull()) {
                         flush(nb, WordFactory.unsigned(0), 0);
                     }
