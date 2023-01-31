@@ -174,7 +174,7 @@ public class NumericNFITest extends NFITest {
                              * any numeric interop type.
                              */
                             return true;
-                        }
+                    }
                 }
             } catch (UnsupportedMessageException ex) {
             }
