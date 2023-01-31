@@ -119,18 +119,16 @@ local add_jdk_version(name) =
   for name in std.objectFieldsAll(jdks)
 } + {
   # Aliases to edition specific labsjdks
+  # Only testing on EE for JDK 17
   labsjdk17::            self["labsjdk-ee-17"],
   labsjdk19::            self["labsjdk-" + repo_config.graalvm_edition + "-19"],
+  labsjdk20::            self["labsjdk-" + repo_config.graalvm_edition + "-20"],
   labsjdk17Debug::       self["labsjdk-ee-17Debug"],
   labsjdk19Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-19Debug"],
+  labsjdk20Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-20Debug"],
   labsjdk17LLVM::        self["labsjdk-ee-17-llvm"],
   labsjdk19LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-19-llvm"],
-
-  # Only CE exists for JDK 20 until JDK 20 GA.
-  labsjdk20::            self["labsjdk-ce-20"],
-  labsjdk20Debug::       self["labsjdk-ce-20Debug"],
-  labsjdk20LLVM::        self["labsjdk-ce-20-llvm"],
-
+  labsjdk20LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-20-llvm"],
 
   // Hardware definitions
   // ********************
