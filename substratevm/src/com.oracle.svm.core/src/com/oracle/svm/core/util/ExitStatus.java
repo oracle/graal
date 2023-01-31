@@ -29,7 +29,11 @@ public enum ExitStatus {
     OK(0),
     BUILDER_ERROR(1),
     FALLBACK_IMAGE(2),
-    BUILDER_INTERRUPT_WITHOUT_REASON(3),
+
+    // 3 used by `-XX:+ExitOnOutOfMemoryError` (see src/hotspot/share/utilities/debug.cpp)
+    OUT_OF_MEMORY(3),
+
+    BUILDER_INTERRUPT_WITHOUT_REASON(4),
     DRIVER_ERROR(20),
     DRIVER_TO_BUILDER_ERROR(21),
     WATCHDOG_EXIT(30),

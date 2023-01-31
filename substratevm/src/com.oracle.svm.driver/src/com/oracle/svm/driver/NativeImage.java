@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -804,7 +804,11 @@ public class NativeImage {
         if (!"0".equals(xmxVal)) {
             addImageBuilderJavaArgs(oXmx + xmxVal);
         }
-        /* Prevent JVM that runs the image builder to steal focus */
+
+        /* Let builder exit on first OutOfMemoryError. */
+        addImageBuilderJavaArgs("-XX:+ExitOnOutOfMemoryError");
+
+        /* Prevent JVM that runs the image builder to steal focus. */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.vendor=" + graalvmVendor);
@@ -1515,7 +1519,7 @@ public class NativeImage {
                         break;
                     case BUILDER_ERROR:
                         /* Exit, builder has handled error reporting. */
-                        System.exit(ExitStatus.BUILDER_ERROR.getValue());
+                        System.exit(exitStatusCode);
                         break;
                     case FALLBACK_IMAGE:
                         nativeImage.showMessage("Generating fallback image...");
@@ -1524,6 +1528,10 @@ public class NativeImage {
                                         "' is a fallback image that requires a JDK for execution " +
                                         "(use --" + SubstrateOptions.OptionNameNoFallback +
                                         " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
+                        break;
+                    case OUT_OF_MEMORY:
+                        nativeImage.showOutOfMemoryWarning();
+                        System.exit(exitStatusCode);
                         break;
                     default:
                         String message = String.format("Image build request for '%s' (pid: %d, path: %s) failed with exit status %d",
@@ -1836,6 +1844,19 @@ public class NativeImage {
             System.out.print(s);
             System.out.flush();
         }, message);
+    }
+
+    void showOutOfMemoryWarning() {
+        String lastMaxHeapValue = null;
+        for (String arg : imageBuilderJavaArgs) {
+            if (arg.startsWith(oXmx)) {
+                lastMaxHeapValue = arg.substring(oXmx.length());
+            }
+        }
+        String maxHeapText = lastMaxHeapValue == null ? "" : " (The maximum heap size of the process was set to '" + lastMaxHeapValue + "'.)";
+        String additionalAction = lastMaxHeapValue == null ? "" : " or increase the maximum heap size using the '" + oXmx + "' option";
+        showMessage(String.format("The Native Image build process ran out of memory.%s%nPlease make sure your build system has more memory available%s.",
+                        maxHeapText, additionalAction));
     }
 
     public static void showWarning(String message) {
