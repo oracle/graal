@@ -25,33 +25,19 @@
 
 package com.oracle.svm.hosted;
 
-import java.io.File;
-import java.lang.module.ModuleFinder;
-import java.net.URI;
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.ClassLoaderSupport;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionClassFilter;
 import com.oracle.svm.core.option.OptionOrigin;
-import com.oracle.svm.core.option.OptionUtils;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.UserError;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -67,26 +53,12 @@ public final class LinkAtBuildTimeSupport {
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkAtBuildTimePaths = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
     }
 
-    private final String javaIdentifier = "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
-    private final Pattern validOptionValue = Pattern.compile(javaIdentifier + "(\\." + javaIdentifier + ")*");
-
-    private final Set<OptionOrigin> reasonCommandLine = Collections.singleton(OptionOrigin.commandLineOptionOriginSingleton);
-
-    private final Map<String, Set<OptionOrigin>> requireCompletePackageOrClass = new HashMap<>();
-    private final Set<Module> requireCompleteModules = new HashSet<>();
-    private boolean requireCompleteAll;
-
     private final ClassLoaderSupport classLoaderSupport;
-    private final ImageClassLoader imageClassLoader;
-    private final Map<URI, Module> uriModuleMap;
+    private final OptionClassFilter classFilter;
 
     public LinkAtBuildTimeSupport(ImageClassLoader imageClassLoader, ClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
-        this.imageClassLoader = imageClassLoader;
-
-        uriModuleMap = ModuleFinder.of(imageClassLoader.applicationModulePath().toArray(Path[]::new)).findAll().stream()
-                        .filter(mRef -> mRef.location().isPresent())
-                        .collect(Collectors.toUnmodifiableMap(mRef -> mRef.location().get(), mRef -> imageClassLoader.findModule(mRef.descriptor().name()).get()));
+        this.classFilter = OptionClassFilterBuilder.createFilter(imageClassLoader, Options.LinkAtBuildTime, Options.LinkAtBuildTimePaths);
 
         /*
          * SerializationBuilder.newConstructorForSerialization() creates synthetic
@@ -94,70 +66,11 @@ public final class LinkAtBuildTimeSupport {
          * the synthetic modifier set (clazz.isSynthetic() returns false for such classes). Any
          * class with package-name jdk.internal.reflect should be treated as link-at-build-time.
          */
-        requireCompletePackageOrClass.put("jdk.internal.reflect", null);
-
-        Options.LinkAtBuildTime.getValue().getValuesWithOrigins().forEach(this::extractLinkAtBuildTimeOptionValue);
-        Options.LinkAtBuildTimePaths.getValue().getValuesWithOrigins().forEach(this::extractLinkAtBuildTimePathsOptionValue);
+        classFilter.addPackageOrClass("jdk.internal.reflect", null);
     }
 
     public static LinkAtBuildTimeSupport singleton() {
         return ImageSingletons.lookup(LinkAtBuildTimeSupport.class);
-    }
-
-    private void extractLinkAtBuildTimeOptionValue(Pair<String, OptionOrigin> valueOrigin) {
-        var value = valueOrigin.getLeft();
-        OptionOrigin origin = valueOrigin.getRight();
-        URI container = origin.container();
-        if (value.isEmpty()) {
-            if (origin.commandLineLike()) {
-                requireCompleteAll = true;
-                return;
-            }
-            var originModule = uriModuleMap.get(container);
-            if (originModule != null) {
-                requireCompleteModules.add(originModule);
-                return;
-            }
-            throw UserError.abort("Using '%s' without args only allowed on module-path. %s not part of module-path.",
-                            SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, value), origin);
-        } else {
-            for (String entry : OptionUtils.resolveOptionValuesRedirection(Options.LinkAtBuildTime, value, origin)) {
-                if (validOptionValue.matcher(entry).matches()) {
-                    if (!origin.commandLineLike() && !imageClassLoader.classes(container).contains(entry) && !imageClassLoader.packages(container).contains(entry)) {
-                        throw UserError.abort("Option '%s' provided by %s contains '%s'. No such package or class name found in '%s'.",
-                                        SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, value), origin, entry, container);
-                    }
-                    requireCompletePackageOrClass.computeIfAbsent(entry, unused -> new HashSet<>()).add(origin);
-                } else {
-                    throw UserError.abort("Entry '%s' in option '%s' provided by %s is neither a package nor a fully qualified classname.",
-                                    entry, SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTime, value), origin);
-                }
-            }
-        }
-    }
-
-    private void extractLinkAtBuildTimePathsOptionValue(Pair<String, OptionOrigin> valueOrigin) {
-        var value = valueOrigin.getLeft();
-        OptionOrigin origin = valueOrigin.getRight();
-        if (!origin.commandLineLike()) {
-            throw UserError.abort("Using '%s' is only allowed on command line.",
-                            SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTimePaths, value), origin);
-        }
-        if (value.isEmpty()) {
-            throw UserError.abort("Using '%s' requires directory or jar-file path arguments.",
-                            SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTimePaths, value), origin);
-        }
-        for (String pathStr : SubstrateUtil.split(value, File.pathSeparator)) {
-            Path path = Path.of(pathStr);
-            EconomicSet<String> packages = imageClassLoader.packages(path.toAbsolutePath().normalize().toUri());
-            if (imageClassLoader.noEntryForURI(packages)) {
-                throw UserError.abort("Option '%s' provided by %s contains entry '%s'. No such entry exists on class or module-path.",
-                                SubstrateOptionsParser.commandArgument(Options.LinkAtBuildTimePaths, value), origin, pathStr);
-            }
-            for (String pkg : packages) {
-                requireCompletePackageOrClass.put(pkg, Collections.singleton(origin));
-            }
-        }
     }
 
     public boolean linkAtBuildTime(ResolvedJavaType type) {
@@ -173,29 +86,15 @@ public final class LinkAtBuildTimeSupport {
     }
 
     public boolean linkAtBuildTime(Class<?> clazz) {
-        return linkAtBuildTimeImpl(clazz) != null;
+        return isIncluded(clazz) != null;
     }
 
-    private Object linkAtBuildTimeImpl(Class<?> clazz) {
-        if (requireCompleteAll) {
-            return reasonCommandLine;
-        }
-
+    private Object isIncluded(Class<?> clazz) {
         if (clazz.isArray() || !classLoaderSupport.isNativeImageClassLoader(clazz.getClassLoader())) {
             return "system default";
         }
         assert !clazz.isPrimitive() : "Primitive classes are not loaded via NativeImageClassLoader";
-
-        var module = clazz.getModule();
-        if (module.isNamed() && (requireCompleteModules.contains(module))) {
-            return module.toString();
-        }
-
-        Set<OptionOrigin> origins = requireCompletePackageOrClass.get(clazz.getName());
-        if (origins != null) {
-            return origins;
-        }
-        return requireCompletePackageOrClass.get(clazz.getPackageName());
+        return classFilter.isIncluded(clazz);
     }
 
     public String errorMessageFor(ResolvedJavaType type) {
@@ -213,7 +112,7 @@ public final class LinkAtBuildTimeSupport {
 
     @SuppressWarnings("unchecked")
     private String linkAtBuildTimeReason(Class<?> clazz) {
-        Object reason = linkAtBuildTimeImpl(clazz);
+        Object reason = isIncluded(clazz);
         if (reason == null) {
             return null;
         }
