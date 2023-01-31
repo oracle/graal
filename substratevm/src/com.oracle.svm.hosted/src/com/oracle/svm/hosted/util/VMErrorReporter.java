@@ -81,7 +81,7 @@ public final class VMErrorReporter {
         pw.println("## GraalVM Setup");
         pw.println();
         boolean isImageSingletonsInstalled = ImageSingletonsSupport.isInstalled();
-        String version = isImageSingletonsInstalled ? ImageSingletons.lookup(VM.class).version : new VM().version;
+        String version = isImageSingletonsInstalled && ImageSingletons.contains(VM.class) ? ImageSingletons.lookup(VM.class).version : new VM().version;
         String javaVersion = System.getProperty("java.runtime.version");
         pw.println("| Name | Value |");
         pw.println("| ---- | ----- |");
