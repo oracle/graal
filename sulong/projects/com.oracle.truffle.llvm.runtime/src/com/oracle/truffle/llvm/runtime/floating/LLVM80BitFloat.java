@@ -615,7 +615,7 @@ public final class LLVM80BitFloat extends LLVMInternalTruffleObject {
 
         FP80Node(String name, String signature) {
             this.name = name;
-            this.functionName = "__sulong_fp80_" + name;
+            this.functionName = "__sulong_longdouble_" + name;
             this.signature = signature;
             this.nativeCtxExtKey = LLVMLanguage.get(this).lookupContextExtension(NativeContextExtension.class);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,32 +29,32 @@
  */
 #include <math.h>
 
-long double __sulong_fp80_add(long double x, long double y) {
+long double __sulong_longdouble_add(long double x, long double y) {
     return x + y;
 }
 
-long double __sulong_fp80_sub(long double x, long double y) {
+long double __sulong_longdouble_sub(long double x, long double y) {
     return x - y;
 }
 
-long double __sulong_fp80_mul(long double x, long double y) {
+long double __sulong_longdouble_mul(long double x, long double y) {
     return x * y;
 }
 
-long double __sulong_fp80_div(long double x, long double y) {
+long double __sulong_longdouble_div(long double x, long double y) {
     return x / y;
 }
 
-long double __sulong_fp80_mod(long double x, long double y) {
+long double __sulong_longdouble_mod(long double x, long double y) {
     return fmodl(x, y);
 }
 
-long double __sulong_fp80_pow(long double x, long double y) {
+long double __sulong_longdouble_pow(long double x, long double y) {
     return powl(x, y);
 }
 
 #define DECLARE_UNARY_INTRINSIC(fn)                                                                                                                  \
-    long double __sulong_fp80_##fn(long double value) { return fn##l(value); }
+    long double __sulong_longdouble_##fn(long double value) { return fn##l(value); }
 
 DECLARE_UNARY_INTRINSIC(sqrt)
 DECLARE_UNARY_INTRINSIC(log)

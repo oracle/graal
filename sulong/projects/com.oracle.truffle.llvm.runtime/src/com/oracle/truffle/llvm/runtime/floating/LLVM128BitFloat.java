@@ -184,6 +184,10 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         return expSignFraction & FRACTION_MASK;
     }
 
+    public LLVM128BitFloat negate() {
+        return new LLVM128BitFloat((expSignFraction ^ SIGN_BIT), fraction);
+    }
+
     private long getUnbiasedExponent() {
         return ((expSignFraction & EXPONENT_MASK) >>> (EXPONENT_POSITION)) - (EXPONENT_BIAS);
     }
@@ -430,7 +434,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
 
         FP128Node(String name, String signature) {
             this.name = name;
-            this.functionName = "__sulong_fp128_" + name;
+            this.functionName = "__sulong_longdouble_" + name;
             this.signature = signature;
             this.nativeCtxExtKey = LLVMLanguage.get(this).lookupContextExtension(NativeContextExtension.class);
         }
