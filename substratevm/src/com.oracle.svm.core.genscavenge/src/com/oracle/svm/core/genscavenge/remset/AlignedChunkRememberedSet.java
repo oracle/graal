@@ -55,6 +55,11 @@ final class AlignedChunkRememberedSet {
     }
 
     @Fold
+    public static int wordSize() {
+        return ConfigurationValues.getTarget().wordSize;
+    }
+
+    @Fold
     public static UnsignedWord getHeaderSize() {
         UnsignedWord headerSize = getFirstObjectTableLimitOffset();
         UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
@@ -133,19 +138,23 @@ final class AlignedChunkRememberedSet {
         UnsignedWord memorySize = objectsLimit.subtract(objectsStart);
         UnsignedWord indexLimit = CardTable.indexLimitForMemorySize(memorySize);
 
-        for (UnsignedWord index = WordFactory.zero(); index.belowThan(indexLimit); index = index.add(1)) {
-            if (CardTable.isDirty(cardTableStart, index)) {
+        for (UnsignedWord index = WordFactory.zero(); index.belowThan(indexLimit); index = index.add(wordSize())) {
+            UnsignedWord value = CardTable.readWord(cardTableStart, index);
+            if (value.notEqual(CardTable.CLEAN_WORD)) {
                 if (clean) {
-                    CardTable.setClean(cardTableStart, index);
+                    CardTable.cleanWord(cardTableStart, index);
                 }
-
-                Pointer ptr = FirstObjectTable.getFirstObjectImprecise(fotStart, objectsStart, objectsLimit, index);
-                Pointer cardLimit = CardTable.indexToMemoryPointer(objectsStart, index.add(1));
-                Pointer walkLimit = PointerUtils.min(cardLimit, objectsLimit);
-                while (ptr.belowThan(walkLimit)) {
-                    Object obj = ptr.toObject();
-                    visitor.visitObjectInline(obj);
-                    ptr = LayoutEncoding.getObjectEndInline(obj);
+                for (int i = 0; i < wordSize(); i++) {
+                    if (value.unsignedShiftRight(i * 8).and(0xFF).equal(CardTable.DIRTY_ENTRY)) {
+                        Pointer ptr = FirstObjectTable.getFirstObjectImprecise(fotStart, objectsStart, objectsLimit, index.add(i));
+                        Pointer cardLimit = CardTable.indexToMemoryPointer(objectsStart, index.add(i + 1));
+                        Pointer walkLimit = PointerUtils.min(cardLimit, objectsLimit);
+                        while (ptr.belowThan(walkLimit)) {
+                            Object obj = ptr.toObject();
+                            visitor.visitObjectInline(obj);
+                            ptr = LayoutEncoding.getObjectEndInline(obj);
+                        }
+                    }
                 }
             }
         }

@@ -74,10 +74,11 @@ import com.oracle.svm.core.util.UnsignedUtils;
 final class CardTable {
     public static final int BYTES_COVERED_BY_ENTRY = 512;
 
-    private static final int ENTRY_SIZE_BYTES = 1;
+    static final int DIRTY_ENTRY = 0;
+    static final int CLEAN_ENTRY = 1;
+    static final UnsignedWord CLEAN_WORD = WordFactory.unsigned(0x0101010101010101L);
 
-    private static final int DIRTY_ENTRY = 0;
-    private static final int CLEAN_ENTRY = 1;
+    private static final int ENTRY_SIZE_BYTES = 1;
 
     private static final CardTableVerificationVisitor CARD_TABLE_VERIFICATION_VISITOR = new CardTableVerificationVisitor();
 
@@ -110,6 +111,14 @@ final class CardTable {
     private static boolean isClean(Pointer table, UnsignedWord index) {
         int entry = readEntry(table, index);
         return entry == CLEAN_ENTRY;
+    }
+
+    public static UnsignedWord readWord(Pointer table, UnsignedWord index) {
+        return table.readWord(indexToTableOffset(index));
+    }
+
+    public static void cleanWord(Pointer table, UnsignedWord index) {
+        table.writeWord(indexToTableOffset(index), CLEAN_WORD, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
     }
 
     private static int readEntry(Pointer table, UnsignedWord index) {
