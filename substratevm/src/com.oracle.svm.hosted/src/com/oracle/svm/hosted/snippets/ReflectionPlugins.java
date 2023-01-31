@@ -480,7 +480,7 @@ public final class ReflectionPlugins {
              * If the argument is not a constant, we try to extract a varargs-parameter list for
              * Class[] arrays. This is used in many reflective lookup methods.
              */
-            return SubstrateGraphBuilderPlugins.extractClassArray(annotationSubstitutions, snippetReflection, arg, true);
+            return SubstrateGraphBuilderPlugins.extractClassArray(b, annotationSubstitutions, snippetReflection, arg, true);
         }
 
         JavaConstant argConstant = arg.asJavaConstant();

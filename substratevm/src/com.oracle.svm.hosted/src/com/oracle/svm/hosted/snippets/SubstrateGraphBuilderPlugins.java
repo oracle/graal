@@ -297,7 +297,7 @@ public class SubstrateGraphBuilderPlugins {
      */
     private static void interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection,
                     AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode interfacesNode) {
-        Class<?>[] interfaces = extractClassArray(snippetReflection, annotationSubstitutions, interfacesNode);
+        Class<?>[] interfaces = extractClassArray(b, snippetReflection, annotationSubstitutions, interfacesNode);
         if (interfaces != null) {
             /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
             RuntimeProxyCreation.register(interfaces);
@@ -320,8 +320,8 @@ public class SubstrateGraphBuilderPlugins {
      * Try to extract a Class array from a ValueNode. It does not guarantee that the array content
      * will not change.
      */
-    static Class<?>[] extractClassArray(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode arrayNode) {
-        Class<?>[] classes = extractClassArray(annotationSubstitutions, snippetReflection, arrayNode, false);
+    static Class<?>[] extractClassArray(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode arrayNode) {
+        Class<?>[] classes = extractClassArray(b, annotationSubstitutions, snippetReflection, arrayNode, false);
         /*
          * If any of the element is null just bailout, this is probably a situation where the array
          * will be filled in later and we don't track that.
@@ -340,7 +340,8 @@ public class SubstrateGraphBuilderPlugins {
      * constants and there is no control flow split. If the content of the array cannot be determine
      * a null value is returned.
      */
-    static Class<?>[] extractClassArray(AnnotationSubstitutionProcessor annotationSubstitutions, SnippetReflectionProvider snippetReflection, ValueNode arrayNode, boolean exact) {
+    static Class<?>[] extractClassArray(GraphBuilderContext b, AnnotationSubstitutionProcessor annotationSubstitutions, SnippetReflectionProvider snippetReflection, ValueNode arrayNode,
+                    boolean exact) {
         /* Use the original value in case we are in a deopt target method. */
         ValueNode originalArrayNode = getDeoptProxyOriginalValue(arrayNode);
         if (originalArrayNode.isJavaConstant() && !exact) {
@@ -352,6 +353,10 @@ public class SubstrateGraphBuilderPlugins {
 
         } else if (originalArrayNode instanceof AllocatedObjectNode && StampTool.isAlwaysArray(originalArrayNode)) {
             AllocatedObjectNode allocatedObjectNode = (AllocatedObjectNode) originalArrayNode;
+            if (!allocatedObjectNode.getVirtualObject().type().equals(b.getMetaAccess().lookupJavaType(Class[].class))) {
+                /* Not allocating a Class[] array. */
+                return null;
+            }
             CommitAllocationNode commitAllocationNode = allocatedObjectNode.getCommit();
             if (skipBeginNodes(commitAllocationNode.next()) != null) {
                 /* Nodes after the array materialization could interfere with the array. */
@@ -366,17 +371,10 @@ public class SubstrateGraphBuilderPlugins {
 
                     Class<?>[] result = new Class<?>[virtualObject.entryCount()];
                     for (int i = 0; i < result.length; i++) {
-                        ValueNode valueNode = commitAllocationNode.getValues().get(objectStartIndex + i);
-                        if (!valueNode.isJavaConstant()) {
+                        JavaConstant valueConstant = commitAllocationNode.getValues().get(objectStartIndex + i).asJavaConstant();
+                        if (!storeClassArrayConstant(result, i, valueConstant, annotationSubstitutions, snippetReflection)) {
                             return null;
                         }
-                        Class<?> clazz = snippetReflection.asObject(Class.class, valueNode.asJavaConstant());
-                        /*
-                         * It is possible that the returned class is a substitution class, e.g.,
-                         * DynamicHub returned for a Class.class constant. Get the target class of
-                         * the substitution class.
-                         */
-                        result[i] = annotationSubstitutions == null || clazz == null ? clazz : annotationSubstitutions.getTargetClass(clazz);
                     }
                     return result;
                 }
@@ -391,6 +389,10 @@ public class SubstrateGraphBuilderPlugins {
              * array elements.
              */
             NewArrayNode newArray = (NewArrayNode) originalArrayNode;
+            if (!newArray.elementType().equals(b.getMetaAccess().lookupJavaType(Class.class))) {
+                /* Not allocating a Class[] array. */
+                return null;
+            }
             ValueNode newArrayLengthNode = newArray.length();
             if (!newArrayLengthNode.isJavaConstant()) {
                 /*
@@ -415,17 +417,10 @@ public class SubstrateGraphBuilderPlugins {
                         return null;
                     }
                     int index = store.index().asJavaConstant().asInt();
-                    ValueNode valueNode = store.value();
-                    if (!valueNode.isJavaConstant()) {
+                    JavaConstant valueConstant = store.value().asJavaConstant();
+                    if (!storeClassArrayConstant(result, index, valueConstant, annotationSubstitutions, snippetReflection)) {
                         return null;
                     }
-                    Class<?> clazz = snippetReflection.asObject(Class.class, valueNode.asJavaConstant());
-                    /*
-                     * It is possible that the returned class is a substitution class, e.g.,
-                     * DynamicHub returned for a Class.class constant. Get the target class of the
-                     * substitution class.
-                     */
-                    result[index] = annotationSubstitutions == null || clazz == null ? clazz : annotationSubstitutions.getTargetClass(clazz);
                 }
                 successor = unwrapNode(store.next());
             }
@@ -437,6 +432,28 @@ public class SubstrateGraphBuilderPlugins {
             return result;
         }
         return null;
+    }
+
+    private static boolean storeClassArrayConstant(Class<?>[] result, int index, JavaConstant valueConstant,
+                    AnnotationSubstitutionProcessor annotationSubstitutions, SnippetReflectionProvider snippetReflection) {
+
+        if (valueConstant == null || valueConstant.getJavaKind() != JavaKind.Object) {
+            return false;
+        }
+        if (valueConstant.isNull()) {
+            result[index] = null;
+        } else {
+            Class<?> clazz = snippetReflection.asObject(Class.class, valueConstant);
+            if (clazz == null) {
+                return false;
+            }
+            /*
+             * It is possible that the returned class is a substitution class, e.g., DynamicHub
+             * returned for a Class.class constant. Get the target class of the substitution class.
+             */
+            result[index] = annotationSubstitutions == null ? clazz : annotationSubstitutions.getTargetClass(clazz);
+        }
+        return true;
     }
 
     /**
