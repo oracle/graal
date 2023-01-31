@@ -1982,10 +1982,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
                     if (converter != null) {
                         StaticObject converted = (StaticObject) converter.convert(foreignException);
-                        // the back trace of the foreign exception wrapper must be set to the
-                        // foreign
-                        // exception object, then the back trace is retained in the guest code
-                        // and the stackTrace field set to null to trigger backtrace lookups
+                        /*
+                         * The back trace of the foreign exception wrapper must be set to the
+                         * foreign exception object, then the back trace is retained in the guest
+                         * code and the stackTrace field set to null to trigger backtrace lookups
+                         */
                         Meta meta = getMeta();
                         meta.java_lang_Throwable_backtrace.setObject(converted, getMeta().java_lang_Throwable_backtrace.getObject(foreignException));
                         if (meta.getJavaVersion().java9OrLater()) {
