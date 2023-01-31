@@ -83,7 +83,18 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public ValueNode extremumNode(boolean assumeLoopEntered, Stamp s) {
+        // base.extremumNode will already perform any necessary conversion operation based on the
+        // stamp, thus we do not "redo" the same here, the caller decides upon the request result
+        // stamp bit width
         return base.extremumNode(assumeLoopEntered, s);
+    }
+
+    /**
+     * @see #extremumNode(boolean, Stamp)
+     */
+    @Override
+    public ValueNode extremumNode(boolean assumeLoopEntered, Stamp s, ValueNode maxTripCount) {
+        return base.extremumNode(assumeLoopEntered, s, maxTripCount);
     }
 
     @Override
@@ -132,5 +143,10 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     @Override
     public ValueNode copyValue(InductionVariable newBase, boolean gvn) {
         return op(newBase.valueNode(), true, gvn);
+    }
+
+    @Override
+    public ValueNode entryTripValue() {
+        return op(getBase().entryTripValue(), true);
     }
 }

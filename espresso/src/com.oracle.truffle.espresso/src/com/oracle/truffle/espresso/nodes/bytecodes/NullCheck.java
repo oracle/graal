@@ -37,7 +37,7 @@ public abstract class NullCheck extends EspressoNode {
     abstract StaticObject execute(StaticObject receiver);
 
     @Specialization
-    StaticObject execute(StaticObject receiver, @Cached BranchProfile exceptionProfile) {
+    StaticObject doNullCheck(StaticObject receiver, @Cached BranchProfile exceptionProfile) {
         if (StaticObject.isNull(receiver)) {
             exceptionProfile.enter();
             throw getMeta().throwNullPointerException();

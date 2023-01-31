@@ -297,6 +297,7 @@ public class IOAccessTest {
     @TruffleLanguage.Registration
     public static final class TestSocketAccessEnabledLanguage extends AbstractExecutableTestLanguage {
 
+        @SuppressWarnings("deprecation")
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
@@ -314,6 +315,7 @@ public class IOAccessTest {
     @TruffleLanguage.Registration
     public static final class TestSocketAccessDisabledLanguage extends AbstractExecutableTestLanguage {
 
+        @SuppressWarnings("deprecation")
         @Override
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {

@@ -43,7 +43,7 @@ public class PrettyPrintJSON {
 2. Build a native executable by enabling the JavaScript interoperability:
 
     ```shell
-    native-image --language:js --initialize-at-build-time PrettyPrintJSON
+    native-image --language:js PrettyPrintJSON
     ```
     The `--language:js` argument ensures that JavaScript is available in the generated image.
     It will take several minutes as it does not just build the executable, but also pulls in the JavaScript engine.

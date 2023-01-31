@@ -27,14 +27,14 @@ package org.graalvm.compiler.truffle.test.strings;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
-public class TStringOpsCalcStringAttributesBMPTest extends TStringOpsTest<AMD64CalcStringAttributesNode> {
+public class TStringOpsCalcStringAttributesBMPTest extends TStringOpsTest<CalcStringAttributesNode> {
 
     @Parameters(name = "{index}: args: {1}, {2}")
     public static Iterable<Object[]> data() {
@@ -89,7 +89,7 @@ public class TStringOpsCalcStringAttributesBMPTest extends TStringOpsTest<AMD64C
     private final int length;
 
     public TStringOpsCalcStringAttributesBMPTest(Object array, int offset, int length) {
-        super(AMD64CalcStringAttributesNode.class);
+        super(CalcStringAttributesNode.class);
         this.array = array;
         this.offset = offset;
         this.length = length;
@@ -97,6 +97,6 @@ public class TStringOpsCalcStringAttributesBMPTest extends TStringOpsTest<AMD64C
 
     @Test
     public void testBMP() {
-        test(getTStringOpsMethod("calcStringAttributesBMP", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
+        testWithNative(getTStringOpsMethod("calcStringAttributesBMP", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 }

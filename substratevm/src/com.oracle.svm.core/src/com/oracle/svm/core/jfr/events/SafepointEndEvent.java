@@ -36,7 +36,6 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 
 public class SafepointEndEvent {
     public static void emit(UnsignedWord safepointId, long startTick) {
@@ -48,7 +47,11 @@ public class SafepointEndEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(UnsignedWord safepointId, long startTick) {
+<<<<<<< HEAD
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.SafepointEnd) && !SubstrateJVM.get().isCurrentThreadExcluded()) {
+=======
+        if (JfrEvent.SafepointEnd.shouldEmit()) {
+>>>>>>> 74db4491f2a7a81eee4828c22da73d8217457191
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 

@@ -318,30 +318,33 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
 
                 // use the 1-byte-1-byte stride variant for the 2-2 and 4-4 cases by simply shifting
                 // the length
-                masm.align(crb.target.wordSize * 2);
-                masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S4, Stride.S4)]);
+                masm.align(preferredBranchTargetAlignment(crb));
+                masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S4, Stride.S4)]);
                 masm.shll(length, 1);
-                masm.align(crb.target.wordSize * 2);
-                masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S2, Stride.S2)]);
+                masm.align(preferredBranchTargetAlignment(crb));
+                masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S2, Stride.S2)]);
                 masm.shll(length, 1);
-                masm.align(crb.target.wordSize * 2);
-                masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
+                masm.align(preferredBranchTargetAlignment(crb));
+                masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
                 emitArrayCompare(crb, masm, Stride.S1, Stride.S1, Stride.S1, result, arrayA, arrayB, mask, length, done, false);
                 masm.jmp(done);
 
                 for (Stride strideA : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
                     for (Stride strideB : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
-                        if (strideA.log2 <= strideB.log2) {
+                        if (strideA.log2 == strideB.log2 || !withMask() && strideA.log2 < strideB.log2) {
                             continue;
                         }
+                        if (!withMask()) {
+                            masm.align(preferredBranchTargetAlignment(crb));
+                            // use the same implementation for e.g. stride 1-2 and 2-1 by swapping
+                            // the arguments in one variant
+                            masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideB, strideA)]);
+                            masm.movq(tmp, arrayA);
+                            masm.movq(arrayA, arrayB);
+                            masm.movq(arrayB, tmp);
+                        }
                         masm.align(crb.target.wordSize * 2);
-                        // use the same implementation for e.g. stride 1-2 and 2-1 by swapping the
-                        // arguments in one variant
-                        masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(strideB, strideA)]);
-                        masm.movq(tmp, arrayA);
-                        masm.movq(arrayA, arrayB);
-                        masm.movq(arrayB, tmp);
-                        masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
+                        masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
                         emitArrayCompare(crb, masm, strideA, strideB, strideB, result, arrayA, arrayB, mask, length, done, false);
                         masm.jmp(done);
                     }
@@ -418,12 +421,12 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         masm.negq(length);
 
         // Align the main loop
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
-        pmovSZx(masm, vectorSize, vector1, maxStride, arrayA, length, 0, strideA);
-        pmovSZx(masm, vectorSize, vector2, maxStride, arrayB, length, 0, strideB);
+        masm.pmovSZx(vectorSize, extendMode, vector1, maxStride, arrayA, strideA, length, 0);
+        masm.pmovSZx(vectorSize, extendMode, vector2, maxStride, arrayB, strideB, length, 0);
         if (withMask()) {
-            pmovSZx(masm, vectorSize, vector3, maxStride, mask, length, 0, strideMask);
+            masm.pmovSZx(vectorSize, extendMode, vector3, maxStride, mask, strideMask, length, 0);
             masm.por(vectorSize, vector1, vector3);
         }
         emitVectorCmp(masm, vector1, vector2, vectorSize);
@@ -448,10 +451,10 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
          * Compare the remaining bytes with an unaligned memory load aligned to the end of the
          * array.
          */
-        pmovSZx(masm, vectorSize, vector1, maxStride, arrayA, result, -vectorSize.getBytes(), strideA);
-        pmovSZx(masm, vectorSize, vector2, maxStride, arrayB, result, -vectorSize.getBytes(), strideB);
+        masm.pmovSZx(vectorSize, extendMode, vector1, maxStride, arrayA, strideA, result, -vectorSize.getBytes());
+        masm.pmovSZx(vectorSize, extendMode, vector2, maxStride, arrayB, strideB, result, -vectorSize.getBytes());
         if (withMask()) {
-            pmovSZx(masm, vectorSize, vector3, maxStride, mask, result, -vectorSize.getBytes(), strideMask);
+            masm.pmovSZx(vectorSize, extendMode, vector3, maxStride, mask, strideMask, result, -vectorSize.getBytes());
             masm.por(vectorSize, vector1, vector3);
         }
         emitVectorCmp(masm, vector1, vector2, vectorSize);
@@ -472,17 +475,9 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         return vSize.getBytes() >> maxStride.log2;
     }
 
-    private void pmovSZx(AMD64MacroAssembler asm, AVXSize size, Register dst, Stride maxStride, Register src, int displacement, Stride stride) {
-        pmovSZx(asm, size, dst, maxStride, src, Register.None, displacement, stride);
-    }
-
-    private void pmovSZx(AMD64MacroAssembler asm, AVXSize size, Register dst, Stride maxStride, Register src, Register index, int displacement, Stride stride) {
-        asm.pmovSZx(size, extendMode, dst, maxStride, src, stride, index, displacement);
-    }
-
     private static void emitVectorCmp(AMD64MacroAssembler masm, Register vector1, Register vector2, AVXSize size) {
         masm.pxor(size, vector1, vector2);
-        masm.ptest(size, vector1);
+        masm.ptest(size, vector1, vector1);
     }
 
     /**
@@ -519,7 +514,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         masm.negq(length);
 
         // Align the main loop
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
         masm.movq(temp, new AMD64Address(arrayA, length, strideA, 0));
         if (withMask()) {
@@ -667,7 +662,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         masm.negq(length);
 
         // Align the main loop
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
         for (int i = 0; i < elementsPerLoopIteration; i++) {
             masm.movSZx(strideA, extendMode, tmp1, new AMD64Address(array1, length, strideA, i << strideA.log2));
@@ -757,7 +752,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         masm.movq(i, range);
         masm.negq(i);
         // Align the main loop
-        masm.align(crb.target.wordSize * 2);
+        masm.align(preferredLoopAlignment(crb));
         masm.bind(loop);
         emitFloatCompare(masm, strideA, strideB, arrayA, arrayB, index, offset, falseLabel, range == 1);
         masm.incrementq(index, 1);
@@ -815,26 +810,26 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
                 asm.cmovl(AMD64Assembler.ConditionFlag.NotZero, result, arrayA);
             }
         } else {
-            pmovSZx(asm, vSize, vector1, maxStride, arrayA, 0, argStrideA);
-            pmovSZx(asm, vSize, vector2, maxStride, arrayB, 0, argStrideB);
+            asm.pmovSZx(vSize, extendMode, vector1, maxStride, arrayA, argStrideA, Register.None, 0);
+            asm.pmovSZx(vSize, extendMode, vector2, maxStride, arrayB, argStrideB, Register.None, 0);
             if (withMask()) {
-                pmovSZx(asm, vSize, vector4, maxStride, mask, 0, argStrideMask);
+                asm.pmovSZx(vSize, extendMode, vector4, maxStride, mask, argStrideMask, Register.None, 0);
                 asm.por(vSize, vector1, vector4);
             }
             asm.pxor(vSize, vector1, vector2);
             if (constantLength() > elementsPerVector) {
                 int endOffset = (constantLength() << maxStride.log2) - vSize.getBytes();
-                pmovSZx(asm, vSize, vector3, maxStride, arrayA, endOffset, argStrideA);
-                pmovSZx(asm, vSize, vector2, maxStride, arrayB, endOffset, argStrideB);
+                asm.pmovSZx(vSize, extendMode, vector3, maxStride, arrayA, argStrideA, Register.None, endOffset);
+                asm.pmovSZx(vSize, extendMode, vector2, maxStride, arrayB, argStrideB, Register.None, endOffset);
                 if (withMask()) {
-                    pmovSZx(asm, vSize, vector4, maxStride, mask, endOffset, argStrideMask);
+                    asm.pmovSZx(vSize, extendMode, vector4, maxStride, mask, argStrideMask, Register.None, endOffset);
                     asm.por(vSize, vector3, vector4);
                 }
                 asm.pxor(vSize, vector3, vector2);
                 asm.por(vSize, vector1, vector3);
             }
             asm.xorq(arrayA, arrayA);
-            asm.ptest(vSize, vector1);
+            asm.ptest(vSize, vector1, vector1);
             asm.cmovl(AMD64Assembler.ConditionFlag.NotZero, result, arrayA);
         }
     }

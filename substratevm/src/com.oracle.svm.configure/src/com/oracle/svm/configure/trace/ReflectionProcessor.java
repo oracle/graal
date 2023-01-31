@@ -58,7 +58,7 @@ class ReflectionProcessor extends AbstractProcessor {
     public void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
-        if (invalidResult && !reportReflectiveFailure(entry)) {
+        if (invalidResult) {
             return;
         }
 
@@ -68,6 +68,13 @@ class ReflectionProcessor extends AbstractProcessor {
         switch (function) {
             // These are called via java.lang.Class or via the class loader hierarchy, so we would
             // always filter based on the caller class.
+            case "findResource":
+            case "findResourceAsStream":
+                expectSize(args, 2);
+                String module = (String) args.get(0);
+                String resource = (String) args.get(1);
+                resourceConfiguration.addResourcePattern(condition, (module == null ? "" : module + ":") + Pattern.quote(resource));
+                return;
             case "getResource":
             case "getResourceAsStream":
             case "getSystemResource":
@@ -303,16 +310,5 @@ class ReflectionProcessor extends AbstractProcessor {
         interfaces.addAll(checkedInterfaces);
         interfaces.addAll(uncheckedInterfaces);
         proxyConfiguration.add(ConfigurationCondition.alwaysTrue(), interfaces);
-    }
-
-    private static boolean reportReflectiveFailure(EconomicMap<String, ?> entry) {
-        String function = (String) entry.get("function");
-        switch (function) {
-            case "forName":
-                List<?> args = (List<?>) entry.get("args");
-                String name = singleElement(args);
-                return name != null;
-        }
-        return false;
     }
 }

@@ -28,21 +28,21 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
-import com.oracle.truffle.espresso.preinit.ContextPatchingException;
-import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.ContextThreadLocal;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
@@ -59,20 +59,21 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Symbols;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
+import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.commands.ExitCodeNode;
 import com.oracle.truffle.espresso.nodes.commands.GetBindingsNode;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessNode;
+import com.oracle.truffle.espresso.preinit.ContextPatchingException;
 import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionValues;
 
 // TODO: Update website once Espresso has one
 @Registration(id = EspressoLanguage.ID, //
@@ -286,22 +287,26 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             // Wait for ongoing threads to finish.
             context.destroyVM();
         } else {
-            try {
-                // Here we give a chance for our threads to exit gracefully in guest code before
-                // Truffle kicks in with host thread deaths.
-                context.doExit(exitCode);
-            } finally {
-                context.cleanupNativeEnv(); // This must be done here in case of a hard exit.
-            }
+            // Here we give a chance for our threads to exit gracefully in guest code before
+            // Truffle kicks in with host thread deaths.
+            context.doExit(exitCode);
         }
     }
 
     @Override
     protected void finalizeContext(EspressoContext context) {
-        if (!context.isTruffleClosed()) {
-            // If context is closed, we cannot run any guest code for cleanup.
+        TruffleSafepoint sp = TruffleSafepoint.getCurrent();
+        boolean prev = sp.setAllowActions(false);
+        try {
+            // we can still run limited guest code, even if the context is already invalid
             context.prepareDispose();
             context.cleanupNativeEnv();
+        } catch (Throwable t) {
+            context.getLogger().log(Level.FINER, "Exception while finalizing Espresso context", t);
+            throw t;
+        } finally {
+            sp.setAllowActions(prev);
+            context.setFinalized();
         }
         long elapsedTimeNanos = System.nanoTime() - context.getStartupClockNanos();
         long seconds = TimeUnit.NANOSECONDS.toSeconds(elapsedTimeNanos);
@@ -310,7 +315,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         } else {
             context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedTimeNanos));
         }
-        context.setFinalized();
     }
 
     @Override
@@ -380,6 +384,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeThread(EspressoContext context, Thread thread) {
+        if (context.isFinalized()) {
+            // we can no longer run guest code
+            context.getLogger().log(Level.FINE, "Context is already finalized, ignoring request to initialize a new thread");
+            return;
+        }
         context.createThread(thread);
     }
 

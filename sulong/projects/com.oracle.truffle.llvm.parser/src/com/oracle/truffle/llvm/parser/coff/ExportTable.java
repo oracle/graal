@@ -70,7 +70,7 @@ public final class ExportTable {
 
         for (int i = 0; i < exportTable.numberOfNamePointers; i++) {
             String name = file.readStringAtVirtualOffset(nameRVAs[i]);
-            int exportAddress = exportAddressEntries[ordinalNumbers[i] - exportTable.ordinalBase];
+            int exportAddress = exportAddressEntries[ordinalNumbers[i]];
 
             // if the export address is within the export data directory section bounds, it is a
             // name pointer

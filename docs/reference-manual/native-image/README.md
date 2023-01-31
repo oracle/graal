@@ -144,67 +144,9 @@ To build a native executable from a JAR file in the current working directory, u
 native-image [options] -jar jarfile [imagename]
 ```
 
-1. Prepare the application.
+The default behavior of `native-image` is aligned with the `java` command which means you can pass the `-jar`, `-cp`, `-m`  options to build with Native Image as you would normally do with `java`. For example, `java -jar App.jar someArgument` becomes `native-image -jar App.jar` and `./App someArgument`.
 
-    - Create a new Java project named "App", for example in your favorite IDE or from your terminal, with the following structure:
-
-        ```shell
-        | src
-        |   --com/
-        |      -- example
-        |          -- App.java
-        ```
-
-    - Add the following Java code into the _src/com/example/App.java_ file:
-
-        ```java
-        package com.example;
-
-        public class App {
-
-            public static void main(String[] args) {
-                String str = "Native Image is awesome";
-                String reversed = reverseString(str);
-                System.out.println("The reversed string is: " + reversed);
-            }
-
-            public static String reverseString(String str) {
-                if (str.isEmpty())
-                    return str;
-                return reverseString(str.substring(1)) + str.charAt(0);
-            }
-        }
-        ```
-        This is a small Java application that reverses a String using recursion.
-
-2. Compile the application:
-
-    ```shell
-    javac -d build src/com/example/App.java
-    ```
-    This produces the file _App.class_ in the _build/com/example_ directory.
-
-3. Create a runnable JAR file:
-
-    ```shell
-    jar --create --file App.jar --main-class com.example.App -C build .
-    ```
-    It will generate a runnable JAR file, named `App.jar`, in the root directory: 
-    To view its contents, type `jar tf App.jar`.
-
-4. Create a native executable:
-
-    ```
-    native-image --jar App.jar
-    ```
-    It will produce a native executable in the project root directory.
-5. Run the native executable:
-
-    ```shell
-    ./App
-    ```
-
-The `native-image` tool can provide the class path for all classes using the familiar option from the java launcher: `-cp`, followed by a list of directories or JAR files, separated by `:` on Linux and macOS platforms, or `;` on Windows. The name of the class containing the `main` method is the last argument, or you can use the `-jar` option and provide a JAR file that specifies the `main` method in its manifest.
+[Follow this guide](guides/build-native-executable-from-jar.md) to build a native executable from a JAR file.
 
 ### From a Module
 
@@ -217,12 +159,48 @@ native-image [options] --module <module>[/<mainclass>] [options]
 
 For more information about how to produce a native executable from a modular Java application, see [Building a HelloWorld Java Module into a Native Executable](guides/build-java-module-app-aot.md).
 
+### Getting Notified When the Build Process Is Done
+
+Depending on the size of your application and the available resources of your build machine, it can take a few minutes to AOT-compile your Java application to a native executable.
+If you are building your project in the background, consider using a command that notifies you when the build process is completed.
+Below, example commands are listed per operating system:
+
+#### Linux
+```bash
+# Ring the terminal bell
+native-image -jar App.jar ... ; printf '\a'
+
+# Use libnotify to create a desktop notification
+native-image -jar App.jar ... ; notify-send "GraalVM Native Image build completed with exit code $?"
+
+# Use Zenity to open an info dialog box with text
+native-image -jar App.jar ... ; zenity --info --text="GraalVM Native Image build completed with exit code $?"
+```
+
+#### macOS
+```bash
+# Ring the terminal bell
+native-image -jar App.jar ... ; printf '\a'
+
+# Use Speech Synthesis
+native-image -jar App.jar ... ; say "GraalVM Native Image build completed"
+```
+
+#### Windows
+```bat
+REM Ring the terminal bell (press Ctrl+G to enter ^G)
+native-image.exe -jar App.jar & echo ^G
+
+REM Open an info dialog box with text
+native-image.exe -jar App.jar & msg "%username%" GraalVM Native Image build completed
+```
+
 ## Build Overview
 
-There many options you can pass to the `native-image` builder to configure the image build process. Run `native-image --help` to see the full list.
+There many options you can pass to the `native-image` builder to configure the build process. Run `native-image --help` to see the full list.
 The options passed to `native-image` are evaluated left-to-right.
 
-For different image build tweaks and to learn more about build time configuration, see [Native Image Build Configuration](BuildConfiguration.md).
+For different build tweaks and to learn more about build time configuration, see [Native Image Build Configuration](BuildConfiguration.md).
 
 Native Image will output the progress and various statistics during the build. To learn more about the output and the different build phases, see [Build Output](BuildOutput.md).
 

@@ -1,13 +1,13 @@
 {
-  local c = (import '../../../common.jsonnet'),
-  local bc = (import '../../../bench-common.libsonnet'),
+  local c = (import '../../../ci/ci_common/common.jsonnet'),
+  local bc = (import '../../../ci/ci_common/bench-common.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
   local bench = (import 'benchmark-suites.libsonnet'),
   local hw = bc.bench_hw,
 
   local main_builds = std.flattenArrays([
     [
-    c.daily      + hw.x52 + jdk + cc.libgraal + bench.dacapo,
+    c.daily      + hw.x52 + jdk + cc.libgraal + bench.dacapo + { unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time']}},
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.dacapo,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.dacapo_size_variants,
     c.weekly     + hw.x52 + jdk + cc.jargraal + bench.dacapo_size_variants,
@@ -19,7 +19,7 @@
     c.weekly     + hw.x52 + jdk + cc.jargraal + bench.scala_dacapo_size_variants,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo_timing,
     c.weekly     + hw.x52 + jdk + cc.jargraal + bench.scala_dacapo_timing,
-    c.daily      + hw.x52 + jdk + cc.libgraal + bench.renaissance,
+    c.daily      + hw.x52 + jdk + cc.libgraal + bench.renaissance + {unicorn_pull_request_benchmarking:: 'libgraal'},
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.renaissance,
     c.daily      + hw.x52 + jdk + cc.libgraal + bench.specjvm2008,
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.specjvm2008,
@@ -29,7 +29,7 @@
     c.monthly    + hw.x52 + jdk + cc.jargraal + bench.specjbb2015_full_machine,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.renaissance_0_11,
     c.monthly    + hw.x52 + jdk + cc.jargraal + bench.renaissance_0_11,
-    c.daily      + hw.x52 + jdk + cc.libgraal + bench.awfy,
+    c.daily      + hw.x52 + jdk + cc.libgraal + bench.awfy + {unicorn_pull_request_benchmarking:: 'libgraal'},
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.awfy,
     c.daily      + hw.x52 + jdk + cc.libgraal + bench.microservice_benchmarks,
     c.weekly     + hw.x52 + jdk + cc.jargraal + bench.microservice_benchmarks,
@@ -86,7 +86,14 @@
   for suite in bench.groups.main_suites
   ],
 
-  local all_builds = main_builds + weekly_forks_builds + profiling_builds + avx_builds + aarch64_builds + no_tiered_builds,
+  local no_profile_info_builds = [
+    c.weekly + hw.x52 + jdk + cc.libgraal + cc.no_profile_info + suite,
+  for jdk in cc.bench_jdks
+  for suite in bench.groups.main_suites
+  ],
+
+
+  local all_builds = main_builds + weekly_forks_builds + profiling_builds + avx_builds + aarch64_builds + no_tiered_builds + no_profile_info_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: [{ defined_in: std.thisFile } + b for b in filtered_builds]

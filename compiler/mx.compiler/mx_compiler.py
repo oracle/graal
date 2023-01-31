@@ -419,6 +419,28 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
         mx.abort("Gate for scala-dacapo benchmark '{}' failed!".format(name))
     return exit_code, suite, results
 
+def get_catch_files_and_common_path():
+    common_path = join(dirname(_suite.dir), 'common.json')
+    if not exists(common_path):
+        mx.abort('Required file does not exist: {}'.format(common_path))
+    with open(common_path) as common_file:
+        common_cfg = json.load(common_file)
+    catch_files = common_cfg.get('catch_files')
+    if catch_files is None:
+        mx.abort('Could not find catch_files attribute in {}'.format(common_path))
+    return catch_files, common_path
+
+def find_field_value(source_path, field_name):
+    decl = field_name + ' = "'
+    with open(source_path) as fp:
+        for line in fp.readlines():
+            index = line.find(decl)
+            if index != -1:
+                start_index = index + len(decl)
+                end_index = line.find('"', start_index)
+                return line[start_index:end_index]
+    mx.abort('Could not find value of ' + field_name + ' in ' + source_path)
+
 def _check_catch_files():
     """
     Verifies that there is a "catch_files" array in common.json at the root of
@@ -431,35 +453,10 @@ def _check_catch_files():
         ('StandardPathUtilitiesProvider', 'DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP')
     )
 
-    def get_regexp(class_name, field_name):
-        source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.debug', 'src', 'org', 'graalvm', 'compiler', 'debug', class_name + '.java')
-        regexp = None
-        with open(source_path) as fp:
-            for line in fp.readlines():
-                decl = field_name + ' = "'
-                index = line.find(decl)
-                if index != -1:
-                    start_index = index + len(decl)
-                    end_index = line.find('"', start_index)
-                    regexp = line[start_index:end_index]
-
-                    # Convert from Java style regexp to Python style
-                    return regexp.replace('(?<', '(?P<')
-
-        if not regexp:
-            mx.abort('Could not find value of ' + field_name + ' in ' + source_path)
-        return regexp
-
-    common_path = join(dirname(_suite.dir), 'common.json')
-    if not exists(common_path):
-        mx.abort('Required file does not exist: {}'.format(common_path))
-    with open(common_path) as common_file:
-        common_cfg = json.load(common_file)
-    catch_files = common_cfg.get('catch_files')
-    if catch_files is None:
-        mx.abort('Could not find catch_files attribute in {}'.format(common_path))
+    catch_files, common_path = get_catch_files_and_common_path()
     for class_name, field_name in catch_files_fields:
-        regexp = get_regexp(class_name, field_name)
+        source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.debug', 'src', 'org', 'graalvm', 'compiler', 'debug', class_name + '.java')
+        regexp = find_field_value(source_path, field_name).replace('(?<', '(?P<') # Convert from Java style regexp to Python style
         if regexp not in catch_files:
             mx.abort('Could not find catch_files entry in {} matching "{}"'.format(common_path, regexp))
 
@@ -579,12 +576,13 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=True) as t:
         if t: _gate_dacapo('pmd', 1, benchVmArgs + ['-Xbatch'])
 
-    # ensure benchmark counters still work but omit this test on
+    # Ensure benchmark counters still work but omit this test on
     # fastdebug as benchmark counter threads may not produce
-    # output in a timely manner
+    # output in a timely manner. Also omit the test on libgraal
+    # as it does not support TimedDynamicCounters.
     out = mx.OutputCapture()
     mx.run([jdk.java, '-version'], err=subprocess.STDOUT, out=out)
-    if 'fastdebug' not in out.data:
+    if 'fastdebug' not in out.data and '-XX:+UseJVMCINativeLibrary' not in (extraVMarguments or []):
         with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test, report=True) as t:
             if t:
                 fd, logFile = tempfile.mkstemp()
@@ -619,12 +617,13 @@ graal_unit_test_runs = [
 
 _registers = {
     'amd64': 'rbx,r11,r10,r14,xmm3,xmm2,xmm11,xmm14,k1?',
-    'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3'
+    'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3',
+    'riscv64': 'x10,x11,x12,x13,x14,v10,v11,v12,v13'
 }
 if mx.get_arch() not in _registers:
     mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())
 
-_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
+_defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60']
 _assertionFlags = ['-esa', '-Dgraal.DetailedAsserts=true']
 _graalErrorFlags = _compiler_error_options()
 _graalEconomyFlags = ['-Dgraal.CompilerConfiguration=economy']

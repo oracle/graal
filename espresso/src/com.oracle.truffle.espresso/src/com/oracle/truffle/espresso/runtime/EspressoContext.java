@@ -45,6 +45,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -309,13 +310,14 @@ public final class EspressoContext {
 
         spawnVM();
         this.initialized = true;
+
+        getEspressoEnv().getPolyglotTypeMappings().resolve(this);
+        getEspressoEnv().getReferenceDrainer().startReferenceDrain();
+
         // enable JDWP instrumenter only if options are set (assumed valid if non-null)
         if (espressoEnv.JDWPOptions != null) {
             espressoEnv.getJdwpContext().jdwpInit(getEnv(), getMainThread(), espressoEnv.getEventListener());
         }
-
-        getEspressoEnv().getPolyglotTypeMappings().resolve(this);
-        getEspressoEnv().getReferenceDrainer().startReferenceDrain();
     }
 
     public void patchContext(TruffleLanguage.Env newEnv) {
@@ -1051,9 +1053,9 @@ public final class EspressoContext {
         return REFERENCE.get(node);
     }
 
-    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler) {
+    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler, DebuggerController controller) {
         if (classRedefinition == null) {
-            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler);
+            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler, controller);
         }
         return classRedefinition;
     }

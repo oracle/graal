@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import com.oracle.svm.core.code.FrameInfoEncoder;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeStream;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -35,8 +35,12 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.options.OptionValues;
 
-import java.util.HashSet;
-import java.util.Set;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.code.FrameInfoEncoder;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * To guarantee DeoptEntryNodes and DeoptProxyNodes are inserted at the correct positions, the bci
@@ -50,8 +54,9 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      */
     private final Set<DeoptEntryInsertionPoint> insertedBlocks;
 
-    private DeoptimizationTargetBciBlockMapping(Bytecode code, DebugContext debug, int maxDuplicationBoost) {
-        super(code, debug, maxDuplicationBoost);
+    private DeoptimizationTargetBciBlockMapping(Bytecode code, DebugContext debug) {
+        super(code, debug);
+        VMError.guarantee(MultiMethod.isDeoptTarget(code.getMethod()), "Deoptimization Target expected.");
         insertedBlocks = new HashSet<>();
     }
 
@@ -216,8 +221,8 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      * Creates a BciBlockMapping with blocks explicitly representing where DeoptEntryNodes and
      * DeoptProxyAnchorNodes are to be inserted.
      */
-    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions, int maxDuplicationBoost) {
-        BciBlockMapping map = new DeoptimizationTargetBciBlockMapping(code, debug, maxDuplicationBoost);
+    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions) {
+        BciBlockMapping map = new DeoptimizationTargetBciBlockMapping(code, debug);
         buildMap(stream, code, options, debug, map, hasAsyncExceptions);
         return map;
     }
@@ -244,10 +249,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      */
     private boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
         ResolvedJavaMethod method = code.getMethod();
-        if (method instanceof HostedMethod) {
-            return ((HostedMethod) method).compilationInfo.isDeoptEntry(bci, duringCall, rethrowException);
-        }
-        return false;
+        return SubstrateCompilationDirectives.singleton().isDeoptEntry((MultiMethod) method, bci, duringCall, rethrowException);
     }
 
     /**
@@ -255,10 +257,8 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
      */
     private boolean isRegisteredDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
         ResolvedJavaMethod method = code.getMethod();
-        if (method instanceof HostedMethod) {
-            return ((HostedMethod) method).compilationInfo.isRegisteredDeoptEntry(bci, duringCall, rethrowException);
-        }
-        return false;
+        SubstrateCompilationDirectives directives = SubstrateCompilationDirectives.singleton();
+        return directives.isRegisteredDeoptTarget(method) && directives.isRegisteredDeoptEntry((MultiMethod) method, bci, duringCall, rethrowException);
     }
 
     /* A new block must be created for all places where a DeoptEntryNode will be inserted. */

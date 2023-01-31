@@ -135,7 +135,7 @@ public final class StatisticsPrinter {
         int reachable = 0;
         int appReachable = 0;
         for (AnalysisType type : bb.getUniverse().getTypes()) {
-            if (type.isInstantiated()) {
+            if (type.isReachable()) {
                 reachable++;
                 if (!isRuntimeLibraryType(type)) {
                     appReachable++;
@@ -185,6 +185,10 @@ public final class StatisticsPrinter {
         long appTotalRemovableFilters = 0;
 
         for (AnalysisMethod method : pta.getUniverse().getMethods()) {
+
+            if (!method.isImplementationInvoked()) {
+                continue;
+            }
 
             boolean runtimeMethod = isRuntimeLibraryType(method.getDeclaringClass());
             MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();

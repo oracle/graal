@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.util.List;
 import java.util.Map;
@@ -36,10 +38,43 @@ import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 
-public abstract class AnalysisElement {
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.ModifiersProvider;
+
+public abstract class AnalysisElement implements AnnotatedElement {
+
+    public abstract AnnotatedElement getWrapped();
+
+    protected abstract AnalysisUniverse getUniverse();
+
+    @Override
+    public final boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
+        return getUniverse().getAnnotationExtractor().hasAnnotation(getWrapped(), annotationClass);
+    }
+
+    @Override
+    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        return getUniverse().getAnnotationExtractor().extractAnnotation(getWrapped(), annotationClass, false);
+    }
+
+    @Override
+    public final <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
+        return getUniverse().getAnnotationExtractor().extractAnnotation(getWrapped(), annotationClass, true);
+    }
+
+    @Override
+    public final Annotation[] getAnnotations() {
+        return getUniverse().getAnnotationExtractor().extractAnnotations(getWrapped(), false);
+    }
+
+    @Override
+    public final Annotation[] getDeclaredAnnotations() {
+        return getUniverse().getAnnotationExtractor().extractAnnotations(getWrapped(), true);
+    }
 
     /**
      * Contains reachability handlers that are notified when the element is marked as reachable.
@@ -63,6 +98,23 @@ public abstract class AnalysisElement {
     protected void notifyReachabilityCallbacks(AnalysisUniverse universe, List<AnalysisFuture<Void>> futures) {
         ConcurrentLightHashSet.forEach(this, reachableNotificationsUpdater, (ElementNotification c) -> futures.add(c.notifyCallback(universe, this)));
         ConcurrentLightHashSet.removeElementIf(this, reachableNotificationsUpdater, ElementNotification::isNotified);
+    }
+
+    /**
+     * Used to validate the reason why an analysis element is registered as reachable.
+     */
+    boolean isValidReason(Object reason) {
+        if (reason == null) {
+            return false;
+        }
+        if (reason instanceof String) {
+            return !((String) reason).isEmpty();
+        }
+        /*
+         * ModifiersProvider is a common interface of ResolvedJavaField, ResolvedJavaMethod and
+         * ResolvedJavaType.
+         */
+        return reason instanceof AnalysisElement || reason instanceof ModifiersProvider || reason instanceof ObjectScanner.ScanReason || reason instanceof BytecodePosition;
     }
 
     public abstract boolean isReachable();
@@ -147,7 +199,12 @@ public abstract class AnalysisElement {
         public void notifyCallback(AnalysisUniverse universe, AnalysisMethod reachableOverride) {
             assert reachableOverride.isReachable();
             if (seenOverride.add(reachableOverride)) {
-                execute(universe, () -> callback.accept(universe.getConcurrentAnalysisAccess(), reachableOverride.getJavaMethod()));
+                Executable javaMethod = reachableOverride.getJavaMethod();
+                if (javaMethod != null) {
+                    execute(universe, () -> {
+                        callback.accept(universe.getConcurrentAnalysisAccess(), javaMethod);
+                    });
+                }
             }
         }
     }

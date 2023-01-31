@@ -42,7 +42,7 @@ import java.util.function.Consumer;
  *
  * @see com.oracle.svm.core.option
  */
-public class RuntimeOptionKey<T> extends OptionKey<T> implements ValidatableOptionKey {
+public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
     private final Consumer<RuntimeOptionKey<T>> validation;
     private final int flags;
 
@@ -59,6 +59,7 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements ValidatableOpti
     /**
      * Returns the value of this option in the {@link RuntimeOptionValues}.
      */
+    @Override
     public T getValue() {
         return getValue(RuntimeOptionValues.singleton());
     }

@@ -237,7 +237,7 @@ final class TypeInitializerGraph {
          * the actual callees of the type flow, even though we know that there is at most one callee
          * returned.
          */
-        for (AnalysisMethod callee : i.getCallees()) {
+        for (AnalysisMethod callee : i.getOriginalCallees()) {
             if (methodSafety.get(callee) == Safety.UNSAFE) {
                 return true;
             }
@@ -246,7 +246,7 @@ final class TypeInitializerGraph {
     }
 
     private void addInitializer(AnalysisType t) {
-        ResolvedJavaType rt = t.getWrappedWithoutResolve();
+        ResolvedJavaType rt = t.getWrapped();
         boolean isSubstituted = false;
         if (rt instanceof SubstitutionType) {
             SubstitutionType substitutionType = (SubstitutionType) rt;

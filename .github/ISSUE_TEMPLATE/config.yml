@@ -2,4 +2,4 @@ blank_issues_enabled: false
 contact_links:
   - name: Need help or have a question?
     url: https://www.graalvm.org/slack-invitation/
-    about: Visit our slack channel.
+    about: Join the GraalVM Slack channel.

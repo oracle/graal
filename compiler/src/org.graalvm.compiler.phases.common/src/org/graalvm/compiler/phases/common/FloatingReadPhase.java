@@ -59,7 +59,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
@@ -184,7 +184,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         }
     }
 
-    protected void processBlock(Block b, EconomicSet<LocationIdentity> currentState) {
+    protected void processBlock(HIRBlock b, EconomicSet<LocationIdentity> currentState) {
         for (FixedNode n : b.getNodes()) {
             processNode(n, currentState);
         }
@@ -198,11 +198,11 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         }
 
         result = EconomicSet.create(Equivalence.DEFAULT);
-        for (Loop<Block> inner : loop.getChildren()) {
+        for (Loop<HIRBlock> inner : loop.getChildren()) {
             result.addAll(processLoop((HIRLoop) inner, modifiedInLoops));
         }
 
-        for (Block b : loop.getBlocks()) {
+        for (HIRBlock b : loop.getBlocks()) {
             if (b.getLoop() == loop) {
                 processBlock(b, result);
             }

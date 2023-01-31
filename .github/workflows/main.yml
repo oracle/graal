@@ -56,18 +56,18 @@ jobs:
         include:
           # /compiler
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "build,bootstraplite"
               PRIMARY: "compiler"
           # /espresso
-          - env:
-              JDK_VERSION: "17" # espresso does not support JDK19 yet
-              GATE_TAGS: "style,fullbuild"
-              PRIMARY: "espresso"
+          # - env:
+          #     JDK_VERSION: "17" # espresso does not support JDK20 yet
+          #     GATE_TAGS: "style,fullbuild"
+          #     PRIMARY: "espresso"
           # /substratevm
           - env:
               JDK_VERSION: "19"
@@ -77,6 +77,7 @@ jobs:
               JDK_VERSION: "19"
               GATE_TAGS: "build,test,helloworld"
               PRIMARY: "substratevm"
+              PIP_PACKAGES: "jsonschema==4.6.1"
           - env:
               JDK_VERSION: "19"
               GATE_TAGS: "build,helloworld_debug"
@@ -96,7 +97,7 @@ jobs:
               PRIMARY: "sulong"
           # /truffle
           - env:
-              JDK_VERSION: "19"
+              JDK_VERSION: "20"
               GATE_TAGS: "" # Truffle does not use tags
               PRIMARY: "truffle"
           # /vm
@@ -108,7 +109,7 @@ jobs:
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
-              JDK_VERSION: "17"
+              JDK_VERSION: "19"
               GATE_TAGS: "build"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
@@ -159,7 +160,9 @@ jobs:
         sudo apt install python3-pip python-setuptools
         jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' common.json |
           xargs sudo pip install
-        ${MX_PYTHON} -m pip install jsonschema==4.6.1
+    - name: Install additional pip packages
+      if: ${{ matrix.env.PIP_PACKAGES != '' }}
+      run: ${MX_PYTHON} -m pip install ${{ matrix.env.PIP_PACKAGES }}
     - name: Download Eclipse
       if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |

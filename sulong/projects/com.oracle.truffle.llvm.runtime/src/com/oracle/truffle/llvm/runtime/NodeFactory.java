@@ -181,6 +181,8 @@ public interface NodeFactory {
 
     LLVMControlFlowNode createCatchReturn(int unconditionalIndex, LLVMExpressionNode getStack, LLVMStatementNode phiWrites);
 
+    LLVMControlFlowNode createCleanupReturn(int unconditionalIndex, LLVMExpressionNode getStack, LLVMStatementNode phiWrites);
+
     LLVMControlFlowNode createResumeInstruction(int exceptionSlot);
 
     LLVMExpressionNode createCompareExchangeInstruction(AggregateType returnType, Type elementType, LLVMExpressionNode ptrNode, LLVMExpressionNode cmpNode, LLVMExpressionNode newNode);

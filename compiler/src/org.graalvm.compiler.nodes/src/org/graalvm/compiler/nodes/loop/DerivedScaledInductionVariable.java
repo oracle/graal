@@ -115,6 +115,11 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     @Override
+    public ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp, ValueNode maxTripCount) {
+        return mul(graph(), base.extremumNode(assumeLoopEntered, stamp, maxTripCount), IntegerConvertNode.convert(scale, stamp, graph(), NodeView.DEFAULT));
+    }
+
+    @Override
     public ValueNode exitValueNode() {
         return mul(graph(), base.exitValueNode(), scale);
     }
@@ -180,5 +185,10 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     @Override
     public InductionVariable copy(InductionVariable newBase, ValueNode newValue) {
         return new DerivedScaledInductionVariable(loop, newBase, scale, newValue);
+    }
+
+    @Override
+    public ValueNode entryTripValue() {
+        return mul(graph(), base.entryTripValue(), scale);
     }
 }

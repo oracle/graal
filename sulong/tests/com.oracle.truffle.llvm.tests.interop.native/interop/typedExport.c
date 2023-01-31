@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,6 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#include <stdint.h>
 #include <graalvm/llvm/polyglot.h>
 #include <stdlib.h>
 
@@ -67,7 +69,7 @@ int readPointArray(struct Point *array, int idx) {
 }
 
 struct Nested {
-    long primArray[13];
+    int64_t primArray[13];
     struct Point pointArray[5];
     struct Point *ptrArray[7];
     struct Point *aliasedPtr;
@@ -93,8 +95,8 @@ void freeNested(struct Nested *nested) {
     free(nested);
 }
 
-long hashNested(struct Nested *nested) {
-    long ret = 0;
+int64_t hashNested(struct Nested *nested) {
+    int64_t ret = 0;
     for (int i = 0; i < 13; i++) {
         ret = 13 * ret + nested->primArray[i];
     }

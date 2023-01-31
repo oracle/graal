@@ -218,7 +218,7 @@ public class AOTTutorial {
         @TruffleBoundary
         @SuppressWarnings("unused")
         protected static double doDouble(double left, double right,
-                        @Cached("getASTLanguage()") AOTTestLanguage language) {
+                        @Cached(value = "getASTLanguage()", neverDefault = true) AOTTestLanguage language) {
             return left + right;
         }
 

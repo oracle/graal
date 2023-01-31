@@ -26,14 +26,7 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import java.lang.reflect.AnnotatedElement;
 
-import com.oracle.svm.util.AnnotationWrapper;
+public interface WrappedElement {
 
-public interface WrappedElement extends AnnotationWrapper {
-
-    Object getWrapped();
-
-    @Override
-    default AnnotatedElement getAnnotationRoot() {
-        return (AnnotatedElement) getWrapped();
-    }
+    AnnotatedElement getWrapped();
 }

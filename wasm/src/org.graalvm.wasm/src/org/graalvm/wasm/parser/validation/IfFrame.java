@@ -41,24 +41,26 @@
 
 package org.graalvm.wasm.parser.validation;
 
+import java.util.Arrays;
+
+import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTarget;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
-
-import java.util.Arrays;
+import org.graalvm.wasm.parser.bytecode.BytecodeGen;
 
 /**
  * Representation of a wasm if and else block during module validation.
  */
 class IfFrame extends ControlFrame {
-    private BranchTarget falseJump;
+
+    private final IntArrayList branchTargets;
+    private int falseJumpLocation;
     private boolean elseBranch;
 
-    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, BranchTarget falseJump) {
+    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, int falseJumpLocation) {
         super(paramTypes, resultTypes, initialStackSize, unreachable);
-        this.falseJump = falseJump;
+        branchTargets = new IntArrayList();
+        this.falseJumpLocation = falseJumpLocation;
         this.elseBranch = false;
     }
 
@@ -68,10 +70,10 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
-    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
-        BranchTarget endJump = extraData.addElse(offset);
-        falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-        falseJump = endJump;
+    void enterElse(ParserState state, BytecodeGen bytecode) {
+        final int location = bytecode.addBranchLocation();
+        bytecode.patchLocation(falseJumpLocation, bytecode.location());
+        falseJumpLocation = location;
         elseBranch = true;
         state.checkStackAfterFrameExit(this, resultTypes());
         // Since else is a separate block the unreachable state has to be reset.
@@ -79,15 +81,33 @@ class IfFrame extends ControlFrame {
     }
 
     @Override
-    void exit(ExtraDataList extraData, int offset) {
+    void exit(BytecodeGen bytecode) {
         if (!elseBranch && !Arrays.equals(paramTypes(), resultTypes())) {
             throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
         }
-        falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-        for (BranchTargetWithStackChange branchTarget : branchTargets()) {
-            branchTarget.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-            branchTarget.setStackInfo(labelTypeLength(), initialStackSize());
+        if (branchTargets.size() == 0) {
+            bytecode.patchLocation(falseJumpLocation, bytecode.location());
+        } else {
+            final int location = bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType());
+            bytecode.patchLocation(falseJumpLocation, location);
+            for (int branchLocation : branchTargets.toArray()) {
+                bytecode.patchLocation(branchLocation, location);
+            }
         }
     }
 
+    @Override
+    void addBranch(BytecodeGen bytecode) {
+        branchTargets.add(bytecode.addBranchLocation());
+    }
+
+    @Override
+    void addBranchIf(BytecodeGen bytecode) {
+        branchTargets.add(bytecode.addBranchIfLocation());
+    }
+
+    @Override
+    void addBranchTableItem(BytecodeGen bytecode) {
+        branchTargets.add(bytecode.addBranchTableItemLocation());
+    }
 }

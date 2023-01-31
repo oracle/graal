@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -50,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  *
  * @see ReachabilityInvokeInfo
  */
-public class ReachabilityAnalysisMethod extends AnalysisMethod {
+public final class ReachabilityAnalysisMethod extends AnalysisMethod {
 
     /**
      * Invokes inside this method.
@@ -68,7 +69,16 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     private BytecodePosition reason;
 
     public ReachabilityAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
-        super(universe, wrapped);
+        super(universe, wrapped, MultiMethod.ORIGINAL_METHOD, null);
+    }
+
+    private ReachabilityAnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
+        super(original, multiMethodKey);
+    }
+
+    @Override
+    protected AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey) {
+        return new ReachabilityAnalysisMethod(analysisMethod, newMultiMethodKey);
     }
 
     @Override
@@ -104,8 +114,8 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public boolean registerAsInvoked() {
-        if (super.registerAsInvoked()) {
+    public boolean registerAsInvoked(Object invokeReason) {
+        if (super.registerAsInvoked(invokeReason)) {
             if (!isStatic()) {
                 getDeclaringClass().addInvokedVirtualMethod(this);
             }
@@ -126,7 +136,7 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
     public static StructuredGraph getDecodedGraph(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method) {
         AnalysisParsedGraph analysisParsedGraph = method.ensureGraphParsed(bb);
         if (analysisParsedGraph.isIntrinsic()) {
-            method.registerAsIntrinsicMethod();
+            method.registerAsIntrinsicMethod("reachability analysis engine");
         }
         AnalysisError.guarantee(analysisParsedGraph.getEncodedGraph() != null, "Cannot provide  a summary for %s.", method.getQualifiedName());
 
@@ -150,5 +160,10 @@ public class ReachabilityAnalysisMethod extends AnalysisMethod {
             position = new BytecodePosition(null, method, node.bci());
         }
         return position;
+    }
+
+    @Override
+    public boolean isImplementationInvokable() {
+        return true;
     }
 }

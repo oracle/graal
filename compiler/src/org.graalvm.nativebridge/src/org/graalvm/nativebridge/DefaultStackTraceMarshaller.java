@@ -26,7 +26,6 @@ package org.graalvm.nativebridge;
 
 final class DefaultStackTraceMarshaller implements BinaryMarshaller<StackTraceElement[]> {
 
-    private static final int STACK_TRACE_ELEMENT_SIZE_ESTIMATE = 100;
     static final DefaultStackTraceMarshaller INSTANCE = new DefaultStackTraceMarshaller();
 
     private DefaultStackTraceMarshaller() {
@@ -37,12 +36,7 @@ final class DefaultStackTraceMarshaller implements BinaryMarshaller<StackTraceEl
         int len = in.readInt();
         StackTraceElement[] res = new StackTraceElement[len];
         for (int i = 0; i < len; i++) {
-            String className = in.readUTF();
-            String methodName = in.readUTF();
-            String fileName = in.readUTF();
-            fileName = fileName.isEmpty() ? null : fileName;
-            int lineNumber = in.readInt();
-            res[i] = new StackTraceElement(className, methodName, fileName, lineNumber);
+            res[i] = StackTraceElementMarshaller.INSTANCE.read(in);
         }
         return res;
     }
@@ -51,16 +45,12 @@ final class DefaultStackTraceMarshaller implements BinaryMarshaller<StackTraceEl
     public void write(BinaryOutput out, StackTraceElement[] stack) {
         out.writeInt(stack.length);
         for (StackTraceElement stackTraceElement : stack) {
-            out.writeUTF(stackTraceElement.getClassName());
-            out.writeUTF(stackTraceElement.getMethodName());
-            String fileName = stackTraceElement.getFileName();
-            out.writeUTF(fileName == null ? "" : fileName);
-            out.writeInt(stackTraceElement.getLineNumber());
+            StackTraceElementMarshaller.INSTANCE.write(out, stackTraceElement);
         }
     }
 
     @Override
     public int inferSize(StackTraceElement[] object) {
-        return object.length * STACK_TRACE_ELEMENT_SIZE_ESTIMATE;
+        return object.length == 0 ? 0 : object.length * StackTraceElementMarshaller.INSTANCE.inferSize(object[0]);
     }
 }

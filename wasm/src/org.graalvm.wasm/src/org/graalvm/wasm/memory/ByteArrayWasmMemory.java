@@ -40,47 +40,38 @@
  */
 package org.graalvm.wasm.memory;
 
-import static java.lang.Integer.compareUnsigned;
+import static java.lang.Long.compareUnsigned;
 import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
-import com.oracle.truffle.api.Assumption;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
 
-public final class ByteArrayWasmMemory extends WasmMemory {
+final class ByteArrayWasmMemory extends WasmMemory {
     private final WasmByteArrayBuffer byteArrayBuffer;
 
-    private ByteArrayWasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
-        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize);
+    private ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
+        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64);
         this.byteArrayBuffer = new WasmByteArrayBuffer();
         this.byteArrayBuffer.allocate(initialSize * MEMORY_PAGE_SIZE);
     }
 
-    public ByteArrayWasmMemory(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
+    ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, indexType64);
     }
 
     @Override
-    public void copy(Node node, int src, int dst, int n) {
-        try {
-            System.arraycopy(byteArrayBuffer.buffer(), src, byteArrayBuffer.buffer(), dst, n);
-        } catch (final IndexOutOfBoundsException e) {
-            // TODO: out of bounds might be in (dest, dest+n).
-            throw trapOutOfBounds(node, src, n);
-        }
-    }
-
-    @Override
-    public int size() {
+    public long size() {
         return byteArrayBuffer.size();
     }
 
@@ -91,15 +82,16 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     @TruffleBoundary
-    public synchronized boolean grow(int extraPageSize) {
+    public synchronized boolean grow(long extraPageSize) {
         if (extraPageSize == 0) {
             invokeGrowCallback();
             return true;
         } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE)
             // ensure computation of targetByteSize does not overflow.
-            final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+            final long targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
             byteArrayBuffer.grow(targetByteSize);
+            currentMinSize = size() + extraPageSize;
             invokeGrowCallback();
             return true;
         } else {
@@ -110,6 +102,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     @Override
     public void reset() {
         byteArrayBuffer.reset(declaredMinSize * MEMORY_PAGE_SIZE);
+        currentMinSize = declaredMinSize;
     }
 
     @Override
@@ -321,9 +314,30 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
+    public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
+        assert destinationOffset + length <= byteSize();
+        System.arraycopy(source, sourceOffset, byteArrayBuffer.buffer(), (int) destinationOffset, length);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void fill(long offset, long length, byte value) {
+        assert offset + length <= byteSize();
+        Arrays.fill(byteArrayBuffer.buffer(), (int) offset, (int) (offset + length), value);
+    }
+
+    @Override
+    public void copyFrom(WasmMemory source, long sourceOffset, long destinationOffset, long length) {
+        assert source instanceof ByteArrayWasmMemory;
+        assert destinationOffset < byteSize();
+        ByteArrayWasmMemory s = (ByteArrayWasmMemory) source;
+        System.arraycopy(s.byteArrayBuffer.buffer(), (int) sourceOffset, byteArrayBuffer.buffer(), (int) destinationOffset, (int) length);
+    }
+
+    @Override
     public WasmMemory duplicate() {
-        final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize);
-        byteArrayBuffer.copyTo(other.byteArrayBuffer);
+        final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize, indexType64);
+        System.arraycopy(byteArrayBuffer.buffer(), 0, other.byteArrayBuffer.buffer(), 0, (int) byteArrayBuffer.byteSize());
         return other;
     }
 
@@ -343,6 +357,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         @CompilationFinal private Assumption constantMemoryBufferAssumption;
 
         @CompilationFinal(dimensions = 0) private byte[] constantBuffer;
+
         private byte[] dynamicBuffer;
 
         private int constantAttempts = 0;
@@ -351,7 +366,9 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         }
 
         @TruffleBoundary
-        void allocate(final int byteSize) {
+        public void allocate(long byteSize) {
+            assert byteSize <= Integer.MAX_VALUE;
+            final int effectiveByteSize = (int) byteSize;
             constantBuffer = null;
             dynamicBuffer = null;
             if (constantAttempts < MAX_CONSTANT_ATTEMPTS) {
@@ -360,9 +377,9 @@ public final class ByteArrayWasmMemory extends WasmMemory {
             }
             try {
                 if (constantMemoryBufferAssumption.isValid()) {
-                    constantBuffer = new byte[byteSize];
+                    constantBuffer = new byte[effectiveByteSize];
                 } else {
-                    dynamicBuffer = new byte[byteSize];
+                    dynamicBuffer = new byte[effectiveByteSize];
                 }
             } catch (OutOfMemoryError error) {
                 throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
@@ -376,22 +393,22 @@ public final class ByteArrayWasmMemory extends WasmMemory {
             return dynamicBuffer;
         }
 
-        int size() {
+        long size() {
             return buffer().length / MEMORY_PAGE_SIZE;
         }
 
-        int byteSize() {
+        long byteSize() {
             return buffer().length;
         }
 
-        void grow(final int targetSize) {
+        void grow(long targetSize) {
             final byte[] currentBuffer = buffer();
             constantMemoryBufferAssumption.invalidate("Memory grow");
             allocate(targetSize);
             System.arraycopy(currentBuffer, 0, buffer(), 0, currentBuffer.length);
         }
 
-        void reset(final int byteSize) {
+        void reset(long byteSize) {
             constantMemoryBufferAssumption.invalidate("Memory reset");
             allocate(byteSize);
         }
@@ -399,13 +416,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         void close() {
             constantBuffer = null;
             dynamicBuffer = null;
-        }
-
-        @TruffleBoundary
-        void copyTo(final WasmByteArrayBuffer other) {
-            final byte[] currentBuffer = buffer();
-            final byte[] otherBuffer = other.buffer();
-            System.arraycopy(currentBuffer, 0, otherBuffer, 0, currentBuffer.length);
         }
     }
 }

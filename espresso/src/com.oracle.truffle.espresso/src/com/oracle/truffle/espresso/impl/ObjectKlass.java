@@ -78,7 +78,6 @@ import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
@@ -1228,8 +1227,8 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    public boolean hasFinalizer() {
-        return (getModifiers() & ACC_FINALIZER) != 0;
+    public boolean hasFinalizer(EspressoContext context) {
+        return (getModifiers(context) & ACC_FINALIZER) != 0;
     }
 
     @TruffleBoundary
@@ -1705,7 +1704,8 @@ public final class ObjectKlass extends Klass {
                 ParserMethod parserMethod = removedMethod.getLinkedMethod().getParserMethod();
                 checkSuperMethods(superKlass, parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature(), invalidatedClasses);
                 removedMethod.getMethod().removedByRedefinition();
-                JDWP.LOGGER.fine(() -> "Removed method " + removedMethod.getMethod().getDeclaringKlass().getName() + "." + removedMethod.getLinkedMethod().getName());
+                getContext().getClassRedefinition().getController().fine(
+                                () -> "Removed method " + removedMethod.getMethod().getDeclaringKlass().getName() + "." + removedMethod.getLinkedMethod().getName());
             }
 
             for (ParserMethod addedMethod : addedMethods) {
@@ -1714,7 +1714,7 @@ public final class ObjectKlass extends Klass {
                 newDeclaredMethods.addLast(added);
                 virtualMethodsModified |= isVirtual(addedMethod);
                 checkSuperMethods(superKlass, addedMethod.getFlags(), addedMethod.getName(), addedMethod.getSignature(), invalidatedClasses);
-                JDWP.LOGGER.fine(() -> "Added method " + added.getMethod().getDeclaringKlass().getName() + "." + added.getName());
+                getContext().getClassRedefinition().getController().fine(() -> "Added method " + added.getMethod().getDeclaringKlass().getName() + "." + added.getName());
             }
 
             if (virtualMethodsModified) {
@@ -1731,7 +1731,7 @@ public final class ObjectKlass extends Klass {
                 if (changedMethodBodies.containsKey(declMethod)) {
                     ParserMethod newMethod = changedMethodBodies.get(declMethod);
                     Method.SharedRedefinitionContent redefineContent = declMethod.redefine(this, newMethod, packet.parserKlass, ids);
-                    JDWP.LOGGER.fine(() -> "Redefining method " + declMethod.getDeclaringKlass().getName() + "." + declMethod.getName());
+                    getContext().getClassRedefinition().getController().fine(() -> "Redefining method " + declMethod.getDeclaringKlass().getName() + "." + declMethod.getName());
                     methods[i] = redefineContent.getMethodVersion();
 
                     int flags = newMethod.getFlags();

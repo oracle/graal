@@ -56,7 +56,7 @@ public final class DisallowedImageHeapObjects {
         CANCELLABLE_CLASS = ReflectionUtil.lookupClass(false, "sun.nio.fs.Cancellable");
         JDK_VIRTUAL_THREAD_CLASS = ReflectionUtil.lookupClass(true, "java.lang.VirtualThread");
         CONTINUATION_CLASS = ReflectionUtil.lookupClass(true, "jdk.internal.vm.Continuation");
-        CONTINUATION_IS_STARTED_METHOD = (CONTINUATION_CLASS == null) ? null : ReflectionUtil.lookupMethod(false, CONTINUATION_CLASS, "isStarted");
+        CONTINUATION_IS_STARTED_METHOD = (CONTINUATION_CLASS == null) ? null : ReflectionUtil.lookupMethod(CONTINUATION_CLASS, "isStarted");
     }
 
     public static void check(Object obj, DisallowedObjectReporter reporter) {

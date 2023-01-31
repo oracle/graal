@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -58,10 +59,17 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.core.util.VMError;
+
+import java.util.Collections;
+import java.util.List;
 
 @AutomaticallyRegisteredFeature
 class SubstrateSegfaultHandlerFeature implements InternalFeature {
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(IsolateListenerSupportFeature.class);
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(SubstrateSegfaultHandler.class)) {
@@ -72,7 +80,6 @@ class SubstrateSegfaultHandlerFeature implements InternalFeature {
         ImageSingletons.add(SingleIsolateSegfaultSetup.class, singleIsolateSegfaultSetup);
         IsolateListenerSupport.singleton().register(singleIsolateSegfaultSetup);
 
-        VMError.guarantee(ImageSingletons.contains(RegisterDumper.class));
         RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateSegfaultHandlerStartupHook());
     }
 }
@@ -144,7 +151,7 @@ public abstract class SubstrateSegfaultHandler {
              * overflow.
              */
             isolate = VMThreads.IsolateTL.get();
-            return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR && (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
+            return Isolates.checkIsolate(isolate) == CEntryPointErrors.NO_ERROR && (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
         }
         return false;
     }

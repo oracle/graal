@@ -30,9 +30,13 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.heap.value.ValueSupplier;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.UninitializedStaticFieldValueReader;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 public class StandaloneImageHeapScanner extends ImageHeapScanner {
@@ -52,6 +56,17 @@ public class StandaloneImageHeapScanner extends ImageHeapScanner {
         } catch (ClassNotFoundException e) {
             AnalysisError.shouldNotReachHere(e);
             return null;
+        }
+    }
+
+    @Override
+    protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
+        ValueSupplier<JavaConstant> ret = super.readHostedFieldValue(field, receiver);
+        if (ret.get() == null && field.isStatic()) {
+            JavaConstant constant = UninitializedStaticFieldValueReader.readUninitializedStaticValue(field, value -> universe.getSnippetReflection().forObject(value));
+            return ValueSupplier.eagerValue(constant);
+        } else {
+            return ret;
         }
     }
 }

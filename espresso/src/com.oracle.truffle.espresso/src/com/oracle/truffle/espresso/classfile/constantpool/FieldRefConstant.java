@@ -235,5 +235,10 @@ public interface FieldRefConstant extends MemberRefConstant {
         public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
             throw EspressoError.shouldNotReachHere();
         }
+
+        @Override
+        public boolean isSuccess() {
+            return false;
+        }
     }
 }

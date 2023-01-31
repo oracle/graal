@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -73,13 +73,13 @@ public final class CallbackTest extends BaseSulongOnlyHarness {
         runs.put(Paths.get(TEST_DIR, "callbackTest007.c.dir", testSuffix),
                         new RunConfiguration(0, null));
         runs.put(Paths.get(TEST_DIR, "callbackIntrinsic.c.dir", testSuffix),
-                        new RunConfiguration(0, "calling f64 callback\n-0.416147\n"));
+                        new RunConfiguration(0, String.format("calling f64 callback%n-0.416147%n")));
         runs.put(Paths.get(TEST_DIR, "returnNativeCallback.c.dir", testSuffix),
                         new RunConfiguration(10, null));
         runs.put(Paths.get(TEST_DIR, "nativeCallbackInStruct.c.dir", testSuffix),
                         new RunConfiguration(42, null));
         runs.put(Paths.get(TEST_DIR, "callbackCast.c.dir", testSuffix),
-                        new RunConfiguration(0, "126\n"));
+                        new RunConfiguration(0, String.format("126%n")));
 
         Path other = Paths.get(TEST_DIST_ROOT);
         return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), other.relativize(k.getParent()).toString()}).collect(Collectors.toList());

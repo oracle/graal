@@ -81,6 +81,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -740,6 +741,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         abstract Object execute(VirtualFrame frame);
     }
 
+    @GenerateInline(false)
     abstract static class ReadBindingsNode extends BaseNode {
 
         @Specialization

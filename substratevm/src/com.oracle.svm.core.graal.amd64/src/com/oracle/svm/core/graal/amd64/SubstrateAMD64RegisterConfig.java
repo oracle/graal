@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.k0;
 import static jdk.vm.ci.amd64.AMD64.k1;
 import static jdk.vm.ci.amd64.AMD64.k2;
 import static jdk.vm.ci.amd64.AMD64.k3;
@@ -70,6 +69,7 @@ import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
@@ -107,7 +107,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     private final MetaAccessProvider metaAccess;
     private final boolean useBasePointer;
 
-    private static final RegisterArray MASK_REGISTERS = new RegisterArray(k0, k1, k2, k3, k4, k5, k6, k7);
+    private static final RegisterArray MASK_REGISTERS = new RegisterArray(k1, k2, k3, k4, k5, k6, k7);
 
     public SubstrateAMD64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean useBasePointer) {
         this.target = target;
@@ -126,7 +126,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             regs.addAll(MASK_REGISTERS.asList());
         } else {
             regs = new ArrayList<>(valueRegistersSSE.asList());
-            if (SubstrateUtil.HOSTED && AMD64CalleeSavedRegisters.isRuntimeCompilationEnabled()) {
+            if (SubstrateUtil.HOSTED && RuntimeCompilation.isEnabled()) {
                 // The stub calling convention must be able to generate runtime checked code for
                 // saving and restoring mask registers.
                 regs.addAll(MASK_REGISTERS.asList());

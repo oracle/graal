@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.security.SecureClassLoader;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -267,11 +268,10 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     private List<ClassLoader> getActiveClassLoaders() {
         ClassLoader activeClassLoader = nativeImageClassLoader;
         if (activeClassLoader != null) {
-            ClassLoader activeClassLoaderParent = activeClassLoader.getParent();
-            if (activeClassLoaderParent instanceof NativeImageClassLoaderSupport.ClassPathClassLoader) {
-                return List.of(activeClassLoader, activeClassLoaderParent);
-            } else {
+            if (activeClassLoader instanceof URLClassLoader) {
                 return List.of(activeClassLoader);
+            } else {
+                return List.of(activeClassLoader, activeClassLoader.getParent());
             }
         } else {
             return List.of(defaultSystemClassLoader);
@@ -285,7 +285,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
      *
      * @param classPathEntry the classpath entry that will be added to the class path
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused") // no direct use from Java
     private void appendToClassPathForInstrumentation(String classPathEntry) {
         try {
             Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
@@ -295,5 +295,4 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
             VMError.shouldNotReachHere(message, e);
         }
     }
-
 }

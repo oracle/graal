@@ -27,7 +27,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(com.oracle.truffle.llvm.libraries.bitcode)
 
 function(require_var var)
@@ -72,21 +72,28 @@ add_compile_definitions(OS_${MX_OS} ARCH_${MX_ARCH})
 add_library(sulong SHARED)
 
 target_sources(sulong PRIVATE
+  src/abort.c
   src/crt0.c
   src/exit.c
+  src/pthreads.c
+  src/string.c
   src/sulong_dispose_context.c
 )
 
 if(WIN32)
     check_var(LIBCXX_ISYSTEM)
     check_var(GRAALVM_LLVM_LIB_DIR)
+    check_var(GRAALVM_PTHREAD_INCLUDE_DIR)
 
     target_link_directories(sulong PRIVATE ${GRAALVM_LLVM_LIB_DIR})
     target_link_libraries(sulong graalvm-llvm)
-    target_sources(sulong PRIVATE sulong.def)
+    target_include_directories(sulong PRIVATE ${GRAALVM_PTHREAD_INCLUDE_DIR})
+    target_sources(sulong PRIVATE
+      sulong.def
+      src/windows/assert.c
+    )
 else()
     target_sources(sulong PRIVATE
-      src/abort.c
       src/assert.c
       src/builtin.c
       src/clone.c
@@ -94,12 +101,10 @@ else()
       src/exec.c
       src/fork.c
       src/memcpy.c
-      src/pthreads.c
       src/qsort.c
       src/setjmp.c
       src/signals.c
       src/stat.c
-      src/string.c
     )
 endif()
 

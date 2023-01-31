@@ -3,6 +3,12 @@
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
 ## Version 23.0.0
+* (GR-42212): Remove support for all JDKs earlier than JDK 17.
+* (GR-42044): Improved output of `-Dgraal.ShowConfiguration=info`. For example:
+    `Using "Graal Community compiler" loaded from a Native Image shared library`
+  instead of:
+    `Using compiler configuration 'community' provided by org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory loaded from JVMCI native library`.
+* (GR-42145): The periodic dumping of benchmark counters enabled by `-Dgraal.TimedDynamicCounters` is now limited to jargraal.
 * (GR-31578): Novel Optimization Log: Unified interface to log and dump (e.g. via JSON) optimization decisions.
 Optimization phases should use the `OptimizationLog` to log transformations. Read more in `OptimizationLog.md` and read
 `Profdiff.md` to learn how to compare performed optimizations in hot compilations of 2 experiments.

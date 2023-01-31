@@ -26,7 +26,7 @@ package com.oracle.svm.configure;
 
 import java.util.function.Consumer;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.core.util.json.JsonPrintable;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 

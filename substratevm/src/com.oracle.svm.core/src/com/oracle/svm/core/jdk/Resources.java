@@ -188,7 +188,7 @@ public final class Resources {
         }
         if (!entry.isDirectory() && hasTrailingSlash(resourceName)) {
             /*
-             * It this an actual resource file (not a directory) we do not tolerate a trailing
+             * If this is an actual resource file (not a directory) we do not tolerate a trailing
              * slash.
              */
             return null;
@@ -196,6 +196,7 @@ public final class Resources {
         return entry;
     }
 
+    @SuppressWarnings("deprecation")
     private static URL createURL(String moduleName, String resourceName, int index) {
         try {
             String refPart = index != 0 ? '#' + Integer.toString(index) : "";

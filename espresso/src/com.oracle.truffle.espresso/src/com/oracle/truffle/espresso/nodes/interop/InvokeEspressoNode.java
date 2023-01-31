@@ -37,6 +37,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -84,7 +85,8 @@ public abstract class InvokeEspressoNode extends EspressoNode {
                     @Cached("method") Method.MethodVersion cachedMethod,
                     @Cached("createToEspresso(method.getMethod().getParameterCount())") ToEspressoNode[] toEspressoNodes,
                     @Cached("cachedMethod.getMethod().resolveParameterKlasses()") Klass[] parameterKlasses,
-                    @Cached(value = "createDirectCallNode(method.getMethod().getCallTargetForceInit())") DirectCallNode directCallNode,
+                    @Cached(value = "createDirectCallNode(method.getMethod().getCallTarget())") DirectCallNode directCallNode,
+                    @Cached InitCheck initCheck,
                     @Cached BranchProfile badArityProfile)
                     throws ArityException, UnsupportedTypeException {
 
@@ -103,13 +105,13 @@ public abstract class InvokeEspressoNode extends EspressoNode {
             }
         }
 
+        initCheck.execute(cachedMethod.getDeclaringKlass());
         if (!cachedMethod.getMethod().isStatic()) {
             Object[] argumentsWithReceiver = new Object[convertedArguments.length + 1];
             argumentsWithReceiver[0] = receiver;
             System.arraycopy(convertedArguments, 0, argumentsWithReceiver, 1, convertedArguments.length);
             return directCallNode.call(argumentsWithReceiver);
         }
-
         return directCallNode.call(/* static => no receiver */ convertedArguments);
     }
 

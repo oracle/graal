@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.PLAIN;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.RELEASE;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
-import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AESCryptPlugin.supports;
 import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
 import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.ENCRYPT;
 
@@ -42,14 +41,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
@@ -135,6 +131,7 @@ import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryStoreNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
@@ -144,6 +141,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInli
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndAddNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
@@ -161,13 +159,14 @@ import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.compiler.replacements.nodes.LogNode;
@@ -193,8 +192,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -217,13 +214,13 @@ public class StandardGraphBuilderPlugins {
     public static void registerInvocationPlugins(SnippetReflectionProvider snippetReflection,
                     InvocationPlugins plugins,
                     Replacements replacements,
-                    boolean allowDeoptimization,
+                    boolean useExactMathPlugins,
                     boolean explicitUnsafeNullChecks,
                     boolean supportsStubBasedPlugins,
                     LoweringProvider lowerer) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
-        registerMathPlugins(plugins, allowDeoptimization, replacements, lowerer);
+        registerMathPlugins(plugins, useExactMathPlugins, replacements, lowerer);
         registerStrictMathPlugins(plugins);
         registerUnsignedMathPlugins(plugins);
         registerStringPlugins(plugins, replacements, snippetReflection, supportsStubBasedPlugins);
@@ -244,6 +241,7 @@ public class StandardGraphBuilderPlugins {
         registerMethodHandleImplPlugins(plugins, replacements);
         registerPreconditionsPlugins(plugins, replacements);
         registerJcovCollectPlugins(plugins, replacements);
+        registerThreadPlugins(plugins, replacements);
 
         if (supportsStubBasedPlugins) {
             registerArraysPlugins(plugins, replacements);
@@ -265,6 +263,46 @@ public class StandardGraphBuilderPlugins {
             throw new GraalError(e);
         }
         STRING_CODER_FIELD = coder;
+    }
+
+    public static void registerConstantFieldLoadPlugin(Plugins plugins) {
+        plugins.appendNodePlugin(new NodePlugin() {
+
+            @Override
+            public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
+                if (object.isConstant()) {
+                    JavaConstant asJavaConstant = object.asJavaConstant();
+                    if (tryReadField(b, field, asJavaConstant)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
+                if (tryReadField(b, field, null)) {
+                    return true;
+                }
+                return false;
+            }
+
+            public boolean tryReadField(GraphBuilderContext b, ResolvedJavaField field, JavaConstant object) {
+                return tryConstantFold(b, field, object);
+            }
+
+            private boolean tryConstantFold(GraphBuilderContext b, ResolvedJavaField field, JavaConstant object) {
+                ConstantNode result = ConstantFoldUtil.tryConstantFold(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), field, object, b.getOptions(),
+                                b.getGraph().currentNodeSourcePosition());
+                if (result != null) {
+                    result = b.getGraph().unique(result);
+                    b.push(field.getJavaKind(), result);
+                    return true;
+                }
+                return false;
+            }
+
+        });
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, SnippetReflectionProvider snippetReflection, boolean supportsStubBasedPlugins) {
@@ -487,7 +525,7 @@ public class StandardGraphBuilderPlugins {
     }
 
     private static String[] getKindNames(boolean isSunMiscUnsafe, JavaKind kind) {
-        if (kind == JavaKind.Object && !isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 17) {
+        if (kind == JavaKind.Object && !isSunMiscUnsafe) {
             /*
              * JDK 17 renamed all Object-type-related methods in jdk.internal.misc.Unsafe from
              * "Object" to "Reference", but kept the "Object" version as deprecated. We want to
@@ -705,6 +743,34 @@ public class StandardGraphBuilderPlugins {
             r.register(new CacheWritebackPlugin(true, "writebackPreSync0", Receiver.class));
             r.register(new CacheWritebackPlugin(false, "writebackPostSync0", Receiver.class));
         }
+
+        r.register(new InvocationPlugin("arrayBaseOffset", Receiver.class, Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode arrayClass) {
+                return handleArrayBaseOffsetOrIndexScale(b, unsafe, arrayClass, true);
+            }
+        });
+        r.register(new InvocationPlugin("arrayIndexScale", Receiver.class, Class.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode arrayClass) {
+                return handleArrayBaseOffsetOrIndexScale(b, unsafe, arrayClass, false);
+            }
+        });
+    }
+
+    private static boolean handleArrayBaseOffsetOrIndexScale(GraphBuilderContext b, Receiver unsafe, ValueNode arrayClass, boolean arrayBaseOffset) {
+        var arrayClassConstant = arrayClass.asJavaConstant();
+        if (arrayClassConstant != null && arrayClassConstant.isNonNull()) {
+            var arrayType = b.getConstantReflection().asJavaType(arrayClassConstant);
+            if (arrayType != null && arrayType.isArray()) {
+                unsafe.get();
+                var elementKind = b.getMetaAccessExtensionProvider().getStorageKind(arrayType.getComponentType());
+                int result = arrayBaseOffset ? b.getMetaAccess().getArrayBaseOffset(elementKind) : b.getMetaAccess().getArrayIndexScale(elementKind);
+                b.addPush(JavaKind.Int, ConstantNode.forInt(result));
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind) {
@@ -908,9 +974,9 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, boolean allowDeoptimization, Replacements replacements, LoweringProvider lowerer) {
+    private static void registerMathPlugins(InvocationPlugins plugins, boolean useExactMathPlugins, Replacements replacements, LoweringProvider lowerer) {
         Registration r = new Registration(plugins, Math.class, replacements);
-        if (allowDeoptimization) {
+        if (useExactMathPlugins) {
             for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
                 Class<?> type = kind.toJavaClass();
                 r.register(new InvocationPlugin("decrementExact", type) {
@@ -1527,11 +1593,6 @@ public class StandardGraphBuilderPlugins {
             b.add(new CacheWritebackSyncNode(isPreSync));
             return true;
         }
-
-        @Override
-        public boolean isOptional() {
-            return JavaVersionUtil.JAVA_SPEC < 14;
-        }
     }
 
     private static final SpeculationReasonGroup DIRECTIVE_SPECULATIONS = new SpeculationReasonGroup("GraalDirective", BytecodePosition.class);
@@ -2006,12 +2067,7 @@ public class StandardGraphBuilderPlugins {
     private static void registerPreconditionsPlugins(InvocationPlugins plugins, Replacements replacements) {
         final Registration preconditions = new Registration(plugins, "jdk.internal.util.Preconditions", replacements);
         preconditions.register(new CheckIndexPlugin(int.class));
-        preconditions.register(new CheckIndexPlugin(long.class) {
-            @Override
-            public boolean isOptional() {
-                return JavaVersionUtil.JAVA_SPEC < 16;
-            }
-        });
+        preconditions.register(new CheckIndexPlugin(long.class));
     }
 
     /**
@@ -2029,36 +2085,6 @@ public class StandardGraphBuilderPlugins {
                 return false;
             }
         });
-    }
-
-    public static class StringLatin1IndexOfCharPlugin extends InvocationPlugin {
-
-        public StringLatin1IndexOfCharPlugin() {
-            super("indexOf", byte[].class, int.class, int.class);
-        }
-
-        @SuppressWarnings("try")
-        @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode origFromIndex) {
-            if (!b.canMergeIntrinsicReturns()) {
-                return false;
-            }
-            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                ConstantNode zero = ConstantNode.forInt(0);
-                // if (ch >>> 8 != 0) return -1
-                helper.emitReturnIf(helper.ushr(ch, 8), Condition.NE, zero, ConstantNode.forInt(-1), GraalDirectives.UNLIKELY_PROBABILITY);
-                ValueNode nonNullValue = b.nullCheckedValue(value);
-
-                // if (fromIndex >= value.length) return -1
-                ValueNode length = helper.arraylength(nonNullValue);
-                helper.emitReturnIf(origFromIndex, Condition.GE, length, ConstantNode.forInt(-1), GraalDirectives.UNLIKELY_PROBABILITY);
-                LogicNode condition = helper.createCompare(origFromIndex, CanonicalCondition.LT, zero);
-                // fromIndex = max(fromIndex, 0)
-                ValueNode fromIndex = ConditionalNode.create(condition, zero, origFromIndex, NodeView.DEFAULT);
-                helper.emitFinalReturn(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(b, JavaKind.Byte, Stride.S1, nonNullValue, length, fromIndex, ch));
-            }
-            return true;
-        }
     }
 
     public abstract static class AESCryptPluginBase extends InvocationPlugin {
@@ -2079,26 +2105,6 @@ public class StandardGraphBuilderPlugins {
             ResolvedJavaField field = helper.getField(klass, filed);
             ValueNode array = b.nullCheckedValue(helper.loadField(receiver, field));
             return helper.arrayStart(array, arrayKind);
-        }
-
-        static boolean supports(AMD64 arch, AMD64.CPUFeature... features) {
-            EnumSet<AMD64.CPUFeature> supportedFeatures = arch.getFeatures();
-            for (AMD64.CPUFeature feature : features) {
-                if (!supportedFeatures.contains(feature)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        static boolean supports(AArch64 arch, AArch64.CPUFeature... features) {
-            EnumSet<AArch64.CPUFeature> supportedFeatures = arch.getFeatures();
-            for (AArch64.CPUFeature feature : features) {
-                if (!supportedFeatures.contains(feature)) {
-                    return false;
-                }
-            }
-            return true;
         }
     }
 
@@ -2140,15 +2146,6 @@ public class StandardGraphBuilderPlugins {
                 b.add(new AESNode(inAddr, outAddr, kAddr, mode));
             }
             return true;
-        }
-
-        public static boolean isSupported(Architecture arch) {
-            if (arch instanceof AMD64) {
-                return supports((AMD64) arch, AMD64.CPUFeature.AVX, AMD64.CPUFeature.AES);
-            } else if (arch instanceof AArch64) {
-                return supports((AArch64) arch, AArch64.CPUFeature.AES);
-            }
-            return false;
         }
     }
 
@@ -2213,6 +2210,39 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
+    public abstract static class CipherBlockChainingCryptPlugin extends AESCryptDelegatePlugin {
+
+        public CipherBlockChainingCryptPlugin(CryptMode mode) {
+            super(mode, mode.isEncrypt() ? "implEncrypt" : "implDecrypt",
+                            Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+        }
+
+        protected abstract boolean canApply(GraphBuilderContext b);
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode in, ValueNode inOffset, ValueNode inLength, ValueNode out, ValueNode outOffset) {
+            if (!canApply(b)) {
+                return false;
+            }
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
+                ResolvedJavaType typeAESCrypt = getTypeAESCrypt(b.getMetaAccess(), receiverType);
+
+                ValueNode nonNullReceiver = receiver.get();
+                ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
+                ValueNode outAddr = helper.arrayElementPointer(out, JavaKind.Byte, outOffset);
+                ValueNode kAddr = readEmbeddedAESCryptKArrayStart(b, helper, receiverType, typeAESCrypt, nonNullReceiver);
+                // Read CipherBlockChaining.r
+                ValueNode rAddr = readFieldArrayStart(b, helper, receiverType, "r", nonNullReceiver, JavaKind.Byte);
+                CipherBlockChainingAESNode call = b.add(new CipherBlockChainingAESNode(inAddr, outAddr, kAddr, rAddr, inLength, mode));
+                helper.emitFinalReturn(JavaKind.Int, call);
+                return true;
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
+        }
+    }
+
     public static class GHASHPlugin extends InvocationPlugin {
 
         public GHASHPlugin() {
@@ -2230,26 +2260,17 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         }
-
-        public static boolean isSupported(Architecture arch) {
-            if (arch instanceof AMD64) {
-                return supports((AMD64) arch, AMD64.CPUFeature.SSSE3, AMD64.CPUFeature.CLMUL);
-            } else if (arch instanceof AArch64) {
-                return supports((AArch64) arch, AArch64.CPUFeature.PMULL);
-            }
-            return false;
-        }
     }
 
     private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
-        r.registerConditional(AESCryptPlugin.isSupported(arch), new AESCryptPlugin(ENCRYPT));
-        r.registerConditional(AESCryptPlugin.isSupported(arch), new AESCryptPlugin(DECRYPT));
+        r.registerConditional(AESNode.isSupported(arch), new AESCryptPlugin(ENCRYPT));
+        r.registerConditional(AESNode.isSupported(arch), new AESCryptPlugin(DECRYPT));
     }
 
     private static void registerGHASHPlugin(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         Registration r = new Registration(plugins, "com.sun.crypto.provider.GHASH", replacements);
-        r.registerConditional(GHASHPlugin.isSupported(arch), new GHASHPlugin());
+        r.registerConditional(GHASHProcessBlocksNode.isSupported(arch), new GHASHPlugin());
     }
 
     private static void registerBigIntegerPlugins(InvocationPlugins plugins, Replacements replacements) {
@@ -2261,5 +2282,27 @@ public class StandardGraphBuilderPlugins {
                 return templates.implMultiplyToLen;
             }
         });
+    }
+
+    private static boolean hasEnsureMaterializedForStackWalk() {
+        try {
+            Thread.class.getDeclaredMethod("ensureMaterializedForStackWalk", Object.class);
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
+    }
+
+    private static void registerThreadPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, Thread.class, replacements);
+        if (hasEnsureMaterializedForStackWalk()) {
+            r.register(new InvocationPlugin("ensureMaterializedForStackWalk", Object.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
+                    b.add(new BlackholeNode(object, "ensureMaterializedForStackWalk"));
+                    return true;
+                }
+            });
+        }
     }
 }

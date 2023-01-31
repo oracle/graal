@@ -81,7 +81,8 @@ typedef union {
                       : 1,
              osxsave  : 1,
              avx      : 1,
-                      : 2,
+             f16c     : 1,
+                      : 1,
              hv       : 1;
   } bits;
 } StdCpuid1Ecx;
@@ -215,7 +216,9 @@ typedef union {
              avx512dq : 1,
                       : 1,
                   adx : 1,
-                      : 3,
+                      : 1,
+           avx512ifma : 1,
+                      : 1,
            clflushopt : 1,
                  clwb : 1,
                       : 1,
@@ -238,7 +241,7 @@ typedef union {
                    ospke : 1,
                          : 1,
             avx512_vbmi2 : 1,
-                         : 1,
+                  cet_ss : 1,
                     gfni : 1,
                     vaes : 1,
        avx512_vpclmulqdq : 1,
@@ -263,7 +266,9 @@ typedef union {
       fast_short_rep_mov : 1,
                          : 9,
                serialize : 1,
-                         : 17;
+                         : 5,
+                 cet_ibt : 1,
+                         : 11;
   } bits;
 } SefCpuid7Edx;
 

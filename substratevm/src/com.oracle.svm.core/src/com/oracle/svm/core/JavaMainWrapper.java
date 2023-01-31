@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import java.io.File;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
@@ -68,9 +67,9 @@ import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
@@ -91,7 +90,7 @@ public class JavaMainWrapper {
 
     public static class JavaMainSupport {
 
-        final MethodHandle javaMainHandle;
+        public final MethodHandle javaMainHandle;
         final String javaMainClassName;
 
         public String[] mainArgs;
@@ -143,7 +142,7 @@ public class JavaMainWrapper {
         try {
             if (SubstrateOptions.DumpHeapAndExit.getValue()) {
                 if (VMInspectionOptions.hasHeapDumpSupport()) {
-                    String absoluteHeapDumpPath = new File(SubstrateOptions.Name.getValue() + ".hprof").getAbsolutePath();
+                    String absoluteHeapDumpPath = SubstrateOptions.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
                     VMRuntime.dumpHeap(absoluteHeapDumpPath, true);
                     System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");
                     return 0;
@@ -162,9 +161,7 @@ public class JavaMainWrapper {
                 VMRuntime.initialize();
             }
 
-            if (ImageSingletons.contains(ProfilingSampler.class)) {
-                ImageSingletons.lookup(ProfilingSampler.class).registerSampler();
-            }
+            ThreadListenerSupport.get().beforeThreadRun();
 
             /*
              * Invoke the application's main method. Invoking the main method via a method handle
@@ -183,8 +180,6 @@ public class JavaMainWrapper {
              * HotSpot VM.
              */
             return 1;
-        } finally {
-            PlatformThreads.exit(Thread.currentThread());
         }
     }
 

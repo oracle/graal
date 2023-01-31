@@ -27,6 +27,7 @@
 package com.oracle.svm.common.option;
 
 import java.io.PrintStream;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -312,8 +313,6 @@ public class CommonOptionParser {
             value = (int) longValue;
         } else if (optionType == Long.class) {
             value = parseLong(valueString);
-        } else if (optionType == String.class) {
-            value = valueString;
         } else if (optionType == Double.class) {
             value = parseDouble(valueString);
         } else if (optionType == Boolean.class) {
@@ -323,6 +322,25 @@ public class CommonOptionParser {
                 value = false;
             } else {
                 return OptionParseResult.error("Boolean option " + option + " must have value 'true' or 'false'");
+            }
+        } else if (optionType == String.class || optionType == Path.class) {
+            Object defaultValue = optionKey.getDefaultValue();
+            String delimiter = defaultValue instanceof MultiOptionValue ? ((MultiOptionValue<?>) defaultValue).getDelimiter() : "";
+            boolean multipleValues = !delimiter.isEmpty() && valueString.contains(delimiter);
+            String[] valueStrings = multipleValues ? StringUtil.split(valueString, delimiter) : null;
+            if (optionType == String.class) {
+                value = valueStrings != null ? valueStrings : valueString;
+            } else {
+                assert optionType == Path.class;
+                if (valueStrings != null) {
+                    Path[] valuePaths = new Path[valueStrings.length];
+                    for (int i = 0; i < valueStrings.length; i++) {
+                        valuePaths[i] = Path.of(valueStrings[i]);
+                    }
+                    value = valuePaths;
+                } else {
+                    value = Path.of(valueString);
+                }
             }
         } else if (optionType.isEnum()) {
             value = Enum.valueOf(optionType.asSubclass(Enum.class), valueString);

@@ -152,6 +152,21 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        public UnsignedWord getYoungGenerationCapacity() {
+            return getMaximumYoungGenerationSize();
+        }
+
+        @Override
+        public UnsignedWord getOldGenerationCapacity() {
+            UnsignedWord heapCapacity = getCurrentHeapCapacity();
+            UnsignedWord youngCapacity = getYoungGenerationCapacity();
+            if (youngCapacity.aboveThan(heapCapacity)) {
+                return WordFactory.zero(); // should never happen unless options change in between
+            }
+            return heapCapacity.subtract(youngCapacity);
+        }
+
+        @Override
         public final UnsignedWord getMaximumFreeAlignedChunksSize() {
             return getMaximumYoungGenerationSize();
         }

@@ -99,13 +99,13 @@ public final class CompilationAlarm implements AutoCloseable {
      */
     public static CompilationAlarm trackCompilationPeriod(OptionValues options) {
         int period = Options.CompilationExpirationPeriod.getValue(options);
-        if (Assertions.assertionsEnabled()) {
-            period *= 2;
-        }
-        if (Assertions.detailedAssertionsEnabled(options)) {
-            period *= 2;
-        }
         if (period > 0) {
+            if (Assertions.assertionsEnabled()) {
+                period *= 2;
+            }
+            if (Assertions.detailedAssertionsEnabled(options)) {
+                period *= 2;
+            }
             CompilationAlarm current = currentAlarm.get();
             if (current == null) {
                 long expiration = System.currentTimeMillis() + period * 1000;

@@ -122,35 +122,6 @@ public abstract class Edges extends Fields {
     }
 
     /**
-     * Clear edges in a given node. This is accomplished by setting {@linkplain #getDirectCount()
-     * direct} edges to null and replacing the lists containing indirect edges with new lists. The
-     * latter is important so that this method can be used to clear the edges of cloned nodes.
-     *
-     * @param node the node whose edges are to be cleared
-     */
-    public void clear(Node node) {
-        final long[] curOffsets = this.offsets;
-        final Type curType = this.type;
-        int index = 0;
-        int curDirectCount = getDirectCount();
-        while (index < curDirectCount) {
-            initializeNode(node, index++, null);
-        }
-        int curCount = getCount();
-        while (index < curCount) {
-            NodeList<Node> list = getNodeList(node, curOffsets, index);
-            if (list != null) {
-                int size = list.initialSize;
-                NodeList<Node> newList = curType == Edges.Type.Inputs ? new NodeInputList<>(node, size) : new NodeSuccessorList<>(node, size);
-
-                // replacing with a new list object is the expected behavior!
-                initializeList(node, index, newList);
-            }
-            index++;
-        }
-    }
-
-    /**
      * Initializes the list edges in a given node based on the size of the list edges in a prototype
      * node.
      *
@@ -252,22 +223,6 @@ public abstract class Edges extends Fields {
     }
 
     public abstract void update(Node node, Node oldValue, Node newValue);
-
-    public boolean contains(Node node, Node value) {
-        final long[] curOffsets = this.offsets;
-        for (int i = 0; i < directCount; i++) {
-            if (getNode(node, curOffsets, i) == value) {
-                return true;
-            }
-        }
-        for (int i = directCount; i < getCount(); i++) {
-            NodeList<?> curList = getNodeList(node, curOffsets, i);
-            if (curList != null && curList.contains(value)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     /**
      * An iterator that will iterate over edges.

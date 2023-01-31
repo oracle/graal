@@ -26,7 +26,7 @@ package org.graalvm.compiler.lir.profiling;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -73,12 +73,12 @@ public final class MoveProfiler {
     }
 
     private void run() {
-        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+        for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
             doBlock(block);
         }
     }
 
-    private void doBlock(AbstractBlockBase<?> block) {
+    private void doBlock(BasicBlock<?> block) {
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
         assert instructions.size() >= 2 : "Malformed block: " + block + ", " + instructions;
         assert instructions.get(instructions.size() - 1) instanceof BlockEndOp : "Not a BlockEndOp: " + instructions.get(instructions.size() - 1);

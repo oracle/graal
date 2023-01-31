@@ -45,6 +45,9 @@ import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 final class Stride {
 
+    static final String STRIDE_CACHE_LIMIT = "3";
+    static final int STRIDE_UNROLL = 3;
+
     static boolean isStride(int stride) {
         return 0 <= stride && stride <= 2;
     }
@@ -66,4 +69,5 @@ final class Stride {
     static int fromCodeRangeUTF32(int codeRange) {
         return TSCodeRange.toStrideUTF32(codeRange);
     }
+
 }

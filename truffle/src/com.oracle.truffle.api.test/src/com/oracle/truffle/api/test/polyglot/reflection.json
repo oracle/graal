@@ -178,5 +178,15 @@
       { "name": "getName", "parameterTypes": [] },
       { "name": "isInstance", "parameterTypes": ["java.lang.Object"] }
     ]
+  },
+  {
+    "name": "com.google.common.jimfs.SystemJimfsFileSystemProvider",
+    "methods": [
+      { "name": "removeFileSystemRunnable", "parameterTypes": ["java.net.URI"] }
+    ]
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.TruffleFileTest$TestRegisterOnDisposeHostSupport",
+    "allPublicMethods": true
   }
 ]

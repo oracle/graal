@@ -66,6 +66,10 @@ public class ZeroMemoryNode extends FixedAccessNode implements LIRLowerable, Sin
         gen.getLIRGeneratorTool().emitZeroMemory(gen.operand(getAddress()), gen.operand(length), isAligned);
     }
 
+    public ValueNode getLength() {
+        return length;
+    }
+
     @Override
     public boolean canNullCheck() {
         return false;

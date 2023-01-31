@@ -38,11 +38,19 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK19OrEarlier;
+import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 
 @TargetClass(value = Executable.class)
 public final class Target_java_lang_reflect_Executable {
 
+    @TargetElement(onlyWith = JDK20OrLater.class)//
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    Target_java_lang_reflect_Executable_ParameterData parameterData;
+
+    @TargetElement(onlyWith = JDK19OrEarlier.class)//
     @Alias @RecomputeFieldValue(kind = Kind.Reset)//
     Parameter[] parameters;
 
@@ -71,4 +79,8 @@ public final class Target_java_lang_reflect_Executable {
             return ImageSingletons.lookup(EncodedReflectionMetadataSupplier.class).getReflectParametersEncoding((Executable) receiver);
         }
     }
+}
+
+@TargetClass(value = Executable.class, innerClass = "ParameterData", onlyWith = JDK20OrLater.class)
+final class Target_java_lang_reflect_Executable_ParameterData {
 }

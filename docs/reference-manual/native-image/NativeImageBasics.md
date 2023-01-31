@@ -11,11 +11,12 @@ Native Image is written in Java and takes Java bytecode as input to produce a st
 During the process of producing a binary, Native Image can run user code.
 Finally, Native Image links compiled user code, parts of the Java runtime (for example, the garbage collector, threading support), and the results of code execution into the binary.
 
-We refer to this binary as a **native image**, or simply **image**.
-We refer to the process of producing a binary the **native image build** or **image build**, and Native Image itself as the **`native-image` builder**, or the **builder**.
+We refer to this binary as a **native executable**, or a **native image**.
+We refer to the utility that produces the binary as the **`native-image` builder**, or the **`native-image` generator**.
 
-To clearly distinguish between code executed during the native image build, and code executed during the image execution, we refer to the difference between the two as [**image build time** and **image run time**](#image-build-time-vs-image-run-time).
-To produce a minimal image, Native Image employs a process called [**static analysis**](#static-analysis-reachability-and-closed-world-assumption).
+To clearly distinguish between code executed during the native image build, and code executed during the native image execution, we refer to the difference between the two as [**build time** and **run time**](#build-time-vs-run-time).
+
+To produce a minimal image, Native Image employs a process called [**static analysis**](#static-analysis).
 
 ### Table of Contents
 
@@ -66,7 +67,7 @@ public class HelloWorld {
 }
 ```
 
-Having saved the code in a file named _HelloWorld.java_, we ompile and run the application on the JVM:
+Having saved the code in a file named _HelloWorld.java_, we compile and run the application on the JVM:
 
 ```bash
 javac HelloWorld.java

@@ -78,6 +78,7 @@ public final class JfrBufferAccess {
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
     public static void reinitialize(JfrBuffer buffer) {
+        assert buffer.isNonNull();
         Pointer pos = getDataStart(buffer);
         buffer.setPos(pos);
         buffer.setTop(pos);
@@ -85,57 +86,80 @@ public final class JfrBufferAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAcquired(JfrBuffer buffer) {
+        assert buffer.isNonNull();
         return buffer.getAcquired() == ACQUIRED;
     }
 
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
     public static boolean acquire(JfrBuffer buffer) {
+        assert buffer.isNonNull();
         return ((Pointer) buffer).logicCompareAndSwapInt(JfrBuffer.offsetOfAcquired(), NOT_ACQUIRED, ACQUIRED, NamedLocationIdentity.OFF_HEAP_LOCATION);
     }
 
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
     public static void release(JfrBuffer buffer) {
-        assert buffer.getAcquired() == ACQUIRED;
+        assert buffer.isNonNull() && buffer.getAcquired() == ACQUIRED;
         buffer.setAcquired(NOT_ACQUIRED);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getAddressOfPos(JfrBuffer buffer) {
+        assert buffer.isNonNull();
         return ((Pointer) buffer).add(JfrBuffer.offsetOfPos());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getDataStart(JfrBuffer buffer) {
+        assert buffer.isNonNull();
         return ((Pointer) buffer).add(getHeaderSize());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getDataEnd(JfrBuffer buffer) {
+        assert buffer.isNonNull();
         return getDataStart(buffer).add(buffer.getSize());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getAvailableSize(JfrBuffer buffer) {
+        assert buffer.isNonNull();
         return getDataEnd(buffer).subtract(buffer.getPos());
     }
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.", callerMustBe = true)
     public static UnsignedWord getUnflushedSize(JfrBuffer buffer) {
+        assert buffer.isNonNull();
         return buffer.getPos().subtract(buffer.getTop());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void increasePos(JfrBuffer buffer, UnsignedWord delta) {
+        assert buffer.isNonNull();
         buffer.setPos(buffer.getPos().add(delta));
     }
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
     public static void increaseTop(JfrBuffer buffer, UnsignedWord delta) {
+        assert buffer.isNonNull();
         buffer.setTop(buffer.getTop().add(delta));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isEmpty(JfrBuffer buffer) {
+        assert buffer.isNonNull();
         return getDataStart(buffer).equal(buffer.getPos());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean verify(JfrBuffer buffer) {
+        if (buffer.isNull()) {
+            return false;
+        }
+
+        Pointer start = getDataStart(buffer);
+        Pointer end = getDataEnd(buffer);
+        return buffer.getPos().aboveOrEqual(start) && buffer.getPos().belowOrEqual(end) &&
+                        buffer.getTop().aboveOrEqual(start) && buffer.getTop().belowOrEqual(end) &&
+                        buffer.getTop().belowOrEqual(buffer.getPos());
     }
 }

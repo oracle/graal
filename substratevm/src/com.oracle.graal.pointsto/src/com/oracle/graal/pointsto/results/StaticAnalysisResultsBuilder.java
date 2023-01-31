@@ -64,6 +64,9 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
 
     @Override
     public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
+        if (!method.isImplementationInvoked()) {
+            return StaticAnalysisResults.NO_RESULTS;
+        }
         PointsToAnalysis pta = getAnalysis();
         MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
         if (!methodFlow.flowsGraphCreated()) {
@@ -153,7 +156,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
                 }
 
                 JavaTypeProfile typeProfile = makeTypeProfile(invokeTypeState);
-                JavaMethodProfile methodProfile = makeMethodProfile(originalInvoke.getCallees());
+                JavaMethodProfile methodProfile = makeMethodProfile(originalInvoke.getOriginalCallees());
                 JavaTypeProfile invokeResultTypeProfile = originalReturn == null ? null : makeTypeProfile(returnTypeState);
 
                 if (hasStaticProfiles(typeProfile, methodProfile, invokeResultTypeProfile) || hasRuntimeProfiles()) {

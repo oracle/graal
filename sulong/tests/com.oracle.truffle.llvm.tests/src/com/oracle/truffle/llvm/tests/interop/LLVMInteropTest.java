@@ -29,6 +29,11 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
@@ -53,6 +58,7 @@ import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.tests.interop.values.NullValue;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -66,12 +72,6 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import java.io.File;
-import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
 
 @RunWith(CommonTestUtils.ExcludingTruffleRunner.class)
 public class LLVMInteropTest {
@@ -1007,7 +1007,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testBoxedboolean() {
-        try (Runner runner = new Runner("interop_conditionalWithBoxedBoolean.c")) {
+        try (Runner runner = new Runner("conditionalWithBoxedBoolean.c")) {
             runner.export(true, "boxed_true");
             runner.export(false, "boxed_false");
             Assert.assertEquals(0, runner.run());
@@ -1016,7 +1016,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testUnboxedboolean() {
-        try (Runner runner = new Runner("interop_conditionalWithUnboxedBoolean.c")) {
+        try (Runner runner = new Runner("conditionalWithUnboxedBoolean.c")) {
             runner.export(true, "boxed_true");
             runner.export(false, "boxed_false");
             Assert.assertEquals(0, runner.run());
@@ -1759,9 +1759,6 @@ public class LLVMInteropTest {
         }
     }
 
-    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop").toPath();
-    public static final String FILENAME = "toolchain-plain.so";
-
     protected static Map<String, String> getSulongTestLibContextOptions() {
         Map<String, String> map = TestEngineConfig.getInstance().getContextOptions();
         String lib = System.getProperty("test.sulongtest.lib.path");
@@ -1780,7 +1777,7 @@ public class LLVMInteropTest {
         }
 
         Runner(String testName, Map<String, String> options) {
-            this.testName = testName + CommonTestUtils.TEST_DIR_EXT;
+            this.testName = testName;
             this.context = Context.newBuilder().options(options).allowAllAccess(true).build();
             this.library = null;
         }
@@ -1801,7 +1798,8 @@ public class LLVMInteropTest {
         Value load() {
             if (library == null) {
                 try {
-                    File file = new File(TEST_DIR.toFile(), testName + "/" + FILENAME);
+                    context.enter();
+                    File file = InteropTestBase.getTestBitcodeFile(context, testName);
                     Source source = Source.newBuilder("llvm", file).build();
                     library = context.eval(source);
                 } catch (RuntimeException e) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -129,17 +128,6 @@ public class AnalysisMethodCalleeWalker {
         public VisitResult epilogue() {
             /* The default is to continue the walk. */
             return VisitResult.CONTINUE;
-        }
-
-        /** Printing a path to a stream. */
-
-        void printPath(PrintStream trace, List<AnalysisMethod> path) {
-            trace.print("  [Path: ");
-            for (AnalysisMethod element : path) {
-                trace.println();
-                trace.print("     " + element.format("%h.%n(%p)"));
-            }
-            trace.println("]");
         }
     }
 }

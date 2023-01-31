@@ -81,9 +81,16 @@ public class WasmOptions {
     @Option(help = "Use sign-extension operators", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
     public static final OptionKey<Boolean> SignExtensionOps = new OptionKey<>(true);
 
-    @Option(help = "Prevents the removal of data sections from wasm binaries. This option should only be used for testing.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> KeepDataSections = new OptionKey<>(false);
-
     @Option(help = "Enable multi-value support", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
     public static final OptionKey<Boolean> MultiValue = new OptionKey<>(true);
+
+    @Option(help = "Enable bulk-memory operations and support for reference types", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> BulkMemoryAndRefTypes = new OptionKey<>(true);
+
+    @Option(help = "Enable support for 64-bit memory addresses (More details at https://github.com/WebAssembly/memory64/blob/main/proposals/memory64/Overview.md)", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> Memory64 = new OptionKey<>(false);
+
+    @Option(help = "In this mode memories and tables are not initialized.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> MemoryOverheadMode = new OptionKey<>(false);
 }

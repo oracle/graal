@@ -43,6 +43,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -72,7 +73,7 @@ public final class Stubs {
         public static final EnumSet<AMD64.CPUFeature> BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64 = EnumSet.of(AVX, BMI2, ADX);
 
         public static EnumSet<AMD64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
-            if (AESNode.class.equals(klass) || CounterModeAESNode.class.equals(klass)) {
+            if (AESNode.class.equals(klass) || CounterModeAESNode.class.equals(klass) || CipherBlockChainingAESNode.class.equals(klass)) {
                 return AES_CPU_FEATURES_AMD64;
             }
             if (GHASHProcessBlocksNode.class.equals(klass)) {
@@ -92,7 +93,7 @@ public final class Stubs {
         public static final EnumSet<AArch64.CPUFeature> GHASH_CPU_FEATURES_AARCH64 = EnumSet.of(AArch64.CPUFeature.PMULL);
 
         public static EnumSet<AArch64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
-            if (AESNode.class.equals(klass) || CounterModeAESNode.class.equals(klass)) {
+            if (AESNode.class.equals(klass) || CounterModeAESNode.class.equals(klass) || CipherBlockChainingAESNode.class.equals(klass)) {
                 return AES_CPU_FEATURES_AARCH64;
             }
             if (GHASHProcessBlocksNode.class.equals(klass)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,8 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.constants.BytecodeBitEncoding;
+import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
 
 /**
@@ -51,6 +53,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 @SuppressWarnings("static-method")
 public class RuntimeState {
     private static final int INITIAL_GLOBALS_SIZE = 64;
+    private static final int INITIAL_TABLES_SIZE = 1;
 
     private final WasmContext context;
     private final WasmModule module;
@@ -63,9 +66,9 @@ public class RuntimeState {
 
     /**
      * This array is monotonically populated from the left. An index i denotes the i-th global in
-     * this module. The value at the index i denotes the address of the global in the memory space
-     * for all the globals from all the modules (see {@link GlobalRegistry}).
-     *
+     * this module. The value at index i denotes the address of the global in the memory space for
+     * all the globals from all the modules (see {@link GlobalRegistry}).
+     * <p>
      * This separation of global indices is done because the index spaces of the globals are
      * module-specific, and the globals can be imported across modules. Thus, the address-space of
      * the globals is not the same as the module-specific index-space.
@@ -73,20 +76,41 @@ public class RuntimeState {
     @CompilationFinal(dimensions = 1) private int[] globalAddresses;
 
     /**
-     * The table from the context-specific table space, which this module is using.
-     *
-     * In the current WebAssembly specification, a module can use at most one table. The value
-     * {@code null} denotes that this module uses no table.
+     * This array is monotonically populated from the left. An index i denotes the i-th table in
+     * this module. The value at index i denotes the address of the table in the memory space for
+     * all the tables from all the module (see {@link TableRegistry}).
+     * <p>
+     * The separation of table instances is done because the index spaces of the tables are
+     * module-specific, and the tables can be imported across modules. Thus, the address-space of
+     * the tables is not the same as the module-specific index-space.
      */
-    @CompilationFinal private WasmTable table;
+    @CompilationFinal(dimensions = 1) private int[] tableAddresses;
 
     /**
      * Memory that this module is using.
-     *
+     * <p>
      * In the current WebAssembly specification, a module can use at most one memory. The value
      * {@code null} denotes that this module uses no memory.
      */
     @CompilationFinal private WasmMemory memory;
+
+    /**
+     * The passive elem instances that can be used to lazily initialize tables. They can potentially
+     * be dropped after using them. They can be set to null even in compiled code, therefore they
+     * cannot be compilation final.
+     */
+    @CompilationFinal(dimensions = 0) private Object[][] elementInstances;
+
+    /**
+     * The passive data instances that can be used to lazily initialize memory. They can potentially
+     * be dropped after using them, even in compiled code.
+     */
+    @CompilationFinal(dimensions = 0) private int[] dataInstances;
+
+    /**
+     * Offset representing an already dropped data instance.
+     */
+    private final int droppedDataInstanceOffset;
 
     @CompilationFinal private Linker.LinkState linkState;
 
@@ -98,13 +122,25 @@ public class RuntimeState {
         }
     }
 
-    public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions) {
+    private void ensureTablesCapacity(int index) {
+        if (index >= tableAddresses.length) {
+            final int[] nTableAddresses = new int[Math.max(Integer.highestOneBit(index) << 1, 2 * tableAddresses.length)];
+            System.arraycopy(tableAddresses, 0, nTableAddresses, 0, tableAddresses.length);
+            tableAddresses = nTableAddresses;
+        }
+    }
+
+    public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
         this.context = context;
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
+        this.tableAddresses = new int[INITIAL_TABLES_SIZE];
         this.targets = new CallTarget[numberOfFunctions];
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
+        this.dataInstances = null;
+        this.elementInstances = null;
+        this.droppedDataInstanceOffset = droppedDataInstanceOffset;
     }
 
     private void checkNotLinked() {
@@ -159,16 +195,8 @@ public class RuntimeState {
         return module.symbolTable();
     }
 
-    public byte[] data() {
-        return module.data();
-    }
-
     public WasmModule module() {
         return module;
-    }
-
-    public int targetCount() {
-        return symbolTable().numFunctions();
     }
 
     public CallTarget target(int index) {
@@ -181,7 +209,7 @@ public class RuntimeState {
 
     public int globalAddress(int index) {
         final int result = globalAddresses[index];
-        assert result != SymbolTable.UNINITIALIZED_GLOBAL_ADDRESS : "Uninitialized global at index: " + index;
+        assert result != SymbolTable.UNINITIALIZED_ADDRESS : "Uninitialized global at index: " + index;
         return result;
     }
 
@@ -191,13 +219,16 @@ public class RuntimeState {
         globalAddresses[globalIndex] = address;
     }
 
-    public WasmTable table() {
-        return table;
+    public int tableAddress(int index) {
+        final int result = tableAddresses[index];
+        assert result != SymbolTable.UNINITIALIZED_ADDRESS : "Uninitialized table at index: " + index;
+        return result;
     }
 
-    void setTable(WasmTable table) {
+    void setTableAddress(int tableIndex, int address) {
+        ensureTablesCapacity(tableIndex);
         checkNotLinked();
-        this.table = table;
+        tableAddresses[tableIndex] = address;
     }
 
     public WasmMemory memory() {
@@ -226,5 +257,132 @@ public class RuntimeState {
     public void setFunctionInstance(int index, WasmFunctionInstance functionInstance) {
         assert functionInstance != null;
         functionInstances[index] = functionInstance;
+    }
+
+    private void ensureDataInstanceCapacity(int index) {
+        if (dataInstances == null) {
+            dataInstances = new int[Math.max(Integer.highestOneBit(index) << 1, 2)];
+        } else if (index >= dataInstances.length) {
+            final int[] nDataInstances = new int[Math.max(Integer.highestOneBit(index) << 1, 2 * dataInstances.length)];
+            System.arraycopy(dataInstances, 0, nDataInstances, 0, dataInstances.length);
+            dataInstances = nDataInstances;
+        }
+    }
+
+    public void setDataInstance(int index, int bytecodeOffset) {
+        assert bytecodeOffset != -1;
+        ensureDataInstanceCapacity(index);
+        dataInstances[index] = bytecodeOffset;
+    }
+
+    public void dropDataInstance(int index) {
+        if (dataInstances == null) {
+            return;
+        }
+        assert index < dataInstances.length;
+        dataInstances[index] = droppedDataInstanceOffset;
+    }
+
+    public void dropUnsafeDataInstance(int index) {
+        final long address = dataInstanceAddress(index);
+        if (address != 0) {
+            NativeDataInstanceUtil.freeNativeInstance(address);
+        }
+        dataInstances[index] = droppedDataInstanceOffset;
+    }
+
+    public int dataInstanceOffset(int index) {
+        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
+            return 0;
+        }
+        final int bytecodeOffset = dataInstances[index];
+        final byte[] bytecode = module().bytecode();
+        return bytecodeOffset + (bytecode[bytecodeOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) + 1;
+    }
+
+    public int dataInstanceLength(int index) {
+        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
+            return 0;
+        }
+        final int bytecodeOffset = dataInstances[index];
+        final byte[] bytecode = module().bytecode();
+        final int encoding = bytecode[bytecodeOffset];
+        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
+        final int length;
+        switch (lengthEncoding) {
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE:
+                length = encoding;
+                break;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8:
+                length = BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset + 1);
+                break;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16:
+                length = BinaryStreamParser.rawPeekU16(bytecode, bytecodeOffset + 1);
+                break;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32:
+                length = BinaryStreamParser.rawPeekI32(bytecode, bytecodeOffset + 1);
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        return length;
+    }
+
+    public long dataInstanceAddress(int index) {
+        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
+            return 0;
+        }
+        final int bytecodeOffset = dataInstances[index];
+        final byte[] bytecode = module().bytecode();
+        final byte encoding = bytecode[bytecodeOffset];
+        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
+        switch (lengthEncoding) {
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 1);
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U8:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 2);
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U16:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 3);
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_I32:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 5);
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    public int droppedDataInstanceOffset() {
+        return droppedDataInstanceOffset;
+    }
+
+    private void ensureElemInstanceCapacity(int index) {
+        if (elementInstances == null) {
+            elementInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2)][];
+        } else if (index >= elementInstances.length) {
+            final Object[][] nElementInstanceData = new Object[Math.max(Integer.highestOneBit(index) << 1, 2 * elementInstances.length)][];
+            System.arraycopy(elementInstances, 0, nElementInstanceData, 0, elementInstances.length);
+            elementInstances = nElementInstanceData;
+        }
+    }
+
+    void setElemInstance(int index, Object[] data) {
+        assert data != null;
+        ensureElemInstanceCapacity(index);
+        elementInstances[index] = data;
+    }
+
+    public void dropElemInstance(int index) {
+        if (elementInstances == null) {
+            return;
+        }
+        assert index < elementInstances.length;
+        elementInstances[index] = null;
+    }
+
+    public Object[] elemInstance(int index) {
+        if (elementInstances == null) {
+            return null;
+        }
+        assert index < elementInstances.length;
+        return elementInstances[index];
     }
 }

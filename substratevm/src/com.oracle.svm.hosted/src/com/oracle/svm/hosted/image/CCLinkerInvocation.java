@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -50,7 +51,6 @@ import com.oracle.svm.core.c.libc.BionicLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -68,7 +68,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     public static class Options {
         @Option(help = "Pass the provided raw option that will be appended to the linker command to produce the final binary. The possible options are platform specific and passed through without any validation.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
@@ -213,6 +213,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         cmd.addAll(getLibrariesCommand());
 
         cmd.addAll(getNativeLinkerOptions());
+
+        /* RISC-V always needs the -latomic option */
+        if (Platform.includedIn(Platform.RISCV64.class)) {
+            cmd.add("-latomic");
+        }
 
         return cmd;
     }
@@ -511,6 +516,10 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             cmd.add("secur32.lib");
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
+            if (JavaVersionUtil.JAVA_SPEC >= 20) {
+                /* JDK-8295231 removed implicit linking via pragma directives in source files. */
+                cmd.add("mswsock.lib");
+            }
 
             if (SubstrateOptions.EnableWildcardExpansion.getValue() && imageKind == AbstractImage.NativeImageKind.EXECUTABLE) {
                 /*
@@ -553,7 +562,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             inv.addLibPath(libraryPath);
         }
 
-        for (String rPath : OptionUtils.flatten(",", SubstrateOptions.LinkerRPath.getValue())) {
+        for (String rPath : SubstrateOptions.LinkerRPath.getValue().values()) {
             inv.addRPath(rPath);
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,14 +77,11 @@ public class MethodInvocation {
      */
     private final BitSet freshlyInstantiatedArguments;
 
-    private final int sizeFreshArgs;
-
     public MethodInvocation(InlineInfo info, double probability, double relevance, BitSet freshlyInstantiatedArguments) {
         this.callee = info;
         this.probability = probability;
         this.relevance = relevance;
         this.freshlyInstantiatedArguments = freshlyInstantiatedArguments;
-        this.sizeFreshArgs = freshlyInstantiatedArguments == null ? 0 : freshlyInstantiatedArguments.cardinality();
     }
 
     public void incrementProcessedGraphs() {
@@ -115,14 +112,6 @@ public class MethodInvocation {
 
     public boolean isRoot() {
         return callee == null;
-    }
-
-    public BitSet getFreshlyInstantiatedArguments() {
-        return freshlyInstantiatedArguments;
-    }
-
-    public int getSizeFreshArgs() {
-        return sizeFreshArgs;
     }
 
     public CallsiteHolder buildCallsiteHolderForElement(int index) {

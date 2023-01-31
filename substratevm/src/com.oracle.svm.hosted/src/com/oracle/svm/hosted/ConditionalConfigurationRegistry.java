@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.hosted;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -35,20 +35,20 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import com.oracle.svm.core.TypeResult;
 
 public abstract class ConditionalConfigurationRegistry {
-    private final Map<String, List<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
+    private final Map<String, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
 
     protected void registerConditionalConfiguration(ConfigurationCondition condition, Runnable runnable) {
         if (ConfigurationCondition.alwaysTrue().equals(condition)) {
             /* analysis optimization to include new types as early as possible */
             runnable.run();
         } else {
-            List<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getTypeName(), key -> new ArrayList<>());
+            Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getTypeName(), key -> new ConcurrentLinkedQueue<>());
             handlers.add(runnable);
         }
     }
 
     public void flushConditionalConfiguration(Feature.BeforeAnalysisAccess b) {
-        for (Map.Entry<String, List<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
+        for (Map.Entry<String, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
             TypeResult<Class<?>> typeResult = ((FeatureImpl.BeforeAnalysisAccessImpl) b).getImageClassLoader().findClass(reachabilityEntry.getKey());
             b.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), typeResult.get());
         }

@@ -54,10 +54,10 @@ public class ExtraDataAccessor {
     public static final int EXTENDED_IF_PROFILE_OFFSET = 2;
 
     public static final int COMPACT_BR_IF_LENGTH = 2;
-    public static final int EXTENDED_BR_IF_LENGTH = 5;
+    public static final int EXTENDED_BR_IF_LENGTH = 6;
 
     public static final int COMPACT_BR_IF_PROFILE_OFFSET = 1;
-    public static final int EXTENDED_BR_IF_PROFILE_OFFSET = 4;
+    public static final int EXTENDED_BR_IF_PROFILE_OFFSET = 5;
 
     public static final int COMPACT_BR_TABLE_PROFILE_OFFSET = 0;
     public static final int EXTENDED_BR_TABLE_PROFILE_OFFSET = 1;
@@ -72,6 +72,10 @@ public class ExtraDataAccessor {
 
     public static final int COMPACT_CALL_INDIRECT_PROFILE_OFFSET = 0;
     public static final int EXTENDED_CALL_INDIRECT_PROFILE_OFFSET = 1;
+
+    public static final int PRIMITIVE_UNWIND = 0x0080_0000;
+    public static final int REFERENCE_UNWIND = 0x8000_0000;
+    public static final int UNKNOWN_UNWIND = 0x8080_0000;
 
     public static int firstValueUnsigned(int[] extraData, int offset, boolean compact) {
         if (compact) {
@@ -99,7 +103,7 @@ public class ExtraDataAccessor {
 
     public static int thirdValueUnsigned(int[] extraData, int offset, boolean compact) {
         if (compact) {
-            return extraData[offset + 1] >>> 24;
+            return extraData[offset + 1] & 0x8080_0000;
         } else {
             return extraData[offset + 2];
         }
@@ -107,9 +111,17 @@ public class ExtraDataAccessor {
 
     public static int fourthValueUnsigned(int[] extraData, int offset, boolean compact) {
         if (compact) {
-            return (extraData[offset + 1] & 0x00ff_0000) >>> 16;
+            return (extraData[offset + 1] & 0x7f00_0000) >>> 24;
         } else {
             return extraData[offset + 3];
+        }
+    }
+
+    public static int fifthValueUnsigned(int[] extraData, int offset, boolean compact) {
+        if (compact) {
+            return (extraData[offset + 1] & 0x007f_0000) >>> 16;
+        } else {
+            return extraData[offset + 4];
         }
     }
 }

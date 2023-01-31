@@ -50,6 +50,7 @@ import static org.junit.Assert.assertThat;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -62,7 +63,7 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.NodeCost;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused"})
 public class ReplacesTest {
 
     /*
@@ -189,6 +190,180 @@ public class ReplacesTest {
         @Specialization(replaces = {"f1"})
         int f2(int a) {
             return Math.abs(a);
+        }
+
+    }
+
+    @NodeChild("a")
+    @Introspectable
+    abstract static class ReplaceMaxLimitNode extends ValueNode {
+
+        static boolean isOne(int a) {
+            return a == 1;
+        }
+
+        @Specialization(guards = "a == 0")
+        int s0(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 1")
+        int s1(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 2")
+        int s2(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 3")
+        int s3(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 4")
+        int s4(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 5")
+        int s5(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 6")
+        int s6(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a ==7")
+        int s7(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 8")
+        int s8(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 9")
+        int s9(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 10")
+        int s10(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 11")
+        int s11(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 12")
+        int s12(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 13")
+        int s13(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 14")
+        int s14(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 15")
+        int s15(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 16")
+        int s16(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 17")
+        int s17(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 18")
+        int s18(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 19")
+        int s19(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 20")
+        int s20(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 21")
+        int s21(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 22")
+        int s22(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 23")
+        int s23(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 24")
+        int s24(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 25")
+        int s25(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 26")
+        int s26(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 27")
+        int s27(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 28")
+        int s28(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 29")
+        int s29(int a) {
+            return a;
+        }
+
+        @Specialization(guards = "a == 30")
+        int s30(int a) {
+            return a;
+        }
+
+        @Specialization(replaces = {"s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", //
+                        "s10", "s11", "s12", "s13", "s14", "s15", "s16", "s17", "s18", "s19", //
+                        "s20", "s21", "s22", "s23", "s24", "s25", "s26", "s27", "s28", "s29", //
+                        "s30",
+        })
+        int generic(int a) {
+            return a;
         }
 
     }

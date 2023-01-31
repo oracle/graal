@@ -24,13 +24,16 @@
  */
 package com.oracle.truffle.tools.dap.test;
 
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import java.net.URL;
 import java.util.regex.Pattern;
+
 import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
+
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 
 /**
  * {@link InstrumentationTestLanguage} DAP debugging test.
@@ -45,21 +48,22 @@ public class ITLDAPTest {
     }
 
     @Test
+    @Ignore("GR-43473")
     public void testOutput() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
-                        "  PRINT(OUT, \"one\ntwo\n\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"one\ntwo\n\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"three,\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"three,\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"four\rfive\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"four\rfive\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"\r\n\"),\n" +
-                        "  PRINT(OUT, \"\r\nsix,\"),\n" +
-                        "  PRINT(OUT, \"seven\n\neight\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\n\")),\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\nsix,\")),\n" +
+                        "  PRINT(OUT, CONSTANT(\"seven\n\neight\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(ERR, \"1err\n2err\r\n\"),\n" +
+                        "  PRINT(ERR, CONSTANT(\"1err\n2err\r\n\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"\r\nnine\rten\r\n\")\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\nnine\rten\r\n\"))\n" +
                         ")\n", "TestOutput.itl").build();
         tester = DAPTester.start(true);
         tester.sendMessage(
@@ -134,18 +138,19 @@ public class ITLDAPTest {
     }
 
     @Test
+    @Ignore("GR-43473")
     public void testOutputEarly() throws Exception {
         Source source1 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
-                        "  PRINT(OUT, \"Prologue to stdout\n\"),\n" +
-                        "  PRINT(ERR, \"Prologue to stderr\n\")" +
-                        ")\n", "TestOutput1.itl").internal(true).build();
+                        "  PRINT(OUT, CONSTANT(\"Prologue to stdout\n\")),\n" +
+                        "  PRINT(ERR, CONSTANT(\"Prologue to stderr\n\"))" +
+                        ")\n", "TestOutput1.itl").build();
         Source source2 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
-                        "  PRINT(OUT, \"Text to stdout\n\"),\n" +
-                        "  PRINT(ERR, \"Text to stderr\n\")" +
+                        "  PRINT(OUT, CONSTANT(\"Text to stdout\n\")),\n" +
+                        "  PRINT(ERR, CONSTANT(\"Text to stderr\n\"))" +
                         ")\n", "TestOutput2.itl").build();
         Source source3 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
-                        "  PRINT(OUT, \"Epilogue to stdout\n\"),\n" +
-                        "  PRINT(ERR, \"Epilogue to stderr\n\")" +
+                        "  PRINT(OUT, CONSTANT(\"Epilogue to stdout\n\")),\n" +
+                        "  PRINT(ERR, CONSTANT(\"Epilogue to stderr\n\"))" +
                         ")\n", "TestOutput3.itl").build();
         tester = DAPTester.start(false, context -> context.eval(source1));
         tester.sendMessage(
@@ -161,13 +166,14 @@ public class ITLDAPTest {
         tester.compareReceivedMessages("{\"event\":\"output\",\"body\":{\"output\":\"Debugger attached.\",\"category\":\"stderr\"},\"type\":\"event\"}",
                         "{\"success\":true,\"type\":\"response\",\"request_seq\":2,\"command\":\"attach\"}");
         tester.sendMessage("{\"command\":\"loadedSources\",\"type\":\"request\",\"seq\":3}");
-        tester.compareReceivedMessages("{\"success\":true,\"body\":{\"sources\":[]},\"type\":\"response\",\"request_seq\":3,\"command\":\"loadedSources\",\"seq\":5}");
+        tester.compareReceivedMessages(
+                        "{\"success\":true,\"body\":{\"sources\":[{\"sourceReference\":1,\"name\":\"TestOutput1.itl\"}]},\"type\":\"response\",\"request_seq\":3,\"command\":\"loadedSources\",\"seq\":5}");
         tester.sendMessage("{\"command\":\"configurationDone\",\"type\":\"request\",\"seq\":4}");
         tester.compareReceivedMessages("{\"success\":true,\"type\":\"response\",\"request_seq\":4,\"command\":\"configurationDone\",\"seq\":6}");
         tester.eval(source2);
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":2,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
-                        "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"TestOutput2.itl\"}},\"type\":\"event\",\"seq\":8}");
+                        "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"name\":\"TestOutput2.itl\"}},\"type\":\"event\",\"seq\":8}");
         tester.compareReceivedMessages(
                         "{\"event\":\"output\",\"body\":{\"output\":\"Text to stdout\\n\",\"category\":\"stdout\"},\"type\":\"event\",\"seq\":9}");
         tester.compareReceivedMessages(
@@ -179,7 +185,9 @@ public class ITLDAPTest {
         tester.getContext().eval(source3);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
+    @Ignore("GR-43473")
     public void testMultiThreading() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, new URL("file:///path/TestThreads.itl")).content("ROOT(\n" +
                         "DEFINE(f,\n" +
@@ -288,7 +296,9 @@ public class ITLDAPTest {
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":3},\"type\":\"request\",\"seq\":12}");
     }
 
+    @SuppressWarnings("deprecation")
     @Test
+    @Ignore("GR-43473")
     public void testBadSourceReference() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, new URL("file:///path/TestSrcRef.itl")).content("ROOT(\n" +
                         "  STATEMENT(),\n" +
@@ -334,6 +344,44 @@ public class ITLDAPTest {
         tester.compareReceivedMessages(
                         "{\"event\":\"continued\",\"body\":{\"threadId\":1,\"allThreadsContinued\":false},\"type\":\"event\"}",
                         "{\"success\":true,\"body\":{\"allThreadsContinued\":false},\"type\":\"response\",\"request_seq\":12,\"command\":\"continue\"}");
+        tester.finish();
+    }
+
+    @Test
+    @Ignore("GR-43473")
+    public void testEagerSourceLoad() throws Exception {
+        Source source1 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
+                        "  EXPRESSION(),\n" +
+                        "  EXPRESSION()" +
+                        ")\n", "TestEagerSource1.itl").build();
+        Source source2 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
+                        "  STATEMENT()\n" +
+                        ")\n", "TestEagerSource2.itl").build();
+        tester = DAPTester.start(false, context -> context.eval(source1));
+        tester.sendMessage(
+                        "{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true," +
+                                        "\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"initialized\",\"type\":\"event\"}",
+                        "{\"success\":true,\"type\":\"response\",\"body\":{\"supportsConditionalBreakpoints\":true,\"supportsLoadedSourcesRequest\":true,\"supportsFunctionBreakpoints\":true,\"supportsExceptionInfoRequest\":true," +
+                                        "\"supportsBreakpointLocationsRequest\":true,\"supportsHitConditionalBreakpoints\":true,\"supportsLogPoints\":true,\"supportsSetVariable\":true,\"supportsConfigurationDoneRequest\":true," +
+                                        "\"exceptionBreakpointFilters\":[{\"filter\":\"all\",\"label\":\"All Exceptions\"},{\"filter\":\"uncaught\",\"label\":\"Uncaught Exceptions\"}]},\"request_seq\":1,\"command\":\"initialize\"}");
+        tester.sendMessage(
+                        "{\"command\":\"attach\",\"arguments\":{\"type\":\"graalvm\",\"request\":\"attach\",\"name\":\"Attach\",\"port\":9229,\"protocol\":\"debugAdapter\"},\"type\":\"request\",\"seq\":2}");
+        tester.compareReceivedMessages("{\"event\":\"output\",\"body\":{\"output\":\"Debugger attached.\",\"category\":\"stderr\"},\"type\":\"event\"}",
+                        "{\"success\":true,\"type\":\"response\",\"request_seq\":2,\"command\":\"attach\"}");
+        tester.sendMessage("{\"command\":\"loadedSources\",\"type\":\"request\",\"seq\":3}");
+        tester.compareReceivedMessages(
+                        "{\"success\":true,\"body\":{\"sources\":[{\"sourceReference\":1,\"name\":\"TestEagerSource1.itl\"}]},\"type\":\"response\",\"request_seq\":3,\"command\":\"loadedSources\",\"seq\":5}");
+        tester.sendMessage("{\"command\":\"configurationDone\",\"type\":\"request\",\"seq\":4}");
+        tester.compareReceivedMessages("{\"success\":true,\"type\":\"response\",\"request_seq\":4,\"command\":\"configurationDone\",\"seq\":6}");
+        tester.eval(source2);
+        tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":2,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
+        tester.compareReceivedMessages(
+                        "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":2,\"name\":\"TestEagerSource2.itl\"}},\"type\":\"event\",\"seq\":8}");
+        tester.sendMessage("{\"command\":\"disconnect\",\"arguments\":{\"restart\":false},\"type\":\"request\",\"seq\":11}");
+        tester.compareReceivedMessages(
+                        "{\"success\":true,\"type\":\"response\",\"request_seq\":11,\"command\":\"disconnect\",\"seq\":9}");
         tester.finish();
     }
 }

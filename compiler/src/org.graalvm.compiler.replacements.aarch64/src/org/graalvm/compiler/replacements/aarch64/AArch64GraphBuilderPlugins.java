@@ -66,7 +66,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
 import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringLatin1Snippets;
 import org.graalvm.compiler.replacements.StringUTF16CompressNode;
@@ -79,6 +78,7 @@ import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
 import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
+import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -362,17 +362,13 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return templates.indexOf;
             }
         });
-        if (JavaVersionUtil.JAVA_SPEC < 16) {
-            r.register(new StringLatin1IndexOfCharPlugin());
-        } else {
-            r.register(new InvocationPlugin("indexOfChar", byte[].class, int.class, int.class, int.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
-                    b.addPush(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(b, JavaKind.Byte, Stride.S1, value, max, fromIndex, ch));
-                    return true;
-                }
-            });
-        }
+        r.register(new InvocationPlugin("indexOfChar", byte[].class, int.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
+                b.addPush(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(b, JavaKind.Byte, Stride.S1, value, max, fromIndex, ch));
+                return true;
+            }
+        });
     }
 
     private static void registerStringUTF16Plugins(InvocationPlugins plugins, Replacements replacements) {
@@ -524,6 +520,27 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean isOptional() {
                 return JavaVersionUtil.JAVA_SPEC < 18;
+            }
+        });
+        r.register(new InvocationPlugin("hasNegatives", byte[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode ba, ValueNode off, ValueNode len) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    MetaAccessProvider metaAccess = b.getMetaAccess();
+                    int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
+                    helper.intrinsicRangeCheck(off, Condition.LT, ConstantNode.forInt(0));
+                    helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+
+                    ValueNode arrayLength = b.add(new ArrayLengthNode(ba));
+                    ValueNode limit = b.add(AddNode.create(off, len, NodeView.DEFAULT));
+                    helper.intrinsicRangeCheck(arrayLength, Condition.LT, limit);
+
+                    ValueNode arrayOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), off, NodeView.DEFAULT);
+                    ComputeObjectAddressNode array = b.add(new ComputeObjectAddressNode(ba, arrayOffset));
+
+                    b.addPush(JavaKind.Boolean, new HasNegativesNode(array, len));
+                    return true;
+                }
             }
         });
 

@@ -46,14 +46,11 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.function.Predicate;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -99,9 +96,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
     @SuppressWarnings({"deprecation", "unchecked"})
     @Override
     public final boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        ProcessorContext.enter(processingEnv);
-        try {
-            ProcessorContext context = ProcessorContext.getInstance();
+        try (ProcessorContext context = ProcessorContext.enter(processingEnv)) {
             String providerServiceBinName = processingEnv.getElementUtils().getBinaryName(context.getTypeElement(getProviderClass())).toString();
             if (roundEnv.processingOver()) {
                 generateServicesRegistration(providerServiceBinName, registrations);
@@ -130,8 +125,6 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 }
             }
             return true;
-        } finally {
-            ProcessorContext.leave();
         }
     }
 
@@ -143,33 +136,33 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
 
     abstract void implementMethod(TypeElement annotatedElement, CodeExecutableElement methodToImplement);
 
-    final void assertNoErrorExpected(Element e) {
-        ExpectError.assertNoErrorExpected(processingEnv, e);
+    static void assertNoErrorExpected(Element e) {
+        ExpectError.assertNoErrorExpected(e);
     }
 
     final void emitError(String msg, Element e) {
-        if (ExpectError.isExpectedError(processingEnv, e, msg)) {
+        if (ExpectError.isExpectedError(e, msg)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.ERROR, msg, e);
     }
 
     final void emitError(String msg, Element e, AnnotationMirror mirror, AnnotationValue value) {
-        if (ExpectError.isExpectedError(processingEnv, e, msg)) {
+        if (ExpectError.isExpectedError(e, msg)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.ERROR, msg, e, mirror, value);
     }
 
     final void emitWarning(String msg, Element e) {
-        if (ExpectError.isExpectedError(processingEnv, e, msg)) {
+        if (ExpectError.isExpectedError(e, msg)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.WARNING, msg, e);
     }
 
     final void emitWarning(String msg, Element e, AnnotationMirror mirror, AnnotationValue value) {
-        if (ExpectError.isExpectedError(processingEnv, e, msg)) {
+        if (ExpectError.isExpectedError(e, msg)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.WARNING, msg, e, mirror, value);
@@ -208,7 +201,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         }
         DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
         providerClass.accept(new GenerateOverrideVisitor(overrideType), null);
-        providerClass.accept(new FixWarningsVisitor(annotatedElement, overrideType), null);
+        providerClass.accept(new FixWarningsVisitor(overrideType), null);
         providerClass.accept(new CodeWriter(context.getEnvironment(), annotatedElement), null);
         return providerClass.getQualifiedName().toString();
     }
@@ -298,11 +291,4 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         return CompilerFactory.getCompiler(currentElement) instanceof JDTCompiler;
     }
 
-    @SuppressWarnings("serial")
-    static class SortedProperties extends Properties {
-        @Override
-        public synchronized Enumeration<Object> keys() {
-            return Collections.enumeration(new TreeSet<>(super.keySet()));
-        }
-    }
 }

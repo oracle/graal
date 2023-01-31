@@ -44,6 +44,8 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.NeverDefault;
+
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -95,6 +97,7 @@ public final class ProfiledArrayBuilder<T> {
 
     public abstract static class ArrayBuilderFactory {
 
+        @NeverDefault
         public static ArrayBuilderFactory create() {
             return new ProfiledArrayBuilderFactory();
         }

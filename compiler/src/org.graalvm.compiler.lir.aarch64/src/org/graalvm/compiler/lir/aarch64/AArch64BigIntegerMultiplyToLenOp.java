@@ -47,6 +47,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -57,19 +58,19 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 4333,
-          lineEnd   = 4371,
-          commit    = "5d48da4574f6aacb0db445dd5750566330aa383d",
+          lineStart = 4347,
+          lineEnd   = 4385,
+          commit    = "2afb4c3327b6830a009ee1ab8a1eb7803ef53007",
           sha1      = "b7579c8da82c51fb00317be26f7fa7d4ed1db927")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 2982,
-          lineEnd   = 2991,
-          commit    = "5d48da4574f6aacb0db445dd5750566330aa383d",
+          lineStart = 2964,
+          lineEnd   = 2973,
+          commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
           sha1      = "123de736fb13a15ffa6864d86b0e9d52123248a0")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 3179,
-          lineEnd   = 3489,
-          commit    = "5d48da4574f6aacb0db445dd5750566330aa383d",
+          lineStart = 3161,
+          lineEnd   = 3471,
+          commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
           sha1      = "e398a3781e3492a5625200e04ce934d022d3b2dc")
 // @formatter:on
 public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstruction {
@@ -120,12 +121,12 @@ public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstructio
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        assert xValue.getPlatformKind().equals(AArch64Kind.QWORD) : xValue;
-        assert xlenValue.getPlatformKind().equals(AArch64Kind.DWORD) : xlenValue;
-        assert yValue.getPlatformKind().equals(AArch64Kind.QWORD) : yValue;
-        assert ylenValue.getPlatformKind().equals(AArch64Kind.DWORD) : ylenValue;
-        assert zValue.getPlatformKind().equals(AArch64Kind.QWORD) : zValue;
-        assert zlenValue.getPlatformKind().equals(AArch64Kind.DWORD) : zlenValue;
+        GraalError.guarantee(xValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid xValue kind: %s", xValue);
+        GraalError.guarantee(xlenValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid xlenValue kind: %s", xlenValue);
+        GraalError.guarantee(yValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid yValue kind: %s", yValue);
+        GraalError.guarantee(ylenValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid ylenValue kind: %s", ylenValue);
+        GraalError.guarantee(zValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid zValue kind: %s", zValue);
+        GraalError.guarantee(zlenValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid zlenValue kind: %s", zlenValue);
 
         Register x = asRegister(xValue);
         Register xlen = asRegister(xlenValue);

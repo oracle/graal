@@ -188,6 +188,10 @@ public class ContextPreInitializationNativeImageTest {
             return true;
         }
 
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
     }
 
 }

@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.phases;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -47,14 +46,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
 
-    private final SnippetReflectionProvider snippetReflection;
-
     private final Map<ResolvedJavaType, ResolvedJavaType> primitiveTypes;
 
     private static final String SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME = "$assertionsDisabled";
 
-    public EarlyConstantFoldLoadFieldPlugin(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection) {
-        this.snippetReflection = snippetReflection;
+    public EarlyConstantFoldLoadFieldPlugin(MetaAccessProvider metaAccess) {
 
         primitiveTypes = new HashMap<>();
         for (JavaKind kind : JavaKind.values()) {
@@ -72,7 +68,7 @@ public class EarlyConstantFoldLoadFieldPlugin implements NodePlugin {
              * matter at all (because it is the hosted assertion status), we instead return the
              * appropriate runtime assertion status.
              */
-            Class<?> javaClass = OriginalClassProvider.getJavaClass(snippetReflection, field.getDeclaringClass());
+            Class<?> javaClass = OriginalClassProvider.getJavaClass(field.getDeclaringClass());
             boolean assertionsEnabled = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
             b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(!assertionsEnabled));
             return true;

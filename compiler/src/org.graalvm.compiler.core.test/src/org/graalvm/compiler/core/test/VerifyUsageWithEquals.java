@@ -149,8 +149,8 @@ public class VerifyUsageWithEquals extends VerifyPhase<CoreProviders> {
             ResolvedJavaMethod method = graph.method();
             ResolvedJavaType restrictedType = context.getMetaAccess().lookupJavaType(restrictedClass);
 
-            if (method.getDeclaringClass().equals(restrictedType)) {
-                // Allow violation in methods of the restricted type itself.
+            if (restrictedType.isAssignableFrom(method.getDeclaringClass())) {
+                // Allow violation in methods of the restricted type itself and its subclasses.
             } else if (isIllegalUsage(method, cn.getX(), cn.getY(), context.getMetaAccess()) || isIllegalUsage(method, cn.getY(), cn.getX(), context.getMetaAccess())) {
                 throw new VerificationError("Verification of " + restrictedClass.getName() + " usage failed: Comparing " + cn.getX() + " and " + cn.getY() + " in " + method +
                                 " must use .equals() for object equality, not '==' or '!='");

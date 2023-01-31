@@ -1,0 +1,25 @@
+# missing err.h
+test-suite-3.2.src/SingleSource/Benchmarks/BenchmarkGame/Large/fasta.c
+
+# missing sys/time.h
+test-suite-3.2.src/SingleSource/Benchmarks/Misc/flops.c
+test-suite-3.2.src/SingleSource/Benchmarks/Misc/himenobmtxpa.c
+
+# missing seed48
+test-suite-3.2.src/SingleSource/Benchmarks/McGill/misr.c
+
+# missing random
+test-suite-3.2.src/SingleSource/Benchmarks/Misc/ReedSolomon.c
+
+# missing alloca.h
+test-suite-3.2.src/SingleSource/Regression/C/2004-08-12-InlinerAndAllocas.c
+
+# undefined symbol ffs
+test-suite-3.2.src/SingleSource/UnitTests/2005-05-11-Popcount-ffs-fls.c
+
+# This header is specific to ARM
+test-suite-3.2.src/SingleSource/UnitTests/Vector/NEON/simple.c
+
+# path too long
+test-suite-3.2.src/SingleSource/Benchmarks/Polybench/datamining/covariance/covariance.c
+

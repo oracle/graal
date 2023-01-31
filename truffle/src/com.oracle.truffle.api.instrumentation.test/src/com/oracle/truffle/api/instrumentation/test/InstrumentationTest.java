@@ -218,6 +218,19 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         assertNotNull("At least one Runnable found", start);
     }
 
+    @Test
+    public void queryHostLanguage() throws Exception {
+        @SuppressWarnings("unchecked")
+        Class<? extends TruffleLanguage<?>> hostLanguage = (Class<? extends TruffleLanguage<?>>) Class.forName("com.oracle.truffle.host.HostLanguage");
+        LanguageInfo hostInfo = instrumentEnv.getLanguageInfo(hostLanguage);
+        Runnable r = instrumentEnv.lookup(hostInfo, Runnable.class);
+        assertNull(r);
+        Object lv = instrumentEnv.getLanguageView(hostInfo, 42);
+        assertNotNull(lv);
+        Object scope = instrumentEnv.getScope(hostInfo);
+        assertNotNull(scope);
+    }
+
     @Test(expected = IllegalStateException.class) // IllegalStateException: Engine is already closed
     public void queryInstrumentsAfterDisposeDoesnotEnable() throws Exception {
         engine = Engine.newBuilder().err(err).build();
@@ -1181,17 +1194,17 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public void testOutputConsumer() throws IOException {
         try {
             // print without instruments
-            String rout = run("PRINT(OUT, InitialToStdOut)");
+            String rout = run("PRINT(OUT, CONSTANT(\"InitialToStdOut\"))");
             Assert.assertEquals("InitialToStdOut", rout);
-            run("PRINT(ERR, InitialToStdErr)");
+            run("PRINT(ERR, CONSTANT(\"InitialToStdErr\"))");
             Assert.assertEquals("InitialToStdErr", err.toString());
             err.reset();
 
             // turn instruments on
             assureEnabled(engine.getInstruments().get("testOutputConsumerArray"));
             assureEnabled(engine.getInstruments().get("testOutputConsumerPiped"));
-            context.eval(lines("PRINT(OUT, OutputToStdOut)"));
-            context.eval(lines("PRINT(ERR, OutputToStdErr)"));
+            context.eval(lines("PRINT(OUT, CONSTANT(\"OutputToStdOut\"))"));
+            context.eval(lines("PRINT(ERR, CONSTANT(\"OutputToStdErr\"))"));
             // test that the output goes eveywhere
             Assert.assertEquals("OutputToStdOut", getOut());
             Assert.assertEquals("OutputToStdOut", TestOutputConsumerArray.getOut());
@@ -1209,8 +1222,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
             // close piped err stream and test that print still works
             TestOutputConsumerPiped.fromErr.close();
-            context.eval(lines("PRINT(OUT, MoreOutputToStdOut)"));
-            context.eval(lines("PRINT(ERR, MoreOutputToStdErr)"));
+            context.eval(lines("PRINT(OUT, CONSTANT(\"MoreOutputToStdOut\"))"));
+            context.eval(lines("PRINT(ERR, CONSTANT(\"MoreOutputToStdErr\"))"));
             Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", out.toString());
             Assert.assertEquals("OutputToStdOutMoreOutputToStdOut", TestOutputConsumerArray.getOut());
             String errorMsg = "java.lang.Exception: Output operation write(B[II) failed for java.io.PipedOutputStream";
@@ -1225,7 +1238,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             err.reset();
 
             // the I/O error is not printed again
-            context.eval(lines("PRINT(ERR, EvenMoreOutputToStdErr)"));
+            context.eval(lines("PRINT(ERR, CONSTANT(\"EvenMoreOutputToStdErr\"))"));
             Assert.assertEquals("EvenMoreOutputToStdErr", err.toString());
             Assert.assertEquals("OutputToStdErrMoreOutputToStdErrEvenMoreOutputToStdErr", TestOutputConsumerArray.getErr());
 
@@ -1234,8 +1247,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             setup();
             out.reset();
             err.reset();
-            context.eval(lines("PRINT(OUT, FinalOutputToStdOut)"));
-            context.eval(lines("PRINT(ERR, FinalOutputToStdErr)"));
+            context.eval(lines("PRINT(OUT, CONSTANT(\"FinalOutputToStdOut\"))"));
+            context.eval(lines("PRINT(ERR, CONSTANT(\"FinalOutputToStdErr\"))"));
             Assert.assertEquals("FinalOutputToStdOut", out.toString());
             Assert.assertEquals("FinalOutputToStdErr", err.toString());
             // nothing more printed to the disabled instrument

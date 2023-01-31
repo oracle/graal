@@ -52,4 +52,8 @@ final class DSLAccessor extends Accessor {
     static NodeSupport nodeAccessor() {
         return ACCESSOR.nodeSupport();
     }
+
+    static RuntimeSupport runtimeAccessor() {
+        return ACCESSOR.runtimeSupport();
+    }
 }

@@ -62,6 +62,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -74,9 +75,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 2839,
-          lineEnd   = 3099,
-          commit    = "77e21c57ce00463db4cc3d87f93729cbfe2c96b4",
+          lineStart = 2848,
+          lineEnd   = 3108,
+          commit    = "4a300818fe7a47932c5b762ccd3b948815a31974",
           sha1      = "38c4f5631ab24e1a873f55d655293b117fc2a342")
 // @formatter:on
 public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
@@ -131,14 +132,14 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        assert inValue.getPlatformKind().equals(AArch64Kind.QWORD) : inValue;
-        assert outValue.getPlatformKind().equals(AArch64Kind.QWORD) : outValue;
-        assert keyValue.getPlatformKind().equals(AArch64Kind.QWORD) : keyValue;
-        assert counterValue.getPlatformKind().equals(AArch64Kind.QWORD) : counterValue;
-        assert lenValue.getPlatformKind().equals(AArch64Kind.DWORD) : lenValue;
-        assert encryptedCounterValue.getPlatformKind().equals(AArch64Kind.QWORD) : encryptedCounterValue;
-        assert usedPtrValue.getPlatformKind().equals(AArch64Kind.QWORD) : usedPtrValue;
-        assert resultValue.getPlatformKind().equals(AArch64Kind.DWORD) : resultValue;
+        GraalError.guarantee(inValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid inValue kind: %s", inValue);
+        GraalError.guarantee(outValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid outValue kind: %s", outValue);
+        GraalError.guarantee(keyValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid keyValue kind: %s", keyValue);
+        GraalError.guarantee(counterValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid counterValue kind: %s", counterValue);
+        GraalError.guarantee(lenValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid lenValue kind: %s", lenValue);
+        GraalError.guarantee(encryptedCounterValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid encryptedCounterValue kind: %s", encryptedCounterValue);
+        GraalError.guarantee(usedPtrValue.getPlatformKind().equals(AArch64Kind.QWORD), "Invalid usedPtrValue kind: %s", usedPtrValue);
+        GraalError.guarantee(resultValue.getPlatformKind().equals(AArch64Kind.DWORD), "Invalid resultValue kind: %s", resultValue);
 
         Register in = asRegister(inValue);
         Register out = asRegister(outValue);
@@ -312,7 +313,7 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
 
     private static void emitCTRLargeBlock(AArch64MacroAssembler masm, int bulkWidth, Register in, Register out, Register counter,
                     Register usedPtr, Register len, Register used, Register offset, Register keylen) {
-        assert bulkWidth == 4 || bulkWidth == 8 : "bulk_width must be 4 or 8";
+        GraalError.guarantee(bulkWidth == 4 || bulkWidth == 8, "bulk_width must be 4 or 8");
 
         try (AArch64MacroAssembler.ScratchRegister sc = masm.getScratchRegister()) {
             Register rscratch = sc.getRegister();

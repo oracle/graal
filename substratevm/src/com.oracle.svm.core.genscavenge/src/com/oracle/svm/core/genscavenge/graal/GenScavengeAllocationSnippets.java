@@ -63,7 +63,7 @@ import com.oracle.svm.core.thread.ContinuationSupport;
 
 import jdk.vm.ci.meta.JavaKind;
 
-final class GenScavengeAllocationSnippets implements Snippets {
+public final class GenScavengeAllocationSnippets implements Snippets {
     @Snippet
     public static Object formatObjectSnippet(Word memory, DynamicHub hub, boolean rememberedSet, AllocationSnippets.FillContent fillContents, boolean emitMemoryBarrier,
                     @ConstantParameter AllocationSnippets.AllocationSnippetCounters snippetCounters) {
@@ -124,7 +124,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
         private final SnippetInfo formatStoredContinuation;
         private final SnippetInfo formatPod;
 
-        Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets.Templates baseTemplates) {
+        public Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets.Templates baseTemplates) {
             super(options, providers);
             this.baseTemplates = baseTemplates;
             formatObject = snippet(providers, GenScavengeAllocationSnippets.class, "formatObjectSnippet");

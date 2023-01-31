@@ -153,6 +153,7 @@ if mx.suite('tools', fatalIfMissing=False) is not None and mx.suite('graal-js', 
         provided_executables=[('tools:VISUALVM_PLATFORM_SPECIFIC', './bin/<exe:jvisualvm>')],
         installable=True,
         extra_installable_qualifiers=['ce'],
+        stability="supported",
     ))
 
 polybench_benchmark_methods = ["_run"]
@@ -343,7 +344,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         defaultBuild=False,
                     ))
                     # add jars to the layout of the benchmark distribution
-                    _add_project_to_dist('./interpreter/{}.jar'.format(simple_name), dist_name,
+                    _add_project_to_dist(f'./interpreter/{simple_name}.jar', dist_name,
                         source='dependency:{name}/polybench-espresso-' + simple_name.lower() + '.jar')
 
 
@@ -356,7 +357,7 @@ class GraalVmSymlinks(mx.Project):
             self.links += [(relpath(join(sdk_suite.dir, link_name), _suite.dir), join(_suite.dir, link_name))]
 
     def getArchivableResults(self, use_relpath=True, single=False):
-        raise mx.abort("Project '{}' cannot be archived".format(self.name))
+        raise mx.abort(f"Project '{self.name}' cannot be archived")
 
     def getBuildTask(self, args):
         return GraalVmSymLinksBuildTask(args, 1, self)
@@ -373,12 +374,12 @@ class GraalVmSymLinksBuildTask(mx.ProjectBuildTask):
         if mx.get_os() != 'windows':
             for src, dest in self.subject.links:
                 if not os.path.lexists(dest):
-                    return True, '{} does not exist'.format(dest)
+                    return True, f'{dest} does not exist'
                 link_file = mx.TimeStampFile(dest, False)
                 if newestInput and link_file.isOlderThan(newestInput):
-                    return True, '{} is older than {}'.format(dest, newestInput)
+                    return True, f'{dest} is older than {newestInput}'
                 if src != os.readlink(dest):
-                    return True, '{} points to the wrong file'.format(dest)
+                    return True, f'{dest} points to the wrong file'
         return False, None
 
     def build(self):

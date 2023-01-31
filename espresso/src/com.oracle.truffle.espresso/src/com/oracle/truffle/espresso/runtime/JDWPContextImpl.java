@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,6 @@ import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -90,6 +89,7 @@ public final class JDWPContextImpl implements JDWPContext {
     private final InnerClassRedefiner innerClassRedefiner;
     private RedefinitionPluginHandler redefinitionPluginHandler;
     private final ArrayList<ReloadingAction> classInitializerActions = new ArrayList<>(1);
+    private DebuggerController controller;
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
@@ -100,11 +100,12 @@ public final class JDWPContextImpl implements JDWPContext {
 
     public void jdwpInit(TruffleLanguage.Env env, Object mainThread, VMEventListenerImpl vmEventListener) {
         Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
-        DebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
-        vmEventListener.activate(mainThread, control, this);
-        setup.setup(debugger, control, context.getEspressoEnv().JDWPOptions, this, mainThread, vmEventListener);
+        this.controller = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
+        ids.injectController(controller);
+        vmEventListener.activate(mainThread, controller, this);
+        setup.setup(debugger, controller, context.getEspressoEnv().JDWPOptions, this, mainThread, vmEventListener);
         redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
-        classRedefinition = context.createClassRedefinition(ids, redefinitionPluginHandler);
+        classRedefinition = context.createClassRedefinition(ids, redefinitionPluginHandler, controller);
     }
 
     public void finalizeContext() {
@@ -613,7 +614,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
         MethodRef method = context.getMeta().java_lang_Object_wait.getMethodVersion();
-        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null, null);
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null, null, controller);
     }
 
     @Override
@@ -738,7 +739,7 @@ public final class JDWPContextImpl implements JDWPContext {
         // list to collect all changed classes
         List<ObjectKlass> changedKlasses = new ArrayList<>(redefineInfos.size());
         try {
-            JDWP.LOGGER.fine(() -> "Redefining " + redefineInfos.size() + " classes");
+            controller.fine(() -> "Redefining " + redefineInfos.size() + " classes");
 
             // begin redefine transaction
             classRedefinition.begin();
@@ -766,14 +767,14 @@ public final class JDWPContextImpl implements JDWPContext {
                 } catch (Throwable t) {
                     // Some anomalies when rerunning class initializers
                     // to be expected. Treat them as non-fatal.
-                    JDWP.LOGGER.warning(() -> "exception while re-running a class initializer!");
+                    controller.warning(() -> "exception while re-running a class initializer!");
                 }
             });
             // run post redefinition plugins before ending the redefinition transaction
             try {
                 classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
             } catch (Throwable t) {
-                JDWP.LOGGER.throwing(JDWPContextImpl.class.getName(), "redefineClasses", t);
+                controller.severe(() -> JDWPContextImpl.class.getName() + ": redefineClasses: " + t.getMessage());
             }
         } catch (RedefintionNotSupportedException ex) {
             return ex.getErrorCode();
@@ -803,7 +804,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Collections.sort(changePackets, new HierarchyComparator());
 
         for (ChangePacket packet : changePackets) {
-            JDWP.LOGGER.fine(() -> "Redefining class " + packet.info.getNewName());
+            controller.fine(() -> "Redefining class " + packet.info.getNewName());
             int result = classRedefinition.redefineClass(packet, invalidatedClasses, redefinedClasses);
             if (result != 0) {
                 throw new RedefintionNotSupportedException(result);
@@ -814,7 +815,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Collections.sort(invalidatedClasses, new SubClassHierarchyComparator());
         for (ObjectKlass invalidatedClass : invalidatedClasses) {
             if (!redefinedClasses.contains(invalidatedClass)) {
-                JDWP.LOGGER.fine(() -> "Refreshing invalidated class " + invalidatedClass.getName());
+                controller.fine(() -> "Refreshing invalidated class " + invalidatedClass.getName());
                 invalidatedClass.swapKlassVersion(ids);
             }
         }

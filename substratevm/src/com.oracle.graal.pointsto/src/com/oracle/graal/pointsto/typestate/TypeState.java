@@ -115,8 +115,16 @@ public abstract class TypeState {
         return false;
     }
 
-    public boolean isConstant() {
-        return false;
+    /**
+     * Returns a non-null value when this type state represents a single constant value, or null if
+     * this type state is not a single constant.
+     *
+     * Note that the {@link #canBeNull()} flag still applies when a constant is returned. A type
+     * state that is a "constant or null" both returns a non-null result for {@link #asConstant()}}
+     * and true for {@link #canBeNull()}.
+     */
+    public JavaConstant asConstant() {
+        return null;
     }
 
     public boolean isEmpty() {
@@ -185,9 +193,7 @@ public abstract class TypeState {
     public static TypeState forConstant(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
         assert !constant.isNull();
         assert exactType.isArray() || (exactType.isInstanceClass() && !Modifier.isAbstract(exactType.getModifiers())) : exactType;
-
-        AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, constant, exactType);
-        return forNonNullObject(bb, constantObject);
+        return bb.analysisPolicy().constantTypeState(bb, constant, exactType);
     }
 
     public static SingleTypeState forExactType(PointsToAnalysis bb, AnalysisType exactType, boolean canBeNull) {

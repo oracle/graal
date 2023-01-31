@@ -33,7 +33,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
-import org.graalvm.compiler.truffle.compiler.amd64.substitutions.AMD64TruffleInvocationPlugins;
+import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -58,7 +58,7 @@ public class ArrayUtilsRegionEqualsWithMaskConstantTest extends GraalCompilerTes
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        AMD64TruffleInvocationPlugins.register(getBackend().getTarget().arch, invocationPlugins, getReplacements());
+        TruffleInvocationPlugins.register(getBackend().getTarget().arch, invocationPlugins, getReplacements());
         super.registerInvocationPlugins(invocationPlugins);
     }
 

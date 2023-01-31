@@ -39,32 +39,42 @@ import org.graalvm.nativeimage.Platform.WINDOWS;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.UserError.UserException;
 
 public final class VMInspectionOptions {
     private static final String ENABLE_MONITORING_OPTION = "enable-monitoring";
+    private static final String MONITORING_DEFAULT_NAME = "<deprecated-default>";
     private static final String MONITORING_ALL_NAME = "all";
     private static final String MONITORING_HEAPDUMP_NAME = "heapdump";
     private static final String MONITORING_JFR_NAME = "jfr";
     private static final String MONITORING_JVMSTAT_NAME = "jvmstat";
-    private static final String MONITORING_ALLOWED_VALUES = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', or '" + MONITORING_ALL_NAME +
-                    "' (defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
+    private static final String MONITORING_ALLOWED_VALUES = "`" + MONITORING_HEAPDUMP_NAME + "`, `" + MONITORING_JFR_NAME + "`, `" + MONITORING_JVMSTAT_NAME + "`, or `" + MONITORING_ALL_NAME +
+                    "` (deprecated behavior: defaults to `" + MONITORING_ALL_NAME + "` if no argument is provided)";
 
-    @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_ALL_NAME) //
+    @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_DEFAULT_NAME) //
     @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES + ". " +
-                    "For example: `--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JVMSTAT_NAME + "`.", type = OptionType.User) //
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings(),
+                    "For example: `--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JFR_NAME + "`.", type = OptionType.User) //
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter(),
                     VMInspectionOptions::validateEnableMonitoringFeatures);
 
-    public static void validateEnableMonitoringFeatures(OptionKey<?> optionKey) {
+    public static void validateEnableMonitoringFeatures(@SuppressWarnings("unused") OptionKey<?> optionKey) {
         Set<String> enabledFeatures = getEnabledMonitoringFeatures();
-        enabledFeatures.removeAll(List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_ALL_NAME));
-        if (!enabledFeatures.isEmpty()) {
-            throw UserError.abort("The option %s contains invalid value(s): %s. It can only contain %s.", optionKey.getName(), String.join(", ", enabledFeatures), MONITORING_ALLOWED_VALUES);
+        if (enabledFeatures.contains(MONITORING_DEFAULT_NAME)) {
+            System.out.printf(
+                            "Warning: `%s` without an argument is deprecated. Please always explicitly specify the list of monitoring features to be enabled (for example, `%s`).%n",
+                            getDefaultMonitoringCommandArgument(),
+                            SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, String.join(",", List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME))));
         }
+        enabledFeatures.removeAll(List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_ALL_NAME, MONITORING_DEFAULT_NAME));
+        if (!enabledFeatures.isEmpty()) {
+            throw UserError.abort("The `%s` option contains invalid value(s): %s. It can only contain %s.", getDefaultMonitoringCommandArgument(), String.join(", ", enabledFeatures),
+                            MONITORING_ALLOWED_VALUES);
+        }
+    }
+
+    private static String getDefaultMonitoringCommandArgument() {
+        return SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_DEFAULT_NAME);
     }
 
     @Fold
@@ -73,12 +83,12 @@ public final class VMInspectionOptions {
     }
 
     public static Set<String> getEnabledMonitoringFeatures() {
-        return new HashSet<>(OptionUtils.flatten(",", EnableMonitoringFeatures.getValue()));
+        return new HashSet<>(EnableMonitoringFeatures.getValue().values());
     }
 
     private static boolean hasAllOrKeywordMonitoringSupport(String keyword) {
         Set<String> enabledFeatures = getEnabledMonitoringFeatures();
-        return enabledFeatures.contains(MONITORING_ALL_NAME) || enabledFeatures.contains(keyword);
+        return enabledFeatures.contains(MONITORING_ALL_NAME) || enabledFeatures.contains(MONITORING_DEFAULT_NAME) || enabledFeatures.contains(keyword);
     }
 
     @Fold
@@ -86,6 +96,11 @@ public final class VMInspectionOptions {
         return hasAllOrKeywordMonitoringSupport(MONITORING_HEAPDUMP_NAME) && !Platform.includedIn(WINDOWS.class);
     }
 
+    /**
+     * Use {@link com.oracle.svm.core.jfr.HasJfrSupport#get()} instead and don't call this method
+     * directly because the VM inspection options are only one of multiple ways to enable the JFR
+     * support.
+     */
     @Fold
     public static boolean hasJfrSupport() {
         return hasAllOrKeywordMonitoringSupport(MONITORING_JFR_NAME) && !Platform.includedIn(WINDOWS.class);
@@ -97,27 +112,16 @@ public final class VMInspectionOptions {
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue && !SubstrateOptions.EnableSignalAPI.getValueOrDefault(values)) {
-                throw signalAPIRequiredError("SIGUSR2");
-            }
-        }
-    };
+    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateOnSignalOption);
 
     @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue && !SubstrateOptions.EnableSignalAPI.getValueOrDefault(values)) {
-                throw signalAPIRequiredError("SIGQUIT/SIGBREAK");
-            }
-        }
-    };
+    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false, VMInspectionOptions::validateOnSignalOption);
 
-    private static UserException signalAPIRequiredError(String requiredSignals) {
-        return UserError.abort("Cannot install signal handler for %s when Signal API is disabled. Please enable with `-H:+%s`.", requiredSignals, SubstrateOptions.EnableSignalAPI.getName());
+    private static void validateOnSignalOption(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue() && !SubstrateOptions.EnableSignalAPI.getValue()) {
+            throw UserError.abort("The option %s requires the Signal API, but the Signal API is disabled. Please enable with `-H:+%s`.",
+                            optionKey.getName(), SubstrateOptions.EnableSignalAPI.getName());
+        }
     }
 
     static class DeprecatedOptions {

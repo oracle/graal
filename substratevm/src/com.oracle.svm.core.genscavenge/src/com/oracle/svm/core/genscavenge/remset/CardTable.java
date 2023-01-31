@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge.remset;
 import java.lang.ref.Reference;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -88,7 +89,13 @@ final class CardTable {
     }
 
     public static void setDirty(Pointer table, UnsignedWord index) {
-        table.writeByte(indexToTableOffset(index), (byte) DIRTY_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
+        UnsignedWord tableOffset = indexToTableOffset(index);
+        byte valueBefore = table.readByte(tableOffset, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
+        // Using a likely probability should typically avoid placing the write below at a separate
+        // location with an extra jump back to after the barrier for more compact code.
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.LIKELY_PROBABILITY, valueBefore != DIRTY_ENTRY)) {
+            table.writeByte(tableOffset, (byte) DIRTY_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
+        }
     }
 
     public static void setClean(Pointer table, UnsignedWord index) {

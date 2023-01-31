@@ -57,6 +57,12 @@ public class GDSChannelFactory implements SoftwareChannel.Factory {
         OPTIONS.put(GdsCommands.LONG_OPTION_GDS_CONFIG, GdsCommands.OPTION_GDS_CONFIG);
         OPTIONS.put(GdsCommands.OPTION_SHOW_TOKEN, "");
         OPTIONS.put(GdsCommands.LONG_OPTION_SHOW_TOKEN, GdsCommands.OPTION_SHOW_TOKEN);
+        OPTIONS.put(GdsCommands.OPTION_REVOKE_TOKEN, "s");
+        OPTIONS.put(GdsCommands.LONG_OPTION_REVOKE_TOKEN, GdsCommands.OPTION_REVOKE_TOKEN);
+        OPTIONS.put(GdsCommands.OPTION_REVOKE_ALL_TOKENS, "s");
+        OPTIONS.put(GdsCommands.LONG_OPTION_REVOKE_ALL_TOKENS, GdsCommands.OPTION_REVOKE_ALL_TOKENS);
+        OPTIONS.put(GdsCommands.OPTION_REVOKE_CURRENT_TOKEN, "");
+        OPTIONS.put(GdsCommands.LONG_OPTION_REVOKE_CURRENT_TOKEN, GdsCommands.OPTION_REVOKE_CURRENT_TOKEN);
     }
 
     @Override

@@ -84,6 +84,7 @@ import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.code.DeoptimizationUtils;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DeoptSourceFrameInfo;
@@ -268,41 +269,41 @@ public abstract class NativeImageCodeCache {
 
         Set<HostedField> includedFields = new HashSet<>();
         Set<HostedMethod> includedMethods = new HashSet<>();
-        Set<Field> configurationFields = reflectionSupport.getReflectionFields();
-        Set<Executable> configurationExecutables = reflectionSupport.getReflectionExecutables();
+        Map<AnalysisField, Field> configurationFields = reflectionSupport.getReflectionFields();
+        Map<AnalysisMethod, Executable> configurationExecutables = reflectionSupport.getReflectionExecutables();
 
-        for (AccessibleObject object : reflectionSupport.getHeapReflectionObjects()) {
-            if (object instanceof Field) {
-                HostedField hostedField = hMetaAccess.lookupJavaField((Field) object);
-                if (!includedFields.contains(hostedField)) {
-                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedField, object, configurationFields.contains(object));
-                    includedFields.add(hostedField);
-                }
-            } else if (object instanceof Executable) {
-                HostedMethod hostedMethod = hMetaAccess.lookupJavaMethod((Executable) object);
-                if (!includedMethods.contains(hostedMethod)) {
-                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedMethod, object, configurationExecutables.contains(object));
-                    includedMethods.add(hostedMethod);
-                }
+        reflectionSupport.getHeapReflectionFields().forEach(((analysisField, reflectField) -> {
+            HostedField hostedField = hUniverse.lookup(analysisField);
+            if (!includedFields.contains(hostedField)) {
+                reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedField, reflectField, configurationFields.containsKey(analysisField));
+                includedFields.add(hostedField);
             }
-        }
+        }));
 
-        for (Field reflectField : configurationFields) {
-            HostedField field = hMetaAccess.lookupJavaField(reflectField);
-            if (!includedFields.contains(field)) {
-                reflectionMetadataEncoder.addReflectionFieldMetadata(hMetaAccess, field, reflectField);
-                includedFields.add(field);
+        reflectionSupport.getHeapReflectionExecutables().forEach(((analysisMethod, reflectMethod) -> {
+            HostedMethod hostedMethod = hUniverse.lookup(analysisMethod);
+            if (!includedMethods.contains(hostedMethod)) {
+                reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedMethod, reflectMethod, configurationExecutables.containsKey(analysisMethod));
+                includedMethods.add(hostedMethod);
             }
-        }
+        }));
 
-        for (Executable reflectMethod : configurationExecutables) {
-            HostedMethod method = hMetaAccess.lookupJavaMethod(reflectMethod);
+        configurationFields.forEach(((analysisField, reflectField) -> {
+            HostedField hostedField = hUniverse.lookup(analysisField);
+            if (!includedFields.contains(hostedField)) {
+                reflectionMetadataEncoder.addReflectionFieldMetadata(hMetaAccess, hostedField, reflectField);
+                includedFields.add(hostedField);
+            }
+        }));
+
+        configurationExecutables.forEach(((analysisMethod, reflectMethod) -> {
+            HostedMethod method = hUniverse.lookup(analysisMethod);
             if (!includedMethods.contains(method)) {
-                Object accessor = reflectionSupport.getAccessor(reflectMethod);
+                Object accessor = reflectionSupport.getAccessor(analysisMethod);
                 reflectionMetadataEncoder.addReflectionExecutableMetadata(hMetaAccess, method, reflectMethod, accessor);
                 includedMethods.add(method);
             }
-        }
+        }));
 
         for (Object field : reflectionSupport.getHidingReflectionFields()) {
             AnalysisField hidingField = (AnalysisField) field;
@@ -358,14 +359,7 @@ public abstract class NativeImageCodeCache {
             System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
         }
 
-        HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
-        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
-        reflectionMetadataEncoder.encodeAllAndInstall();
-        imageCodeInfo.setCodeStart(firstMethod);
-        imageCodeInfo.setCodeSize(codeSize);
-        imageCodeInfo.setDataOffset(codeSize);
-        imageCodeInfo.setDataSize(WordFactory.zero()); // (only for data immediately after code)
-        imageCodeInfo.setCodeAndDataMemorySize(codeSize);
+        HostedImageCodeInfo imageCodeInfo = installCodeInfo(firstMethod, codeSize, codeInfoEncoder, reflectionMetadataEncoder);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
             System.out.println("****Start Code Info Encoder Counters****");
@@ -384,6 +378,18 @@ public abstract class NativeImageCodeCache {
         }
 
         assert verifyMethods(codeInfoEncoder, imageCodeInfo);
+    }
+
+    protected HostedImageCodeInfo installCodeInfo(CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder, ReflectionMetadataEncoder reflectionMetadataEncoder) {
+        HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
+        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
+        reflectionMetadataEncoder.encodeAllAndInstall();
+        imageCodeInfo.setCodeStart(firstMethod);
+        imageCodeInfo.setCodeSize(codeSize);
+        imageCodeInfo.setDataOffset(codeSize);
+        imageCodeInfo.setDataSize(WordFactory.zero()); // (only for data immediately after code)
+        imageCodeInfo.setCodeAndDataMemorySize(codeSize);
+        return imageCodeInfo;
     }
 
     protected void encodeMethod(CodeInfoEncoder codeInfoEncoder, Pair<HostedMethod, CompilationResult> pair) {
@@ -602,7 +608,7 @@ public abstract class NativeImageCodeCache {
 
         @Override
         protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry) {
-            if (ImageSingletons.contains(ProfilingSampler.class) && ImageSingletons.lookup(ProfilingSampler.class).isCollectingActive()) {
+            if (ImageSingletons.contains(ProfilingSampler.class)) {
                 return true;
             }
 
@@ -633,38 +639,7 @@ public abstract class NativeImageCodeCache {
 
         @Override
         protected boolean isDeoptEntry(ResolvedJavaMethod method, CompilationResult compilation, Infopoint infopoint) {
-            BytecodeFrame topFrame = infopoint.debugInfo.frame();
-            BytecodeFrame rootFrame = topFrame;
-            while (rootFrame.caller() != null) {
-                rootFrame = rootFrame.caller();
-            }
-            assert rootFrame.getMethod().equals(method);
-
-            boolean isBciDeoptEntry = ((HostedMethod) method).compilationInfo.isDeoptEntry(rootFrame.getBCI(), rootFrame.duringCall, rootFrame.rethrowException);
-            if (isBciDeoptEntry) {
-                /*
-                 * When an infopoint's bci corresponds to a deoptimization entrypoint, it does not
-                 * necessarily mean that the infopoint itself is for a deoptimization entrypoint.
-                 * This is because the infopoint can also be for present debugging purposes and
-                 * happen to have the same bci. Further checks are needed to determine actual
-                 * deoptimization entrypoints.
-                 */
-                assert topFrame == rootFrame : "Deoptimization target has inlined frame: " + topFrame;
-                if (topFrame.duringCall) {
-                    /*
-                     * During call entrypoints must always be linked to a call.
-                     */
-                    VMError.guarantee(infopoint instanceof Call, String.format("Unexpected infopoint type: %s\nFrame: %s", infopoint, topFrame));
-                    return compilation.isValidCallDeoptimizationState((Call) infopoint);
-                } else {
-                    /*
-                     * Other deoptimization entrypoints correspond to an DeoptEntryOp.
-                     */
-                    return infopoint instanceof DeoptEntryInfopoint;
-                }
-            }
-
-            return false;
+            return DeoptimizationUtils.isDeoptEntry((HostedMethod) method, compilation, infopoint);
         }
     }
 

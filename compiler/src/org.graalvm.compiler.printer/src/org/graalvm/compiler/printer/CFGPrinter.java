@@ -36,7 +36,8 @@ import java.util.TreeMap;
 
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.core.match.ComplexMatchValue;
 import org.graalvm.compiler.graph.Node;
@@ -58,7 +59,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
 import jdk.vm.ci.code.DebugInfo;
@@ -97,15 +98,16 @@ class CFGPrinter extends CompilationPrinter {
      * Prints the specified list of blocks.
      *
      * @param label A label describing the compilation phase that produced the control flow graph.
-     * @param blocks The list of blocks to be printed.
+     * @param blockIds The list of block ids for which the associated blocks have to be printed.
      */
-    public void printCFG(String label, AbstractBlockBase<?>[] blocks) {
+    public void printCFG(String label, char[] blockIds) {
         begin("cfg");
         out.print("name \"").print(label).println('"');
-        for (AbstractBlockBase<?> block : blocks) {
-            if (block == null) {
+        for (char blockId : blockIds) {
+            if (blockId == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
+            BasicBlock<?> block = cfg.getBlocks()[blockId];
             printBlockProlog(block);
             printBlockEpilog(block);
         }
@@ -118,12 +120,12 @@ class CFGPrinter extends CompilationPrinter {
         }
     }
 
-    private void printBlockEpilog(AbstractBlockBase<?> block) {
+    private void printBlockEpilog(BasicBlock<?> block) {
         printLIR(block);
         end("block");
     }
 
-    private void printBlockProlog(AbstractBlockBase<?> block) {
+    private void printBlockProlog(BasicBlock<?> block) {
         begin("block");
 
         out.print("name \"").print(blockToString(block)).println('"');
@@ -131,13 +133,15 @@ class CFGPrinter extends CompilationPrinter {
         out.println("to_bci -1");
 
         out.print("predecessors ");
-        for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+        for (int i = 0; i < block.getPredecessorCount(); i++) {
+            BasicBlock<?> pred = block.getPredecessorAt(i);
             out.print("\"").print(blockToString(pred)).print("\" ");
         }
         out.println();
 
         out.print("successors ");
-        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            BasicBlock<?> succ = block.getSuccessorAt(i);
             if (!succ.isExceptionEntry()) {
                 out.print("\"").print(blockToString(succ)).print("\" ");
             }
@@ -145,7 +149,8 @@ class CFGPrinter extends CompilationPrinter {
         out.println();
 
         out.print("xhandlers");
-        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            BasicBlock<?> succ = block.getSuccessorAt(i);
             if (succ.isExceptionEntry()) {
                 out.print("\"").print(blockToString(succ)).print("\" ");
             }
@@ -315,7 +320,7 @@ class CFGPrinter extends CompilationPrinter {
      *
      * @param block the block to print
      */
-    private void printLIR(AbstractBlockBase<?> block) {
+    private void printLIR(BasicBlock<?> block) {
         if (lir == null) {
             return;
         }
@@ -382,17 +387,17 @@ class CFGPrinter extends CompilationPrinter {
         return prefix + node.toString(Verbosity.Id);
     }
 
-    private String blockToString(AbstractBlockBase<?> block) {
-        if (lir == null && schedule == null && block instanceof Block) {
+    private String blockToString(BasicBlock<?> block) {
+        if (lir == null && schedule == null && block instanceof HIRBlock) {
             // During all the front-end phases, the block schedule is built only for the debug
             // output.
             // Therefore, the block numbers would be different for every CFG printed -> use the id
             // of the first instruction.
-            return "B" + ((Block) block).getBeginNode().toString(Verbosity.Id);
+            return "B" + ((HIRBlock) block).getBeginNode().toString(Verbosity.Id);
         } else {
             // LIR instructions contain references to blocks and these blocks are printed as the
             // blockID -> use the blockID.
-            return "B" + block.getId();
+            return "B" + (int) block.getId();
         }
     }
 
@@ -455,7 +460,7 @@ class CFGPrinter extends CompilationPrinter {
 
         begin("cfg");
         out.print("name \"").print(message).println('"');
-        for (Block b : schedule.getCFG().getBlocks()) {
+        for (HIRBlock b : schedule.getCFG().getBlocks()) {
             if (schedule.nodesFor(b) != null) {
                 printScheduledBlock(b, schedule.nodesFor(b));
             }
@@ -467,7 +472,7 @@ class CFGPrinter extends CompilationPrinter {
         printedNodes = null;
     }
 
-    private void printScheduledBlock(Block block, List<Node> nodesFor) {
+    private void printScheduledBlock(HIRBlock block, List<Node> nodesFor) {
         printBlockProlog(block);
         begin("IR");
         out.println("HIR");

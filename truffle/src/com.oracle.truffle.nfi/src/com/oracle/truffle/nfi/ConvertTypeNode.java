@@ -48,6 +48,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 @GenerateAOT
 abstract class ConvertTypeNode extends Node {
 
@@ -73,7 +75,7 @@ abstract class ConvertTypeNode extends Node {
     @GenerateUncached
     abstract static class ConvertToNativeNode extends ConvertTypeNode {
 
-        @Specialization(guards = "type.cachedState == convertImpl.typeState")
+        @Specialization(guards = "type.cachedState == convertImpl.typeState", limit = "3")
         Object doCached(NFIType type, Object value,
                         @Cached("type.cachedState.createToNative()") OptimizedConvertTypeNode convertImpl) throws UnsupportedTypeException {
             return convertImpl.execute(type, value);
@@ -88,7 +90,7 @@ abstract class ConvertTypeNode extends Node {
     @GenerateUncached
     abstract static class ConvertFromNativeNode extends ConvertTypeNode {
 
-        @Specialization(guards = "type.cachedState == convertImpl.typeState")
+        @Specialization(guards = "type.cachedState == convertImpl.typeState", limit = "3")
         Object doCached(NFIType type, Object value,
                         @Cached("type.cachedState.createFromNative()") OptimizedConvertTypeNode convertImpl) throws UnsupportedTypeException {
             return convertImpl.execute(type, value);

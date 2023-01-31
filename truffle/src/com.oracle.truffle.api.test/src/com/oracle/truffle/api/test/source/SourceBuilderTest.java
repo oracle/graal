@@ -527,6 +527,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertEquals("File sources with different content have the same URI", source1.getURI(), source2.getURI());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void jarURLGetsAName() throws IOException {
         setupEnv();
@@ -551,6 +552,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         sample.delete();
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testHttpURL() throws IOException, URISyntaxException {
         setupEnv();
@@ -612,6 +614,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertNewSourceChanged(source1);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testBuiltFromSourceURL() throws IOException, URISyntaxException {
         setupEnv();
@@ -919,6 +922,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void throwsErrorIfLangIsNull3() throws MalformedURLException {
         try {
@@ -1098,6 +1102,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testNotCanonicalizedNotExistingSourcePath() throws IOException {
         Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
@@ -1122,6 +1127,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static URL queryURL(URI uri) throws MalformedURLException {
         return new URL(uri.toString() + "?query");
     }

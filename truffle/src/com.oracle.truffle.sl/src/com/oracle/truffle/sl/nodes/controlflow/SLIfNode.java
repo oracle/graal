@@ -43,7 +43,7 @@ package com.oracle.truffle.sl.nodes.controlflow;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
@@ -72,7 +72,7 @@ public final class SLIfNode extends SLStatementNode {
      * (as opposed to {@link BinaryConditionProfile} implementation) transmits the probability of
      * the condition to be true to the compiler.
      */
-    private final ConditionProfile condition = ConditionProfile.createCountingProfile();
+    private final CountingConditionProfile condition = CountingConditionProfile.create();
 
     public SLIfNode(SLExpressionNode conditionNode, SLStatementNode thenPartNode, SLStatementNode elsePartNode) {
         this.conditionNode = SLUnboxNodeGen.create(conditionNode);

@@ -72,7 +72,7 @@ public abstract class ByteArrayLoad extends EspressoNode {
     public abstract byte execute(StaticObject receiver, int index);
 
     @Specialization
-    byte executeWithNullCheck(StaticObject array, int index,
+    byte doWithNullCheck(StaticObject array, int index,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck byteArrayLoad) {
         return byteArrayLoad.execute(nullCheck.execute(array), index);

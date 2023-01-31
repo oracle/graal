@@ -24,16 +24,14 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -82,8 +80,8 @@ public final class JfrNativeEventWriter {
      */
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void beginEvent(JfrNativeEventWriterData data, JfrEvent event, boolean large) {
-        assert SubstrateJVM.isRecording();
-        assert isValid(data);
+        assert SubstrateJVM.get().isRecording();
+        assert JfrNativeEventWriterDataAccess.verify(data) || !isValid(data);
         assert getUncommittedSize(data).equal(0);
         if (large) {
             reserve(data, Integer.BYTES);
@@ -193,7 +191,9 @@ public final class JfrNativeEventWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putString(JfrNativeEventWriterData data, String string) {
-        if (string.isEmpty()) {
+        if (string == null) {
+            putByte(data, JfrChunkWriter.StringEncoding.NULL.byteValue);
+        } else if (string.isEmpty()) {
             putByte(data, JfrChunkWriter.StringEncoding.EMPTY_STRING.byteValue);
         } else {
             int mUTF8Length = UninterruptibleUtils.String.modifiedUTF8Length(string, false);
@@ -208,17 +208,21 @@ public final class JfrNativeEventWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     public static void putEventThread(JfrNativeEventWriterData data) {
-        putThread(data, CurrentIsolate.getCurrentThread());
+        putThread(data, SubstrateJVM.getCurrentThreadId());
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    public static void putThread(JfrNativeEventWriterData data, IsolateThread isolateThread) {
-        if (isolateThread.isNull()) {
-            putLong(data, 0L);
+    public static void putThread(JfrNativeEventWriterData data, Thread thread) {
+        if (thread == null) {
+            putThread(data, 0L);
         } else {
-            long threadId = SubstrateJVM.getThreadId(isolateThread);
-            putLong(data, threadId);
+            putThread(data, SubstrateJVM.getThreadId(thread));
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static void putThread(JfrNativeEventWriterData data, long threadId) {
+        putLong(data, threadId);
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
@@ -347,20 +351,22 @@ public final class JfrNativeEventWriter {
         if (!isValid(data)) {
             return false;
         }
-        return commitEvent(data);
+
+        commitEvent(data);
+        return true;
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    private static boolean commitEvent(JfrNativeEventWriterData data) {
-        JfrBuffer buffer = data.getJfrBuffer();
+    private static void commitEvent(JfrNativeEventWriterData data) {
         assert isValid(data);
+
+        JfrBuffer buffer = data.getJfrBuffer();
         assert buffer.getPos().equal(data.getStartPos());
         assert JfrBufferAccess.getDataEnd(data.getJfrBuffer()).equal(data.getEndPos());
 
         Pointer newPosition = data.getCurrentPos();
         buffer.setPos(newPosition);
         data.setStartPos(newPosition);
-        return true;
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)

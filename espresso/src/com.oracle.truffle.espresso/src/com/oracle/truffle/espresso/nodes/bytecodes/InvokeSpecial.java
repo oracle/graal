@@ -59,7 +59,7 @@ public abstract class InvokeSpecial extends EspressoNode {
     public abstract Object execute(Object[] args);
 
     @Specialization
-    Object executeWithNullCheck(Object[] args,
+    Object doWithNullCheck(Object[] args,
                     @Cached NullCheck nullCheck,
                     @Cached("create(method)") WithoutNullCheck invokeSpecial) {
         StaticObject receiver = (StaticObject) args[0];
@@ -124,7 +124,7 @@ public abstract class InvokeSpecial extends EspressoNode {
         public abstract Object execute(Method method, Object[] args);
 
         @Specialization
-        Object executeWithNullCheck(Method method, Object[] args,
+        Object doWithNullCheck(Method method, Object[] args,
                         @Cached NullCheck nullCheck,
                         @Cached WithoutNullCheck invokeSpecial) {
             StaticObject receiver = (StaticObject) args[0];

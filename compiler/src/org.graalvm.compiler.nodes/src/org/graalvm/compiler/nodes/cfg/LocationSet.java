@@ -38,13 +38,6 @@ public class LocationSet {
         list = null;
     }
 
-    public LocationSet(LocationSet other) {
-        this.firstLocation = other.firstLocation;
-        if (other.list != null && other.list.size() > 0) {
-            list = new ArrayList<>(other.list);
-        }
-    }
-
     private void initList() {
         if (list == null) {
             list = new ArrayList<>(4);

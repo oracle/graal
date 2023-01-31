@@ -24,16 +24,13 @@
  */
 package org.graalvm.profdiff.test;
 
-import java.util.List;
-
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
-import org.graalvm.profdiff.matching.tree.EditScript;
-import org.graalvm.profdiff.matching.tree.OptimizationTreeEditPolicy;
-import org.graalvm.profdiff.matching.tree.SelkowTreeMatcher;
+import org.graalvm.profdiff.diff.EditScript;
+import org.graalvm.profdiff.diff.OptimizationTreeEditPolicy;
+import org.graalvm.profdiff.diff.SelkowTreeMatcher;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -55,26 +52,22 @@ public class SelkowTreeMatcherTest {
         Optimization foo = new Optimization("root", "foo", null, null);
         OptimizationPhase root1 = new OptimizationPhase("RootPhase");
         root1.addChild(foo);
-        CompilationUnit method1 = new CompilationUnit("1", "foo", root1, 0, null);
-
         Optimization bar = new Optimization("root", "bar", null, null);
         OptimizationPhase root2 = new OptimizationPhase("RootPhase");
         root2.addChild(bar);
-        CompilationUnit method2 = new CompilationUnit("2", "bar", root2, 0, null);
 
         SelkowTreeMatcher<OptimizationTreeNode> matcher = new SelkowTreeMatcher<>(new TestOptimizationTreeEditPolicy());
-        EditScript<OptimizationTreeNode> editScript = matcher.match(method1.getRootPhase(), method2.getRootPhase());
-        List<EditScript.DeltaNode<OptimizationTreeNode>> expected = List.of(
-                        new EditScript.Identity<>(root1, root2, 0),
-                        new EditScript.Delete<>(foo, 1),
-                        new EditScript.Insert<>(bar, 1));
-        Assert.assertEquals(expected, editScript.getDeltaNodes().toList());
+        EditScript<OptimizationTreeNode> actual = matcher.match(root1, root2);
+        EditScript<OptimizationTreeNode> expected = new EditScript<>();
+        expected.insert(bar, 1);
+        expected.delete(foo, 1);
+        expected.identity(root1, root2, 0);
+        Assert.assertEquals(expected.getOperations().toList(), actual.getOperations().toList());
     }
 
     /**
      * Tests that the Selkow tree matcher identifies the correct edit operations in dfs preorder.
      *
-     * // @formatter:off
      * <pre>
      *                method1
      *                   |
@@ -95,7 +88,6 @@ public class SelkowTreeMatcherTest {
      *          /        |       \
      *         foo foo{prop: 1}  foo
      * </pre>
-     * // @formatter:on
      */
     @Test
     public void testOperations() {
@@ -110,7 +102,6 @@ public class SelkowTreeMatcherTest {
         root1.addChild(toBeDeleted);
         root1.addChild(toBeRelabeled);
         root1.addChild(toBeUnchaged);
-        CompilationUnit method1 = new CompilationUnit("1", "method1", root1, 0, null);
 
         OptimizationPhase relabeled = new OptimizationPhase("Relabeled");
         Optimization foo1Clone = new Optimization("ToBeRelabeled", "foo", null, null);
@@ -125,19 +116,18 @@ public class SelkowTreeMatcherTest {
         OptimizationPhase toBeUnchagedClone = new OptimizationPhase("ToBeUnchanged");
         root2.addChild(toBeUnchagedClone);
         root2.addChild(toBeInserted);
-        CompilationUnit method2 = new CompilationUnit("2", "method2", root2, 0, null);
 
         SelkowTreeMatcher<OptimizationTreeNode> matcher = new SelkowTreeMatcher<>(new TestOptimizationTreeEditPolicy());
-        EditScript<OptimizationTreeNode> editScript = matcher.match(method1.getRootPhase(), method2.getRootPhase());
-        List<EditScript.DeltaNode<OptimizationTreeNode>> expected = List.of(
-                        new EditScript.Identity<>(root1, root2, 0),
-                        new EditScript.Delete<>(toBeDeleted, 1),
-                        new EditScript.Relabel<>(toBeRelabeled, relabeled, 1),
-                        new EditScript.Identity<>(foo1, foo1Clone, 2),
-                        new EditScript.Insert<>(foo2, 2),
-                        new EditScript.Identity<>(foo3, foo3Clone, 2),
-                        new EditScript.Identity<>(toBeUnchaged, toBeUnchagedClone, 1),
-                        new EditScript.Insert<>(toBeInserted, 1));
-        Assert.assertEquals(expected, editScript.getDeltaNodes().toList());
+        EditScript<OptimizationTreeNode> actual = matcher.match(root1, root2);
+        EditScript<OptimizationTreeNode> expected = new EditScript<>();
+        expected.insert(toBeInserted, 1);
+        expected.identity(toBeUnchaged, toBeUnchagedClone, 1);
+        expected.identity(foo3, foo3Clone, 2);
+        expected.insert(foo2, 2);
+        expected.identity(foo1, foo1Clone, 2);
+        expected.relabel(toBeRelabeled, relabeled, 1);
+        expected.delete(toBeDeleted, 1);
+        expected.identity(root1, root2, 0);
+        Assert.assertEquals(expected.getOperations().toList(), actual.getOperations().toList());
     }
 }

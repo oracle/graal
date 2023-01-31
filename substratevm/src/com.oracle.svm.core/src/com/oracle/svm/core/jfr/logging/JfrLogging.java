@@ -30,6 +30,7 @@ import java.util.Set;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -55,6 +56,12 @@ public class JfrLogging {
     }
 
     public void log(int tagSetId, int level, String message) {
+        if (message == null) {
+            return;
+        }
+        verifyLogLevel(level);
+        verifyLogTagSetId(tagSetId);
+
         String levelDecoration = logLevels[level];
         String tagSetDecoration = logTagSets[tagSetId];
 
@@ -72,6 +79,31 @@ public class JfrLogging {
         log.string(tagSetDecoration, tagSetDecorationFill, Log.LEFT_ALIGN);
         log.string("] ");
         log.string(message).newline();
+    }
+
+    public void logEvent(int level, String[] lines, boolean system) {
+        if (lines == null) {
+            return;
+        }
+        verifyLogLevel(level);
+
+        LogTag logTag = system ? LogTag.JFR_SYSTEM_EVENT : LogTag.JFR_EVENT;
+        int tagSetId = SubstrateUtil.cast(logTag, Target_jdk_jfr_internal_LogTag.class).id;
+        for (int i = 0; i < lines.length; i++) {
+            log(tagSetId, level, lines[i]);
+        }
+    }
+
+    private void verifyLogLevel(int level) {
+        if (level < 0 || level >= logLevels.length || logLevels[level] == null) {
+            throw new IllegalArgumentException("LogLevel passed is outside valid range");
+        }
+    }
+
+    private void verifyLogTagSetId(int tagSetId) {
+        if (tagSetId < 0 || tagSetId >= logTagSets.length) {
+            throw new IllegalArgumentException("LogTagSet id is outside valid range");
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

@@ -46,7 +46,7 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
 
     public AnalysisConstantFieldProvider(AnalysisUniverse universe, AnalysisMetaAccess metaAccess, AnalysisConstantReflectionProvider constantReflection,
                     ClassInitializationSupport classInitializationSupport) {
-        super(metaAccess, classInitializationSupport);
+        super(metaAccess, classInitializationSupport, (SVMHost) universe.hostVM());
         this.universe = universe;
         this.constantReflection = constantReflection;
     }
@@ -63,7 +63,12 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
             if (readableField.allowConstantFolding() && readableField.isValueAvailable()) {
                 JavaConstant fieldValue = readableField.readValue(metaAccess, universe.toHosted(analysisTool.getReceiver()));
                 if (fieldValue != null) {
-                    foldedValue = analysisTool.foldConstant(constantReflection.interceptValue(metaAccess, f, universe.lookup(fieldValue)));
+                    JavaConstant interceptedValue = constantReflection.interceptValue(metaAccess, f, universe.lookup(fieldValue));
+                    if (isStableField(field, analysisTool) && isStableFieldValueConstant(field, interceptedValue, analysisTool)) {
+                        foldedValue = foldStableArray(interceptedValue, field, analysisTool);
+                    } else {
+                        foldedValue = analysisTool.foldConstant(interceptedValue);
+                    }
                 }
             }
         } else {
@@ -72,9 +77,14 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
 
         if (foldedValue != null) {
             if (!BuildPhaseProvider.isAnalysisFinished()) {
-                f.markFolded();
+                f.registerAsFolded(nonNullReason(analysisTool.getReason()));
             }
         }
         return foldedValue;
     }
+
+    public static Object nonNullReason(Object reason) {
+        return reason == null ? "Unknown constant fold location." : reason;
+    }
+
 }

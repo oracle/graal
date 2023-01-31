@@ -59,7 +59,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
@@ -290,7 +290,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
 
     private static boolean isCountedLoopExit(IfNode ifNode, LazyValue<LoopsData> lazyLoops) {
         LoopsData loopsData = lazyLoops.get();
-        Loop<Block> loop = loopsData.getCFG().getNodeToBlock().get(ifNode).getLoop();
+        Loop<HIRBlock> loop = loopsData.getCFG().getNodeToBlock().get(ifNode).getLoop();
         if (loop != null) {
             LoopEx loopEx = loopsData.loop(loop);
             if (loopEx.detectCounted()) {

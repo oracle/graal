@@ -59,7 +59,7 @@ They are useful to users and language and tool implementers.
 - `--engine.EncodedGraphCache=true|false` : Cache encoded graphs across Truffle compilations to speed up partial evaluation. (default: true).
 - `--engine.EncodedGraphCachePurgeDelay=<ms>` : Delay, in milliseconds, after which the encoded graph cache is dropped when a Truffle compiler thread becomes idle (default: 10000).
 - `--engine.FirstTierBackedgeCounts=true|false` : Whether to emit look-back-edge counters in the first-tier compilations. (default: true)
-- `--engine.FirstTierCompilationThreshold=[1, inf)` : Minimum number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load (default: 400).
+- `--engine.FirstTierCompilationThreshold=[1, inf)` : Number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load.Might be reduced/increased when compilation load is low/high if DynamicCompilationThresholds is enabled. (default: 400).
 - `--engine.FirstTierMinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled in the first tier (default: 1)
 - `--engine.FirstTierUseEconomy=true|false` : Whether to use the economy configuration in the first-tier compilations. (default: true)
 - `--engine.ForceFrameLivenessAnalysis` : Forces the frame clearing mechanism to be executed, even if Frame.clear() is not used.
@@ -68,7 +68,7 @@ They are useful to users and language and tool implementers.
 - `--engine.InliningInliningBudget=[1, inf)` : The base inlining budget for language-agnostic inlining (default: 12000)
 - `--engine.InliningRecursionDepth=[0, inf)` : Maximum depth for recursive inlining (default: 2).
 - `--engine.InvalidationReprofileCount=` : Delay compilation after an invalidation to allow for reprofiling. Deprecated: no longer has any effect.
-- `--engine.LastTierCompilationThreshold=[1, inf)` : Minimum number of invocations or loop iterations needed to compile a guest language root in last tier under normal compilation load (default: 10000).
+- `--engine.LastTierCompilationThreshold=[1, inf)` : Number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load.Might be reduced/increased when compilation load is low/high if DynamicCompilationThresholds is enabled. (default: 10000).
 - `--engine.MinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled (default: 3).
 - `--engine.Mode=latency|throughput` : Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.
 - `--engine.MultiTier=true|false` : Whether to use multiple Truffle compilation tiers by default. (default: true)

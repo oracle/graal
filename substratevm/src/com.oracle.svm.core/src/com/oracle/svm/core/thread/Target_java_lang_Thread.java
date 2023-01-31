@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,11 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ThreadFactory;
+import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.util.ReflectionUtil;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
@@ -52,6 +56,7 @@ import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
@@ -179,9 +184,9 @@ public final class Target_java_lang_Thread {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object lockHelper;
 
-    @Inject @TargetElement(onlyWith = LoomJDK.class) //
+    @Inject @TargetElement(onlyWith = {HasScopedValueCache.class, HasExtentLocalCache.class, LoomJDK.class}) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    Object[] extentLocalCache;
+    Object[] scopedValueCache;
 
     @Alias
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
@@ -283,7 +288,11 @@ public final class Target_java_lang_Thread {
     @TargetElement(onlyWith = ContinuationsNotSupported.class)
     static Thread currentThread() {
         Thread thread = PlatformThreads.currentThread.get();
-        assert thread != null : "Thread has not been set yet";
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(thread != null, "Thread has not been set yet");
+        } else {
+            assert thread != null : "Thread has not been set yet";
+        }
         return thread;
     }
 
@@ -295,7 +304,7 @@ public final class Target_java_lang_Thread {
         return thread;
     }
 
-    /** On HotSpot, a field of C++ class {@code JavaThread}. Loads and stores are unordered. */
+    /** On HotSpot, a field in C++ class {@code JavaThread}. Loads and stores are unordered. */
     @Inject @TargetElement(onlyWith = ContinuationsSupported.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Thread vthread = null;
@@ -477,18 +486,21 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK19OrEarlier.class)
     @SuppressWarnings({"static-method"})
     private void stop0(Object o) {
         throw VMError.unsupportedFeature("The deprecated method Thread.stop is not supported");
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK19OrEarlier.class)
     @SuppressWarnings({"static-method"})
     private void suspend0() {
         throw VMError.unsupportedFeature("The deprecated method Thread.suspend is not supported");
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK19OrEarlier.class)
     @SuppressWarnings({"static-method"})
     private void resume0() {
         throw VMError.unsupportedFeature("The deprecated method Thread.resume is not supported");
@@ -637,15 +649,27 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
+    @TargetElement(onlyWith = HasExtentLocalCache.class)
     static Object[] extentLocalCache() {
-        return JavaThreads.toTarget(currentCarrierThread()).extentLocalCache;
+        return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
+    @TargetElement(onlyWith = HasExtentLocalCache.class)
     static void setExtentLocalCache(Object[] cache) {
-        JavaThreads.toTarget(currentCarrierThread()).extentLocalCache = cache;
+        JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = HasScopedValueCache.class)
+    static Object[] scopedValueCache() {
+        return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = HasScopedValueCache.class)
+    static void setScopedValueCache(Object[] cache) {
+        JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
 
     @Substitute
@@ -681,6 +705,22 @@ public final class Target_java_lang_Thread {
     @Alias
     @TargetElement(onlyWith = JDK19OrLater.class)
     native long threadId();
+
+    private static class HasExtentLocalCache implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            boolean result = ReflectionUtil.lookupMethod(true, Thread.class, "extentLocalCache") != null;
+            assert !result || JavaVersionUtil.JAVA_SPEC == 19 : "extentLocalCache should not exist as of JDK 20";
+            return result;
+        }
+    }
+
+    public static class HasScopedValueCache implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return ReflectionUtil.lookupMethod(true, Thread.class, "scopedValueCache") != null;
+        }
+    }
 }
 
 @TargetClass(value = Thread.class, innerClass = "Builder", onlyWith = JDK19OrLater.class)

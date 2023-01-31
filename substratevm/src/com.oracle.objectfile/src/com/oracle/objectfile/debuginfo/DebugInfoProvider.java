@@ -132,6 +132,14 @@ public interface DebugInfoProvider {
 
         DebugTypeKind typeKind();
 
+        /**
+         * returns the offset in the heap at which the java.lang.Class instance which models this
+         * class is located or -1 if no such instance exists for this class.
+         *
+         * @return the offset of the java.lang.Class instance which models this class or -1.
+         */
+        long classOffset();
+
         int size();
     }
 
@@ -274,7 +282,7 @@ public interface DebugInfoProvider {
 
     /**
      * Access details of a compiled top level or inline method producing the code in a specific
-     * {@link com.oracle.objectfile.debugentry.Range}.
+     * {@link com.oracle.objectfile.debugentry.range.Range}.
      */
     public interface DebugRangeInfo extends DebugMethodInfo {
 
@@ -349,6 +357,8 @@ public interface DebugInfoProvider {
          *         variables present in the frame of the current range.
          */
         DebugLocalValueInfo[] getLocalValueInfo();
+
+        boolean isLeaf();
     }
 
     /**

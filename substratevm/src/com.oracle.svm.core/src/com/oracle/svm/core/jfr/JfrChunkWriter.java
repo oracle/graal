@@ -37,10 +37,13 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
+import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 
@@ -528,11 +531,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          */
         @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
         private void changeEpoch() {
-            /* Process all unprocessed sampler buffers before changing the epoch. */
-            SamplerBuffersAccess.processSamplerBuffers();
+            processSamplerBuffers();
 
-            // Write unflushed data from the thread local buffers but do *not* reinitialize them
-            // The thread local code will handle space reclamation on their own time
+            /*
+             * Write unflushed data from the thread-local event buffers to the output file. We do
+             * *not* reinitialize the thread-local buffers as the individual threads will handle
+             * space reclamation on their own time.
+             */
             traverseList(getJavaBufferList(), true, true);
             traverseList(getNativeBufferList(), false, true);
 
@@ -543,10 +548,39 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 write(buffer);
                 JfrBufferAccess.reinitialize(buffer);
             }
+
             JfrTraceIdEpoch.getInstance().changeEpoch();
 
             // Now that the epoch changed, re-register all running threads for the new epoch.
             SubstrateJVM.getThreadRepo().registerRunningThreads();
+        }
+
+        /**
+         * The VM is at a safepoint, so all other threads have a native state. However, execution
+         * sampling could still be executed. For the {@link JfrRecurringCallbackExecutionSampler},
+         * it is sufficient to mark this method as uninterruptible to prevent execution of the
+         * recurring callbacks. If the SIGPROF-based sampler is used, the signal handler may still
+         * be executed at any time for any thread (including the current thread). To prevent races,
+         * we need to ensure that there are no threads that execute the SIGPROF handler while we are
+         * accessing the currently active buffers of other threads.
+         */
+        @Uninterruptible(reason = "Prevent JFR recording.")
+        private void processSamplerBuffers() {
+            assert VMOperation.isInProgressAtSafepoint();
+            assert ThreadingSupportImpl.isRecurringCallbackPaused();
+
+            JfrExecutionSampler.singleton().disallowThreadsInSamplerCode();
+            try {
+                processSamplerBuffers0();
+            } finally {
+                JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
+            }
+        }
+
+        @Uninterruptible(reason = "Prevent JFR recording.")
+        private void processSamplerBuffers0() {
+            SamplerBuffersAccess.processActiveBuffers();
+            SamplerBuffersAccess.processFullBuffers(false);
         }
     }
 

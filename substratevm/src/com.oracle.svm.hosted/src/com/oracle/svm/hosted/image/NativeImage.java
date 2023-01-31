@@ -58,8 +58,13 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.CHeader;
+import org.graalvm.nativeimage.c.CHeader.Header;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.type.CConst;
+import org.graalvm.nativeimage.c.type.CTypedef;
+import org.graalvm.nativeimage.c.type.CUnsigned;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -81,12 +86,7 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CGlobalDataImpl;
-import com.oracle.svm.core.c.CHeader;
-import com.oracle.svm.core.c.CHeader.Header;
-import com.oracle.svm.core.c.CTypedef;
-import com.oracle.svm.core.c.CUnsigned;
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -152,12 +152,6 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     @Override
-    public Section getTextSection() {
-        assert textSection != null;
-        return textSection;
-    }
-
-    @Override
     public abstract String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
 
     protected final void write(DebugContext context, Path outputFile) {
@@ -174,7 +168,6 @@ public abstract class NativeImage extends AbstractImage {
         } catch (Exception ex) {
             throw shouldNotReachHere(ex);
         }
-        resultingImageSize = (int) outputFile.toFile().length();
         debugInfoSize = 0;
         String debugIdentifier = OS.getCurrent() == OS.DARWIN ? "__debug" : ".debug";
         for (Element e : objectFile.getElements()) {
@@ -246,7 +239,7 @@ public abstract class NativeImage extends AbstractImage {
         writer.appendln("#endif");
 
         Path headerFile = writer.writeFile(header.name() + dynamicSuffix);
-        BuildArtifacts.singleton().add(ArtifactType.HEADER, headerFile);
+        BuildArtifacts.singleton().add(ArtifactType.C_HEADER, headerFile);
     }
 
     /**
@@ -309,6 +302,11 @@ public abstract class NativeImage extends AbstractImage {
         return rm1Line - rm2Line;
     }
 
+    private static boolean isUnsigned(AnnotatedType type) {
+        var legacyCUnsigned = com.oracle.svm.core.c.CUnsigned.class;
+        return type.isAnnotationPresent(CUnsigned.class) || type.isAnnotationPresent(legacyCUnsigned);
+    }
+
     private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer, boolean dynamic) {
         assert Modifier.isStatic(m.getModifiers()) : "Published methods that go into the header must be static.";
         CEntryPointData cEntryPointData = (CEntryPointData) m.getWrapped().getEntryPointData();
@@ -328,7 +326,7 @@ public abstract class NativeImage extends AbstractImage {
                         (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass()),
                         Optional.ofNullable(annotatedReturnType.getAnnotation(CTypedef.class)).map(CTypedef::name),
                         false,
-                        annotatedReturnType.isAnnotationPresent(CUnsigned.class),
+                        isUnsigned(annotatedReturnType),
                         metaAccess, nativeLibs));
         writer.append(" ");
 
@@ -352,7 +350,7 @@ public abstract class NativeImage extends AbstractImage {
                             (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
                             Optional.ofNullable(annotatedParameterTypes[i].getAnnotation(CTypedef.class)).map(CTypedef::name),
                             annotatedParameterTypes[i].isAnnotationPresent(CConst.class),
-                            annotatedParameterTypes[i].isAnnotationPresent(CUnsigned.class),
+                            isUnsigned(annotatedParameterTypes[i]),
                             metaAccess, nativeLibs));
             if (parameters[i].isNamePresent()) {
                 writer.append(" ");

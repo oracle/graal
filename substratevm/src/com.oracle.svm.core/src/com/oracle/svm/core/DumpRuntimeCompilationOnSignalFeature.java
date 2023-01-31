@@ -27,8 +27,8 @@ package com.oracle.svm.core;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
 
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
@@ -43,7 +43,7 @@ public class DumpRuntimeCompilationOnSignalFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.DumpRuntimeCompilationOnSignal.getValue() && !Platform.includedIn(WINDOWS.class) && DeoptimizationSupport.enabled();
+        return VMInspectionOptions.DumpRuntimeCompilationOnSignal.getValue() && !Platform.includedIn(WINDOWS.class) && RuntimeCompilation.isEnabled();
     }
 
     @Override

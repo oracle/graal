@@ -40,14 +40,22 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
-import com.oracle.truffle.regex.tregex.TRegexOptions;
 import org.junit.Test;
+
+import com.oracle.truffle.regex.errors.JsErrorMessages;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class JsTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
         return "";
+    }
+
+    @Override
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.UTF_16_RAW;
     }
 
     @Test
@@ -163,5 +171,60 @@ public class JsTests extends RegexTestBase {
     @Test
     public void gr37496() {
         test("(?:(?:" + "a".repeat(TRegexOptions.TRegexMaxParseTreeSizeForDFA) + ")?(?<=a))+", "", "", 0, false);
+    }
+
+    @Test
+    public void gr40877() {
+        test("(?!([]))[a-z]", "", "a", 0, true, 0, 1, -1, -1);
+        test("(?<!([]))[a-z]", "", "a", 0, true, 0, 1, -1, -1);
+        test("(?!([]))(?:(^)\\2)+", "m", "", 0, true, 0, 0, -1, -1, 0, 0);
+    }
+
+    @Test
+    public void gr40879() {
+        // gets optimized away
+        test("(?!(?!(?=(.)|.(?=\\D){1,4}|.|[^\\w\u0091\\d\\\u0001-<]*?|[^].)*))", "y", "\n\n\n\n", 0, true, 0, 0, -1, -1);
+        test("(?!(?!(?=\\b|\\D|\\s|$|\\1|(?!(.))){0})+?)", "yim", "\u009c\u511c\n\u009c\u511c\n", 0, true, 0, 0, -1, -1);
+        test("(?!(\\1)?[\\s\\w\\D])+?", "", "", 0, true, 0, 0, -1, -1);
+        test("(?!(?=((?:[n-\u0e32]*?o+?[^])))*?\\w)", "yim", "_", 0, false);
+    }
+
+    @Test
+    public void gr42266() {
+        // reduced
+        test("(?![^\\d\\D]$)[^]", "", "x", 0, true, 0, 1);
+        // original
+        test("((?:(?!([^\\d\\D\\W\\cU])\\b)(([^]\u11C2)))*?)", "gi", "x", 0, true, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1);
+    }
+
+    @Test
+    public void gr43230() {
+        test(".(?!(?=\\S^\\b)+)|(?=\\S*)", "y", "", 0, true, 0, 0);
+    }
+
+    @Test
+    public void gr42791() {
+        test("(?:(?!(?:(?:\\B)|([^])?){4}))", "gm", "", 0, false);
+    }
+
+    @Test
+    public void gr42794() {
+        test("\\b|\\B", "gyim", "\ua074\n\nP \n\u00a7", 7, true, 7, 7);
+    }
+
+    @Test
+    public void gr43449() {
+        test("\\B[^\\b\u00C2\u008D](?=.)+?[^]|\\?*?|(?!(?:(.)))*?(?!\\3^){4}", "yi",
+                        "\u7300\ud329\n\n\u969d\n\n\u00da\n\u7300\ud329\n\n\u969d\n\n\u00da\n\u7300\ud329\n\n\u969d\n\n\u00da\n\u7300\ud329\n\n\u969d\n\n\u00da\n\u7300\ud329\n\n\u969d\n\n\u00da\n", 0,
+                        true, 0, 2, -1, -1);
+    }
+
+    @Test
+    public void quantifierOverflow() {
+        long max = Integer.MAX_VALUE;
+        test(String.format("x{%d,%d}", max, max + 1), "", "x", 0, false);
+        test(String.format("x{%d,}", max), "", "x", 0, false);
+        test(String.format("x{%d,}", max + 1), "", "x", 0, false);
+        expectSyntaxError(String.format("x{%d,%d}", max + 1, max), "", JsErrorMessages.QUANTIFIER_OUT_OF_ORDER);
     }
 }

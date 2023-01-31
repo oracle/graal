@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.lang.reflect.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
 interface PolyglotWrapper {
 
@@ -109,6 +112,9 @@ interface PolyglotWrapper {
         if (languageContext != null) {
             PolyglotContextImpl.State localContextState = languageContext.context.state;
             if (localContextState.isInvalidOrClosed()) {
+                /*
+                 * Performance improvement for closed or invalid to avoid recurring exceptions.
+                 */
                 return false;
             }
         }
@@ -143,6 +149,9 @@ interface PolyglotWrapper {
         if (languageContext != null) {
             PolyglotContextImpl.State localContextState = languageContext.context.state;
             if (localContextState.isInvalidOrClosed()) {
+                /*
+                 * Performance improvement for closed or invalid to avoid recurring exceptions.
+                 */
                 return System.identityHashCode(receiver);
             }
         }
@@ -173,16 +182,54 @@ interface PolyglotWrapper {
         }
     }
 
-    static String toString(PolyglotWrapper thisObj) {
-        PolyglotLanguageContext thisContext = thisObj.getLanguageContext();
-        Object thisGuestObject = thisObj.getGuestObject();
-        if (thisContext != null) {
-            try {
-                return thisContext.asValue(thisGuestObject).toString();
-            } catch (Exception e) {
+    @TruffleBoundary
+    static String toString(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = null;
+
+        if (context != null) {
+            PolyglotContextImpl.State localContextState = context.context.state;
+            if (localContextState.isInvalidOrClosed()) {
+                /*
+                 * Performance improvement for closed or invalid to avoid recurring exceptions.
+                 */
+                return "Error in toString(): Context is invalid or closed.";
             }
         }
-        return "Error in toString()";
+
+        try {
+            prev = PolyglotValueDispatch.hostEnter(context);
+        } catch (Throwable t) {
+            // enter might fail if context was closed.
+            // Can no longer call interop.
+            return String.format("Error in toString(): Could not enter context: %s.", t.getMessage());
+        }
+        try {
+            return toStringImpl(context, receiver);
+        } catch (Throwable e) {
+            throw PolyglotValueDispatch.guestToHostException(context, e, true);
+        } finally {
+            try {
+                PolyglotValueDispatch.hostLeave(languageContext, prev);
+            } catch (Throwable t) {
+                // ignore errors leaving we cannot propagate them.
+            }
+        }
+    }
+
+    static String toString(PolyglotWrapper thisObj) {
+        return toString(thisObj.getLanguageContext(), thisObj.getGuestObject());
+    }
+
+    static String toStringImpl(@SuppressWarnings("unused") Object languageContext, Object receiver) throws AssertionError {
+        InteropLibrary lib = InteropLibrary.getFactory().getUncached(receiver);
+        Object result = lib.toDisplayString(receiver);
+        InteropLibrary resultLib = InteropLibrary.getFactory().getUncached(result);
+        try {
+            return resultLib.asString(result);
+        } catch (UnsupportedMessageException e) {
+            throw shouldNotReachHere("toDisplayString must be coercible to java.lang.String, but is not.", e);
+        }
     }
 
 }

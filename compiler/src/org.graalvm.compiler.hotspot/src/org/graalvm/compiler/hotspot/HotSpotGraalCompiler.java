@@ -26,15 +26,12 @@ package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.core.common.GraalOptions.OptAssumptions;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import java.util.Collections;
-import java.util.Formattable;
-import java.util.Formatter;
 import java.util.List;
 
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.CompilationWatchDog;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
@@ -70,13 +67,14 @@ import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
-import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.runtime.JVMCICompiler;
+import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
 public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JVMCICompilerShadow {
@@ -145,7 +143,12 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             HotSpotCompilationRequest hsRequest = (HotSpotCompilationRequest) request;
             CompilationTask task = new CompilationTask(jvmciRuntime, this, hsRequest, true, shouldRetainLocalVariables(hsRequest.getJvmciEnv()), installAsDefault);
             OptionValues options = task.filterOptions(initialOptions);
-            try (CompilationWatchDog w1 = CompilationWatchDog.watch(method, hsRequest.getId(), options);
+
+            HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(graalRuntime.getVMConfig().getStore());
+            boolean oneIsolatePerCompilation = Services.IS_IN_NATIVE_IMAGE &&
+                            config.getFlag("JVMCIThreadsPerNativeLibraryRuntime", Integer.class, 0) == 1 &&
+                            config.getFlag("JVMCICompilerIdleDelay", Integer.class, 1000) == 0;
+            try (CompilationWatchDog w1 = CompilationWatchDog.watch(task.getCompilationIdentifier(), options, oneIsolatePerCompilation, task);
                             BootstrapWatchDog.Watch w2 = bootstrapWatchDog == null ? null : bootstrapWatchDog.watch(request);
                             CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(options);) {
                 if (compilationCounters != null) {
@@ -212,7 +215,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     }
 
     @SuppressWarnings("try")
-    public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, boolean shouldRetainLocalVariables, OptionValues options) {
+    public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, boolean shouldRetainLocalVariables, boolean eagerResolving,
+                    OptionValues options) {
         int entryBCI = graph.getEntryBCI();
         ResolvedJavaMethod method = graph.method();
         assert options == graph.getOptions();
@@ -235,9 +239,10 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
 
         result.setEntryBCI(entryBCI);
         boolean shouldDebugNonSafepoints = providers.getCodeCache().shouldDebugNonSafepoints();
-        PhaseSuite<HighTierContext> graphBuilderSuite = configGraphBuilderSuite(providers.getSuites().getDefaultGraphBuilderSuite(), shouldDebugNonSafepoints, shouldRetainLocalVariables, isOSR);
+        PhaseSuite<HighTierContext> graphBuilderSuite = configGraphBuilderSuite(providers.getSuites().getDefaultGraphBuilderSuite(), shouldDebugNonSafepoints, shouldRetainLocalVariables,
+                        eagerResolving, isOSR);
 
-        try (DebugCloseable l = graph.getOptimizationLog().listen(new StableMethodNameFormatter(graph, providers))) {
+        try (DebugCloseable l = graph.getOptimizationLog().listen(new StableMethodNameFormatter(providers, graph.getDebug()))) {
             GraalCompiler.compileGraph(graph, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, result, crbf, true);
         }
         if (!isOSR) {
@@ -249,10 +254,11 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
 
     public CompilationResult compile(StructuredGraph graph,
                     boolean shouldRetainLocalVariables,
+                    boolean eagerResolving,
                     CompilationIdentifier compilationId,
                     DebugContext debug) {
         CompilationResult result = new CompilationResult(compilationId);
-        return compileHelper(CompilationResultBuilderFactory.Default, result, graph, shouldRetainLocalVariables, debug.getOptions());
+        return compileHelper(CompilationResultBuilderFactory.Default, result, graph, shouldRetainLocalVariables, eagerResolving, debug.getOptions());
     }
 
     protected OptimisticOptimizations getOptimisticOpts(ProfilingInfo profilingInfo, OptionValues options) {
@@ -280,8 +286,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
      * @return a new suite derived from {@code suite} if any of the GBS parameters did not have a
      *         default value otherwise {@code suite}
      */
-    protected PhaseSuite<HighTierContext> configGraphBuilderSuite(PhaseSuite<HighTierContext> suite, boolean shouldDebugNonSafepoints, boolean shouldRetainLocalVariables, boolean isOSR) {
-        if (shouldDebugNonSafepoints || shouldRetainLocalVariables || isOSR) {
+    protected PhaseSuite<HighTierContext> configGraphBuilderSuite(PhaseSuite<HighTierContext> suite, boolean shouldDebugNonSafepoints, boolean shouldRetainLocalVariables, boolean eagerResolving,
+                    boolean isOSR) {
+        if (shouldDebugNonSafepoints || shouldRetainLocalVariables || isOSR || eagerResolving) {
             PhaseSuite<HighTierContext> newGbs = suite.copy();
             GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
             GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
@@ -291,6 +298,10 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             if (shouldRetainLocalVariables) {
                 graphBuilderConfig = graphBuilderConfig.withRetainLocalVariables(true);
             }
+            if (eagerResolving) {
+                graphBuilderConfig = graphBuilderConfig.withEagerResolving(true);
+                graphBuilderConfig = graphBuilderConfig.withUnresolvedIsError(true);
+            }
             GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig);
             newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
             if (isOSR) {
@@ -299,38 +310,6 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             return newGbs;
         }
         return suite;
-    }
-
-    /**
-     * Converts {@code method} to a String with {@link JavaMethod#format(String)} and the format
-     * string {@code "%H.%n(%p)"}.
-     */
-    static String str(JavaMethod method) {
-        return method.format("%H.%n(%p)");
-    }
-
-    /**
-     * Wraps {@code obj} in a {@link Formatter} that standardizes formatting for certain objects.
-     */
-    static Formattable fmt(Object obj) {
-        return new Formattable() {
-            @Override
-            public void formatTo(Formatter buf, int flags, int width, int precision) {
-                if (obj instanceof Throwable) {
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    ((Throwable) obj).printStackTrace(new PrintStream(baos));
-                    buf.format("%s", baos.toString());
-                } else if (obj instanceof StackTraceElement[]) {
-                    for (StackTraceElement e : (StackTraceElement[]) obj) {
-                        buf.format("\t%s%n", e);
-                    }
-                } else if (obj instanceof JavaMethod) {
-                    buf.format("%s", str((JavaMethod) obj));
-                } else {
-                    buf.format("%s", obj);
-                }
-            }
-        };
     }
 
     @Override

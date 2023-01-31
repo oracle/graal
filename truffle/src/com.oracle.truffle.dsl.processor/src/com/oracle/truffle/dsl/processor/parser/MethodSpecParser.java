@@ -53,6 +53,7 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
@@ -208,6 +209,28 @@ public final class MethodSpecParser {
             }
         }
 
+        /*
+         * Optional signature parameters must always be in the parsed parameters even if they do not
+         * actually exist in the actual types of the method. This simplifies the behavior of later
+         * code drastically if they can just assume all signature parameters are available.
+         */
+        int currentParameterIndex = 0;
+        for (int specIndex = 0; specIndex < specifications.size(); specIndex++) {
+            ParameterSpec specification = specifications.get(specIndex);
+            Parameter currentParam = currentParameterIndex < parsedParams.size() ? parsedParams.get(currentParameterIndex) : null;
+            if (currentParam != null && specification.matches(currentParam.getVariableElement())) {
+                currentParameterIndex++;
+                continue;
+            }
+
+            if (specification.isSignature()) {
+                parsedParams.add(currentParameterIndex, new Parameter(specification, new CodeVariableElement(
+                                ElementUtils.getCommonSuperType(ProcessorContext.getInstance(), specification.getAllowedTypes()),
+                                specification.getName()), -1, -1, false));
+                currentParameterIndex++;
+            }
+        }
+
         if (typeStartIndex < types.size()) {
             // not enough types found
             return null;
@@ -326,6 +349,6 @@ public final class MethodSpecParser {
             return null;
         }
 
-        return new Parameter(specification, variable, specificationIndex, varArgsIndex);
+        return new Parameter(specification, variable, specificationIndex, varArgsIndex, true);
     }
 }

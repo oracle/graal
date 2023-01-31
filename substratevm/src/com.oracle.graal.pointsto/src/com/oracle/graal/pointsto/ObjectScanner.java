@@ -247,7 +247,7 @@ public class ObjectScanner {
             return;
         }
         if (!bb.scanningPolicy().scanConstant(bb, value)) {
-            bb.markTypeInHeap(bb.getMetaAccess().lookupJavaType(value));
+            bb.registerTypeAsInHeap(bb.getMetaAccess().lookupJavaType(value), reason);
             return;
         }
         Object valueObj = (value instanceof ImageHeapConstant) ? value : constantAsObject(bb, value);
@@ -412,7 +412,7 @@ public class ObjectScanner {
     private void doScan(WorklistEntry entry) {
         try {
             AnalysisType type = bb.getMetaAccess().lookupJavaType(entry.constant);
-            type.registerAsReachable();
+            type.registerAsReachable(entry.reason);
 
             if (type.isInstanceClass()) {
                 /* Scan constant's instance fields. */

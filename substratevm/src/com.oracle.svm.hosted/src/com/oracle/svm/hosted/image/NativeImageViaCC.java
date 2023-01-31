@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -152,17 +152,15 @@ public abstract class NativeImageViaCC extends NativeImage {
             }
 
             Path imagePath = inv.getOutputFile();
-            // Update the file size for reporting as the object file before linking might be
-            // larger than the final file size.
-            resultingImageSize = (int) imagePath.toFile().length();
-            BuildArtifacts.singleton().add(imageKindIsExecutable ? ArtifactType.EXECUTABLE : ArtifactType.SHARED_LIB, imagePath);
+            imageFileSize = (int) imagePath.toFile().length();
+            BuildArtifacts.singleton().add(imageKindIsExecutable ? ArtifactType.EXECUTABLE : ArtifactType.SHARED_LIBRARY, imagePath);
 
             if (Platform.includedIn(Platform.WINDOWS.class) && !imageKindIsExecutable) {
                 /* Provide an import library for the built shared library. */
                 String importLib = imageName + ".lib";
                 Path importLibPath = imagePath.resolveSibling(importLib);
                 Files.move(inv.getTempDirectory().resolve(importLib), importLibPath, StandardCopyOption.REPLACE_EXISTING);
-                BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIB, importLibPath);
+                BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIBRARY, importLibPath);
             }
 
             if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {

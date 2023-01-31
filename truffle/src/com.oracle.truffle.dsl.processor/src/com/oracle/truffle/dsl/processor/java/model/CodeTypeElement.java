@@ -77,7 +77,6 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
     private final List<TypeParameterElement> typeParameters = parentableList(this, new ArrayList<>());
     private ElementKind kind;
     private TypeMirror superClass;
-    private CodeTree docTree;
 
     private final DeclaredCodeTypeMirror mirror = new DeclaredCodeTypeMirror(this);
 
@@ -92,21 +91,6 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
             this.packageName = CodeNames.of("default");
         }
         this.qualifiedName = createQualifiedName();
-    }
-
-    public CodeTreeBuilder createDocBuilder() {
-        CodeTreeBuilder builder = new CodeTreeBuilder(null);
-        builder.setEnclosingElement(this);
-        this.docTree = builder.getTree();
-        return builder;
-    }
-
-    public CodeTree getDocTree() {
-        return docTree;
-    }
-
-    public void setDocTree(CodeTree docTree) {
-        this.docTree = docTree;
     }
 
     public void setSimpleName(Name simpleName) {
@@ -245,11 +229,6 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
 
     public List<TypeElement> getInnerClasses() {
         return ElementFilter.typesIn(getEnclosedElements());
-    }
-
-    @Override
-    public String toString() {
-        return getQualifiedName().toString();
     }
 
     @Override

@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
@@ -120,14 +121,17 @@ public final class EspressoFrame {
     }
 
     private static void swapStatic(Frame frame, int top) {
+        assert top >= 2;
         frame.swapStatic(top - 1, top - 2);
     }
 
     private static void copyStatic(Frame frame, int src, int dst) {
+        assert src >= 0 && dst >= 0;
         frame.copyStatic(src, dst);
     }
 
     public static int popInt(Frame frame, int slot) {
+        assert slot >= 0;
         int result = frame.getIntStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
         clearPrimitive(frame, slot);
@@ -135,6 +139,7 @@ public final class EspressoFrame {
     }
 
     public static StaticObject peekObject(Frame frame, int slot) {
+        assert slot >= 0;
         Object result = frame.getObjectStatic(slot);
         assert result != null;
         return (StaticObject) result;
@@ -144,6 +149,7 @@ public final class EspressoFrame {
      * Reads and clear the operand stack slot.
      */
     public static StaticObject popObject(Frame frame, int slot) {
+        assert slot >= 0;
         // nulls-out the slot, use peekObject to read only
         Object result = frame.getObjectStatic(slot);
         clearReference(frame, slot);
@@ -151,6 +157,7 @@ public final class EspressoFrame {
     }
 
     public static float popFloat(Frame frame, int slot) {
+        assert slot >= 0;
         float result = frame.getFloatStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
         clearPrimitive(frame, slot);
@@ -158,6 +165,7 @@ public final class EspressoFrame {
     }
 
     public static long popLong(Frame frame, int slot) {
+        assert slot >= 0;
         long result = frame.getLongStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
         clearPrimitive(frame, slot);
@@ -165,6 +173,7 @@ public final class EspressoFrame {
     }
 
     public static double popDouble(Frame frame, int slot) {
+        assert slot >= 0;
         double result = frame.getDoubleStatic(slot);
         // Avoid keeping track of popped slots in FrameStates.
         clearPrimitive(frame, slot);
@@ -172,6 +181,7 @@ public final class EspressoFrame {
     }
 
     static Object popReturnAddressOrObject(Frame frame, int slot) {
+        assert slot >= 0;
         Object result = frame.getObjectStatic(slot);
         clearReference(frame, slot);
         assert result instanceof StaticObject || result instanceof ReturnAddress;
@@ -179,39 +189,48 @@ public final class EspressoFrame {
     }
 
     static void putReturnAddress(Frame frame, int slot, int targetBCI) {
+        assert slot >= 0;
         frame.setObjectStatic(slot, ReturnAddress.create(targetBCI));
     }
 
     public static void putObject(Frame frame, int slot, StaticObject value) {
+        assert slot >= 0;
         assert value != null;
         frame.setObjectStatic(slot, value);
     }
 
     public static void putInt(Frame frame, int slot, int value) {
+        assert slot >= 0;
         frame.setIntStatic(slot, value);
     }
 
     public static void putFloat(Frame frame, int slot, float value) {
+        assert slot >= 0;
         frame.setFloatStatic(slot, value);
     }
 
     public static void putLong(Frame frame, int slot, long value) {
+        assert slot >= 0;
         frame.setLongStatic(slot + 1, value);
     }
 
     public static void putDouble(Frame frame, int slot, double value) {
+        assert slot >= 0;
         frame.setDoubleStatic(slot + 1, value);
     }
 
     private static void clearReference(Frame frame, int slot) {
+        assert slot >= 0;
         frame.clearObjectStatic(slot);
     }
 
     private static void clearPrimitive(Frame frame, int slot) {
+        assert slot >= 0;
         frame.clearPrimitiveStatic(slot);
     }
 
     public static void clear(Frame frame, int slot) {
+        assert slot >= 0;
         frame.clearStatic(slot);
     }
 
@@ -220,10 +239,12 @@ public final class EspressoFrame {
     // region Local accessors
 
     public static void clearLocal(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         clear(frame, VALUES_START + localSlot);
     }
 
     public static void setLocalObject(Frame frame, int localSlot, StaticObject value) {
+        assert localSlot >= 0;
         assert value != null;
         frame.setObjectStatic(VALUES_START + localSlot, value);
     }
@@ -234,26 +255,32 @@ public final class EspressoFrame {
     }
 
     public static void setLocalInt(Frame frame, int localSlot, int value) {
+        assert localSlot >= 0;
         frame.setIntStatic(VALUES_START + localSlot, value);
     }
 
     public static void setLocalFloat(Frame frame, int localSlot, float value) {
+        assert localSlot >= 0;
         frame.setFloatStatic(VALUES_START + localSlot, value);
     }
 
     public static void setLocalLong(Frame frame, int localSlot, long value) {
+        assert localSlot >= 0;
         frame.setLongStatic(VALUES_START + localSlot, value);
     }
 
     public static void setLocalDouble(Frame frame, int localSlot, double value) {
+        assert localSlot >= 0;
         frame.setDoubleStatic(VALUES_START + localSlot, value);
     }
 
     public static int getLocalInt(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         return frame.getIntStatic(VALUES_START + localSlot);
     }
 
     public static StaticObject getLocalObject(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         Object result = frame.getObjectStatic(VALUES_START + localSlot);
         assert result != null;
         return (StaticObject) result;
@@ -266,14 +293,17 @@ public final class EspressoFrame {
     }
 
     public static float getLocalFloat(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         return frame.getFloatStatic(VALUES_START + localSlot);
     }
 
     public static long getLocalLong(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         return frame.getLongStatic(VALUES_START + localSlot);
     }
 
     public static double getLocalDouble(Frame frame, int localSlot) {
+        assert localSlot >= 0;
         return frame.getDoubleStatic(VALUES_START + localSlot);
     }
 
@@ -289,6 +319,16 @@ public final class EspressoFrame {
 
     public static int startingStackOffset(int maxLocals) {
         return VALUES_START + maxLocals;
+    }
+
+    public static StaticObject peekReceiver(VirtualFrame frame, int top, Method m) {
+        assert !m.isStatic();
+        int skipSlots = Signatures.slotsForParameters(m.getParsedSignature());
+        int slot = top - skipSlots - 1;
+        assert slot >= 0;
+        StaticObject result = peekObject(frame, slot);
+        assert result != null;
+        return result;
     }
 
     @ExplodeLoop
@@ -333,12 +373,13 @@ public final class EspressoFrame {
 
     // Effort to prevent double copies. Erases sub-word primitive types.
     @ExplodeLoop
-    public static Object[] popBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount, int start) {
+    public static Object[] popBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, boolean hasReceiver, Object[] args) {
         // Use basic types
-        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(Signatures.parameterCount(signature));
         CompilerAsserts.partialEvaluationConstant(signature);
+        int extraParam = hasReceiver ? 1 : 0;
         int argAt = top - 1;
-        for (int i = argCount - 1; i >= 0; --i) {
+        for (int i = Signatures.parameterCount(signature) - 1; i >= 0; --i) {
             Symbol<Type> argType = Signatures.parameterType(signature, i);
             // @formatter:off
             switch (argType.byteAt(0)) {
@@ -346,18 +387,21 @@ public final class EspressoFrame {
                 case 'B' : // fall through
                 case 'S' : // fall through
                 case 'C' : // fall through
-                case 'I' : args[i + start] = popInt(frame, argAt);    break;
-                case 'F' : args[i + start] = popFloat(frame, argAt);  break;
-                case 'J' : args[i + start] = popLong(frame, argAt);   --argAt; break;
-                case 'D' : args[i + start] = popDouble(frame, argAt); --argAt; break;
+                case 'I' : args[i + extraParam] = popInt(frame, argAt);    break;
+                case 'F' : args[i + extraParam] = popFloat(frame, argAt);  break;
+                case 'J' : args[i + extraParam] = popLong(frame, argAt);   --argAt; break;
+                case 'D' : args[i + extraParam] = popDouble(frame, argAt); --argAt; break;
                 case '[' : // fall through
-                case 'L' : args[i + start] = popObject(frame, argAt); break;
+                case 'L' : args[i + extraParam] = popObject(frame, argAt); break;
                 default  :
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
             --argAt;
+        }
+        if (hasReceiver) {
+            args[0] = popObject(frame, argAt);
         }
         return args;
     }
@@ -372,6 +416,7 @@ public final class EspressoFrame {
      * @param kind kind to push
      */
     public static int putKind(VirtualFrame frame, int top, Object value, JavaKind kind) {
+        assert top >= 0;
         // @formatter:off
         switch (kind) {
             case Boolean : putInt(frame, top, ((boolean) value) ? 1 : 0); break;
@@ -393,6 +438,34 @@ public final class EspressoFrame {
     }
 
     /**
+     * Peeks at a value in the operand stack, without clearing it.
+     *
+     * Returns the peeked value.
+     *
+     * @param kind kind to push
+     */
+    public static Object peekKind(VirtualFrame frame, int top, JavaKind kind) {
+        assert top >= 0;
+        // @formatter:off
+        switch (kind) {
+            case Boolean : return frame.getIntStatic(top) != 0;
+            case Byte    : return (byte) frame.getIntStatic(top);
+            case Short   : return (short) frame.getIntStatic(top);
+            case Char    : return (char) frame.getIntStatic(top);
+            case Int     : return frame.getIntStatic(top);
+            case Float   : return frame.getFloatStatic(top);
+            case Long    : return frame.getLongStatic(top);
+            case Double  : return frame.getDoubleStatic(top);
+            case Object  : return frame.getObjectStatic(top);
+            case Void    : /* ignore */
+            default      :
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+        }
+        // @formatter:on
+    }
+
+    /**
      * Puts a value in the operand stack. This method follows the JVM spec, where sub-word types (<
      * int) are always treated as int.
      *
@@ -402,6 +475,7 @@ public final class EspressoFrame {
      * @param type type to push
      */
     public static int putType(VirtualFrame frame, int top, Object value, Symbol<Type> type) {
+        assert top >= 0;
         // @formatter:off
         switch (type.byteAt(0)) {
             case 'Z' : putInt(frame, top, ((boolean) value) ? 1 : 0); break;

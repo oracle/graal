@@ -94,6 +94,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -402,6 +403,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         TruffleString.class,
                         AbstractTruffleString.class,
                         Buffer.class,
+                        InlineSupport.InlinableField.class,
+                        InlineSupport.StateField.class,
+                        InlineSupport.BooleanField.class,
+                        InlineSupport.ByteField.class,
+                        InlineSupport.ShortField.class,
+                        InlineSupport.IntField.class,
+                        InlineSupport.CharField.class,
+                        InlineSupport.FloatField.class,
+                        InlineSupport.LongField.class,
+                        InlineSupport.DoubleField.class,
+                        InlineSupport.ReferenceField.class,
         }) {
             m.put(c.getName(), c);
         }
@@ -422,12 +434,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 throw new NoClassDefFoundError(className);
             }
         } else if (JAVA_SPECIFICATION_VERSION >= 19) {
-            String className = "jdk.internal.foreign.Scoped";
-            try {
-                Class<?> c = Class.forName(className);
-                m.put(c.getName(), c);
-            } catch (ClassNotFoundException e) {
-                throw new NoClassDefFoundError(className);
+            for (String className : new String[]{
+                            "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError",
+                            "jdk.internal.foreign.AbstractMemorySegmentImpl",
+            }) {
+                try {
+                    Class<?> c = Class.forName(className);
+                    m.put(c.getName(), c);
+                } catch (ClassNotFoundException e) {
+                    throw new NoClassDefFoundError(className);
+                }
             }
         }
         for (String className : new String[]{

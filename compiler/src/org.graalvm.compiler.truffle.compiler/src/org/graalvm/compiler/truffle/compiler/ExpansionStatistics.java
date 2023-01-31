@@ -48,7 +48,7 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
@@ -299,7 +299,7 @@ final class ExpansionStatistics {
         for (Node node : graph.getNodes()) {
             NodeSourcePosition nodeSourcePosition = node.getNodeSourcePosition();
             TreeNode tree = resolveMethodTree(root, nodeSourcePosition);
-            Block block = cfg.blockFor(node);
+            HIRBlock block = cfg.blockFor(node);
             double frequency;
             if (block != null) {
                 frequency = block.getRelativeFrequency();

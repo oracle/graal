@@ -33,6 +33,8 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
@@ -56,8 +58,13 @@ public abstract class BaseQuickNode extends EspressoNode implements BciProvider,
         return false;
     }
 
+    @ExplodeLoop
     public final BytecodeNode getBytecodeNode() {
-        return (BytecodeNode) getParent();
+        Node parent = getParent();
+        while (!(parent instanceof BytecodeNode)) {
+            parent = parent.getParent();
+        }
+        return (BytecodeNode) parent;
     }
 
     @ExportMessage

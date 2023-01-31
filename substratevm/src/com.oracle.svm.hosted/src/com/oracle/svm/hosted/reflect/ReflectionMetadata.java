@@ -123,13 +123,13 @@ public class ReflectionMetadata {
     }
 
     static class ExecutableMetadata extends AccessibleObjectMetadata {
-        final HostedType[] parameterTypes;
+        final Object[] parameterTypes;
         final HostedType[] exceptionTypes;
         final AnnotationValue[][] parameterAnnotations;
         final ReflectParameterMetadata[] reflectParameters;
         final JavaConstant accessor;
 
-        ExecutableMetadata(boolean complete, JavaConstant heapObject, HostedType declaringType, HostedType[] parameterTypes, int modifiers, HostedType[] exceptionTypes, String signature,
+        ExecutableMetadata(boolean complete, JavaConstant heapObject, HostedType declaringType, Object[] parameterTypes, int modifiers, HostedType[] exceptionTypes, String signature,
                         AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters,
                         JavaConstant accessor) {
             super(complete, heapObject, declaringType, modifiers, signature, annotations, typeAnnotations);
@@ -147,7 +147,7 @@ public class ReflectionMetadata {
         final HostedType returnType;
         final AnnotationMemberValue annotationDefault;
 
-        private MethodMetadata(boolean complete, boolean hiding, JavaConstant heapObject, HostedType declaringClass, String name, HostedType[] parameterTypes, int modifiers, HostedType returnType,
+        private MethodMetadata(boolean complete, boolean hiding, JavaConstant heapObject, HostedType declaringClass, String name, Object[] parameterTypes, int modifiers, HostedType returnType,
                         HostedType[] exceptionTypes, String signature, AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, AnnotationMemberValue annotationDefault,
                         TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters, JavaConstant accessor) {
             super(complete, heapObject, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations, reflectParameters, accessor);
@@ -177,14 +177,14 @@ public class ReflectionMetadata {
         }
 
         /* Reachable method */
-        MethodMetadata(HostedType declaringClass, String name, HostedType[] parameterTypes) {
-            this(false, false, null, declaringClass, name, parameterTypes, 0, null, null, null, null, null, null, null, null, null);
+        MethodMetadata(HostedType declaringClass, String name, String[] parameterTypeNames) {
+            this(false, false, null, declaringClass, name, parameterTypeNames, 0, null, null, null, null, null, null, null, null, null);
         }
     }
 
     static class ConstructorMetadata extends ExecutableMetadata {
 
-        private ConstructorMetadata(boolean complete, JavaConstant heapObject, HostedType declaringClass, HostedType[] parameterTypes, int modifiers, HostedType[] exceptionTypes, String signature,
+        private ConstructorMetadata(boolean complete, JavaConstant heapObject, HostedType declaringClass, Object[] parameterTypes, int modifiers, HostedType[] exceptionTypes, String signature,
                         AnnotationValue[] annotations, AnnotationValue[][] parameterAnnotations, TypeAnnotationValue[] typeAnnotations, ReflectParameterMetadata[] reflectParameters,
                         JavaConstant accessor) {
             super(complete, heapObject, declaringClass, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations, typeAnnotations, reflectParameters, accessor);
@@ -203,8 +203,8 @@ public class ReflectionMetadata {
         }
 
         /* Reachable constructor */
-        ConstructorMetadata(HostedType declaringClass, HostedType[] parameterTypes) {
-            this(false, null, declaringClass, parameterTypes, 0, null, null, null, null, null, null, null);
+        ConstructorMetadata(HostedType declaringClass, String[] parameterTypeNames) {
+            this(false, null, declaringClass, parameterTypeNames, 0, null, null, null, null, null, null, null);
         }
     }
 
@@ -213,15 +213,13 @@ public class ReflectionMetadata {
         final String name;
         final HostedType type;
         final String signature;
-        final JavaConstant accessor;
 
-        RecordComponentMetadata(HostedType declaringType, String name, HostedType type, String signature, JavaConstant accessor, AnnotationValue[] annotations, TypeAnnotationValue[] typeAnnotations) {
+        RecordComponentMetadata(HostedType declaringType, String name, HostedType type, String signature, AnnotationValue[] annotations, TypeAnnotationValue[] typeAnnotations) {
             super(annotations, typeAnnotations);
             this.declaringType = declaringType;
             this.name = name;
             this.type = type;
             this.signature = signature;
-            this.accessor = accessor;
         }
     }
 

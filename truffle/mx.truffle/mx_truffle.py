@@ -102,7 +102,8 @@ mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
     extraArgs = mx_sdk.build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'Truffle')
-    mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl'] + extraArgs + args)
+    mx.javadoc(['--unified', '--exclude-packages',
+                'com.oracle.truffle.tck,com.oracle.truffle.tck.impl'] + extraArgs + args)
     javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
     checkLinks(javadoc_dir)
 
@@ -209,9 +210,6 @@ def _unittest_config_participant(config):
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-    if mx.get_jdk().javaCompliance >= '1.9':
-        vmArgs = ["--enable-preview"] + vmArgs # for virtual thread tests
-
     # The arguments below are only actually needed if Truffle is deployed as a
     # module. However, that's determined by the compiler suite which may not
     # be present. In that case, adding these options results in annoying
@@ -268,7 +266,7 @@ def _truffle_gate_runner(args, tasks):
 # force using multiple state fields for the tests. This makes sure the tests
 # do not break for rarely used combination of features and bit widths.
 def _truffle_gate_state_bitwidth_tests():
-    runs = [1, 2, 4, 8, 16, 64]
+    runs = [1, 2, 4, 8, 16]
     for run_bits in runs:
         build_args = ['-f', '-p', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
                       '-A-Atruffle.dsl.StateBitWidth={0}'.format(run_bits)]
@@ -917,10 +915,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='nfi-libffi',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Truffle NFI'],
+    dependencies=['Truffle NFI'],
     truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI'],
-    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
-    support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
     installable=False,
     stability="supported",
 ))

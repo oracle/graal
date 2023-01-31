@@ -54,6 +54,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
+import org.graalvm.home.Version;
 
 final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -266,7 +267,44 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         return true;
     }
 
+    static String websiteSubstitutions(String template) {
+        if (template.indexOf('$') < 0) {
+            return template;
+        }
+
+        StringBuilder ret = new StringBuilder();
+        int i = 0;
+        while (i < template.length()) {
+            char ch = template.charAt(i);
+            if (ch == '$' && template.charAt(i + 1) == '{') {
+                int end = template.indexOf('}', i + 2);
+                if (end >= 0) {
+                    String[] cmd = template.substring(i + 2, end).split(":", 2);
+                    Version v = Version.getCurrent();
+                    switch (cmd[0]) {
+                        case "graalvm-version":
+                            if (cmd.length == 1) {
+                                ret.append(v);
+                            } else {
+                                ret.append(v.format(cmd[1]));
+                            }
+                            break;
+                        case "graalvm-website-version":
+                            ret.append(v.format("%[R%d.%d]%[Sdev]"));
+                            break;
+                    }
+                    i = end + 1;
+                    continue;
+                }
+            }
+
+            ret.append(ch);
+            i++;
+        }
+        return ret.toString();
+    }
+
     String getWebsite() {
-        return cache.getWebsite();
+        return websiteSubstitutions(cache.getWebsite());
     }
 }

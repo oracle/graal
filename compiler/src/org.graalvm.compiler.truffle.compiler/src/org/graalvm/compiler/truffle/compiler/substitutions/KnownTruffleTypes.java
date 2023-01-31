@@ -25,7 +25,7 @@
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
 import java.lang.invoke.MethodHandle;
-import java.util.ArrayList;
+import java.nio.Buffer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -35,12 +35,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
     public final ResolvedJavaType classFrameClass = lookupType("com.oracle.truffle.api.impl.FrameWithoutBoxing");
     public final ResolvedJavaType classFrameDescriptor = lookupType("com.oracle.truffle.api.frame.FrameDescriptor");
-    public final ResolvedJavaType classFrameSlotKind = lookupType("com.oracle.truffle.api.frame.FrameSlotKind");
-    public final ResolvedJavaType classExactMath = lookupType("com.oracle.truffle.api.ExactMath");
-    public final ResolvedJavaType classArrayUtils = lookupType("com.oracle.truffle.api.ArrayUtils");
     public final ResolvedJavaType classNode = lookupType("com.oracle.truffle.api.nodes.Node");
     public final ResolvedJavaType classRootNode = lookupType("com.oracle.truffle.api.nodes.RootNode");
-    public final ResolvedJavaType classTStringUnsafeOps = lookupType("com.oracle.truffle.api.strings.TStringOps");
     public final ResolvedJavaType abstractTruffleStringType = lookupType("com.oracle.truffle.api.strings.AbstractTruffleString");
     public final ResolvedJavaType truffleStringType = lookupType("com.oracle.truffle.api.strings.TruffleString");
     public final ResolvedJavaField truffleStringDataField = findField(abstractTruffleStringType, "data");
@@ -65,15 +61,11 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField fieldFrameDescriptorAuxiliarySlotCount = findField(classFrameDescriptor, "auxiliarySlotCount");
     public final ResolvedJavaField fieldFrameDescriptorStaticMode = findField(classFrameDescriptor, "staticMode");
 
-    public final ResolvedJavaField fieldArrayListElementData = findField(lookupType(ArrayList.class), "elementData");
-
-    public final ResolvedJavaField fieldFrameSlotKindTag = findField(classFrameSlotKind, "tag");
-
     public final ResolvedJavaField fieldOptimizedAssumptionIsValid = findField(lookupType("com.oracle.truffle.api.impl.AbstractAssumption"), "isValid");
 
     public final ResolvedJavaField fieldNodeParent = findField(classNode, "parent");
 
-    public final ResolvedJavaField fieldStringValue = findField(lookupType(String.class), "value");
+    public final ResolvedJavaField fieldBufferSegment = findField(lookupType(Buffer.class), "segment");
 
     public KnownTruffleTypes(MetaAccessProvider metaAccess) {
         super(metaAccess);

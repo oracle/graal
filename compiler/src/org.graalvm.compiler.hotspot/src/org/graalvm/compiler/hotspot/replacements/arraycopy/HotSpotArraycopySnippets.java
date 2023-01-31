@@ -34,6 +34,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probabil
 import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.word.Word;
@@ -86,8 +87,8 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
     @SuppressWarnings("unused")
     protected void doCheckcastArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
         if (probability(FREQUENT_PROBABILITY, length > 0)) {
-            Object nonNullSrc = PiNode.asNonNullObject(src);
-            Object nonNullDest = PiNode.asNonNullObject(dest);
+            Object nonNullSrc = PiNode.piCastNonNull(src, SnippetAnchorNode.anchor());
+            Object nonNullDest = PiNode.piCastNonNull(dest, SnippetAnchorNode.anchor());
             Pointer srcKlass = loadHub(nonNullSrc);
             Pointer destKlass = loadHub(nonNullDest);
             if (probability(LIKELY_PROBABILITY, srcKlass == destKlass) || probability(LIKELY_PROBABILITY, nonNullDest.getClass() == Object[].class)) {

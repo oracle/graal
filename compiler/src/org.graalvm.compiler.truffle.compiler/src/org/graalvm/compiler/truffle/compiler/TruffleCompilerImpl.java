@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
+import org.graalvm.compiler.core.CompilationWatchDog;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.GraalCompiler;
@@ -91,6 +92,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
@@ -124,7 +126,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.
  */
-public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
+public abstract class TruffleCompilerImpl implements TruffleCompilerBase, CompilationWatchDog.EventHandler {
 
     protected TruffleCompilerConfiguration config;
     protected final GraphBuilderConfiguration builderConfig;
@@ -133,7 +135,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     private volatile ExpansionStatistics expansionStatistics;
     private volatile boolean expansionStatisticsInitialized;
     private volatile boolean initialized;
-    // Effectivelly final, but initialized in #initialize
+    // Effectively final, but initialized in #initialize
     private TruffleTier truffleTier;
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
@@ -165,7 +167,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
     private ResolvedJavaType[] getSkippedExceptionTypes(TruffleCompilerRuntime runtime) {
         final MetaAccessProvider metaAccess = this.config.lastTier().providers().getMetaAccess();
-        ResolvedJavaType[] head = metaAccess.lookupJavaTypes(new Class<?>[]{
+        List<ResolvedJavaType> skippedExceptionTypes = new ArrayList<>(16);
+        Collections.addAll(skippedExceptionTypes, metaAccess.lookupJavaTypes(new Class<?>[]{
                         ArithmeticException.class,
                         IllegalArgumentException.class,
                         IllegalStateException.class,
@@ -175,15 +178,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         BufferUnderflowException.class,
                         BufferOverflowException.class,
                         ReadOnlyBufferException.class,
-        });
-        ResolvedJavaType[] tail = {
-                        runtime.resolveType(metaAccess, "com.oracle.truffle.api.nodes.UnexpectedResultException"),
-                        runtime.resolveType(metaAccess, "com.oracle.truffle.api.nodes.SlowPathException")
-        };
-        ResolvedJavaType[] skippedExceptionTypes = new ResolvedJavaType[head.length + tail.length];
-        System.arraycopy(head, 0, skippedExceptionTypes, 0, head.length);
-        System.arraycopy(tail, 0, skippedExceptionTypes, head.length, tail.length);
-        return skippedExceptionTypes;
+        }));
+        skippedExceptionTypes.add(runtime.resolveType(metaAccess, "com.oracle.truffle.api.nodes.UnexpectedResultException"));
+        skippedExceptionTypes.add(runtime.resolveType(metaAccess, "com.oracle.truffle.api.nodes.SlowPathException"));
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            skippedExceptionTypes.add(runtime.resolveType(metaAccess, "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError"));
+        }
+        return skippedExceptionTypes.toArray(ResolvedJavaType[]::new);
     }
 
     public TruffleCompilerConfiguration getConfig() {
@@ -517,8 +518,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             // them to encode the compilation tier, so escaping the target name is not necessary.
             String compilationName = wrapper.compilable.toString() + (wrapper.task.isFirstTier() ? TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX : TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite(wrapper.task.isFirstTier() ? config.firstTier() : config.lastTier());
-            CompilationResult compilationResult = compilePEGraph(graph, compilationName, graphBuilderSuite, wrapper.compilable, asCompilationRequest(wrapper.compilationId), wrapper.listener,
-                            wrapper.task);
+            InstalledCode[] installedCode = {null};
+            CompilationResult compilationResult = compilePEGraph(graph,
+                            compilationName,
+                            graphBuilderSuite,
+                            wrapper.compilable,
+                            asCompilationRequest(wrapper.compilationId),
+                            wrapper.listener,
+                            wrapper.task,
+                            installedCode);
             if (wrapper.statistics != null) {
                 wrapper.statistics.afterLowTier(wrapper.compilable, graph);
             }
@@ -528,7 +536,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
             // Partial evaluation and installation are included in
             // compilation time and memory usage reported by printer
-            printer.finish(compilationResult);
+            printer.finish(compilationResult, installedCode[0]);
         } catch (Throwable t) {
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
@@ -593,7 +601,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     CompilableTruffleAST compilable,
                     CompilationRequest compilationRequest,
                     TruffleCompilerListener listener,
-                    TruffleCompilationTask task) {
+                    TruffleCompilationTask task,
+                    InstalledCode[] outInstalledCode) {
 
         replaceAnyExtendNodes(graph);
         DebugContext debug = graph.getDebug();
@@ -627,6 +636,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             InstalledCode installedCode = createInstalledCode(compilable);
             assert graph.getSpeculationLog() == result.getSpeculationLog();
             tier.backend().createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false);
+            if (outInstalledCode != null) {
+                outInstalledCode[0] = installedCode;
+            }
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -663,6 +675,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
     public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
         return config.snippetReflection().asObject(CompilableTruffleAST.class, constant);
+    }
+
+    @Override
+    public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, int stuckTime) {
+        CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stuckTime);
+        TTY.println("Compilation %s on %s appears stuck - exiting VM", compilation, watched);
+        exitHostVM(STUCK_COMPILATION_EXIT_CODE);
     }
 
     /**
@@ -730,10 +749,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             return null;
         }
 
+        @SuppressWarnings("try")
         @Override
         protected Void performCompilation(DebugContext debug) {
-            compileAST(this, debug);
-            return null;
+            try (CompilationWatchDog watch = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, TruffleCompilerImpl.this)) {
+                compileAST(this, debug);
+                return null;
+            }
         }
 
         /**

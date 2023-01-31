@@ -111,6 +111,11 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     }
 
     @Override
+    public ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp, ValueNode maxTripCount) {
+        return op(base.extremumNode(assumeLoopEntered, stamp, maxTripCount), IntegerConvertNode.convert(offset, stamp, graph(), NodeView.DEFAULT));
+    }
+
+    @Override
     public ValueNode exitValueNode() {
         return op(base.exitValueNode(), offset);
     }
@@ -219,5 +224,10 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
             assert newValue instanceof IntegerConvertNode<?> : "Expected integer convert operation. New baseIV=" + newBase + " newValue=" + newValue;
             return new DerivedConvertedInductionVariable(loop, newBase, newValue.stamp(NodeView.DEFAULT), newValue);
         }
+    }
+
+    @Override
+    public ValueNode entryTripValue() {
+        return op(getBase().entryTripValue(), offset);
     }
 }

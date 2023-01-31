@@ -47,7 +47,8 @@ public class GCCause {
     @DuplicatedInNativeCode public static final GCCause TestGCInDeoptimizer = new GCCause("TestGCInDeoptimizer", 2);
     @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hint", 3);
 
-    protected static GCCause[] GCCauses = new GCCause[]{JavaLangSystemGC, UnitTest, TestGCInDeoptimizer, HintedGC};
+    @UnknownObjectField(types = GCCause[].class) //
+    protected static GCCause[] GCCauses;
 
     private final int id;
     private final String name;
@@ -65,7 +66,7 @@ public class GCCause {
             while (HostedGCCauseList.size() <= id) {
                 HostedGCCauseList.add(null);
             }
-            VMError.guarantee(HostedGCCauseList.get(id) == null, name + " and another GCCause have the same id.");
+            VMError.guarantee(HostedGCCauseList.get(id) == null, "%s and another GCCause have the same id.", name);
             HostedGCCauseList.set(id, this);
         }
     }

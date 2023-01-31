@@ -211,7 +211,7 @@ public abstract class Stub {
                     } catch (Throwable e) {
                         throw debug.handle(e);
                     }
-                    printer.finish(compResult);
+                    printer.finish(compResult, code);
                 } catch (Throwable e) {
                     throw debug.handle(e);
                 }

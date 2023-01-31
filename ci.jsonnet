@@ -1,5 +1,5 @@
 # Common
-local common = import 'common.jsonnet';
+local common = import 'ci/ci_common/common.jsonnet';
 local graal_common = import 'graal-common.json';
 
 # Compiler
@@ -35,12 +35,15 @@ local javadoc = import "ci_includes/publish-javadoc.jsonnet";
 # VM
 local vm = import 'vm/ci/ci_includes/vm.jsonnet';
 
-local verify_ci = (import 'ci-check.libsonnet').verify_ci;
+# Visualizer
+local visualizer = import 'visualizer/ci/ci.jsonnet';
+
+local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
 
 {
   # Ensure that entries in common.jsonnet can be resolved.
-  _checkCommon: (import 'common.jsonnet'),
-  ci_resources:: (import 'ci-resources.libsonnet'),
+  _checkCommon: (import 'ci/ci_common/common.jsonnet'),
+  ci_resources:: (import 'ci/ci_common/ci-resources.libsonnet'),
   overlay: graal_common.ci.overlay,
   specVersion: "3",
   builds: [common.add_excludes_guard(b) for b in (
@@ -54,7 +57,8 @@ local verify_ci = (import 'ci-check.libsonnet').verify_ci;
     tools.builds +
     truffle.builds +
     javadoc.builds +
-    vm.builds
+    vm.builds +
+    visualizer.builds
   )],
   assert verify_ci(self.builds),
   // verify that the run-spec demo works

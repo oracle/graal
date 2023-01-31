@@ -240,7 +240,7 @@ public abstract class AbstractForeignCallStub extends Stub {
             ResolvedJavaMethod getAndClearObjectResult = foreignCallSnippets.getAndClearObjectResult.getMethod();
             ResolvedJavaMethod verifyObject = foreignCallSnippets.verifyObject.getMethod();
             ResolvedJavaMethod thisMethod = getGraphMethod();
-            GraphKit kit = new GraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
+            HotSpotGraphKit kit = new HotSpotGraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
             StructuredGraph graph = kit.getGraph();
             graph.getGraphState().forceDisableFrameStateVerification();
             ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));

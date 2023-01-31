@@ -38,7 +38,7 @@ public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
     protected final int position;
 
     public FormalParamTypeFlow(BytecodePosition sourcePosition, AnalysisType declaredType, int position) {
-        super(sourcePosition, declaredType);
+        super(sourcePosition, filterUncheckedInterface(declaredType));
         this.position = position;
     }
 

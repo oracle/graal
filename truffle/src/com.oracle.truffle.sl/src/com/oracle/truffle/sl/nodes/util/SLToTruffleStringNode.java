@@ -44,6 +44,9 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -65,6 +68,8 @@ import com.oracle.truffle.sl.runtime.SLStrings;
  */
 @TypeSystemReference(SLTypes.class)
 @GenerateUncached
+@GenerateInline
+@GenerateCached(false)
 public abstract class SLToTruffleStringNode extends Node {
 
     static final int LIMIT = 5;
@@ -73,7 +78,7 @@ public abstract class SLToTruffleStringNode extends Node {
     private static final TruffleString FALSE = SLStrings.constant("false");
     private static final TruffleString FOREIGN_OBJECT = SLStrings.constant("[foreign object]");
 
-    public abstract TruffleString execute(Object value);
+    public abstract TruffleString execute(Node node, Object value);
 
     @Specialization
     protected static TruffleString fromNull(@SuppressWarnings("unused") SLNull value) {
@@ -82,7 +87,8 @@ public abstract class SLToTruffleStringNode extends Node {
 
     @Specialization
     protected static TruffleString fromString(String value,
-                    @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+                    // TruffleString nodes cannot be inlined yet
+                    @Shared("fromJava") @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {
         return fromJavaStringNode.execute(value, SLLanguage.STRING_ENCODING);
     }
 
@@ -99,14 +105,14 @@ public abstract class SLToTruffleStringNode extends Node {
     @Specialization
     @TruffleBoundary
     protected static TruffleString fromLong(long value,
-                    @Cached TruffleString.FromLongNode fromLongNode) {
+                    @Shared("fromLong") @Cached(inline = false) TruffleString.FromLongNode fromLongNode) {
         return fromLongNode.execute(value, SLLanguage.STRING_ENCODING, true);
     }
 
     @Specialization
     @TruffleBoundary
     protected static TruffleString fromBigNumber(SLBigNumber value,
-                    @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+                    @Shared("fromJava") @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {
         return fromJavaStringNode.execute(value.toString(), SLLanguage.STRING_ENCODING);
     }
 
@@ -118,8 +124,8 @@ public abstract class SLToTruffleStringNode extends Node {
     @Specialization(limit = "LIMIT")
     protected static TruffleString fromInterop(Object value,
                     @CachedLibrary("value") InteropLibrary interop,
-                    @Cached TruffleString.FromLongNode fromLongNode,
-                    @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+                    @Shared("fromLong") @Cached(inline = false) TruffleString.FromLongNode fromLongNode,
+                    @Shared("fromJava") @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {
         try {
             if (interop.fitsInLong(value)) {
                 return fromLongNode.execute(interop.asLong(value), SLLanguage.STRING_ENCODING, true);
