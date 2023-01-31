@@ -49,6 +49,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
     private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Object activeThreadLock = new Object() {
     };
+    private final AtomicLong nextThreadId = new AtomicLong(2);
 
     public EspressoThreadRegistry(EspressoContext context) {
         super(context);
@@ -418,5 +419,9 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
     // Thread management helpers
     private static int getThreadIndex(int id, Object[] threads) {
         return id - (int) threads[0];
+    }
+
+    public long nextThreadId() {
+        return nextThreadId.getAndIncrement();
     }
 }

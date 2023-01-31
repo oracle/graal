@@ -23,20 +23,19 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import java.util.concurrent.atomic.AtomicLong;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 @EspressoSubstitutions(nameProvider = Target_java_lang_ThreadDollarThreadIdentifiers.ECJHack.class)
 public final class Target_java_lang_ThreadDollarThreadIdentifiers {
-    private static volatile AtomicLong nextThreadId = new AtomicLong(2);
 
     @Substitution
-    public static long next() {
-        return nextThreadId.getAndIncrement();
+    public static long next(@Inject EspressoContext context) {
+        return context.nextThreadId();
     }
 
     /* It works with javac, but ECJ trips over '$' in the class name */
     public static class ECJHack extends SubstitutionNamesProvider {
-        private static String[] NAMES = new String[]{
+        private static String[] NAMES = {
                         TARGET_JAVA_LANG_THREAD_THREADIDENTIFIERS
         };
         public static SubstitutionNamesProvider INSTANCE = new ECJHack();
