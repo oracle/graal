@@ -247,7 +247,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> fillInStackTrace = StaticSymbols.putName("fillInStackTrace");
         public static final Symbol<Name> fillInStackTrace0 = StaticSymbols.putName("fillInStackTrace0");
         public static final Symbol<Name> getMessage = StaticSymbols.putName("getMessage");
-        public static final Symbol<Name> getCause = StaticSymbols.putName("getMessage");
+        public static final Symbol<Name> getCause = StaticSymbols.putName("getCause");
         public static final Symbol<Name> detailMessage = StaticSymbols.putName("detailMessage");
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
 
