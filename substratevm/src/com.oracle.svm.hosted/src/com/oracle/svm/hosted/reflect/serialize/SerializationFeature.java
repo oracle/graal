@@ -535,7 +535,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
              * serialization class consistency, so need to register all constructors, methods and
              * fields.
              */
-            if (SubstrateOptions.ThrowMissingRegistrationErrors.getValue()) {
+            if (SubstrateOptions.ThrowMissingRegistrationErrors.hasBeenSet()) {
                 RuntimeReflection.registerAsQueried(serializationTargetClass.getDeclaredConstructors());
                 RuntimeReflection.registerAsQueried(serializationTargetClass.getDeclaredMethods());
             } else {
