@@ -35,6 +35,7 @@ import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -2415,5 +2416,26 @@ public final class PolyglotNativeAPI {
         CallbackException(String message) {
             super(message);
         }
+    }
+
+    @CEntryPoint(name = "poly_context_builder_timezone", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Sets timezone for a <code>poly_context_builder</code>.",
+                    "",
+                    "@param context_builder that is modified.",
+                    "@param zone_utf8 id of a timezone to be set via ZoneId.of().",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#timeZone-java.time.ZoneId-",
+                    "@since 23.0",
+    })
+    public static PolyglotStatus poly_context_builder_timezone(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, @CConst CCharPointer zone_utf8) {
+        resetErrorState();
+        nullCheck(context_builder, "context_builder");
+        nullCheck(zone_utf8, "zone_utf8");
+
+        String zoneString = CTypeConversion.utf8ToJavaString(zone_utf8);
+        Context.Builder contextBuilder = fetchHandle(context_builder);
+        contextBuilder.timeZone(ZoneId.of(zoneString));
+        return poly_ok;
     }
 }
