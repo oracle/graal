@@ -113,6 +113,7 @@ import org.graalvm.compiler.word.WordCastNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
+import com.oracle.graal.pointsto.ObjectScanner.EmbeddedRootScan;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
@@ -304,10 +305,11 @@ public class MethodTypeFlowBuilder {
 
             } else if (n instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) n;
-                if (cn.hasUsages() && cn.isJavaConstant() && cn.asJavaConstant().getJavaKind() == JavaKind.Object && cn.asJavaConstant().isNonNull()) {
+                JavaConstant root = cn.asJavaConstant();
+                if (cn.hasUsages() && cn.isJavaConstant() && root.getJavaKind() == JavaKind.Object && root.isNonNull()) {
                     assert StampTool.isExactType(cn);
                     AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn);
-                    type.registerAsInHeap(AbstractAnalysisEngine.sourcePosition(cn));
+                    type.registerAsInHeap(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
                     if (registerEmbeddedRoots && !ignoreConstant(bb, cn)) {
                         registerEmbeddedRoot(bb, cn);
                     }

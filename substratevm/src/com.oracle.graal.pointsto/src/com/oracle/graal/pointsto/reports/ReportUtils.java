@@ -53,10 +53,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ReportUtils {
 
-    static final String CONNECTING_INDENT = "\u2502   "; // "| "
-    static final String EMPTY_INDENT = "    ";
-    static final String CHILD = "\u251c\u2500\u2500 "; // "|-- "
-    static final String LAST_CHILD = "\u2514\u2500\u2500 "; // "`-- "
+    public static final String CONNECTING_INDENT = "\u2502   "; // "| "
+    public static final String EMPTY_INDENT = "    ";
+    public static final String CHILD = "\u251c\u2500\u2500 "; // "|-- "
+    public static final String LAST_CHILD = "\u2514\u2500\u2500 "; // "`-- "
 
     public static final Comparator<ResolvedJavaMethod> methodComparator = Comparator.comparing(m -> m.format("%H.%n(%p)"));
     static final Comparator<AnalysisField> fieldComparator = Comparator.comparing(f -> f.format("%H.%n"));

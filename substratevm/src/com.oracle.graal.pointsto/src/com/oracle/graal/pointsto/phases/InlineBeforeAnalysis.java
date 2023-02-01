@@ -32,6 +32,7 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
@@ -278,7 +279,9 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
         if (callerScope.policyScope != null) {
             policy.commitCalleeScope(callerScope.policyScope, inlineScope.policyScope);
         }
-        Object reason = graph.currentNodeSourcePosition() != null ? graph.currentNodeSourcePosition() : graph.method();
+        NodeSourcePosition callerBytecodePosition = callerScope.getCallerBytecodePosition();
+        Object reason = callerBytecodePosition != null ? callerBytecodePosition : callerScope.method;
+        reason = reason == null ? graph.method() : reason;
 
         ((AnalysisMethod) invokeData.callTarget.targetMethod()).registerAsInlined(reason);
 

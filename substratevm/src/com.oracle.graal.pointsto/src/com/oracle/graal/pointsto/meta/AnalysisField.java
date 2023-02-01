@@ -393,8 +393,12 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return writtenBy.keySet();
     }
 
-    private boolean isAccessedSet() {
+    protected boolean isAccessedSet() {
         return AtomicUtils.isSet(this, isAccessedUpdater);
+    }
+
+    public Object getAccessedReason() {
+        return isAccessed;
     }
 
     /**
@@ -417,7 +421,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
                         (AtomicUtils.isSet(this, isWrittenUpdater) && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object));
     }
 
-    private boolean isReadSet() {
+    protected boolean isReadSet() {
         return AtomicUtils.isSet(this, isReadUpdater);
     }
 
@@ -425,7 +429,11 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isReadUpdater);
     }
 
-    private boolean isWrittenSet() {
+    protected Object getReadReason() {
+        return isRead;
+    }
+
+    protected boolean isWrittenSet() {
         return AtomicUtils.isSet(this, isWrittenUpdater);
     }
 
@@ -433,12 +441,16 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isWrittenUpdater);
     }
 
-    private boolean isFoldedSet() {
-        return AtomicUtils.isSet(this, isFoldedUpdater);
+    protected Object getWrittenReason() {
+        return isWritten;
     }
 
     public boolean isFolded() {
         return AtomicUtils.isSet(this, isFoldedUpdater);
+    }
+
+    protected Object getFoldedReason() {
+        return isFolded;
     }
 
     @Override
@@ -517,7 +529,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @Override
     public String toString() {
-        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessedSet() + " reads: " + isReadSet() + " written: " + isWrittenSet() + " folded: " + isFoldedSet() + ">";
+        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessedSet() + " reads: " + isReadSet() + " written: " + isWrittenSet() + " folded: " + isFolded() + ">";
     }
 
     public void markAsUsedInComparison() {

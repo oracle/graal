@@ -128,6 +128,7 @@ public final class AnalysisParsedGraph {
             graph = new StructuredGraph.Builder(options, debug)
                             .method(method)
                             .recordInlinedMethods(false)
+                            .trackNodeSourcePosition(true)
                             .build();
             try (DebugContext.Scope s = debug.scope("ClosedWorldAnalysis", graph, method)) {
 
