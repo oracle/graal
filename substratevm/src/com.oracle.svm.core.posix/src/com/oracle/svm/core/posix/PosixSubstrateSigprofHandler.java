@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
+import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton(SubstrateSigprofHandler.class)
 public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
@@ -72,6 +74,7 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
     }
 
     private static void registerSigprofSignal() {
+        VMError.guarantee(SubstrateOptions.EnableSignalHandling.getValue(), "Trying to install a signal handler while signal handling is disabled.");
         int structSigActionSize = SizeOf.get(Signal.sigaction.class);
         Signal.sigaction structSigAction = StackValue.get(structSigActionSize);
         LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
