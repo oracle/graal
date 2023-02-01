@@ -35,7 +35,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.nfi.api.SerializableLibrary;
 
 @GenerateUncached
 public abstract class ToFP128 extends ForeignToLLVM {
@@ -76,6 +81,21 @@ public abstract class ToFP128 extends ForeignToLLVM {
     }
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
+    @Specialization(limit = "1", guards = "serialize.isSerializable(value)")
+    protected LLVM128BitFloat from128BitFloat(Object value,
+                                            @CachedLibrary("value") SerializableLibrary serialize) {
+        try {
+            // this is an FP128 value from the NFI, we have to serialize it
+            byte[] buffer = new byte[16];
+            LLVMPointer ptr = LLVMManagedPointer.create(buffer).export(new LLVMInteropType.Buffer(true, 16));
+            serialize.serialize(value, ptr);
+            return LLVM128BitFloat.fromBytes(buffer);
+        } catch (UnsupportedMessageException ex) {
+            throw CompilerDirectives.shouldNotReachHere(ex);
+        }
+    }
+
 
     @CompilerDirectives.TruffleBoundary
     static LLVM128BitFloat slowPathPrimitiveConvert(Object value) throws UnsupportedTypeException {

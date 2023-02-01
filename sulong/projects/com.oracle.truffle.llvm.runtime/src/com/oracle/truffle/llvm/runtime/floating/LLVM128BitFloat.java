@@ -267,6 +267,13 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         return new LLVM128BitFloat(expSignFraction, fraction);
     }
 
+    public static LLVM128BitFloat fromBytes(byte[] bytes) {
+        assert bytes.length == BYTE_WIDTH;
+        long fraction = ByteArraySupport.littleEndian().getLong(bytes, 0);
+        long expSignFraction = ByteArraySupport.littleEndian().getLong(bytes, 8);
+        return new LLVM128BitFloat(expSignFraction, fraction);
+    }
+
     public static LLVM128BitFloat fromInt(int val) {
         boolean sign = val < 0;
         return fromInt(val, sign);
