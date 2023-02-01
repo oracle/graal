@@ -95,7 +95,7 @@ cat dat/CaseFolding.txt \
 # mappings. We filter out the codepoint and the two character mappings, remove
 # any empty fields by collapsing neighboring or terminating semicolons and
 # finally removing any lines consisting of a single codepoint (the case when a
-# character has cased mappings).
+# character has no cased mappings).
 cat dat/UnicodeData.txt \
     | cut -d\; -f1,13,14 \
     | sed -e 's/;\+/;/g' \
@@ -103,21 +103,5 @@ cat dat/UnicodeData.txt \
           -e '/^[^;]*$/d' \
     > dat/PythonSimpleCasing.txt
 
-# The Python case folding algorithm also makes use of the extended case mappings
-# defined in SpecialCasing.txt. These occur when, e.g., a single character is
-# mapped to multiple characters. In this case, Python makes a character
-# equivalent to the first character it maps to.
-# When processing the file, we strip away the comments and blank lines. Then we
-# reduce each codepoint sequence to just its first codepoint. Finally, we drop
-# any missing entries (by collapsing neighboring or terminating semicolons).
-cat dat/SpecialCasing.txt \
-    | sed -e '/^#/d' \
-          -e '/^$/d' \
-          -e 's/^\([0-9A-F]\+\); \([0-9A-F]*\)[^;]*; \([0-9A-F]*\)[^;]*; \([0-9A-F]*\).*$/\1;\2;\4/g' \
-          -e 's/;\+/;/g' \
-          -e 's/;$//g' \
-    > dat/PythonExtendedCasing.txt
-
-# We produce the Python case fold table by merging the equivalences due to both
-# the simple case mappings and the extended case mappings.
-cat dat/PythonSimpleCasing.txt dat/PythonExtendedCasing.txt > dat/PythonFoldTable.txt
+# We produce the Python case fold table by taking just the simple case mappings.
+cat dat/PythonSimpleCasing.txt > dat/PythonFoldTable.txt
