@@ -240,7 +240,9 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         UnsignedWord fromAddressState = IDHASH_STATE_FROM_ADDRESS.shiftLeft(IDHASH_STATE_SHIFT);
         UnsignedWord newHeader = oldHeader.and(IDHASH_STATE_BITS.not()).or(fromAddressState);
         writeHeaderToObject(o, newHeader);
-        dynamicAssert(hasIdentityHashFromAddress(o), "header must reflect change");
+        if (!GraalDirectives.inIntrinsic()) {
+            assert hasIdentityHashFromAddress(o);
+        }
     }
 
     @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.", callerMustBe = true)
