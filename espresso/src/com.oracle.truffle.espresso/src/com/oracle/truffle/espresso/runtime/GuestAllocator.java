@@ -37,8 +37,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -285,10 +285,16 @@ public final class GuestAllocator implements LanguageAccess {
 
         if (meta.getJavaVersion().java9OrLater()) {
             try {
-                int depth = (int) interopLibrary.getArraySize(interopLibrary.getExceptionStackTrace(foreignObject));
-                meta.java_lang_Throwable_depth.setInt(foreignException, depth);
-            } catch (InteropException e) {
-                // OK to use depth 0 then, since we can't retrieve the stacktrace length
+                if (interopLibrary.hasExceptionStackTrace(foreignException)) {
+                    Object exceptionStackTrace = interopLibrary.getExceptionStackTrace(foreignObject);
+                    if (interopLibrary.hasArrayElements(exceptionStackTrace)) {
+                        int depth = (int) interopLibrary.getArraySize(exceptionStackTrace);
+                        meta.java_lang_Throwable_depth.setInt(foreignException, depth);
+                    }
+                }
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere(e);
             }
         }
         return foreignException;
