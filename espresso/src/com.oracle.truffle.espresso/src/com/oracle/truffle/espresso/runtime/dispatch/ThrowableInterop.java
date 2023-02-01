@@ -59,11 +59,11 @@ public class ThrowableInterop extends EspressoInterop {
         if (resolvedMessageMethod == getMeta().java_lang_Throwable_getCause) {
             // not overridden, then we can trust the field value
             StaticObject guestCause = getMeta().java_lang_Throwable_cause.getObject(object);
-            return !StaticObject.isNull(guestCause) && guestCause != object;
+            return StaticObject.notNull(guestCause) && guestCause != object;
         } else if (resolvedMessageMethod.isInlinableGetter()) {
             // only call the method for a 'has' interop message if it's simple
             StaticObject guestCause = (StaticObject) resolvedMessageMethod.invokeDirect(object);
-            return !StaticObject.isNull(guestCause) && guestCause != object;
+            return StaticObject.notNull(guestCause) && guestCause != object;
         } else {
             /*
              * not a simple method, so we might end up returning guest null for
@@ -88,10 +88,10 @@ public class ThrowableInterop extends EspressoInterop {
         Method resolvedMessageMethod = object.getKlass().lookupMethod(Symbol.Name.getMessage, Symbol.Signature.String);
         if (resolvedMessageMethod == getMeta().java_lang_Throwable_getMessage) {
             // not overridden, then we can trust the field value
-            return !StaticObject.isNull(getMeta().java_lang_Throwable_detailMessage.getObject(object));
+            return StaticObject.notNull(getMeta().java_lang_Throwable_detailMessage.getObject(object));
         } else if (resolvedMessageMethod.isInlinableGetter()) {
             // only call the method for a 'has' interop message if it's simple
-            return !StaticObject.isNull((StaticObject) resolvedMessageMethod.invokeDirect(object));
+            return StaticObject.notNull((StaticObject) resolvedMessageMethod.invokeDirect(object));
         } else {
             /*
              * not a simple method, so we might end up returning guest null for
