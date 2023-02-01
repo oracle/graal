@@ -603,8 +603,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
-        // Traverse back to front to minimize conflict with threads adding new nodes. Which could
-        // possibly block traversal at very beginning.
+        // Traverse back to front to minimize conflict with threads adding new nodes.
+        // Which could possibly block traversal early at the head.
 
         JfrBufferNode node = linkedList.getAndLockTail();
         // If we couldn't acquire the tail. node is null. Give up, and try again next time.
@@ -629,19 +629,15 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                     release(node);
                     return;
                 }
-
                 write(buffer);
                 writeSuccess = true;
-
                 if (!safepoint) {
                     JfrBufferAccess.release(buffer);
                 }
             }
 
-            // If a node has been marked as dead, it means the thread was unable to flush upon
-            // death.
-            // So we need to flush the buffer above first, before attempting to remove the node
-            // here.
+            // If a node has been marked dead, the thread was unable to flush upon death.
+            // So we need to flush the buffer above before attempting to remove the node here.
             if (!node.getAlive()) {
                 if (linkedList.removeNode(node, true)) {
                     // able to remove node
@@ -653,7 +649,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                     return;
                 }
             } else if (writeSuccess && java) {
-                // Only notify Java event writer of flush if the thread is still alive
+                // Only notify event writer of flush if the thread (and its locals) is still alive
                 JfrThreadLocal.notifyEventWriter(node.getThread());
             }
 

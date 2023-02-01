@@ -52,11 +52,11 @@ import jdk.jfr.internal.LogTag;
 @TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_JVM {
     // Checkstyle: stop
-    @Alias
+    @Alias //
     @TargetElement(onlyWith = JDK20OrLater.class) //
     static Object CHUNK_ROTATION_MONITOR;
 
-    @Alias
+    @Alias //
     @TargetElement(onlyWith = JDK19OrEarlier.class) //
     static Object FILE_DELTA_CHANGE;
     // Checkstyle: resume

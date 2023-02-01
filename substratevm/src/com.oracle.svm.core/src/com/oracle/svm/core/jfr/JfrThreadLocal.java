@@ -149,11 +149,9 @@ public class JfrThreadLocal implements ThreadListener {
             if (getJavaBufferList().lockSection(jbn)) {
                 JfrBuffer jb = jbn.getValue();
                 assert jb.isNonNull() && jbn.getAlive();
-
                 if (jb.isNonNull()) {
                     flush(jb, WordFactory.unsigned(0), 0);
                 }
-
                 getJavaBufferList().removeNode(jbn, false); // also releases locks
             } else {
                 jbn.setAlive(false);
@@ -163,11 +161,9 @@ public class JfrThreadLocal implements ThreadListener {
             if (getNativeBufferList().lockSection(nbn)) {
                 JfrBuffer nb = nbn.getValue();
                 assert nb.isNonNull() && nbn.getAlive();
-
                 if (nb.isNonNull()) {
                     flush(nb, WordFactory.unsigned(0), 0);
                 }
-
                 getNativeBufferList().removeNode(nbn, false);
             } else {
                 nbn.setAlive(false);
