@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
@@ -117,12 +116,7 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
     }
 
     @Override
-    public String getObjectFile(CEntryPointLiteral<?> symbol) {
-        PointerBase symbolAddress = symbol.getFunctionPointer();
-        return getObjectFile(symbolAddress);
-    }
-
-    private static String getObjectFile(PointerBase symbolAddress) {
+    public String getObjectFile(PointerBase symbolAddress) {
         WinBase.HMODULEPointer module = UnsafeStackValue.get(WinBase.HMODULEPointer.class);
         if (LibLoaderAPI.GetModuleHandleExA(LibLoaderAPI.GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS() | LibLoaderAPI.GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT(),
                         (CCharPointer) symbolAddress, module) == 0) {
