@@ -46,6 +46,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -365,7 +366,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     public void registerAsInlined(Object reason) {
-        assert isValidReason(reason) : "Registering a method as inlined needs to provide a valid reason, found: " + reason;
+        assert reason instanceof NodeSourcePosition || reason instanceof ResolvedJavaMethod : "Registering a method as inlined needs to provide the inline location as reason, found: " + reason;
         AtomicUtils.atomicSetAndRun(this, reason, isInlinedUpdater, this::onReachable);
     }
 
@@ -387,6 +388,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public boolean isIntrinsicMethod() {
         return AtomicUtils.isSet(this, isIntrinsicMethodUpdater);
+    }
+
+    public Object getIntrinsicMethodReason() {
+        return isIntrinsicMethod;
     }
 
     /**
@@ -441,6 +446,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return isIntrinsicMethod() || isVirtualRootMethod() || isDirectRootMethod() || AtomicUtils.isSet(this, isInvokedUpdater);
     }
 
+    protected Object getInvokedReason() {
+        return isInvoked;
+    }
+
     /**
      * Returns true if the method body can ever be executed. Methods registered as root are also
      * registered as implementation invoked when they are linked.
@@ -449,9 +458,21 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod() || AtomicUtils.isSet(this, isImplementationInvokedUpdater));
     }
 
+    protected Object getImplementationInvokedReason() {
+        return isImplementationInvoked;
+    }
+
+    public boolean isInlined() {
+        return AtomicUtils.isSet(this, isInlinedUpdater);
+    }
+
+    protected Object getInlinedReason() {
+        return isInlined;
+    }
+
     @Override
     public boolean isReachable() {
-        return isImplementationInvoked() || AtomicUtils.isSet(this, isInlinedUpdater);
+        return isImplementationInvoked() || isInlined();
     }
 
     @Override

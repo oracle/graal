@@ -818,6 +818,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return AtomicUtils.isSet(this, isReachableUpdater);
     }
 
+    public Object getReachableReason() {
+        return isReachable;
+    }
+
     /**
      * The kind of the field in memory (in contrast to {@link #getJavaKind()}, which is the kind of
      * the field on the Java type system level). For example {@link WordBase word types} have a
@@ -1259,8 +1263,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return AtomicUtils.isSet(this, isInHeapUpdater);
     }
 
+    public Object getInHeapReason() {
+        return isInHeap;
+    }
+
     public boolean isAllocated() {
         return AtomicUtils.isSet(this, isAllocatedUpdater);
+    }
+
+    public Object getAllocatedReason() {
+        return isAllocated;
     }
 
     @Override

@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.Set;
 
 import org.graalvm.compiler.debug.GraalError;
 
@@ -376,6 +377,22 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     /**
+     * Returns all methods where the field is written. It does not include the methods where the
+     * field is written with unsafe access.
+     */
+    public Set<Object> getWrittenBy() {
+        return writtenBy.keySet();
+    }
+
+    protected boolean isAccessedSet() {
+        return AtomicUtils.isSet(this, isAccessedUpdater);
+    }
+
+    public Object getAccessedReason() {
+        return isAccessed;
+    }
+
+    /**
      * Returns true if the field is reachable. Fields that are read or manually registered as
      * reachable are always reachable. For fields that are write-only, more cases need to be
      * considered:
@@ -395,16 +412,36 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
                         (AtomicUtils.isSet(this, isWrittenUpdater) && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object));
     }
 
+    protected boolean isReadSet() {
+        return AtomicUtils.isSet(this, isReadUpdater);
+    }
+
     public boolean isRead() {
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isReadUpdater);
+    }
+
+    protected Object getReadReason() {
+        return isRead;
+    }
+
+    protected boolean isWrittenSet() {
+        return AtomicUtils.isSet(this, isWrittenUpdater);
     }
 
     public boolean isWritten() {
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isWrittenUpdater);
     }
 
+    protected Object getWrittenReason() {
+        return isWritten;
+    }
+
     public boolean isFolded() {
         return AtomicUtils.isSet(this, isFoldedUpdater);
+    }
+
+    protected Object getFoldedReason() {
+        return isFolded;
     }
 
     @Override
@@ -484,7 +521,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @Override
     public String toString() {
         return "AnalysisField<" + format("%h.%n") + " -> " + wrapped.toString() + ", accessed: " + (isAccessed != null) +
-                        ", read: " + (isRead != null) + ", written: " + (isWritten != null) + ", folded: " + (isFolded != null) + ">";
+                        ", read: " + (isRead != null) + ", written: " + (isWritten != null) + ", folded: " + isFolded() + ">";
     }
 
     @Override
