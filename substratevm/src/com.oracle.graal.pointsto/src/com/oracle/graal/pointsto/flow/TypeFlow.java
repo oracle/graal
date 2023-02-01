@@ -180,7 +180,7 @@ public abstract class TypeFlow<T> {
     }
 
     /**
-     * Initialization code for some clone corner case type flows.
+     * Initialization code for some type flow corner cases.
      *
      * @param bb
      */

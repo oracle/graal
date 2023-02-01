@@ -210,12 +210,6 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
                     clone.addUse(bb, clonedUse);
                 }
             }
-
-            if (clone instanceof AbstractStaticInvokeTypeFlow) {
-                /* Trigger the update for static invokes, there is no receiver to trigger it. */
-                AbstractStaticInvokeTypeFlow invokeFlow = (AbstractStaticInvokeTypeFlow) clone;
-                bb.postFlow(invokeFlow);
-            }
         }
     }
 
