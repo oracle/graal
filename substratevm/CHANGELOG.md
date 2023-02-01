@@ -15,6 +15,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-41912) The builder now generated reports for internal errors, which users can share when creating issues. By default, error reports follow the `svm_err_b_<timestamp>_pid<pid>.md` pattern and are created in the working directory. Use `-H:ErrorFile` to adjust the path or filename.
 * (GR-36951) Add [RISC-V support](https://medium.com/p/899be38eddd9) for Native Image through the LLVM backend.
 * (GR-42964) Deprecate `--enable-monitoring` without an argument. The option will no longer default to `all` in a future release. Instead, please always explicitly specify the list of monitoring features to be enabled (for example, `--enable-monitoring=heapdump,jfr,jvmstat`").
+* (GR-19890) Native Image now sets up build environments for Windows users automatically. Running in an x64 Native Tools Command Prompt is no longer a requirement.
 
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.
