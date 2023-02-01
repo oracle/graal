@@ -3799,9 +3799,18 @@ public final class VM extends NativeEnv {
             throw meta.throwNullPointerException();
         }
         assert elements.isArray();
-        VM.StackTrace stackTrace = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwable);
-        if (stackTrace == StackTrace.FOREIGN_MARKER_STACK_TRACE) {
-            StaticObject foreignWrapper = meta.java_lang_Throwable_backtrace.getObject(throwable);
+
+        StaticObject foreignWrapper = null;
+        VM.StackTrace stackTrace = null;
+        if (throwable.isForeignObject()) { // foreign object wrapper passed as backtrace directly
+            foreignWrapper = throwable;
+        } else { // check for foreign marker stack trace
+            stackTrace = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwable);
+            if (stackTrace == StackTrace.FOREIGN_MARKER_STACK_TRACE) {
+                foreignWrapper = meta.java_lang_Throwable_backtrace.getObject(throwable);
+            }
+        }
+        if (foreignWrapper != null) {
             AbstractTruffleException foreignException = (AbstractTruffleException) foreignWrapper.rawForeignObject(language);
             InteropLibrary interop = InteropLibrary.getUncached();
             try {

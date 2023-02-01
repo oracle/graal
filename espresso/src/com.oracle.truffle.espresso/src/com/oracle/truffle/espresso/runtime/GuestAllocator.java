@@ -285,7 +285,7 @@ public final class GuestAllocator implements LanguageAccess {
 
         if (meta.getJavaVersion().java9OrLater()) {
             try {
-                if (interopLibrary.hasExceptionStackTrace(foreignException)) {
+                if (interopLibrary.hasExceptionStackTrace(foreignObject)) {
                     Object exceptionStackTrace = interopLibrary.getExceptionStackTrace(foreignObject);
                     if (interopLibrary.hasArrayElements(exceptionStackTrace)) {
                         int depth = (int) interopLibrary.getArraySize(exceptionStackTrace);
