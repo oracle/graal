@@ -17,7 +17,7 @@ In this guide you will learn how to debug a native executable using the standard
 
 ### Run a Demo
 
-To build a native executable with debug information, provide the `-g` command-line option to the `native-image` builder.
+To build a native executable with debug information, provide the `-g` command-line option for `javac` when compiling the application, and then to the `native-image` builder.
 This will enable source-level debugging, and the debugger (GDB) then correlates machine instructions with specific source lines in Java files. 
 
 ### Prerequisites
@@ -79,7 +79,7 @@ Follow the steps to test debugging a native executable with GDB. The below workf
 2. Compile it and generate a native executable with debug information:
 
     ```shell 
-    $JAVA_HOME/bin/javac GDBDemo.java
+    $JAVA_HOME/bin/javac -g GDBDemo.java
     ```
     ```shell
     native-image -g -O0 GDBDemo
@@ -97,14 +97,17 @@ Follow the steps to test debugging a native executable with GDB. The below workf
  
 4. Set a breakpoint: type `breakpoint <java method>` to set a breakpoint and `run <arg>` to run the native executable. You can put breakpoints configured by file and line, or by method name. The following command places a breakpoint on the main entry point for class `GDBDemo`:
 
-    ```
+    ```shell
     (gdb) info func ::main
     ```
 
-    <!-- ```
-    (gdb) args.length > 0
-    ``` -->
-5. Pass `<arg>` to the command line. Step over to the next function call. If the native executable segfaults, you can print the backtrace of the entire stack (`bt`).
+5. Print the local variables:
+
+    ```shell
+    (gdb) info arg
+    ```
+
+6. Pass `<arg>` to the command line. Step over to the next function call. If the native executable segfaults, you can print the backtrace of the entire stack (`bt`).
 
 The debugger points machine instructions back from the binary to specific source lines in Java files. Note that single stepping within a compiled method includes file and line number information for inlined code. GDB may switch files even though you are still in the same compiled method.
 
@@ -118,8 +121,8 @@ Most of the regular debugging actions are supported by GDB, namely:
   - access through object networks via path expressions
   - reference by name to methods and static field data
 
-The generation of debug information is implemented by modeling the Java program as an equivalent C++ program.  Since GDB was primarily designed for debugging C (and C++), there are certain considerations to be taken into account when debugging Java applications. 
-Read more about Native Image debugging support from the [reference documentation](../DebugInfo.md#special-considerations-for-debugging-java-from-gdb).
+The generation of debug information is implemented by modeling the Java program as an equivalent C++ program. Since GDB was primarily designed for debugging C (and C++), there are certain considerations to be taken into account when debugging Java applications. 
+Read more about Native Image debugging support in the [reference documentation](../DebugInfo.md#special-considerations-for-debugging-java-from-gdb).
 
 ### Related Documentation
 
