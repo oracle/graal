@@ -45,6 +45,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceClassLikeType;
@@ -1087,7 +1088,11 @@ public abstract class LLVMInteropType implements TruffleObject {
                         case 64:
                             return ValueKind.DOUBLE.type;
                         case 128:
-                            return ValueKind.FP80.type;
+                            if (LLVMLanguage.get(null).getCapability(PlatformCapability.class).getDoubleLongSize() == 80) {
+                                return ValueKind.FP80.type;
+                            } else if (LLVMLanguage.get(null).getCapability(PlatformCapability.class).getDoubleLongSize() == 128) {
+                                return ValueKind.FP128.type;
+                            }
                     }
                     break;
                 case SIGNED:

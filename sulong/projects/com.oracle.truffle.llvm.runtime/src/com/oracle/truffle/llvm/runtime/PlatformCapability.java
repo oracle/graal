@@ -213,4 +213,6 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
 
     public abstract OS getOS();
 
+    public abstract int getDoubleLongSize();
+
 }

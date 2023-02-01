@@ -97,4 +97,9 @@ final class LinuxAMD64PlatformCapability extends BasicAMD64PlatformCapability<Li
     public OS getOS() {
         return OS.Linux;
     }
+
+    @Override
+    public int getDoubleLongSize() {
+        return 80;
+    }
 }

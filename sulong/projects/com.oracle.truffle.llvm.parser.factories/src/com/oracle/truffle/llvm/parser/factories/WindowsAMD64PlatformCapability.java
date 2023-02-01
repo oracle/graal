@@ -98,4 +98,9 @@ final class WindowsAMD64PlatformCapability extends BasicAMD64PlatformCapability<
     public OS getOS() {
         return OS.Windows;
     }
+
+    @Override
+    public int getDoubleLongSize() {
+        return 80;
+    }
 }

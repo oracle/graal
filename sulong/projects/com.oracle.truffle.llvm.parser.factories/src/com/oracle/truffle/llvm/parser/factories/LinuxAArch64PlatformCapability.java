@@ -81,4 +81,9 @@ final class LinuxAArch64PlatformCapability extends BasicAarch64PlatformCapabilit
     public OS getOS() {
         return OS.Linux;
     }
+
+    @Override
+    public int getDoubleLongSize() {
+        return 128;
+    }
 }

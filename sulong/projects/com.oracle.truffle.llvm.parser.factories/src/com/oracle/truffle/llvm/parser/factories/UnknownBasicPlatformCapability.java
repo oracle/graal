@@ -88,4 +88,9 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
     public OS getOS() {
         throw CompilerDirectives.shouldNotReachHere();
     }
+
+    @Override
+    public int getDoubleLongSize() {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
 }

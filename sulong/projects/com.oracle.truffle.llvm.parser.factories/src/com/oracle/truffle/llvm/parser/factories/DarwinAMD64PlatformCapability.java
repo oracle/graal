@@ -97,4 +97,9 @@ final class DarwinAMD64PlatformCapability extends BasicAMD64PlatformCapability<D
     public OS getOS() {
         return OS.Darwin;
     }
+
+    @Override
+    public int getDoubleLongSize() {
+        return 80;
+    }
 }

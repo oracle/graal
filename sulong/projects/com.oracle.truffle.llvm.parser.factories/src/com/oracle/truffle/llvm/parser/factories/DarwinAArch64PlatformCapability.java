@@ -100,4 +100,10 @@ final class DarwinAArch64PlatformCapability extends BasicAarch64PlatformCapabili
     public OS getOS() {
         return OS.Darwin;
     }
+
+    @Override
+    public int getDoubleLongSize() {
+        return 128;
+    }
+
 }
