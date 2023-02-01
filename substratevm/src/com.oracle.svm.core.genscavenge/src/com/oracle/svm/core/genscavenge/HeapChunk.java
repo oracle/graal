@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.ComparableWord;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
@@ -48,6 +49,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 
 /**
@@ -170,10 +172,10 @@ public final class HeapChunk {
         void setOffsetToNextChunk(SignedWord newNext);
 
         @RawField
-        UnsignedWord getIdentityHashSalt();
+        UnsignedWord getIdentityHashSalt(LocationIdentity identity);
 
         @RawField
-        void setIdentityHashSalt(UnsignedWord value);
+        void setIdentityHashSalt(UnsignedWord value, LocationIdentity identity);
     }
 
     public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord chunkSize) {
@@ -263,12 +265,12 @@ public final class HeapChunk {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getIdentityHashSalt(Header<?> that) {
-        return that.getIdentityHashSalt();
+        return that.getIdentityHashSalt(IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setIdentityHashSalt(Header<?> that, UnsignedWord value) {
-        that.setIdentityHashSalt(value);
+        that.setIdentityHashSalt(value, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION);
     }
 
     /**

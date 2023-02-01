@@ -50,6 +50,13 @@ import jdk.internal.misc.Unsafe;
 public final class IdentityHashCodeSupport {
     public static final LocationIdentity IDENTITY_HASHCODE_LOCATION = NamedLocationIdentity.mutable("identityHashCode");
 
+    /**
+     * Location representing the {@linkplain Heap#getIdentityHashSalt salt values used for the
+     * identity hash code of objects}. These values change between collections, so this location
+     * must be killed at safepoint checks and allocation slow-paths.
+     */
+    public static final LocationIdentity IDENTITY_HASHCODE_SALT_LOCATION = NamedLocationIdentity.mutable("identityHashCodeSalt");
+
     private static final FastThreadLocalObject<SplittableRandom> hashCodeGeneratorTL = FastThreadLocalFactory.createObject(SplittableRandom.class, "IdentityHashCodeSupport.hashCodeGeneratorTL");
 
     /**
