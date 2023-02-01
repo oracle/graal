@@ -174,6 +174,9 @@ public class JSONFormatter {
                     sb.append(COMMA_SPACE);
                 }
             }
+            if (indent != null) {
+                sb.append(newIndent);
+            }
             appendValue(sb, value, indent, newIndent);
             comma = true;
         }
