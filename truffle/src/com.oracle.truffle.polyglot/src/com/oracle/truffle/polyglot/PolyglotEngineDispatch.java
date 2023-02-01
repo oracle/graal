@@ -215,7 +215,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     boolean roots,
                     Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
         PolyglotEngineImpl engine = (PolyglotEngineImpl) engineReceiver;
-        if (engine.sandboxPolicy.ordinal() >= SandboxPolicy.RELAXED.ordinal()) {
+        if (engine.sandboxPolicy.ordinal() >= SandboxPolicy.CONSTRAINED.ordinal()) {
             throw new IllegalArgumentException(String.format("If the sandbox policy %s is set for an engine, execution listeners are not allowed.", engine.sandboxPolicy));
         }
         Instrumenter instrumenter = (Instrumenter) EngineAccessor.INSTRUMENT.getEngineInstrumenter(engine.instrumentationHandler);

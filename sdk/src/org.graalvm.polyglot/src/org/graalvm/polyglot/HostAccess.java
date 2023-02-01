@@ -91,14 +91,14 @@ public final class HostAccess {
 
     private final String name;
     private final EconomicSet<Class<? extends Annotation>> accessAnnotations;
-    private final EconomicSet<Class<? extends Annotation>> implementableAnnotations;
+    final EconomicSet<Class<? extends Annotation>> implementableAnnotations;
     private final EconomicMap<Class<?>, Boolean> excludeTypes;
     private final EconomicSet<AnnotatedElement> members;
     private final EconomicSet<Class<?>> implementableTypes;
     private final List<Object> targetMappings;
     final boolean allowPublic;
-    private final boolean allowAllInterfaceImplementations;
-    private final boolean allowAllClassImplementations;
+    final boolean allowAllInterfaceImplementations;
+    final boolean allowAllClassImplementations;
     final boolean allowArrayAccess;
     final boolean allowListAccess;
     final boolean allowBufferAccess;

@@ -1338,7 +1338,7 @@ public abstract class TruffleInstrument {
          */
         String website() default "";
 
-        SandboxPolicy sandboxPolicy() default SandboxPolicy.TRUSTED;
+        SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
     }
 
     /**

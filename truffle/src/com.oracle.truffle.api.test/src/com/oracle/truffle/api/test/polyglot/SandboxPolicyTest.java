@@ -89,17 +89,23 @@ public class SandboxPolicyTest {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Configuration> createParameters() {
         boolean supportsIsolates = supportsPolyglotIsolates();
+        boolean supportsSandboxInstrument = supportsSandboxInstrument();
         boolean hasIsolateLibrary = supportsIsolates && tryToLoadIsolateLibrary();
+        assertTrue("Invalid language library. Truffle isolate must support sandbox instrument.", !hasIsolateLibrary || supportsSandboxInstrument);
         return List.of(
-                        new Configuration(SandboxPolicy.TRUSTED, supportsIsolates, hasIsolateLibrary),
-                        new Configuration(SandboxPolicy.RELAXED, supportsIsolates, hasIsolateLibrary),
-                        new Configuration(SandboxPolicy.ISOLATED, supportsIsolates, hasIsolateLibrary),
-                        new Configuration(SandboxPolicy.UNTRUSTED, supportsIsolates, hasIsolateLibrary));
+                        new Configuration(SandboxPolicy.TRUSTED, supportsIsolates, supportsSandboxInstrument, hasIsolateLibrary),
+                        new Configuration(SandboxPolicy.CONSTRAINED, supportsIsolates, supportsSandboxInstrument, hasIsolateLibrary),
+                        new Configuration(SandboxPolicy.ISOLATED, supportsIsolates, supportsSandboxInstrument, hasIsolateLibrary),
+                        new Configuration(SandboxPolicy.UNTRUSTED, supportsIsolates, supportsSandboxInstrument, hasIsolateLibrary));
     }
 
     private static boolean supportsPolyglotIsolates() {
         OptionDescriptors optionDescriptors = Engine.create().getOptions();
         return optionDescriptors.get("engine.SpawnIsolate") != null;
+    }
+
+    private static boolean supportsSandboxInstrument() {
+        return Engine.create().getInstruments().containsKey("sandbox");
     }
 
     private static boolean tryToLoadIsolateLibrary() {
@@ -121,35 +127,35 @@ public class SandboxPolicyTest {
     public void testEngineStreams() {
         InputStream nullIn = InputStream.nullInputStream();
         OutputStream nullOut = OutputStream.nullOutputStream();
-        try (Engine engine = Engine.newBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Engine engine = Engine.newBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).out(nullOut).err(nullOut).build()) {
+        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).out(nullOut).err(nullOut).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Engine engine = Engine.newBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).in(nullIn).err(nullOut).build()) {
+        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).in(nullIn).err(nullOut).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Engine engine = Engine.newBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).in(nullIn).out(nullOut).build()) {
+        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).in(nullIn).out(nullOut).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Engine engine = Engine.newBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).in(nullIn).out(nullOut).err(nullOut).build()) {
+        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).in(nullIn).out(nullOut).err(nullOut).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -158,17 +164,25 @@ public class SandboxPolicyTest {
         }
     }
 
+    private Engine.Builder newEngineWithIsolateOptions(String... permittedLanguages) {
+        Engine.Builder builder = Engine.newBuilder(permittedLanguages);
+        if (configuration.supportsIsolatedPolicy) {
+            builder.option("engine.MaxIsolateMemory", "4GB");
+        }
+        return builder;
+    }
+
     @Test
     @SuppressWarnings("try")
     public void testEngineMessageTransport() {
-        try (Engine engine = newUntrustedEngineBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).serverTransport(new MockMessageTransport()).build()) {
+        try (Engine engine = newUntrustedEngineBuilder(ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).serverTransport(new MockMessageTransport()).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Engine engine = newUntrustedEngineBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+        try (Engine engine = newUntrustedEngineBuilder(ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -180,15 +194,15 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testContextPermittedLanguages() {
-        try (Context context = newUntrustedContextBuilder().sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null).sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
 
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -200,12 +214,12 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
 
-        try (Engine engine = newUntrustedEngineBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
-            Context context = newUntrustedContextBuilder().engine(engine).sandbox(configuration.sandboxPolicy).build();
+        try (Engine engine = newUntrustedEngineBuilder(ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+            Context context = newUntrustedContextBuilder(engine).sandbox(configuration.sandboxPolicy).build();
             context.close();
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -216,12 +230,12 @@ public class SandboxPolicyTest {
 
     @Test
     public void testContextWithTrustedLanguage() {
-        try (Context context = newUntrustedContextBuilder(TrustedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, TrustedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             try {
                 context.initialize(TrustedLanguage.ID);
                 assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
             } catch (IllegalArgumentException iae) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -231,11 +245,11 @@ public class SandboxPolicyTest {
     }
 
     @Test
-    public void testContextWithRelaxedLanguage() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+    public void testContextWithConstrainedLanguage() {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             try {
-                context.initialize(RelaxedLanguage.ID);
-                assertAtMost(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                context.initialize(ConstrainedLanguage.ID);
+                assertAtMost(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             } catch (IllegalArgumentException iae) {
                 assertAtLeast(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
             }
@@ -248,7 +262,7 @@ public class SandboxPolicyTest {
 
     @Test
     public void testContextWithIsolatedLanguage() {
-        try (Context context = newUntrustedContextBuilder(IsolatedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, IsolatedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             try {
                 context.initialize(IsolatedLanguage.ID);
                 assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
@@ -264,7 +278,7 @@ public class SandboxPolicyTest {
 
     @Test
     public void testContextWithUntrustedLanguage() {
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             context.initialize(UntrustedLanguage.ID);
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
@@ -277,20 +291,20 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testContextWithTrustedInstrument() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).option(TrustedInstrument.ID + ".Enable", "true").sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).option(TrustedInstrument.ID + ".Enable", "true").sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
     }
 
     @Test
     @SuppressWarnings("try")
-    public void testContextWithRelaxedInstrument() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).option(RelaxedInstrument.ID + ".Enable", "true").sandbox(configuration.sandboxPolicy).build()) {
-            assertAtMost(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+    public void testContextWithConstrainedInstrument() {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).option(ConstrainedInstrument.ID + ".Enable", "true").sandbox(configuration.sandboxPolicy).build()) {
+            assertAtMost(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertAtLeast(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
@@ -301,7 +315,7 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testContextWithIsolatedInstrument() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).option(IsolatedInstrument.ID + ".Enable", "true").sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).option(IsolatedInstrument.ID + ".Enable", "true").sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -313,7 +327,7 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testContextWithUntrustedInstrument() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -325,46 +339,46 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testLanguageOptions() {
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".RelaxedOption", "true").sandbox(configuration.sandboxPolicy).build()) {
-            assertAtMost(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".ConstrainedOption", "true").sandbox(configuration.sandboxPolicy).build()) {
+            assertAtMost(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertAtLeast(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".UntrustedOption", "true").sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".UntrustedOption", "true").sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 throw iae;
             }
         }
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".TrustedOption", "true").sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".TrustedOption", "true").sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".RelaxedOptionMap", "true").sandbox(configuration.sandboxPolicy).build()) {
-            assertAtMost(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".ConstrainedOptionMap", "true").sandbox(configuration.sandboxPolicy).build()) {
+            assertAtMost(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertAtLeast(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".UntrustedOptionMap", "true").sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".UntrustedOptionMap", "true").sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 throw iae;
             }
         }
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".TrustedOptionMap", "true").sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedLanguage.ID + ".TrustedOptionMap", "true").sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
     }
@@ -372,28 +386,31 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testInstrumentOptions() {
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".RelaxedOption", "true").sandbox(
-                        configuration.sandboxPolicy).build()) {
-            assertAtMost(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".ConstrainedOption",
+                        "true").sandbox(
+                                        configuration.sandboxPolicy).build()) {
+            assertAtMost(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertAtLeast(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".UntrustedOption", "true").sandbox(
-                        configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".UntrustedOption",
+                        "true").sandbox(
+                                        configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 throw iae;
             }
         }
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".TrustedOption", "true").sandbox(
-                        configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".TrustedOption",
+                        "true").sandbox(
+                                        configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
     }
@@ -401,16 +418,16 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testInstrumentContextOptions() {
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".ContextRelaxedOption",
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".ContextConstrainedOption",
                         "true").sandbox(
                                         configuration.sandboxPolicy).build()) {
-            assertAtMost(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+            assertAtMost(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertAtLeast(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".ContextUntrustedOption",
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".ContextUntrustedOption",
                         "true").sandbox(
                                         configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
@@ -419,13 +436,13 @@ public class SandboxPolicyTest {
                 throw iae;
             }
         }
-        try (Context context = newUntrustedContextBuilder(UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".ContextTrustedOption",
+        try (Context context = newUntrustedContextBuilder(null, UntrustedLanguage.ID).option(UntrustedInstrument.ID + ".Enable", "true").option(UntrustedInstrument.ID + ".ContextTrustedOption",
                         "true").sandbox(
                                         configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
     }
@@ -433,14 +450,14 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testContextAllAccess() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowAllAccess(true).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowAllAccess(true).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -452,14 +469,14 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testContextNativeAccess() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowNativeAccess(true).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowNativeAccess(true).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -471,14 +488,14 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testContextHostClassLoading() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostClassLoading(true).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostClassLoading(true).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -490,14 +507,14 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testContextCreateProcess() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowCreateProcess(true).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowCreateProcess(true).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -509,14 +526,14 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testContextSystemExit() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).useSystemExit(true).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).useSystemExit(true).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -528,25 +545,25 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testContextStreams() {
-        try (Engine engine = newUntrustedEngineBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
-            try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).engine(engine).in(System.in).build()) {
+        try (Engine engine = newUntrustedEngineBuilder(ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
+            try (Context context = newUntrustedContextBuilder(engine, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).in(System.in).build()) {
                 assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
             } catch (IllegalArgumentException iae) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
-            try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).engine(engine).out(System.out).build()) {
+            try (Context context = newUntrustedContextBuilder(engine, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).out(System.out).build()) {
                 assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
             } catch (IllegalArgumentException iae) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
-            try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).engine(engine).err(System.err).build()) {
+            try (Context context = newUntrustedContextBuilder(engine, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).err(System.err).build()) {
                 assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
             } catch (IllegalArgumentException iae) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
-            Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).engine(engine).build();
+            Context context = newUntrustedContextBuilder(engine, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).build();
             context.close();
-            context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).engine(engine).in(InputStream.nullInputStream()).out(OutputStream.nullOutputStream()).err(
+            context = newUntrustedContextBuilder(engine, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).in(InputStream.nullInputStream()).out(OutputStream.nullOutputStream()).err(
                             OutputStream.nullOutputStream()).build();
             context.close();
         } catch (IllegalArgumentException iae) {
@@ -559,14 +576,14 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings({"try", "deprecation"})
     public void testContextAllowIO() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(true).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(true).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(false).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(false).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -578,36 +595,37 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings({"try"})
     public void testContextIOAccess() throws IOException {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(IOAccess.ALL).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(IOAccess.ALL).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build()).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build()).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(IOAccess.newBuilder().allowHostSocketAccess(true).build()).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(
+                        IOAccess.newBuilder().allowHostSocketAccess(true).build()).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(
                         IOAccess.newBuilder().fileSystem(FileSystem.newReadOnlyFileSystem(FileSystem.newDefaultFileSystem())).build()).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(
                         IOAccess.newBuilder().fileSystem(new MemoryFileSystem("/tmp")).build()).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
@@ -615,7 +633,7 @@ public class SandboxPolicyTest {
                 throw iae;
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(IOAccess.NONE).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowIO(IOAccess.NONE).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -627,14 +645,14 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings({"try"})
     public void testContextEnvironmentAccess() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowEnvironmentAccess(EnvironmentAccess.INHERIT).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowEnvironmentAccess(EnvironmentAccess.INHERIT).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowEnvironmentAccess(EnvironmentAccess.NONE).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowEnvironmentAccess(EnvironmentAccess.NONE).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -646,46 +664,46 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings({"try", "deprecation"})
     public void testHostAccess() {
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(true).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(true).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
         HostAccess hostAccess = HostAccess.newBuilder().allowPublicAccess(true).build();
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
         hostAccess = HostAccess.newBuilder().allowAccessInheritance(true).build();
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
         hostAccess = HostAccess.newBuilder().allowMutableTargetMappings(HostAccess.MutableTargetMapping.EXECUTABLE_TO_JAVA_INTERFACE).build();
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
         hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).allowImplementationsAnnotatedBy(HostAccess.Implementable.class).allowMutableTargetMappings().build();
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
-            assertAtMost(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertAtLeast(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
             }
         }
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(null).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(null).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -694,33 +712,66 @@ public class SandboxPolicyTest {
         }
         hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).allowImplementationsAnnotatedBy(HostAccess.Implementable.class).allowMutableTargetMappings().methodScoping(
                         true).build();
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 throw iae;
             }
         }
-
-        // HostAccess.NONE fails for sandboxPolicy >= RELAXED because it for compatibility reasons
-        // allows mutable target mappings and has no method scoping
-        try (Context context2 = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(HostAccess.NONE).build()) {
+        hostAccess = HostAccess.newBuilder().allowAllClassImplementations(true).build();
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertAtLeast(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
+            }
+        }
+        hostAccess = HostAccess.newBuilder().allowAllImplementations(true).build();
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
+            }
+        }
+        hostAccess = HostAccess.newBuilder().allowImplementationsAnnotatedBy(FunctionalInterface.class).build();
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
+            }
+        }
+        // HostAccess.NONE fails because it has
+        // allowImplementationsAnnotatedBy(FunctionalInterface.class)
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(HostAccess.EXPLICIT).build()) {
+            assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
+            }
+        }
+        // HostAccess.NONE fails for sandboxPolicy >= CONSTRAINED because it for compatibility
+        // reasons
+        // allows mutable target mappings and has no method scoping
+        try (Context context2 = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(HostAccess.NONE).build()) {
+            assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
         hostAccess = HostAccess.newBuilder(HostAccess.NONE).allowMutableTargetMappings().build();
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
-            assertAtMost(SandboxPolicy.RELAXED, configuration.sandboxPolicy);
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertAtLeast(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
             }
         }
         hostAccess = HostAccess.newBuilder(HostAccess.NONE).allowMutableTargetMappings().methodScoping(true).build();
-        try (Context context = newUntrustedContextBuilder(RelaxedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+        try (Context context = newUntrustedContextBuilder(null, ConstrainedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -729,16 +780,26 @@ public class SandboxPolicyTest {
         }
     }
 
-    private static Engine.Builder newUntrustedEngineBuilder(String... permittedLanguages) {
-        return Engine.newBuilder(permittedLanguages).in(InputStream.nullInputStream()).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream());
+    private Engine.Builder newUntrustedEngineBuilder(String... permittedLanguages) {
+        Engine.Builder builder = Engine.newBuilder(permittedLanguages).in(InputStream.nullInputStream()).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream());
+        if (configuration.supportsIsolatedPolicy) {
+            builder.option("engine.MaxIsolateMemory", "4GB");
+        }
+        return builder;
     }
 
-    private Context.Builder newUntrustedContextBuilder(String... permittedLanguages) {
+    private Context.Builder newUntrustedContextBuilder(Engine explicitEngine, String... permittedLanguages) {
         Context.Builder builder = Context.newBuilder(permittedLanguages).allowEnvironmentAccess(EnvironmentAccess.NONE).allowHostClassLookup(CLASS_FILTER_DISABLE_LOADING).in(
                         InputStream.nullInputStream()).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream());
+        if (explicitEngine != null) {
+            builder.engine(explicitEngine);
+        }
         // Truffle isolate options are still experimental.
         builder.allowExperimentalOptions(true);
-        if (configuration.hasIsolateLibrary) {
+        if (explicitEngine == null && configuration.supportsIsolatedPolicy) {
+            builder.option("engine.MaxIsolateMemory", "4GB");
+        }
+        if (configuration.supportsSandboxInstrument) {
             builder.option("sandbox.MaxCPUTime", "100s");
             // GR-28085: ThreadMXBean.getThreadAllocatedBytes() is not supported or enabled by the
             // host VM but required for heap memory limit.
@@ -772,11 +833,13 @@ public class SandboxPolicyTest {
     static final class Configuration {
         final SandboxPolicy sandboxPolicy;
         final boolean supportsIsolatedPolicy;
+        final boolean supportsSandboxInstrument;
         final boolean hasIsolateLibrary;
 
-        Configuration(SandboxPolicy sandboxPolicy, boolean supportsIsolatedPolicy, boolean hasIsolateLibrary) {
+        Configuration(SandboxPolicy sandboxPolicy, boolean supportsIsolatedPolicy, boolean supportsSandboxInstrument, boolean hasIsolateLibrary) {
             this.sandboxPolicy = Objects.requireNonNull(sandboxPolicy);
             this.supportsIsolatedPolicy = supportsIsolatedPolicy;
+            this.supportsSandboxInstrument = supportsSandboxInstrument;
             this.hasIsolateLibrary = hasIsolateLibrary;
         }
 
@@ -797,9 +860,9 @@ public class SandboxPolicyTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = RelaxedLanguage.ID, name = RelaxedLanguage.ID, characterMimeTypes = RelaxedLanguage.MIME, sandboxPolicy = SandboxPolicy.RELAXED)
-    static final class RelaxedLanguage extends TruffleLanguage<TruffleLanguage.Env> {
-        private static final String ID = "lang_sandbox_relaxed";
+    @TruffleLanguage.Registration(id = ConstrainedLanguage.ID, name = ConstrainedLanguage.ID, characterMimeTypes = ConstrainedLanguage.MIME, sandbox = SandboxPolicy.CONSTRAINED)
+    static final class ConstrainedLanguage extends TruffleLanguage<TruffleLanguage.Env> {
+        private static final String ID = "lang_sandbox_constrained";
         private static final String MIME = "text/x-" + ID;
 
         @Override
@@ -808,7 +871,7 @@ public class SandboxPolicyTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = IsolatedLanguage.ID, name = IsolatedLanguage.ID, characterMimeTypes = IsolatedLanguage.MIME, sandboxPolicy = SandboxPolicy.ISOLATED)
+    @TruffleLanguage.Registration(id = IsolatedLanguage.ID, name = IsolatedLanguage.ID, characterMimeTypes = IsolatedLanguage.MIME, sandbox = SandboxPolicy.ISOLATED)
     static final class IsolatedLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         private static final String ID = "lang_sandbox_isolated";
         private static final String MIME = "text/x-" + ID;
@@ -819,7 +882,7 @@ public class SandboxPolicyTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = UntrustedLanguage.ID, name = UntrustedLanguage.ID, characterMimeTypes = UntrustedLanguage.MIME, sandboxPolicy = SandboxPolicy.UNTRUSTED)
+    @TruffleLanguage.Registration(id = UntrustedLanguage.ID, name = UntrustedLanguage.ID, characterMimeTypes = UntrustedLanguage.MIME, sandbox = SandboxPolicy.UNTRUSTED)
     static final class UntrustedLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         private static final String ID = "lang_sandbox_untrusted";
         private static final String MIME = "text/x-" + ID;
@@ -827,8 +890,8 @@ public class SandboxPolicyTest {
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted policy")//
         static final OptionKey<Boolean> TrustedOption = new OptionKey<>(false);
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted and relaxed policy", sandbox = SandboxPolicy.RELAXED)//
-        static final OptionKey<Boolean> RelaxedOption = new OptionKey<>(false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted and constrained policy", sandbox = SandboxPolicy.CONSTRAINED)//
+        static final OptionKey<Boolean> ConstrainedOption = new OptionKey<>(false);
 
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed in all policies", sandbox = SandboxPolicy.UNTRUSTED)//
         static final OptionKey<Boolean> UntrustedOption = new OptionKey<>(false);
@@ -836,8 +899,8 @@ public class SandboxPolicyTest {
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "OptionMap allowed only in trusted policy")//
         static final OptionKey<OptionMap<String>> TrustedOptionMap = OptionKey.mapOf(String.class);
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "OptionMap allowed only in trusted and relaxed policy", sandbox = SandboxPolicy.RELAXED)//
-        static final OptionKey<OptionMap<String>> RelaxedOptionMap = OptionKey.mapOf(String.class);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "OptionMap allowed only in trusted and constrained policy", sandbox = SandboxPolicy.CONSTRAINED)//
+        static final OptionKey<OptionMap<String>> ConstrainedOptionMap = OptionKey.mapOf(String.class);
 
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "OptionMap allowed in all policies", sandbox = SandboxPolicy.UNTRUSTED)//
         static final OptionKey<OptionMap<String>> UntrustedOptionMap = OptionKey.mapOf(String.class);
@@ -871,10 +934,10 @@ public class SandboxPolicyTest {
         }
     }
 
-    @TruffleInstrument.Registration(id = RelaxedInstrument.ID, name = RelaxedInstrument.ID, sandboxPolicy = SandboxPolicy.RELAXED)
-    static final class RelaxedInstrument extends TruffleInstrument {
+    @TruffleInstrument.Registration(id = ConstrainedInstrument.ID, name = ConstrainedInstrument.ID, sandbox = SandboxPolicy.CONSTRAINED)
+    static final class ConstrainedInstrument extends TruffleInstrument {
 
-        private static final String ID = "tool_sandbox_relaxed";
+        private static final String ID = "tool_sandbox_constrained";
 
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Enables instrument", sandbox = SandboxPolicy.UNTRUSTED)//
         static final OptionKey<Boolean> Enable = new OptionKey<>(false);
@@ -885,11 +948,11 @@ public class SandboxPolicyTest {
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {
-            return new RelaxedInstrumentOptionDescriptors();
+            return new ConstrainedInstrumentOptionDescriptors();
         }
     }
 
-    @TruffleInstrument.Registration(id = IsolatedInstrument.ID, name = IsolatedInstrument.ID, sandboxPolicy = SandboxPolicy.ISOLATED)
+    @TruffleInstrument.Registration(id = IsolatedInstrument.ID, name = IsolatedInstrument.ID, sandbox = SandboxPolicy.ISOLATED)
     static final class IsolatedInstrument extends TruffleInstrument {
 
         private static final String ID = "tool_sandbox_isolated";
@@ -907,7 +970,7 @@ public class SandboxPolicyTest {
         }
     }
 
-    @TruffleInstrument.Registration(id = UntrustedInstrument.ID, name = UntrustedInstrument.ID, sandboxPolicy = SandboxPolicy.UNTRUSTED)
+    @TruffleInstrument.Registration(id = UntrustedInstrument.ID, name = UntrustedInstrument.ID, sandbox = SandboxPolicy.UNTRUSTED)
     static final class UntrustedInstrument extends TruffleInstrument {
 
         private static final String ID = "tool_sandbox_untrusted";
@@ -918,8 +981,8 @@ public class SandboxPolicyTest {
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted policy")//
         static final OptionKey<Boolean> TrustedOption = new OptionKey<>(false);
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted and relaxed policy", sandbox = SandboxPolicy.RELAXED)//
-        static final OptionKey<Boolean> RelaxedOption = new OptionKey<>(false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted and constrained policy", sandbox = SandboxPolicy.CONSTRAINED)//
+        static final OptionKey<Boolean> ConstrainedOption = new OptionKey<>(false);
 
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed in all policies", sandbox = SandboxPolicy.UNTRUSTED)//
         static final OptionKey<Boolean> UntrustedOption = new OptionKey<>(false);
@@ -944,8 +1007,8 @@ public class SandboxPolicyTest {
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted policy")//
         static final OptionKey<Boolean> ContextTrustedOption = new OptionKey<>(false);
 
-        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted and relaxed policy", sandbox = SandboxPolicy.RELAXED)//
-        static final OptionKey<Boolean> ContextRelaxedOption = new OptionKey<>(false);
+        @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted and constrained policy", sandbox = SandboxPolicy.CONSTRAINED)//
+        static final OptionKey<Boolean> ContextConstrainedOption = new OptionKey<>(false);
 
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed in all policies", sandbox = SandboxPolicy.UNTRUSTED)//
         static final OptionKey<Boolean> ContextUntrustedOption = new OptionKey<>(false);

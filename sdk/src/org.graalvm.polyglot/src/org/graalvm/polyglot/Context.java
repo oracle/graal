@@ -1791,7 +1791,7 @@ public final class Context implements AutoCloseable {
             if (sandboxPolicy == SandboxPolicy.TRUSTED) {
                 return;
             }
-            if (sandboxPolicy.ordinal() >= SandboxPolicy.RELAXED.ordinal()) {
+            if (sandboxPolicy.ordinal() >= SandboxPolicy.CONSTRAINED.ordinal()) {
                 if (permittedLanguages.length == 0 && (sharedEngine == null || sharedEngine.dispatch.getExplicitlyPermittedLanguages(sharedEngine.receiver).isEmpty())) {
                     throw new IllegalArgumentException(
                                     String.format("If the sandbox policy %s is set, the number of languages needs to be set for a context. For example, Context.newBuilder(\"js\").",
@@ -1877,6 +1877,20 @@ public final class Context implements AutoCloseable {
                     if (hostAccess.allowAccessInheritance) {
                         throw new IllegalArgumentException(
                                         String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not have the allowAccessInheritance set.", this.sandboxPolicy));
+                    }
+                    if (hostAccess.allowAllInterfaceImplementations) {
+                        throw new IllegalArgumentException(
+                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not have the allowAllImplementations set.", this.sandboxPolicy));
+                    }
+                    if (hostAccess.allowAllClassImplementations) {
+                        throw new IllegalArgumentException(
+                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not have the allowAllClassImplementations set.",
+                                                        this.sandboxPolicy));
+                    }
+                    if (hostAccess.implementableAnnotations != null && hostAccess.implementableAnnotations.contains(FunctionalInterface.class)) {
+                        throw new IllegalArgumentException(
+                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not allow FunctionalInterface implementations.",
+                                                        this.sandboxPolicy));
                     }
                     HostAccess.MutableTargetMapping[] mutableTargetMappings = hostAccess.getMutableTargetMappings();
                     if (mutableTargetMappings.length > 0) {

@@ -217,7 +217,7 @@ final class InstrumentCache {
         }
         String version = reg.version();
         String website = reg.website();
-        SandboxPolicy sandboxPolicy = reg.sandboxPolicy();
+        SandboxPolicy sandboxPolicy = reg.sandbox();
         boolean internal = reg.internal();
         Set<String> servicesClassNames = new TreeSet<>();
         for (String service : provider.getServicesClassNames()) {

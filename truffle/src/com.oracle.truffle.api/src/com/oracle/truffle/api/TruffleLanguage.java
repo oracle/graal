@@ -508,7 +508,7 @@ public abstract class TruffleLanguage<C> {
          *
          * @since 23.0
          */
-        SandboxPolicy sandboxPolicy() default SandboxPolicy.TRUSTED;
+        SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
     }
 
     /**

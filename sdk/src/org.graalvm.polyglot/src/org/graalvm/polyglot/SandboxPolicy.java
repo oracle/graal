@@ -52,7 +52,7 @@ package org.graalvm.polyglot;
  * <li>{@link #TRUSTED} policy intended for fully trusted applications. In this mode access to any
  * resource of the host might be accessible to the guest application. This is the default mode,
  * there are no restrictions to the context or engine configuration.
- * <li>{@link #RELAXED} policy intended for trusted, but potentially buggy applications. In this
+ * <li>{@link #CONSTRAINED} policy intended for trusted, but potentially buggy applications. In this
  * mode any access to host resources is required to be as restrictive as possible. In this mode the
  * memory address space of the guest application is shared and with the host application.
  * <li>{@link #ISOLATED} policy intended for trusted, but applications that might have security
@@ -155,7 +155,7 @@ public enum SandboxPolicy {
      *
      * @since 23.0
      */
-    RELAXED {
+    CONSTRAINED {
         @Override
         HostAccess createDefaultHostAccess(boolean allAccess) {
             assert !allAccess : "All access cannot be enabled";
@@ -169,9 +169,9 @@ public enum SandboxPolicy {
      * attacker to compromise the guest application by providing malicious input. The memory address
      * space of the guest application is isolated from the host application in this mode.
      * <p>
-     * This policy also uses all validations and presets specified for {@link #RELAXED}.
+     * This policy also uses all validations and presets specified for {@link #CONSTRAINED}.
      *
-     * TODO implement (everything in {@link #RELAXED})
+     * TODO implement (everything in {@link #CONSTRAINED})
      * <ul>
      * <li>Only works in EE (provide friendly error)
      * <li>Spawn isolate must be set or will be preset. (we know the languages so auto-detection of

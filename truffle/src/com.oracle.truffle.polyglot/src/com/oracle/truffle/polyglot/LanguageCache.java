@@ -340,7 +340,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         for (String service : provider.getServicesClassNames()) {
             servicesClassNames.add(service);
         }
-        SandboxPolicy sandboxPolicy = reg.sandboxPolicy();
+        SandboxPolicy sandboxPolicy = reg.sandbox();
         into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
                         characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal, needsAllEncodings,
                         servicesClassNames, reg.contextPolicy(), provider, reg.website(), sandboxPolicy));
