@@ -40,12 +40,22 @@ import org.graalvm.compiler.nodes.loop.InductionVariable;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
+
+    public static class Options {
+        //@formatter:off
+        @Option(help = "Remove safepoints on counted loop ends.", type = OptionType.Expert)
+        public static final OptionKey<Boolean> RemoveLoopSafepoints = new OptionKey<>(true);
+        //@formatter:on
+    }
 
     private static final long IntegerRangeDistance = Math.abs((long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE);
 
@@ -116,7 +126,8 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
         loops.detectCountedLoops();
         for (LoopEx loop : loops.countedLoops()) {
-            if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
+            if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner()) &&
+                            Options.RemoveLoopSafepoints.getValue(graph.getOptions())) {
                 boolean hasSafepoint = false;
                 for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                     hasSafepoint |= loopEnd.canSafepoint();
