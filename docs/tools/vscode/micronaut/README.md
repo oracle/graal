@@ -171,8 +171,6 @@ For more information, visit the [Micronaut documentation](https://guides.microna
 
 ### Windows Users 
 
-On Windows the `native-image` builder will only work when it is executed from the **x64 Native Tools Command Prompt**.
-
 For Micronaut users targeting GraalVM Native Image for their Micronaut applications, the extension provides a dedicated **x64 command prompt using Microsoft Developer Tools**. 
 You can check it by invoking the **Micronaut: Build Native Image** task from Command Palette. 
 Notice which shell is active:
