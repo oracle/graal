@@ -362,7 +362,7 @@ public final class Safepoint {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void setSafepointRequested(IsolateThread vmThread, int value) {
-        assert StatusSupport.isStatusCreated(vmThread) || VMOperationControl.mayExecuteVmOperations();
+        assert CurrentIsolate.getCurrentThread() == vmThread || StatusSupport.isStatusCreated(vmThread) || VMOperationControl.mayExecuteVmOperations();
         assert value > 0;
         safepointRequested.setVolatile(vmThread, value);
     }

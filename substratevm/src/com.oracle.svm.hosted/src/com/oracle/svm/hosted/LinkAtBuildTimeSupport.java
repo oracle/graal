@@ -60,11 +60,11 @@ public final class LinkAtBuildTimeSupport {
     static final class Options {
         @APIOption(name = "link-at-build-time", defaultValue = "")//
         @Option(help = "file:doc-files/LinkAtBuildTimeHelp.txt")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkAtBuildTime = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkAtBuildTime = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @APIOption(name = "link-at-build-time-paths")//
         @Option(help = "file:doc-files/LinkAtBuildTimePathsHelp.txt")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkAtBuildTimePaths = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkAtBuildTimePaths = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
     }
 
     private final String javaIdentifier = "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";

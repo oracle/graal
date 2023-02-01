@@ -1155,6 +1155,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().isDefaultProcessHandler(processHandler);
     }
 
+    public boolean isInternalFileSystem(FileSystem fileSystem) {
+        return getNext().isInternalFileSystem(fileSystem);
+    }
+
     public ThreadScope createThreadScope() {
         return getNext().createThreadScope();
     }

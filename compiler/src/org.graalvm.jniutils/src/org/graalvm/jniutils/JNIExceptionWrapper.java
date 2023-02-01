@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -226,16 +226,6 @@ public final class JNIExceptionWrapper extends RuntimeException {
     }
 
     /**
-     * Creates a new {@link JNIExceptionWrapper} for given HotSpot exception.
-     */
-    public static JNIExceptionWrapper forHSException(JNIEnv env, JThrowable jThrowable) {
-        if (jThrowable.isNull()) {
-            throw new NullPointerException("jThrowable must be non null");
-        }
-        return new JNIExceptionWrapper(env, jThrowable);
-    }
-
-    /**
      * Context for {@link ExceptionHandler}.
      */
     public static final class ExceptionHandlerContext {
@@ -263,31 +253,10 @@ public final class JNIExceptionWrapper extends RuntimeException {
         }
 
         /**
-         * Returns pending JNI exception message.
-         */
-        public String getThrowableMessage() {
-            return getMessage(env, throwable);
-        }
-
-        /**
          * Returns pending JNI exception class name.
          */
         public String getThrowableClassName() {
             return getClassName(env, throwable);
-        }
-
-        /**
-         * Returns merged JNI exception and native stack trace.
-         */
-        public StackTraceElement[] getMergedStackTrace() {
-            StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, throwable);
-            if (hsStack.length == 0 || containsJNIHostCall(hsStack)) {
-                return hsStack;
-            } else {
-                StackTraceElement[] nativeStack = Thread.currentThread().getStackTrace();
-                boolean originatedInHotSpot = !hsStack[0].isNativeMethod();
-                return mergeStackTraces(hsStack, nativeStack, 0, getIndexOfPropagateJNIExceptionFrame(nativeStack), originatedInHotSpot);
-            }
         }
 
         /**

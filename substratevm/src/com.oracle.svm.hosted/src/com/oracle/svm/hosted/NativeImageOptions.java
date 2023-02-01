@@ -44,7 +44,6 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
@@ -58,7 +57,7 @@ public class NativeImageOptions {
                     "environment. Note that enabling features not present within the target environment " +
                     "may result in application crashes. The specific options available are target " +
                     "platform dependent. See --list-cpu-features for feature list.", type = User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "list-cpu-features")//
     @Option(help = "Show CPU features specific to the target platform and exit.", type = User)//
@@ -73,7 +72,7 @@ public class NativeImageOptions {
                     "option to the empty string. The specific options available are target platform " +
                     "dependent. See --list-cpu-features for feature list. The default values are: " +
                     "AMD64: 'AVX,AVX2'; AArch64: ''", type = User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
@@ -188,10 +187,10 @@ public class NativeImageOptions {
     // Inspired by HotSpot's hs_err_<pid>.log files and for build-time errors (err_b).
     private static final String DEFAULT_ERROR_FILE_NAME = "svm_err_b_%t_pid%p.md";
 
-    public static final Path getErrorFilePath() {
-        String errorFile = NativeImageOptions.ErrorFile.getValue();
+    public static final Path getErrorFilePath(OptionValues hostedOptionValues) {
+        String errorFile = NativeImageOptions.ErrorFile.getValue(hostedOptionValues);
         if (errorFile.isEmpty()) {
-            return NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(expandErrorFile(DEFAULT_ERROR_FILE_NAME));
+            return NativeImageGenerator.generatedFiles(hostedOptionValues).resolve(expandErrorFile(DEFAULT_ERROR_FILE_NAME));
         } else {
             return Paths.get(expandErrorFile(errorFile));
         }

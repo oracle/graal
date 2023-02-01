@@ -550,7 +550,7 @@ public class EspressoInterop extends BaseInterop {
                 boolValue = valueLib.asBoolean(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<byte[]> unwrap(language)[(int) index] = boolValue ? (byte) 1 : (byte) 0;
         }
@@ -576,7 +576,7 @@ public class EspressoInterop extends BaseInterop {
                 charValue = s.charAt(0);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<char[]> unwrap(language)[(int) index] = charValue;
         }
@@ -596,7 +596,7 @@ public class EspressoInterop extends BaseInterop {
                 byteValue = valueLib.asByte(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<byte[]> unwrap(language)[(int) index] = byteValue;
         }
@@ -616,7 +616,7 @@ public class EspressoInterop extends BaseInterop {
                 shortValue = valueLib.asShort(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<short[]> unwrap(language)[(int) index] = shortValue;
         }
@@ -636,7 +636,7 @@ public class EspressoInterop extends BaseInterop {
                 intValue = valueLib.asInt(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<int[]> unwrap(language)[(int) index] = intValue;
         }
@@ -656,7 +656,7 @@ public class EspressoInterop extends BaseInterop {
                 longValue = valueLib.asLong(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<long[]> unwrap(language)[(int) index] = longValue;
         }
@@ -676,7 +676,7 @@ public class EspressoInterop extends BaseInterop {
                 floatValue = valueLib.asFloat(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<float[]> unwrap(language)[(int) index] = floatValue;
         }
@@ -696,7 +696,7 @@ public class EspressoInterop extends BaseInterop {
                 doubleValue = valueLib.asDouble(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<double[]> unwrap(language)[(int) index] = doubleValue;
         }
@@ -716,7 +716,7 @@ public class EspressoInterop extends BaseInterop {
                 stringValue = receiver.getKlass().getMeta().toGuestString(valueLib.asString(value));
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<StaticObject[]> unwrap(language)[(int) index] = stringValue;
         }
@@ -739,6 +739,11 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
+        @TruffleBoundary
+        private static String getMessageBoundary(Throwable e) {
+            return e.getMessage();
+        }
+
         @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)", "!isStaticObject(value)"})
         static void doEspressoGeneric(StaticObject receiver, long index, Object value,
                         @CachedLibrary("receiver") InteropLibrary receiverLib,
@@ -755,7 +760,7 @@ public class EspressoInterop extends BaseInterop {
                 espressoValue = (StaticObject) toEspressoNode.execute(value, componentType);
             } catch (UnsupportedOperationException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<StaticObject[]> unwrap(language)[(int) index] = espressoValue;
         }

@@ -89,6 +89,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -217,7 +218,7 @@ public class NativeImageClassLoaderSupport {
     protected static class Util {
 
         static URL[] verifyClassPathAndConvertToURLs(String[] classpath) {
-            Stream<Path> pathStream = new LinkedHashSet<>(Arrays.asList(classpath)).stream().flatMap(Util::toClassPathEntries);
+            Stream<Path> pathStream = new LinkedHashSet<>(Arrays.asList(classpath)).stream().map(Path::of).filter(Util::verifyClassPathEntry);
             return pathStream.map(v -> {
                 try {
                     return toRealPath(v).toUri().toURL();
@@ -235,19 +236,14 @@ public class NativeImageClassLoaderSupport {
             }
         }
 
-        static Stream<Path> toClassPathEntries(String classPathEntry) {
-            Path entry = ClasspathUtils.stringToClasspath(classPathEntry);
-            if (entry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
-                try {
-                    return Files.list(entry.getParent()).filter(ClasspathUtils::isJar);
-                } catch (IOException e) {
-                    return Stream.empty();
-                }
+        private static boolean verifyClassPathEntry(Path cpEntry) {
+            if (ClasspathUtils.isJar(cpEntry)) {
+                return true;
             }
-            if (Files.isReadable(entry)) {
-                return Stream.of(entry);
+            if (Files.isDirectory(cpEntry) && Files.isReadable(cpEntry)) {
+                return true;
             }
-            return Stream.empty();
+            return false;
         }
 
         static Path urlToPath(URL url) {
@@ -583,14 +579,6 @@ public class NativeImageClassLoaderSupport {
         return ((Module) module).getDescriptor().mainClass();
     }
 
-    final Path excludeDirectoriesRoot = Paths.get("/");
-    final Set<Path> excludeDirectories = getExcludeDirectories();
-
-    private Set<Path> getExcludeDirectories() {
-        return Stream.of("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
-                        .map(excludeDirectoriesRoot::resolve).collect(Collectors.toUnmodifiableSet());
-    }
-
     private final class LoadClassHandler {
 
         private final ForkJoinPool executor;
@@ -690,7 +678,7 @@ public class NativeImageClassLoaderSupport {
                 }
             } else {
                 URI container = path.toUri();
-                loadClassesFromPath(container, path, excludeDirectoriesRoot, excludeDirectories);
+                loadClassesFromPath(container, path, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES);
             }
         }
 

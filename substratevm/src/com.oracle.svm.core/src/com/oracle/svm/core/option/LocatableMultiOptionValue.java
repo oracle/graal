@@ -26,8 +26,8 @@ package com.oracle.svm.core.option;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -40,34 +40,22 @@ import com.oracle.svm.util.ClassUtil;
 
 public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T> {
 
-    private static final String DEFAULT_DELIMITER = "";
+    protected static final String NO_DELIMITER = "";
 
     private final String delimiter;
     private final Class<T> valueType;
     private final List<Pair<T, String>> values;
 
-    private LocatableMultiOptionValue(Class<T> valueType) {
-        this(valueType, DEFAULT_DELIMITER);
-    }
-
-    private LocatableMultiOptionValue(Class<T> valueType, String delimiter) {
-        this.delimiter = delimiter;
+    private LocatableMultiOptionValue(Class<T> valueType, String delimiter, List<T> defaults) {
         this.valueType = valueType;
+        this.delimiter = delimiter;
         values = new ArrayList<>();
-    }
-
-    private LocatableMultiOptionValue(Class<T> valueType, List<T> defaults) {
-        this(valueType, defaults, DEFAULT_DELIMITER);
-    }
-
-    private LocatableMultiOptionValue(Class<T> valueType, List<T> defaults, String delimiter) {
-        this(valueType, delimiter);
-        values.addAll(defaults.stream().map(val -> Pair.create(val, "default")).collect(Collectors.toList()));
+        values.addAll(defaults.stream().map(val -> Pair.<T, String> createLeft(val)).collect(Collectors.toList()));
     }
 
     private LocatableMultiOptionValue(LocatableMultiOptionValue<T> other) {
-        this.delimiter = other.delimiter;
         this.valueType = other.valueType;
+        this.delimiter = other.delimiter;
         this.values = new ArrayList<>(other.values);
     }
 
@@ -102,10 +90,20 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
 
     @Override
     public List<T> values() {
+        return getValuesWithOrigins().map(Pair::getLeft).collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<T> lastValue() {
+        return lastValueWithOrigin().map(Pair::getLeft);
+    }
+
+    public Optional<Pair<T, OptionOrigin>> lastValueWithOrigin() {
         if (values.isEmpty()) {
-            return Collections.emptyList();
+            return Optional.empty();
         }
-        return values.stream().map(Pair::getLeft).collect(Collectors.toList());
+        Pair<T, String> pair = values.get(values.size() - 1);
+        return Optional.of(Pair.create(pair.getLeft(), OptionOrigin.from(pair.getRight())));
     }
 
     public Stream<Pair<T, OptionOrigin>> getValuesWithOrigins() {
@@ -120,7 +118,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
         return "<" + ClassUtil.getUnqualifiedName(valueType).toLowerCase() + ">*";
     }
 
-    public static class Strings extends LocatableMultiOptionValue<String> {
+    public static final class Strings extends LocatableMultiOptionValue<String> {
 
         private Strings(Strings other) {
             super(other);
@@ -131,28 +129,24 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
             return new Strings(this);
         }
 
-        public Strings() {
-            super(String.class);
+        private Strings(String delimiter, List<String> defaultStrings) {
+            super(String.class, delimiter, defaultStrings);
         }
 
-        public Strings(String delimiter) {
-            super(String.class, delimiter);
+        public static Strings build() {
+            return new Strings(NO_DELIMITER, List.of());
         }
 
-        public Strings(List<String> defaultStrings) {
-            super(String.class, defaultStrings);
+        public static Strings buildWithCommaDelimiter() {
+            return new Strings(",", List.of());
         }
 
-        public Strings(List<String> defaultStrings, String delimiter) {
-            super(String.class, defaultStrings, delimiter);
-        }
-
-        public static Strings commaSeparated() {
-            return new Strings(",");
+        public static Strings buildWithDefaults(String... defaultStrings) {
+            return new Strings(NO_DELIMITER, List.of(defaultStrings));
         }
     }
 
-    public static class Paths extends LocatableMultiOptionValue<Path> {
+    public static final class Paths extends LocatableMultiOptionValue<Path> {
 
         private Paths(Paths other) {
             super(other);
@@ -163,24 +157,24 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
             return new Paths(this);
         }
 
-        public Paths() {
-            super(Path.class);
+        private Paths(String delimiter, List<Path> defaultPaths) {
+            super(Path.class, delimiter, defaultPaths);
         }
 
-        public Paths(String delimiter) {
-            super(Path.class, delimiter);
+        public static Paths build() {
+            return new Paths(NO_DELIMITER, List.of());
         }
 
-        public Paths(List<Path> defaultPaths) {
-            super(Path.class, defaultPaths);
+        public static Paths buildWithCommaDelimiter() {
+            return new Paths(",", List.of());
         }
 
-        public Paths(List<Path> defaultPaths, String delimiter) {
-            super(Path.class, defaultPaths, delimiter);
+        public static Paths buildWithCustomDelimiter(String delimiter) {
+            return new Paths(delimiter, List.of());
         }
 
-        public static Paths commaSeparated() {
-            return new Paths(",");
+        public static Paths buildWithDefaults(Path... defaultPaths) {
+            return new Paths(NO_DELIMITER, List.of(defaultPaths));
         }
     }
 }

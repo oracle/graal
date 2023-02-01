@@ -88,7 +88,6 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
@@ -741,7 +740,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
 
         static void registerInvocationPlugins(Plugins plugins, ParsingReason reason) {
-            if (reason == ParsingReason.PointsToAnalysis) {
+            if (reason.duringAnalysis()) {
                 InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), StaticShape.Builder.class);
                 r.register(new RequiredInlineOnlyInvocationPlugin("build", InvocationPlugin.Receiver.class, Class.class, Class.class) {
                     @Override
@@ -764,7 +763,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, ValueNode arg) {
             SubstrateGraphBuilderPlugins.checkParameterUsage(arg.isConstant(), b, targetMethod, parameterIndex, "parameter is not a compile time constant");
-            return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), b.getConstantReflection().asJavaType(arg.asJavaConstant()));
+            return OriginalClassProvider.getJavaClass(b.getConstantReflection().asJavaType(arg.asJavaConstant()));
         }
 
         private static boolean validateClasses(Class<?> storageSuperClass, Class<?> factoryInterface) {

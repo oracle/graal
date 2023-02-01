@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,26 +65,6 @@ public final class JNIClassCache {
      */
     public static JClass lookupClass(JNIEnv env, String className) throws JNIExceptionWrapper {
         return lookupClassImpl(env, className, true);
-    }
-
-    /**
-     * Looks up JClass using a {@link Class}.
-     *
-     * @return JNI global reference for {@link JClass} or {@link WordFactory#nullPointer() NULL}
-     *         when class is not found.
-     */
-    public static JClass lookupOptionalClass(JNIEnv env, Class<?> clazz) {
-        return lookupOptionalClass(env, clazz.getName());
-    }
-
-    /**
-     * Looks up JClass using a fully qualified name.
-     *
-     * @return JNI global reference for {@link JClass} or {@link WordFactory#nullPointer() NULL}
-     *         when class is not found.
-     */
-    public static JClass lookupOptionalClass(JNIEnv env, String className) {
-        return lookupClassImpl(env, className, false);
     }
 
     private static JClass lookupClassImpl(JNIEnv env, String className, boolean required) {

@@ -425,9 +425,6 @@ public interface OptimizationLog extends CompilationListener {
      */
     Graph getOptimizationTree();
 
-    @Override
-    OptimizationPhaseScope enterPhase(CharSequence name, int nesting);
-
     /**
      * Gets the scope of the most recently opened phase (from unclosed phases) or {@code null} if
      * the optimization log is not enabled.

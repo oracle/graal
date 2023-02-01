@@ -108,7 +108,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
-    public void onTypeInitialized(AnalysisType type) {
+    public void onTypeReachable(AnalysisType type) {
         postTask(d -> initializeMetaData(type));
     }
 
@@ -119,9 +119,9 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
         if (type instanceof AnalysisType) {
-            return ((AnalysisType) type).getWrappedWithoutResolve();
+            return ((AnalysisType) type).getWrapped();
         } else if (type instanceof HostedType) {
-            return ((HostedType) type).getWrapped().getWrappedWithoutResolve();
+            return ((HostedType) type).getWrapped().getWrapped();
         } else {
             return type;
         }

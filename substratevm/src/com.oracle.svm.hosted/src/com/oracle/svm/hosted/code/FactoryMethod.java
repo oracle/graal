@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.lang.annotation.Annotation;
-import java.util.Objects;
-
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -39,6 +36,8 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.NeverInlineTrivial;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.ReflectionUtil;
@@ -74,12 +73,12 @@ public final class FactoryMethod extends NonBytecodeMethod {
     private static void annotationHolder() {
     }
 
-    private static final NeverInlineTrivial INLINE_ANNOTATION = Objects.requireNonNull(
+    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
                     ReflectionUtil.lookupMethod(FactoryMethod.class, "annotationHolder").getAnnotation(NeverInlineTrivial.class));
 
     @Override
-    public Annotation[] getInjectedAnnotations() {
-        return new Annotation[]{INLINE_ANNOTATION};
+    public AnnotationValue[] getInjectedAnnotations() {
+        return INJECTED_ANNOTATIONS;
     }
 
     @Override

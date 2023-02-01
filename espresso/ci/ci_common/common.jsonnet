@@ -36,10 +36,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     },
   },
 
-  ol65: self.linux + {
-    capabilities+: ['ol65'],
-  },
-
   x52: self.linux + {
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
@@ -92,6 +88,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk17_on_demand_bench_windows : graal_common.labsjdk17                              + self.onDemandBench + base.windows_17,
 
   jdk19_gate_linux              : graal_common.labsjdk19 + graal_common.labsjdk19LLVM + self.gate          + self.linux,
+  jdk19_weekly_linux            : graal_common.labsjdk19 + graal_common.labsjdk19LLVM + self.weekly        + self.linux,
+
+  jdk20_gate_linux              : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.gate          + self.linux,
+  jdk20_daily_linux             : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.daily         + self.linux,
 
   // shared snippets
   eclipse: {

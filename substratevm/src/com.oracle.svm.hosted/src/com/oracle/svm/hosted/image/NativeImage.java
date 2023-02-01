@@ -152,12 +152,6 @@ public abstract class NativeImage extends AbstractImage {
     }
 
     @Override
-    public Section getTextSection() {
-        assert textSection != null;
-        return textSection;
-    }
-
-    @Override
     public abstract String[] makeLaunchCommand(NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
 
     protected final void write(DebugContext context, Path outputFile) {

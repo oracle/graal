@@ -670,7 +670,7 @@ public class CompileQueue {
             ProgressReporter.singleton().reportStageProgress();
             inliningProgress = false;
             round++;
-            try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d\n", round)) {
+            try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d%n", round)) {
 
                 executor.init();
                 universe.getMethods().forEach(method -> {
@@ -1196,9 +1196,10 @@ public class CompileQueue {
                 Suites suites = method.isDeoptTarget() ? deoptTargetSuites : regularSuites;
                 LIRSuites lirSuites = method.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
 
-                CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.format("%H.%n(%p)"));
+                CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());
 
-                try (Indent indent = debug.logAndIndent("compile %s", method); DebugCloseable l = graph.getOptimizationLog().listen(new StableMethodNameFormatter(graph, backend.getProviders()))) {
+                try (Indent indent = debug.logAndIndent("compile %s", method);
+                                DebugCloseable l = graph.getOptimizationLog().listen(new StableMethodNameFormatter(backend.getProviders(), graph.getDebug()))) {
                     GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), method.getProfilingInfo(), suites, lirSuites, result,
                                     new HostedCompilationResultBuilderFactory(), false);
                 }

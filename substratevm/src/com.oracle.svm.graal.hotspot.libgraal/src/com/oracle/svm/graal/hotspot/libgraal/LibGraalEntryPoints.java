@@ -28,6 +28,7 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.lang.management.ManagementFactory;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,6 +44,7 @@ import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
+import org.graalvm.compiler.hotspot.ProfileReplaySupport;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
@@ -65,6 +67,7 @@ import org.graalvm.nativeimage.c.struct.RawFieldAddress;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.util.OptionsEncoder;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -73,6 +76,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.heap.Heap;
+import com.sun.management.ThreadMXBean;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InstalledCode;
@@ -386,6 +390,11 @@ public final class LibGraalEntryPoints {
      *            where {@code length} truncated to {@code stackTraceCapacity - 4} if necessary
      *
      * @param stackTraceCapacity the size of the stack trace buffer
+     * @param timeAndMemBufferAddress 16-byte native buffer to store result of time and memory
+     *            measurements of the compilation
+     * @param profilePathBufferAddress native buffer containing a 0-terminated C string representing
+     *            {@link org.graalvm.compiler.hotspot.ProfileReplaySupport.Options#LoadProfiles}
+     *            path.
      * @return a handle to a {@link InstalledCode} in HotSpot's heap or 0 if compilation failed
      */
     @SuppressWarnings({"unused", "try"})
@@ -397,11 +406,14 @@ public final class LibGraalEntryPoints {
                     boolean useProfilingInfo,
                     boolean installAsDefault,
                     boolean printMetrics,
+                    boolean eagerResolving,
                     long optionsAddress,
                     int optionsSize,
                     int optionsHash,
                     long stackTraceAddress,
-                    int stackTraceCapacity) {
+                    int stackTraceCapacity,
+                    long timeAndMemBufferAddress,
+                    long profilePathBufferAddress) {
         try (JNIMethodScope jniScope = new JNIMethodScope("compileMethod", jniEnv)) {
             HotSpotJVMCIRuntime runtime = runtime();
             HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
@@ -413,12 +425,30 @@ public final class LibGraalEntryPoints {
             int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
             HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
             try (CompilationContext scope = HotSpotGraalServices.openLocalCompilationContext(request)) {
-
                 OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);
-                CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, installAsDefault);
+                CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, false, eagerResolving, installAsDefault);
+                if (profilePathBufferAddress > 0) {
+                    String profileLoadPath = CTypeConversion.toJavaString(WordFactory.pointer(profilePathBufferAddress));
+                    options = new OptionValues(options, ProfileReplaySupport.Options.LoadProfiles, profileLoadPath);
+                }
+                long allocatedBytesBefore = 0;
+                ThreadMXBean threadMXBean = null;
+                long timeBefore = 0;
+                if (timeAndMemBufferAddress != 0) {
+                    threadMXBean = (ThreadMXBean) ManagementFactory.getThreadMXBean();
+                    allocatedBytesBefore = threadMXBean.getCurrentThreadAllocatedBytes();
+                    timeBefore = System.currentTimeMillis();
+                }
                 task.runCompilation(options);
+                if (timeAndMemBufferAddress != 0) {
+                    long allocatedBytesAfter = threadMXBean.getCurrentThreadAllocatedBytes();
+                    long bytesAllocated = allocatedBytesAfter - allocatedBytesBefore;
+                    long timeAfter = System.currentTimeMillis();
+                    long timeSpent = timeAfter - timeBefore;
+                    Unsafe.getUnsafe().putLong(timeAndMemBufferAddress, bytesAllocated);
+                    Unsafe.getUnsafe().putLong(timeAndMemBufferAddress + 8, timeSpent);
+                }
                 HotSpotInstalledCode installedCode = task.getInstalledCode();
-
                 if (printMetrics) {
                     GlobalMetrics metricValues = ((HotSpotGraalRuntime) compiler.getGraalRuntime()).getMetricValues();
                     metricValues.print(options);

@@ -81,7 +81,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public final class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider, MultiMethod {
+public final class HostedMethod extends HostedElement implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider, MultiMethod {
 
     public static final String METHOD_NAME_COLLISION_SEPARATOR = "%";
 
@@ -506,7 +506,7 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
 
     @Override
     public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(getDeclaringClass().universe.getSnippetReflection(), wrapped);
+        return wrapped.getJavaMethod();
     }
 
     @Override

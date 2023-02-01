@@ -31,7 +31,6 @@ import java.lang.reflect.Modifier;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.AnnotationWrapper;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 

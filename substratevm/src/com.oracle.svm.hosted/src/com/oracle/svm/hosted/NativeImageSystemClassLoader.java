@@ -285,7 +285,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
      *
      * @param classPathEntry the classpath entry that will be added to the class path
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused") // no direct use from Java
     private void appendToClassPathForInstrumentation(String classPathEntry) {
         try {
             Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
@@ -295,5 +295,4 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
             VMError.shouldNotReachHere(message, e);
         }
     }
-
 }

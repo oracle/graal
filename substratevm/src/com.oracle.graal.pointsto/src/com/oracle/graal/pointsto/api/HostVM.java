@@ -149,7 +149,7 @@ public abstract class HostVM {
      * 
      * @param newValue the type to initialize
      */
-    public abstract void initializeType(AnalysisType newValue);
+    public abstract void onTypeReachable(AnalysisType newValue);
 
     /**
      * Check if an {@link AnalysisType} is initialized.

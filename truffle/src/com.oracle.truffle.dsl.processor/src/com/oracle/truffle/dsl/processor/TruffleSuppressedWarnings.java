@@ -66,6 +66,8 @@ public final class TruffleSuppressedWarnings {
     public static final String INLINING_RECOMMENDATION = "truffle-inlining";
     public static final String SHARING_RECOMMENDATION = "truffle-sharing";
 
+    public static final List<String> ALL_KEYS = List.of(ALL, TRUFFLE, STATIC_METHOD, LIMIT, UNUSED, NEVERDEFAULT, INLINING_RECOMMENDATION, SHARING_RECOMMENDATION);
+
     public static Set<String> getWarnings(Element element) {
         AnnotationMirror currentWarnings = ElementUtils.findAnnotationMirror(element, SuppressWarnings.class);
         Set<String> warnings = null;

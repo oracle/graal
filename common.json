@@ -1,7 +1,7 @@
 {
   "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of multiple repositories.",
 
-  "mx_version" : "6.14.13",
+  "mx_version" : "6.14.18",
 
   "jdks": {
     "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.11", "build_id": "9", "release": true, "platformspecific": true, "extrabundles": ["static-libs"] },
@@ -19,9 +19,12 @@
     "labsjdk-ee-19-llvm": {"name": "labsjdk",   "version": "ee-19.0.2+7-jvmci-23.0-b05-sulong", "platformspecific": true },
 
     "oraclejdk20":        {"name": "jpg-jdk",   "version": "20",      "build_id": "24", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
-    "labsjdk-ce-20":      {"name": "labsjdk",   "version": "ce-20+26-jvmci-23.0-b05", "platformspecific": true },
-    "labsjdk-ce-20Debug": {"name": "labsjdk",   "version": "ce-20+26-jvmci-23.0-b05-debug", "platformspecific": true },
-    "labsjdk-ce-20-llvm": {"name": "labsjdk",   "version": "ce-20+26-jvmci-23.0-b05-sulong", "platformspecific": true }
+    "labsjdk-ce-20":      {"name": "labsjdk",   "version": "ce-20+30-jvmci-23.0-b06", "platformspecific": true },
+    "labsjdk-ce-20Debug": {"name": "labsjdk",   "version": "ce-20+30-jvmci-23.0-b06-debug", "platformspecific": true },
+    "labsjdk-ce-20-llvm": {"name": "labsjdk",   "version": "ce-20+30-jvmci-23.0-b06-sulong", "platformspecific": true },
+    "labsjdk-ee-20":      {"name": "labsjdk",   "version": "ee-20.0.1+2-jvmci-23.0-b06", "platformspecific": true },
+    "labsjdk-ee-20Debug": {"name": "labsjdk",   "version": "ee-20.0.1+2-jvmci-23.0-b06-debug", "platformspecific": true },
+    "labsjdk-ee-20-llvm": {"name": "labsjdk",   "version": "ee-20.0.1+2-jvmci-23.0-b06-sulong", "platformspecific": true }
   },
 
   "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
@@ -36,7 +39,8 @@
 
   "catch_files" : [
     "Graal diagnostic output saved in '(?P<filename>[^']+)'",
-    "Dumping debug output to '(?P<filename>[^']+)'"
+    "Dumping debug output to '(?P<filename>[^']+)'",
+    " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)"
   ],
 
   "deps": {
@@ -104,26 +108,20 @@
   },
   "sulong": {
     "deps": {
-      "common": {},
-      "linux": {
-        "packages": {
-          "cmake": "==3.15.2"
-        }
-      },
-      "darwin_amd64": {
-        "packages": {
-          "cmake": "==3.15.2"
-        }
-      },
-      "darwin_aarch64": {
+      "common": {
         "packages": {
           "cmake": "==3.22.2"
         }
       },
+      "linux": {
+      },
+      "darwin_amd64": {
+      },
+      "darwin_aarch64": {
+      },
       "windows": {
         "packages": {
-          "msvc_source": "==14.0",
-          "pip:cmake": "==3.18.4"
+          "msvc_source": "==14.0"
         }
       }
     }
@@ -145,7 +143,7 @@
       "linux": {
         "packages": {
           "00:devtoolset": "==7",
-          "cmake": "==3.15.2"
+          "cmake": "==3.22.2"
         }
       },
       "darwin": {}

@@ -3564,6 +3564,7 @@ mx.add_argument('--image-profile', action='append', help='Add a profile to be us
 mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
 mx.add_argument('--base-jdk-info', action='store', help='Colon-separated tuple of base JDK `NAME:VERSION`, to be added on deployment to the \'basejdk\' attribute of the \'suite-revisions.xml\' file on maven-deployment.')
 mx.add_argument('--graalvm-skip-archive', action='store_true', help='Do not archive GraalVM distributions.')
+mx.add_argument('--svmtest-target-arch', action='store', dest='svmtest_target_arch', help='specify targeted arch for GraalVM output', default=mx.get_arch())
 
 
 def _parse_cmd_arg(arg_name, env_var_name=None, separator=',', parse_bool=True, default_value=None):

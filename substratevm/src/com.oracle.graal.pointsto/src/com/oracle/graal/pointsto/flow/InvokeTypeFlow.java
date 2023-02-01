@@ -28,7 +28,6 @@ import java.util.Collection;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -179,7 +178,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                 formalReceiverFlow.addReceiverState(bb, receiverTypeState);
             }
 
-            if (PointstoOptions.DivertParameterReturningMethod.getValue(bb.getOptions())) {
+            if (bb.optimizeReturnedParameter()) {
                 int paramIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
                 if (actualReturn != null && paramIndex == 0) {
                     actualReturn.addState(bb, receiverTypeState);
@@ -233,7 +232,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     public void linkReturn(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraphInfo calleeFlows) {
         if (bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
             if (actualReturn != null) {
-                if (PointstoOptions.DivertParameterReturningMethod.getValue(bb.getOptions())) {
+                if (bb.optimizeReturnedParameter()) {
                     int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
                     if (paramNodeIndex != -1) {
                         if (isStatic || paramNodeIndex != 0) {

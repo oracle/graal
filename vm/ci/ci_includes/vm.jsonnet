@@ -11,9 +11,11 @@ local jdks = common_json.jdks;
 {
   vm_java_17:: graal_common.labsjdk17 + vm_common.vm_env_mixin('17'),
   vm_java_19:: graal_common.labsjdk19 + vm_common.vm_env_mixin('19'),
+  vm_java_20:: graal_common.labsjdk20 + vm_common.vm_env_mixin('20'),
 
   vm_java_17_llvm:: self.vm_java_17 + graal_common['labsjdk-ee-17-llvm'],
   vm_java_19_llvm:: self.vm_java_19 + graal_common['labsjdk-ce-19-llvm'],
+  vm_java_20_llvm:: self.vm_java_20 + graal_common['labsjdk-ce-20-llvm'],
 
   binaries_repository: 'lafo',
   svm_suite:: '/substratevm',

@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "6.9.9",
+  "mxversion": "6.14.13",
 
   "name" : "regex",
 
@@ -99,7 +99,7 @@ suite = {
         "com.oracle.truffle.regex.chardata",
       ],
       "checkstyleVersion" : "8.36.1",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,Regex",
       "spotbugsIgnoresGenerated" : True,
     },
@@ -117,7 +117,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "checkstyle" : "com.oracle.truffle.regex",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,Regex",
     },
   },

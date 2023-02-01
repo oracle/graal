@@ -781,9 +781,62 @@ void determineCPUFeatures(CPUFeatures* features) {
 }
 #endif
 
+#elif defined(__riscv)
+/*
+ * The corresponding HotSpot code can be found in vm_version_riscv and
+ * vm_version_linux_riscv.
+ */
+
+#include <sys/auxv.h>
+#include <asm/hwcap.h>
+#include "riscv64cpufeatures.h"
+
+#ifndef HWCAP_ISA_I
+#define HWCAP_ISA_I  (1 << ('I' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_M
+#define HWCAP_ISA_M  (1 << ('M' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_A
+#define HWCAP_ISA_A  (1 << ('A' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_F
+#define HWCAP_ISA_F  (1 << ('F' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_D
+#define HWCAP_ISA_D  (1 << ('D' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_C
+#define HWCAP_ISA_C  (1 << ('C' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_V
+#define HWCAP_ISA_V  (1 << ('V' - 'A'))
+#endif
+
+/*
+ * Extracts the CPU features by reading the hwcaps
+ */
+void determineCPUFeatures(CPUFeatures* features) {
+
+  unsigned long auxv = getauxval(AT_HWCAP);
+  features->fI = !!(auxv & HWCAP_ISA_I);
+  features->fM = !!(auxv & HWCAP_ISA_M);
+  features->fA = !!(auxv & HWCAP_ISA_A);
+  features->fF = !!(auxv & HWCAP_ISA_F);
+  features->fD = !!(auxv & HWCAP_ISA_D);
+  features->fC = !!(auxv & HWCAP_ISA_C);
+  features->fV = !!(auxv & HWCAP_ISA_V);
+}
+
 #else
 /*
- * Dummy for non AMD64 and non AArch64
+ * Dummy for non AMD64, non AArch64 and non RISCV64
  */
 void determineCPUFeatures(void* features) {
 }

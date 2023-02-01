@@ -25,6 +25,8 @@
 package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.Uninterruptible;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 /**
  * Helper class that holds methods related to {@link JfrNativeEventWriterData}.
@@ -39,12 +41,18 @@ public final class JfrNativeEventWriterDataAccess {
      */
     @Uninterruptible(reason = "Accesses a JFR buffer", callerMustBe = true)
     public static void initialize(JfrNativeEventWriterData data, JfrBuffer buffer) {
-        assert buffer.isNonNull();
-
-        data.setJfrBuffer(buffer);
-        data.setStartPos(buffer.getPos());
-        data.setCurrentPos(buffer.getPos());
-        data.setEndPos(JfrBufferAccess.getDataEnd(buffer));
+        if (buffer.isNonNull()) {
+            assert JfrBufferAccess.verify(buffer);
+            data.setJfrBuffer(buffer);
+            data.setStartPos(buffer.getPos());
+            data.setCurrentPos(buffer.getPos());
+            data.setEndPos(JfrBufferAccess.getDataEnd(buffer));
+        } else {
+            data.setJfrBuffer(WordFactory.nullPointer());
+            data.setStartPos(WordFactory.nullPointer());
+            data.setCurrentPos(WordFactory.nullPointer());
+            data.setEndPos(WordFactory.nullPointer());
+        }
     }
 
     /**
@@ -56,5 +64,20 @@ public final class JfrNativeEventWriterDataAccess {
         JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
         JfrBuffer nativeBuffer = jfrThreadLocal.getNativeBuffer();
         initialize(data, nativeBuffer);
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    public static boolean verify(JfrNativeEventWriterData data) {
+        if (data.isNull() || !JfrBufferAccess.verify(data.getJfrBuffer())) {
+            return false;
+        }
+
+        JfrBuffer buffer = data.getJfrBuffer();
+        Pointer dataStart = JfrBufferAccess.getDataStart(buffer);
+        Pointer dataEnd = JfrBufferAccess.getDataEnd(buffer);
+
+        return data.getStartPos() == buffer.getPos() &&
+                        (data.getEndPos() == dataEnd || data.getEndPos().isNull()) &&
+                        data.getCurrentPos().aboveOrEqual(dataStart) && data.getCurrentPos().belowOrEqual(dataEnd) && data.getCurrentPos().aboveOrEqual(data.getStartPos());
     }
 }

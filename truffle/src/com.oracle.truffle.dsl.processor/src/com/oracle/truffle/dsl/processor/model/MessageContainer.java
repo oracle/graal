@@ -61,8 +61,6 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.dsl.processor.ExpectError;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
-import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
@@ -157,14 +155,14 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         }
     }
 
-    public final void emitMessages(ProcessorContext context, Log log) {
+    public final void emitMessages(Log log) {
         Map<Element, List<Message>> emittedMessages = new HashMap<>();
         Set<Element> relevantTypes = new LinkedHashSet<>();
         visit((container) -> {
             List<Message> m = container.getMessages();
             for (int i = m.size() - 1; i >= 0; i--) {
                 Message message = m.get(i);
-                Element targetElement = container.emitDefault(context, log, message);
+                Element targetElement = container.emitDefault(log, message);
                 emittedMessages.computeIfAbsent(targetElement, (e) -> new ArrayList<>()).add(message);
             }
             if (container.getMessageElement() instanceof TypeElement) {
@@ -204,7 +202,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
 
     }
 
-    private Element emitDefault(ProcessorContext context, Log log, Message message) {
+    private Element emitDefault(Log log, Message message) {
         Kind kind = message.getKind();
         Element messageElement = getMessageElement();
         AnnotationMirror messageAnnotation = getMessageAnnotation();
@@ -230,8 +228,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             }
             log.message(Kind.ERROR, targetElement, null, null, "Message expected one of '%s' but was '%s'.", expectedErrors, text);
         } else {
-            if (kind == Kind.WARNING &&
-                            (TruffleProcessorOptions.suppressAllWarnings(context.getEnvironment()) || TruffleSuppressedWarnings.isSuppressed(messageElement, message.suppressionKey))) {
+            if (log.isSuppressed(kind, message.suppressionKey, messageElement)) {
                 return targetElement;
             }
             if (message.suppressionKey != null) {

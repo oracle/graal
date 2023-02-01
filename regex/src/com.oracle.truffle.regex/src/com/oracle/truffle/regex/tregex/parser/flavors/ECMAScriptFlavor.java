@@ -43,10 +43,14 @@ package com.oracle.truffle.regex.tregex.parser.flavors;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
 import com.oracle.truffle.regex.tregex.parser.JSRegexValidator;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+
+import java.util.function.BiPredicate;
 
 public final class ECMAScriptFlavor extends RegexFlavor {
 
@@ -64,5 +68,14 @@ public final class ECMAScriptFlavor extends RegexFlavor {
     @Override
     public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
         return new JSRegexParser(language, source, compilationBuffer);
+    }
+
+    @Override
+    public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
+        if (ast.getFlags().isUnicode()) {
+            return CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode.getEqualsPredicate();
+        } else {
+            return CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode.getEqualsPredicate();
+        }
     }
 }

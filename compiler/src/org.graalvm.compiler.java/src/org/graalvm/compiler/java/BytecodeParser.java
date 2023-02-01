@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1998,7 +1998,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         TypeReference checkedTypeRef = TypeReference.createTrusted(graph.getAssumptions(), checkedType);
         LogicNode condition = genUnique(InstanceOfNode.create(checkedTypeRef, object));
         ValueNode guardingNode;
-        if (needsExplicitException()) {
+        if (needsExplicitIncompatibleClassChangeError()) {
             guardingNode = emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.INCOMPATIBLE_CLASS_CHANGE);
         } else {
             guardingNode = append(new FixedGuardNode(condition, ClassCastException, None, false));
@@ -3490,6 +3490,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
             if (disableLoopSafepoint()) {
                 loopBegin.disableSafepoint();
+                loopBegin.disableGuestSafepoint();
             }
             fixedWithNext.setNext(preLoopEnd);
             // Add the single non-loop predecessor of the loop header.
@@ -4745,6 +4746,15 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected boolean needsIncompatibleClassChangeErrorCheck() {
+        return false;
+    }
+
+    protected boolean needsExplicitIncompatibleClassChangeError() {
+        /*
+         * Note that we cannot use needsExplicitException() here: The "exception seen" profiling
+         * information for an invokeinterface bytecode is not related to the incompatible class
+         * change check, i.e., the Java HotSpot VM never has profiling information.
+         */
         return false;
     }
 

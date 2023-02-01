@@ -107,7 +107,7 @@ final class OtherContextGuestObject implements TruffleObject {
         static Object doCached(OtherContextGuestObject receiver, Message message, Object[] args,
                         @Bind("this") Node node,
                         @SuppressWarnings("unused") @CachedLibrary("receiver") ReflectionLibrary receiverLibrary,
-                        @Cached(value = "getCachedLayer(receiverLibrary)", neverDefault = true) PolyglotSharingLayer cachedLayer,
+                        @Cached(value = "getCachedLayer(receiverLibrary)") PolyglotSharingLayer cachedLayer,
                         @CachedLibrary(limit = "CACHE_LIMIT") ReflectionLibrary delegateLibrary,
                         @Cached InlinedBranchProfile seenOther,
                         @Cached InlinedBranchProfile seenError) throws Exception {
@@ -350,7 +350,7 @@ final class OtherContextGuestObject implements TruffleObject {
             static Object doCached(OtherContextException receiver, Message message, Object[] args,
                             @Bind("this") Node node,
                             @SuppressWarnings("unused") @CachedLibrary("receiver") ReflectionLibrary receiverLibrary,
-                            @Cached(value = "getCachedLayer(receiverLibrary)", neverDefault = true) PolyglotSharingLayer cachedLayer,
+                            @Cached(value = "getCachedLayer(receiverLibrary)") PolyglotSharingLayer cachedLayer,
                             @CachedLibrary(limit = "CACHE_LIMIT") ReflectionLibrary delegateLibrary,
                             @Cached InlinedBranchProfile seenOther,
                             @Cached InlinedBranchProfile seenError) throws Exception {

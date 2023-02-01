@@ -80,6 +80,7 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
     private static final byte FLAG_IS_LOOK_AROUND = 1 << N_FLAGS;
     private static final byte FLAG_IS_SUB_MATCHER_NEGATED = 1 << N_FLAGS + 1;
     private static final byte FLAG_IS_DETERMINISTIC = 1 << N_FLAGS + 2;
+    private static final byte FLAG_IS_IGNORE_CASE_REFERENCE = (byte) (1 << N_FLAGS + 3);
 
     private final int astNodeId;
     private final int extraId;
@@ -95,6 +96,9 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
         setLookAround(t.isLookAroundAssertion());
         if (t.isLookAroundAssertion()) {
             setSubMatcherNegated(t.asLookAroundAssertion().isNegated());
+        }
+        if (t.isBackReference()) {
+            setIgnoreCaseReference(t.asBackReference().isIgnoreCaseReference());
         }
     }
 
@@ -184,6 +188,14 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
 
     public void setSubMatcherNegated(boolean value) {
         setFlag(FLAG_IS_SUB_MATCHER_NEGATED, value);
+    }
+
+    public boolean isIgnoreCaseReference() {
+        return getFlag(FLAG_IS_IGNORE_CASE_REFERENCE);
+    }
+
+    public void setIgnoreCaseReference(boolean value) {
+        setFlag(FLAG_IS_IGNORE_CASE_REFERENCE, value);
     }
 
     /**

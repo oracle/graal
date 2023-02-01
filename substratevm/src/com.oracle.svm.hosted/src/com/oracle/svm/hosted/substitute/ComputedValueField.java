@@ -57,9 +57,9 @@ import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvaila
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.util.AnnotationWrapper;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -549,6 +549,6 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
 
     @Override
     public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalFieldProvider.getJavaField(original);
     }
 }

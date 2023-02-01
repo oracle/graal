@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,9 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ThreadFactory;
+import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -182,9 +184,9 @@ public final class Target_java_lang_Thread {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object lockHelper;
 
-    @Inject @TargetElement(onlyWith = LoomJDK.class) //
+    @Inject @TargetElement(onlyWith = {HasScopedValueCache.class, HasExtentLocalCache.class, LoomJDK.class}) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    Object[] extentLocalCache;
+    Object[] scopedValueCache;
 
     @Alias
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
@@ -647,15 +649,27 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
+    @TargetElement(onlyWith = HasExtentLocalCache.class)
     static Object[] extentLocalCache() {
-        return JavaThreads.toTarget(currentCarrierThread()).extentLocalCache;
+        return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
+    @TargetElement(onlyWith = HasExtentLocalCache.class)
     static void setExtentLocalCache(Object[] cache) {
-        JavaThreads.toTarget(currentCarrierThread()).extentLocalCache = cache;
+        JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = HasScopedValueCache.class)
+    static Object[] scopedValueCache() {
+        return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = HasScopedValueCache.class)
+    static void setScopedValueCache(Object[] cache) {
+        JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
 
     @Substitute
@@ -691,6 +705,22 @@ public final class Target_java_lang_Thread {
     @Alias
     @TargetElement(onlyWith = JDK19OrLater.class)
     native long threadId();
+
+    private static class HasExtentLocalCache implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            boolean result = ReflectionUtil.lookupMethod(true, Thread.class, "extentLocalCache") != null;
+            assert !result || JavaVersionUtil.JAVA_SPEC == 19 : "extentLocalCache should not exist as of JDK 20";
+            return result;
+        }
+    }
+
+    public static class HasScopedValueCache implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return ReflectionUtil.lookupMethod(true, Thread.class, "scopedValueCache") != null;
+        }
+    }
 }
 
 @TargetClass(value = Thread.class, innerClass = "Builder", onlyWith = JDK19OrLater.class)

@@ -601,10 +601,6 @@ public final class Interval {
         return cachedTo;
     }
 
-    int numUsePositions() {
-        return usePosList.size();
-    }
-
     public void setLocationHint(Interval interval) {
         locationHint = interval;
     }
@@ -685,10 +681,6 @@ public final class Interval {
     // test intersection
     boolean intersects(Interval i) {
         return first.intersects(i.first);
-    }
-
-    int intersectsAt(Interval i) {
-        return first.intersectsAt(i.first);
     }
 
     // range iteration
@@ -891,7 +883,7 @@ public final class Interval {
                      * Should not happen: Try another compilation as it is very unlikely to happen
                      * again.
                      */
-                    throw new GraalError("two valid result intervals found for opId %d: %d and %d\n%s\n", opId, result.operandNumber, interval.operandNumber,
+                    throw new GraalError("two valid result intervals found for opId %d: %d and %d%n%s%n", opId, result.operandNumber, interval.operandNumber,
                                     result.logString(allocator), interval.logString(allocator));
                 }
             }

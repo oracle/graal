@@ -24,10 +24,9 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.lang.annotation.Annotation;
-import java.util.Objects;
-
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantPool;
@@ -51,11 +50,11 @@ public abstract class EntryPointCallStubMethod extends NonBytecodeMethod {
     private static void uninterruptibleAnnotationHolder() {
     }
 
-    private static final Uninterruptible UNINTERRUPTIBLE_ANNOTATION = Objects.requireNonNull(
+    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
                     Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(EntryPointCallStubMethod.class, "uninterruptibleAnnotationHolder")));
 
     @Override
-    public Annotation[] getInjectedAnnotations() {
-        return new Annotation[]{UNINTERRUPTIBLE_ANNOTATION};
+    public AnnotationValue[] getInjectedAnnotations() {
+        return INJECTED_ANNOTATIONS;
     }
 }

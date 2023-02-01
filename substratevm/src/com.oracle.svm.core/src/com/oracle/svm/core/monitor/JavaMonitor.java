@@ -30,7 +30,6 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -70,7 +69,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
             JavaMonitorEnterEvent.emit(obj, latestJfrTid, startTicks);
         }
 
-        latestJfrTid = SubstrateJVM.getThreadId(CurrentIsolate.getCurrentThread());
+        latestJfrTid = SubstrateJVM.getCurrentThreadId();
     }
 
     public void monitorExit() {

@@ -2505,4 +2505,53 @@ public class ValueAPITest {
         }
     }
 
+    @Test
+    public void testToString() {
+        // test null context
+        assertNotNull(Value.asValue("").toString());
+
+        Context c = Context.create();
+
+        Object[] values = new Object[]{
+                        c.asValue(""), // bound value,
+                        c.asValue(new Members()).as(Map.class),
+                        c.asValue(new ArrayElements()).as(List.class),
+                        c.asValue(new Executable()).as(Function.class),
+                        c.asValue(new HashEntries()).as(Map.class),
+        };
+
+        for (Object v : values) {
+            assertNotNull(v.toString());
+        }
+
+        c.close();
+
+        for (Object v : values) {
+            assertEquals("Error in toString(): Context is invalid or closed.", v.toString());
+        }
+
+    }
+
+    @Test
+    public void testProxyErrorInToString() {
+        try (Context c = Context.create()) {
+
+            Value v = c.asValue(new org.graalvm.polyglot.proxy.Proxy() {
+
+                @Override
+                public String toString() {
+                    throw new UnsupportedOperationException("test message");
+                }
+
+            });
+
+            AbstractPolyglotTest.assertFails(() -> v.toString(), PolyglotException.class, (e) -> {
+                assertEquals("test message", e.getMessage());
+                assertTrue(e.isHostException());
+                assertTrue(e.asHostException() instanceof UnsupportedOperationException);
+            });
+
+        }
+    }
+
 }

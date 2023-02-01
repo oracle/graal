@@ -91,7 +91,10 @@ public final class CacheExpression extends MessageContainer {
         this.sourceAnnotationMirror = sourceAnnotationMirror;
         this.sharedGroupMirror = ElementUtils.findAnnotationMirror(sourceParameter.getVariableElement(), types.Cached_Shared);
         this.sharedGroupValue = sharedGroupMirror != null ? getAnnotationValue(sharedGroupMirror, "value") : null;
-        this.sharedGroup = sharedGroupMirror != null ? getAnnotationValue(String.class, sharedGroupMirror, "value") : null;
+        this.sharedGroup = sharedGroupMirror != null ? getAnnotationValue(String.class, sharedGroupMirror, "value", false) : null;
+        if (this.sharedGroupMirror != null && sharedGroup == null) {
+            this.sharedGroup = sourceParameter.getVariableElement().getSimpleName().toString();
+        }
     }
 
     public CacheExpression copy() {
@@ -111,6 +114,7 @@ public final class CacheExpression extends MessageContainer {
         copy.cachedlibrary = cachedlibrary;
         copy.usedInGuard = usedInGuard;
         copy.neverDefault = neverDefault;
+        copy.neverDefaultGuaranteed = neverDefaultGuaranteed;
         return copy;
     }
 

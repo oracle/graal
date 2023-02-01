@@ -46,6 +46,12 @@ import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This visitor computes various properties of {@link RegexAST} and its {@link RegexASTNode}s, in
@@ -100,15 +106,8 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * </li>
  * </ul>
  * </li>
- * <li>{@link RegexAST#getReachableCarets()}/{@link RegexAST#getReachableDollars()}: all
- * caret/dollar {@link PositionAssertion} that are not dead are added to these lists.</li>
- * <li>{@link RegexAST#getSubtrees()}}: all reachable {@link RegexASTSubtreeRootNode}s are added to
- * these lists.</li>
  * </ul>
  *
- * @see RegexAST#getReachableCarets()
- * @see RegexAST#getReachableDollars()
- * @see RegexAST#getSubtrees()
  * @see RegexASTNode#hasCaret()
  * @see RegexASTNode#hasDollar()
  * @see RegexASTNode#startsWithCaret()
@@ -141,16 +140,22 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     private final RegexAST ast;
     private final CompilationBuffer compilationBuffer;
+    private final EconomicMap<Integer, List<Group>> conditionalBackReferences;
+    private final EconomicMap<Integer, List<Group>> conditionGroups;
 
     public CalcASTPropsVisitor(RegexAST ast, CompilationBuffer compilationBuffer) {
         this.ast = ast;
         this.compilationBuffer = compilationBuffer;
+        this.conditionalBackReferences = EconomicMap.create(ast.getConditionGroups().numberOfSetBits());
+        this.conditionGroups = EconomicMap.create(ast.getConditionGroups().numberOfSetBits());
     }
 
     public static void run(RegexAST ast, CompilationBuffer compilationBuffer) {
         CalcASTPropsVisitor visitor = new CalcASTPropsVisitor(ast, compilationBuffer);
         visitor.runReverse(ast.getRoot());
         visitor.run(ast.getRoot());
+        visitor.checkConditionalBackReferences();
+        visitor.registerConditionGroupsInLookAheadAssertions();
     }
 
     @Override
@@ -193,8 +198,28 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (group.size() > 1) {
             ast.getProperties().setAlternations();
         }
+        if (group.isConditionalBackReferenceGroup()) {
+            assert group.size() == 2;
+            ast.getProperties().setConditionalBackReferences();
+        }
         if (group.getGroupNumber() > 0) {
             ast.getProperties().setCaptureGroups();
+        }
+        if (isForward()) {
+            int groupNumber = group.getGroupNumber();
+            if (groupNumber > 0 && ast.getConditionGroups().get(groupNumber)) {
+                if (!conditionGroups.containsKey(groupNumber)) {
+                    conditionGroups.put(groupNumber, new ArrayList<>());
+                }
+                conditionGroups.get(groupNumber).add(group);
+            }
+            if (group.isConditionalBackReferenceGroup()) {
+                int referencedGroupNumber = group.asConditionalBackReferenceGroup().getReferencedGroupNumber();
+                if (!conditionalBackReferences.containsKey(referencedGroupNumber)) {
+                    conditionalBackReferences.put(referencedGroupNumber, new ArrayList<>());
+                }
+                conditionalBackReferences.get(referencedGroupNumber).add(group);
+            }
         }
         if (group.isDead()) {
             if (group.getParent() != null) {
@@ -309,7 +334,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 LookAroundAssertion lookAround = term.asLookAroundAssertion();
                 if (lookAround.isNegated() && lookAround.isDead()) {
                     sequence.removeTerm(i, compilationBuffer);
-                    RemoveReachablePositionAssertions.run(ast, lookAround);
                     continue;
                 }
             }
@@ -329,31 +353,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         }
     }
 
-    private static final class RemoveReachablePositionAssertions extends DepthFirstTraversalRegexASTVisitor {
-
-        private final RegexAST ast;
-
-        private RemoveReachablePositionAssertions(RegexAST ast) {
-            this.ast = ast;
-        }
-
-        private static void run(RegexAST ast, LookAroundAssertion root) {
-            new RemoveReachablePositionAssertions(ast).run(root);
-        }
-
-        @Override
-        protected void visit(PositionAssertion assertion) {
-            switch (assertion.type) {
-                case CARET:
-                    ast.getReachableCarets().remove(assertion);
-                    break;
-                case DOLLAR:
-                    ast.getReachableDollars().remove(assertion);
-                    break;
-            }
-        }
-    }
-
     @Override
     protected void visit(PositionAssertion assertion) {
         switch (assertion.type) {
@@ -364,7 +363,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                         assertion.markAsDead();
                         assertion.getParent().markAsDead();
                     } else {
-                        ast.getReachableCarets().add(assertion);
                         assertion.getParent().setStartsWithCaret();
                     }
                 }
@@ -376,7 +374,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                         assertion.markAsDead();
                         assertion.getParent().markAsDead();
                     } else {
-                        ast.getReachableDollars().add(assertion);
                         assertion.getParent().setEndsWithDollar();
                     }
                 }
@@ -452,8 +449,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     protected void leave(AtomicGroup atomicGroup) {
         if (isForward() && !atomicGroup.isDead()) {
             ast.getProperties().setAtomicGroups();
-            ast.getSubtrees().add(atomicGroup);
-            atomicGroup.getSubTreeParent().getSubtrees().add(atomicGroup);
         }
         leaveSubtreeRootNode(atomicGroup, CHANGED_FLAGS);
         atomicGroup.getParent().setMinPath(atomicGroup.getMinPath());
@@ -461,10 +456,6 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     }
 
     private void leaveLookAroundAssertion(LookAroundAssertion assertion) {
-        if (isForward() && !assertion.isDead()) {
-            ast.getSubtrees().add(assertion);
-            assertion.getSubTreeParent().getSubtrees().add(assertion);
-        }
         if (assertion.hasCaptureGroups()) {
             ast.getProperties().setCaptureGroupsInLookAroundAssertions();
         }
@@ -533,5 +524,78 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
     @Override
     protected void visit(SubexpressionCall subexpressionCall) {
         throw CompilerDirectives.shouldNotReachHere("subexpression calls should be expanded by the parser");
+    }
+
+    private void checkConditionalBackReferences() {
+        for (int conditionGroupNumber : ast.getConditionGroups()) {
+            if (!conditionalBackReferences.containsKey(conditionGroupNumber)) {
+                // All conditional back-references to this condition group must have been optimized
+                // away.
+                continue;
+            }
+            List<Group> references = conditionalBackReferences.get(conditionGroupNumber);
+            assert conditionGroups.containsKey(conditionGroupNumber);
+            List<Group> groups = conditionGroups.get(conditionGroupNumber);
+            RegexASTSubtreeRootNode referencesAncestor = lowestCommonAncestor(references);
+            for (Group conditionGroup : groups) {
+                RegexASTSubtreeRootNode parent = conditionGroup.getSubTreeParent();
+                RegexASTSubtreeRootNode commonAncestor = lowestCommonAncestor(parent, referencesAncestor);
+                while (parent != commonAncestor) {
+                    if (parent.isLookAheadAssertion()) {
+                        ast.getProperties().setConditionalReferencesIntoLookAheads();
+                        return;
+                    }
+                    parent = parent.getSubTreeParent();
+                }
+            }
+        }
+    }
+
+    private static RegexASTSubtreeRootNode lowestCommonAncestor(List<? extends RegexASTNode> nodes) {
+        if (nodes.size() == 1) {
+            return nodes.get(0).getSubTreeParent();
+        } else if (nodes.size() >= 2) {
+            RegexASTSubtreeRootNode ancestor = lowestCommonAncestor(nodes.get(0).getSubTreeParent(), nodes.get(1).getSubTreeParent());
+            for (int i = 2; i < nodes.size(); i++) {
+                ancestor = lowestCommonAncestor(ancestor, nodes.get(i).getSubTreeParent());
+            }
+            return ancestor;
+        } else {
+            throw CompilerDirectives.shouldNotReachHere("lowestCommonAncestor called with empty list");
+        }
+    }
+
+    private static RegexASTSubtreeRootNode lowestCommonAncestor(RegexASTSubtreeRootNode argA, RegexASTSubtreeRootNode argB) {
+        EconomicSet<RegexASTSubtreeRootNode> ancestorsOfA = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        RegexASTSubtreeRootNode a = argA;
+        while (a != null) {
+            ancestorsOfA.add(a);
+            a = a.getSubTreeParent();
+        }
+        RegexASTSubtreeRootNode b = argB;
+        while (b != null) {
+            if (ancestorsOfA.contains(b)) {
+                return b;
+            }
+            b = b.getSubTreeParent();
+        }
+        return null;
+    }
+
+    private void registerConditionGroupsInLookAheadAssertions() {
+        for (int conditionGroupNumber : ast.getConditionGroups()) {
+            List<Group> references = conditionalBackReferences.get(conditionGroupNumber);
+            if (references != null) {
+                for (Group reference : references) {
+                    RegexASTSubtreeRootNode subtreeParent = reference.getSubTreeParent();
+                    while (subtreeParent != null) {
+                        if (subtreeParent.isLookAheadAssertion()) {
+                            subtreeParent.asLookAheadAssertion().registerReferencedConditionGroup(reference.asConditionalBackReferenceGroup().getReferencedGroupNumber());
+                        }
+                        subtreeParent = subtreeParent.getSubTreeParent();
+                    }
+                }
+            }
+        }
     }
 }

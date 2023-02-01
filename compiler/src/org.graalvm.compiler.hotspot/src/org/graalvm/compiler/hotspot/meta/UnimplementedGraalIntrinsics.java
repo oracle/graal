@@ -443,6 +443,9 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/Integer.reverse(I)I",
                             "java/lang/Long.compareUnsigned(JJ)I",
                             "java/lang/Long.reverse(J)J",
+                            "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
+                            "java/lang/Thread.scopedValueCache()[Ljava/lang/Object;",
+                            "java/lang/Thread.setScopedValueCache([Ljava/lang/Object;)V",
                             // @formatter:off
                             "jdk/internal/vm/vector/VectorSupport.indexVector(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$IndexOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;");
                             // @formatter:on
