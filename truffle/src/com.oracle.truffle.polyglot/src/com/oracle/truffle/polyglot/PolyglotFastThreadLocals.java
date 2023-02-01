@@ -340,6 +340,10 @@ final class PolyglotFastThreadLocals {
             staticIndex = cache.getStaticIndex();
             assert staticIndex <= LanguageCache.getMaxStaticIndex() : "invalid sharing between class loaders";
         }
+        return computeLanguageIndexFromStaticIndex(staticIndex, offset);
+    }
+
+    static int computeLanguageIndexFromStaticIndex(int staticIndex, int offset) {
         return LANGUAGE_START + (staticIndex * LANGUAGE_ELEMENTS) + offset;
     }
 
