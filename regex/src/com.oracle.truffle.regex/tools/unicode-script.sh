@@ -77,7 +77,7 @@ cat dat/CaseFolding.txt \
 
 # In Python's case insensitive regular expressions, characters are considered
 # equivalent if they have the same Lowercase mapping. However, in some cases
-# concerning character classes, Python also tries to match character by
+# concerning character classes, Python also tries to match characters by
 # considering their Uppercase mapping. In recent revisions of CPython 3, this is
 # supplemented by an explicit list of equivalence classes of lowercase
 # characters which are to be considered equal since they have the same Uppercase
@@ -92,7 +92,7 @@ cat dat/CaseFolding.txt \
 # spirit of what CPython is trying to model.
 
 # We make characters equivalent to their simple Uppercase and Lowercase
-# mappings. We filter out the codepoint and the three character mappings, remove
+# mappings. We filter out the codepoint and the two character mappings, remove
 # any empty fields by collapsing neighboring or terminating semicolons and
 # finally removing any lines consisting of a single codepoint (the case when a
 # character has cased mappings).
