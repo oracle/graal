@@ -1428,6 +1428,9 @@ public class NativeImage {
             ProcessBuilder pb = new ProcessBuilder();
             pb.command(command);
             pb.environment().put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
+            if (OS.getCurrent() == OS.WINDOWS) {
+                WindowsBuildEnvironmentUtil.propagateEnv(pb.environment());
+            }
             sanitizeJVMEnvironment(pb.environment());
             p = pb.inheritIO().start();
             imageBuilderPid = p.pid();
