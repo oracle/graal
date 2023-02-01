@@ -48,6 +48,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.IsolateListenerSupportFeature;
 import com.oracle.svm.core.RegisterDumper;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -64,6 +65,7 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.VMError;
 
 public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
     private static final CEntryPointLiteral<Signal.AdvancedSignalDispatcher> advancedSignalDispatcher = CEntryPointLiteral.create(PosixSubstrateSigprofHandler.class,
@@ -88,6 +90,7 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
     }
 
     private static void registerSigprofSignal(Signal.AdvancedSignalDispatcher dispatcher) {
+        VMError.guarantee(SubstrateOptions.EnableSignalHandling.getValue(), "Trying to install a signal handler while signal handling is disabled.");
         int structSigActionSize = SizeOf.get(Signal.sigaction.class);
         Signal.sigaction structSigAction = UnsafeStackValue.get(structSigActionSize);
         LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
