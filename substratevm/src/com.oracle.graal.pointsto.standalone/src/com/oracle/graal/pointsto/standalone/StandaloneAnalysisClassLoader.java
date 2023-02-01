@@ -26,12 +26,14 @@
 
 package com.oracle.graal.pointsto.standalone;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
+
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.common.type.TypeResult;
+import com.oracle.svm.common.util.ClassUtils;
 
 public class StandaloneAnalysisClassLoader extends URLClassLoader {
 
@@ -52,5 +54,19 @@ public class StandaloneAnalysisClassLoader extends URLClassLoader {
             }
         }
         return newlyDefinedClass;
+    }
+
+    public TypeResult<Class<?>> findClass(String name, boolean allowPrimitives) {
+        try {
+            if (allowPrimitives && name.indexOf('.') == -1) {
+                TypeResult<Class<?>> primitiveType = ClassUtils.getPrimitiveTypeByName(name);
+                if (primitiveType != null) {
+                    return primitiveType;
+                }
+            }
+            return TypeResult.forClass(Class.forName(name, false, this));
+        } catch (ClassNotFoundException | LinkageError ex) {
+            return TypeResult.forException(name, ex);
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,10 +41,10 @@ import java.util.stream.StreamSupport;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.util.json.JSONParserException;
 
-import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ConditionalElement;
+import com.oracle.svm.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;

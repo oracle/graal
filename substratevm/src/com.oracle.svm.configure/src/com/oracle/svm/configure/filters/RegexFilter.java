@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.configure.filters;
 
-import static com.oracle.svm.core.configure.ConfigurationParser.asList;
+import static com.oracle.svm.configure.ConfigurationParser.asList;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.core.util.json.JsonWriter;
+import com.oracle.svm.common.util.json.JsonWriter;
 
 public class RegexFilter implements ConfigurationFilter {
 

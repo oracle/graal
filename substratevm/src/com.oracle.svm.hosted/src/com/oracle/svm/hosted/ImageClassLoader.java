@@ -48,8 +48,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.common.type.TypeResult;
+import com.oracle.svm.common.util.ClassUtils;
 
 public final class ImageClassLoader {
 
@@ -272,25 +273,9 @@ public final class ImageClassLoader {
     public TypeResult<Class<?>> findClass(String name, boolean allowPrimitives) {
         try {
             if (allowPrimitives && name.indexOf('.') == -1) {
-                switch (name) {
-                    case "boolean":
-                        return TypeResult.forClass(boolean.class);
-                    case "char":
-                        return TypeResult.forClass(char.class);
-                    case "float":
-                        return TypeResult.forClass(float.class);
-                    case "double":
-                        return TypeResult.forClass(double.class);
-                    case "byte":
-                        return TypeResult.forClass(byte.class);
-                    case "short":
-                        return TypeResult.forClass(short.class);
-                    case "int":
-                        return TypeResult.forClass(int.class);
-                    case "long":
-                        return TypeResult.forClass(long.class);
-                    case "void":
-                        return TypeResult.forClass(void.class);
+                TypeResult<Class<?>> primitiveType = ClassUtils.getPrimitiveTypeByName(name);
+                if (primitiveType != null) {
+                    return primitiveType;
                 }
             }
             return TypeResult.forClass(forName(name));

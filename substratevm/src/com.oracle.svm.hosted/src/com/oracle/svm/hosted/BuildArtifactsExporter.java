@@ -34,12 +34,12 @@ import java.util.TreeMap;
 import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.common.util.json.JsonWriter;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.util.LogUtils;
 
 public class BuildArtifactsExporter {

@@ -72,6 +72,7 @@ import com.oracle.graal.pointsto.standalone.heap.StandaloneHeapSnapshotVerifier;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneImageHeapScanner;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantFieldProvider;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantReflectionProvider;
+import com.oracle.graal.pointsto.standalone.reflect.StandaloneReflectionFeature;
 import com.oracle.graal.pointsto.standalone.replacements.AccessControllerSubstitutionProcessor;
 import com.oracle.graal.pointsto.standalone.util.Timer;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
@@ -328,6 +329,7 @@ public final class PointsToAnalyzer {
 
     private void registerFeatures() {
         standaloneAnalysisFeatureManager.registerFeaturesFromOptions();
+        standaloneAnalysisFeatureManager.registerFeature(StandaloneReflectionFeature.class);
         // Register DashboardDump feature by default, user can enable the feature by setting
         // -H:+DumpAnalysisReports
         standaloneAnalysisFeatureManager.registerFeature("com.oracle.graal.pointsto.standalone.features.DashboardDumpDelegate$Feature");

@@ -650,7 +650,7 @@ suite = {
           """org.graalvm.nativeimage.impl to org.graalvm.nativeimage.pointsto,
                                              org.graalvm.nativeimage.base,
                                              org.graalvm.nativeimage.builder,
-                                             org.graalvm.nativeimage.configure,
+                                             org.graalvm.nativeimage.common.configure,
                                              com.oracle.svm.svm_enterprise,
                                              org.graalvm.extraimage.builder,
                                              org.graalvm.truffle.runtime.svm,

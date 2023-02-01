@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,9 +31,9 @@ import java.util.List;
 
 import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsTracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.config.conditional.PartialConfigurationWithOrigins;
-import com.oracle.svm.core.util.json.JsonWriter;
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.common.util.json.JsonWriter;
 
 public class ConditionalConfigurationPartialRunWriter implements TracingResultWriter {
 
