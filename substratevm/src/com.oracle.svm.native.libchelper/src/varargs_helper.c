@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
+ * published by the Free Software Foundation. Oracle designates this
  * particular file as subject to the "Classpath" exception as provided
  * by Oracle in the LICENSE file that accompanied this code.
  *
@@ -22,36 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.type.CCharPointer;
+#ifndef _WIN64
 
-// Checkstyle: stop
+#include <stdio.h>
+#include <fcntl.h>
 
-/**
- * Definitions manually translated from the C header file fcntl.h.
+/* On some platforms the varargs calling convention doesn't match regular calls
+ * (e.g. darwin-aarch64 or linux-riscv). Instead of implementing varargs
+ * support for @CFunction we add C helpers so that the C compiler resolves the
+ * ABI specifics for us.
  */
-@CContext(PosixDirectives.class)
-public class Fcntl {
 
-    @CConstant
-    public static native int O_RDONLY();
-
-    @CConstant
-    public static native int O_RDWR();
-
-    @CConstant
-    public static native int O_WRONLY();
-
-    @CConstant
-    public static native int O_CREAT();
-
-    public static class NoTransitions {
-        @CFunction(value = "openSII", transition = Transition.NO_TRANSITION)
-        public static native int open(CCharPointer pathname, int flags, int mode);
-    }
+int fprintfSD(FILE *stream, const char *format, char *arg0, int arg1)
+{
+    return fprintf(stream, format, arg0, arg1);
 }
+
+/* open(2) has a variadic signature on POSIX:
+ *
+ *    int open(const char *path, int oflag, ...);
+ */
+int openSII(const char *pathname, int flags, int mode)
+{
+    return open(pathname, flags, mode);
+}
+
+#endif
