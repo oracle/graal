@@ -362,11 +362,6 @@ public class JfrThreadLocal implements ThreadListener {
         return result;
     }
 
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void freeBuffer(JfrBuffer buffer) {
-        JfrBufferAccess.free(buffer);
-    }
-
     public void teardown() {
         JfrBufferNodeLinkedList nativeBuffers = getNativeBufferList();
         if (nativeBuffers != null) {

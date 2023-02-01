@@ -610,6 +610,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         // If we couldn't acquire the tail. node is null. Give up, and try again next time.
 
         while (node.isNonNull()) {
+            boolean writeSuccess = false;
             VMError.guarantee(isAcquired(node) || VMOperation.isInProgressAtSafepoint(), "Cannot traverse JfrBufferNodeLinkedList outside safepoint without acquiring nodes.");
             JfrBufferNode prev = node.getPrev();
 
@@ -630,12 +631,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 }
 
                 write(buffer);
+                writeSuccess = true;
 
                 if (!safepoint) {
                     JfrBufferAccess.release(buffer);
-                }
-                if (java) {
-                    JfrThreadLocal.notifyEventWriter(node.getThread());
                 }
             }
 
@@ -653,6 +652,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                     // Failed to get next node. Give up and try again later
                     return;
                 }
+            } else if (writeSuccess && java) {
+                // Only notify Java event writer of flush if the thread is still alive
+                JfrThreadLocal.notifyEventWriter(node.getThread());
             }
 
             boolean prevAcquired = tryAcquire(prev);

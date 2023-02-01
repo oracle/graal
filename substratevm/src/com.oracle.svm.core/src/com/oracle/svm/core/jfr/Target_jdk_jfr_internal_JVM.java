@@ -52,10 +52,12 @@ import jdk.jfr.internal.LogTag;
 @TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_JVM {
     // Checkstyle: stop
-    @Alias @TargetElement(onlyWith = JDK20OrLater.class) //
+    @Alias
+    @TargetElement(onlyWith = JDK20OrLater.class) //
     static Object CHUNK_ROTATION_MONITOR;
 
-    @Alias @TargetElement(onlyWith = JDK19OrEarlier.class) //
+    @Alias
+    @TargetElement(onlyWith = JDK19OrEarlier.class) //
     static Object FILE_DELTA_CHANGE;
     // Checkstyle: resume
 
@@ -353,7 +355,6 @@ public final class Target_jdk_jfr_internal_JVM {
         return SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
     }
 
-
     /** See {@link JVM#setRepositoryLocation}. */
     @Substitute
     public void setRepositoryLocation(String dirText) {
@@ -501,6 +502,7 @@ public final class Target_jdk_jfr_internal_JVM {
     public void markChunkFinal() {
         SubstrateJVM.get().markChunkFinal();
     }
+
     @Substitute
     @TargetElement(onlyWith = JDK20OrLater.class) //
     public long hostTotalMemory() {

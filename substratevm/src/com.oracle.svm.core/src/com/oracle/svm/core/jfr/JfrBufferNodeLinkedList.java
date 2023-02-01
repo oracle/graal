@@ -270,13 +270,12 @@ public class JfrBufferNodeLinkedList {
         if (VMOperation.isInProgressAtSafepoint()) {
             return;
         }
-        VMError.guarantee(node.getLockOwner() == CurrentIsolate.getCurrentThread(), "Only the lock owner can release the lock");
         VMError.guarantee(isAcquired(node), "JfrBufferNodes should only be released when in acquired state.");
         node.setAcquired(NOT_ACQUIRED);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAcquired(JfrBufferNode node) {
-        return node.getAcquired() == ACQUIRED;
+        return node.getAcquired() == ACQUIRED && node.getLockOwner() == CurrentIsolate.getCurrentThread();
     }
 }
