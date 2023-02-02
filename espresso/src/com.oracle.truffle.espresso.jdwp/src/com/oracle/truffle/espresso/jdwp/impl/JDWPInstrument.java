@@ -56,7 +56,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     @Override
     protected void onCreate(TruffleInstrument.Env instrumentEnv) {
         assert controller == null;
-        controller = new DebuggerController(this);
+        controller = new DebuggerController(this, instrumentEnv.getLogger(ID));
         this.env = instrumentEnv;
         this.env.registerService(controller);
         this.env.getInstrumenter().attachContextsListener(controller, false);

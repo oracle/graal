@@ -67,15 +67,7 @@ import com.oracle.truffle.espresso.jdwp.api.VMEventListener;
 
 public final class DebuggerController implements ContextsListener {
 
-    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(JDWPInstrument.ID);
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
-
-    private final ThreadLocal<Boolean> bootStrapping = new ThreadLocal<>() {
-        @Override
-        protected Boolean initialValue() {
-            return true;
-        }
-    };
 
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
     private final Map<Object, SimpleLock> suspendLocks = Collections.synchronizedMap(new HashMap<>());
@@ -99,13 +91,16 @@ public final class DebuggerController implements ContextsListener {
     private VMEventListener eventListener;
     private TruffleContext truffleContext;
     private Object initialThread;
+    private final TruffleLogger jdwpLogger;
+    private boolean enteredTruffleContext;
 
-    public DebuggerController(JDWPInstrument instrument) {
+    public DebuggerController(JDWPInstrument instrument, TruffleLogger logger) {
         this.instrument = instrument;
         this.vm = new VirtualMachineImpl();
         this.gcPrevention = new GCPrevention();
         this.threadSuspension = new ThreadSuspension();
         this.eventFilters = new EventFilters();
+        this.jdwpLogger = logger;
     }
 
     public void initialize(Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, Object thread, VMEventListener vmEventListener) {
@@ -533,18 +528,18 @@ public final class DebuggerController implements ContextsListener {
         return eventListener;
     }
 
-    public Object enterTruffleContext() {
-        if (truffleContext != null) {
-            // we have a truffle context, so bootstrapping phase is over
-            bootStrapping.set(false);
-            return truffleContext.enter(null);
+    public void enterTruffleContext() {
+        // only enter the context once
+        if (truffleContext != null && !enteredTruffleContext) {
+            enteredTruffleContext = true;
+            truffleContext.enter(null);
         }
-        return null;
     }
 
-    public void leaveTruffleContext(Object previous) {
-        if (truffleContext != null && !bootStrapping.get()) {
-            truffleContext.leave(null, previous);
+    public void leaveTruffleContext() {
+        if (truffleContext != null && enteredTruffleContext) {
+            // pass null as previous since we know the jdwp thread only ever enters one context
+            truffleContext.leave(null, null);
         }
     }
 
@@ -1061,33 +1056,23 @@ public final class DebuggerController implements ContextsListener {
 
     // Truffle logging
     public void info(Supplier<String> supplier) {
-        if (!bootStrapping.get()) {
-            LOGGER.info(supplier);
-        }
+        jdwpLogger.info(supplier);
     }
 
     public void fine(Supplier<String> supplier) {
-        if (!bootStrapping.get()) {
-            LOGGER.fine(supplier);
-        }
+        jdwpLogger.fine(supplier);
     }
 
     public void finest(Supplier<String> supplier) {
-        if (!bootStrapping.get()) {
-            LOGGER.finest(supplier);
-        }
+        jdwpLogger.finest(supplier);
     }
 
     public void warning(Supplier<String> supplier) {
-        if (!bootStrapping.get()) {
-            LOGGER.warning(supplier);
-        }
+        jdwpLogger.warning(supplier);
     }
 
     public void severe(Supplier<String> supplier) {
-        if (!bootStrapping.get()) {
-            LOGGER.severe(supplier);
-        }
+        jdwpLogger.severe(supplier);
     }
 
     @Override
