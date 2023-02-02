@@ -1035,6 +1035,7 @@ public class EspressoInterop extends BaseInterop {
                 }
             }
         } catch (EspressoException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (e.getGuestException().getKlass() == getMeta().polyglot.ForeignException) {
                 // rethrow the original foreign exception when leaving espresso interop
                 EspressoLanguage language = receiver.getKlass().getContext().getLanguage();

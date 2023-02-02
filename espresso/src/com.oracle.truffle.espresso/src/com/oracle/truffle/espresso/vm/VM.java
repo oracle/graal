@@ -3825,33 +3825,7 @@ public final class VM extends NativeEnv {
                         profiler.profile(2);
                         throw meta.throwNullPointerException();
                     }
-                    Object foreignElement = interop.readArrayElement(exceptionStackTrace, i);
-
-                    String languageId = "java";
-                    String fileName = "<unknown>";
-                    int lineNumber = EspressoStackElement.NATIVE_BCI;
-                    if (interop.hasSourceLocation(foreignElement)) {
-                        SourceSection sourceLocation = interop.getSourceLocation(foreignElement);
-                        fileName = sourceLocation.getSource().getName();
-                        if (sourceLocation.hasLines()) {
-                            lineNumber = sourceLocation.getStartLine();
-                        }
-                        languageId = sourceLocation.getSource().getLanguage();
-                    }
-
-                    String declaringClassName = languageId.equals("java") ? "" : "<" + languageId + ">";
-                    if (interop.hasDeclaringMetaObject(foreignElement)) {
-                        Object declaringMetaObject = interop.getDeclaringMetaObject(foreignElement);
-                        declaringClassName += interop.asString(interop.getMetaQualifiedName(declaringMetaObject));
-                    }
-
-                    String methodName = "<unknownForeignMethod>";
-                    if (interop.hasExecutableName(foreignElement)) {
-                        methodName = interop.asString(interop.getExecutableName(foreignElement));
-                    }
-
-                    ForeignStackElement foreignStackElement = new ForeignStackElement(declaringClassName, methodName, fileName, lineNumber);
-                    fillInElement(elements.get(language, i), foreignStackElement, getMeta().java_lang_Class_getName);
+                    fillInForeignElement(elements, language, interop, exceptionStackTrace, i);
                 }
             } catch (InteropException e) {
                 throw meta.throwException(meta.java_lang_IllegalArgumentException);
@@ -3869,6 +3843,37 @@ public final class VM extends NativeEnv {
                 fillInElement(elements.get(language, i), stackTrace.trace[i], getMeta().java_lang_Class_getName);
             }
         }
+    }
+
+    @TruffleBoundary
+    private void fillInForeignElement(StaticObject elements, EspressoLanguage language, InteropLibrary interop, Object exceptionStackTrace, int i) throws UnsupportedMessageException, InvalidArrayIndexException {
+        Object foreignElement = interop.readArrayElement(exceptionStackTrace, i);
+
+        String languageId = "java";
+        String fileName = "<unknown>";
+        int lineNumber = EspressoStackElement.NATIVE_BCI;
+        if (interop.hasSourceLocation(foreignElement)) {
+            SourceSection sourceLocation = interop.getSourceLocation(foreignElement);
+            fileName = sourceLocation.getSource().getName();
+            if (sourceLocation.hasLines()) {
+                lineNumber = sourceLocation.getStartLine();
+            }
+            languageId = sourceLocation.getSource().getLanguage();
+        }
+
+        String declaringClassName = languageId.equals("java") ? "" : "<" + languageId + ">";
+        if (interop.hasDeclaringMetaObject(foreignElement)) {
+            Object declaringMetaObject = interop.getDeclaringMetaObject(foreignElement);
+            declaringClassName += interop.asString(interop.getMetaQualifiedName(declaringMetaObject));
+        }
+
+        String methodName = "<unknownForeignMethod>";
+        if (interop.hasExecutableName(foreignElement)) {
+            methodName = interop.asString(interop.getExecutableName(foreignElement));
+        }
+
+        ForeignStackElement foreignStackElement = new ForeignStackElement(declaringClassName, methodName, fileName, lineNumber);
+        fillInElement(elements.get(language, i), foreignStackElement, getMeta().java_lang_Class_getName);
     }
 
     private void fillInElement(@JavaType(StackTraceElement.class) StaticObject ste, VM.StackElement element,

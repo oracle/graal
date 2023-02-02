@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -53,6 +54,7 @@ public class ThrowableInterop extends EspressoInterop {
     }
 
     @ExportMessage
+    @TruffleBoundary
     public static boolean hasExceptionCause(StaticObject object) {
         object.checkNotForeign();
         Method resolvedMessageMethod = object.getKlass().lookupMethod(Symbol.Name.getCause, Symbol.Signature.Throwable);
@@ -83,6 +85,7 @@ public class ThrowableInterop extends EspressoInterop {
     }
 
     @ExportMessage
+    @TruffleBoundary
     public static boolean hasExceptionMessage(StaticObject object) {
         object.checkNotForeign();
         Method resolvedMessageMethod = object.getKlass().lookupMethod(Symbol.Name.getMessage, Symbol.Signature.String);
