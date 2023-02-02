@@ -27,8 +27,6 @@ package org.graalvm.compiler.replacements.amd64;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ASCII;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ISO_8859_1;
 import static org.graalvm.compiler.nodes.calc.FloatTypeTestNode.FloatTypeTestOp.IS_INFINITE;
-import static org.graalvm.compiler.nodes.calc.ShuffleBitsNode.ShuffleMode.COMPRESS;
-import static org.graalvm.compiler.nodes.calc.ShuffleBitsNode.ShuffleMode.EXPAND;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
@@ -52,14 +50,15 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.CompressBitsNode;
 import org.graalvm.compiler.nodes.calc.CopySignNode;
+import org.graalvm.compiler.nodes.calc.ExpandBitsNode;
 import org.graalvm.compiler.nodes.calc.FloatTypeTestNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MaxNode;
 import org.graalvm.compiler.nodes.calc.MinNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.RoundFloatToIntegerNode;
-import org.graalvm.compiler.nodes.calc.ShuffleBitsNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -179,14 +178,14 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             r.registerConditional(arch.getFeatures().contains(CPUFeature.BMI2), new InvocationPlugin("compress", type, type) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
-                    b.push(kind, b.append(new ShuffleBitsNode(value, mask, COMPRESS)));
+                    b.push(kind, b.append(new CompressBitsNode(value, mask)));
                     return true;
                 }
             });
             r.registerConditional(arch.getFeatures().contains(CPUFeature.BMI2), new InvocationPlugin("expand", type, type) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode mask) {
-                    b.push(kind, b.append(new ShuffleBitsNode(value, mask, EXPAND)));
+                    b.push(kind, b.append(new ExpandBitsNode(value, mask)));
                     return true;
                 }
             });

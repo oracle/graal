@@ -42,23 +42,23 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
 @RunWith(Parameterized.class)
-public class ShuffleBitsTest extends JTTTest {
+public class IntegerShuffleBitsTest extends JTTTest {
 
     @Parameterized.Parameters(name = "{0}, {1}")
     public static Collection<Object[]> testData() {
-        long[] inputs = {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE, 0xCAFEBABE, 0xFF00FFF0, 0x0000CABAB, 0xCAFEBABECAFEBABEL, 0xFF00FFF0FF00FFF0L, 0x0000CABAB0000CABABL};
+        int[] inputs = {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE, 0xCAFEBABE, 0xFF00FFF0, 0x0000CABAB};
 
         List<Object[]> testParameters = new ArrayList<>();
-        for (long a : inputs) {
-            for (long b : inputs) {
+        for (int a : inputs) {
+            for (int b : inputs) {
                 testParameters.add(new Object[]{a, b});
             }
         }
         return testParameters;
     }
 
-    @Parameterized.Parameter(value = 0) public long input0;
-    @Parameterized.Parameter(value = 1) public long input1;
+    @Parameterized.Parameter(value = 0) public int input0;
+    @Parameterized.Parameter(value = 1) public int input1;
 
     @Before
     public void checkPreview() {
@@ -75,31 +75,13 @@ public class ShuffleBitsTest extends JTTTest {
         return Integer.expand(i, mask);
     }
 
-    public static long lCompress(long i, long mask) {
-        return Long.compress(i, mask);
-    }
-
-    public static long lExpand(long i, long mask) {
-        return Long.expand(i, mask);
-    }
-
     @Test
     public void testICompress() {
-        runTest("iCompress", (int) input0, (int) input1);
+        runTest("iCompress", input0, input1);
     }
 
     @Test
     public void testIExpand() {
-        runTest("iExpand", (int) input0, (int) input1);
-    }
-
-    @Test
-    public void testLCompress() {
-        runTest("lCompress", input0, input1);
-    }
-
-    @Test
-    public void testLExpand() {
-        runTest("lExpand", input0, input1);
+        runTest("iExpand", input0, input1);
     }
 }
