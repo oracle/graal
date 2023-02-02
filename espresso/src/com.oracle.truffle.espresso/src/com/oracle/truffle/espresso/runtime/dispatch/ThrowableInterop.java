@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -31,6 +30,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
@@ -54,13 +54,13 @@ public class ThrowableInterop extends EspressoInterop {
     }
 
     @ExportMessage
-    @TruffleBoundary
     public static boolean hasExceptionCause(StaticObject object) {
         object.checkNotForeign();
+        Meta meta = object.getKlass().getMeta();
         Method resolvedMessageMethod = object.getKlass().lookupMethod(Symbol.Name.getCause, Symbol.Signature.Throwable);
-        if (resolvedMessageMethod == getMeta().java_lang_Throwable_getCause) {
+        if (resolvedMessageMethod == meta.java_lang_Throwable_getCause) {
             // not overridden, then we can trust the field value
-            StaticObject guestCause = getMeta().java_lang_Throwable_cause.getObject(object);
+            StaticObject guestCause = meta.java_lang_Throwable_cause.getObject(object);
             return StaticObject.notNull(guestCause) && guestCause != object;
         } else if (resolvedMessageMethod.isInlinableGetter()) {
             // only call the method for a 'has' interop message if it's simple
@@ -85,13 +85,13 @@ public class ThrowableInterop extends EspressoInterop {
     }
 
     @ExportMessage
-    @TruffleBoundary
     public static boolean hasExceptionMessage(StaticObject object) {
         object.checkNotForeign();
+        Meta meta = object.getKlass().getMeta();
         Method resolvedMessageMethod = object.getKlass().lookupMethod(Symbol.Name.getMessage, Symbol.Signature.String);
-        if (resolvedMessageMethod == getMeta().java_lang_Throwable_getMessage) {
+        if (resolvedMessageMethod == meta.java_lang_Throwable_getMessage) {
             // not overridden, then we can trust the field value
-            return StaticObject.notNull(getMeta().java_lang_Throwable_detailMessage.getObject(object));
+            return StaticObject.notNull(meta.java_lang_Throwable_detailMessage.getObject(object));
         } else if (resolvedMessageMethod.isInlinableGetter()) {
             // only call the method for a 'has' interop message if it's simple
             return StaticObject.notNull((StaticObject) resolvedMessageMethod.invokeDirect(object));

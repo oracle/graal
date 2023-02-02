@@ -23,21 +23,21 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 public class ForeignExceptionInterop extends ThrowableInterop {
 
-    @TruffleBoundary
     private static Object getRawForeignObject(StaticObject object) {
-        assert object.getKlass() == getMeta().polyglot.ForeignException;
-        return getMeta().java_lang_Throwable_backtrace.getObject(object).rawForeignObject(object.getKlass().getContext().getLanguage());
+        Meta meta = object.getKlass().getMeta();
+        assert object.getKlass() == meta.polyglot.ForeignException;
+        return meta.java_lang_Throwable_backtrace.getObject(object).rawForeignObject(object.getKlass().getContext().getLanguage());
     }
 
     @ExportMessage
