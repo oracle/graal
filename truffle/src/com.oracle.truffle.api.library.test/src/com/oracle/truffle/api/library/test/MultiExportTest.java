@@ -58,7 +58,7 @@ import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
-@SuppressWarnings({"static-method", "unused"})
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "static-method", "unused"})
 public class MultiExportTest extends AbstractParametrizedLibraryTest {
 
     @Parameters(name = "{0}")

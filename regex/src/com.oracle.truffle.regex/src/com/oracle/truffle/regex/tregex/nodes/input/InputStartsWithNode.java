@@ -44,13 +44,10 @@ import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.util.TRegexGuards;
 
-@ImportStatic(TRegexGuards.class)
 public abstract class InputStartsWithNode extends Node {
 
     public static InputStartsWithNode create() {
@@ -58,16 +55,6 @@ public abstract class InputStartsWithNode extends Node {
     }
 
     public abstract boolean execute(Object input, Object prefix, Object mask, Encoding encoding);
-
-    @Specialization(guards = "mask == null")
-    public boolean doBytes(byte[] input, byte[] prefix, @SuppressWarnings("unused") Object mask, @SuppressWarnings("unused") Encoding encoding) {
-        return ArrayUtils.regionEqualsWithOrMask(input, 0, prefix, 0, prefix.length, null);
-    }
-
-    @Specialization(guards = "mask != null")
-    public boolean doBytesMask(byte[] input, byte[] prefix, byte[] mask, @SuppressWarnings("unused") Encoding encoding) {
-        return ArrayUtils.regionEqualsWithOrMask(input, 0, prefix, 0, prefix.length, mask);
-    }
 
     @Specialization(guards = "mask == null")
     public boolean doString(String input, String prefix, @SuppressWarnings("unused") Object mask, @SuppressWarnings("unused") Encoding encoding) {
@@ -93,59 +80,5 @@ public abstract class InputStartsWithNode extends Node {
         int len1 = input.byteLength(encoding.getTStringEncoding());
         int len2 = prefix.byteLength(encoding.getTStringEncoding());
         return len1 >= len2 && regionEqualsNode.execute(input, 0, mask, 0, len2, encoding.getTStringEncoding());
-    }
-
-    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask == null"})
-    public boolean doTruffleObjBytes(Object input, byte[] prefix, @SuppressWarnings("unused") Object mask, Encoding encoding,
-                    @Cached InputLengthNode lengthNode,
-                    @Cached InputReadNode charAtNode) {
-        return startsWithTruffleObj(input, prefix, null, encoding, lengthNode, charAtNode);
-    }
-
-    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask != null"})
-    public boolean doTruffleObjBytesMask(Object input, byte[] prefix, byte[] mask, Encoding encoding,
-                    @Cached InputLengthNode lengthNode,
-                    @Cached InputReadNode charAtNode) {
-        assert mask.length == prefix.length;
-        return startsWithTruffleObj(input, prefix, mask, encoding, lengthNode, charAtNode);
-    }
-
-    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask == null"})
-    public boolean doTruffleObjString(Object input, String prefix, @SuppressWarnings("unused") Object mask, Encoding encoding,
-                    @Cached InputLengthNode lengthNode,
-                    @Cached InputReadNode charAtNode) {
-        return startsWithTruffleObj(input, prefix, null, encoding, lengthNode, charAtNode);
-    }
-
-    @Specialization(guards = {"neitherByteArrayNorString(input)", "mask != null"})
-    public boolean doTruffleObjStringMask(Object input, String prefix, String mask, Encoding encoding,
-                    @Cached InputLengthNode lengthNode,
-                    @Cached InputReadNode charAtNode) {
-        assert mask.length() == prefix.length();
-        return startsWithTruffleObj(input, prefix, mask, encoding, lengthNode, charAtNode);
-    }
-
-    private static boolean startsWithTruffleObj(Object input, byte[] prefix, byte[] mask, Encoding encoding, InputLengthNode lengthNode, InputReadNode charAtNode) {
-        if (lengthNode.execute(input, encoding) < prefix.length) {
-            return false;
-        }
-        for (int i = 0; i < prefix.length; i++) {
-            if (InputReadNode.readWithMask(input, i, mask, i, encoding, charAtNode) != Byte.toUnsignedInt(prefix[i])) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean startsWithTruffleObj(Object input, String prefix, String mask, Encoding encoding, InputLengthNode lengthNode, InputReadNode charAtNode) {
-        if (lengthNode.execute(input, encoding) < prefix.length()) {
-            return false;
-        }
-        for (int i = 0; i < prefix.length(); i++) {
-            if (InputReadNode.readWithMask(input, i, mask, i, encoding, charAtNode) != prefix.charAt(i)) {
-                return false;
-            }
-        }
-        return true;
     }
 }

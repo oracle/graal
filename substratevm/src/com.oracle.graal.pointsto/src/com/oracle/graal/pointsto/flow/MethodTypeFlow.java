@@ -78,6 +78,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      */
     public synchronized void setAsStubFlow() {
         graphKind = MethodFlowsGraph.GraphKind.STUB;
+        assert !method.isOriginalMethod() : "setting original method as stub";
         assert !flowsGraphCreated() : "cannot set as flow creation kind flows graph is created";
     }
 
@@ -157,7 +158,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     private synchronized void createFlowsGraph(PointsToAnalysis bb, InvokeTypeFlow reason) {
         if (flowsGraph == null) {
             AnalysisError.guarantee(reason == null || reason.getSource() == null ||
-                            !reason.getSource().getMethod().equals(method), "Parsing reason cannot be in the target method itself " + method.format("%H.%n"));
+                            !reason.getSource().getMethod().equals(method), "Parsing reason cannot be in the target method itself: %s", method);
 
             parsingReason = reason;
             try {

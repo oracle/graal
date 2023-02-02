@@ -50,7 +50,9 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.ProfileProvider;
 import org.graalvm.compiler.nodes.spi.StableProfileProvider;
+import org.graalvm.compiler.nodes.spi.StableProfileProvider.TypeFilter;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -64,6 +66,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -95,8 +98,17 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
     private final boolean shouldRetainLocalVariables;
 
+    private final boolean eagerResolving;
+
+    /**
+     * Filter describing which types in {@link JavaTypeProfile} should be considered for profile
+     * writing. This allows programmatically changing which types are saved.
+     */
+    private TypeFilter profileSaveFilter;
+
     protected class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
         CompilationResult result;
+        StructuredGraph graph;
 
         protected HotSpotCompilationWrapper() {
             super(compiler.getGraalRuntime().getOutputDirectory(), compiler.getGraalRuntime().getCompilationProblemsPerAction());
@@ -180,10 +192,9 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
             final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), compilationId, method, entryBCI);
 
-            StructuredGraph graph;
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 graph = compiler.createGraph(method, entryBCI, profileProvider, compilationId, debug.getOptions(), debug);
-                result = compiler.compile(graph, shouldRetainLocalVariables, compilationId, debug);
+                result = compiler.compile(graph, shouldRetainLocalVariables, eagerResolving, compilationId, debug);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -193,7 +204,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     installMethod(debug, graph, result);
                 }
                 // Installation is included in compilation time and memory usage reported by printer
-                printer.finish(result);
+                printer.finish(result, installedCode);
             }
             stats.finish(method, installedCode);
             if (result != null) {
@@ -215,7 +226,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     HotSpotCompilationRequest request,
                     boolean useProfilingInfo,
                     boolean installAsDefault) {
-        this(jvmciRuntime, compiler, request, useProfilingInfo, false, installAsDefault);
+        this(jvmciRuntime, compiler, request, useProfilingInfo, false, false, installAsDefault);
     }
 
     public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime,
@@ -224,12 +235,27 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     boolean useProfilingInfo,
                     boolean shouldRetainLocalVariables,
                     boolean installAsDefault) {
+        this(jvmciRuntime, compiler, request, useProfilingInfo, shouldRetainLocalVariables, false, installAsDefault);
+    }
+
+    public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime,
+                    HotSpotGraalCompiler compiler,
+                    HotSpotCompilationRequest request,
+                    boolean useProfilingInfo,
+                    boolean shouldRetainLocalVariables,
+                    boolean eagerResolving,
+                    boolean installAsDefault) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.compilationId = new HotSpotCompilationIdentifier(request);
         this.profileProvider = useProfilingInfo ? new StableProfileProvider() : null;
         this.shouldRetainLocalVariables = shouldRetainLocalVariables;
+        this.eagerResolving = eagerResolving;
         this.installAsDefault = installAsDefault;
+    }
+
+    public void setTypeFilter(TypeFilter typeFilter) {
+        this.profileSaveFilter = typeFilter;
     }
 
     public OptionValues filterOptions(OptionValues options) {
@@ -346,11 +372,15 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         }
     }
 
+    public ProfileProvider getProfileProvider() {
+        return profileProvider;
+    }
+
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
         return runCompilation(debug, new HotSpotCompilationWrapper());
     }
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "unchecked"})
     protected HotSpotCompilationRequestResult runCompilation(DebugContext debug, HotSpotCompilationWrapper compilation) {
         HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
@@ -372,21 +402,25 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             }
         }
 
+        ProfileReplaySupport result = ProfileReplaySupport.profileReplayPrologue(debug, graalRuntime, entryBCI, method, profileProvider, profileSaveFilter);
         try (DebugCloseable a = CompilationTime.start(debug)) {
             return compilation.run(debug);
         } finally {
             try {
-                int compiledBytecodes = 0;
-                int codeSize = 0;
-
                 if (compilation.result != null) {
-                    compiledBytecodes = compilation.result.getBytecodeSize();
+                    int compiledBytecodes = compilation.result.getBytecodeSize();
                     CompiledBytecodes.add(debug, compiledBytecodes);
                     if (installedCode != null) {
-                        codeSize = installedCode.getSize();
+                        int codeSize = installedCode.getSize();
                         CompiledAndInstalledBytecodes.add(debug, compiledBytecodes);
                         InstalledCodeSize.add(debug, codeSize);
                     }
+                    if (result != null && result.getExpectedResult() != null && !result.getExpectedResult()) {
+                        TTY.printf("Expected failure: %s %s%n", method.format("%H.%n(%P)%R"), entryBCI);
+                    }
+                }
+                if (result != null) {
+                    result.profileReplayEpilogue(debug, compilation, profileProvider, compilationId, entryBCI, method);
                 }
             } catch (Throwable t) {
                 return compilation.handleException(t);

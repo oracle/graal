@@ -182,7 +182,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
                 int slotNum = flow.getSlot();
                 if (slotNum != -1) {
                     assert flow instanceof FormalParamTypeFlow || flow instanceof FormalReturnTypeFlow : "Unexpected flow " + flow;
-                    AnalysisError.guarantee(isRedo && flow.getSlot() == resultFlows.size(), "Flow already discovered: " + flow);
+                    AnalysisError.guarantee(isRedo && flow.getSlot() == resultFlows.size(), "Flow already discovered: %s", flow);
                 } else {
                     flow.setSlot(resultFlows.size());
                 }

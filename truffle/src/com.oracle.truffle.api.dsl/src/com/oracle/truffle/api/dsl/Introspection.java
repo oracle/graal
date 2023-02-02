@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -95,6 +96,9 @@ public final class Introspection {
      * name. The returned introspection information is not updated when the state of the given
      * operation node is updated. The implementation of this method might be slow, do not use it in
      * performance critical code.
+     * <p>
+     * For a node was {@link GenerateInline inlined} use
+     * {@link #getSpecialization(Node, Node, String)}.
      *
      * @param node a introspectable DSL operation with at least one specialization
      * @param methodName the Java method name of the specialization to introspect
@@ -103,7 +107,32 @@ public final class Introspection {
      * @since 0.22
      */
     public static SpecializationInfo getSpecialization(Node node, String methodName) {
-        return getIntrospectionData(node).getSpecialization(methodName);
+        try {
+            return getIntrospectionData(node).getSpecialization(methodName);
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("Failed to provide introspection data for node class " + node.getClass() + " and method " + methodName + ".", e);
+        }
+    }
+
+    /**
+     * Like {@link #getSpecialization(Node, String)} but must be used for nodes that were
+     * {@link GenerateInline inlined}.
+     *
+     * @param inlineParent the inlined parent node.
+     * @param node a introspectable DSL operation with at least one specialization
+     * @param methodName the Java method name of the specialization to introspect
+     * @return introspection info for the method
+     * @see Introspection example usage
+     * @since 23.0
+     */
+    public static SpecializationInfo getSpecialization(Node inlineParent, Node node, String methodName) {
+        try {
+            return getIntrospectionData(inlineParent, node).getSpecialization(methodName);
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException(
+                            "Failed to provide introspection data for node class " + node.getClass() + " and inlinig parent " + inlineParent.getClass().getName() + " and method " + methodName + ".",
+                            e);
+        }
     }
 
     /**
@@ -113,20 +142,55 @@ public final class Introspection {
      * introspection information is not updated when the state of the given operation node is
      * updated. The implementation of this method might be slow, do not use it in performance
      * critical code.
+     * <p>
+     * For a node was {@link GenerateInline inlined} use
+     * {@link #getSpecialization(Node, Node, String)}.
      *
      * @param node a introspectable DSL operation with at least one specialization
      * @see Introspection example usage
      * @since 0.22
      */
     public static List<SpecializationInfo> getSpecializations(Node node) {
-        return getIntrospectionData(node).getSpecializations();
+        try {
+            return getIntrospectionData(node).getSpecializations();
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("Failed to provide introspection data for node class " + node.getClass() + ".", e);
+        }
+    }
+
+    /**
+     * Like {@link #getSpecializations(Node)} but must be used for nodes that were
+     * {@link GenerateInline inlined}.
+     *
+     * @param inlineParent the inlined parent node.
+     * @param node a introspectable DSL operation with at least one specialization
+     * @see Introspection example usage
+     * @since 23.0
+     */
+    public static List<SpecializationInfo> getSpecializations(Node inlineParent, Node node) {
+        try {
+            return getIntrospectionData(inlineParent, node).getSpecializations();
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException(
+                            "Failed to provide introspection data for node class " + node.getClass() + " and inlinig parent " + inlineParent.getClass().getName() + ".", e);
+        }
     }
 
     private static Introspection getIntrospectionData(Node node) {
+        Objects.requireNonNull(node);
         if (!(node instanceof Provider)) {
             throw new IllegalArgumentException(String.format("Provided node is not introspectable. Annotate with @%s to make a node introspectable.", Introspectable.class.getSimpleName()));
         }
         return ((Provider) node).getIntrospectionData();
+    }
+
+    private static Introspection getIntrospectionData(Node inlineParent, Node node) {
+        Objects.requireNonNull(inlineParent);
+        Objects.requireNonNull(node);
+        if (!(node instanceof Provider)) {
+            throw new IllegalArgumentException(String.format("Provided node is not introspectable. Annotate with @%s to make a node introspectable.", Introspectable.class.getSimpleName()));
+        }
+        return ((Provider) node).getIntrospectionData(inlineParent);
     }
 
     /**
@@ -202,12 +266,30 @@ public final class Introspection {
 
         /**
          * {@inheritDoc}
-         * 
+         *
          * @since 21.1
          */
         @Override
         public String toString() {
-            return "SpecializationInfo[name=" + methodName + ", active=" + isActive() + ", excluded" + isExcluded() + ", instances=" + getInstances() + "]";
+            StringBuilder cacheInfo = new StringBuilder();
+            for (int i = 0; i < getInstances(); i++) {
+                List<Object> cacheData = getCachedData(i);
+                cacheInfo.append(", cache[").append(i).append("] = {");
+                String sep = "";
+                for (Object object : cacheData) {
+                    cacheInfo.append(sep);
+                    if (object == null) {
+                        cacheInfo.append("null");
+                    } else if (object instanceof Number) {
+                        cacheInfo.append(object);
+                    } else {
+                        cacheInfo.append(object.getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()));
+                    }
+                    sep = ", ";
+                }
+                cacheInfo.append("}");
+            }
+            return "SpecializationInfo[name=" + methodName + ", active=" + isActive() + ", excluded=" + isExcluded() + ", instances=" + getInstances() + cacheInfo + "]";
         }
 
     }
@@ -226,7 +308,20 @@ public final class Introspection {
          *
          * @since 0.22
          */
-        Introspection getIntrospectionData();
+        default Introspection getIntrospectionData() {
+            throw new UnsupportedOperationException(
+                            "Introspection provider for regular nodes is not implemented. Use Introspection.getSpecializations(Node, Node) with inlinedParent parameter instead.");
+        }
+
+        /**
+         * Returns internal reflection data in undefined format. A DSL user must not call this
+         * method.
+         *
+         * @since 23.0
+         */
+        default Introspection getIntrospectionData(@SuppressWarnings("unused") Node inlinedParent) {
+            return getIntrospectionData();
+        }
 
         /**
          * Factory method to create {@link Node} introspection data. The factory is used to create
@@ -279,13 +374,17 @@ public final class Introspection {
 
     private static Object[] getIntrospectionData(Object specializationData) {
         if (!(specializationData instanceof Object[])) {
-            throw new IllegalStateException("Invalid introspection data.");
+            throw new IllegalStateException("Invalid introspection data: expected object array");
         }
         Object[] fieldData = (Object[]) specializationData;
-        if (fieldData.length < 3 || !(fieldData[0] instanceof String) //
-                        || !(fieldData[1] instanceof Byte) //
-                        || (fieldData[2] != null && !(fieldData[2] instanceof List))) {
-            throw new IllegalStateException("Invalid introspection data.");
+        if (fieldData.length < 3) {
+            throw new IllegalStateException("Invalid introspection data: invalid array length");
+        } else if (!(fieldData[0] instanceof String)) {
+            throw new IllegalStateException("Invalid introspection data: expected string at index 0");
+        } else if (!(fieldData[1] instanceof Byte)) {
+            throw new IllegalStateException("Invalid introspection data: expected byte at index 1");
+        } else if ((fieldData[2] != null && !(fieldData[2] instanceof List))) {
+            throw new IllegalStateException("Invalid introspection data: expected list or null at index 2");
         }
         return fieldData;
     }

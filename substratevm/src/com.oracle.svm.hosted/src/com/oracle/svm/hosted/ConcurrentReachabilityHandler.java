@@ -47,7 +47,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
 @AutomaticallyRegisteredFeature
-public class ConcurrentReachabilityHandler implements ReachabilityHandler, InternalFeature {
+public class ConcurrentReachabilityHandler extends ReachabilityHandler implements InternalFeature {
 
     private final Map<Consumer<DuringAnalysisAccess>, ElementNotification> reachabilityNotifications = new ConcurrentHashMap<>();
 
@@ -95,16 +95,11 @@ public class ConcurrentReachabilityHandler implements ReachabilityHandler, Inter
     }
 
     @Override
-    public void registerClassInitializerReachabilityHandler(BeforeAnalysisAccessImpl access, Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
-        registerConcurrentReachabilityHandler(access, callback, new Class<?>[]{clazz}, true);
-    }
-
-    @Override
     public void registerReachabilityHandler(BeforeAnalysisAccessImpl access, Consumer<DuringAnalysisAccess> callback, Object[] triggers) {
-        registerConcurrentReachabilityHandler(access, callback, triggers, false);
+        registerConcurrentReachabilityHandler(access, callback, triggers);
     }
 
-    private void registerConcurrentReachabilityHandler(BeforeAnalysisAccessImpl access, Consumer<DuringAnalysisAccess> callback, Object[] triggers, boolean triggerOnClassInitializer) {
+    private void registerConcurrentReachabilityHandler(BeforeAnalysisAccessImpl access, Consumer<DuringAnalysisAccess> callback, Object[] triggers) {
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
 
         /*
@@ -123,8 +118,7 @@ public class ConcurrentReachabilityHandler implements ReachabilityHandler, Inter
         for (Object trigger : triggers) {
             AnalysisElement analysisElement;
             if (trigger instanceof Class) {
-                AnalysisType aType = metaAccess.lookupJavaType((Class<?>) trigger);
-                analysisElement = triggerOnClassInitializer ? aType.getClassInitializer() : aType;
+                analysisElement = metaAccess.lookupJavaType((Class<?>) trigger);
             } else if (trigger instanceof Field) {
                 analysisElement = metaAccess.lookupJavaField((Field) trigger);
             } else if (trigger instanceof Executable) {

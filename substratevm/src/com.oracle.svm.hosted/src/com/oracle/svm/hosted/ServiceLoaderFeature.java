@@ -104,10 +104,11 @@ public class ServiceLoaderFeature implements InternalFeature {
         public static final HostedOptionKey<Boolean> TraceServiceLoaderFeature = new HostedOptionKey<>(false);
 
         @Option(help = "Comma-separated list of services that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Comma-separated list of service providers that should be excluded", type = OptionType.Expert) //
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServiceProviders = new HostedOptionKey<>(
+                        LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     }
 
@@ -134,9 +135,7 @@ public class ServiceLoaderFeature implements InternalFeature {
     // before because implementation classes were instantiated using runtime reflection instead of
     // ServiceLoader (and thus weren't reachable in analysis).
 
-    protected final Set<String> serviceProvidersToSkip = new HashSet<>(Arrays.asList(
-                    "com.sun.jndi.rmi.registry.RegistryContextFactory"      // GR-26547
-    ));
+    protected final Set<String> serviceProvidersToSkip = new HashSet<>();
 
     /** Copy of private field {@code ServiceLoader.PREFIX}. */
     private static final String LOCATION_PREFIX = "META-INF/services/";
@@ -161,7 +160,6 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        // TODO write a more sophisticated include/exclude filter to handle cases like GR-27605 ?
         servicesToSkip.addAll(Options.ServiceLoaderFeatureExcludeServices.getValue().values());
         serviceProvidersToSkip.addAll(Options.ServiceLoaderFeatureExcludeServiceProviders.getValue().values());
     }
@@ -190,7 +188,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         if (workDone) {
             DebugContext debugContext = access.getDebugContext();
             try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-                debugContext.log("Resources have been added by ServiceLoaderFeature. Automatic registration can be disabled with " +
+                debugContext.log("Resources have been added by ServiceLoaderFeature. Automatic registration can be disabled with %s",
                                 SubstrateOptionsParser.commandArgument(Options.UseServiceLoaderFeature, "-"));
             }
         }
@@ -358,7 +356,7 @@ public class ServiceLoaderFeature implements InternalFeature {
 
         DebugContext debugContext = access.getDebugContext();
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            debugContext.log("ServiceLoaderFeature: registerResource: " + serviceResourceLocation);
+            debugContext.log("ServiceLoaderFeature: registerResource: %s", serviceResourceLocation);
         }
         Resources.registerResource(null, serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)), false);
 

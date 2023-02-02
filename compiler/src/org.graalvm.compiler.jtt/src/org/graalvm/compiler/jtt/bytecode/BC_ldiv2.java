@@ -51,6 +51,16 @@ public class BC_ldiv2 extends JTTTest {
 
     @Test
     public void run2() throws Throwable {
+        runTest("test", MAX, -1L);
+    }
+
+    @Test
+    public void run3() throws Throwable {
+        runTest("test", MAX, 1L);
+    }
+
+    @Test
+    public void run4() throws Throwable {
         runTest("test", MIN, MAX);
     }
 }

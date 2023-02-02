@@ -29,10 +29,12 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
@@ -55,6 +57,28 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     protected PhiNode(NodeClass<? extends PhiNode> c, Stamp stamp, AbstractMergeNode merge) {
         super(c, stamp);
         this.merge = merge;
+    }
+
+    /**
+     * Checks whether for the given node a phi can be created in the graph based on its allowed
+     * usage types.
+     */
+    public static boolean canCreatePhi(ValueNode node) {
+        return node.isAllowedUsageType(InputType.Value) || node.isAllowedUsageType(InputType.Guard);
+    }
+
+    /**
+     * Creates a phi in the graph for the given nodes. Provided values must be allowed as inputs to
+     * phis as checked by {@link #canCreatePhi(ValueNode)}.
+     */
+    public static PhiNode create(AbstractMergeNode merge, ValueNode... values) {
+        if (values[0].isAllowedUsageType(InputType.Value)) {
+            return new ValuePhiNode(values[0].stamp(NodeView.DEFAULT).unrestricted(), merge, values);
+        } else if (values[0].isAllowedUsageType(InputType.Guard)) {
+            return new GuardPhiNode(merge, values);
+        } else {
+            throw GraalError.shouldNotReachHere("Cannot create a phi for this input type.");
+        }
     }
 
     public abstract NodeInputList<ValueNode> values();
@@ -251,6 +275,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
                 return false;
             }
         }
+        GraalError.guarantee(isLoopPhi(), "Only loop phis may be degenerated %s", this);
         assert isLoopPhi();
         return true;
     }

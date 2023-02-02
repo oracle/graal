@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.phases;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -77,10 +77,11 @@ class Instance {
         LIR ir = lirGenRes.getLIR();
         DebugContext debug = ir.getDebug();
         FrameMap frameMap = lirGenRes.getFrameMap();
-        for (AbstractBlockBase<?> block : ir.linearScanOrder()) {
-            if (block == null) {
+        for (int bockId : ir.linearScanOrder()) {
+            if (LIR.isBlockDeleted(bockId)) {
                 continue;
             }
+            BasicBlock<?> block = ir.getControlFlowGraph().getBlocks()[bockId];
             for (LIRInstruction op : ir.getLIRforBlock(block)) {
                 op.forEachState((instruction, state) -> doState(debug, frameMap, instruction, state));
             }
@@ -112,10 +113,17 @@ class Instance {
         errors.append("\nEnd Problem\n");
     }
 
-    private static boolean isImplicitDeoptEntry(BytecodeFrame frame) {
-        boolean isDeoptEntry = ((HostedMethod) frame.getMethod()).compilationInfo.isDeoptEntry(frame.getBCI(), frame.duringCall, frame.rethrowException);
+    private static boolean isImplicitDeoptEntry(LIRFrameState state) {
+        BytecodeFrame frame = state.topFrame;
+        if (frame.duringCall) {
+            /*
+             * A state is an implicit deoptimization entrypoint if it corresponds to a call which is
+             * valid for deoptimization and is registered as a deopt entry.
+             */
+            return state.validForDeoptimization && ((HostedMethod) frame.getMethod()).compilationInfo.isDeoptEntry(frame.getBCI(), frame.duringCall, frame.rethrowException);
+        }
 
-        return frame.duringCall && isDeoptEntry;
+        return false;
     }
 
     private void doState(DebugContext debug, FrameMap frameMap, LIRInstruction op, LIRFrameState state) {
@@ -126,7 +134,7 @@ class Instance {
          * Explicit deoptimization entrypoints are represented with a DeoptEntryOp whereas implicit
          * entry points must query the compilation information.
          */
-        if (op instanceof DeoptEntryOp || isImplicitDeoptEntry(state.topFrame)) {
+        if (op instanceof DeoptEntryOp || isImplicitDeoptEntry(state)) {
             SubstrateReferenceMap refMap = (SubstrateReferenceMap) state.debugInfo().getReferenceMap();
             Map<Integer, Object> refMapRegisters = refMap.getDebugAllUsedRegisters();
             Map<Integer, Object> refMapStackSlots = refMap.getDebugAllUsedStackSlots();

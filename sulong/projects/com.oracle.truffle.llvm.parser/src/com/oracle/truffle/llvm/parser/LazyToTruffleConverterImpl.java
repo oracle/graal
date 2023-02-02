@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.Kind;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
+import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownTypedAttribute;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
@@ -88,6 +89,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMUnpackVarargsNodeGen;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -337,21 +339,33 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     }
 
     /**
-     * True when the function parameter has an LLVM byval attribute attached to it. This usually is
-     * the case for value parameters (e.g. struct Point p) which the compiler decides to pass
+     * Check whether the function parameter has an LLVM byval attribute attached to it. This usually
+     * is the case for value parameters (e.g. struct Point p) which the compiler decides to pass
      * through a pointer instead (by creating a copy sometime between the caller and the callee and
      * passing a pointer to that copy). In bitcode the copy's pointer is then tagged with a byval
      * attribute.
+     *
+     * @return the type of the by-value parameter, or null if the parameter is not by-value
      */
-    private static boolean functionParameterHasByValueAttribute(FunctionParameter parameter) {
+    private static Type functionParameterFindByValueAttribute(FunctionParameter parameter) {
         if (parameter.getParameterAttribute() != null) {
             for (Attribute a : parameter.getParameterAttribute().getAttributes()) {
                 if (a instanceof KnownAttribute && ((KnownAttribute) a).getAttr() == Kind.BYVAL) {
-                    return true;
+                    if (a instanceof KnownTypedAttribute) {
+                        return ((KnownTypedAttribute) a).getType();
+                    } else {
+                        /*
+                         * For dragonegg compatibility: GCC emits an untyped attribute. But on the
+                         * other hand, it won't emit opaque pointers.
+                         */
+                        PointerType parameterType = (PointerType) parameter.getType();
+                        assert parameterType.getPointeeType() != MetaType.UNKNOWN;
+                        return parameterType.getPointeeType();
+                    }
                 }
             }
         }
-        return false;
+        return null;
     }
 
     /**
@@ -381,24 +395,24 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
      * @param currentType Current member (for structs) or element (for arrays) type.
      * @param indices List of indices to reach this member or element from the toplevel object.
      */
-    private void copyStructArgumentsToFrame(List<LLVMStatementNode> initializers, NodeFactory nodeFactory, int slot, int argIndex, PointerType topLevelPointerType, Type currentType,
+    private void copyStructArgumentsToFrame(List<LLVMStatementNode> initializers, NodeFactory nodeFactory, int slot, int argIndex, Type topLevelType, Type currentType,
                     ArrayDeque<Long> indices) {
         if (currentType instanceof StructureType || currentType instanceof ArrayType) {
             AggregateType t = (AggregateType) currentType;
 
             for (long i = 0; i < t.getNumberOfElements(); i++) {
                 indices.push(i);
-                copyStructArgumentsToFrame(initializers, nodeFactory, slot, argIndex, topLevelPointerType, t.getElementType(i), indices);
+                copyStructArgumentsToFrame(initializers, nodeFactory, slot, argIndex, topLevelType, t.getElementType(i), indices);
                 indices.pop();
             }
         } else {
-            LLVMExpressionNode targetAddress = getTargetAddress(CommonNodeFactory.createFrameRead(topLevelPointerType, slot), topLevelPointerType.getPointeeType(), indices);
+            LLVMExpressionNode targetAddress = getTargetAddress(CommonNodeFactory.createFrameRead(PointerType.PTR, slot), topLevelType, indices);
             /*
              * In case the source is a varargs list (va_list), we need to create a node that would
              * unpack it if it is, and do nothing if it isn't.
              */
-            LLVMExpressionNode argMaybeUnpack = LLVMUnpackVarargsNodeGen.create(nodeFactory.createFunctionArgNode(argIndex, topLevelPointerType));
-            LLVMExpressionNode sourceAddress = getTargetAddress(argMaybeUnpack, topLevelPointerType.getPointeeType(), indices);
+            LLVMExpressionNode argMaybeUnpack = LLVMUnpackVarargsNodeGen.create(nodeFactory.createFunctionArgNode(argIndex, PointerType.PTR));
+            LLVMExpressionNode sourceAddress = getTargetAddress(argMaybeUnpack, topLevelType, indices);
             LLVMExpressionNode sourceLoadNode = nodeFactory.createLoad(currentType, sourceAddress);
             LLVMStatementNode storeNode = nodeFactory.createStore(targetAddress, sourceLoadNode, currentType);
             initializers.add(storeNode);
@@ -423,18 +437,17 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         for (FunctionParameter parameter : parameters) {
             int slot = symbols.findOrAddFrameSlot(parameter);
 
-            if (parameter.getType() instanceof PointerType && functionParameterHasByValueAttribute(parameter)) {
+            Type byValType = functionParameterFindByValueAttribute(parameter);
+            if (parameter.getType() instanceof PointerType && byValType != null) {
                 // It's a struct passed as a pointer but originally passed by value (because LLVM
                 // and/or ABI), treat it as such.
-                PointerType pointerType = (PointerType) parameter.getType();
-                Type pointeeType = pointerType.getPointeeType();
                 GetStackSpaceFactory allocaFactory = GetStackSpaceFactory.createAllocaFactory();
-                LLVMExpressionNode allocation = allocaFactory.createGetStackSpace(nodeFactory, pointeeType);
+                LLVMExpressionNode allocation = allocaFactory.createGetStackSpace(nodeFactory, byValType);
 
-                formalParamInits.add(CommonNodeFactory.createFrameWrite(pointerType, allocation, slot));
+                formalParamInits.add(CommonNodeFactory.createFrameWrite(PointerType.PTR, allocation, slot));
 
                 ArrayDeque<Long> indices = new ArrayDeque<>();
-                copyStructArgumentsToFrame(formalParamInits, nodeFactory, slot, argIndex++, pointerType, pointeeType, indices);
+                copyStructArgumentsToFrame(formalParamInits, nodeFactory, slot, argIndex++, byValType, byValType, indices);
             } else {
                 LLVMExpressionNode parameterNode = nodeFactory.createFunctionArgNode(argIndex++, parameter.getType());
                 formalParamInits.add(CommonNodeFactory.createFrameWrite(parameter.getType(), parameterNode, slot));

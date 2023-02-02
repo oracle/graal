@@ -50,15 +50,10 @@
     },
   }),
 
-  local linux_amd64_jdk17 = common.linux_amd64   + common.labsjdk17,
-  local linux_amd64_jdk19 = common.linux_amd64   + common.labsjdk19,
-  local darwin_jdk17      = common.darwin_amd64  + common.labsjdk17,
-  local windows_jdk17     = common.windows_amd64 + common.labsjdk17 + common.devkits["windows-jdk17"],
-
   // JDKs
   local jdk_name_to_dict = {
     "jdk17"+: common.labsjdk17,
-    "jdk19"+: common.labsjdk19,
+    "jdk20"+: common.labsjdk20,
   },
 
   local default_os_arch = {
@@ -82,23 +77,28 @@
       tools.delete_timelimit(jdk_name_to_dict[b.jdk] + default_os_arch[b.os][b.arch])
   })),
 
-  local no_jobs = {
-    "<all-os>"+: run_spec.exclude,
+  local all_jobs = {
+    "windows:aarch64"+: exclude,
+    "*:*:jdk19"+: exclude,
   },
+  local no_jobs = all_jobs {
+    "*"+: exclude,
+  },
+
   local feature_map = {
     libc: {
-      musl: {
-        "<all-os>"+: exclude + use_musl,
+      musl: no_jobs {
+        "*"+: use_musl,
       },
     },
     optlevel: {
-      quickbuild: {
-        "<all-os>"+: exclude + add_quickbuild,
+      quickbuild: no_jobs {
+        "*"+: add_quickbuild,
       },
     },
     "java-compiler": {
-      ecj: {
-        "<all-os>"+: exclude + sg.use_ecj,
+      ecj: no_jobs {
+        "*"+: sg.use_ecj,
       },
     },
   },
@@ -108,11 +108,11 @@
 
   // START MAIN BUILD DEFINITION
   local task_dict = {
-    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp") + eclipse + jdt + maven + jsonschema + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk17": gate + t("30:00"),
+    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp") + eclipse + jdt + maven + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
+      "linux:amd64:jdk20": gate + t("30:00"),
     }),
-    "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule") + maven + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk19": gate + gdb("10.2") + t("55:00"),
+    "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
+      "linux:amd64:jdk20": gate + gdb("10.2") + t("55:00"),
       "windows:amd64:jdk17": gate + t("1:30:00"),
     }) + variants({
       "optlevel:quickbuild": {

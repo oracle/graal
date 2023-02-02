@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -156,6 +156,8 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
             if (!phasesIterator.hasNext()) {
                 currAttempt += 1;
                 if (currAttempt > maxAttempts) {
+                    EnumSet<StageFlag> unreachedStages = EnumSet.copyOf(mandatoryStages);
+                    unreachedStages.removeAll(graphStateCopy.getStageFlags());
                     Formatter errorMsg = new Formatter();
                     errorMsg.format("The given phases cannot fulfill the requirements.%n");
                     errorMsg.format("Current random seed:%s%n", getRandomSeed());
@@ -166,6 +168,8 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
                     errorMsg.format("%s%n", mandatoryStages);
                     errorMsg.format("Stages that can be reached with the current plan:%n");
                     errorMsg.format("%s%n", graphStateCopy.getStageFlags());
+                    errorMsg.format("Mandatory stages that are not reached:%n");
+                    errorMsg.format("%s%n", unreachedStages);
                     GraalError.shouldNotReachHere(errorMsg.toString());
                 }
                 Collections.shuffle(minimalPhases, random);

@@ -43,7 +43,9 @@ final class TrivialOnlyInliningPolicy implements InliningPolicy {
             }
             if (child.isTrivial()) {
                 child.expand();
-                child.inline();
+                if (child.getState() == CallNode.State.Expanded) {
+                    child.inline();
+                }
             }
         }
     }

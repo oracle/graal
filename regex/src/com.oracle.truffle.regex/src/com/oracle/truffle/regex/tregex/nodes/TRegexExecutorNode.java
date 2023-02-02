@@ -170,7 +170,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
     public int inputReadAndDecode(TRegexExecutorLocals locals, int index) {
         if (getEncoding() == Encodings.UTF_16) {
             locals.setNextIndex(inputIncRaw(index));
-            int c = inputReadRaw(locals);
+            int c = inputReadRaw(locals, index);
             if (injectBranchProbability(ASTRAL_PROBABILITY, inputUTF16IsHighSurrogate(c) && inputHasNext(locals, locals.getNextIndex()))) {
                 int c2 = inputReadRaw(locals, locals.getNextIndex());
                 if (inputUTF16IsLowSurrogate(c2)) {
@@ -180,7 +180,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
             }
             return c;
         } else if (getEncoding() == Encodings.UTF_8) {
-            int c = inputReadRaw(locals);
+            int c = inputReadRaw(locals, index);
             if (injectBranchProbability(LATIN1_PROBABILITY, c < 0x80)) {
                 locals.setNextIndex(inputIncRaw(index));
                 return c;
@@ -189,7 +189,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
             if (!isForward()) {
                 assert c >> 6 == 2;
                 for (int i = 1; i < 4; i++) {
-                    c = inputReadRaw(locals, locals.getIndex() - i);
+                    c = inputReadRaw(locals, index - i);
                     if (injectBranchProbability(LIKELY_PROBABILITY, i < 3 && c >> 6 == 2)) {
                         codepoint |= (c & 0x3f) << (6 * i);
                     } else {
@@ -224,7 +224,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
             assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1 || getEncoding() == Encodings.BYTES ||
                             getEncoding() == Encodings.ASCII;
             locals.setNextIndex(inputIncRaw(index));
-            return inputReadRaw(locals);
+            return inputReadRaw(locals, index);
         }
     }
 

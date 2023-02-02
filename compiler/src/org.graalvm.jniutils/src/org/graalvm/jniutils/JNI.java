@@ -546,6 +546,9 @@ public final class JNI {
     public interface CallStaticObjectMethodA extends CFunctionPointer {
         @InvokeCFunctionPointer
         JObject call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        JObject callNoTransition(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
     }
 
     public interface CallStaticLongMethodA extends CFunctionPointer {
@@ -738,6 +741,9 @@ public final class JNI {
     public interface GetStaticMethodID extends CFunctionPointer {
         @InvokeCFunctionPointer
         JMethodID call(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig);
+
+        @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
+        JMethodID callNoTransition(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig);
     }
 
     public interface GetStringChars extends CFunctionPointer {

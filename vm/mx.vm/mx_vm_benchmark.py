@@ -750,8 +750,8 @@ class NativeImageVM(GraalVm):
             def __call__(self, *args, **kwargs):
                 return int(float(args[0].replace(',', '')))
 
-        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image',
-                           'write']
+        measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'layout', 'dbginfo',
+                           'image', 'write']
         rules = []
         for i in range(0, len(measured_phases)):
             phase = measured_phases[i]
@@ -816,8 +816,8 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        # GR-40154/GR-42738 --pgo-sampling does not work with G1/LLVM
-        if self.gc == 'G1' or self.is_llvm:
+        # GR-42738 --pgo-sampling does not work with LLVM
+        if self.is_llvm:
             instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
         else:
             instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
@@ -833,8 +833,8 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
-        # GR-40154/GR-42738 --pgo-sampling does not work with G1/LLVM
-        if self.pgo_aot_inline and self.gc != 'G1' and not self.is_llvm:
+        # GR-42738 --pgo-sampling does not work with LLVM
+        if self.pgo_aot_inline and not self.is_llvm:
             with open(profile_path) as profile_file:
                 parsed = json.load(profile_file)
                 samples = parsed["samplingProfiles"]

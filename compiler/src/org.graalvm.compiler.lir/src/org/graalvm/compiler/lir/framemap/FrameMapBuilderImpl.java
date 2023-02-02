@@ -31,7 +31,7 @@ import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.InstructionValueConsumer;
@@ -132,7 +132,7 @@ public class FrameMapBuilderImpl extends FrameMapBuilderTool {
         InstructionValueConsumer verifySlots = (LIRInstruction op, Value value, OperandMode mode, EnumSet<OperandFlag> flags) -> {
             assert !isVirtualStackSlot(value) : String.format("Instruction %s contains a virtual stack slot %s", op, value);
         };
-        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+        for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
             lir.getLIRforBlock(block).forEach(op -> {
                 op.visitEachInput(verifySlots);
                 op.visitEachAlive(verifySlots);

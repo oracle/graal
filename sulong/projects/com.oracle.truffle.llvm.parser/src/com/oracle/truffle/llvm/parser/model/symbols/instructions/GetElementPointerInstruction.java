@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,14 +36,17 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class GetElementPointerInstruction extends ValueInstruction {
 
+    private final Type baseType;
+
     private SymbolImpl base;
 
     private final SymbolImpl[] indices;
 
     private final boolean isInbounds;
 
-    private GetElementPointerInstruction(Type type, boolean isInbounds, int numIndices) {
+    private GetElementPointerInstruction(Type type, Type baseType, boolean isInbounds, int numIndices) {
         super(type);
+        this.baseType = baseType;
         this.indices = new SymbolImpl[numIndices];
         this.isInbounds = isInbounds;
     }
@@ -55,6 +58,10 @@ public final class GetElementPointerInstruction extends ValueInstruction {
 
     public SymbolImpl getBasePointer() {
         return base;
+    }
+
+    public Type getBaseType() {
+        return baseType;
     }
 
     public SymbolImpl[] getIndices() {
@@ -77,8 +84,8 @@ public final class GetElementPointerInstruction extends ValueInstruction {
         }
     }
 
-    public static GetElementPointerInstruction fromSymbols(SymbolTable symbols, Type type, int pointer, int[] indices, boolean isInbounds) {
-        final GetElementPointerInstruction inst = new GetElementPointerInstruction(type, isInbounds, indices.length);
+    public static GetElementPointerInstruction fromSymbols(SymbolTable symbols, Type type, Type baseType, int pointer, int[] indices, boolean isInbounds) {
+        final GetElementPointerInstruction inst = new GetElementPointerInstruction(type, baseType, isInbounds, indices.length);
         inst.base = symbols.getForwardReferenced(pointer, inst);
         for (int i = 0; i < indices.length; i++) {
             inst.indices[i] = symbols.getForwardReferenced(indices[i], inst);

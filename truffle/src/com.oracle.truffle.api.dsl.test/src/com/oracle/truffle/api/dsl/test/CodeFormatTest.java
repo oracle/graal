@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 /**
  * Tests the generated code compiles without warnings for unusual large guard names.
  */
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class CodeFormatTest {
 
     @Test
@@ -75,7 +76,7 @@ public class CodeFormatTest {
                         "guardWithaReeeeeeeeaaaaaaaaaaalllllllllyyyyyyyyLLLLLLLLLLLLLoooooooonnnnnnngggggggName1()",
                         "guardWithaReeeeeeeeaaaaaaaaaaalllllllllyyyyyyyyLLLLLLLLLLLLLoooooooonnnnnnngggggggName2()",
                         "guardWithaReeeeeeeeaaaaaaaaaaalllllllllyyyyyyyyLLLLLLLLLLLLLoooooooonnnnnnngggggggName1()"})
-        public int execute() {
+        public int doDefault() {
             return 42;
         }
     }

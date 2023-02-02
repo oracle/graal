@@ -113,21 +113,8 @@ public class UserError {
      * @param args arguments to process
      * @return a copy of {@code args} with certain values converted to strings as described above
      */
-    public static Object[] formatArguments(Object... args) {
-        Object[] newArgs = new Object[args.length];
-        for (int i = 0; i < args.length; i++) {
-            Object arg = args[i];
-            if (arg instanceof ResolvedJavaType) {
-                newArgs[i] = ((ResolvedJavaType) arg).toJavaName(true);
-            } else if (arg instanceof ResolvedJavaMethod) {
-                newArgs[i] = ((ResolvedJavaMethod) arg).format("%H.%n(%p)");
-            } else if (arg instanceof ResolvedJavaField) {
-                newArgs[i] = ((ResolvedJavaField) arg).format("%H.%n");
-            } else {
-                newArgs[i] = arg;
-            }
-        }
-        return newArgs;
+    static Object[] formatArguments(Object... args) {
+        return VMError.formatArguments(args);
     }
 
     /**

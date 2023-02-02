@@ -101,6 +101,10 @@ public final class WasmMath {
         return compareUnsigned(a, b) < 0 ? a : b;
     }
 
+    public static long minUnsigned(long a, long b) {
+        return Long.compareUnsigned(a, b) < 0 ? a : b;
+    }
+
     /**
      * Returns the maximum of two unsigned ints.
      */

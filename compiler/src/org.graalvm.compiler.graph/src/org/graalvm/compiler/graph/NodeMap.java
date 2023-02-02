@@ -80,15 +80,6 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
         return false;
     }
 
-    public boolean containsValue(Object value) {
-        for (Object o : values) {
-            if (o == value) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public Graph graph() {
         return graph;
     }

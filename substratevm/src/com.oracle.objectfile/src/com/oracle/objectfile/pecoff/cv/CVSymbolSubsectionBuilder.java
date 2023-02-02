@@ -30,8 +30,8 @@ import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
-import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.debugentry.range.Range;
 
 import java.lang.reflect.Modifier;
 

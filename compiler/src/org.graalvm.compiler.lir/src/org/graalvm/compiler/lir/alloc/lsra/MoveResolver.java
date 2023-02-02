@@ -98,10 +98,6 @@ public class MoveResolver {
         throw GraalError.shouldNotReachHere("unhandled value " + location);
     }
 
-    void setMultipleReadsAllowed() {
-        multipleReadsAllowed = true;
-    }
-
     protected boolean areMultipleReadsAllowed() {
         return multipleReadsAllowed;
     }

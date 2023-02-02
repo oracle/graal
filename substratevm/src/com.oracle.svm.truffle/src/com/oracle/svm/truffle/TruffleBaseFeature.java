@@ -52,13 +52,14 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.truffle.api.TruffleFile;
+
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -87,7 +88,6 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
@@ -114,6 +114,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
@@ -121,8 +122,11 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.dsl.InlineSupport;
+import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.library.DefaultExportProvider;
@@ -203,6 +207,9 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     private static final Method NODE_CLASS_getAccesssedFields = ReflectionUtil.lookupMethod(NodeClass.class, "getAccessedFields");
 
+    private static final Field UNSAFE_FIELD_name = ReflectionUtil.lookupField(InlineSupport.InlinableField.class.getSuperclass(), "name");
+    private static final Field UNSAFE_FIELD_declaringClass = ReflectionUtil.lookupField(InlineSupport.InlinableField.class.getSuperclass(), "declaringClass");
+
     private ClassLoader imageClassLoader;
     private AnalysisMetaAccess metaAccess;
     private GraalGraphObjectReplacer graalGraphObjectReplacer;
@@ -216,6 +223,9 @@ public final class TruffleBaseFeature implements InternalFeature {
     private Field libraryFactoryCacheField;
 
     private Map<String, Path> languageHomesToCopy;
+
+    private Consumer<Field> markAsUnsafeAccessed;
+    private final ConcurrentMap<Object, Boolean> processedInlinedFields = new ConcurrentHashMap<>();
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
         invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
@@ -249,6 +259,24 @@ public final class TruffleBaseFeature implements InternalFeature {
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    /**
+     * Register all fields accessed by a InlinedField for an instance field or a static field as
+     * unsafe accessed, which is necessary for correctness of the static analysis.
+     */
+    private Object processInlinedField(Object obj) {
+        if (obj instanceof InlineSupport.InlinableField && processedInlinedFields.putIfAbsent(obj, true) == null) {
+            VMError.guarantee(markAsUnsafeAccessed != null, "New InlinedField found after static analysis");
+            try {
+                String name = (String) UNSAFE_FIELD_name.get(obj);
+                Class<?> declaringClass = (Class<?>) UNSAFE_FIELD_declaringClass.get(obj);
+                markAsUnsafeAccessed.accept(declaringClass.getDeclaredField(name));
+            } catch (ReflectiveOperationException ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
+        }
+        return obj;
     }
 
     @Override
@@ -352,6 +380,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         if (!ImageSingletons.contains(TruffleFeature.class) && (Truffle.getRuntime() instanceof SubstrateTruffleRuntime)) {
             VMError.shouldNotReachHere("TruffleFeature is required for SubstrateTruffleRuntime.");
         }
+        access.registerObjectReplacer(this::processInlinedField);
 
         HomeFinder hf = HomeFinder.getInstance();
         if (Options.CopyLanguageResources.getValue()) {
@@ -409,6 +438,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         StaticObjectSupport.beforeAnalysis(access);
+        markAsUnsafeAccessed = access::registerAsUnsafeAccessed;
 
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
 
@@ -432,6 +462,12 @@ public final class TruffleBaseFeature implements InternalFeature {
                         new ArrayBasedShapeGeneratorOffsetTransformer("object"));
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "shapeOffset"),
                         new ArrayBasedShapeGeneratorOffsetTransformer("shape"));
+
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        markAsUnsafeAccessed = null;
     }
 
     public static void preInitializeEngine() {
@@ -704,7 +740,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
 
         static void registerInvocationPlugins(Plugins plugins, ParsingReason reason) {
-            if (reason == ParsingReason.PointsToAnalysis) {
+            if (reason.duringAnalysis()) {
                 InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), StaticShape.Builder.class);
                 r.register(new RequiredInlineOnlyInvocationPlugin("build", InvocationPlugin.Receiver.class, Class.class, Class.class) {
                     @Override
@@ -727,7 +763,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, ValueNode arg) {
             SubstrateGraphBuilderPlugins.checkParameterUsage(arg.isConstant(), b, targetMethod, parameterIndex, "parameter is not a compile time constant");
-            return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), b.getConstantReflection().asJavaType(arg.asJavaConstant()));
+            return OriginalClassProvider.getJavaClass(b.getConstantReflection().asJavaType(arg.asJavaConstant()));
         }
 
         private static boolean validateClasses(Class<?> storageSuperClass, Class<?> factoryInterface) {
@@ -1160,7 +1196,7 @@ final class Target_com_oracle_truffle_api_nodes_Node {
 
 @TargetClass(className = "com.oracle.truffle.api.nodes.NodeClassImpl", innerClass = "NodeFieldData", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_nodes_NodeClassImpl_NodeFieldData {
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //
     private long offset;
 
     private static class OffsetComputer implements FieldValueTransformerWithAvailability {
@@ -1176,6 +1212,32 @@ final class Target_com_oracle_truffle_api_nodes_NodeClassImpl_NodeFieldData {
             Field field = ReflectionUtil.lookupField(declaringClass, name);
             int offset = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(field, false);
             if (offset <= 0) {
+                throw VMError.shouldNotReachHere("Field is not marked as accessed: " + field);
+            }
+            return Long.valueOf(offset);
+        }
+    }
+}
+
+@TargetClass(className = "com.oracle.truffle.api.dsl.InlineSupport$UnsafeField", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
+
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //
+    private long offset;
+
+    private static class OffsetComputer implements FieldValueTransformerWithAvailability {
+        @Override
+        public ValueAvailability valueAvailability() {
+            return ValueAvailability.AfterAnalysis;
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            Class<?> declaringClass = ReflectionUtil.readField(InlinableField.class.getSuperclass(), "declaringClass", receiver);
+            String name = ReflectionUtil.readField(InlinableField.class.getSuperclass(), "name", receiver);
+            Field field = ReflectionUtil.lookupField(declaringClass, name);
+            int offset = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(field, false);
+            if (offset == -1) {
                 throw VMError.shouldNotReachHere("Field is not marked as accessed: " + field);
             }
             return Long.valueOf(offset);

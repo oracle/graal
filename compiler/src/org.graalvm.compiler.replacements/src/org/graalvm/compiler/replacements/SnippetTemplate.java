@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -126,6 +126,7 @@ import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.AbstractBoxingNode;
+import org.graalvm.compiler.nodes.extended.CaptureStateBeginNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
@@ -1403,7 +1404,7 @@ public class SnippetTemplate {
             if (needsMergeStateMap) {
                 frameStateAssignment = new SnippetFrameStateAssignmentClosure(snippetCopy);
                 ReentrantNodeIterator.apply(frameStateAssignment, snippetCopy.start(), SnippetFrameStateAssignment.NodeStateAssignment.BEFORE_BCI);
-                assert frameStateAssignment.verify() : info;
+                GraalError.guarantee(frameStateAssignment.verify(), "snippet frame state verification failed: %s", info);
             } else {
                 frameStateAssignment = null;
             }
@@ -2054,6 +2055,8 @@ public class SnippetTemplate {
 
             rewireFrameStates(replacee, duplicates, replaceeGraphPredecessor);
 
+            captureLoopExitStates(replacee, duplicates);
+
             // Replace all usages of the replacee with the value returned by the snippet
             ValueNode returnValue = null;
             AbstractBeginNode originalWithExceptionNextNode = null;
@@ -2425,7 +2428,7 @@ public class SnippetTemplate {
             GraalError.guarantee(stateAfter != null, "Statesplit with side-effect %s needs a framestate", replacee);
         } else {
             /*
-             * We dont have a state split as a replacee, thus we take the prev state as the state
+             * We don't have a state split as a replacee, thus we take the prev state as the state
              * after for the node in the snippet.
              */
             stateAfter = GraphUtil.findLastFrameState(replaceeGraphCFGPredecessor);
@@ -2443,6 +2446,7 @@ public class SnippetTemplate {
             exceptionObject = null;
         }
         NodeMap<NodeStateAssignment> assignedStateMappings = frameStateAssignment.getStateMapping();
+        FrameState stateAfterInvalidForDeoptimization = stateAfter.isValidForDeoptimization() ? null : stateAfter;
         MapCursor<Node, NodeStateAssignment> stateAssignments = assignedStateMappings.getEntries();
         while (stateAssignments.advance()) {
             Node nodeRequiringState = stateAssignments.getKey();
@@ -2457,6 +2461,13 @@ public class SnippetTemplate {
             switch (assignment) {
                 case AFTER_BCI:
                     setReplaceeGraphStateAfter(nodeRequiringState, replacee, duplicates, stateAfter);
+                    break;
+                case AFTER_BCI_INVALID_FOR_DEOPTIMIZATION:
+                    if (stateAfterInvalidForDeoptimization == null) {
+                        stateAfterInvalidForDeoptimization = stateAfter.duplicate();
+                        stateAfterInvalidForDeoptimization.invalidateForDeoptimization();
+                    }
+                    setReplaceeGraphStateAfter(nodeRequiringState, replacee, duplicates, stateAfterInvalidForDeoptimization);
                     break;
                 case AFTER_EXCEPTION_BCI:
                     if (nodeRequiringState instanceof ExceptionObjectNode) {
@@ -2483,6 +2494,76 @@ public class SnippetTemplate {
                     throw GraalError.shouldNotReachHere("Unknown StateAssigment:" + assignment);
             }
             replacee.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, replacee.graph(), "After duplicating after state for node %s in snippet", duplicates.get(nodeRequiringState));
+        }
+    }
+
+    /**
+     * Before frame state assignment, if the inlined snippet contains a loop with side effects,
+     * place a {@link CaptureStateBeginNode} after every loop exit. This ensures that the correct
+     * loop exit states will be available for later frame state assignment.
+     * <p/>
+     *
+     * In general, a loop with a side effect inlined from a snippet will look like this, after
+     * inserting this node:
+     *
+     * <pre>
+     *                                  State(AFTER_BCI)
+     *                                  /
+     *  +--------------------> LoopBegin
+     *  |                         |
+     *  |                         If
+     *  |                        /  \
+     *  |  State(INVALID)       /    \      State(AFTER_BCI)
+     *  |                 \    /      \      / |
+     *  |             SideEffect     LoopExit  |
+     *  |                   |          |       |
+     *  +--------------- LoopEnd   CaptureStateBegin
+     *                                 |
+     *                                ...
+     * </pre>
+     *
+     * Even if the loop exit disappears (for example, through full unrolling), the
+     * {@code CaptureStateBegin} will have a valid frame state that can be propagated to its
+     * successors. Without the captured state, a fully unrolled version of the loop would only
+     * contain the side effect's invalid frame state, and frame state assignment would propagate
+     * this.
+     * <p/>
+     *
+     * If the code following the {@code CaptureStateBegin} contains an {@link AbstractBeginNode}
+     * with floating guards hanging off it:
+     *
+     * <pre>
+     *     LoopExit
+     *        |
+     *   CaptureStateBegin
+     *        |
+     *       ...
+     *   AbstractBegin
+     *        |     \
+     *       ...    Guard
+     * </pre>
+     *
+     * and that {@code AbstractBegin} is optimized out, its
+     * {@link AbstractBeginNode#prevBegin(FixedNode)} will be the {@code CaptureStateBegin}, so the
+     * guard will be floated there. The guard will not float upwards to the loop exit, where again
+     * it would eventually get an invalid frame state if the loop is fully unrolled.
+     */
+    private static void captureLoopExitStates(ValueNode replacee, UnmodifiableEconomicMap<Node, Node> duplicates) {
+        StructuredGraph replaceeGraph = replacee.graph();
+        if (replaceeGraph.getGuardsStage().areFrameStatesAtDeopts() && !replaceeGraph.getGuardsStage().allowsFloatingGuards()) {
+            return;
+        }
+        for (Node duplicate : duplicates.getValues()) {
+            if (!(duplicate instanceof LoopExitNode)) {
+                continue;
+            }
+            LoopExitNode loopExit = (LoopExitNode) duplicate;
+            if (loopExit.stateAfter() != null && !(loopExit.next() instanceof StateSplit && ((StateSplit) loopExit.next()).stateAfter() != null)) {
+                CaptureStateBeginNode captureState = replaceeGraph.add(new CaptureStateBeginNode());
+                captureState.setStateAfter(loopExit.stateAfter());
+                replaceeGraph.addAfterFixed(loopExit, captureState);
+                replaceeGraph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, replaceeGraph, "After capturing state %s at %s after %s", loopExit.stateAfter(), captureState, loopExit);
+            }
         }
     }
 

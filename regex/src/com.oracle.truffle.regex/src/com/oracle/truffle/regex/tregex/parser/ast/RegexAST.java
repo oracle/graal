@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -55,7 +56,6 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
@@ -86,6 +86,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final Counter quantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
     private final TBitSet referencedGroups = new TBitSet(Long.SIZE);
+    private final TBitSet conditionGroups = new TBitSet(Long.SIZE);
     private RegexASTNode[] nodes;
     /**
      * AST as parsed from the expression.
@@ -299,6 +300,16 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return register(new Group(groupNumber));
     }
 
+    public Group createConditionalBackReferenceGroup(int referencedGroupNumber) {
+        referencedGroups.set(referencedGroupNumber);
+        conditionGroups.set(referencedGroupNumber);
+        return register(new ConditionalBackReferenceGroup(referencedGroupNumber));
+    }
+
+    public TBitSet getConditionGroups() {
+        return conditionGroups;
+    }
+
     public LookAheadAssertion createLookAheadAssertion(boolean negated) {
         final LookAheadAssertion assertion = new LookAheadAssertion(negated);
         createNFAHelperNodes(assertion);
@@ -352,6 +363,11 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     }
 
     public Group register(Group group) {
+        nodeCount.inc();
+        return group;
+    }
+
+    public ConditionalBackReferenceGroup register(ConditionalBackReferenceGroup group) {
         nodeCount.inc();
         return group;
     }
@@ -446,23 +462,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             wrappedRoot = root;
             return;
         }
-        int prefixLength = 0;
-        for (RegexASTSubtreeRootNode subtreeRootNode : subtrees) {
-            if (!subtreeRootNode.isLookBehindAssertion()) {
-                continue;
-            }
-            LookBehindAssertion lb = subtreeRootNode.asLookBehindAssertion();
-            int minPath = lb.getMinPath();
-            RegexASTSubtreeRootNode laParent = lb.getSubTreeParent();
-            while (!(laParent instanceof RegexASTRootNode)) {
-                if (laParent instanceof LookBehindAssertion) {
-                    throw new UnsupportedRegexException("nested look-behind assertions");
-                }
-                minPath += laParent.getMinPath();
-                laParent = laParent.getSubTreeParent();
-            }
-            prefixLength = Math.max(prefixLength, lb.getLiteralLength() - minPath);
+        if (properties.hasNestedLookBehindAssertions()) {
+            throw new UnsupportedRegexException("nested look-behind assertions");
         }
+        final int prefixLength = root.getPrefixLengthMax();
         if (prefixLength == 0) {
             wrappedRoot = root;
             return;
@@ -626,13 +629,17 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
                                         getProperties().hasNonLiteralLookBehindAssertions() ||
                                         getProperties().hasNegativeLookBehindAssertions() ||
                                         getRoot().hasQuantifiers() ||
-                                        getProperties().hasAtomicGroups()) &&
+                                        getProperties().hasAtomicGroups() ||
+                                        getProperties().hasConditionalReferencesIntoLookAheads()) &&
                         couldCalculateLastGroup;
     }
 
     @TruffleBoundary
     public String canTransformToDFAFailureReason() {
         StringJoiner sb = new StringJoiner(", ");
+        if (getOptions().getFlavor().usesLastGroupResultField() && getProperties().hasCaptureGroupsInLookAroundAssertions()) {
+            sb.add("regex has capture groups in look-around assertions while needing to calculate last group matched");
+        }
         if (getNumberOfNodes() > TRegexOptions.TRegexMaxParseTreeSizeForDFA) {
             sb.add(String.format("Parser tree has too many nodes: %d (threshold: %d)", getNumberOfNodes(), TRegexOptions.TRegexMaxParseTreeSizeForDFA));
         }
@@ -660,6 +667,9 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         }
         if (getProperties().hasAtomicGroups()) {
             sb.add("regex has atomic groups");
+        }
+        if (getProperties().hasConditionalReferencesIntoLookAheads()) {
+            sb.add("regex has conditional back-references into look-ahead assertions");
         }
         return sb.toString();
     }

@@ -31,7 +31,7 @@ import jdk.vm.ci.code.BytecodePosition;
 
 public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
     public FormalReturnTypeFlow(BytecodePosition source, AnalysisType declaredType) {
-        super(source, declaredType);
+        super(source, filterUncheckedInterface(declaredType));
     }
 
     public FormalReturnTypeFlow(FormalReturnTypeFlow original, MethodFlowsGraph methodFlows) {

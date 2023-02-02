@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.profdiff.core.inlining.InliningPath;
+
 /**
  * Represents an optimization phase in the optimization tree. Allows the children (either
  * optimization phases or directly performed {@link Optimization optimizations}) to be incrementally
@@ -116,6 +118,18 @@ public class OptimizationPhase extends OptimizationTreeNode {
 
     @Override
     public int hashCode() {
-        return getName().hashCode() + getChildren().hashCode();
+        return getName().hashCode() + 31 * getChildren().hashCode();
+    }
+
+    @Override
+    public OptimizationPhase cloneMatchingPath(InliningPath prefix) {
+        OptimizationPhase copy = new OptimizationPhase(getName());
+        for (OptimizationTreeNode child : getChildren()) {
+            OptimizationTreeNode childCopy = child.cloneMatchingPath(prefix);
+            if (childCopy != null) {
+                copy.addChild(childCopy);
+            }
+        }
+        return copy;
     }
 }

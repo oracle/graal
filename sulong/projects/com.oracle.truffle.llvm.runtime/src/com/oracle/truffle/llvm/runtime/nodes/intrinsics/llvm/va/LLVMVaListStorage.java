@@ -827,7 +827,7 @@ public class LLVMVaListStorage implements TruffleObject {
         }
 
         @Specialization
-        byte shortConversion(Short x, int offset, @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+        byte shortConversion(Short x, int offset, @Cached ConditionProfile conditionProfile) {
             if (conditionProfile.profile(offset == 0)) {
                 return x.byteValue();
             } else {
@@ -838,8 +838,8 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         byte intConversion(Integer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
             if (conditionProfile1.profile(offset < 2)) {
                 return shortConversion(x.shortValue(), offset, conditionProfile2);
             } else {
@@ -849,9 +849,9 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         byte longConversion(Long x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2,
+                        @Cached ConditionProfile conditionProfile3) {
             if (conditionProfile1.profile(offset < 4)) {
                 return intConversion(x.intValue(), offset, conditionProfile2, conditionProfile3);
             } else {
@@ -861,9 +861,9 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         byte doubleConversion(Double x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2,
+                        @Cached ConditionProfile conditionProfile3) {
             return longConversion(Double.doubleToLongBits(x), offset, conditionProfile1, conditionProfile2, conditionProfile3);
         }
 
@@ -875,8 +875,8 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         byte floatVectorConversion(LLVMFloatVector x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
             int index = offset / 4;
             assert index < x.getLength();
             int fi = Float.floatToIntBits((Float) x.getElement(index));
@@ -897,18 +897,18 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization(guards = "isNativePointer(x)")
         byte nativePointerObjectConversion(LLVMNativePointer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2,
+                        @Cached ConditionProfile conditionProfile3) {
             return longConversion(x.asNative(), offset, conditionProfile1, conditionProfile2, conditionProfile3);
         }
 
         @Specialization(guards = "!isNativePointer(x)")
         byte managedPointerObjectConversion(LLVMManagedPointer x, int offset,
                         @Cached ToNativePointerNode toNativePointer,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2,
+                        @Cached ConditionProfile conditionProfile3) {
             LLVMNativePointer nativePointer = toNativePointer.execute(x.getObject());
             return nativePointerObjectConversion(nativePointer, offset, conditionProfile1, conditionProfile2, conditionProfile3);
         }
@@ -935,7 +935,7 @@ public class LLVMVaListStorage implements TruffleObject {
         }
 
         @Specialization
-        short intConversion(Integer x, int offset, @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+        short intConversion(Integer x, int offset, @Cached ConditionProfile conditionProfile) {
             if (conditionProfile.profile(offset == 0)) {
                 return x.shortValue();
             } else {
@@ -946,8 +946,8 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         short longConversion(Long x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
 
             if (conditionProfile1.profile(offset < 4)) {
                 return intConversion(x.intValue(), offset, conditionProfile2);
@@ -958,14 +958,14 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         short doubleConversion(Double x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
             return longConversion(Double.doubleToLongBits(x), offset, conditionProfile1, conditionProfile2);
         }
 
         @Specialization
         short floatVectorConversion(LLVMFloatVector x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+                        @Cached ConditionProfile conditionProfile) {
             int index = offset / 4;
             assert index < x.getLength();
             int fi = Float.floatToIntBits((Float) x.getElement(index));
@@ -985,16 +985,16 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization(guards = "isNativePointer(x)")
         short nativePointerObjectConversion(LLVMNativePointer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
             return longConversion(x.asNative(), offset, conditionProfile1, conditionProfile2);
         }
 
         @Specialization(guards = "!isNativePointer(x)")
         short managedPointerObjectConversion(LLVMManagedPointer x, int offset,
                         @Cached ToNativePointerNode toNativePointer,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
             LLVMNativePointer nativePointer = toNativePointer.execute(x.getObject());
             return nativePointerObjectConversion(nativePointer, offset, conditionProfile1, conditionProfile2);
         }
@@ -1034,7 +1034,7 @@ public class LLVMVaListStorage implements TruffleObject {
         }
 
         @Specialization
-        int longConversion(Long x, int offset, @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+        int longConversion(Long x, int offset, @Cached ConditionProfile conditionProfile) {
             if (conditionProfile.profile(offset == 0)) {
                 return x.intValue();
             } else {
@@ -1045,7 +1045,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         int doubleConversion(Double x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+                        @Cached ConditionProfile conditionProfile) {
             return longConversion(Double.doubleToLongBits(x), offset, conditionProfile);
         }
 
@@ -1070,14 +1070,14 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization(guards = "isNativePointer(x)")
         int nativePointerObjectConversion(LLVMNativePointer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+                        @Cached ConditionProfile conditionProfile) {
             return longConversion(LLVMNativePointer.cast(x).asNative(), offset, conditionProfile);
         }
 
         @Specialization(guards = "!isNativePointer(x)")
         int managedPointerObjectConversion(LLVMManagedPointer x, int offset,
                         @Cached ToNativePointerNode toNativePointer,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+                        @Cached ConditionProfile conditionProfile) {
             LLVMNativePointer nativePointer = toNativePointer.execute(x.getObject());
             return nativePointerObjectConversion(nativePointer, offset, conditionProfile);
         }
@@ -1230,7 +1230,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
         private ArgumentListExpander(boolean cached, boolean unpack32) {
             expansionBranchProfile = cached ? BranchProfile.create() : BranchProfile.getUncached();
-            noExpansionProfile = cached ? ConditionProfile.createBinaryProfile() : ConditionProfile.getUncached();
+            noExpansionProfile = cached ? ConditionProfile.create() : ConditionProfile.getUncached();
             if (cached) {
                 expander = unpack32 ? Unpack32ArgumentExpanderNodeGen.create() : ArgumentExpanderNodeGen.create();
             } else {

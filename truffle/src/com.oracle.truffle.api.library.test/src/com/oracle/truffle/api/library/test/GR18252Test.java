@@ -103,13 +103,13 @@ public class GR18252Test extends AbstractParametrizedLibraryTest {
 
         @ExportMessage
         public static boolean is(Data receiver,
-                        @Shared("profile") @Cached BranchProfile profile) {
+                        @Shared("profile") @Cached(inline = false) BranchProfile profile) {
             return false;
         }
 
         @ExportMessage
         public static Object get(Data receiver,
-                        @Shared("profile") @Cached BranchProfile profile) {
+                        @Shared("profile") @Cached(inline = false) BranchProfile profile) {
             return null;
         }
     }
@@ -121,8 +121,8 @@ public class GR18252Test extends AbstractParametrizedLibraryTest {
         public static class Is {
             @Specialization
             public static boolean is(Data receiver,
-                            @Cached BranchProfile p0,
-                            @Cached BranchProfile p1) {
+                            @Cached(inline = false) BranchProfile p0,
+                            @Cached(inline = false) BranchProfile p1) {
                 return true;
             }
         }
@@ -141,8 +141,8 @@ public class GR18252Test extends AbstractParametrizedLibraryTest {
 
         @ExportMessage
         public static boolean is(Data receiver,
-                        @Cached BranchProfile p0,
-                        @Cached BranchProfile p1) {
+                        @Cached(inline = false) BranchProfile p0,
+                        @Cached(inline = false) BranchProfile p1) {
             return true;
         }
 
@@ -158,8 +158,8 @@ public class GR18252Test extends AbstractParametrizedLibraryTest {
         public static class Is {
             @Specialization
             public static boolean is(Data receiver,
-                            @Cached BranchProfile profile,
-                            @Cached BranchProfile profile1) {
+                            @Cached(inline = false) BranchProfile profile,
+                            @Cached(inline = false) BranchProfile profile1) {
                 return true;
             }
         }
@@ -173,7 +173,7 @@ public class GR18252Test extends AbstractParametrizedLibraryTest {
 
         @ExportMessage
         public static Object get(Data receiver,
-                        @Cached BranchProfile profile1) {
+                        @Cached(inline = false) BranchProfile profile1) {
             return receiver.value;
         }
     }

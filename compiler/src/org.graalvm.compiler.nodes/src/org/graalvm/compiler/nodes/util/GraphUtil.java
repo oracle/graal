@@ -43,7 +43,7 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
-import org.graalvm.compiler.graph.LinkedNodeStack;
+import org.graalvm.compiler.graph.LinkedStack;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -367,7 +367,7 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuard) {
-        LinkedNodeStack stack = null;
+        LinkedStack<Node> stack = null;
         Node cur = node;
         do {
             assert checkKill(cur, mayKillGuard);
@@ -393,7 +393,7 @@ public class GraphUtil {
                             continue outer;
                         }
                         if (stack == null) {
-                            stack = new LinkedNodeStack();
+                            stack = new LinkedStack<>();
                         }
                         stack.push(in);
                     }
@@ -1059,7 +1059,7 @@ public class GraphUtil {
             if (getLowerer() != null) {
                 return getLowerer().divisionOverflowIsJVMSCompliant();
             } else {
-                // prevent accidental floating of divs if we dont know the target arch
+                // prevent accidental floating of divs if we don't know the target arch
                 return false;
             }
         }

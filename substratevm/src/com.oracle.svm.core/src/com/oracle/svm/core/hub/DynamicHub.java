@@ -84,6 +84,9 @@ import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
+import com.oracle.svm.core.reflect.ReflectionMetadataDecoder.ConstructorDescriptor;
+import com.oracle.svm.core.reflect.ReflectionMetadataDecoder.FieldDescriptor;
+import com.oracle.svm.core.reflect.ReflectionMetadataDecoder.MethodDescriptor;
 import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
 import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.LazyFinalReference;
@@ -1148,12 +1151,15 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (name == null) {
             throw new NullPointerException();
         }
-        Class<?> result = ClassForNameSupport.forNameOrNull(name, loader);
-        if (result == null && loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
-            result = loader.loadClass(name); // may throw
-        }
-        if (result == null) {
-            throw ClassLoadingExceptionSupport.getExceptionForClass(name, new ClassNotFoundException(name));
+        Class<?> result;
+        try {
+            result = ClassForNameSupport.forName(name, loader);
+        } catch (ClassNotFoundException e) {
+            if (loader != null && PredefinedClassesSupport.hasBytecodeClasses()) {
+                result = loader.loadClass(name); // may throw
+            } else {
+                throw e;
+            }
         }
         if (initialize) {
             DynamicHub.fromClass(result).ensureInitialized();
@@ -1419,7 +1425,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (reflectionMetadata == null || reflectionMetadata.fieldsEncodingIndex == NO_DATA) {
             return new Field[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseFields(this, reflectionMetadata.fieldsEncodingIndex, publicOnly, true);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseFields(this, reflectionMetadata.fieldsEncodingIndex, publicOnly);
     }
 
     @Substitute
@@ -1427,7 +1433,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (reflectionMetadata == null || reflectionMetadata.methodsEncodingIndex == NO_DATA) {
             return new Method[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseMethods(this, reflectionMetadata.methodsEncodingIndex, publicOnly, true);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseMethods(this, reflectionMetadata.methodsEncodingIndex, publicOnly);
     }
 
     @Substitute
@@ -1435,7 +1441,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (reflectionMetadata == null || reflectionMetadata.constructorsEncodingIndex == NO_DATA) {
             return new Constructor<?>[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseConstructors(this, reflectionMetadata.constructorsEncodingIndex, publicOnly, true);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseConstructors(this, reflectionMetadata.constructorsEncodingIndex, publicOnly);
     }
 
     @Substitute
@@ -1670,25 +1676,25 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
     }
 
-    public Field[] getReachableFields() {
+    public FieldDescriptor[] getReachableFields() {
         if (reflectionMetadata == null || reflectionMetadata.fieldsEncodingIndex == NO_DATA) {
-            return new Field[0];
+            return new FieldDescriptor[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseFields(this, reflectionMetadata.fieldsEncodingIndex, false, false);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseReachableFields(this, reflectionMetadata.fieldsEncodingIndex);
     }
 
-    public Method[] getReachableMethods() {
+    public MethodDescriptor[] getReachableMethods() {
         if (reflectionMetadata == null || reflectionMetadata.methodsEncodingIndex == NO_DATA) {
-            return new Method[0];
+            return new MethodDescriptor[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseMethods(this, reflectionMetadata.methodsEncodingIndex, false, false);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseReachableMethods(this, reflectionMetadata.methodsEncodingIndex);
     }
 
-    public Constructor<?>[] getReachableConstructors() {
+    public ConstructorDescriptor[] getReachableConstructors() {
         if (reflectionMetadata == null || reflectionMetadata.constructorsEncodingIndex == NO_DATA) {
-            return new Constructor<?>[0];
+            return new ConstructorDescriptor[0];
         }
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseConstructors(this, reflectionMetadata.constructorsEncodingIndex, false, false);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseReachableConstructors(this, reflectionMetadata.constructorsEncodingIndex);
     }
 }
 

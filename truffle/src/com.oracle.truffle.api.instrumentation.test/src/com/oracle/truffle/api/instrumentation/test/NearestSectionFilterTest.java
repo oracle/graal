@@ -150,9 +150,9 @@ public final class NearestSectionFilterTest extends SourceSectionListenerTest {
                         ")", "EXPRESSION(VARIABLE(a, 10))", "EXPRESSION(VARIABLE(b, 20))");
         run(sourceSections[0].getSource());
 
-        // The difference when tag is set on the nearest filter, or the base section filter:
+        // The tag is set on the nearest filter, or the base section filter:
         checkLoadEvents(NearestSectionFilter.newBuilder(5, 1).tagIs(ExpressionTag.class).build(), SourceSectionFilter.ANY, sourceSections[1]);
-        checkLoadEvents(NearestSectionFilter.newBuilder(5, 1).build(), SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build(), sourceSections[2]);
+        checkLoadEvents(NearestSectionFilter.newBuilder(5, 1).build(), SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build(), sourceSections[1]);
     }
 
     @Test

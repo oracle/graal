@@ -66,13 +66,14 @@ public abstract class InvokeVirtual extends EspressoNode {
     final Method resolutionSeed;
 
     InvokeVirtual(Method resolutionSeed) {
+        assert resolutionSeed.getVTableIndex() >= 0;
         this.resolutionSeed = resolutionSeed;
     }
 
     protected abstract Object execute(Object[] args);
 
     @Specialization
-    Object executeWithNullCheck(Object[] args,
+    Object doWithNullCheck(Object[] args,
                     @Cached NullCheck nullCheck,
                     @Cached("create(resolutionSeed)") WithoutNullCheck invokeVirtual) {
         StaticObject receiver = (StaticObject) args[0];
@@ -93,6 +94,7 @@ public abstract class InvokeVirtual extends EspressoNode {
         protected static final int LIMIT = 8;
 
         WithoutNullCheck(Method resolutionSeed) {
+            assert resolutionSeed.getVTableIndex() >= 0;
             this.resolutionSeed = resolutionSeed;
         }
 
@@ -189,7 +191,7 @@ public abstract class InvokeVirtual extends EspressoNode {
 
     static Method.MethodVersion genericMethodLookup(EspressoContext context, Method resolutionSeed, Klass receiverKlass,
                     BranchProfile error) {
-        if (resolutionSeed.isRemovedByRedefition()) {
+        if (resolutionSeed.isRemovedByRedefinition()) {
             /*
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
@@ -224,7 +226,7 @@ public abstract class InvokeVirtual extends EspressoNode {
         public abstract Object execute(Method resolutionSeed, Object[] args);
 
         @Specialization
-        Object executeWithNullCheck(Method resolutionSeed, Object[] args,
+        Object doWithNullCheck(Method resolutionSeed, Object[] args,
                         @Cached NullCheck nullCheck,
                         @Cached WithoutNullCheck invokeVirtual) {
             StaticObject receiver = (StaticObject) args[0];

@@ -81,4 +81,6 @@ typedef struct {
   char fOSPKE;
   char fCET_IBT;
   char fCET_SS;
+  char fF16C;
+  char fAVX512_IFMA;
 } CPUFeatures;

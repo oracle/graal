@@ -338,7 +338,7 @@ public abstract class VMThreads {
             nextOsThreadToCleanup = OSThreadHandleTL.get(thread);
         }
 
-        exit(thread);
+        threadExit(thread);
         /* Only uninterruptible code may be executed from now on. */
         PlatformThreads.afterThreadExit(thread);
 
@@ -469,8 +469,12 @@ public abstract class VMThreads {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false)
-    private static void exit(IsolateThread thread) {
-        PlatformThreads.threadExit(thread);
+    private static void threadExit(IsolateThread thread) {
+        VMError.guarantee(thread.equal(CurrentIsolate.getCurrentThread()), "Cleanup must execute in detaching thread");
+        Thread javaThread = PlatformThreads.currentThread.get(thread);
+        if (javaThread != null) {
+            PlatformThreads.exit(javaThread);
+        }
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,7 +42,9 @@ import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public final class LLVMSymbolReadResolver {
@@ -108,7 +110,7 @@ public final class LLVMSymbolReadResolver {
      * allows callers to intercept the resolution of values to nodes (used for frame slot
      * optimization in LLVMBitcodeInstructionVisitor).
      */
-    public LLVMExpressionNode resolveElementPointer(SymbolImpl base, SymbolImpl[] indices, OptimizedResolver resolver) {
+    public LLVMExpressionNode resolveElementPointer(Type baseType, SymbolImpl base, SymbolImpl[] indices, OptimizedResolver resolver) {
         LLVMExpressionNode[] indexNodes = new LLVMExpressionNode[indices.length];
         Long[] indexConstants = new Long[indices.length];
         Type[] indexTypes = new Type[indices.length];
@@ -123,7 +125,16 @@ public final class LLVMSymbolReadResolver {
         }
 
         LLVMExpressionNode currentAddress = resolver.resolve(base, -1, null, indices);
-        Type currentType = base.getType();
+        Type currentType;
+        if (baseType == null) {
+            currentType = base.getType();
+        } else {
+            currentType = new PointerType(baseType);
+            if (base.getType() instanceof VectorType) {
+                VectorType vt = (VectorType) base.getType();
+                currentType = new VectorType(currentType, vt.getNumberOfElementsInt());
+            }
+        }
 
         return CommonNodeFactory.createNestedElementPointerNode(nodeFactory, dataLayout, indexNodes, indexConstants, indexTypes, currentAddress, currentType);
     }

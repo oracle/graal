@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -366,7 +366,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         assertThat(graph.getNodes(ReturnNode.TYPE), hasCount(1));
         ReturnNode ret = graph.getNodes(ReturnNode.TYPE).first();
         assertThat(ret.result(), instanceOf(FloatingReadNode.class));
-        Block readBlock = schedule.getNodeToBlockMap().get(ret.result());
+        HIRBlock readBlock = schedule.getNodeToBlockMap().get(ret.result());
         Assert.assertEquals(0, readBlock.getLoopDepth());
     }
 
@@ -640,7 +640,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         int withRead = 0;
         int returnBlocks = 0;
         for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
-            Block block = schedule.getCFG().getNodeToBlock().get(returnNode);
+            HIRBlock block = schedule.getCFG().getNodeToBlock().get(returnNode);
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
                 if (node instanceof FloatingReadNode) {
                     withRead++;

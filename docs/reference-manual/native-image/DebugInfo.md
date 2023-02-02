@@ -828,10 +828,6 @@ For example, calling the method below prints high-level information about the Na
 (gdb) call svm_dbg_print_fatalErrorDiagnostics($r15, $rsp, $rip)
 ```
 
-### Further Reading
-
-- [Debugging Native Image in VS Code](Debugging.md)
-
 ## Special Considerations for using perf and valgrind
 
 Debug info includes details of address ranges for top level and
@@ -994,3 +990,7 @@ When `callgrind` is used in combination with a viewer like
 `kcachegrind` it is possible to identify a great deal of valuable
 information about native image execution aand relate it back to
 specific source code lines.
+
+### Related Documentation
+
+- [Debug Native Executables with GDB](guides/debug-native-executables-with-gdb.md)

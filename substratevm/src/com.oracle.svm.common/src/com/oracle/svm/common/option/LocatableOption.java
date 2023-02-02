@@ -27,10 +27,10 @@ package com.oracle.svm.common.option;
 
 public final class LocatableOption {
 
-    final String name;
-    final String origin;
+    public final String name;
+    public final String origin;
 
-    static LocatableOption from(String rawOptionName) {
+    public static LocatableOption from(String rawOptionName) {
         return new LocatableOption(rawOptionName);
     }
 
@@ -52,6 +52,10 @@ public final class LocatableOption {
             return result;
         }
         return result + " from '" + origin + "'";
+    }
+
+    public String rawName() {
+        return origin == null ? name : name + '@' + origin;
     }
 
     private static final class LocatableOptionValue {

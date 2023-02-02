@@ -31,6 +31,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.util.CollectionsUtil;
 import org.junit.Assert;
 import org.junit.Test;
@@ -149,4 +150,24 @@ public class CollectionUtilTest {
         Assert.assertFalse(emptyIterable.iterator().hasNext());
     }
 
+    @Test
+    public void cartesianProductWorks() {
+        List<Integer> lhs = List.of(1, 2);
+        List<Integer> rhs = List.of(3, 4);
+        List<Pair<Integer, Integer>> expected = List.of(
+                        Pair.create(1, 3),
+                        Pair.create(1, 4),
+                        Pair.create(2, 3),
+                        Pair.create(2, 4));
+        List<Pair<Integer, Integer>> actual = new ArrayList<>();
+        CollectionsUtil.cartesianProduct(lhs, rhs).forEach(actual::add);
+        Assert.assertEquals(expected, actual);
+    }
+
+    @Test
+    public void emptyCartesianProduct() {
+        Assert.assertFalse(CollectionsUtil.cartesianProduct(List.of(), List.of()).iterator().hasNext());
+        Assert.assertFalse(CollectionsUtil.cartesianProduct(List.of(), List.of(1)).iterator().hasNext());
+        Assert.assertFalse(CollectionsUtil.cartesianProduct(List.of(1), List.of()).iterator().hasNext());
+    }
 }

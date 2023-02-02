@@ -60,7 +60,7 @@ public class ShortCircuitOrNodeTest extends GraalCompilerTest {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode b1, ValueNode b2) {
                 LogicNode x = b.add(new IntegerEqualsNode(b1, b.add(ConstantNode.forInt(1))));
                 LogicNode y = b.add(new IntegerEqualsNode(b2, b.add(ConstantNode.forInt(1))));
-                ShortCircuitOrNode compare = b.add(new ShortCircuitOrNode(x, false, y, false, BranchProbabilityData.unknown()));
+                LogicNode compare = b.add(ShortCircuitOrNode.create(x, false, y, false, BranchProbabilityData.unknown()));
                 b.addPush(JavaKind.Boolean, new ConditionalNode(compare, b.add(ConstantNode.forBoolean(true)), b.add(ConstantNode.forBoolean(false))));
                 return true;
             }

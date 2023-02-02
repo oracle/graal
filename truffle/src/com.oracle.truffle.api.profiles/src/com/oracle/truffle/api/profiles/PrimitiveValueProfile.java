@@ -44,6 +44,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.NeverDefault;
 
 /**
  * <p>
@@ -302,7 +303,7 @@ public final class PrimitiveValueProfile extends ValueProfile {
     @Override
     public String toString() {
         if (this == DISABLED) {
-            return toStringDisabled(PrimitiveValueProfile.class);
+            return toStringDisabled();
         } else {
             return toString(PrimitiveValueProfile.class, isUninitialized(), isGeneric(), formatSpecialization());
         }
@@ -333,6 +334,7 @@ public final class PrimitiveValueProfile extends ValueProfile {
      * @since 0.10
      */
     @SuppressWarnings("deprecation")
+    @NeverDefault
     public static PrimitiveValueProfile createEqualityProfile() {
         return create();
     }
@@ -344,6 +346,7 @@ public final class PrimitiveValueProfile extends ValueProfile {
      * @since 22.1
      */
     @SuppressWarnings("deprecation")
+    @NeverDefault
     public static PrimitiveValueProfile create() {
         if (Profile.isProfilingEnabled()) {
             return new PrimitiveValueProfile();

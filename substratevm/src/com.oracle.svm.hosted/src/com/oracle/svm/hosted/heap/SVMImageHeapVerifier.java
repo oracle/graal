@@ -35,7 +35,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -62,8 +61,7 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
      * 
      */
     private static boolean imageStateModified() {
-        return ImageSingletons.lookup(ReflectionHostedSupport.class).requiresProcessing() ||
-                        ImageSingletons.lookup(ImageHeapMapFeature.class).imageHeapMapNeedsUpdate();
+        return ImageSingletons.lookup(ImageHeapMapFeature.class).imageHeapMapNeedsUpdate();
     }
 
     @Override

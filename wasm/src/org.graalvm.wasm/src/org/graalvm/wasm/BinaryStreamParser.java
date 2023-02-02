@@ -47,7 +47,6 @@ import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public abstract class BinaryStreamParser {
@@ -84,36 +83,6 @@ public abstract class BinaryStreamParser {
         return packValueAndLength(result, currentOffset - initialOffset);
     }
 
-    /**
-     * Unchecked and manually unrolled version of {@link #peekUnsignedInt32AndLength}.
-     */
-    public static long rawPeekUnsignedInt32AndLength(byte[] data, int initialOffset) {
-        int result = 0;
-        byte b = data[initialOffset];
-        result |= (b & 0x7F);
-        if ((b & 0x80) == 0) {
-            return packValueAndLength(result, 1);
-        }
-        b = data[initialOffset + 1];
-        result |= (b & 0x7F) << 7;
-        if ((b & 0x80) == 0) {
-            return packValueAndLength(result, 2);
-        }
-        b = data[initialOffset + 2];
-        result |= (b & 0x7F) << 14;
-        if ((b & 0x80) == 0) {
-            return packValueAndLength(result, 3);
-        }
-        b = data[initialOffset + 3];
-        result |= (b & 0x7F) << 21;
-        if ((b & 0x80) == 0) {
-            return packValueAndLength(result, 4);
-        }
-        b = data[initialOffset + 4];
-        result |= (b & 0x7F) << 28;
-        return packValueAndLength(result, 5);
-    }
-
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
     public static long peekSignedInt32AndLength(byte[] data, int initialOffset) {
         int result = 0;
@@ -140,46 +109,28 @@ public abstract class BinaryStreamParser {
         return packValueAndLength(result, currentOffset - initialOffset);
     }
 
-    /**
-     * Unchecked and manually unrolled version of {@link #peekSignedInt32AndLength}.
-     */
-    public static long rawPeekSignedInt32AndLength(byte[] data, int initialOffset) {
-        int result = 0;
-        byte b = data[initialOffset];
-        result |= (b & 0x7F);
-        if ((b & 0x80) == 0) {
-            if ((b & 0x40) != 0) {
-                result |= (~0 << 7);
-            }
-            return packValueAndLength(result, 1);
+    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
+    public static long peekUnsignedInt64(byte[] data, int initialOffset, boolean checkValid) {
+        long result = 0;
+        int shift = 0;
+        int currentOffset = initialOffset;
+        byte b = (byte) 0x80;
+        while ((b & 0x80) != 0 && shift != 77) {
+            b = peek1(data, currentOffset);
+            result |= ((b & 0x7FL) << shift);
+            shift += 7;
+            currentOffset++;
         }
-        b = data[initialOffset + 1];
-        result |= (b & 0x7F) << 7;
-        if ((b & 0x80) == 0) {
-            if ((b & 0x40) != 0) {
-                result |= (~0 << 14);
+
+        if (checkValid) {
+            if (shift == 77) {
+                throw WasmException.create(Failure.INTEGER_REPRESENTATION_TOO_LONG);
+            } else if (shift == 70 && (b & 0b0111_1110) != 0) {
+                throw WasmException.create(Failure.INTEGER_TOO_LARGE);
             }
-            return packValueAndLength(result, 2);
         }
-        b = data[initialOffset + 2];
-        result |= (b & 0x7F) << 14;
-        if ((b & 0x80) == 0) {
-            if ((b & 0x40) != 0) {
-                result |= (~0 << 21);
-            }
-            return packValueAndLength(result, 3);
-        }
-        b = data[initialOffset + 3];
-        result |= (b & 0x7F) << 21;
-        if ((b & 0x80) == 0) {
-            if ((b & 0x40) != 0) {
-                result |= (~0 << 28);
-            }
-            return packValueAndLength(result, 4);
-        }
-        b = data[initialOffset + 4];
-        result |= (b & 0x7F) << 28;
-        return packValueAndLength(result, 5);
+
+        return result;
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
@@ -263,30 +214,6 @@ public abstract class BinaryStreamParser {
             throw WasmException.format(Failure.UNEXPECTED_END, "The binary is truncated at: %d", initialOffset);
         }
         return data[initialOffset];
-    }
-
-    public static byte rawPeek1(byte[] data, int initialOffset) {
-        return data[initialOffset];
-    }
-
-    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
-    public static int peek4(byte[] data, int initialOffset) {
-        int result = 0;
-        for (int i = 0; i != 4; ++i) {
-            int x = peek1(data, initialOffset + i) & 0xFF;
-            result |= x << 8 * i;
-        }
-        return result;
-    }
-
-    @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
-    public static long peek8(byte[] data, int initialOffset) {
-        long result = 0;
-        for (int i = 0; i != 8; ++i) {
-            long x = peek1(data, initialOffset + i) & 0xFF;
-            result |= x << 8 * i;
-        }
-        return result;
     }
 
     protected int read4() {
@@ -384,45 +311,118 @@ public abstract class BinaryStreamParser {
         return length;
     }
 
+    // region bytecode
+
     /**
-     * Manually unrolled version of {@link #peekLeb128Length(byte[], int)}.
+     * Reads the unsigned byte value at the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @return the unsigned byte value at the given bytecode offset.
      */
-    public static byte rawPeekLeb128IntLength(byte[] data, int initialOffset) {
-        byte b = data[initialOffset];
-        if ((b & 0x80) == 0) {
-            return 1;
-        }
-        b = data[initialOffset + 1];
-        if ((b & 0x80) == 0) {
-            return 2;
-        }
-        b = data[initialOffset + 2];
-        if ((b & 0x80) == 0) {
-            return 3;
-        }
-        b = data[initialOffset + 3];
-        if ((b & 0x80) == 0) {
-            return 4;
-        }
-        return 5;
+    public static int rawPeekU8(byte[] bytecode, int offset) {
+        return bytecode[offset] & 0xFF;
     }
 
-    @TruffleBoundary
-    protected void removeSection(int startOffset, int size) {
-        final int endOffset = startOffset + size;
-        final byte[] updatedData = new byte[data.length - size];
-        System.arraycopy(data, 0, updatedData, 0, startOffset);
-        final int remainingLength = data.length - endOffset;
-        if (remainingLength != 0) {
-            System.arraycopy(data, endOffset, updatedData, startOffset, remainingLength);
-        }
-        data = updatedData;
+    /**
+     * Reads the signed byte value at the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @return The signed byte value at the given bytecode offset.
+     */
+    public static byte rawPeekI8(byte[] bytecode, int offset) {
+        return bytecode[offset];
     }
 
-    protected void replaceInstruction(int instructionOffset, byte newInstruction) {
-        if (instructionOffset < 0 || instructionOffset >= data.length) {
-            throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, "Cannot replace out of bounds opcode");
-        }
-        data[instructionOffset] = newInstruction;
+    /**
+     * Reads the unsigned short value at the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @return The unsigned short value at the given bytecode offset.
+     */
+    public static int rawPeekU16(byte[] bytecode, int offset) {
+        return ((bytecode[offset] & 0xFF) | ((bytecode[offset + 1] & 0xFF) << 8));
     }
+
+    /**
+     * Writes the unsigned short value to the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @param value The value that should be written
+     */
+    public static void writeU16(byte[] bytecode, int offset, int value) {
+        final byte low = (byte) (value & 0xFF);
+        final byte high = (byte) ((value >> 8) & 0xFF);
+        bytecode[offset] = low;
+        bytecode[offset + 1] = high;
+    }
+
+    /**
+     * Reads the unsigned integer value at the given bytecode offset.
+     *
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @return The unsigned integer value at the given bytecode offset.
+     */
+    public static long rawPeekU32(byte[] bytecode, int offset) {
+        return (bytecode[offset] & 0xFFL) |
+                        ((bytecode[offset + 1] & 0xFFL) << 8) |
+                        ((bytecode[offset + 2] & 0xFFL) << 16) |
+                        ((bytecode[offset + 3] & 0xFFL) << 24);
+    }
+
+    /**
+     * Reads the signed integer value at the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode.
+     * @return The signed integer value at the given bytecode offset.
+     */
+    public static int rawPeekI32(byte[] bytecode, int offset) {
+        return (bytecode[offset] & 0xFF) |
+                        ((bytecode[offset + 1] & 0xFF) << 8) |
+                        ((bytecode[offset + 2] & 0xFF) << 16) |
+                        ((bytecode[offset + 3] & 0xFF) << 24);
+    }
+
+    /**
+     * Reads the signed long value at the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode.
+     * @return The signed long value at the given bytecode offset.
+     */
+    public static long rawPeekI64(byte[] bytecode, int offset) {
+        return (bytecode[offset] & 0xFFL) |
+                        ((bytecode[offset + 1] & 0xFFL) << 8) |
+                        ((bytecode[offset + 2] & 0xFFL) << 16) |
+                        ((bytecode[offset + 3] & 0xFFL) << 24) |
+                        ((bytecode[offset + 4] & 0xFFL) << 32) |
+                        ((bytecode[offset + 5] & 0xFFL) << 40) |
+                        ((bytecode[offset + 6] & 0xFFL) << 48) |
+                        ((bytecode[offset + 7] & 0xFFL) << 56);
+    }
+
+    /**
+     * Writes the signed long value to the given bytecode offset.
+     * 
+     * @param bytecode The bytecode
+     * @param offset The offset in the bytecode
+     * @param value The value that should be written
+     */
+    public static void writeI64(byte[] bytecode, int offset, long value) {
+        bytecode[offset] = (byte) (value & 0xFF);
+        bytecode[offset + 1] = (byte) ((value >> 8) & 0xFF);
+        bytecode[offset + 2] = (byte) ((value >> 16) & 0xFF);
+        bytecode[offset + 3] = (byte) ((value >> 24) & 0xFF);
+        bytecode[offset + 4] = (byte) ((value >> 32) & 0xFF);
+        bytecode[offset + 5] = (byte) ((value >> 40) & 0xFF);
+        bytecode[offset + 6] = (byte) ((value >> 48) & 0xFF);
+        bytecode[offset + 7] = (byte) ((value >> 56) & 0xFF);
+    }
+
+    // endregion
 }

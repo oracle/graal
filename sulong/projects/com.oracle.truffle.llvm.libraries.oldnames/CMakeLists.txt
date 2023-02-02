@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(com.oracle.truffle.llvm.libraries.oldnames)
 
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR})

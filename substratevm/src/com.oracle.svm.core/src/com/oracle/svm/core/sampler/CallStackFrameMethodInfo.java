@@ -27,6 +27,7 @@ package com.oracle.svm.core.sampler;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.thread.Safepoint;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -36,8 +37,8 @@ public class CallStackFrameMethodInfo {
     protected static final int INITIAL_METHOD_ID = -1;
 
     private final Map<Integer, String> sampledMethods = new HashMap<>();
-    private int enterSafepointCheckId = INITIAL_METHOD_ID;
-    private int enterSafepointFromNativeId = INITIAL_METHOD_ID;
+    @UnknownPrimitiveField private int enterSafepointCheckId = INITIAL_METHOD_ID;
+    @UnknownPrimitiveField private int enterSafepointFromNativeId = INITIAL_METHOD_ID;
 
     public void addMethodInfo(ResolvedJavaMethod method, int methodId) {
         String formattedMethod = formatted(method);
@@ -66,10 +67,5 @@ public class CallStackFrameMethodInfo {
 
     public boolean isSamplingCodeEntry(int methodId) {
         return enterSafepointCheckId == methodId || enterSafepointFromNativeId == methodId;
-    }
-
-    public void setEnterSamplingCodeMethodId(int i) {
-        enterSafepointCheckId = i;
-        enterSafepointFromNativeId = i;
     }
 }

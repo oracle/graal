@@ -54,12 +54,7 @@ public class VMFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(VM.class, createVMSingletonValue());
-    }
-
-    protected VM createVMSingletonValue() {
-        String config = System.getProperty("org.graalvm.config", "CE");
-        return new VM(config);
+        ImageSingletons.add(VM.class, new VM());
     }
 
     @Override

@@ -63,7 +63,7 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -108,7 +108,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     private static class FixReadsClosure extends ScheduledNodeIterator {
 
         @Override
-        protected void processNode(Node node, Block block, ScheduleResult schedule, ListIterator<Node> iter) {
+        protected void processNode(Node node, HIRBlock block, ScheduleResult schedule, ListIterator<Node> iter) {
             if (node instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) node;
                 for (MemoryPhiNode memoryPhi : mergeNode.memoryPhis().snapshot()) {
@@ -299,10 +299,10 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             if (abstractMerge instanceof MergeNode) {
                 MergeNode merge = (MergeNode) abstractMerge;
 
-                NodeMap<Block> blockToNodeMap = this.schedule.getNodeToBlockMap();
-                Block mergeBlock = blockToNodeMap.get(merge);
-                Block mergeBlockDominator = mergeBlock.getDominator();
-                Block currentBlock = blockToNodeMap.get(node);
+                NodeMap<HIRBlock> blockToNodeMap = this.schedule.getNodeToBlockMap();
+                HIRBlock mergeBlock = blockToNodeMap.get(merge);
+                HIRBlock mergeBlockDominator = mergeBlock.getDominator();
+                HIRBlock currentBlock = blockToNodeMap.get(node);
 
                 EconomicMap<ValueNode, Stamp> currentEndMap = endMaps.get(merge);
 
@@ -336,7 +336,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                                 continue;
                             }
 
-                            Block block = getBlock(nodeWithNewStamp, blockToNodeMap);
+                            HIRBlock block = getBlock(nodeWithNewStamp, blockToNodeMap);
                             if (block == null || block.getId() <= mergeBlockDominator.getId()) {
                                 // Node with new stamp in path to the merge block dominator and that
                                 // at the same time was defined at least in the merge block
@@ -370,7 +370,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private static Block getBlock(ValueNode node, NodeMap<Block> blockToNodeMap) {
+        private static HIRBlock getBlock(ValueNode node, NodeMap<HIRBlock> blockToNodeMap) {
             if (node instanceof PhiNode) {
                 PhiNode phiNode = (PhiNode) node;
                 return blockToNodeMap.get(phiNode.merge());
@@ -565,7 +565,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         }
 
         @Override
-        public Integer enter(Block b) {
+        public Integer enter(HIRBlock b) {
             int mark = undoOperations.size();
             blockActionStart.put(b, mark);
             for (Node n : schedule.getBlockToNodesMap().get(b)) {
@@ -577,7 +577,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         }
 
         @Override
-        public void exit(Block b, Integer state) {
+        public void exit(HIRBlock b, Integer state) {
             int mark = state;
             while (undoOperations.size() > mark) {
                 Node node = undoOperations.pop();
@@ -609,7 +609,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         schedulePhase.apply(graph, context);
         ScheduleResult schedule = graph.getLastSchedule();
         FixReadsClosure fixReadsClosure = new FixReadsClosure();
-        for (Block block : schedule.getCFG().getBlocks()) {
+        for (HIRBlock block : schedule.getCFG().getBlocks()) {
             fixReadsClosure.processNodes(block, schedule);
         }
 

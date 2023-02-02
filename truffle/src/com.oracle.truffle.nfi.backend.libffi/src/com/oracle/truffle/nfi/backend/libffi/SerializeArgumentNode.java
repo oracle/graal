@@ -74,6 +74,8 @@ import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetInt
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetLongArrayTagNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetShortArrayTagNodeGen;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 abstract class SerializeArgumentNode extends Node {
 
     final CachedTypeInfo type;
@@ -303,11 +305,13 @@ abstract class SerializeArgumentNode extends Node {
             }
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasBufferElements() {
             return true;
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean isBufferWritable() {
             return true;
@@ -359,11 +363,13 @@ abstract class SerializeArgumentNode extends Node {
             buffer.putDouble(value);
         }
 
+        @SuppressWarnings({"static-method", "unused"})
         @ExportMessage
         byte readBufferByte(long offset) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
 
+        @SuppressWarnings({"static-method", "unused"})
         @ExportMessage(name = "readBufferShort")
         @ExportMessage(name = "readBufferInt")
         @ExportMessage(name = "readBufferLong")

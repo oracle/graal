@@ -100,7 +100,7 @@ public final class PosixVMThreads extends VMThreads {
     @CFunction(value = "fdopen", transition = Transition.NO_TRANSITION)
     private static native FILE fdopen(int fd, CCharPointer mode);
 
-    @CFunction(value = "fprintf", transition = Transition.NO_TRANSITION)
+    @CFunction(value = "fprintfSD", transition = Transition.NO_TRANSITION)
     private static native int fprintfSD(FILE stream, CCharPointer format, CCharPointer arg0, int arg1);
 
     private static final CGlobalData<CCharPointer> FAIL_FATALLY_FDOPEN_MODE = CGlobalDataFactory.createCString("w");

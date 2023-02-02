@@ -45,7 +45,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
@@ -119,8 +119,8 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
     }
 
     private static void exitLoops(AbstractDeoptimizeNode deopt, EndNode end, ControlFlowGraph cfg) {
-        Block block = cfg.blockFor(deopt);
-        Loop<Block> loop = block.getLoop();
+        HIRBlock block = cfg.blockFor(deopt);
+        Loop<HIRBlock> loop = block.getLoop();
         while (loop != null) {
             end.graph().addBeforeFixed(end, end.graph().add(new LoopExitNode((LoopBeginNode) loop.getHeader().getBeginNode())));
             loop = loop.getParent();

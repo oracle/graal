@@ -298,7 +298,7 @@ public class HeapSnapshotVerifier {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         private void ensureTypeScanned(JavaConstant value, JavaConstant typeConstant, AnalysisType type, ScanReason reason) {
-            AnalysisError.guarantee(type.isReachable(), "The heap snapshot verifier discovered a type not marked as reachable " + type.toJavaName());
+            AnalysisError.guarantee(type.isReachable(), "The heap snapshot verifier discovered a type not marked as reachable: %s", type);
             Object task = imageHeap.getTask(typeConstant);
             /* Make sure the DynamicHub value is scanned. */
             if (task == null) {

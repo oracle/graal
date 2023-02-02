@@ -59,7 +59,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -390,7 +390,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
          * actual invoke. This allows us to not inline calls that were preceded by a transfer to
          * interpreter.
          */
-        for (Block block : cfg.reversePostOrder()) {
+        for (HIRBlock block : cfg.reversePostOrder()) {
 
             if (block.getEndNode() instanceof IfNode) {
                 /*
@@ -429,7 +429,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                             if (input instanceof Invoke) {
                                 ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
                                 if (targetMethod != null && isInInterpreter(targetMethod)) {
-                                    Block dominatedSilbling = block.getFirstDominated();
+                                    HIRBlock dominatedSilbling = block.getFirstDominated();
                                     while (dominatedSilbling != null) {
                                         inInterpreterBlocks.add(dominatedSilbling.getBeginNode());
                                         dominatedSilbling = dominatedSilbling.getDominatedSibling();
@@ -557,11 +557,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      * to check whether the current block is deoptimized itself or one of the current blocks
      * dominators is.
      */
-    private static boolean isBlockOrDominatorContainedIn(Block currentBlock, EconomicSet<AbstractBeginNode> blocks) {
+    private static boolean isBlockOrDominatorContainedIn(HIRBlock currentBlock, EconomicSet<AbstractBeginNode> blocks) {
         if (blocks.isEmpty()) {
             return false;
         }
-        Block dominator = currentBlock;
+        HIRBlock dominator = currentBlock;
         while (dominator != null) {
             if (blocks.contains(dominator.getBeginNode())) {
                 return true;

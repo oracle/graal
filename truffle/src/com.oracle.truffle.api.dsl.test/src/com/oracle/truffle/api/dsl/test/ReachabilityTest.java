@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.BExtendsAbstract;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class ReachabilityTest {
 
     static class Reachability1 extends ValueNode {

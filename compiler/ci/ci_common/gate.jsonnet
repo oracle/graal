@@ -45,14 +45,14 @@
   weekly:: {
     notify_groups: ["compiler_weekly"],
     targets: ["weekly"],
-    timelimit: "2:00:00",
+    timelimit: "3:00:00",
   },
 
   monthly:: {
     # No need for a dedicated mailing list for monthlies yet
     notify_groups: ["compiler_weekly"],
     targets: ["monthly"],
-    timelimit: "2:00:00",
+    timelimit: "3:00:00",
   },
 
   test:: s.base(no_warning_as_error=true),

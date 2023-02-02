@@ -28,8 +28,6 @@ import java.lang.reflect.AnnotatedElement;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.util.AnnotationWrapper;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
@@ -71,7 +69,7 @@ public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaTyp
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalClassProvider.getJavaClass(original);
     }
 
     @Override

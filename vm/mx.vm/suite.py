@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
     "version" : "23.0.0",
-    "mxversion" : "6.11.4",
+    "mxversion": "6.14.18",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "cb2d8885dda384e1095d13c266166fca2ce2cffe",
+                "version": "f0db8c7c7360eb8de2e5ca65149737798ea00c0a",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "cb2d8885dda384e1095d13c266166fca2ce2cffe",
+                "version": "f0db8c7c7360eb8de2e5ca65149737798ea00c0a",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "1b26e51faf902217615664ce803172fefd75035e",
+                "version": "dd8609b306c1558e6071d4e76424da82e1481325",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "e1badd6dd8d338f92a87fa8a675f0379e63d93a5",
+                "version": "5c3425b54d567beab234f4be6616b8a04f52ba74",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "95ee7655af4588b94de975c926cc239439d5b723",
+                "version": "e6abc3b6382ae7a2d261aeceed4ddc7a71b25d37",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -97,7 +97,7 @@ suite = {
         "org.graalvm.component.installer" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "11+",
+            "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
             "checkstyleVersion" : "8.36.1",
             "dependencies": [
@@ -113,7 +113,7 @@ suite = {
                 "mx:JUNIT",
                 "org.graalvm.component.installer"
             ],
-            "javaCompliance" : "11+",
+            "javaCompliance" : "17+",
             "checkstyle": "org.graalvm.component.installer",
             "license" : "GPLv2-CPE",
             "requires" : ["java.logging"],
@@ -121,7 +121,7 @@ suite = {
         "org.graalvm.polybench" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "11+",
+            "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
@@ -136,7 +136,7 @@ suite = {
         "org.graalvm.polybench.micro" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "11+",
+            "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
@@ -145,11 +145,12 @@ suite = {
             "annotationProcessors": [
                 "truffle:TRUFFLE_DSL_PROCESSOR",
             ],
+            "spotbugsIgnoresGenerated" : True,
         },
         "org.graalvm.polybench.instruments" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "11+",
+            "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [

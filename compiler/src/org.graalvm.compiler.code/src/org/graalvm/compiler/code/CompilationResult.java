@@ -28,6 +28,8 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableList;
 import static jdk.vm.ci.meta.MetaUtil.identityHashCodeString;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -38,6 +40,7 @@ import java.util.Objects;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -80,7 +83,7 @@ public class CompilationResult {
 
         @Override
         public final int hashCode() {
-            throw new UnsupportedOperationException("hashCode");
+            throw new UnsupportedOperationException("hashCode"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -93,10 +96,6 @@ public class CompilationResult {
 
         public int getPosition() {
             return position;
-        }
-
-        void setPosition(int position) {
-            this.position = position;
         }
     }
 
@@ -852,10 +851,6 @@ public class CompilationResult {
         infopoints.clear();
     }
 
-    public void clearExceptionHandlers() {
-        exceptionHandlers.clear();
-    }
-
     private void checkOpen() {
         if (closed) {
             throw new IllegalStateException();
@@ -871,5 +866,23 @@ public class CompilationResult {
         }
         dataSection.close(options, minDataSectionItemAlignment);
         closed = true;
+    }
+
+    public String getCodeSignature() {
+        return getSignature(getTargetCode());
+    }
+
+    public static String getSignature(byte[] data) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(data);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest.digest()) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new GraalError(e);
+        }
     }
 }

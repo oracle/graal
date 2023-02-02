@@ -50,7 +50,6 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 @NodeInfo(nameTemplate = "MathIntrinsic#{p#operation/s}", cycles = CYCLES_1024, cyclesRationale = "stub based math intrinsics all have roughly the same high cycle count", size = SIZE_1)
 public final class BinaryMathIntrinsicNode extends BinaryNode implements ArithmeticLIRLowerable, Lowerable {
@@ -155,12 +154,10 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
                     }
 
                     // x**0.5 = sqrt(x)
-                    if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                        // Note that Math.pow(Double.MAX_VALUE, 0.5) returns different value than
-                        // Math.sqrt(Double.MAX_VALUE) until Java 17.
-                        if (yValue == 0.5D && x.stamp(view) instanceof FloatStamp && ((FloatStamp) x.stamp(view)).lowerBound() >= 0.0D) {
-                            return SqrtNode.create(x, view);
-                        }
+                    // Note that Math.pow(Double.MAX_VALUE, 0.5) returns different value than
+                    // Math.sqrt(Double.MAX_VALUE) until Java 17.
+                    if (yValue == 0.5D && x.stamp(view) instanceof FloatStamp && ((FloatStamp) x.stamp(view)).lowerBound() >= 0.0D) {
+                        return SqrtNode.create(x, view);
                     }
                 }
                 break;

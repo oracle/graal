@@ -43,7 +43,6 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -210,7 +209,7 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     }
 
     static Class<?> getJavaClass(ResolvedJavaType type) {
-        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), type);
+        return OriginalClassProvider.getJavaClass(type);
     }
 
     @Override

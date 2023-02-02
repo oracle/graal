@@ -433,6 +433,7 @@ public final class UnimplementedGraalIntrinsics {
 
         if (JAVA_SPEC >= 20) {
             add(toBeInvestigated,
+                            "com/sun/crypto/provider/ChaCha20Cipher.implChaCha20Block([I[B)I",
                             "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V",
                             "java/lang/Double.isFinite(D)Z",
                             "java/lang/Float.float16ToFloat(S)F",
@@ -442,6 +443,9 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/Integer.reverse(I)I",
                             "java/lang/Long.compareUnsigned(JJ)I",
                             "java/lang/Long.reverse(J)J",
+                            "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
+                            "java/lang/Thread.scopedValueCache()[Ljava/lang/Object;",
+                            "java/lang/Thread.setScopedValueCache([Ljava/lang/Object;)V",
                             // @formatter:off
                             "jdk/internal/vm/vector/VectorSupport.indexVector(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$IndexOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;");
                             // @formatter:on

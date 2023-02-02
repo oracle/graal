@@ -70,9 +70,11 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.interop.CandidateMethodWithArgs;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupInstanceFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
+import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -546,7 +548,7 @@ public class EspressoInterop extends BaseInterop {
                 boolValue = valueLib.asBoolean(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<byte[]> unwrap(language)[(int) index] = boolValue ? (byte) 1 : (byte) 0;
         }
@@ -572,7 +574,7 @@ public class EspressoInterop extends BaseInterop {
                 charValue = s.charAt(0);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<char[]> unwrap(language)[(int) index] = charValue;
         }
@@ -592,7 +594,7 @@ public class EspressoInterop extends BaseInterop {
                 byteValue = valueLib.asByte(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<byte[]> unwrap(language)[(int) index] = byteValue;
         }
@@ -612,7 +614,7 @@ public class EspressoInterop extends BaseInterop {
                 shortValue = valueLib.asShort(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<short[]> unwrap(language)[(int) index] = shortValue;
         }
@@ -632,7 +634,7 @@ public class EspressoInterop extends BaseInterop {
                 intValue = valueLib.asInt(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<int[]> unwrap(language)[(int) index] = intValue;
         }
@@ -652,7 +654,7 @@ public class EspressoInterop extends BaseInterop {
                 longValue = valueLib.asLong(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<long[]> unwrap(language)[(int) index] = longValue;
         }
@@ -672,7 +674,7 @@ public class EspressoInterop extends BaseInterop {
                 floatValue = valueLib.asFloat(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<float[]> unwrap(language)[(int) index] = floatValue;
         }
@@ -692,7 +694,7 @@ public class EspressoInterop extends BaseInterop {
                 doubleValue = valueLib.asDouble(value);
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<double[]> unwrap(language)[(int) index] = doubleValue;
         }
@@ -712,7 +714,7 @@ public class EspressoInterop extends BaseInterop {
                 stringValue = receiver.getKlass().getMeta().toGuestString(valueLib.asString(value));
             } catch (UnsupportedMessageException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<StaticObject[]> unwrap(language)[(int) index] = stringValue;
         }
@@ -735,6 +737,11 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
+        @TruffleBoundary
+        private static String getMessageBoundary(Throwable e) {
+            return e.getMessage();
+        }
+
         @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)", "!isStaticObject(value)"})
         static void doEspressoGeneric(StaticObject receiver, long index, Object value,
                         @CachedLibrary("receiver") InteropLibrary receiverLib,
@@ -751,7 +758,7 @@ public class EspressoInterop extends BaseInterop {
                 espressoValue = (StaticObject) toEspressoNode.execute(value, componentType);
             } catch (UnsupportedOperationException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
             }
             receiver.<StaticObject[]> unwrap(language)[(int) index] = espressoValue;
         }
@@ -989,7 +996,8 @@ public class EspressoInterop extends BaseInterop {
                     Object[] arguments,
                     @Exclusive @Cached LookupVirtualMethodNode lookupMethod,
                     @Exclusive @Cached OverLoadedMethodSelectorNode selectorNode,
-                    @Exclusive @Cached InvokeEspressoNode invoke)
+                    @Exclusive @Cached InvokeEspressoNode invoke,
+                    @Exclusive @Cached ToEspressoNode toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
         if (candidates != null) {
@@ -998,19 +1006,27 @@ public class EspressoInterop extends BaseInterop {
                 Method m = candidates[0];
                 assert !m.isStatic() && m.isPublic();
                 assert member.startsWith(m.getNameAsString());
-                assert m.getParameterCount() == arguments.length;
-                return invoke.execute(m, receiver, arguments);
+                if (!m.isVarargs()) {
+                    assert m.getParameterCount() == arguments.length;
+                    return invoke.execute(m, receiver, arguments);
+                } else {
+                    CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
+                    if (matched != null) {
+                        matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                        if (matched != null) {
+                            return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
+                        }
+                    }
+                }
             } else {
                 // multiple overloaded methods found
                 // find method with type matches
-                OverLoadedMethodSelectorNode.OverloadedMethodWithArgs[] typeMatched = selectorNode.execute(candidates, arguments);
-                if (typeMatched != null && typeMatched.length == 1) {
+                CandidateMethodWithArgs typeMatched = selectorNode.execute(candidates, arguments);
+                if (typeMatched != null) {
                     // single match found!
-                    return invoke.execute(typeMatched[0].getMethod(), receiver, typeMatched[0].getConvertedArgs(), true);
+                    return invoke.execute(typeMatched.getMethod(), receiver, typeMatched.getConvertedArgs(), true);
                 } else {
-                    // We could try to de-disambiguate by selecting the most
-                    // specific method overload if any.
-                    // See: HostExecuteNode.findMostSpecificOverload
+                    // unable to select exactly one best candidate for the input args!
                     throw UnknownIdentifierException.create(member);
                 }
             }

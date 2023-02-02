@@ -36,7 +36,6 @@ import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 
 import com.oracle.svm.core.graal.llvm.LLVMGenerator;
-import com.oracle.svm.core.graal.llvm.LLVMGenerator.SpecialRegister;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
@@ -152,10 +151,10 @@ public class LLVMUtils {
      */
     public static class LLVMPendingSpecialRegisterRead extends LLVMVariable implements LLVMValueWrapper {
         private final LLVMGenerator gen;
-        private final SpecialRegister reg;
+        private final LLVMValueRef reg;
         private final LLVMValueRef offset;
 
-        public LLVMPendingSpecialRegisterRead(LLVMGenerator gen, SpecialRegister reg) {
+        public LLVMPendingSpecialRegisterRead(LLVMGenerator gen, LLVMValueRef reg) {
             this(gen, reg, null);
         }
 
@@ -163,7 +162,7 @@ public class LLVMUtils {
             this(pendingRead.gen, pendingRead.reg, offset);
         }
 
-        private LLVMPendingSpecialRegisterRead(LLVMGenerator gen, SpecialRegister reg, LLVMValueRef offset) {
+        private LLVMPendingSpecialRegisterRead(LLVMGenerator gen, LLVMValueRef reg, LLVMValueRef offset) {
             super(LLVMKind.toLIRKind(gen.getBuilder().wordType()));
             this.gen = gen;
             this.reg = reg;
@@ -173,7 +172,7 @@ public class LLVMUtils {
         @Override
         public LLVMValueRef get() {
             LLVMIRBuilder builder = gen.getBuilder();
-            LLVMValueRef register = gen.getSpecialRegisterValue(reg);
+            LLVMValueRef register = builder.buildReadRegister(reg);
             return offset == null ? register : builder.buildGEP(builder.buildIntToPtr(register, builder.rawPointerType()), offset);
         }
     }

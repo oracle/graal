@@ -45,6 +45,9 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexValidator;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+
+import java.util.function.BiPredicate;
 
 /**
  * An implementation of a dialect (flavor) of regular expressions other than ECMAScript. It provides
@@ -58,6 +61,8 @@ public abstract class RegexFlavor {
     protected static final int FAILING_EMPTY_CHECKS_DONT_BACKTRACK = 1 << 3;
     protected static final int USES_LAST_GROUP_RESULT_FIELD = 1 << 4;
     protected static final int LOOKBEHINDS_RUN_LEFT_TO_RIGHT = 1 << 5;
+    protected static final int NEEDS_GROUP_START_POSITIONS = 1 << 6;
+    protected static final int HAS_CONDITIONAL_BACKREFERENCES = 1 << 7;
 
     private final int traits;
 
@@ -68,6 +73,8 @@ public abstract class RegexFlavor {
     public abstract RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer);
 
     public abstract RegexValidator createValidator(RegexSource source);
+
+    public abstract BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast);
 
     private boolean hasTrait(int traitMask) {
         return (traits & traitMask) != 0;
@@ -99,5 +106,17 @@ public abstract class RegexFlavor {
 
     public boolean lookBehindsRunLeftToRight() {
         return hasTrait(LOOKBEHINDS_RUN_LEFT_TO_RIGHT);
+    }
+
+    public boolean needsGroupStartPositions() {
+        return hasTrait(NEEDS_GROUP_START_POSITIONS);
+    }
+
+    public boolean hasConditionalBackReferences() {
+        return hasTrait(HAS_CONDITIONAL_BACKREFERENCES);
+    }
+
+    public boolean matchesTransitionsStepByStep() {
+        return emptyChecksMonitorCaptureGroups() || hasConditionalBackReferences();
     }
 }

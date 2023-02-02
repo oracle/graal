@@ -75,7 +75,7 @@ public class LimitTest {
 
     @NodeChild
     static class DefaultLimit3Test extends ValueNode {
-        @Specialization(guards = "value == cachedValue")
+        @Specialization(guards = "value == cachedValue", limit = "3")
         static int do1(int value, @Cached("value") int cachedValue) {
             return cachedValue;
         }

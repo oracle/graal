@@ -7,7 +7,7 @@
 
   local main_builds = std.flattenArrays([
     [
-    c.daily      + hw.x52 + jdk + cc.libgraal + bench.dacapo,
+    c.daily      + hw.x52 + jdk + cc.libgraal + bench.dacapo + { unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time']}},
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.dacapo,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.dacapo_size_variants,
     c.weekly     + hw.x52 + jdk + cc.jargraal + bench.dacapo_size_variants,
@@ -19,7 +19,7 @@
     c.weekly     + hw.x52 + jdk + cc.jargraal + bench.scala_dacapo_size_variants,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo_timing,
     c.weekly     + hw.x52 + jdk + cc.jargraal + bench.scala_dacapo_timing,
-    c.daily      + hw.x52 + jdk + cc.libgraal + bench.renaissance,
+    c.daily      + hw.x52 + jdk + cc.libgraal + bench.renaissance + {unicorn_pull_request_benchmarking:: 'libgraal'},
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.renaissance,
     c.daily      + hw.x52 + jdk + cc.libgraal + bench.specjvm2008,
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.specjvm2008,
@@ -29,7 +29,7 @@
     c.monthly    + hw.x52 + jdk + cc.jargraal + bench.specjbb2015_full_machine,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.renaissance_0_11,
     c.monthly    + hw.x52 + jdk + cc.jargraal + bench.renaissance_0_11,
-    c.daily      + hw.x52 + jdk + cc.libgraal + bench.awfy,
+    c.daily      + hw.x52 + jdk + cc.libgraal + bench.awfy + {unicorn_pull_request_benchmarking:: 'libgraal'},
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.awfy,
     c.daily      + hw.x52 + jdk + cc.libgraal + bench.microservice_benchmarks,
     c.weekly     + hw.x52 + jdk + cc.jargraal + bench.microservice_benchmarks,

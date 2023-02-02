@@ -127,7 +127,7 @@ public abstract class InlinedFieldAccessNode extends InlinedMethodNode.BodyNode 
         assert isInlineCandidate(inlinedMethod.getMethod(), opCode);
         boolean isDefinitive = isResolutionSuccessAt(inlinedMethod, fieldCpi);
         if (isDefinitive) {
-            if (isUnconditionalInlineCandidate(inlinedMethod.getMethod(), opCode)) {
+            if (isUnconditionalInlineCandidate(opCode)) {
                 return ConditionalInlinedMethodNode.getDefinitiveNode(recipes, inlinedMethod, top, opCode, curBCI, statementIndex);
             } else {
                 return GuardedConditionalInlinedMethodNode.getDefinitiveNode(recipes, InlinedMethodPredicate.LEAF_ASSUMPTION_CHECK,
@@ -135,7 +135,7 @@ public abstract class InlinedFieldAccessNode extends InlinedMethodNode.BodyNode 
             }
         }
         InlinedMethodPredicate condition = (context, version, frame, node) -> isResolutionSuccessAt(version, fieldCpi);
-        if (isUnconditionalInlineCandidate(inlinedMethod.getMethod(), opCode)) {
+        if (isUnconditionalInlineCandidate(opCode)) {
             return new ConditionalInlinedMethodNode(inlinedMethod, top, opCode, curBCI, statementIndex, recipes, condition);
         } else {
             return new GuardedConditionalInlinedMethodNode(inlinedMethod, top, opCode, curBCI, statementIndex, recipes, condition, InlinedMethodPredicate.LEAF_ASSUMPTION_CHECK);

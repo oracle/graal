@@ -190,6 +190,10 @@ public final class DebugContext implements AutoCloseable {
         return Versions.VERSIONS.withVersions(properties);
     }
 
+    public CompilationListener getCompilationListener() {
+        return compilationListener;
+    }
+
     /**
      * The immutable configuration that can be shared between {@link DebugContext} objects.
      */
@@ -662,11 +666,15 @@ public final class DebugContext implements AutoCloseable {
     }
 
     public String getDumpPath(String extension, boolean createMissingDirectory) {
+        return getDumpPath(extension, createMissingDirectory, ShowDumpFiles.getValue(immutable.options));
+    }
+
+    public String getDumpPath(String extension, boolean createMissingDirectory, boolean showDumpFiles) {
         try {
             String id = description == null ? null : description.identifier;
             String label = description == null ? null : description.getLabel();
             String result = PathUtilities.createUnique(immutable.options, DumpPath, id, label, extension, createMissingDirectory);
-            if (ShowDumpFiles.getValue(immutable.options)) {
+            if (showDumpFiles) {
                 TTY.println(DUMP_FILE_MESSAGE_FORMAT, result);
             }
             return result;
@@ -743,10 +751,6 @@ public final class DebugContext implements AutoCloseable {
 
     public boolean isCountEnabled() {
         return currentScope != null && currentScope.isCountEnabled();
-    }
-
-    public boolean isTimeEnabled() {
-        return currentScope != null && currentScope.isTimeEnabled();
     }
 
     public boolean isMemUseTrackingEnabled() {
@@ -1774,21 +1778,6 @@ public final class DebugContext implements AutoCloseable {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public <T> List<T> contextSnapshot(Class<T> clazz) {
-        if (currentScope != null) {
-            List<T> result = new ArrayList<>();
-            for (Object o : context()) {
-                if (clazz.isInstance(o)) {
-                    result.add((T) o);
-                }
-            }
-            return result;
-        } else {
-            return Collections.emptyList();
-        }
-    }
-
     /**
      * Searches the current debug scope, bottom up, for a context object that is an instance of a
      * given type. The first such object found is returned.
@@ -1906,26 +1895,6 @@ public final class DebugContext implements AutoCloseable {
             }
             return tally;
         }
-    }
-
-    /**
-     * Creates and returns a sorted map from metric names to their values in {@code values}.
-     *
-     * @param values values for metrics in the {@link KeyRegistry}.
-     */
-    public static EconomicMap<MetricKey, Long> convertValuesToKeyValueMap(long[] values) {
-        List<MetricKey> keys = KeyRegistry.getKeys();
-        Collections.sort(keys, MetricKey.NAME_COMPARATOR);
-        EconomicMap<MetricKey, Long> res = EconomicMap.create(keys.size());
-        for (MetricKey key : keys) {
-            int index = ((AbstractKey) key).getIndex();
-            if (index >= values.length) {
-                res.put(key, 0L);
-            } else {
-                res.put(key, values[index]);
-            }
-        }
-        return res;
     }
 
     void setMetricValue(int keyIndex, long l) {

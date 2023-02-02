@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jfr;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -36,18 +37,16 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
-import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.util.VMError;
 
 /**
  * A daemon thread that is created during JFR startup and torn down by
  * {@link SubstrateJVM#destroyJFR}.
- * <p>
- * It is used for persisting the {@link JfrGlobalMemory} buffers to a file and for processing the
- * pool of {@link SamplerBuffer}s collected in signal handler (see {@link SubstrateSigprofHandler}).
- * With that in mind, the thread is using {@link VMSemaphore} for a synchronization between threads
- * as it is async signal safe.
- * </p>
+ * 
+ * This class is primarily used for persisting the {@link JfrGlobalMemory} buffers to a file.
+ * Besides that, it is also used for processing full {@link SamplerBuffer}s. As
+ * {@link SamplerBuffer}s may also be filled in a signal handler, a {@link VMSemaphore} is used for
+ * notification because it is async-signal-safe.
  */
 public class JfrRecorderThread extends Thread {
     private static final int BUFFER_FULL_ENOUGH_PERCENTAGE = 50;
@@ -73,10 +72,6 @@ public class JfrRecorderThread extends Thread {
         this.semaphore = new VMSemaphore();
         this.atomicNotify = new UninterruptibleUtils.AtomicBoolean(false);
         setDaemon(true);
-    }
-
-    public void setStopped(boolean value) {
-        this.stopped = value;
     }
 
     @Override
@@ -115,8 +110,7 @@ public class JfrRecorderThread extends Thread {
     }
 
     private void run0() {
-        /* Process all unprocessed sampler buffers. */
-        SamplerBuffersAccess.processSamplerBuffers();
+        SamplerBuffersAccess.processFullBuffers(true);
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
             if (chunkWriter.hasOpenFile()) {
@@ -135,8 +129,11 @@ public class JfrRecorderThread extends Thread {
             if (isFullEnough(buffer)) {
                 boolean shouldNotify = persistBuffer(chunkWriter, buffer);
                 if (shouldNotify) {
-                    synchronized (Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE) {
-                        Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE.notifyAll();
+                    Object chunkRotationMonitor = JavaVersionUtil.JAVA_SPEC >= 20
+                                    ? Target_jdk_jfr_internal_JVM.CHUNK_ROTATION_MONITOR
+                                    : Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE;
+                    synchronized (chunkRotationMonitor) {
+                        chunkRotationMonitor.notifyAll();
                     }
                 }
             }
@@ -185,5 +182,15 @@ public class JfrRecorderThread extends Thread {
     private static boolean isFullEnough(JfrBuffer buffer) {
         UnsignedWord bufferTargetSize = buffer.getSize().multiply(100).unsignedDivide(BUFFER_FULL_ENOUGH_PERCENTAGE);
         return JfrBufferAccess.getAvailableSize(buffer).belowOrEqual(bufferTargetSize);
+    }
+
+    public void shutdown() {
+        this.stopped = true;
+        this.signal();
+        try {
+            this.join();
+        } catch (InterruptedException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
     }
 }

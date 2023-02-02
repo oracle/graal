@@ -32,14 +32,15 @@ import java.util.Arrays;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.AnnotationWrapper;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
+import com.oracle.svm.hosted.annotation.AnnotationWrapper;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -51,16 +52,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.nativeimage.AnnotationAccess;
 
 public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider, AnnotationWrapper {
 
     private final ResolvedJavaMethod original;
     private final ResolvedJavaMethod annotated;
+    private final AnnotationValue[] injectedAnnotations;
 
     public AnnotatedMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated) {
         this.original = original;
         this.annotated = annotated;
+        this.injectedAnnotations = SubstrateAnnotationExtractor.prepareInjectedAnnotations(annotated.getDeclaredAnnotations());
     }
 
     public ResolvedJavaMethod getOriginal() {
@@ -178,19 +180,13 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
     }
 
     @Override
+    public AnnotationValue[] getInjectedAnnotations() {
+        return injectedAnnotations;
+    }
+
+    @Override
     public AnnotatedElement getAnnotationRoot() {
-        return annotated;
-    }
-
-    @Override
-    public AnnotatedElement getSecondaryAnnotationRoot() {
         return original;
-    }
-
-    @Override
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public Class<? extends Annotation>[] getIgnoredAnnotations() {
-        return new Class[]{AnnotateOriginal.class};
     }
 
     @Override
@@ -260,6 +256,6 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
 
     @Override
     public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalMethodProvider.getJavaMethod(original);
     }
 }

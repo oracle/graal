@@ -203,6 +203,7 @@ public class GDSChannelTest extends CommandTestBase {
 
         TestGDSChannel(CommandInput aInput, Feedback aFeedback, ComponentRegistry aRegistry) {
             super(aInput, aFeedback, aRegistry);
+            setTokenStorage(new TestGDSTokenStorage(aFeedback, aInput));
         }
 
         @Override

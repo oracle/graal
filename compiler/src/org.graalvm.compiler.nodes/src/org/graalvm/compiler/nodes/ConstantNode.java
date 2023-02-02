@@ -45,7 +45,7 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -162,8 +162,8 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
      */
     private boolean onlyUsedInCurrentBlock() {
         assert graph().getLastSchedule() != null;
-        NodeMap<Block> nodeBlockMap = graph().getLastSchedule().getNodeToBlockMap();
-        Block currentBlock = nodeBlockMap.get(this);
+        NodeMap<HIRBlock> nodeBlockMap = graph().getLastSchedule().getNodeToBlockMap();
+        HIRBlock currentBlock = nodeBlockMap.get(this);
         for (Node usage : usages()) {
             if (currentBlock != nodeBlockMap.get(usage)) {
                 return false;

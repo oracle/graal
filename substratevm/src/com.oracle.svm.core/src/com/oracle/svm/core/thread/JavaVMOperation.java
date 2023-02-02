@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.core.thread;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfo;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.SplittableRandomAccessors;
@@ -50,6 +52,7 @@ import com.oracle.svm.core.util.VMError;
  */
 public abstract class JavaVMOperation extends VMOperation implements VMOperationControl.JavaAllocationFreeQueue.Element<JavaVMOperation> {
     protected IsolateThread queuingThread;
+    private long queuingThreadId;
     private JavaVMOperation next;
     private volatile boolean finished;
 
@@ -84,9 +87,8 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void setQueuingThread(NativeVMOperationData data, IsolateThread thread) {
-        queuingThread = thread;
+    protected long getQueuingThreadId(NativeVMOperationData data) {
+        return queuingThreadId;
     }
 
     @Override
@@ -96,8 +98,17 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void setFinished(NativeVMOperationData data, boolean value) {
-        finished = value;
+    protected void markAsQueued(NativeVMOperationData data) {
+        finished = false;
+        queuingThread = CurrentIsolate.getCurrentThread();
+        queuingThreadId = JavaThreads.getCurrentThreadIdOrZero();
+    }
+
+    @Override
+    protected void markAsFinished(NativeVMOperationData data) {
+        queuingThread = WordFactory.nullPointer();
+        queuingThreadId = 0;
+        finished = true;
     }
 
     @Override

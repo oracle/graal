@@ -44,6 +44,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.Field;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -113,6 +114,13 @@ public @interface RecomputeFieldValue {
          * @since 22.3
          */
         FieldOffset,
+        /**
+         * The static field base Object as it would be computed by
+         * {@link sun.misc.Unsafe#staticFieldBase(Field)}.
+         * 
+         * @since 23.0
+         */
+        StaticFieldBase,
         /**
          * The int or long field is set to the offset of the first array element of the array class
          * {@link #declClass}, as it would be computed by

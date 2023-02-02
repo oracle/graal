@@ -42,15 +42,12 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
-import com.oracle.truffle.regex.util.TRegexGuards;
 
-@ImportStatic(TRegexGuards.class)
 public abstract class InputIndexOfNode extends Node {
 
     public static InputIndexOfNode create() {
@@ -58,11 +55,6 @@ public abstract class InputIndexOfNode extends Node {
     }
 
     public abstract int execute(Object input, int fromIndex, int maxIndex, Object chars, Encoding encoding);
-
-    @Specialization
-    public int doBytes(byte[] input, int fromIndex, int maxIndex, byte[] bytes, @SuppressWarnings("unused") Encoding encoding) {
-        return ArrayUtils.indexOf(input, fromIndex, maxIndex, bytes);
-    }
 
     @Specialization
     public int doChars(String input, int fromIndex, int maxIndex, char[] chars, @SuppressWarnings("unused") Encoding encoding) {
@@ -87,33 +79,5 @@ public abstract class InputIndexOfNode extends Node {
                     @Cached TruffleString.IntIndexOfAnyIntUTF32Node indexOfRawValueNode) {
         assert encoding == Encodings.UTF_32;
         return indexOfRawValueNode.execute(input, fromIndex, maxIndex, ints);
-    }
-
-    @Specialization(guards = "neitherByteArrayNorString(input)")
-    public int doTruffleObjBytes(Object input, int fromIndex, int maxIndex, byte[] bytes, Encoding encoding,
-                    @Cached InputReadNode charAtNode) {
-        for (int i = fromIndex; i < maxIndex; i++) {
-            int c = charAtNode.execute(input, i, encoding);
-            for (byte v : bytes) {
-                if (c == Byte.toUnsignedInt(v)) {
-                    return i;
-                }
-            }
-        }
-        return -1;
-    }
-
-    @Specialization(guards = "neitherByteArrayNorString(input)")
-    public int doTruffleObjChars(Object input, int fromIndex, int maxIndex, char[] chars, Encoding encoding,
-                    @Cached InputReadNode charAtNode) {
-        for (int i = fromIndex; i < maxIndex; i++) {
-            int c = charAtNode.execute(input, i, encoding);
-            for (char v : chars) {
-                if (c == v) {
-                    return i;
-                }
-            }
-        }
-        return -1;
     }
 }

@@ -41,9 +41,15 @@ public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionP
     }
 
     @Override
-    public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
-        assert type instanceof AnalysisType : "AnalysisType is required; AnalysisType lazily creates array types of any depth, so type cannot be null";
-        return true;
+    public boolean canConstantFoldDynamicAllocation(ResolvedJavaType t) {
+        AnalysisType type = (AnalysisType) t;
+        if (type.universe.sealed()) {
+            /* Static analysis has finished, e.g., we are applying static analysis results. */
+            return type.isInstantiated();
+        } else {
+            /* Static analysis is still running, so it will mark the type as instantiated. */
+            return true;
+        }
     }
 
     @Override

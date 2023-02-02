@@ -51,8 +51,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import jdk.vm.ci.meta.ModifiersProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.Invoke;
@@ -74,6 +72,7 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
@@ -83,8 +82,10 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.util.ClassUtil;
+import com.oracle.truffle.api.TruffleLanguage;
 
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.misc.Unsafe;
@@ -106,17 +107,18 @@ public class PermissionsFeature implements Feature {
     private static final String CONFIG = "truffle-language-permissions-config.json";
 
     public static class Options {
-        @Option(help = "Path to file where to store report of Truffle language privilege access.") public static final HostedOptionKey<String> TruffleTCKPermissionsReportFile = new HostedOptionKey<>(
-                        null);
+        @Option(help = "Path to file where to store report of Truffle language privilege access.")//
+        public static final HostedOptionKey<String> TruffleTCKPermissionsReportFile = new HostedOptionKey<>(null);
 
-        @Option(help = "Comma separated list of exclude files.") public static final HostedOptionKey<LocatableMultiOptionValue.Paths> TruffleTCKPermissionsExcludeFiles = new HostedOptionKey<>(
-                        LocatableMultiOptionValue.Paths.commaSeparated());
+        @BundleMember(role = BundleMember.Role.Input)//
+        @Option(help = "Comma separated list of exclude files.")//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> TruffleTCKPermissionsExcludeFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
-        @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxStackTraceDepth = new HostedOptionKey<>(
-                        -1);
+        @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert)//
+        public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxStackTraceDepth = new HostedOptionKey<>(-1);
 
-        @Option(help = "Maximum number of erroneous privileged accesses reported.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxErrors = new HostedOptionKey<>(
-                        100);
+        @Option(help = "Maximum number of erroneous privileged accesses reported.", type = OptionType.Expert)//
+        public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxErrors = new HostedOptionKey<>(100);
     }
 
     /**
@@ -540,7 +542,7 @@ public class PermissionsFeature implements Feature {
      * @return the methods accepted by {@code filter}
      */
     static Set<AnalysisMethodNode> findMethods(BigBang bb, AnalysisType owner, Predicate<ResolvedJavaMethod> filter) {
-        return findImpl(bb, owner.getWrappedWithoutResolve().getDeclaredMethods(), filter);
+        return findImpl(bb, owner.getWrapped().getDeclaredMethods(), filter);
     }
 
     /**
@@ -553,7 +555,7 @@ public class PermissionsFeature implements Feature {
      * @return the constructors accepted by {@code filter}
      */
     static Set<AnalysisMethodNode> findConstructors(BigBang bb, AnalysisType owner, Predicate<ResolvedJavaMethod> filter) {
-        return findImpl(bb, owner.getWrappedWithoutResolve().getDeclaredConstructors(), filter);
+        return findImpl(bb, owner.getWrapped().getDeclaredConstructors(), filter);
     }
 
     private static Set<AnalysisMethodNode> findImpl(BigBang bb, ResolvedJavaMethod[] methods, Predicate<ResolvedJavaMethod> filter) {
@@ -810,7 +812,7 @@ public class PermissionsFeature implements Feature {
     private static final class ResourceAsOptionDecorator extends HostedOptionKey<LocatableMultiOptionValue.Strings> {
 
         ResourceAsOptionDecorator(String defaultValue) {
-            super(new LocatableMultiOptionValue.Strings(Collections.singletonList(defaultValue)));
+            super(LocatableMultiOptionValue.Strings.buildWithDefaults(defaultValue));
         }
     }
 

@@ -61,7 +61,7 @@ public abstract class LLVMPolyglotBufferInfo extends LLVMExpressionNode {
 
         @GenerateAOT.Exclude
         @Specialization
-        public boolean executeNative(LLVMNativePointer pointer,
+        public boolean doNative(LLVMNativePointer pointer,
                         @CachedLibrary(limit = "3") InteropLibrary interop) {
             return interop.hasBufferElements(pointer);
         }
@@ -76,7 +76,7 @@ public abstract class LLVMPolyglotBufferInfo extends LLVMExpressionNode {
 
         @GenerateAOT.Exclude
         @Specialization(guards = "foreignsLib.isForeign(pointer)", limit = "3")
-        public boolean executeManaged(LLVMManagedPointer pointer,
+        public boolean doManaged(LLVMManagedPointer pointer,
                         @Cached LLVMAsForeignNode foreign,
                         @SuppressWarnings("unused") @CachedLibrary("pointer") LLVMAsForeignLibrary foreignsLib,
                         @CachedLibrary(limit = "3") InteropLibrary interop) {

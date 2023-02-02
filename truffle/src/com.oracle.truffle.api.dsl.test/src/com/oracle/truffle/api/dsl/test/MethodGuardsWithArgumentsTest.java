@@ -59,6 +59,7 @@ import com.oracle.truffle.api.dsl.test.MethodGuardsWithArgumentsTestFactory.MArg
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class MethodGuardsWithArgumentsTest {
 
     @Test
