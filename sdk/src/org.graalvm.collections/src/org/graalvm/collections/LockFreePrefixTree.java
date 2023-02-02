@@ -41,9 +41,11 @@
 
 package org.graalvm.collections;
 
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
@@ -118,7 +120,6 @@ public class LockFreePrefixTree {
         private static final int INITIAL_HASH_NODE_SIZE = 16;
 
         private static final int MAX_LINEAR_NODE_SIZE = 8;
-
         private static final int MAX_HASH_SKIPS = 10;
 
         @SuppressWarnings("rawtypes") private static final AtomicReferenceFieldUpdater<Node, AtomicReferenceArray> CHILDREN_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Node.class,
@@ -429,6 +430,9 @@ public class LockFreePrefixTree {
         public abstract Node.HashChildren newHashChildren(int length);
     }
 
+    /**
+     * Allocator that allocates objects directly on the managed heap.
+     */
     public static class HeapAllocator extends Allocator {
         @Override
         public Node newNode(long key) {
@@ -443,6 +447,101 @@ public class LockFreePrefixTree {
         @Override
         public Node.HashChildren newHashChildren(int length) {
             return new Node.HashChildren(length);
+        }
+    }
+
+    /**
+     * Allocator that internally maintains several pools of preallocated objects, and allocates
+     * objects from those pools. This allocator is guaranteed not to allocate any objects inside the
+     * invocations to its methods.
+     *
+     * To ensure that the internal pools have sufficiently many preallocated objects, this allocator
+     * has a housekeeping thread that periodically wakes up, allocates objects and inserts them into
+     * the pools. This allocator tracks the requests that failed since the last housekeeping
+     * session, and the housekeeping thread will strive to accomodate requests that have not been
+     * fulfilled since the last housekeeping session (i.e. it will preallocate those types of
+     * additional objects whose allocation request previously failed, and it will allocate at least
+     * as many objects as there were previous failed allocation requests).
+     *
+     * This implementation only allows allocating {@link Node.LinearChildren} and
+     * {@link Node.HashChildren} arrays whose size is a power of 2 (because
+     * {@link LockFreePrefixTree} only ever allocates arrays that are a power of 2).
+     */
+    public static class ObjectPoolingAllocator extends Allocator {
+        private static final int DEFAULT_HOUSEKEEPING_PERIOD = 72;
+        private static final int CHILDREN_POOL_COUNT = 32;
+
+        private final LockFreePool<Node> nodePool;
+        private final LockFreePool<Node.LinearChildren>[] linearChildrenPool;
+        private final LockFreePool<Node.HashChildren>[] hashChildrenPool;
+        private final AtomicIntegerArray missedLinearChildrenRequestCounts;
+        private final AtomicIntegerArray missedHashChildrenRequestCounts;
+        private final HousekeepingThread housekeepingThread;
+
+        public ObjectPoolingAllocator() {
+            this(DEFAULT_HOUSEKEEPING_PERIOD);
+        }
+
+        public ObjectPoolingAllocator(int housekeepingPeriodMillis) {
+            this.nodePool = new LockFreePool<>();
+            this.linearChildrenPool = createLinearChildrenPool();
+            this.hashChildrenPool = createHashChildrenPool();
+            this.missedLinearChildrenRequestCounts = new AtomicIntegerArray(32);
+            this.missedHashChildrenRequestCounts = new AtomicIntegerArray(32);
+            this.housekeepingThread = new HousekeepingThread(housekeepingPeriodMillis);
+        }
+
+        @SuppressWarnings("unchecked")
+        private static LockFreePool<Node.LinearChildren>[] createLinearChildrenPool() {
+            LockFreePool<Node.LinearChildren>[] pools = new LockFreePool<>[CHILDREN_POOL_COUNT];
+            return pools;
+        }
+
+        @SuppressWarnings("unchecked")
+        private static LockFreePool<Node.HashChildren>[] createHashChildrenPool() {
+            LockFreePool<Node.HashChildren>[] pools = new LockFreePool<>[CHILDREN_POOL_COUNT];
+            return pools;
+        }
+
+        @Override
+        public Node newNode(long key) {
+            return null;
+        }
+
+        @Override
+        public Node.LinearChildren newLinearChildren(int length) {
+            return null;
+        }
+
+        @Override
+        public Node.HashChildren newHashChildren(int length) {
+            return null;
+        }
+
+        private class HousekeepingThread extends Thread {
+            private final int housekeepingPeriodMillis;
+
+            HousekeepingThread(int housekeepingPeriodMillis) {
+                setDaemon(true);
+                this.housekeepingPeriodMillis = housekeepingPeriodMillis;
+            }
+
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        synchronized (this) {
+                            this.wait(housekeepingPeriodMillis);
+                        }
+                        housekeep();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException("Allocator's housekeeping thread was interrupted.", e);
+                    }
+                }
+            }
+
+            private void housekeep() {
+            }
         }
     }
 }
