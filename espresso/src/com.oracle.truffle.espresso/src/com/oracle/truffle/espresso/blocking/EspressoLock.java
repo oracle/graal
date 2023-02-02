@@ -256,6 +256,7 @@ public interface EspressoLock {
 /**
  * {@link EspressoLock} is not a final class to hide the {@link ReentrantLock} implementation.
  */
+@SuppressWarnings("serial")
 final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
 
     private static final Node dummy = new Node() {
@@ -264,7 +265,6 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
             return false;
         }
     };
-    private static final long serialVersionUID = -2776792497346642438L;
 
     EspressoLockImpl(BlockingSupport<?> blockingSupport) {
         assert blockingSupport != null;

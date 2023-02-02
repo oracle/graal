@@ -31,8 +31,8 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "exception")
+@SuppressWarnings("serial")
 public final class EspressoException extends AbstractTruffleException {
-    private static final long serialVersionUID = -7667957575377419520L;
     protected final StaticObject exception;
 
     private EspressoException(@JavaType(Throwable.class) StaticObject throwable) {
