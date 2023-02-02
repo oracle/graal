@@ -49,10 +49,11 @@ permissions:
 jobs:
   build-graalvm:
     name: /${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE_TAGS }} JDK${{ matrix.env.JDK_VERSION }}
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-20.04]
         include:
           # /compiler
           - env:
@@ -78,6 +79,13 @@ jobs:
               GATE_TAGS: "build,test,helloworld"
               PRIMARY: "substratevm"
               PIP_PACKAGES: "jsonschema==4.6.1"
+          - os: windows-2019
+            env:
+              JDK_VERSION: "20"
+              GATE_TAGS: "build,test"
+              PRIMARY: "substratevm"
+              PIP_PACKAGES: "jsonschema==4.6.1"
+              BUILD_HELLOWORLD: true
           - env:
               JDK_VERSION: "20"
               GATE_TAGS: "build,helloworld_debug"
@@ -127,6 +135,7 @@ jobs:
         ref: ${{ github.ref }} # Lock ref to current branch to avoid fetching others
         fetch-depth: "${{ env.MX_RUNS_STYLE && '0' || '1' }}" # The style gate needs the full commit history for checking copyright years
     - name: Determine mx version
+      shell: bash
       run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
     - name: Checkout graalvm/mx
       uses: actions/checkout@v3
@@ -146,18 +155,19 @@ jobs:
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
         restore-keys: ${{ runner.os }}-mx-
     - name: Fetch LabsJDK
+      shell: bash
       env: ${{ matrix.env }}
       run: |
         mkdir jdk-dl
         ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-${JDK_VERSION} --to jdk-dl --alias ${JAVA_HOME}
     - name: Update dependency cache
-      if: ${{ env.MX_RUNS_DEBUG == 'true' || env.MX_RUNS_STYLE == 'true' }}
+      if: ${{ runner.os == 'Windows' && env.MX_RUNS_DEBUG == 'true' || env.MX_RUNS_STYLE == 'true' }}
       run: sudo apt update
     - name: Install debug dependencies
-      if: ${{ env.MX_RUNS_DEBUG == 'true' }}
+      if: ${{ runner.os != 'Windows' && env.MX_RUNS_DEBUG == 'true' }}
       run: sudo apt install gdb
     - name: Install style dependencies
-      if: ${{ env.MX_RUNS_STYLE == 'true' }}
+      if: ${{ runner.os != 'Windows' && env.MX_RUNS_STYLE == 'true' }}
       run: |
         sudo apt install python3-pip python-setuptools
         jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' common.json |
@@ -166,6 +176,7 @@ jobs:
       if: ${{ matrix.env.PIP_PACKAGES != '' }}
       run: ${MX_PYTHON} -m pip install ${{ matrix.env.PIP_PACKAGES }}
     - name: Download Eclipse
+      shell: bash
       if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
         ECLIPSE_TAR=eclipse.tar.gz
@@ -177,11 +188,39 @@ jobs:
     - name: Remove .git directory
       if: ${{ matrix.env.WITHOUT_VCS }}
       run: rm -rf .git
+
+      # Linux
+
     - name: Build GraalVM and run gate with tags
       env: ${{ matrix.env }}
       run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode ${{ matrix.env.GATE_OPTS }} --tags ${GATE_TAGS}
-      if: ${{ matrix.env.GATE_TAGS != '' }}
+      if: ${{ runner.os == 'Linux' && matrix.env.GATE_TAGS != '' }}
     - name: Build GraalVM and run gate without tags
       env: ${{ matrix.env }}
       run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode ${{ matrix.env.GATE_OPTS }}
-      if: ${{ matrix.env.GATE_TAGS == '' }}
+      if: ${{ runner.os == 'Linux' && matrix.env.GATE_TAGS == '' }}
+
+    # Windows
+
+    - name: Build GraalVM and run gate with tags via cmd.exe
+      if: ${{ runner.os == 'Windows' }}
+      shell: cmd
+      run: |
+        call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+        call mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE_TAGS}
+    # Note the following two steps no longer call vcvarsall.bat as they should not need to
+    - name: "Add GraalVM to PATH on Windows"
+      if: ${{ runner.os == 'Windows' && matrix.env.BUILD_HELLOWORLD == 'true' }}
+      shell: cmd
+      run: |
+        call mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} graalvm-home > graalvm-home-with-forward-slashes.txt
+        set /p GRAALVM_HOME=<graalvm-home-with-forward-slashes.txt
+        setlocal enabledelayedexpansion
+        echo %GRAALVM_HOME:/=\%\bin>>%GITHUB_PATH%
+    - name: Build HelloWorld executable with GraalVM Native Image on Windows
+      if: ${{ runner.os == 'Windows' && matrix.env.BUILD_HELLOWORLD == 'true' }}
+      run: |
+        echo 'public class HelloWorld { public static void main(String[] args) { System.out.println("Hello, World!"); } }' > HelloWorld.java
+        javac HelloWorld.java
+        native-image HelloWorld
+        ./helloworld
