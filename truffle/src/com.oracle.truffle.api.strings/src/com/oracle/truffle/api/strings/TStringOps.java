@@ -1417,7 +1417,7 @@ final class TStringOps {
             }
             TStringConstants.truffleSafePointPoll(location, i + 1);
         }
-        if (!TSCodeRange.isValidFixedWidth(codeRange)) {
+        if (!TSCodeRange.isValid(codeRange)) {
             return TSCodeRange.get16Bit();
         }
         for (; i < length; i++) {

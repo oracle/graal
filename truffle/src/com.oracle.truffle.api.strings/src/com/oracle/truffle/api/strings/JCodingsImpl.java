@@ -128,7 +128,7 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     public boolean isFixedWidth(Encoding jCoding) {
-        return unwrap(jCoding).isFixedWidth();
+        return unwrap(jCoding).isFixedWidth() && isSingleByte(jCoding);
     }
 
     @Override
@@ -221,7 +221,7 @@ final class JCodingsImpl implements JCodings {
         byte[] bytes = JCodings.asByteArray(array);
         int offsetBytes = array instanceof AbstractTruffleString.NativePointer ? fromIndex : offset + fromIndex;
         Encoding enc = get(encoding);
-        int codeRange = isSingleByte(enc) ? TSCodeRange.getValidFixedWidth() : TSCodeRange.getValidMultiByte();
+        int codeRange = TSCodeRange.getValid(isSingleByte(enc));
         int characters = 0;
         int p = offsetBytes;
         final int end = offsetBytes + length;
@@ -231,7 +231,7 @@ final class JCodingsImpl implements JCodings {
             if (validCharacterProfile.profile(location, lengthOfCurrentCharacter > 0 && p + lengthOfCurrentCharacter <= end)) {
                 p += lengthOfCurrentCharacter;
             } else {
-                codeRange = isSingleByte(enc) ? TSCodeRange.getBrokenFixedWidth() : TSCodeRange.getBrokenMultiByte();
+                codeRange = TSCodeRange.getBroken(isSingleByte(enc));
                 // If a string is detected as broken, and we already know the character length
                 // due to a fixed width encoding, there's no value in visiting any more ptr.
                 if (fixedWidthProfile.profile(location, isFixedWidth(enc))) {

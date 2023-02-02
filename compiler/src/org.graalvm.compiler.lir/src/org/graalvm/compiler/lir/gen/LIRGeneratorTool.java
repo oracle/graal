@@ -316,6 +316,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         /*
          * RETURN VALUES
          */
+        private static final int FLAG_MULTIBYTE = 1 << 3;
 
         // NOTE:
         // The following fields must be kept in sync with
@@ -336,19 +337,19 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         /**
          * The string is encoded correctly in the given fixed-width encoding.
          */
-        public static final int CR_VALID_FIXED_WIDTH = 3;
+        public static final int CR_VALID = 3;
         /**
          * The string is not encoded correctly in the given fixed-width encoding.
          */
-        public static final int CR_BROKEN_FIXED_WIDTH = 4;
+        public static final int CR_BROKEN = 4;
         /**
          * The string is encoded correctly in the given multi-byte/variable-width encoding.
          */
-        public static final int CR_VALID_MULTIBYTE = 5;
+        public static final int CR_VALID_MULTIBYTE = CR_VALID | FLAG_MULTIBYTE;
         /**
          * The string is not encoded correctly in the given multi-byte/variable-width encoding.
          */
-        public static final int CR_BROKEN_MULTIBYTE = 6;
+        public static final int CR_BROKEN_MULTIBYTE = CR_BROKEN | FLAG_MULTIBYTE;
     }
 
     @SuppressWarnings("unused")

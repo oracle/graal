@@ -148,7 +148,7 @@ public final class DFAGenerator implements JsonConvertible {
     private TRegexDFAExecutorNode innerLiteralPrefixMatcher = null;
 
     private final SequentialMatchers.Builder matchersBuilder;
-    private final List<int[]> indexOfParams = new ArrayList<>();
+    private final List<TruffleString.ByteIndexOfCodePointSetNode.CodePointSet> indexOfParams = new ArrayList<>();
 
     public DFAGenerator(TRegexCompilationRequest compilationRequest, NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer) {
         this.compilationRequest = compilationRequest;
@@ -337,7 +337,8 @@ public final class DFAGenerator implements JsonConvertible {
         executorProps.setSimpleCG(doSimpleCG);
         executorProps.setSimpleCGMustCopy(simpleCGMustCopy);
         TRegexDFAExecutorDebugRecorder debugRecorder = TRegexDFAExecutorDebugRecorder.create(getOptions(), this);
-        return new TRegexDFAExecutorNode(nfa.getAst().getSource(), executorProps, getNfa().getAst().getNumberOfCaptureGroups(), maxNumberOfNfaStates, indexOfParams.toArray(int[][]::new), states,
+        return new TRegexDFAExecutorNode(nfa.getAst().getSource(), executorProps, getNfa().getAst().getNumberOfCaptureGroups(), maxNumberOfNfaStates,
+                        indexOfParams.toArray(TruffleString.ByteIndexOfCodePointSetNode.CodePointSet[]::new), states,
                         debugRecorder, innerLiteralPrefixMatcher);
     }
 
@@ -860,10 +861,11 @@ public final class DFAGenerator implements JsonConvertible {
                     loopToSelf = (short) i;
                     CodePointSet loopMB = s.getSuccessors()[i].getCodePointSet();
                     if (coversCharSpace && !loopMB.matchesEverything(getEncoding())) {
-                        CodePointSet loopInverse = loopMB.createInverse(getEncoding());
-                        indexOfIsFast = checkIndexOfIsFast(loopInverse);
+                        TruffleString.ByteIndexOfCodePointSetNode.CodePointSet indexOfParam = TruffleString.ByteIndexOfCodePointSetNode.CodePointSet.fromRanges(
+                                        loopMB.createInverse(getEncoding()).getRanges(), getEncoding().getTStringEncoding());
+                        indexOfIsFast = checkIndexOfIsFast(indexOfParam);
                         if (indexOfIsFast != 0) {
-                            indexOfParams.add(loopInverse.getRanges());
+                            indexOfParams.add(indexOfParam);
                             assert indexOfParams.size() <= Short.MAX_VALUE;
                             indexOfNodeId = (short) (indexOfParams.size() - 1);
                         }
@@ -905,10 +907,10 @@ public final class DFAGenerator implements JsonConvertible {
         return ret;
     }
 
-    private byte checkIndexOfIsFast(CodePointSet loopMB) {
+    private static byte checkIndexOfIsFast(TruffleString.ByteIndexOfCodePointSetNode.CodePointSet indexOfParam) {
         byte indexOfIsFast = 0;
         for (TruffleString.CodeRange codeRange : TruffleString.CodeRange.values()) {
-            if (TruffleString.ByteIndexOfCodePointSetNode.canOptimize(loopMB.getRanges(), getEncoding().getTStringEncoding(), codeRange)) {
+            if (indexOfParam.isIntrinsicCandidate(codeRange)) {
                 assert codeRange.ordinal() < 8;
                 indexOfIsFast |= 1 << codeRange.ordinal();
             }

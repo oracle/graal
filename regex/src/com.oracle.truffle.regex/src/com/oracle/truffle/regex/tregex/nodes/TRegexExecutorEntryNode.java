@@ -50,7 +50,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.strings.JavaStringUtils;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexRootNode;
@@ -66,23 +66,21 @@ public abstract class TRegexExecutorEntryNode extends Node {
 
         @Child TRegexExecutorBaseNode executor;
         private final TruffleString.CodeRange codeRange;
-        private final boolean isTString;
 
-        private TRegexExecutorRootNode(RegexLanguage language, TRegexExecutorNode executor, TruffleString.CodeRange codeRange, boolean isTString) {
+        private TRegexExecutorRootNode(RegexLanguage language, TRegexExecutorNode executor, TruffleString.CodeRange codeRange) {
             super(language, RegexRootNode.SHARED_EMPTY_FRAMEDESCRIPTOR);
             this.executor = insert(executor);
             this.codeRange = codeRange;
-            this.isTString = isTString;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
-            Object input = arguments[0];
+            TruffleString input = (TruffleString) arguments[0];
             int fromIndex = (int) arguments[1];
             int index = (int) arguments[2];
             int maxIndex = (int) arguments[3];
-            return executor.execute(frame, executor.createLocals(input, fromIndex, index, maxIndex), codeRange, isTString);
+            return executor.execute(frame, executor.createLocals(input, fromIndex, index, maxIndex), codeRange);
         }
 
         @TruffleBoundary
@@ -93,12 +91,62 @@ public abstract class TRegexExecutorEntryNode extends Node {
         }
     }
 
-    private final RegexLanguage language;
-    @Child TRegexExecutorBaseNode executor;
+    @ImportStatic(TruffleString.CodeRange.class)
+    public abstract static class TRegexExecutorEntryInnerNode extends Node {
+
+        private final RegexLanguage language;
+        @Child TRegexExecutorBaseNode executor;
+
+        public TRegexExecutorEntryInnerNode(RegexLanguage language, TRegexExecutorBaseNode executor) {
+            this.language = language;
+            this.executor = executor;
+        }
+
+        public static TRegexExecutorEntryInnerNode create(RegexLanguage language, TRegexExecutorBaseNode executor) {
+            if (executor == null) {
+                return null;
+            }
+            return TRegexExecutorEntryNodeGen.TRegexExecutorEntryInnerNodeGen.create(language, executor);
+        }
+
+        public TRegexExecutorBaseNode getExecutor() {
+            return executor;
+        }
+
+        public abstract Object execute(VirtualFrame frame, TruffleString input, int fromIndex, int index, int maxIndex, TruffleString.CodeRange codeRange);
+
+        @Specialization(guards = "codeRange == cachedCodeRange", limit = "5")
+        Object doTString(VirtualFrame frame, TruffleString input, int fromIndex, int index, int maxIndex, @SuppressWarnings("unused") TruffleString.CodeRange codeRange,
+                        @Cached("codeRange") TruffleString.CodeRange cachedCodeRange,
+                        @Cached("createCallTarget(cachedCodeRange)") DirectCallNode callNode) {
+            return runExecutor(frame, input, fromIndex, index, maxIndex, callNode, cachedCodeRange);
+        }
+
+        DirectCallNode createCallTarget(TruffleString.CodeRange codeRange) {
+            if (getExecutor().isTrivial()) {
+                return null;
+            } else {
+                return DirectCallNode.create(new TRegexExecutorEntryNode.TRegexExecutorRootNode(language, executor.shallowCopy(), codeRange).getCallTarget());
+            }
+        }
+
+        private Object runExecutor(VirtualFrame frame, TruffleString input, int fromIndex, int index, int maxIndex, DirectCallNode callNode, TruffleString.CodeRange cachedCodeRange) {
+            CompilerAsserts.partialEvaluationConstant(cachedCodeRange);
+            CompilerAsserts.partialEvaluationConstant(callNode);
+            if (callNode == null) {
+                return executor.execute(frame, executor.createLocals(input, fromIndex, index, maxIndex), cachedCodeRange);
+            } else {
+                return callNode.call(input, fromIndex, index, maxIndex);
+            }
+        }
+    }
+
+    private final TRegexExecutorBaseNode executor;
+    @Child TRegexExecutorEntryInnerNode innerNode;
 
     public TRegexExecutorEntryNode(RegexLanguage language, TRegexExecutorBaseNode executor) {
-        this.language = language;
         this.executor = executor;
+        innerNode = insert(TRegexExecutorEntryInnerNode.create(language, executor));
     }
 
     public static TRegexExecutorEntryNode create(RegexLanguage language, TRegexExecutorBaseNode executor) {
@@ -112,51 +160,24 @@ public abstract class TRegexExecutorEntryNode extends Node {
         return executor;
     }
 
-    public abstract Object execute(VirtualFrame frame, Object input, int fromIndex, int index, int maxIndex);
+    public abstract Object execute(VirtualFrame frame, TruffleString input, int fromIndex, int index, int maxIndex);
 
-    @Specialization(guards = "isCompactString(input)")
-    Object doStringCompact(VirtualFrame frame, String input, int fromIndex, int index, int maxIndex,
-                    @Cached("createCallTarget(LATIN_1, false)") DirectCallNode callNode) {
-        return runExecutor(frame, input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.LATIN_1, false);
-    }
-
-    @Specialization(guards = "!isCompactString(input)")
-    Object doStringNonCompact(VirtualFrame frame, String input, int fromIndex, int index, int maxIndex,
-                    @Cached("createCallTarget(BROKEN, false)") DirectCallNode callNode) {
-        return runExecutor(frame, input, fromIndex, index, maxIndex, callNode, TruffleString.CodeRange.BROKEN, false);
-    }
-
-    @Specialization(guards = "codeRangeEqualsNode.execute(input, cachedCodeRange)", limit = "5")
+    @Specialization
     Object doTString(VirtualFrame frame, TruffleString input, int fromIndex, int index, int maxIndex,
                     @Cached TruffleString.MaterializeNode materializeNode,
-                    @Cached @SuppressWarnings("unused") TruffleString.GetCodeRangeNode codeRangeNode,
-                    @Cached @SuppressWarnings("unused") TruffleString.CodeRangeEqualsNode codeRangeEqualsNode,
-                    @Cached("codeRangeNode.execute(input, getExecutor().getEncoding().getTStringEncoding())") TruffleString.CodeRange cachedCodeRange,
-                    @Cached("createCallTarget(cachedCodeRange, true)") DirectCallNode callNode) {
-        materializeNode.execute(input, executor.getEncoding().getTStringEncoding());
-        return runExecutor(frame, input, fromIndex, index, maxIndex, callNode, cachedCodeRange, true);
-    }
-
-    DirectCallNode createCallTarget(TruffleString.CodeRange codeRange, boolean isTString) {
-        if (getExecutor().isTrivial()) {
-            return null;
+                    @Cached TruffleString.GetCodeRangeImpreciseNode codeRangeImpreciseNode,
+                    @Cached TruffleString.GetCodeRangeNode codeRangePreciseNode,
+                    @Cached InlinedConditionProfile isLatin1Profile) {
+        TruffleString.Encoding encoding = executor.getEncoding().getTStringEncoding();
+        CompilerAsserts.partialEvaluationConstant(encoding);
+        materializeNode.execute(input, encoding);
+        TruffleString.CodeRange codeRangeImprecise = codeRangeImpreciseNode.execute(input, encoding);
+        final TruffleString.CodeRange codeRange;
+        if (isLatin1Profile.profile(this, codeRangeImprecise.isSubsetOf(TruffleString.CodeRange.LATIN_1))) {
+            codeRange = codeRangeImprecise;
         } else {
-            return DirectCallNode.create(new TRegexExecutorRootNode(language, executor.shallowCopy(), codeRange, isTString).getCallTarget());
+            codeRange = codeRangePreciseNode.execute(input, encoding);
         }
-    }
-
-    private Object runExecutor(VirtualFrame frame, Object input, int fromIndex, int index, int maxIndex, DirectCallNode callNode, TruffleString.CodeRange cachedCodeRange, boolean isTString) {
-        CompilerAsserts.partialEvaluationConstant(cachedCodeRange);
-        CompilerAsserts.partialEvaluationConstant(isTString);
-        CompilerAsserts.partialEvaluationConstant(callNode);
-        if (callNode == null) {
-            return executor.execute(frame, executor.createLocals(input, fromIndex, index, maxIndex), cachedCodeRange, isTString);
-        } else {
-            return callNode.call(input, fromIndex, index, maxIndex);
-        }
-    }
-
-    static boolean isCompactString(String str) {
-        return JavaStringUtils.isLatin1(str);
+        return innerNode.execute(frame, input, fromIndex, index, maxIndex, codeRange);
     }
 }

@@ -38,8 +38,8 @@ public class TStringOpsCalcStringAttributesReturnValuesInSyncTest {
         checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT, "CR_7BIT");
         checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT, "CR_8BIT");
         checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_16BIT, "CR_16BIT");
-        checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_FIXED_WIDTH, "CR_VALID_FIXED_WIDTH");
-        checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_FIXED_WIDTH, "CR_BROKEN_FIXED_WIDTH");
+        checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID, "CR_VALID");
+        checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN, "CR_BROKEN");
         checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE, "CR_VALID_MULTIBYTE");
         checkField(c, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE, "CR_BROKEN_MULTIBYTE");
     }

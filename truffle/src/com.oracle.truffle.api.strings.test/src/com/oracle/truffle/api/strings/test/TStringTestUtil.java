@@ -123,6 +123,15 @@ public final class TStringTestUtil {
         return sb.toString();
     }
 
+    static char[] toCharArrayPunned(byte[] array) {
+        assert (array.length & 1) == 0;
+        char[] charArray = new char[array.length / 2];
+        for (int i = 0; i < charArray.length; i++) {
+            charArray[i] = (char) readValue(array, 1, i);
+        }
+        return charArray;
+    }
+
     public static int[] toIntArray(byte[] array) {
         int[] ret = new int[array.length];
         for (int i = 0; i < array.length; i++) {

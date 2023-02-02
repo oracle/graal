@@ -56,7 +56,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.strings.JavaStringUtils;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.test.Encodings;
 import com.oracle.truffle.api.strings.test.TStringTestBase;
@@ -66,13 +65,10 @@ import com.oracle.truffle.api.strings.test.TStringTestUtil;
 public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
 
     @Parameter public TruffleString.ByteIndexOfCodePointSetNode node;
-    @Parameter(1) public JavaStringUtils.CharIndexOfCodePointSetNode nodeJavaString;
 
     @Parameters(name = "{0}")
-    public static Iterable<Object[]> data() {
-        return Arrays.asList(
-                        new Object[]{TruffleString.ByteIndexOfCodePointSetNode.create(), JavaStringUtils.CharIndexOfCodePointSetNode.create()},
-                        new Object[]{TruffleString.ByteIndexOfCodePointSetNode.getUncached(), JavaStringUtils.CharIndexOfCodePointSetNode.getUncached()});
+    public static Iterable<TruffleString.ByteIndexOfCodePointSetNode> data() {
+        return Arrays.asList(TruffleString.ByteIndexOfCodePointSetNode.create(), TruffleString.ByteIndexOfCodePointSetNode.getUncached());
     }
 
     @Test
@@ -199,13 +195,11 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
                 if (!isUTF(encoding) && ranges[ranges.length - 1] > 0x7f) {
                     continue;
                 }
+                TruffleString.ByteIndexOfCodePointSetNode.CodePointSet codePointSet = TruffleString.ByteIndexOfCodePointSetNode.CodePointSet.fromRanges(ranges, encoding);
                 for (int i = 0; i < strings.length; i++) {
                     int expected = indexOfRanges(codepoints[i], ranges, byteIndices[i]);
-                    int actual = node.execute(strings[i], 0, strings[i].byteLength(encoding), ranges, encoding);
+                    int actual = node.execute(strings[i], 0, strings[i].byteLength(encoding), codePointSet);
                     checkEqual(expected, actual);
-                    if (encoding == UTF_16) {
-                        checkEqual(expected, nodeJavaString.execute(strings[i].toJavaStringUncached(), 0, strings[i].byteLength(encoding) >> 1, ranges) << 1);
-                    }
                 }
             }
         }
@@ -232,13 +226,13 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
 
     @Test
     public void testNull() throws Exception {
-        checkNullSE((s, e) -> node.execute(s, 0, 1, new int[]{0, 0}, e));
-        expectNullPointerException(() -> node.execute(S_UTF8, 0, 1, null, UTF_8));
+        checkNullSE((s, e) -> node.execute(s, 0, 1, TruffleString.ByteIndexOfCodePointSetNode.CodePointSet.fromRanges(new int[]{0, 0}, e)));
+        expectNullPointerException(() -> node.execute(S_UTF8, 0, 1, null));
     }
 
     @Test
     public void testOutOfBounds() throws Exception {
         checkOutOfBoundsFromTo(true, 0, Encodings.PRIMARY_ENCODINGS,
-                        (a, fromIndex, toIndex, encoding) -> node.execute(a, fromIndex, toIndex, new int[]{0, 0}, encoding));
+                        (a, fromIndex, toIndex, encoding) -> node.execute(a, fromIndex, toIndex, TruffleString.ByteIndexOfCodePointSetNode.CodePointSet.fromRanges(new int[]{0, 0}, encoding)));
     }
 }

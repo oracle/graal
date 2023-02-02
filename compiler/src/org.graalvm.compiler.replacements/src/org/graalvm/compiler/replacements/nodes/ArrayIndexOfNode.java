@@ -290,7 +290,6 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
             return null;
         }
         if (variant == ArrayIndexOfVariant.Table) {
-            // TODO
             return this;
         }
         if (arrayPointer.isJavaConstant() && ((ConstantNode) arrayPointer).getStableDimension() > 0 &&

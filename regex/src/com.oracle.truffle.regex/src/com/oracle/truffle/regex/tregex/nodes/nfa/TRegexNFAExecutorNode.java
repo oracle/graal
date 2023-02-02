@@ -129,12 +129,12 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     @Override
-    public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
+    public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int index, int maxIndex) {
         return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates(), trackLastGroup);
     }
 
     @Override
-    public Object execute(VirtualFrame frame, TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange, boolean tString) {
+    public Object execute(VirtualFrame frame, TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange) {
         TRegexNFAExecutorLocals locals = (TRegexNFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
 

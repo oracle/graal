@@ -53,7 +53,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 @GenerateWrapper
 public abstract class TRegexExecutorBaseNode extends Node implements InstrumentableNode {
 
-    public abstract Object execute(VirtualFrame frame, TRegexExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString);
+    public abstract Object execute(VirtualFrame frame, TRegexExecutorLocals locals, TruffleString.CodeRange codeRange);
 
     @Override
     public final boolean isInstrumentable() {
@@ -108,5 +108,5 @@ public abstract class TRegexExecutorBaseNode extends Node implements Instrumenta
      */
     public abstract boolean writesCaptureGroups();
 
-    public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
+    public abstract TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int index, int maxIndex);
 }

@@ -45,6 +45,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-43663 Added RootNode#computeSize as a way for languages to specify an approximate size of a RootNode when number of AST nodes cannot be used (e.g. for bytecode interpreters).
 * GR-42539 (change of behavior) Unclosed polyglot engines are no longer closed automatically on VM shutdown. They just die with the VM. As a result, `TruffleInstrument#onDispose` is not called for active instruments on unclosed engines in the event of VM shutdown. In case an instrument is supposed to do some specific action before its disposal, e.g. print some kind of summary, it should be done in `TruffleInstrument#onFinalize`.
 * GR-42961 Added `TruffleString.ByteIndexOfCodePointSetNode`, which allows fast searching for a given set of codepoints.
+* GR-42961 Added `TruffleString.GetCodeRangeImpreciseNode`, which allows querying the currently known code range without triggering a string scan.
 
 ## Version 22.3.0
 

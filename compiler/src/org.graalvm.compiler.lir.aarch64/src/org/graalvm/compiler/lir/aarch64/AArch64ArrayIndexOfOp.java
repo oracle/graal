@@ -281,33 +281,23 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
          *   2.3 After processing each chunk, adjust the address 32-byte aligned to read the next chunk. Repeat this step until the last
          *   chunk is reached (address of the next chunk >= 'refAddress').
          *   2.4 On reaching the last chunk, reset the address to read the last chunk.
-         *  3. Check each read chunk to see if 'searchElement' is found.
-         *     T4 = comparison result, where for each matching lane all bits are set, and for mismatches all bits are cleared.
-         *  4. If element is found in a 32-byte chunk then find its position. Use 2-bit representation for each byte to detect the starting byte offset
-         *     of matching element. Set those bits to '11' if the match is found. Then calculate number zero element after the matching element to
-         *     get the position in the chunk.
-         *   4.1 AND T4 with magic constant to set 2 bits based on the byte position of the element in the chunk.
-         *   T5 = T4 & 0xc000_0300_00c0_0003L (0x0000FFFF00000000 -> 0x0000030000000000)
-         *   4.2 Perform pairwise addition on adjacent byte lanes twice to convert 32-byte to 8-byte representation where each pair of
-         *    bits represents its corresponding byte element in a chunk. Magic constant sets different bits for each position that ensures the
-         *    pairwise addition would not overflow when consecutive elements are matched as well as preserve the position of matching element.
-         *   4.3 Reverse the bitstream in T5 (0x0000030000000000 -> 0x0000000000c00000)
-         *   4.4 Calculate leading zeros in T5 and divide the count by 2 to get the byte offset of matching element in a chunk.
-         *   4.5 Retrieve the position of 'searchElement' by adding offset within chunk to the index of the chunk.
+         *  3. Check each read chunk to see if 'searchElement' is found, and if so, calculate the match index with calcIndexOfFirstMatch.
          *
          *  Find two consecutive chars in a chunk:
          *  The findTwoConsecutive case uses the same steps as finding a single character in a chunk but for two characters separately.
-         *  To look for two consecutive characters 'c1c2', we search 'c1' in a first chunk [0..n] and 'c2' in the second chunk at [1..n+1].
+         *  To look for two consecutive characters 'c1c2', we search 'c1' in a first chunk [-1..n-1] and 'c2' in the second chunk at [0..n].
          *  Consequently, if the matching sequence is present in a chunk, it will be found at the same position in their respective chunks.
          *  The following list highlights the differences compared to the steps to search a single character in a chunk.
          *   1a. Use two registers, each repeating one of the two consecutive characters to search for.
-         *   2a. Read the first chunk starting from the 32 byte aligned ref position. Read the second chunk starting at the next character
-         *  from the ref position and ending with the first char from the next 32 byte aligned chunk.
+         *   2a. Read the second chunk starting from the 32 byte aligned ref position. Read the first chunk by concatenating the last element 
+         *       of the last iteration's second chunk and the current second chunk.
          *   3a. Compare a chunk for presence of the corresponding char.
          *    3a.1 The first chunk is compared with the register repeating the first char and the same for the second chunk.
          *    3a.2 Perform logical AND on the outcome of comparisons for the first and second char.
          *   4a. As the second chunk starts at a char offset from the first chunk, the result of AND from 3a.2 gives a register with all the
          *  bits set at the position where the match is found. The steps to find the position of the match in the searchString remain unchanged.
+         *
+         * Other variants are described in their implementation below.
          *
          *  [1] https://github.com/ARM-software/optimized-routines/blob/master/string/aarch64/strchr.S
          * @formatter:on

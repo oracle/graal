@@ -47,7 +47,6 @@ import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
@@ -72,10 +71,9 @@ final class IndexOfCodePointSet {
     private static final int[] ALL = {0x0000, 0x10ffff};
     private static final int TABLE_SIZE = 16;
 
-    @TruffleBoundary
-    static TStringInternalNodes.IndexOfCodePointSetNode fromRanges(int[] ranges, Encoding encoding) {
+    static IndexOfNode[] fromRanges(int[] ranges, Encoding encoding) {
         checkRangesArray(ranges, encoding);
-        return TStringInternalNodesFactory.IndexOfCodePointSetNodeGen.create(extractIndexOfNodes(ranges, encoding), encoding);
+        return extractIndexOfNodes(ranges, encoding);
     }
 
     static void checkRangesArray(int[] ranges, Encoding encoding) {
@@ -100,17 +98,6 @@ final class IndexOfCodePointSet {
             }
             lastHi = hi;
         }
-    }
-
-    static boolean canOptimize(int[] ranges, TruffleString.CodeRange codeRange, Encoding encoding) {
-        IndexOfNode[] indexOfNodes = extractIndexOfNodes(ranges, encoding);
-        for (int i = 0; i < indexOfNodes.length - 1; i++) {
-            IndexOfNode node = indexOfNodes[i];
-            if (node.maxCodeRange >= codeRange.ordinal()) {
-                return node.isFast();
-            }
-        }
-        return indexOfNodes[indexOfNodes.length - 1].isFast();
     }
 
     private static IndexOfNode[] extractIndexOfNodes(int[] ranges, Encoding encoding) {
@@ -163,7 +150,7 @@ final class IndexOfCodePointSet {
 
     private static void addOrReplaceLast(ArrayList<IndexOfNode> nodes, IndexOfNode node) {
         if (nodes.get(nodes.size() - 1).codeEquals(node)) {
-            assert nodes.get(nodes.size() - 1).maxCodeRange < node.maxCodeRange;
+            assert TSCodeRange.isMoreRestrictiveThan(nodes.get(nodes.size() - 1).maxCodeRange, node.maxCodeRange);
             nodes.remove(nodes.size() - 1);
         }
         nodes.add(node);
@@ -405,6 +392,11 @@ final class IndexOfCodePointSet {
             throw CompilerDirectives.shouldNotReachHere();
         }
 
+        @SuppressWarnings("unused")
+        IndexOfNode shallowCopy() {
+            throw CompilerDirectives.shouldNotReachHere();
+        }
+
         final byte getMaxCodeRange() {
             return maxCodeRange;
         }
@@ -439,7 +431,7 @@ final class IndexOfCodePointSet {
                     codepoint = TStringOps.readValue(arrayA, offsetA, lengthA, strideA, i);
                 } else if (encoding == Encoding.UTF_8) {
                     // utf-8 decode
-                    if (TSCodeRange.isValidMultiByte(codeRangeA)) {
+                    if (TSCodeRange.isValid(codeRangeA)) {
                         int firstByte = TStringOps.readS0(arrayA, offsetA, lengthA, i);
                         codepointLength = firstByte <= 0x7f ? 1 : Encodings.utf8CodePointLength(firstByte);
                         codepoint = Encodings.utf8DecodeValid(arrayA, offsetA, lengthA, i);
@@ -450,7 +442,7 @@ final class IndexOfCodePointSet {
                 } else {
                     // utf-16 decode
                     assert encoding == Encoding.UTF_16;
-                    if (TSCodeRange.isValidMultiByte(codeRangeA)) {
+                    if (TSCodeRange.isValid(codeRangeA)) {
                         codepointLength = Encodings.isUTF16HighSurrogate(TStringOps.readS1(arrayA, offsetA, lengthA, i)) ? 2 : 1;
                         codepoint = Encodings.utf16DecodeValid(arrayA, offsetA, lengthA, i);
                     } else {
@@ -490,6 +482,11 @@ final class IndexOfCodePointSet {
         boolean codeEquals(IndexOfNode other) {
             return other instanceof NoMatch;
         }
+
+        @Override
+        IndexOfNode shallowCopy() {
+            return NoMatchNodeGen.create(maxCodeRange);
+        }
     }
 
     /**
@@ -509,6 +506,11 @@ final class IndexOfCodePointSet {
         @Override
         boolean codeEquals(IndexOfNode other) {
             return other instanceof AnyMatch;
+        }
+
+        @Override
+        IndexOfNode shallowCopy() {
+            return AnyMatchNodeGen.create(maxCodeRange);
         }
     }
 
@@ -533,6 +535,11 @@ final class IndexOfCodePointSet {
         boolean codeEquals(IndexOfNode other) {
             return other instanceof IndexOfAnyValueNode && Arrays.equals(values, ((IndexOfAnyValueNode) other).values);
         }
+
+        @Override
+        IndexOfNode shallowCopy() {
+            return IndexOfAnyValueNodeGen.create(maxCodeRange, values);
+        }
     }
 
     /**
@@ -555,6 +562,11 @@ final class IndexOfCodePointSet {
         @Override
         boolean codeEquals(IndexOfNode other) {
             return other instanceof IndexOfAnyRangeNode && Arrays.equals(ranges, ((IndexOfAnyRangeNode) other).ranges);
+        }
+
+        @Override
+        IndexOfNode shallowCopy() {
+            return IndexOfAnyRangeNodeGen.create(maxCodeRange, ranges);
         }
     }
 
@@ -580,6 +592,11 @@ final class IndexOfCodePointSet {
         boolean codeEquals(IndexOfNode other) {
             return other instanceof IndexOfTableNode && Arrays.equals(tables, ((IndexOfTableNode) other).tables);
         }
+
+        @Override
+        IndexOfNode shallowCopy() {
+            return IndexOfTableNodeGen.create(maxCodeRange, tables);
+        }
     }
 
     abstract static class IndexOfStringNode extends OptimizedIndexOfNode {
@@ -599,6 +616,11 @@ final class IndexOfCodePointSet {
         @Override
         boolean codeEquals(IndexOfNode other) {
             return other instanceof IndexOfStringNode && str.equals(((IndexOfStringNode) other).str);
+        }
+
+        @Override
+        IndexOfNode shallowCopy() {
+            return IndexOfStringNodeGen.create(maxCodeRange, str);
         }
     }
 
@@ -620,6 +642,11 @@ final class IndexOfCodePointSet {
         @Override
         boolean codeEquals(IndexOfNode other) {
             return other instanceof IndexOfBitSetNode && Arrays.equals(bitSet, ((IndexOfBitSetNode) other).bitSet);
+        }
+
+        @Override
+        IndexOfNode shallowCopy() {
+            return IndexOfBitSetNodeGen.create(maxCodeRange, bitSet);
         }
 
         static IndexOfBitSetNode fromRanges(int maxCodeRange, int[] ranges) {
@@ -685,6 +712,11 @@ final class IndexOfCodePointSet {
         @Override
         boolean codeEquals(IndexOfNode other) {
             return other instanceof IndexOfRangesNode && Arrays.equals(ranges, ((IndexOfRangesNode) other).ranges);
+        }
+
+        @Override
+        IndexOfNode shallowCopy() {
+            return IndexOfRangesNodeGen.create(maxCodeRange, ranges);
         }
     }
 
