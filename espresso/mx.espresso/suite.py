@@ -248,11 +248,6 @@ suite = {
                         "ldlibs" : ["-ldl"],
                     },
                 },
-                "linux-musl": {
-                    "<others>": {
-                        "ignore": "GNU Linux-only",
-                    },
-                },
                 "<others>": {
                     "<others>": {
                         "ignore": "Linux-only",
@@ -293,11 +288,6 @@ suite = {
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
                         ],
                         "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
-                    },
-                },
-                "linux-musl": {
-                    "<others>": {
-                        "ignore": "GNU Linux-only",
                     },
                 },
                 "windows": {
@@ -407,25 +397,6 @@ suite = {
                             "./": [
                                 "file:mx.espresso/reflectconfig.json",
                                 "file:mx.espresso/native-image.properties",
-                            ],
-                            "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
-                            "lib/": [
-                                "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
-                                "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
-                                # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
-                                "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
-                                "dependency:espresso:POLYGLOT/*",
-                                "dependency:espresso:HOTSWAP/*",
-                            ],
-                        },
-                    },
-                },
-                "linux-musl": {
-                    "<others>": {
-                        "layout": {
-                            "./": [
-                                "file:mx.espresso/native-image.properties",
-                                "file:mx.espresso/reflectconfig.json",
                             ],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [

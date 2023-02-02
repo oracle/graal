@@ -1249,8 +1249,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             elif isinstance(image_config, mx_sdk.LauncherConfig):
                 suffix = _exe_suffix
                 project_name_f = GraalVmLauncher.launcher_project_name
-                if mx.get_os() == 'linux' and mx.get_os_variant() == 'musl':
-                    build_args.append('-H:+StaticExecutableWithDynamicLibC')
             else:
                 raise mx.abort("Unsupported image config type: " + str(type(image_config)))
 
