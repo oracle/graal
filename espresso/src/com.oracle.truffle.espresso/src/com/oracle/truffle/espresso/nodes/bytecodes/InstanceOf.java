@@ -27,6 +27,7 @@ import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -240,18 +241,25 @@ public abstract class InstanceOf extends EspressoNode {
             this.superType = superType;
         }
 
+        @NeverDefault
         protected ClassHierarchyAssumption getNoImplementorsAssumption() {
             return getContext().getClassHierarchyOracle().hasNoImplementors(superType);
         }
 
+        @NeverDefault
         protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
             return getContext().getClassHierarchyOracle().readSingleImplementor(superType);
         }
 
-        @Specialization(assumptions = "noImplementors")
+        @Specialization(guards = "checkAssumption(noImplementors, maybeSubtype)", limit = "1")
         public boolean doNoImplementors(@SuppressWarnings("unused") Klass maybeSubtype,
                         @SuppressWarnings("unused") @Cached("getNoImplementorsAssumption().getAssumption()") Assumption noImplementors) {
             return false;
+        }
+
+        protected static boolean checkAssumption(Assumption noImplementors, @SuppressWarnings("unused") Klass maybeSubtype) {
+            // GR-43903: prevent the dsl from removing the guard in the fast-path
+            return noImplementors.isValid();
         }
 
         /**
@@ -287,18 +295,25 @@ public abstract class InstanceOf extends EspressoNode {
             assert superType.isInterface();
         }
 
+        @NeverDefault
         protected ClassHierarchyAssumption getNoImplementorsAssumption() {
             return getContext().getClassHierarchyOracle().hasNoImplementors(superType);
         }
 
+        @NeverDefault
         protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
             return getContext().getClassHierarchyOracle().readSingleImplementor(superType);
         }
 
-        @Specialization(assumptions = "noImplementors")
+        @Specialization(guards = "checkAssumption(noImplementors, maybeSubtype)", limit = "1")
         public boolean doNoImplementors(@SuppressWarnings("unused") Klass maybeSubtype,
                         @SuppressWarnings("unused") @Cached("getNoImplementorsAssumption().getAssumption()") Assumption noImplementors) {
             return false;
+        }
+
+        protected static boolean checkAssumption(Assumption noImplementors, @SuppressWarnings("unused") Klass maybeSubtype) {
+            // GR-43903: prevent the dsl from removing the guard in the fast-path
+            return noImplementors.isValid();
         }
 
         @Specialization(assumptions = "maybeSingleImplementor.hasValue()", guards = "implementor != null", replaces = "doNoImplementors")
