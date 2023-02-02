@@ -51,36 +51,52 @@ public final class CopySignNode extends BinaryNode implements ArithmeticLIRLower
         super(TYPE, computeStamp(magnitude.stamp(NodeView.DEFAULT), sign.stamp(NodeView.DEFAULT)), magnitude, sign);
     }
 
-    public static Stamp computeStamp(Stamp stampX, Stamp stampY) {
-        FloatStamp floatStampX = (FloatStamp) stampX;
-        FloatStamp floatStampY = (FloatStamp) stampY;
-        if (floatStampX.isNaN()) {
-            return stampX;
+    public static Stamp computeStamp(Stamp magnitude, Stamp sign) {
+        FloatStamp magnitudeStamp = (FloatStamp) magnitude;
+        FloatStamp signStamp = (FloatStamp) sign;
+        if (magnitudeStamp.isNaN()) {
+            return magnitude;
         }
-        if (floatStampY.isNonNaN()) {
-            if (floatStampY.lowerBound() > 0) {
-                if (floatStampX.lowerBound() > 0) {
-                    return floatStampX;
+        if (signStamp.isNonNaN()) {
+            if (signStamp.lowerBound() > 0) {
+                // the end result will be non-negative
+                if (magnitudeStamp.lowerBound() > 0) {
+                    // We know the entire range is above 0: leave it unchanged.
+                    return magnitudeStamp;
                 }
-                if (floatStampX.upperBound() < 0) {
-                    return new FloatStamp(floatStampX.getBits(), -floatStampX.upperBound(), -floatStampX.lowerBound(), floatStampX.isNonNaN());
+                if (magnitudeStamp.upperBound() < 0) {
+                    // We know that the entire range is below 0
+                    // flip [lower, upper] to [-upper, -lower]
+                    return new FloatStamp(magnitudeStamp.getBits(), -magnitudeStamp.upperBound(), -magnitudeStamp.lowerBound(), magnitudeStamp.isNonNaN());
                 }
-                return new FloatStamp(floatStampX.getBits(), Math.min(-floatStampX.lowerBound(), floatStampX.upperBound()),
-                                Math.max(-floatStampX.lowerBound(), floatStampX.upperBound()), floatStampX.isNonNaN());
+                // We know lowerBound <= 0 and upperBound >= 0:
+                // the new range is [0, Math.max(-lower, upper)]
+                return new FloatStamp(magnitudeStamp.getBits(), 0,
+                                Math.max(-magnitudeStamp.lowerBound(), magnitudeStamp.upperBound()), magnitudeStamp.isNonNaN());
             }
-            if (floatStampY.upperBound() < 0) {
-                if (floatStampX.upperBound() < 0) {
-                    return floatStampX;
+            if (signStamp.upperBound() < 0) {
+                // the result will be non-positive
+                if (magnitudeStamp.upperBound() < 0) {
+                    // We know the entire range is below 0: leave it unchanged.
+                    return magnitudeStamp;
                 }
-                if (floatStampX.lowerBound() > 0) {
-                    return new FloatStamp(floatStampX.getBits(), -floatStampX.upperBound(), -floatStampX.lowerBound(), floatStampX.isNonNaN());
+                if (magnitudeStamp.lowerBound() > 0) {
+                    // We know that the entire range is above 0
+                    // flip [lower, upper] to [-upper,-lower]
+                    return new FloatStamp(magnitudeStamp.getBits(), -magnitudeStamp.upperBound(), -magnitudeStamp.lowerBound(), magnitudeStamp.isNonNaN());
                 }
-                return new FloatStamp(floatStampX.getBits(), Math.min(floatStampX.lowerBound(), -floatStampX.upperBound()),
-                                Math.max(floatStampX.lowerBound(), -floatStampX.upperBound()), floatStampX.isNonNaN());
+                // We know lowerBound <= 0 and upperBound >= 0
+                // the new range is [Math.min(lower, -upper), 0]
+                return new FloatStamp(magnitudeStamp.getBits(), Math.min(magnitudeStamp.lowerBound(), -magnitudeStamp.upperBound()),
+                                0, magnitudeStamp.isNonNaN());
             }
         }
-        return new FloatStamp(floatStampX.getBits(), Math.min(floatStampX.lowerBound(), -floatStampX.upperBound()), Math.max(-floatStampX.lowerBound(), floatStampX.upperBound()),
-                        floatStampX.isNonNaN());
+        /*
+         * We have no information on whether the range will be flipped or not. Hence, we have to
+         * expand the result to be the union of [lower, upper] and [-upper, -lower].
+         */
+        return new FloatStamp(magnitudeStamp.getBits(), Math.min(magnitudeStamp.lowerBound(), -magnitudeStamp.upperBound()), Math.max(-magnitudeStamp.lowerBound(), magnitudeStamp.upperBound()),
+                        magnitudeStamp.isNonNaN());
     }
 
     @Override
