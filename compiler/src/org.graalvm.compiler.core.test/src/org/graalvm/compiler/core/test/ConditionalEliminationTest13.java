@@ -29,9 +29,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -43,11 +41,6 @@ public class ConditionalEliminationTest13 extends ConditionalEliminationTestBase
     @Override
     protected InlineInvokePlugin.InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(method);
-    }
-
-    @Override
-    protected OptionValues getOptions() {
-        return new OptionValues(getInitialOptions(), InvocationPlugins.Options.DisableIntrinsics, "Integer.compareUnsigned");
     }
 
     public static void referenceSnippet1(int a) {

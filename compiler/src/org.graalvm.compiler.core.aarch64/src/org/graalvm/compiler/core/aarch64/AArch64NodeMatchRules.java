@@ -905,6 +905,15 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return null;
     }
 
+    @MatchRule("(Conditional (IntegerBelow x y) Constant=cm1 (Conditional (IntegerEquals x y) Constant=c0 Constant=c1))")
+    public ComplexMatchResult normalizedIntegerCompare(ValueNode x, ValueNode y, ConstantNode cm1, ConstantNode c0, ConstantNode c1) {
+        if (cm1.getStackKind() == JavaKind.Int && cm1.asJavaConstant().asInt() == -1 && c0.getStackKind() == JavaKind.Int && c0.asJavaConstant().asInt() == 0 && c1.getStackKind() == JavaKind.Int &&
+                        c1.asJavaConstant().asInt() == 1) {
+            return builder -> getArithmeticLIRGenerator().emitUnsignedCompare(operand(x), operand(y));
+        }
+        return null;
+    }
+
     @Override
     public AArch64LIRGenerator getLIRGeneratorTool() {
         return (AArch64LIRGenerator) gen;

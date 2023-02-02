@@ -121,7 +121,7 @@ import org.graalvm.compiler.lir.amd64.AMD64Move.StackLeaOp;
 import org.graalvm.compiler.lir.amd64.AMD64PauseOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
-import org.graalvm.compiler.lir.amd64.AMD64UnsignedCompareOp;
+import org.graalvm.compiler.lir.amd64.AMD64NormalizedUnsignedCompareOp;
 import org.graalvm.compiler.lir.amd64.AMD64VectorizedMismatchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapStackOp;
@@ -606,34 +606,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitByteSwap(Value input) {
         Variable result = newVariable(LIRKind.combine(input));
         append(new AMD64ByteSwapOp(result, input));
-        return result;
-    }
-
-    @Override
-    public Variable emitBitSwap(Value input) {
-        Variable result = newVariable(LIRKind.combine(input));
-        append(new AMD64BitSwapOp(this, result, asAllocatable(input)));
-        return result;
-    }
-
-    @Override
-    public Variable emitHalfFloatToFloat(Value input) {
-        Variable result = newVariable(LIRKind.value(AMD64Kind.SINGLE));
-        append(new AMD64HalfFloatToFloatOp(result, asAllocatable(input)));
-        return result;
-    }
-
-    @Override
-    public Variable emitFloatToHalfFloat(Value input) {
-        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64FloatToHalfFloatOp(this, result, asAllocatable(input)));
-        return result;
-    }
-
-    @Override
-    public Variable emitUnsignedCompare(Value x, Value y) {
-        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64UnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
         return result;
     }
 

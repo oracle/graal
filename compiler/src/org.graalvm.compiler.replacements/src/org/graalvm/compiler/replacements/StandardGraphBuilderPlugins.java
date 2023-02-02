@@ -91,6 +91,7 @@ import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
+import org.graalvm.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
@@ -175,7 +176,6 @@ import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
-import org.graalvm.compiler.replacements.nodes.UnsignedCompareNode;
 import org.graalvm.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactOverflowNode;
@@ -808,27 +808,13 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-
-        if (UnsignedCompareNode.reuseCompareInBackend(arch)) {
-            r.register(new InvocationPlugin("compareUnsigned", type, type) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(JavaKind.Int, new UnsignedCompareNode(x, y));
-                    return true;
-                }
-            });
-        } else {
-            r.register(new InvocationPlugin("compareUnsigned", type, type) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    LogicNode equal = b.add(IntegerEqualsNode.create(x, y, NodeView.DEFAULT));
-                    ValueNode equalOrAbove = b.add(ConditionalNode.create(equal, ConstantNode.forInt(0), ConstantNode.forInt(1), NodeView.DEFAULT));
-                    LogicNode below = b.add(IntegerBelowNode.create(x, y, NodeView.DEFAULT));
-                    b.addPush(JavaKind.Int, ConditionalNode.create(below, ConstantNode.forInt(-1), equalOrAbove, NodeView.DEFAULT));
-                    return true;
-                }
-            });
-        }
+        r.register(new InvocationPlugin("compareUnsigned", type, type) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                b.addPush(JavaKind.Int, IntegerNormalizeCompareNode.create(x, y, true, JavaKind.Int, b.getConstantReflection()));
+                return true;
+            }
+        });
     }
 
     private static void registerCharacterPlugins(InvocationPlugins plugins) {

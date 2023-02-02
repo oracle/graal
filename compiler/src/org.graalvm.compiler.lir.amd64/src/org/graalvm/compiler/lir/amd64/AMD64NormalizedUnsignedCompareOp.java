@@ -22,28 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.lir.aarch64;
+package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 
-public class AArch64UnsignedCompareOp extends AArch64LIRInstruction {
-    public static final LIRInstructionClass<AArch64UnsignedCompareOp> TYPE = LIRInstructionClass.create(AArch64UnsignedCompareOp.class);
+public class AMD64NormalizedUnsignedCompareOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64NormalizedUnsignedCompareOp> TYPE = LIRInstructionClass.create(AMD64NormalizedUnsignedCompareOp.class);
 
     @Def({REG}) protected AllocatableValue result;
     @Use({REG}) protected AllocatableValue x;
     @Use({REG}) protected AllocatableValue y;
 
-    public AArch64UnsignedCompareOp(AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+    public AMD64NormalizedUnsignedCompareOp(AllocatableValue result, AllocatableValue x, AllocatableValue y) {
         super(TYPE);
 
         this.result = result;
@@ -52,14 +53,17 @@ public class AArch64UnsignedCompareOp extends AArch64LIRInstruction {
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        if (x.getPlatformKind() == AArch64Kind.DWORD) {
-            masm.cmp(32, asRegister(x), asRegister(y));
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        Label done = new Label();
+        if (x.getPlatformKind() == AMD64Kind.DWORD) {
+            masm.cmpl(asRegister(x), asRegister(y));
         } else {
-            GraalError.guarantee(x.getPlatformKind() == AArch64Kind.QWORD, "unsupported value kind %s", x.getPlatformKind());
-            masm.cmp(64, asRegister(x), asRegister(y));
+            GraalError.guarantee(x.getPlatformKind() == AMD64Kind.QWORD, "unsupported value kind %s", x.getPlatformKind());
+            masm.cmpq(asRegister(x), asRegister(y));
         }
-        masm.cset(32, asRegister(result), ConditionFlag.NE);
-        masm.csneg(32, asRegister(result), asRegister(result), asRegister(result), ConditionFlag.HI);
+        masm.movl(asRegister(result), -1);
+        masm.jccb(AMD64Assembler.ConditionFlag.Below, done);
+        masm.setl(AMD64Assembler.ConditionFlag.NotEqual, asRegister(result));
+        masm.bind(done);
     }
 }

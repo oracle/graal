@@ -205,25 +205,6 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     Variable emitByteSwap(Value operand);
 
     @SuppressWarnings("unused")
-    default Variable emitBitSwap(Value operand) {
-        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
-    }
-
-    @SuppressWarnings("unused")
-    default Variable emitHalfFloatToFloat(Value operand) {
-        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
-    }
-
-    @SuppressWarnings("unused")
-    default Variable emitFloatToHalfFloat(Value operand) {
-        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
-    }
-
-    default Variable emitUnsignedCompare(Value x, Value y) {
-        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
-    }
-
-    @SuppressWarnings("unused")
     default Variable emitArrayCompareTo(Stride strideA, Stride strideB, EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value lengthA, Value arrayB, Value lengthB) {
         throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
     }

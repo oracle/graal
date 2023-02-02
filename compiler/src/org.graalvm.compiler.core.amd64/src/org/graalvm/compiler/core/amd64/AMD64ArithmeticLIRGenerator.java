@@ -119,7 +119,10 @@ import org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FPDivRemOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
+import org.graalvm.compiler.lir.amd64.AMD64BitSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64ClearRegisterOp;
+import org.graalvm.compiler.lir.amd64.AMD64FloatToHalfFloatOp;
+import org.graalvm.compiler.lir.amd64.AMD64HalfFloatToFloatOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathCopySignOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathCosOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathExpOp;
@@ -131,6 +134,7 @@ import org.graalvm.compiler.lir.amd64.AMD64MathSinOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathTanOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64MulDivOp;
+import org.graalvm.compiler.lir.amd64.AMD64NormalizedUnsignedCompareOp;
 import org.graalvm.compiler.lir.amd64.AMD64RoundFloatToIntegerOp;
 import org.graalvm.compiler.lir.amd64.AMD64ShiftOp;
 import org.graalvm.compiler.lir.amd64.AMD64SignExtendOp;
@@ -1673,4 +1677,31 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
+    @Override
+    public Variable emitBitSwap(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.combine(input));
+        getLIRGen().append(new AMD64BitSwapOp(getLIRGen(), result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitHalfFloatToFloat(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.SINGLE));
+        getLIRGen().append(new AMD64HalfFloatToFloatOp(result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitFloatToHalfFloat(Value input) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DWORD));
+        getLIRGen().append(new AMD64FloatToHalfFloatOp(getLIRGen(), result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Variable emitUnsignedCompare(Value x, Value y) {
+        Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DWORD));
+        getLIRGen().append(new AMD64NormalizedUnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
+        return result;
+    }
 }

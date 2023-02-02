@@ -144,7 +144,7 @@ public final class FloatToHalfFloatNode extends UnaryNode implements LIRLowerabl
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitFloatToHalfFloat(gen.operand(getValue()));
+        Value result = gen.getLIRGeneratorTool().getArithmetic().emitFloatToHalfFloat(gen.operand(getValue()));
         gen.setResult(this, result);
     }
 }

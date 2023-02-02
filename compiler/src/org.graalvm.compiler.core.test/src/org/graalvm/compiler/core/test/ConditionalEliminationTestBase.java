@@ -67,7 +67,7 @@ public class ConditionalEliminationTestBase extends GraalCompilerTest {
 
     @SuppressWarnings("try")
     protected void testConditionalElimination(String snippet, String referenceSnippet, boolean applyConditionalEliminationOnReference, boolean applyLowering) {
-        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES, getOptions());
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         DebugContext debug = graph.getDebug();
         debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
         CoreProviders context = getProviders();
