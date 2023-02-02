@@ -3802,7 +3802,8 @@ public final class VM extends NativeEnv {
 
         StaticObject foreignWrapper = null;
         VM.StackTrace stackTrace = null;
-        if (throwableOrBacktrace.isForeignObject()) { // foreign object wrapper passed as backtrace directly
+        if (throwableOrBacktrace.isForeignObject()) { // foreign object wrapper passed as backtrace
+                                                      // directly
             foreignWrapper = throwableOrBacktrace;
         } else { // check for foreign marker stack trace
             stackTrace = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwableOrBacktrace);
@@ -3846,7 +3847,8 @@ public final class VM extends NativeEnv {
     }
 
     @TruffleBoundary
-    private void fillInForeignElement(StaticObject elements, EspressoLanguage language, InteropLibrary interop, Object exceptionStackTrace, int i) throws UnsupportedMessageException, InvalidArrayIndexException {
+    private void fillInForeignElement(StaticObject elements, EspressoLanguage language, InteropLibrary interop, Object exceptionStackTrace, int i)
+                    throws UnsupportedMessageException, InvalidArrayIndexException {
         Object foreignElement = interop.readArrayElement(exceptionStackTrace, i);
 
         String languageId = "java";
