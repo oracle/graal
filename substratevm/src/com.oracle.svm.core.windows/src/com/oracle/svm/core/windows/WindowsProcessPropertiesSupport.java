@@ -46,16 +46,14 @@ import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
+import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 @AutomaticallyRegisteredImageSingleton(ProcessPropertiesSupport.class)
 public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSupport {
 
     @Override
     public String getExecutableName() {
-        CCharPointer path = UnsafeStackValue.get(WinBase.MAX_PATH, CCharPointer.class);
-        WinBase.HMODULE hModule = LibLoaderAPI.GetModuleHandleA(WordFactory.nullPointer());
-        int result = LibLoaderAPI.GetModuleFileNameA(hModule, path, WinBase.MAX_PATH);
-        return result == 0 ? null : CTypeConversion.toJavaString(path);
+        return getModulePath(LibLoaderAPI.GetModuleHandleA(WordFactory.nullPointer()));
     }
 
     @Override
@@ -122,10 +120,16 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
                         (CCharPointer) symbolAddress, module) == 0) {
             return null;
         }
+        return getModulePath(module.read());
+    }
 
-        CCharPointer path = UnsafeStackValue.get(WinBase.MAX_PATH, CCharPointer.class);
-        int result = LibLoaderAPI.GetModuleFileNameA(module.read(), path, WinBase.MAX_PATH);
-        return result == 0 ? null : CTypeConversion.toJavaString(path);
+    private static String getModulePath(WinBase.HMODULE module) {
+        WCharPointer path = UnsafeStackValue.get(WinBase.MAX_PATH, WCharPointer.class);
+        int length = LibLoaderAPI.GetModuleFileNameW(module, path, WinBase.MAX_PATH);
+        if (length == 0 || length == WinBase.MAX_PATH) {
+            return null;
+        }
+        return WindowsSystemPropertiesSupport.toJavaString(path, length);
     }
 
     @Override
