@@ -3790,11 +3790,11 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl(isJni = true)
-    public void JVM_InitStackTraceElementArray(@JavaType(StackTraceElement[].class) StaticObject elements, @JavaType(Throwable.class) StaticObject throwable,
+    public void JVM_InitStackTraceElementArray(@JavaType(StackTraceElement[].class) StaticObject elements, @JavaType(Object.class) StaticObject throwableOrBacktrace,
                     @Inject EspressoLanguage language,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
-        if (StaticObject.isNull(elements) || StaticObject.isNull(throwable)) {
+        if (StaticObject.isNull(elements) || StaticObject.isNull(throwableOrBacktrace)) {
             profiler.profile(0);
             throw meta.throwNullPointerException();
         }
@@ -3802,12 +3802,12 @@ public final class VM extends NativeEnv {
 
         StaticObject foreignWrapper = null;
         VM.StackTrace stackTrace = null;
-        if (throwable.isForeignObject()) { // foreign object wrapper passed as backtrace directly
-            foreignWrapper = throwable;
+        if (throwableOrBacktrace.isForeignObject()) { // foreign object wrapper passed as backtrace directly
+            foreignWrapper = throwableOrBacktrace;
         } else { // check for foreign marker stack trace
-            stackTrace = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwable);
+            stackTrace = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwableOrBacktrace);
             if (stackTrace == StackTrace.FOREIGN_MARKER_STACK_TRACE) {
-                foreignWrapper = meta.java_lang_Throwable_backtrace.getObject(throwable);
+                foreignWrapper = meta.java_lang_Throwable_backtrace.getObject(throwableOrBacktrace);
             }
         }
         if (foreignWrapper != null) {
