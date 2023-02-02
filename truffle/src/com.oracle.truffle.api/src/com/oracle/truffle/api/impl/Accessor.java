@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,12 @@
  */
 package com.oracle.truffle.api.impl;
 
-import static org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
-
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
 import java.net.URI;
 import java.net.URL;
@@ -66,7 +65,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
@@ -82,6 +80,8 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -157,6 +157,8 @@ public abstract class Accessor {
         protected NodeSupport() {
             super(IMPL_CLASS_NAME);
         }
+
+        public abstract Lookup nodeLookup();
 
         public abstract boolean isInstrumentable(RootNode rootNode);
 
@@ -300,6 +302,8 @@ public abstract class Accessor {
         public abstract boolean isGuestToHostRootNode(RootNode root);
 
         public abstract boolean isHostLanguage(Class<?> languageClass);
+
+        public abstract Node inlineToHostNode(Object target);
 
     }
 
@@ -472,9 +476,7 @@ public abstract class Accessor {
 
         public abstract Object findMetaObjectForLanguage(Object polyglotLanguageContext, Object value);
 
-        public abstract boolean isInternal(FileSystem fs);
-
-        public abstract boolean hasAllAccess(FileSystem fs);
+        public abstract boolean isInternal(Object engineObject, FileSystem fs);
 
         public abstract boolean hasNoAccess(FileSystem fs);
 
@@ -494,7 +496,7 @@ public abstract class Accessor {
 
         public abstract Object getContextLoggerCache(Object polyglotLanguageContext);
 
-        public abstract Handler getLogHandler(Object loggerCache);
+        public abstract void publish(Object loggerCache, LogRecord logRecord);
 
         public abstract Map<String, Level> getLogLevels(Object loggerCache);
 
@@ -669,6 +671,10 @@ public abstract class Accessor {
 
         public abstract void leaveLanguageFromRuntime(TruffleLanguage<?> language, Object prev);
 
+        public abstract Object enterRootNodeVisit(RootNode root);
+
+        public abstract void leaveRootNodeVisit(RootNode root, Object prev);
+
         public abstract Throwable getPolyglotExceptionCause(Object polyglotExceptionImpl);
 
         public abstract Object getPolyglotExceptionContext(Object polyglotExceptionImpl);
@@ -705,9 +711,9 @@ public abstract class Accessor {
 
         public abstract AbstractHostLanguageService getHostService(Object polyglotEngineImpl);
 
-        public abstract Handler getEngineLogHandler(Object polyglotEngineImpl);
+        public abstract LogHandler getEngineLogHandler(Object polyglotEngineImpl);
 
-        public abstract Handler getContextLogHandler(Object polyglotContextImpl);
+        public abstract LogHandler getContextLogHandler(Object polyglotContextImpl);
 
         public abstract LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown, String formatKind);
 
@@ -1213,6 +1219,10 @@ public abstract class Accessor {
 
     public final void transferOSRFrameStaticSlot(FrameWithoutBoxing sourceFrame, FrameWithoutBoxing targetFrame, int slot) {
         sourceFrame.transferOSRStaticSlot(targetFrame, slot);
+    }
+
+    public final void startOSRFrameTransfer(FrameWithoutBoxing target) {
+        target.startOSRTransfer();
     }
 
 // A separate class to break the cycle such that Accessor can fully initialize

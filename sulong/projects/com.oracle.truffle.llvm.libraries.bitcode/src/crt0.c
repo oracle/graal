@@ -35,6 +35,7 @@
 #include <graalvm/llvm/polyglot.h>
 
 #include "exit.h"
+#include "abort.h"
 
 #ifdef __linux__
 #include <elf.h>
@@ -182,7 +183,7 @@ int _start(int type, char *application_path_java_byte_array, void *main) {
             break;
         }
     }
-    abort();
+    __sulong_abort();
 }
 
 #ifdef __linux__

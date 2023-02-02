@@ -48,6 +48,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
@@ -56,8 +57,8 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.ProfileProvider;
@@ -99,10 +100,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public static class ScheduleResult {
         private final ControlFlowGraph cfg;
-        private final NodeMap<Block> nodeToBlockMap;
+        private final NodeMap<HIRBlock> nodeToBlockMap;
         private final BlockMap<List<Node>> blockToNodesMap;
 
-        public ScheduleResult(ControlFlowGraph cfg, NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap) {
+        public ScheduleResult(ControlFlowGraph cfg, NodeMap<HIRBlock> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap) {
             this.cfg = cfg;
             this.nodeToBlockMap = nodeToBlockMap;
             this.blockToNodesMap = blockToNodesMap;
@@ -112,7 +113,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return cfg;
         }
 
-        public NodeMap<Block> getNodeToBlockMap() {
+        public NodeMap<HIRBlock> getNodeToBlockMap() {
             return nodeToBlockMap;
         }
 
@@ -120,7 +121,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return blockToNodesMap;
         }
 
-        public List<Node> nodesFor(Block block) {
+        public List<Node> nodesFor(HIRBlock block) {
             return blockToNodesMap.get(block);
         }
     }
@@ -131,7 +132,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public static class Builder {
         private String name;
         private final Assumptions assumptions;
-        private GraphState graphState;
         private SpeculationLog speculationLog;
         private ResolvedJavaMethod rootMethod;
         private CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
@@ -165,10 +165,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             this.trackNodeSourcePosition = Graph.trackNodeSourcePositionDefault(options, debug);
         }
 
-        public String getName() {
-            return name;
-        }
-
         public Builder name(String s) {
             this.name = s;
             return this;
@@ -194,23 +190,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public DebugContext getDebug() {
-            return debug;
-        }
-
-        public GraphState getGraphState() {
-            return graphState;
-        }
-
-        public Builder graphState(GraphState state) {
-            this.graphState = state;
-            return this;
-        }
-
-        public SpeculationLog getSpeculationLog() {
-            return speculationLog;
-        }
-
         public Builder speculationLog(SpeculationLog log) {
             this.speculationLog = log;
             return this;
@@ -234,10 +213,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public int getEntryBCI() {
-            return entryBCI;
-        }
-
         public Builder entryBCI(int bci) {
             this.entryBCI = bci;
             return this;
@@ -246,10 +221,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         public Builder profileProvider(ProfileProvider provider) {
             this.profileProvider = provider;
             return this;
-        }
-
-        public boolean getRecordInlinedMethods() {
-            return recordInlinedMethods;
         }
 
         public Builder recordInlinedMethods(boolean flag) {
@@ -270,7 +241,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
 
         public StructuredGraph build() {
-            GraphState newGraphState = graphState == null ? GraphState.defaultGraphState() : graphState;
+            GraphState newGraphState = GraphState.defaultGraphState();
             List<ResolvedJavaMethod> inlinedMethods = recordInlinedMethods ? new ArrayList<>() : null;
             // @formatter:off
             return new StructuredGraph(name,
@@ -386,6 +357,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     public void setLastSchedule(ScheduleResult result) {
+        GraalError.guarantee(result == null || result.cfg.getStartBlock().isModifiable(), "Schedule must use blocks that can be modified");
         lastSchedule = result;
     }
 

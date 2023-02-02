@@ -280,7 +280,7 @@ public final class VMOperationControl {
             if (!MultiThreaded.getValue()) {
                 // no safepoint is needed, so we can always directly execute the operation
                 assert !useDedicatedVMOperationThread();
-                markAsQueued(operation, data);
+                operation.markAsQueued(data);
                 try {
                     operation.execute(data);
                 } finally {
@@ -317,15 +317,8 @@ public final class VMOperationControl {
         mainQueues.enqueueUninterruptibly(operation, data);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static void markAsQueued(VMOperation operation, NativeVMOperationData data) {
-        operation.setFinished(data, false);
-        operation.setQueuingThread(data, CurrentIsolate.getCurrentThread());
-    }
-
     private static void markAsFinished(VMOperation operation, NativeVMOperationData data, VMCondition operationFinished) {
-        operation.setQueuingThread(data, WordFactory.nullPointer());
-        operation.setFinished(data, true);
+        operation.markAsFinished(data);
         if (operationFinished != null) {
             operationFinished.broadcast();
         }
@@ -393,8 +386,11 @@ public final class VMOperationControl {
             thread.start();
         }
 
+        @NeverInline("Must not have escape analysis move an allocation into this method")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while acquiring / holding lock")
         @Override
         public void run() {
+            ThreadingSupportImpl.pauseRecurringCallback("VM operation thread must not execute recurring callbacks.");
             this.isolateThread = CurrentIsolate.getCurrentThread();
 
             VMOperationControl control = VMOperationControl.get();
@@ -495,6 +491,8 @@ public final class VMOperationControl {
             executeAllQueuedVMOperations();
         }
 
+        @NeverInline("Must not have escape analysis move an allocation into this method")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while acquiring / holding lock")
         void enqueueAndWait(VMOperation operation, NativeVMOperationData data) {
             assert useDedicatedVMOperationThread();
             lock();
@@ -521,6 +519,8 @@ public final class VMOperationControl {
             }
         }
 
+        @NeverInline("Must not have escape analysis move an allocation into this method")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while acquiring / holding lock")
         void enqueueAndExecute(VMOperation operation, NativeVMOperationData data) {
             lock();
             try {
@@ -545,7 +545,7 @@ public final class VMOperationControl {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private void enqueue(NativeVMOperation operation, NativeVMOperationData data) {
             assert operation == data.getNativeVMOperation();
-            markAsQueued(operation, data);
+            operation.markAsQueued(data);
             if (operation.getCausesSafepoint()) {
                 nativeSafepointOperations.push(data);
             } else {
@@ -554,7 +554,7 @@ public final class VMOperationControl {
         }
 
         private void enqueue(JavaVMOperation operation, NativeVMOperationData data) {
-            markAsQueued(operation, data);
+            operation.markAsQueued(data);
             if (operation.getCausesSafepoint()) {
                 javaSafepointOperations.push(operation);
             } else {

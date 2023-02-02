@@ -47,6 +47,7 @@ import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
 
@@ -293,6 +294,42 @@ public @interface Cached {
     boolean allowUncached() default false;
 
     /**
+     * Enables inlining of the cached parameter if supported. The type of a cached parameter is
+     * considered inlinable if it declares a static method called <code>inline</code> with a single
+     * parameter of type {@link InlineTarget}. For specializing DSL nodes the {@link GenerateInline}
+     * is sufficient to be enabled for the cached target type, the static inline method will be
+     * resolved automatically from the generated code of the target type.
+     * <p>
+     * Inlining is enabled by default if:
+     * <ul>
+     * <li>{@link GenerateInline} is set to <code>true</code> for the declaring specializing node
+     * type.
+     * <li>The {@link GenerateCached#alwaysInlineCached()} property is set to <code>true</code> for
+     * the declaring specializing node type.
+     * <li>If a target parameter type is a specializing node and has {@link GenerateInline} enabled
+     * but {@link GenerateCached} disabled.
+     * </ul>
+     * Else, inlining is disabled by default. If a node is inlinable but is not inlined by default,
+     * the DSL will emit a warning to indicate this possibility.
+     *
+     * @see InlineSupport
+     * @since 23.0
+     */
+    boolean inline() default false;
+
+    /**
+     * Specifies an alternative method name for node object inlining. Instead of looking up the
+     * inline method from the receiver type use an accessible enclosing method of the given name
+     * instead. The method must have a single parameter {@link InlineTarget} and return a type
+     * compatible to the cached type. This can be useful if you want to route calls to the inline
+     * method through an abstraction that does not allow direct type access to the node classes. It
+     * is expected that this property is only needed rarely.
+     *
+     * @since 23.0
+     */
+    String inlineMethod() default "";
+
+    /**
      * Specifies the bindings used for the $parameters variable in cached or uncached initializers.
      *
      * @since 19.0
@@ -353,15 +390,28 @@ public @interface Cached {
     boolean adopt() default true;
 
     /**
+     * Returns <code>true</code> if the cache initializer never returns the default value of its
+     * parameter type at runtime. For reference types the default value is <code>null</code>, for
+     * primitive values 0. By default, default values in cache initializers are allowed. The DSL may
+     * use the default state of a cache for optimizations in the generated code layout. The DSL
+     * informs with a warning when the use of this property has an effect and is recommended to be
+     * set. Alternatively to specifying {@link #neverDefault()}, the {@link NeverDefault} annotation
+     * may be used on the method or field bound by the cache initializer.
+     * <p>
+     * If a cache initializer returns the illegal default value when this property is set to
+     * <code>true</code> then the node will throw an {@link IllegalStateException} at runtime.
+     * <p>
+     *
+     * @see NeverDefault
+     * @since 23.0
+     */
+    boolean neverDefault() default false;
+
+    /**
      * Allows sharing between multiple Cached parameters between multiple specializations or
      * exported library messages. If no sharing is desired then the {@link Cached cached} parameter
      * can be annotated with {@link Exclusive exclusive}. The DSL will indicate sharing
      * opportunities to the user by showing a warning.
-     * <p>
-     * Shared caches with reference types must never return <code>null</code> for their initializer
-     * when they are used in guards, because the <code>null</code> value is reserved for the
-     * uninitialized state. An {@link AssertionError} will be thrown at runtime if that is the case.
-     * Shared caches with primitive types must not be used at all in guards.
      *
      * @see Exclusive
      * @since 19.0
@@ -371,11 +421,12 @@ public @interface Cached {
     public @interface Shared {
 
         /**
-         * Specifies the sharing group of the shared cached element.
+         * Specifies the sharing group of the shared cached element. If not specified then the
+         * parameter name will be used as a group.
          *
          * @since 19.0
          */
-        String value();
+        String value() default "";
 
     }
 

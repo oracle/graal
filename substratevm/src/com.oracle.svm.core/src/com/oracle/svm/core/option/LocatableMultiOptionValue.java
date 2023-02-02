@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.core.option;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -39,21 +40,22 @@ import com.oracle.svm.util.ClassUtil;
 
 public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T> {
 
+    protected static final String NO_DELIMITER = "";
+
+    private final String delimiter;
     private final Class<T> valueType;
     private final List<Pair<T, String>> values;
 
-    private LocatableMultiOptionValue(Class<T> valueType) {
+    private LocatableMultiOptionValue(Class<T> valueType, String delimiter, List<T> defaults) {
         this.valueType = valueType;
+        this.delimiter = delimiter;
         values = new ArrayList<>();
-    }
-
-    private LocatableMultiOptionValue(Class<T> valueType, List<T> defaults) {
-        this(valueType);
-        values.addAll(defaults.stream().map(val -> Pair.create(val, "default")).collect(Collectors.toList()));
+        values.addAll(defaults.stream().map(val -> Pair.<T, String> createLeft(val)).collect(Collectors.toList()));
     }
 
     private LocatableMultiOptionValue(LocatableMultiOptionValue<T> other) {
         this.valueType = other.valueType;
+        this.delimiter = other.delimiter;
         this.values = new ArrayList<>(other.values);
     }
 
@@ -63,21 +65,45 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
     }
 
     @Override
+    public String getDelimiter() {
+        return delimiter;
+    }
+
+    @Override
     public void valueUpdate(Object value) {
         Object rawValue = LocatableOption.rawValue(value);
         String origin = LocatableOption.valueOrigin(value);
-        if (!valueType.isInstance(rawValue)) {
-            VMError.shouldNotReachHere("Cannot update LocatableMultiOptionValue of type " + valueType + " with value of type " + rawValue.getClass());
+        Class<?> rawValueClass = rawValue.getClass();
+        boolean multipleElements = rawValueClass.isArray();
+        Class<?> rawValueElementType = multipleElements ? rawValueClass.getComponentType() : rawValueClass;
+        if (!valueType.isAssignableFrom(rawValueElementType)) {
+            VMError.shouldNotReachHere("Cannot update LocatableMultiOptionValue of type " + valueType + " with value of type " + rawValueElementType);
         }
-        values.add(Pair.create(valueType.cast(rawValue), origin));
+        if (multipleElements) {
+            for (Object singleRawValue : (Object[]) rawValue) {
+                values.add(Pair.create(valueType.cast(singleRawValue), origin));
+            }
+        } else {
+            values.add(Pair.create(valueType.cast(rawValue), origin));
+        }
     }
 
     @Override
     public List<T> values() {
+        return getValuesWithOrigins().map(Pair::getLeft).collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<T> lastValue() {
+        return lastValueWithOrigin().map(Pair::getLeft);
+    }
+
+    public Optional<Pair<T, OptionOrigin>> lastValueWithOrigin() {
         if (values.isEmpty()) {
-            return Collections.emptyList();
+            return Optional.empty();
         }
-        return values.stream().map(Pair::getLeft).collect(Collectors.toList());
+        Pair<T, String> pair = values.get(values.size() - 1);
+        return Optional.of(Pair.create(pair.getLeft(), OptionOrigin.from(pair.getRight())));
     }
 
     public Stream<Pair<T, OptionOrigin>> getValuesWithOrigins() {
@@ -92,7 +118,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
         return "<" + ClassUtil.getUnqualifiedName(valueType).toLowerCase() + ">*";
     }
 
-    public static class Strings extends LocatableMultiOptionValue<String> {
+    public static final class Strings extends LocatableMultiOptionValue<String> {
 
         private Strings(Strings other) {
             super(other);
@@ -103,12 +129,52 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
             return new Strings(this);
         }
 
-        public Strings() {
-            super(String.class);
+        private Strings(String delimiter, List<String> defaultStrings) {
+            super(String.class, delimiter, defaultStrings);
         }
 
-        public Strings(List<String> defaultStrings) {
-            super(String.class, defaultStrings);
+        public static Strings build() {
+            return new Strings(NO_DELIMITER, List.of());
+        }
+
+        public static Strings buildWithCommaDelimiter() {
+            return new Strings(",", List.of());
+        }
+
+        public static Strings buildWithDefaults(String... defaultStrings) {
+            return new Strings(NO_DELIMITER, List.of(defaultStrings));
+        }
+    }
+
+    public static final class Paths extends LocatableMultiOptionValue<Path> {
+
+        private Paths(Paths other) {
+            super(other);
+        }
+
+        @Override
+        public MultiOptionValue<Path> createCopy() {
+            return new Paths(this);
+        }
+
+        private Paths(String delimiter, List<Path> defaultPaths) {
+            super(Path.class, delimiter, defaultPaths);
+        }
+
+        public static Paths build() {
+            return new Paths(NO_DELIMITER, List.of());
+        }
+
+        public static Paths buildWithCommaDelimiter() {
+            return new Paths(",", List.of());
+        }
+
+        public static Paths buildWithCustomDelimiter(String delimiter) {
+            return new Paths(delimiter, List.of());
+        }
+
+        public static Paths buildWithDefaults(Path... defaultPaths) {
+            return new Paths(NO_DELIMITER, List.of(defaultPaths));
         }
     }
 }

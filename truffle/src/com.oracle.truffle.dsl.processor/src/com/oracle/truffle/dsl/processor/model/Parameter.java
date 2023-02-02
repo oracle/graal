@@ -51,11 +51,13 @@ public final class Parameter {
     private final int typeVarArgsIndex;
     private final VariableElement variableElement;
     private final TypeMirror type;
+    private final boolean declared;
 
-    public Parameter(ParameterSpec specification, VariableElement variableElement, int specificationVarArgsIndex, int typeVarArgsIndex) {
+    public Parameter(ParameterSpec specification, VariableElement variableElement,
+                    int specificationVarArgsIndex, int typeVarArgsIndex, boolean declared) {
         this.specification = specification;
         this.variableElement = variableElement;
-        this.type = variableElement.asType();
+        this.type = variableElement != null ? variableElement.asType() : null;
         this.specificationVarArgsIndex = specificationVarArgsIndex;
 
         String valueName = specification.getName() + "Value";
@@ -64,24 +66,17 @@ public final class Parameter {
         }
         this.typeVarArgsIndex = typeVarArgsIndex;
         this.localName = valueName;
+        this.declared = declared;
     }
 
-    public Parameter(Parameter parameter) {
-        this.specification = parameter.specification;
-        this.specificationVarArgsIndex = parameter.specificationVarArgsIndex;
-        this.localName = parameter.localName;
-        this.typeVarArgsIndex = parameter.typeVarArgsIndex;
-        this.variableElement = parameter.variableElement;
-        this.type = parameter.type;
-    }
-
-    public Parameter(Parameter parameter, TypeMirror newType) {
+    Parameter(Parameter parameter, TypeMirror newType) {
         this.specification = parameter.specification;
         this.specificationVarArgsIndex = parameter.specificationVarArgsIndex;
         this.localName = parameter.localName;
         this.typeVarArgsIndex = parameter.typeVarArgsIndex;
         this.variableElement = parameter.variableElement;
         this.type = newType;
+        this.declared = parameter.declared;
     }
 
     public Parameter(Parameter parameter, VariableElement newVariable) {
@@ -91,6 +86,15 @@ public final class Parameter {
         this.typeVarArgsIndex = parameter.typeVarArgsIndex;
         this.variableElement = newVariable;
         this.type = newVariable.asType();
+        this.declared = parameter.declared;
+    }
+
+    /**
+     * Returns <code>true</code> if this parameter was actually declared in the method. Not all
+     * parameters must be declared, e.g. optional parameters.
+     */
+    public boolean isDeclared() {
+        return declared;
     }
 
     public void setLocalName(String localName) {

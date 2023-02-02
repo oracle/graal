@@ -33,6 +33,7 @@ Directory | Description
 [`sulong/`](sulong/) | [Sulong][reference-sulong], an engine for running LLVM bitcode on GraalVM.
 [`tools/`](tools/) | Tools for GraalVM languages implemented with the instrumentation framework.
 [`truffle/`](truffle/) | GraalVM's [language implementation framework][truffle] for creating languages and tools.
+[`visualizer/`](visualizer/) | [Ideal Graph Visualizer (IGV)][igv], a tool for analyzing Graal compiler graphs.
 [`vm/`](vm/) | Components for building GraalVM distributions.
 [`wasm/`](wasm/) | [GraalWasm][reference-graalwasm], an engine for running WebAssembly programs on GraalVM.
 
@@ -73,22 +74,23 @@ Component(s) | License
 [badge-yt]: https://img.shields.io/badge/YouTube-subscribe-active?logo=youtube
 [community]: https://www.graalvm.org/community/
 [contributors]: https://www.graalvm.org/community/contributors/
-[docs]: https://www.graalvm.org/docs/
+[docs]: https://www.graalvm.org/latest/docs/
 [downloads]: https://www.graalvm.org/downloads/
 [fastr]: https://github.com/oracle/fastr
 [gate]: https://github.com/oracle/graal/actions/workflows/main.yml
-[getting-started]: https://www.graalvm.org/docs/getting-started/
+[getting-started]: https://www.graalvm.org/latest/docs/getting-started/
 [graaljs]: https://github.com/oracle/graaljs
 [graalpy]: https://github.com/oracle/graalpython
 [graalvm-demos]: https://github.com/graalvm/graalvm-demos
 [graalvm-sdk]: https://www.graalvm.org/sdk/javadoc/
+[igv]: https://www.graalvm.org/latest/tools/igv/
 [issues]: https://github.com/oracle/graal/issues
-[java-on-truffle]: https://www.graalvm.org/reference-manual/java-on-truffle/
+[java-on-truffle]: https://www.graalvm.org/latest/reference-manual/java-on-truffle/
 [native-build-tools]: https://github.com/graalvm/native-build-tools
-[native-image]: https://www.graalvm.org/reference-manual/native-image/
-[reference-compiler]: https://www.graalvm.org/reference-manual/compiler/
-[reference-graalwasm]: https://www.graalvm.org/reference-manual/wasm/
-[reference-sulong]: https://www.graalvm.org/reference-manual/llvm/
+[native-image]: https://www.graalvm.org/native-image/
+[reference-compiler]: https://www.graalvm.org/latest/reference-manual/java/compiler/
+[reference-graalwasm]: https://www.graalvm.org/latest/reference-manual/wasm/
+[reference-sulong]: https://www.graalvm.org/latest/reference-manual/llvm/
 [reporting-vulnerabilities]: https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html
 [simplelanguage]: https://github.com/graalvm/simplelanguage
 [simpletool]: https://github.com/graalvm/simpletool

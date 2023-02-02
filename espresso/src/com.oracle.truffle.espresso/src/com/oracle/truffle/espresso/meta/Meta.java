@@ -26,6 +26,7 @@ import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.HOT
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.ALL;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
+import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_19_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.higher;
@@ -129,6 +130,7 @@ public final class Meta extends ContextAccessImpl {
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
 
         java_lang_String = knownKlass(Type.java_lang_String);
+        java_lang_CharSequence = knownKlass(Type.java_lang_CharSequence);
 
         // Primitives.
         _boolean = new PrimitiveKlass(context, JavaKind.Boolean);
@@ -384,6 +386,7 @@ public final class Meta extends ContextAccessImpl {
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
+        java_lang_Thread$FieldHolder = getJavaVersion().java19OrLater() ? knownKlass(Type.java_lang_Thread_FieldHolder) : null;
         // The interrupted field is no longer hidden as of JDK14+
         HIDDEN_INTERRUPTED = diff() //
                         .field(lower(13), Name.HIDDEN_INTERRUPTED, Type._boolean)//
@@ -406,23 +409,45 @@ public final class Meta extends ContextAccessImpl {
         }
 
         java_lang_ThreadGroup = knownKlass(Type.java_lang_ThreadGroup);
-        java_lang_ThreadGroup_add = java_lang_ThreadGroup.requireDeclaredMethod(Name.add, Signature._void_Thread);
-        java_lang_ThreadGroup_remove = java_lang_ThreadGroup.requireDeclaredMethod(Name.remove, Signature._void_ThreadGroup);
+        if (getJavaVersion().java17OrEarlier()) {
+            java_lang_ThreadGroup_add = java_lang_ThreadGroup.requireDeclaredMethod(Name.add, Signature._void_Thread);
+        } else {
+            java_lang_ThreadGroup_add = null;
+        }
         java_lang_Thread_dispatchUncaughtException = java_lang_Thread.requireDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
         java_lang_Thread_init_ThreadGroup_Runnable = java_lang_Thread.requireDeclaredMethod(Name._init_, Signature._void_ThreadGroup_Runnable);
         java_lang_Thread_init_ThreadGroup_String = java_lang_Thread.requireDeclaredMethod(Name._init_, Signature._void_ThreadGroup_String);
         java_lang_Thread_interrupt = java_lang_Thread.requireDeclaredMethod(Name.interrupt, Signature._void);
         java_lang_Thread_exit = java_lang_Thread.requireDeclaredMethod(Name.exit, Signature._void);
         java_lang_Thread_run = java_lang_Thread.requireDeclaredMethod(Name.run, Signature._void);
-        java_lang_Thread_threadStatus = java_lang_Thread.requireDeclaredField(Name.threadStatus, Type._int);
+        java_lang_Thread_getThreadGroup = java_lang_Thread.requireDeclaredMethod(Name.getThreadGroup, Signature.ThreadGroup);
+        if (getJavaVersion().java17OrEarlier()) {
+            java_lang_Thread_holder = null;
+
+            java_lang_Thread_threadStatus = java_lang_Thread.requireDeclaredField(Name.threadStatus, Type._int);
+            java_lang_Thread$FieldHolder_threadStatus = null;
+
+            java_lang_Thread_priority = java_lang_Thread.requireDeclaredField(Name.priority, _int.getType());
+            java_lang_Thread$FieldHolder_priority = null;
+
+            java_lang_Thread_daemon = java_lang_Thread.requireDeclaredField(Name.daemon, Type._boolean);
+            java_lang_Thread$FieldHolder_daemon = null;
+        } else {
+            java_lang_Thread_holder = java_lang_Thread.requireDeclaredField(Name.holder, java_lang_Thread$FieldHolder.getType());
+
+            java_lang_Thread_threadStatus = null;
+            java_lang_Thread$FieldHolder_threadStatus = java_lang_Thread$FieldHolder.requireDeclaredField(Name.threadStatus, Type._int);
+
+            java_lang_Thread_priority = null;
+            java_lang_Thread$FieldHolder_priority = java_lang_Thread$FieldHolder.requireDeclaredField(Name.priority, _int.getType());
+
+            java_lang_Thread_daemon = null;
+            java_lang_Thread$FieldHolder_daemon = java_lang_Thread$FieldHolder.requireDeclaredField(Name.daemon, Type._boolean);
+        }
         java_lang_Thread_tid = java_lang_Thread.requireDeclaredField(Name.tid, Type._long);
         java_lang_Thread_contextClassLoader = java_lang_Thread.requireDeclaredField(Name.contextClassLoader, Type.java_lang_ClassLoader);
 
-        java_lang_Thread_group = java_lang_Thread.requireDeclaredField(Name.group, java_lang_ThreadGroup.getType());
         java_lang_Thread_name = java_lang_Thread.requireDeclaredField(Name.name, java_lang_String.getType());
-        java_lang_Thread_priority = java_lang_Thread.requireDeclaredField(Name.priority, _int.getType());
-        java_lang_Thread_blockerLock = java_lang_Thread.requireDeclaredField(Name.blockerLock, java_lang_Object.getType());
-        java_lang_Thread_daemon = java_lang_Thread.requireDeclaredField(Name.daemon, Type._boolean);
         java_lang_Thread_inheritedAccessControlContext = java_lang_Thread.requireDeclaredField(Name.inheritedAccessControlContext, Type.java_security_AccessControlContext);
         java_lang_Thread_checkAccess = java_lang_Thread.requireDeclaredMethod(Name.checkAccess, Signature._void);
         java_lang_Thread_stop = java_lang_Thread.requireDeclaredMethod(Name.stop, Signature._void);
@@ -455,13 +480,12 @@ public final class Meta extends ContextAccessImpl {
         java_security_AccessController = knownKlass(Type.java_security_AccessController);
 
         java_lang_invoke_MethodType = knownKlass(Type.java_lang_invoke_MethodType);
-        java_lang_invoke_MethodType_toMethodDescriptorString = java_lang_invoke_MethodType.requireDeclaredMethod(Name.toMethodDescriptorString, Signature.String);
-        java_lang_invoke_MethodType_fromMethodDescriptorString = java_lang_invoke_MethodType.requireDeclaredMethod(Name.fromMethodDescriptorString, Signature.MethodType_String_ClassLoader);
+        java_lang_invoke_MethodType_ptypes = java_lang_invoke_MethodType.requireDeclaredField(Name.ptypes, Type.java_lang_Class_array);
+        java_lang_invoke_MethodType_rtype = java_lang_invoke_MethodType.requireDeclaredField(Name.rtype, Type.java_lang_Class);
 
         java_lang_invoke_MemberName = knownKlass(Type.java_lang_invoke_MemberName);
         HIDDEN_VMINDEX = java_lang_invoke_MemberName.requireHiddenField(Name.HIDDEN_VMINDEX);
         HIDDEN_VMTARGET = java_lang_invoke_MemberName.requireHiddenField(Name.HIDDEN_VMTARGET);
-        java_lang_invoke_MemberName_getSignature = java_lang_invoke_MemberName.requireDeclaredMethod(Name.getSignature, Signature.String);
         java_lang_invoke_MemberName_clazz = java_lang_invoke_MemberName.requireDeclaredField(Name.clazz, Type.java_lang_Class);
         java_lang_invoke_MemberName_name = java_lang_invoke_MemberName.requireDeclaredField(Name.name, Type.java_lang_String);
         java_lang_invoke_MemberName_type = java_lang_invoke_MemberName.requireDeclaredField(Name.type, Type.java_lang_Object);
@@ -502,6 +526,7 @@ public final class Meta extends ContextAccessImpl {
         java_lang_invoke_MethodHandleNatives_linkCallSite = diff() //
                         .method(VERSION_8_OR_LOWER, Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array) //
                         .method(VERSION_9_OR_HIGHER, Name.linkCallSite, Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array) //
+                        .method(VERSION_19_OR_HIGHER, Name.linkCallSite, Signature.MemberName_Object_Object_Object_Object_Object_Object_array) //
                         .method(java_lang_invoke_MethodHandleNatives);
 
         java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkMethodHandleConstant,
@@ -552,8 +577,9 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_loader_ClassLoaders_platformClassLoader = jdk_internal_loader_ClassLoaders.requireDeclaredMethod(Name.platformClassLoader, Signature.ClassLoader);
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader);
             java_lang_StackWalker = knownKlass(Type.java_lang_StackWalker);
-            java_lang_AbstractStackWalker = knownKlass(Type.java_lang_AbstractStackWalker);
-            java_lang_AbstractStackWalker_doStackWalk = java_lang_AbstractStackWalker.requireDeclaredMethod(Name.doStackWalk, Signature.Object_long_int_int_int_int);
+            java_lang_StackStreamFactory_AbstractStackWalker = knownKlass(Type.java_lang_StackStreamFactory_AbstractStackWalker);
+            java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk = java_lang_StackStreamFactory_AbstractStackWalker.requireDeclaredMethod(Name.doStackWalk,
+                            Signature.Object_long_int_int_int_int);
 
             java_lang_StackStreamFactory = knownKlass(Type.java_lang_StackStreamFactory);
 
@@ -570,8 +596,8 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_loader_ClassLoaders_platformClassLoader = null;
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = null;
             java_lang_StackWalker = null;
-            java_lang_AbstractStackWalker = null;
-            java_lang_AbstractStackWalker_doStackWalk = null;
+            java_lang_StackStreamFactory_AbstractStackWalker = null;
+            java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk = null;
 
             java_lang_StackStreamFactory = null;
 
@@ -704,8 +730,13 @@ public final class Meta extends ContextAccessImpl {
         sun_reflect_Reflection_getCallerClass = sun_reflect_Reflection.requireDeclaredMethod(Name.getCallerClass, Signature.Class);
 
         if (getJavaVersion().java11OrLater()) {
-            java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
-                            Signature.Object_Object_int_Object_Object_Object_Object);
+            if (getJavaVersion().java17OrEarlier()) {
+                java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
+                                Signature.Object_Object_int_Object_Object_Object_Object);
+            } else {
+                java_lang_invoke_MethodHandleNatives_linkDynamicConstant = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkDynamicConstant,
+                                Signature.Object_Object_Object_Object_Object_Object);
+            }
         } else {
             java_lang_invoke_MethodHandleNatives_linkDynamicConstant = null;
         }
@@ -936,6 +967,7 @@ public final class Meta extends ContextAccessImpl {
 
     public final ObjectKlass java_lang_String;
     public final ObjectKlass java_lang_Class;
+    public final ObjectKlass java_lang_CharSequence;
     public final Field HIDDEN_MIRROR_KLASS;
     public final Field HIDDEN_PROTECTION_DOMAIN;
     public final Field HIDDEN_SIGNERS;
@@ -1192,11 +1224,13 @@ public final class Meta extends ContextAccessImpl {
 
     public final ObjectKlass java_lang_ThreadGroup;
     public final Method java_lang_ThreadGroup_add;
-    public final Method java_lang_ThreadGroup_remove;
     public final Method java_lang_Thread_dispatchUncaughtException;
     public final Field java_lang_ThreadGroup_maxPriority;
     public final ObjectKlass java_lang_Thread;
+    public final ObjectKlass java_lang_Thread$FieldHolder;
+    public final Field java_lang_Thread_holder;
     public final Field java_lang_Thread_threadStatus;
+    public final Field java_lang_Thread$FieldHolder_threadStatus;
     public final Field java_lang_Thread_tid;
     public final Field java_lang_Thread_contextClassLoader;
     public final Method java_lang_Thread_init_ThreadGroup_Runnable;
@@ -1206,6 +1240,7 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_lang_Thread_run;
     public final Method java_lang_Thread_checkAccess;
     public final Method java_lang_Thread_stop;
+    public final Method java_lang_Thread_getThreadGroup;
     public final Field HIDDEN_HOST_THREAD;
     public final Field HIDDEN_ESPRESSO_MANAGED;
     public final Field HIDDEN_INTERRUPTED;
@@ -1216,11 +1251,11 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
 
-    public final Field java_lang_Thread_group;
     public final Field java_lang_Thread_name;
     public final Field java_lang_Thread_priority;
-    public final Field java_lang_Thread_blockerLock;
+    public final Field java_lang_Thread$FieldHolder_priority;
     public final Field java_lang_Thread_daemon;
+    public final Field java_lang_Thread$FieldHolder_daemon;
     public final Field java_lang_Thread_inheritedAccessControlContext;
 
     public final ObjectKlass java_lang_ref_Finalizer$FinalizerThread;
@@ -1261,11 +1296,10 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_security_AccessController;
 
     public final ObjectKlass java_lang_invoke_MethodType;
-    public final Method java_lang_invoke_MethodType_toMethodDescriptorString;
-    public final Method java_lang_invoke_MethodType_fromMethodDescriptorString;
+    public final Field java_lang_invoke_MethodType_ptypes;
+    public final Field java_lang_invoke_MethodType_rtype;
 
     public final ObjectKlass java_lang_invoke_MemberName;
-    public final Method java_lang_invoke_MemberName_getSignature;
 
     public final Field HIDDEN_VMTARGET;
     public final Field HIDDEN_VMINDEX;
@@ -1336,9 +1370,9 @@ public final class Meta extends ContextAccessImpl {
     public final Method sun_reflect_Reflection_getCallerClass;
 
     public final ObjectKlass java_lang_StackWalker;
-    public final ObjectKlass java_lang_AbstractStackWalker;
+    public final ObjectKlass java_lang_StackStreamFactory_AbstractStackWalker;
     public final ObjectKlass java_lang_StackStreamFactory;
-    public final Method java_lang_AbstractStackWalker_doStackWalk;
+    public final Method java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk;
 
     public final ObjectKlass java_lang_StackFrameInfo;
     public final Field java_lang_StackFrameInfo_memberName;

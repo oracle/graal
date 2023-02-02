@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -57,16 +57,16 @@ final class ExternalPluginHandler {
         return new ExternalPluginHandler(guestHandler, library);
     }
 
-    public boolean shouldRerunClassInitializer(Klass klass, boolean changed) {
+    public boolean shouldRerunClassInitializer(Klass klass, boolean changed, DebuggerController controller) {
         try {
             return (boolean) interopLibrary.invokeMember(guestHandler, RERUN_CLINIT, klass.mirror(), changed);
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
-            JDWP.LOGGER.throwing(ExternalPluginHandler.class.getName(), "shouldRerunClassInitializer", e);
+            controller.severe(() -> ExternalPluginHandler.class.getName() + ": shouldRerunClassInitializer: " + e.getMessage());
         }
         return false;
     }
 
-    public void postHotSwap(Klass[] changedKlasses) {
+    public void postHotSwap(Klass[] changedKlasses, DebuggerController controller) {
         try {
             StaticObject[] guestClasses = new StaticObject[changedKlasses.length];
             for (int i = 0; i < guestClasses.length; i++) {
@@ -76,7 +76,7 @@ final class ExternalPluginHandler {
             StaticObject array = StaticObject.createArray(meta.java_lang_Class_array, guestClasses, meta.getContext());
             interopLibrary.invokeMember(guestHandler, POST_HOTSWAP, array);
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
-            JDWP.LOGGER.throwing(ExternalPluginHandler.class.getName(), "postHotSwap", e);
+            controller.severe(() -> ExternalPluginHandler.class.getName() + ": postHotSwap: " + e.getMessage());
         }
     }
 }

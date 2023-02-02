@@ -36,6 +36,7 @@ from os.path import join, exists
 from argparse import ArgumentParser, REMAINDER
 
 import mx
+import mx_compiler
 
 if sys.version_info[0] < 3:
     _long = long # pylint: disable=undefined-variable
@@ -44,9 +45,10 @@ else:
 
 _suite = mx.suite('compiler')
 
-def run_netbeans_app(app_name, env=None, args=None):
+def run_netbeans_app(app_name, jdkhome, args=None, dist=None):
     args = [] if args is None else args
-    dist = app_name.upper() + '_DIST'
+    if dist is None:
+        dist = app_name.upper() + '_DIST'
     name = app_name.lower()
     res = mx.library(dist)
 
@@ -64,20 +66,15 @@ def run_netbeans_app(app_name, env=None, args=None):
     if mx.get_os() != 'windows':
         # Make sure that execution is allowed. The zip file does not always specfiy that correctly
         os.chmod(executable, 0o777)
-    launch = [executable]
+    launch = [executable, '--jdkhome', jdkhome]
     if not mx.get_opts().verbose:
         launch.append('-J-Dnetbeans.logger.console=false')
-    mx.run(launch+args, env=env)
+    mx.run(launch+args)
 
 def igv(args):
-    """(obsolete) informs about IGV"""
-    mx.warn(
-        """IGV (idealgraphvisualizer) is available from
-    https://www.oracle.com/technetwork/graalvm/downloads/index.html
-Please download the distribution and run
-    bin/idealgraphvisualizer
-from the GraalVM EE installation.
-""")
+    """run the Ideal Graph Visualizer"""
+    dist = 'IDEALGRAPHVISUALIZER-0_31-0A82D7A0D60_DIST'
+    run_netbeans_app('IdealGraphVisualizer', mx_compiler.jdk.home, args=args, dist=dist)
 
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
@@ -85,9 +82,8 @@ def c1visualizer(args):
     v12 = mx.VersionSpec("12")
     def _c1vJdkVersionCheck(version):
         return v8u40 <= version < v12
-    env = dict(os.environ)
-    env['jdkhome'] = mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(JDK that is >= 1.8.0u40 and <= 11)', purpose="running C1 Visualizer").home
-    run_netbeans_app('C1Visualizer', env, args() if callable(args) else args)
+    jdkhome = mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(JDK that is >= 1.8.0u40 and <= 11)', purpose="running C1 Visualizer").home
+    run_netbeans_app('C1Visualizer', jdkhome, args() if callable(args) else args)
 
 def hsdis(args, copyToDir=None):
     """download the hsdis library and copy it to a specific dir or to the current JDK

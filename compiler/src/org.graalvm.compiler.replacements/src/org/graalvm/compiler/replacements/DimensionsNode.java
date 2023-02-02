@@ -55,6 +55,10 @@ public final class DimensionsNode extends FixedWithNextNode implements LIRLowera
         this.rank = rank;
     }
 
+    public int getRank() {
+        return rank;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRGeneratorTool lirGen = gen.getLIRGeneratorTool();

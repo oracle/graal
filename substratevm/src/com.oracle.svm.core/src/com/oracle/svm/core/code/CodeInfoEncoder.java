@@ -171,6 +171,10 @@ public class CodeInfoEncoder {
         this.frameInfoEncoder = new FrameInfoEncoder(frameInfoCustomization, encoders);
     }
 
+    public Encoders getEncoders() {
+        return encoders;
+    }
+
     public static int getEntryOffset(Infopoint infopoint) {
         if (infopoint instanceof Call || infopoint instanceof DeoptEntryInfopoint) {
             int offset = infopoint.pcOffset;
@@ -543,7 +547,7 @@ class CodeInfoVerifier {
             assert lock.isEliminated() == actualValue.isEliminatedMonitor();
             expectedValue = lock.getOwner();
         } else {
-            assert actualValue.isEliminatedMonitor() == false;
+            assert !actualValue.isEliminatedMonitor();
         }
 
         if (ValueUtil.isIllegalJavaValue(expectedValue)) {

@@ -179,6 +179,7 @@ public class FrameInfoQueryResult {
         init();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void init() {
         caller = null;
         deoptMethod = null;
@@ -193,6 +194,7 @@ public class FrameInfoQueryResult {
         sourceClass = null;
         sourceMethodName = "";
         sourceLineNumber = -1;
+        methodId = -1;
         sourceClassIndex = -1;
         sourceMethodNameIndex = -1;
     }
@@ -333,7 +335,7 @@ public class FrameInfoQueryResult {
      * Returns the unique identification number for the method.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getMethodID() {
+    public int getMethodId() {
         return methodId;
     }
 

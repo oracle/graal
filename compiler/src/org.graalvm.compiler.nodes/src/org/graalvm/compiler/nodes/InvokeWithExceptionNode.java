@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -93,10 +92,6 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     void setCallTarget(CallTargetNode callTarget) {
         updateUsages(this.callTarget, callTarget);
         this.callTarget = callTarget;
-    }
-
-    public MethodCallTargetNode methodCallTarget() {
-        return (MethodCallTargetNode) callTarget;
     }
 
     @Override

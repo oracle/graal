@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -42,11 +43,13 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
 
     protected final ClassInitializationSupport classInitializationSupport;
     protected final UniverseMetaAccess metaAccess;
+    protected final SVMHost hostVM;
 
-    public SharedConstantFieldProvider(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
+    public SharedConstantFieldProvider(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, SVMHost hostVM) {
         super(metaAccess);
         this.classInitializationSupport = classInitializationSupport;
         this.metaAccess = (UniverseMetaAccess) metaAccess;
+        this.hostVM = hostVM;
     }
 
     @Override
@@ -54,6 +57,10 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
         if (classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
             return false;
         }
+        if (hostVM.preventConstantFolding(field)) {
+            return false;
+        }
+
         return super.isFinalField(field, tool);
     }
 

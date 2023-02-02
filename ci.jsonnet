@@ -35,6 +35,9 @@ local javadoc = import "ci_includes/publish-javadoc.jsonnet";
 # VM
 local vm = import 'vm/ci/ci_includes/vm.jsonnet';
 
+# Visualizer
+local visualizer = import 'visualizer/ci/ci.jsonnet';
+
 local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
 
 {
@@ -54,7 +57,8 @@ local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
     tools.builds +
     truffle.builds +
     javadoc.builds +
-    vm.builds
+    vm.builds +
+    visualizer.builds
   )],
   assert verify_ci(self.builds),
   // verify that the run-spec demo works

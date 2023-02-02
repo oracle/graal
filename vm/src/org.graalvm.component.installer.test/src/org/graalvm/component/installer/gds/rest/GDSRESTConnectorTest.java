@@ -67,14 +67,16 @@ public class GDSRESTConnectorTest extends TestBase {
     static final String TEST_TOKEN_RESPONSE = "{\n" + "  \"token\": \"" + TEST_TOKEN + "\",\n" + "  \"status\": \"UNVERIFIED\"\n" + "}";
     static final String TEST_JAVA = "11";
     static final String TEST_JDK = "jdk" + TEST_JAVA;
-    static final String TEST_TOKEN_REQUEST_ACCEPT = "{\"token\":\"" + TEST_TOKEN_OLD + "\",\"licenseId\":\"gdsreleases.json\",\"type\":\"" + GDSRequester.ACCEPT_LICENSE + "\"}";
-    static final String TEST_TOKEN_REQUEST_GENERATE = "{\"email\":\"" + TEST_EMAIL + "\",\"licenseId\":\"gdsreleases.json\",\"type\":\"" + GDSRequester.GENERATE_CONFIG + "\"}";
+    static final String TEST_TOKEN_REQUEST_ACCEPT = "{\"type\":\"" + GDSRequester.ACCEPT_LICENSE + "\",\"token\":\"" + TEST_TOKEN_OLD + "\",\"licenseId\":\"gdsreleases.json\"}";
+    static final String TEST_TOKEN_REQUEST_GENERATE = "{\"type\":\"" + GDSRequester.GENERATE_CONFIG + "\",\"email\":\"" + TEST_EMAIL + "\",\"licenseId\":\"gdsreleases.json\"}";
     static final String TEST_GDS_AGENT = String.format("GVM/%s (arch:%s; os:%s; java:%s)",
                     TEST_VERSION.toString(),
                     SystemUtils.ARCH.sysName(),
                     SystemUtils.OS.sysName(),
                     SystemUtils.getJavaMajorVersion());
     static final String WRONG_RESPONSE = "wrong response";
+    static final String TEST_TOKEN_REVOKE = "{\"type\":\"" + GDSRequester.REVOKE_TOKEN + "\",\"downloadToken\":\"" + TEST_TOKEN + "\"}";
+    static final String TEST_TOKEN_REVOKE_ALL = "{\"type\":\"" + GDSRequester.REVOKE_TOKEN + "\",\"email\":\"" + TEST_EMAIL + "\"}";
 
     final String testURL;
     final GDSTestConnector testConnector;
@@ -311,6 +313,30 @@ public class GDSRESTConnectorTest extends TestBase {
         assertEquals(TEST_GDS_AGENT, headers.get(GDSRESTConnector.HEADER_USER_AGENT).get(0));
 
         assertEquals(mf.toString(), 0, mf.size());
+    }
+
+    @Test
+    public void testRevokeToken() {
+        testConnector.revokeToken(TEST_TOKEN);
+        TestURLConnection tc = testConnector.conn;
+        assertEquals(TEST_TOKEN_REVOKE, tc.os.toString());
+        assertTrue(tc.getDoOutput());
+        Map<String, List<String>> headers = tc.getRequestProperties();
+        assertTrue(headers.size() == 2);
+        assertEquals(GDSRequester.HEADER_VAL_JSON, headers.get(GDSRequester.HEADER_CONTENT).get(0));
+        assertEquals(TEST_GDS_AGENT, headers.get(GDSRESTConnector.HEADER_USER_AGENT).get(0));
+    }
+
+    @Test
+    public void testRevokeTokens() {
+        testConnector.revokeTokens(TEST_EMAIL);
+        TestURLConnection tc = testConnector.conn;
+        assertEquals(TEST_TOKEN_REVOKE_ALL, tc.os.toString());
+        assertTrue(tc.getDoOutput());
+        Map<String, List<String>> headers = tc.getRequestProperties();
+        assertTrue(headers.size() == 2);
+        assertEquals(GDSRequester.HEADER_VAL_JSON, headers.get(GDSRequester.HEADER_CONTENT).get(0));
+        assertEquals(TEST_GDS_AGENT, headers.get(GDSRESTConnector.HEADER_USER_AGENT).get(0));
     }
 
     private List<String> checkBaseParams(String endpoint) {

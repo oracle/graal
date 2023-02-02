@@ -28,9 +28,10 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
-import com.oracle.svm.util.AnnotationWrapper;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
+import com.oracle.svm.hosted.annotation.AnnotationWrapper;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -65,9 +66,11 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
         return null;
     }
 
+    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(LambdaFormHiddenMethod.Holder.INSTANCE);
+
     @Override
-    public Annotation[] getInjectedAnnotations() {
-        return LambdaFormHiddenMethod.Holder.ARRAY;
+    public AnnotationValue[] getInjectedAnnotations() {
+        return INJECTED_ANNOTATIONS;
     }
 
     @Override
@@ -402,6 +405,6 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalClassProvider.getJavaClass(original);
     }
 }

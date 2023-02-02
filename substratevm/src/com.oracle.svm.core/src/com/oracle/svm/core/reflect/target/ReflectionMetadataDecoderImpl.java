@@ -50,6 +50,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
 import com.oracle.svm.core.util.ByteArrayReader;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * This class performs the parsing of reflection metadata at runtime. The encoding formats are
@@ -58,7 +59,6 @@ import com.oracle.svm.core.util.ByteArrayReader;
  * See {@code ReflectionMetadataEncoderImpl} for details about the emission of the metadata.
  */
 @AutomaticallyRegisteredImageSingleton(ReflectionMetadataDecoder.class)
-@Platforms(InternalPlatform.NATIVE_ONLY.class)
 public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder {
     /**
      * Error indices are less than {@link #NO_DATA}.
@@ -86,10 +86,15 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * </pre>
      */
     @Override
-    public Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly) {
+    public Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
-        return decodeArray(reader, Field.class, (i) -> decodeField(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
+        return decodeArray(reader, Field.class, (i) -> (Field) decodeField(reader, DynamicHub.toClass(declaringType), publicOnly, true));
+    }
+
+    @Override
+    public FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+        return decodeArray(reader, FieldDescriptor.class, (i) -> (FieldDescriptor) decodeField(reader, DynamicHub.toClass(declaringType), false, false));
     }
 
     /**
@@ -100,10 +105,15 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * </pre>
      */
     @Override
-    public Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly) {
+    public Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
-        return decodeArray(reader, Method.class, (i) -> decodeMethod(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
+        return decodeArray(reader, Method.class, (i) -> (Method) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, true));
+    }
+
+    @Override
+    public MethodDescriptor[] parseReachableMethods(DynamicHub declaringType, int index) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+        return decodeArray(reader, MethodDescriptor.class, (i) -> (MethodDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, true));
     }
 
     /**
@@ -114,10 +124,15 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * </pre>
      */
     @Override
-    public Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly) {
+    public Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
-        return decodeArray(reader, Constructor.class, (i) -> decodeConstructor(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
+        return decodeArray(reader, Constructor.class, (i) -> (Constructor<?>) decodeExecutable(reader, DynamicHub.toClass(declaringType), publicOnly, true, false));
+    }
+
+    @Override
+    public ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+        return decodeArray(reader, ConstructorDescriptor.class, (i) -> (ConstructorDescriptor) decodeExecutable(reader, DynamicHub.toClass(declaringType), false, false, false));
     }
 
     /**
@@ -130,8 +145,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     @Override
     public Class<?>[] parseClasses(int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
-        return decodeArray(reader, Class.class, (i) -> decodeType(reader, codeInfo));
+        return decodeArray(reader, Class.class, (i) -> decodeType(reader));
     }
 
     /**
@@ -144,8 +158,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     @Override
     public Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
-        return decodeArray(reader, Target_java_lang_reflect_RecordComponent.class, (i) -> decodeRecordComponent(reader, codeInfo, DynamicHub.toClass(declaringType)));
+        return decodeArray(reader, Target_java_lang_reflect_RecordComponent.class, (i) -> decodeRecordComponent(reader, DynamicHub.toClass(declaringType)));
     }
 
     /**
@@ -158,8 +171,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     @Override
     public Parameter[] parseReflectParameters(Executable executable, byte[] encoding) {
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
-        return decodeArray(reader, Parameter.class, (i) -> decodeReflectParameter(reader, codeInfo, executable, i));
+        return decodeArray(reader, Parameter.class, (i) -> decodeReflectParameter(reader, executable, i));
     }
 
     /**
@@ -179,10 +191,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
             decodeAndThrowError(index);
         }
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
-        Class<?> declaringClass = decodeType(reader, codeInfo);
-        String name = decodeName(reader, codeInfo);
-        String descriptor = decodeName(reader, codeInfo);
+        Class<?> declaringClass = decodeType(reader);
+        String name = decodeName(reader);
+        String descriptor = decodeName(reader);
         return new Object[]{declaringClass, name, descriptor};
     }
 
@@ -213,7 +224,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     private static <T extends Throwable> void decodeAndThrowError(int index) throws T {
         assert isErrorIndex(index);
         int decodedIndex = FIRST_ERROR_INDEX - index;
-        throw (T) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(CodeInfoTable.getImageCodeInfo()), decodedIndex);
+        throw (T) ImageSingletons.lookup(MetadataAccessor.class).getObject(decodedIndex);
     }
 
     /**
@@ -261,26 +272,27 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * }
      * </pre>
      */
-    private static Field decodeField(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {
+    private static Object decodeField(UnsafeArrayTypeReader buf, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {
         int modifiers = buf.getUVInt();
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
         boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
         if (inHeap) {
-            Field field = (Field) decodeObject(buf, info);
+            Field field = (Field) decodeObject(buf);
             if (publicOnly && !Modifier.isPublic(field.getModifiers())) {
                 return null;
             }
-            if (reflectOnly && !complete) {
-                return null;
+            if (reflectOnly) {
+                return complete ? field : null;
+            } else {
+                return new FieldDescriptor(field);
             }
-            return field;
         }
         boolean hiding = (modifiers & HIDING_FLAG_MASK) != 0;
         assert !(complete && hiding);
         modifiers &= ~COMPLETE_FLAG_MASK;
 
-        String name = decodeName(buf, info);
-        Class<?> type = (complete || hiding) ? decodeType(buf, info) : null;
+        String name = decodeName(buf);
+        Class<?> type = (complete || hiding) ? decodeType(buf) : null;
         if (!complete) {
             if (reflectOnly != hiding) {
                 /*
@@ -289,6 +301,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
                  * fields but not the hiding fields.
                  */
                 return null;
+            }
+            if (!reflectOnly) {
+                return new FieldDescriptor(declaringClass, name);
             }
             Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
             if (JavaVersionUtil.JAVA_SPEC >= 17) {
@@ -299,11 +314,11 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
             return SubstrateUtil.cast(field, Field.class);
         }
         boolean trustedFinal = (JavaVersionUtil.JAVA_SPEC >= 17) ? buf.getU1() == 1 : false;
-        String signature = decodeName(buf, info);
+        String signature = decodeName(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
         int offset = buf.getSVInt();
-        String deletedReason = decodeName(buf, info);
+        String deletedReason = decodeName(buf);
         if (publicOnly && !Modifier.isPublic(modifiers)) {
             return null;
         }
@@ -317,7 +332,8 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         field.offset = offset;
         field.deletedReason = deletedReason;
         SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations = typeAnnotations;
-        return SubstrateUtil.cast(field, Field.class);
+        Field reflectField = SubstrateUtil.cast(field, Field.class);
+        return reflectOnly ? reflectField : new FieldDescriptor(reflectField);
     }
 
     /**
@@ -334,7 +350,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *     byte[]       parameterAnnotationsEncoding
      *     byte[]       annotationDefaultEncoding    (annotation methods only)
      *     byte[]       typeAnnotationsEncoding
-     *     byte[]       reflectParametersEncoding    ({@link #decodeReflectParameter(UnsafeArrayTypeReader, CodeInfo, Executable, int)})
+     *     byte[]       reflectParametersEncoding    ({@link #decodeReflectParameter(UnsafeArrayTypeReader, Executable, int)})
      *     ObjectIndex  accessor                     (null if registered as queried only)
      * }
      * </pre>
@@ -368,12 +384,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *     ClassIndex[] parameterTypes
      * }
      * </pre>
-     */
-    private static Method decodeMethod(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {
-        return (Method) decodeExecutable(buf, info, declaringClass, publicOnly, reflectOnly, true);
-    }
-
-    /**
+     *
      * Complete constructor encoding.
      *
      * <pre>
@@ -407,31 +418,39 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * }
      * </pre>
      */
-    private static Constructor<?> decodeConstructor(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {
-        return (Constructor<?>) decodeExecutable(buf, info, declaringClass, publicOnly, reflectOnly, false);
-    }
-
-    private static Executable decodeExecutable(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly, boolean isMethod) {
+    private static Object decodeExecutable(UnsafeArrayTypeReader buf, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly, boolean isMethod) {
         int modifiers = buf.getUVInt();
         boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
         boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
         if (inHeap) {
-            Executable executable = (Executable) decodeObject(buf, info);
+            Executable executable = (Executable) decodeObject(buf);
             if (publicOnly && !Modifier.isPublic(executable.getModifiers())) {
                 return null;
             }
-            if (reflectOnly && !complete) {
-                return null;
+            if (reflectOnly) {
+                return complete ? executable : null;
+            } else {
+                if (isMethod) {
+                    Method method = (Method) executable;
+                    return new MethodDescriptor(method);
+                } else {
+                    Constructor<?> constructor = (Constructor<?>) executable;
+                    return new ConstructorDescriptor(constructor);
+                }
             }
-            return executable;
         }
         boolean hiding = (modifiers & HIDING_FLAG_MASK) != 0;
         assert !(complete && hiding);
         modifiers &= ~COMPLETE_FLAG_MASK;
 
-        String name = isMethod ? decodeName(buf, info) : null;
-        Class<?>[] parameterTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf, info));
-        Class<?> returnType = isMethod && (complete || hiding) ? decodeType(buf, info) : null;
+        String name = isMethod ? decodeName(buf) : null;
+        Object[] parameterTypes;
+        if (complete || hiding) {
+            parameterTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf));
+        } else {
+            parameterTypes = decodeArray(buf, String.class, (i) -> decodeName(buf));
+        }
+        Class<?> returnType = isMethod && (complete || hiding) ? decodeType(buf) : null;
         if (!complete) {
             if (reflectOnly != hiding) {
                 /*
@@ -442,23 +461,29 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
                 return null;
             }
             if (isMethod) {
+                if (!reflectOnly) {
+                    return new MethodDescriptor(declaringClass, name, (String[]) parameterTypes);
+                }
                 Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
-                method.constructor(declaringClass, name, parameterTypes, returnType, null, modifiers, -1, null, null, null, null);
+                method.constructor(declaringClass, name, (Class<?>[]) parameterTypes, returnType, null, modifiers, -1, null, null, null, null);
                 return SubstrateUtil.cast(method, Executable.class);
             } else {
+                if (!reflectOnly) {
+                    return new ConstructorDescriptor(declaringClass, (String[]) parameterTypes);
+                }
                 Target_java_lang_reflect_Constructor constructor = new Target_java_lang_reflect_Constructor();
-                constructor.constructor(declaringClass, parameterTypes, null, modifiers, -1, null, null, null);
+                constructor.constructor(declaringClass, (Class<?>[]) parameterTypes, null, modifiers, -1, null, null, null);
                 return SubstrateUtil.cast(constructor, Executable.class);
             }
         }
-        Class<?>[] exceptionTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf, info));
-        String signature = decodeName(buf, info);
+        Class<?>[] exceptionTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf));
+        String signature = decodeName(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] parameterAnnotations = decodeByteArray(buf);
         byte[] annotationDefault = isMethod && declaringClass.isAnnotation() ? decodeByteArray(buf) : null;
         byte[] typeAnnotations = decodeByteArray(buf);
         byte[] reflectParameters = decodeByteArray(buf);
-        Object accessor = decodeObject(buf, info);
+        Object accessor = decodeObject(buf);
         if (publicOnly && !Modifier.isPublic(modifiers)) {
             return null;
         }
@@ -466,13 +491,19 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         Target_java_lang_reflect_Executable executable;
         if (isMethod) {
             Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
-            method.constructor(declaringClass, name, parameterTypes, returnType, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations, annotationDefault);
+            method.constructor(declaringClass, name, (Class<?>[]) parameterTypes, returnType, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations, annotationDefault);
             method.methodAccessor = (Target_jdk_internal_reflect_MethodAccessor) accessor;
+            if (!reflectOnly) {
+                return new MethodDescriptor(SubstrateUtil.cast(method, Method.class));
+            }
             executable = SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class);
         } else {
             Target_java_lang_reflect_Constructor constructor = new Target_java_lang_reflect_Constructor();
-            constructor.constructor(declaringClass, parameterTypes, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations);
+            constructor.constructor(declaringClass, (Class<?>[]) parameterTypes, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations);
             constructor.constructorAccessor = (Target_jdk_internal_reflect_ConstructorAccessor) accessor;
+            if (!reflectOnly) {
+                return new ConstructorDescriptor(SubstrateUtil.cast(constructor, Constructor.class));
+            }
             executable = SubstrateUtil.cast(constructor, Target_java_lang_reflect_Executable.class);
         }
         executable.rawParameters = reflectParameters;
@@ -494,11 +525,10 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * }
      * </pre>
      */
-    private static Target_java_lang_reflect_RecordComponent decodeRecordComponent(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass) {
-        String name = decodeName(buf, info);
-        Class<?> type = decodeType(buf, info);
-        String signature = decodeName(buf, info);
-        Method accessor = (Method) decodeObject(buf, info);
+    private static Target_java_lang_reflect_RecordComponent decodeRecordComponent(UnsafeArrayTypeReader buf, Class<?> declaringClass) {
+        String name = decodeName(buf);
+        Class<?> type = decodeType(buf);
+        String signature = decodeName(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
 
@@ -507,7 +537,11 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         recordComponent.name = name;
         recordComponent.type = type;
         recordComponent.signature = signature;
-        recordComponent.accessor = accessor;
+        try {
+            recordComponent.accessor = declaringClass.getDeclaredMethod(name);
+        } catch (NoSuchMethodException e) {
+            throw VMError.shouldNotReachHere("Record component accessors should have been registered by the analysis.");
+        }
         recordComponent.annotations = annotations;
         recordComponent.typeAnnotations = typeAnnotations;
         return recordComponent;
@@ -524,8 +558,8 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * </pre>
      */
 
-    private static Parameter decodeReflectParameter(UnsafeArrayTypeReader buf, CodeInfo info, Executable executable, int i) {
-        String name = decodeName(buf, info);
+    private static Parameter decodeReflectParameter(UnsafeArrayTypeReader buf, Executable executable, int i) {
+        String name = decodeName(buf);
         int modifiers = buf.getUVInt();
 
         Target_java_lang_reflect_Parameter parameter = new Target_java_lang_reflect_Parameter();
@@ -536,20 +570,20 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     /**
      * Types are encoded as indices in the frame info source classes array.
      */
-    private static Class<?> decodeType(UnsafeArrayTypeReader buf, CodeInfo info) {
+    private static Class<?> decodeType(UnsafeArrayTypeReader buf) {
         int classIndex = buf.getSVInt();
         if (classIndex == NO_METHOD_METADATA) {
             return null;
         }
-        return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), classIndex);
+        return ImageSingletons.lookup(MetadataAccessor.class).getClass(classIndex);
     }
 
     /**
      * Names are encoded as indices in the frame info source method names array.
      */
-    private static String decodeName(UnsafeArrayTypeReader buf, CodeInfo info) {
+    private static String decodeName(UnsafeArrayTypeReader buf) {
         int nameIndex = buf.getSVInt();
-        String name = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), nameIndex);
+        String name = ImageSingletons.lookup(MetadataAccessor.class).getString(nameIndex);
         /* Interning the string to ensure JDK8 method search succeeds */
         return name == null ? null : name.intern();
     }
@@ -558,12 +592,12 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      * Objects (method accessors and reflection objects in the heap) are encoded as indices in the
      * frame info object constants array.
      */
-    private static Object decodeObject(UnsafeArrayTypeReader buf, CodeInfo info) {
+    private static Object decodeObject(UnsafeArrayTypeReader buf) {
         int objectIndex = buf.getSVInt();
         if (objectIndex == NULL_OBJECT) {
             return null;
         }
-        return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), objectIndex);
+        return ImageSingletons.lookup(MetadataAccessor.class).getObject(objectIndex);
     }
 
     /**
@@ -593,5 +627,37 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
             result[i] = (byte) buf.getS1();
         }
         return result;
+    }
+
+    /**
+     * Accesses metadata through {@link CodeInfo}.
+     */
+    @AutomaticallyRegisteredImageSingleton(value = MetadataAccessor.class)
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    public static class MetadataAccessorImpl implements MetadataAccessor {
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T getObject(int index) {
+            CodeInfo info = getCodeInfo();
+            return (T) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), index);
+        }
+
+        @Override
+        public Class<?> getClass(int index) {
+            CodeInfo info = getCodeInfo();
+            return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), index);
+        }
+
+        @Override
+        public String getString(int index) {
+            CodeInfo info = getCodeInfo();
+            String name = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), index);
+            return name;
+        }
+
+        private static CodeInfo getCodeInfo() {
+            return CodeInfoTable.getImageCodeInfo();
+        }
     }
 }

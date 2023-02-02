@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -101,8 +100,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isInHeapUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "isInHeap");
 
-    private static final AtomicIntegerFieldUpdater<AnalysisType> isReachableUpdater = AtomicIntegerFieldUpdater
-                    .newUpdater(AnalysisType.class, "isReachable");
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isReachableUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "isReachable");
 
     private static final AtomicIntegerFieldUpdater<AnalysisType> isAnySubtypeInstantiatedUpdater = AtomicIntegerFieldUpdater
                     .newUpdater(AnalysisType.class, "isAnySubtypeInstantiated");
@@ -112,7 +111,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @SuppressWarnings("unused") private volatile Object isInHeap;
     @SuppressWarnings("unused") private volatile Object isAllocated;
-    @SuppressWarnings("unused") private volatile int isReachable;
+    @SuppressWarnings("unused") private volatile Object isReachable;
     @SuppressWarnings("unused") private volatile int isAnySubtypeInstantiated;
     private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
@@ -167,6 +166,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     /* isArray is an expensive operation so we eagerly compute it */
     private final boolean isArray;
+    private final boolean isJavaLangObject;
 
     private final int dimension;
 
@@ -178,7 +178,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         Reachable;
     }
 
-    private final AnalysisFuture<Void> initializationTask;
+    private final AnalysisFuture<Void> onTypeReachableTask;
     /**
      * Additional information that is only available for types that are marked as reachable.
      */
@@ -211,6 +211,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         this.universe = universe;
         this.wrapped = javaType;
         isArray = wrapped.isArray();
+        isJavaLangObject = wrapped.isJavaLangObject();
         this.storageKind = storageKind;
         if (universe.analysisPolicy().needsConstantCache()) {
             this.constantObjectsCache = new ConcurrentHashMap<>();
@@ -234,20 +235,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         /* Ensure the super types as well as the component type (for arrays) is created too. */
         superClass = universe.lookup(wrapped.getSuperclass());
         interfaces = convertTypes(wrapped.getInterfaces());
-
-        subTypes = ConcurrentHashMap.newKeySet();
-        addSubType(this);
-
-        /* Build subtypes. */
-        if (superClass != null) {
-            superClass.addSubType(this);
-        }
-        if (isInterface() && interfaces.length == 0) {
-            objectType.addSubType(this);
-        }
-        for (AnalysisType interf : interfaces) {
-            interf.addSubType(this);
-        }
 
         if (isArray()) {
             this.componentType = universe.lookup(wrapped.getComponentType());
@@ -276,6 +263,24 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
         /* Set id after accessing super types, so that all these types get a lower id number. */
         this.id = universe.nextTypeId.getAndIncrement();
+        /*
+         * Only after setting the id, the hashCode and compareTo methods work properly. So only now
+         * it is allowed to put the type into a hashmap, e.g., invoke addSubType.
+         */
+        subTypes = ConcurrentHashMap.newKeySet();
+        addSubType(this);
+
+        /* Build subtypes. */
+        if (superClass != null) {
+            superClass.addSubType(this);
+        }
+        if (isInterface() && interfaces.length == 0) {
+            objectType.addSubType(this);
+        }
+        for (AnalysisType interf : interfaces) {
+            interf.addSubType(this);
+        }
+
         /* Set the context insensitive analysis object so that it has access to its type id. */
         this.contextInsensitiveAnalysisObject = new AnalysisObject(universe, this);
 
@@ -288,7 +293,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
 
         /* The registration task initializes the type. */
-        this.initializationTask = new AnalysisFuture<>(() -> universe.initializeType(this), null);
+        this.onTypeReachableTask = new AnalysisFuture<>(() -> universe.onTypeReachable(this), null);
         this.typeData = new AnalysisFuture<>(() -> {
             AnalysisError.guarantee(universe.getHeapScanner() != null, "Heap scanner is not available.");
             return universe.getHeapScanner().computeTypeData(this);
@@ -312,6 +317,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             result = result.getArrayClass();
         }
         return result;
+    }
+
+    public int getArrayDimension() {
+        return dimension;
     }
 
     public void cleanupAfterAnalysis() {
@@ -461,8 +470,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      *            describing why this type was manually marked as in-heap
      */
     public boolean registerAsInHeap(Object reason) {
-        assert reason != null && (!(reason instanceof String) || !reason.equals("")) : "Registering a type as in-heap needs to provide a non-empty reason.";
-        registerAsReachable();
+        assert isValidReason(reason) : "Registering a type as in-heap needs to provide a valid reason.";
+        registerAsReachable(reason);
         if (AtomicUtils.atomicSet(this, reason, isInHeapUpdater)) {
             onInstantiated(UsageKind.InHeap);
             return true;
@@ -476,8 +485,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      *            describing why this type was manually marked as allocated
      */
     public boolean registerAsAllocated(Object reason) {
-        assert reason != null && (!(reason instanceof String) || !reason.equals("")) : "Registering a type as allocated needs to provide a non-empty reason.";
-        registerAsReachable();
+        assert isValidReason(reason) : "Registering a type as allocated needs to provide a valid reason.";
+        registerAsReachable(reason);
         if (AtomicUtils.atomicSet(this, reason, isAllocatedUpdater)) {
             onInstantiated(UsageKind.Allocated);
             return true;
@@ -531,10 +540,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public void registerAsAssignable(BigBang bb) {
     }
 
-    public boolean registerAsReachable() {
+    public boolean registerAsReachable(Object reason) {
+        assert isValidReason(reason) : "Registering a type as reachable needs to provide a valid reason.";
         if (!AtomicUtils.isSet(this, isReachableUpdater)) {
             /* Mark this type and all its super types as reachable. */
-            forAllSuperTypes(type -> AtomicUtils.atomicMarkAndRun(type, isReachableUpdater, type::onReachable));
+            forAllSuperTypes(type -> AtomicUtils.atomicSetAndRun(type, reason, isReachableUpdater, type::onReachable));
             return true;
         }
         return false;
@@ -562,7 +572,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              */
             registerAsAllocated("All array types are marked as instantiated eagerly.");
         }
-        ensureInitialized();
+        ensureOnTypeReachableTaskDone();
     }
 
     public void registerSubtypeReachabilityNotification(SubtypeReachableNotification notification) {
@@ -663,27 +673,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return this.typeData.ensureDone();
     }
 
-    public void ensureInitialized() {
+    public void ensureOnTypeReachableTaskDone() {
         /* Run the registration and wait for it to complete, if necessary. */
-        initializationTask.ensureDone();
-    }
-
-    /**
-     * Called when the {@link AnalysisType} initialization task is processed. This doesn't mean that
-     * the underlying {@link Class} is actually initialized, i.e., it may be initialized at run
-     * time.
-     */
-    public void onInitialized() {
-        if (isInitialized()) {
-            /*
-             * This type is initialized at build time, so the class initializer, if any, cannot be
-             * reachable at run time. Notify the reachability callbacks for the class initializer.
-             */
-            AnalysisMethod clinit = this.getClassInitializer();
-            if (clinit != null) {
-                clinit.notifyReachabilityCallbacks(universe, new ArrayList<>());
-            }
-        }
+        onTypeReachableTask.ensureDone();
     }
 
     public boolean getReachabilityListenerNotified() {
@@ -836,16 +828,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public ResolvedJavaType getWrapped() {
-        return universe.substitutions.resolve(wrapped);
+        return wrapped;
     }
 
-    public ResolvedJavaType getWrappedWithoutResolve() {
-        return wrapped;
+    public ResolvedJavaType getWrappedWithResolve() {
+        return universe.substitutions.resolve(wrapped);
     }
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), wrapped);
+        return OriginalClassProvider.getJavaClass(wrapped);
     }
 
     @Override
@@ -918,6 +910,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
+    public boolean isJavaLangObject() {
+        return isJavaLangObject;
+    }
+
+    @Override
     public boolean isPrimitive() {
         return wrapped.isPrimitive();
     }
@@ -929,8 +926,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
-        ResolvedJavaType subst = universe.substitutions.resolve(((AnalysisType) other).wrapped);
-        return wrapped.isAssignableFrom(subst);
+        return wrapped.isAssignableFrom(((AnalysisType) other).getWrappedWithResolve());
     }
 
     @Override
@@ -963,8 +959,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     private void addSubType(AnalysisType subType) {
-        assert !this.subTypes.contains(subType) : "Tried to add a " + subType + " which is already registered";
-        this.subTypes.add(subType);
+        boolean result = this.subTypes.add(subType);
+        assert result : "Tried to add a " + subType + " which is already registered";
     }
 
     /**
@@ -991,8 +987,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public AnalysisType findLeastCommonAncestor(ResolvedJavaType otherType) {
-        ResolvedJavaType subst = universe.substitutions.resolve(((AnalysisType) otherType).wrapped);
-        return universe.lookup(wrapped.findLeastCommonAncestor(subst));
+        return universe.lookup(wrapped.findLeastCommonAncestor(((AnalysisType) otherType).getWrappedWithResolve()));
     }
 
     @Override
@@ -1010,7 +1005,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public ResolvedJavaType getElementalType() {
+    public AnalysisType getElementalType() {
         return elementalType;
     }
 
@@ -1041,6 +1036,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             ResolvedJavaType substCallerType = substMethod.getDeclaringClass();
 
             Object newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(substMethod, substCallerType));
+            if (newResolvedMethod == null) {
+                newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+            }
             if (newResolvedMethod == null) {
                 newResolvedMethod = NULL_METHOD;
             }
@@ -1112,11 +1110,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return result;
     }
 
-    private AnalysisField[] convertFields(ResolvedJavaField[] original, List<AnalysisField> list, boolean listIncludesSuperClassesFields) {
-        for (int i = 0; i < original.length; i++) {
-            if (!original[i].isInternal()) {
+    private AnalysisField[] convertFields(ResolvedJavaField[] originals, List<AnalysisField> list, boolean listIncludesSuperClassesFields) {
+        for (ResolvedJavaField original : originals) {
+            if (!original.isInternal() && universe.hostVM.platformSupported(original)) {
                 try {
-                    AnalysisField aField = universe.lookup(original[i]);
+                    AnalysisField aField = universe.lookup(original);
                     if (aField != null) {
                         if (listIncludesSuperClassesFields || aField.isStatic()) {
                             /*
@@ -1136,13 +1134,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public AnalysisField[] getStaticFields() {
-        registerAsReachable();
         return convertFields(wrapped.getStaticFields(), new ArrayList<>(), false);
-    }
-
-    @Override
-    public AnnotatedElement getAnnotationRoot() {
-        return wrapped;
     }
 
     @Override
@@ -1250,7 +1242,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return universe.lookup(wrapped.getHostClass());
     }
 
-    AnalysisUniverse getUniverse() {
+    @Override
+    public AnalysisUniverse getUniverse() {
         return universe;
     }
 
@@ -1261,6 +1254,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public int hashCode() {
+        assert id != 0 || isJavaLangObject() : "Type id not set yet";
         return id;
     }
 

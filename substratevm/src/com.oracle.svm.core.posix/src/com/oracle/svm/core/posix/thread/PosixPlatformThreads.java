@@ -265,10 +265,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
         int status = Pthread.pthread_join_no_transition((Pthread.pthread_t) threadHandle, threadExitStatus);
-        if (status != 0) {
-            return false;
-        }
-        return true;
+        return status == 0;
     }
 
     @Override
@@ -413,7 +410,11 @@ final class PosixParkEvent extends ParkEvent {
         try {
             int s;
             boolean p;
-            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "PosixParkEvent.unpark(): mutex lock");
+            int status = Pthread.pthread_mutex_trylock_no_transition(mutex);
+            if (status == Errno.EBUSY()) { // more expensive transition when potentially blocking:
+                status = Pthread.pthread_mutex_lock(mutex);
+            }
+            PosixUtils.checkStatusIs0(status, "PosixParkEvent.unpark(): mutex lock");
             try {
                 s = event;
                 event = 1;

@@ -138,7 +138,10 @@ public class CAnnotationProcessor {
             }
             printingProcess.waitFor();
         } catch (IOException ex) {
-            throw shouldNotReachHere(ex);
+            throw shouldNotReachHere(
+                            "Unable to run '" + binaryName +
+                                            "' to compute offsets in C data structures. Is it possible that your antivirus software interferes and puts the resulting file into quarantine?",
+                            ex);
         } catch (InterruptedException e) {
             throw new InterruptImageBuilding();
         } finally {

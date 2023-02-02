@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+AutoUpdate-Show-In-Client: true
+OpenIDE-Module: org.graalvm.visualizer.settings.ui
+OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/settings/ui/Bundle.properties
+OpenIDE-Module-Provides: org.graalvm.visualizer.settings.ui
+OpenIDE-Module-Specification-Version: 1.0
+

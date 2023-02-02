@@ -26,16 +26,17 @@
 
 package com.oracle.svm.core.jfr.events;
 
+import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.StackValue;
+
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.jfr.HasJfrSupport;
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.StackValue;
 
 public class ThreadParkEvent {
     public static void emit(long startTicks, Object obj, long timeout, long until) {
@@ -46,7 +47,7 @@ public class ThreadParkEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(long startTicks, Object obj, long timeout, long until) {
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ThreadPark)) {
+        if (JfrEvent.ThreadPark.shouldEmit()) {
             Class<?> parkedClass = null;
             if (obj != null) {
                 parkedClass = obj.getClass();

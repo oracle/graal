@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
 import static org.graalvm.jniutils.JNIUtil.GetStaticMethodID;
-import static org.graalvm.jniutils.JNIUtil.encodeMethodSignature;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
 /**
@@ -53,8 +52,8 @@ public final class ForeignException extends RuntimeException {
     static final byte HOST_TO_GUEST = 1;
     static final byte GUEST_TO_HOST = 2;
     private static final ThreadLocal<ForeignException> pendingException = new ThreadLocal<>();
-    private static final JNIMethodResolver CreateForeignException = JNIMethodResolver.create("createForeignException", Throwable.class, byte[].class);
-    private static final JNIMethodResolver ToByteArray = JNIMethodResolver.create("toByteArray", byte[].class, ForeignException.class);
+    private static final JNIMethodResolver CreateForeignException = new JNIMethodResolver("createForeignException", "([B)Ljava/lang/Throwable;");
+    private static final JNIMethodResolver ToByteArray = new JNIMethodResolver("toByteArray", "(Lorg/graalvm/nativebridge/ForeignException;)[B");
     /**
      * Pre-allocated {@code ForeignException} for double failure.
      */
@@ -239,7 +238,7 @@ public final class ForeignException extends RuntimeException {
         private volatile JClass entryPointsClass;
         private volatile JMethodID methodId;
 
-        private JNIMethodResolver(String methodName, String methodSignature) {
+        JNIMethodResolver(String methodName, String methodSignature) {
             this.methodName = methodName;
             this.methodSignature = methodSignature;
         }
@@ -276,10 +275,6 @@ public final class ForeignException extends RuntimeException {
         @Override
         public String getDisplayName() {
             return methodName;
-        }
-
-        static JNIMethodResolver create(String methodName, Class<?> returnType, Class<?>... parameterTypes) {
-            return new JNIMethodResolver(methodName, encodeMethodSignature(returnType, parameterTypes));
         }
     }
 }

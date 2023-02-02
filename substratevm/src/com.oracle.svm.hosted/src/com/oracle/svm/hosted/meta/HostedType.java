@@ -40,7 +40,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class HostedType implements SharedType, WrappedJavaType, OriginalClassProvider {
+public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
 
     protected final HostedUniverse universe;
     protected final AnalysisType wrapped;
@@ -319,12 +319,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Origina
             hResult = universe.lookup(aResult);
         }
 
-        /**
-         * Check that the SharedType implementation, which is used for JIT compilation, gives the
-         * same result as the hosted implementation.
-         */
-        assert hResult == null || isWordType() || hResult.equals(SharedType.super.resolveConcreteMethod(method, callerType));
-
         return hResult;
     }
 
@@ -421,6 +415,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Origina
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(universe.getSnippetReflection(), wrapped);
+        return wrapped.getJavaClass();
     }
 }

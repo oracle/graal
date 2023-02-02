@@ -77,6 +77,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final Boolean extendedAsserts;
     protected final int maxConstantObjectsPerType;
     protected final boolean profileConstantObjects;
+    protected final boolean optimizeReturnedParameter;
 
     protected final OptionValues options;
     protected final DebugContext debug;
@@ -119,6 +120,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.extendedAsserts = PointstoOptions.ExtendedAsserts.getValue(options);
         maxConstantObjectsPerType = PointstoOptions.MaxConstantObjectsPerType.getValue(options);
         profileConstantObjects = PointstoOptions.ProfileConstantObjects.getValue(options);
+        optimizeReturnedParameter = PointstoOptions.OptimizeReturnedParameter.getValue(options);
 
         this.heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
                         ? HeapScanningPolicy.scanAll()
@@ -238,6 +240,10 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         return maxConstantObjectsPerType;
     }
 
+    public boolean optimizeReturnedParameter() {
+        return optimizeReturnedParameter;
+    }
+
     public void profileConstantObject(AnalysisType type) {
         if (profileConstantObjects) {
             PointsToAnalysis.ConstantObjectsProfiler.registerConstant(type);
@@ -346,7 +352,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     /** Creates a synthetic position for the node in the given method. */
-    public static BytecodePosition syntheticSourcePosition(ValueNode node, ResolvedJavaMethod method) {
+    public static BytecodePosition syntheticSourcePosition(Node node, ResolvedJavaMethod method) {
         int bci = BytecodeFrame.UNKNOWN_BCI;
         if (node instanceof DeoptBciSupplier) {
             bci = ((DeoptBciSupplier) node).bci();

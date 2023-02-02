@@ -42,6 +42,8 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.NeverDefault;
 
 /**
  * <p>
@@ -84,9 +86,9 @@ public final class DoubleValueProfile extends Profile {
         profile.disable();
         DISABLED = profile;
     }
-    private static final byte UNINITIALIZED = 0;
-    private static final byte SPECIALIZED = 1;
-    private static final byte GENERIC = 2;
+    private static final int UNINITIALIZED = 0;
+    private static final int SPECIALIZED = 1;
+    private static final int GENERIC = 2;
 
     @CompilationFinal private double cachedValue;
     @CompilationFinal private long cachedRawValue;
@@ -158,7 +160,7 @@ public final class DoubleValueProfile extends Profile {
     @Override
     public String toString() {
         if (this == DISABLED) {
-            return toStringDisabled(DoubleValueProfile.class);
+            return toStringDisabled();
         } else {
             return toString(DoubleValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
                             String.format("value == (double)%s (raw %h)", cachedValue, cachedRawValue));
@@ -172,6 +174,7 @@ public final class DoubleValueProfile extends Profile {
      * @see IntValueProfile
      * @since 0.10
      */
+    @NeverDefault
     public static DoubleValueProfile createRawIdentityProfile() {
         return create();
     }
@@ -183,8 +186,9 @@ public final class DoubleValueProfile extends Profile {
      * @see IntValueProfile
      * @since 22.1
      */
+    @NeverDefault
     public static DoubleValueProfile create() {
-        if (Profile.isProfilingEnabled()) {
+        if (isProfilingEnabled()) {
             return new DoubleValueProfile();
         } else {
             return DISABLED;
@@ -198,6 +202,16 @@ public final class DoubleValueProfile extends Profile {
      */
     public static DoubleValueProfile getUncached() {
         return DISABLED;
+    }
+
+    /**
+     * Returns an inlined version of the profile. This version is automatically used by Truffle DSL
+     * node inlining.
+     *
+     * @since 23.0
+     */
+    public static InlinedDoubleValueProfile inline(InlineTarget target) {
+        return InlinedDoubleValueProfile.inline(target);
     }
 
 }

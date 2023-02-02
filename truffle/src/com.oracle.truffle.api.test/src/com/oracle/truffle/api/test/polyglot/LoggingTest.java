@@ -1348,7 +1348,7 @@ public class LoggingTest {
 
     private static String getRedirectMessage() {
         try {
-            Class<?> clz = Class.forName("com.oracle.truffle.polyglot.PolyglotLoggers$RedirectNotificationOutputStream");
+            Class<?> clz = Class.forName("com.oracle.truffle.polyglot.PolyglotLoggers$StreamLogHandler");
             Field fld = clz.getDeclaredField("REDIRECT_FORMAT");
             fld.setAccessible(true);
             String format = (String) fld.get(null);

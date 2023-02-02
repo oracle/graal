@@ -64,13 +64,13 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
                     String javaVmVersion = String.format("prefix-jvmci-%s-suffix", version);
                     if (!version.isLessThan(minVersion)) {
                         try {
-                            JVMCIVersionCheck.check(props, minVersion, "11", javaVmVersion, false);
+                            JVMCIVersionCheck.check(props, minVersion, "17", javaVmVersion, false);
                         } catch (InternalError e) {
                             throw new AssertionError("Failed " + JVMCIVersionCheckTest.class.getSimpleName() + " with -Dtest.seed=" + seed, e);
                         }
                     } else {
                         try {
-                            JVMCIVersionCheck.check(props, minVersion, "11", javaVmVersion, false);
+                            JVMCIVersionCheck.check(props, minVersion, "17", javaVmVersion, false);
                             Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion + " (-Dtest.seed=" + seed + ")");
                         } catch (InternalError e) {
                             // pass

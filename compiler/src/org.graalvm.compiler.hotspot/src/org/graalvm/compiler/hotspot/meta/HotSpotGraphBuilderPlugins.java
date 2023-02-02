@@ -25,8 +25,6 @@
 package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-import static org.graalvm.compiler.core.common.calc.Condition.EQ;
-import static org.graalvm.compiler.core.common.calc.Condition.NE;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.CRC_TABLE_LOCATION;
@@ -49,7 +47,6 @@ import java.util.zip.CRC32;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -58,7 +55,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
@@ -188,6 +184,7 @@ public class HotSpotGraphBuilderPlugins {
 
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendNodePlugin(new HotSpotExceptionDispatchPlugin(config, wordTypes.getWordKind()));
+        StandardGraphBuilderPlugins.registerConstantFieldLoadPlugin(plugins);
         if (!IS_IN_NATIVE_IMAGE) {
             // In libgraal all word related operations have been fully processed so this is unneeded
             HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
@@ -577,34 +574,6 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-
-        // This substitution is no longer in used when threadObj is a handle
-        r.registerConditional(config.osThreadInterruptedOffset != Integer.MAX_VALUE && !config.threadObjectFieldIsHandle, new InvocationPlugin("isInterrupted", Receiver.class, boolean.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clearInterrupted) {
-                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode receiverThreadObject = receiver.get();
-                    CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
-                    ValueNode currentThreadObject = helper.readCurrentThreadObject(thread);
-
-                    // if (this != Thread.currentThread()) do fallback
-                    helper.doFallbackIf(receiverThreadObject, NE, currentThreadObject, GraalDirectives.UNLIKELY_PROBABILITY);
-                    ValueNode osThread = helper.readOsThread(thread);
-                    ValueNode interrupted = helper.readOsThreadInterrupted(osThread);
-
-                    // if (thread._osthread._isinterrupted == 0) return false
-                    helper.emitReturnIf(interrupted, EQ, ConstantNode.forInt(0), ConstantNode.forBoolean(false), GraalDirectives.LIKELY_PROBABILITY);
-
-                    // if (clearInterrupted) fallback to invoke
-                    helper.doFallbackIf(clearInterrupted, EQ, ConstantNode.forBoolean(true), GraalDirectives.UNLIKELY_PROBABILITY);
-
-                    // return interrupted == 0 ? false : true
-                    LogicNode test = helper.createCompare(interrupted, CanonicalCondition.EQ, ConstantNode.forInt(0));
-                    helper.emitFinalReturn(JavaKind.Boolean, ConditionalNode.create(test, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
-                }
-                return true;
-            }
-        });
     }
 
     public static boolean isIntrinsicName(GraalHotSpotVMConfig config, String className, String name) {
@@ -896,7 +865,7 @@ public class HotSpotGraphBuilderPlugins {
         });
         r = new Registration(plugins, "java.util.Base64$Decoder", replacements);
         if (config.base64DecodeBlock != 0L) {
-            if (JavaVersionUtil.JAVA_SPEC >= 18) {
+            if (GraalHotSpotVMConfig.base64DecodeBlockHasIsMIMEParameter()) {
                 // JDK-8268276 - added isMIME parameter
                 r.register(new InvocationPlugin("decodeBlock", Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class, boolean.class, boolean.class) {
                     @Override

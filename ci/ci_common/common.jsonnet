@@ -76,7 +76,7 @@ local add_jdk_version(name) =
   # for a PR that only touches *.md files, the docs, are config files for GitHub
   add_excludes_guard(build):: build + {
     guard+: {
-      excludes+: ["**.md", "<graal>/**.md", "<graal>/docs/**", "<graal>/.devcontainer/**", "<graal>/.github/**"]
+      excludes+: ["**.md", "<graal>/**.md", "<graal>/docs/**", "<graal>/.devcontainer/**", "<graal>/.github/**", "<graal>/vm/ce-release-artifacts.json"]
     }
   },
 
@@ -119,14 +119,16 @@ local add_jdk_version(name) =
   for name in std.objectFieldsAll(jdks)
 } + {
   # Aliases to edition specific labsjdks
-  labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
-  labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
+  labsjdk17::            self["labsjdk-ee-17"],
   labsjdk19::            self["labsjdk-" + repo_config.graalvm_edition + "-19"],
-  labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
+  labsjdk17Debug::       self["labsjdk-ee-17Debug"],
   labsjdk19Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-19Debug"],
-  labsjdk11LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-11-llvm"],
-  labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
+  labsjdk17LLVM::        self["labsjdk-ee-17-llvm"],
   labsjdk19LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-19-llvm"],
+
+  labsjdk20::            self["labsjdk-" + repo_config.graalvm_edition + "-20"],
+  labsjdk20Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-20Debug"],
+  labsjdk20LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-20-llvm"],
 
 
   // Hardware definitions
@@ -145,10 +147,9 @@ local add_jdk_version(name) =
     ]
   },
 
-  ol7:: self.build_base + {
-    local ol7_image = self.ci_resources.infra.docker_image_ol7,
+  ol7:: {
     docker+: {
-      image: ol7_image,
+      image: "buildslave_ol7",
       mount_modules: true,
     },
   },
@@ -161,7 +162,7 @@ local add_jdk_version(name) =
   amd64::   { arch::"amd64",   capabilities+: [self.arch]},
   aarch64:: { arch::"aarch64", capabilities+: [self.arch]},
 
-  linux_amd64::               self.linux               + self.amd64,
+  linux_amd64::               self.linux               + self.amd64   + self.ol7,
   darwin_amd64::              self.darwin              + self.amd64,
   darwin_aarch64::            self.darwin              + self.aarch64 + {
       # only needed until GR-22580 is resolved?

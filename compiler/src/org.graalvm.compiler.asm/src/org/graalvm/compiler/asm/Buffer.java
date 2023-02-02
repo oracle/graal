@@ -46,11 +46,6 @@ final class Buffer {
         return data.position();
     }
 
-    public void setPosition(int position) {
-        assert position >= 0 && position <= data.limit();
-        data.position(position);
-    }
-
     /**
      * Closes this buffer. Any further operations on a closed buffer will result in a
      * {@link NullPointerException}.
@@ -75,17 +70,6 @@ final class Buffer {
             return null;
         }
         return Arrays.copyOfRange(data.array(), start, end);
-    }
-
-    /**
-     * Copies the data from this buffer into a given array.
-     *
-     * @param dst the destination array
-     * @param off starting position in {@code dst}
-     * @param len number of bytes to copy
-     */
-    public void copyInto(byte[] dst, int off, int len) {
-        System.arraycopy(data.array(), 0, dst, off, len);
     }
 
     protected void ensureSize(int length) {

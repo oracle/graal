@@ -106,7 +106,7 @@ public final class TestCaseCollector {
             ExcludeMap excludedTests = getExcludedTests(testSuiteClass);
             // walk test cases
             List<Object[]> list = Files.walk(suitesPath).filter(predicate).map(Path::getParent).map(testPath -> {
-                String testCaseName = getTestCaseName(suitesPath, testPath);
+                String testCaseName = getTestCaseName(suitesPath, testPath).replace("\\", "/");
                 return new Object[]{testPath, testCaseName, excludedTests.get(testCaseName)};
             }).collect(Collectors.toList());
             if (!list.isEmpty()) {

@@ -25,13 +25,13 @@
 package org.graalvm.profdiff.core;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.profdiff.util.Writer;
 
 /**
  * Represents a named node in a tree.
@@ -50,7 +50,7 @@ public abstract class TreeNode<T extends TreeNode<T>> {
     /**
      * The parent node of this node in the tree.
      */
-    public T parent;
+    private T parent;
 
     /**
      * The children of this node in the tree.
@@ -59,13 +59,20 @@ public abstract class TreeNode<T extends TreeNode<T>> {
 
     protected TreeNode(String name) {
         this.name = name;
-        this.parent = null;
-        this.children = new ArrayList<>();
+        parent = null;
+        children = new ArrayList<>();
     }
 
     @SuppressWarnings("unchecked")
     private T asT() {
         return (T) this;
+    }
+
+    /**
+     * Gets the parent node.
+     */
+    public T getParent() {
+        return parent;
     }
 
     /**
@@ -95,12 +102,56 @@ public abstract class TreeNode<T extends TreeNode<T>> {
      *
      * @param child the child node to be added
      */
-    public void addChild(T child) {
+    public void addChild(TreeNode<T> child) {
         if (child.parent != null) {
             child.removeFromParent();
         }
         child.parent = asT();
-        children.add(child);
+        children.add(child.asT());
+    }
+
+    /**
+     * Returns {@code true} iff the node is an info node. Info nodes can be used to insert (warning)
+     * messages to the tree.
+     *
+     * @return {@code true} iff the node is an info node
+     */
+    public boolean isInfoNode() {
+        return false;
+    }
+
+    /**
+     * Gets the index of this node in the tree. The index is a list of indices into the
+     * {@link #getChildren() lists of children}. The first number in the array is the index's of a
+     * root's child, the second number is the index of that child's child, and so on.
+     *
+     * @return the index of this node in the tree
+     */
+    public List<Integer> getIndex() {
+        List<Integer> index = new ArrayList<>();
+        T node = asT();
+        while (node.getParent() != null) {
+            T parentNode = node.getParent();
+            index.add(parentNode.getChildren().indexOf(node));
+            node = parentNode;
+        }
+        Collections.reverse(index);
+        return index;
+    }
+
+    /**
+     * Returns the tree node at an index created by {@link #getIndex()}. The index is relative to
+     * this node, i.e., the first number in the list is the index of this node's child.
+     *
+     * @param index the index of a node in the tree
+     * @return the node at the provided index
+     */
+    public T atIndex(List<Integer> index) {
+        T node = asT();
+        for (int i : index) {
+            node = node.getChildren().get(i);
+        }
+        return node;
     }
 
     /**

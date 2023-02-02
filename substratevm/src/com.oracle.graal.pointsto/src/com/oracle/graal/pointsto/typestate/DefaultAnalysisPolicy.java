@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
@@ -53,6 +54,7 @@ import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedFieldTypeStore;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
@@ -175,25 +177,25 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        return new DefaultVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+        return new DefaultVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
     public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        return new DefaultSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+        return new DefaultSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
     public AbstractStaticInvokeTypeFlow createStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        return new DefaultStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethod.MultiMethodKey callerMultiMethodKey) {
+        return new DefaultStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     @Override
-    public MethodFlowsGraph staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod pointsToMethod) {
-        return pointsToMethod.getTypeFlow().getOrCreateMethodFlowsGraph(bb, null);
+    public MethodFlowsGraphInfo staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod method) {
+        return method.getTypeFlow().getOrCreateMethodFlowsGraphInfo(bb, null);
     }
 
     @Override
@@ -221,18 +223,18 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     @Override
     public void linkActualReturn(PointsToAnalysis bb, boolean isStatic, InvokeTypeFlow invoke) {
         /* Link the actual return with the formal return of already linked callees. */
-        for (AnalysisMethod callee : invoke.getCallees()) {
-            invoke.linkReturn(bb, isStatic, ((PointsToAnalysisMethod) callee).getTypeFlow().getMethodFlowsGraph());
+        for (AnalysisMethod callee : invoke.getAllCallees()) {
+            invoke.linkReturn(bb, isStatic, ((PointsToAnalysisMethod) callee).getTypeFlow().getMethodFlowsGraphInfo());
         }
         if (invoke.isSaturated()) {
-            InvokeTypeFlow contextInsensitiveInvoke = invoke.getTargetMethod().getContextInsensitiveVirtualInvoke();
+            InvokeTypeFlow contextInsensitiveInvoke = invoke.getTargetMethod().getContextInsensitiveVirtualInvoke(invoke.getCallerMultiMethodKey());
             contextInsensitiveInvoke.getActualReturn().addUse(bb, invoke.getActualReturn());
         }
     }
 
     @Override
-    public void registerAsImplementationInvoked(InvokeTypeFlow invoke, MethodFlowsGraph calleeFlows) {
-        calleeFlows.getMethod().registerAsImplementationInvoked(invoke);
+    public void registerAsImplementationInvoked(InvokeTypeFlow invoke, PointsToAnalysisMethod method) {
+        method.registerAsImplementationInvoked(invoke);
     }
 
     @Override

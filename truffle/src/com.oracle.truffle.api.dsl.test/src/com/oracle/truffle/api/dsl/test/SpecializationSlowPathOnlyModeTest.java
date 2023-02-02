@@ -43,24 +43,25 @@ package com.oracle.truffle.api.dsl.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.test.SpecializationSlowPathOnlyModeTestFactory.SpecializationTestingTestNodeGen;
-import com.oracle.truffle.api.dsl.test.SpecializationSlowPathOnlyModeTestFactory.SpecializationTestingWithCachedTestNodeGen;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.SpecializationSlowPathOnlyModeTestFactory.SpecializationTestingTestNodeGen;
+import com.oracle.truffle.api.dsl.test.SpecializationSlowPathOnlyModeTestFactory.SpecializationTestingWithCachedTestNodeGen;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class SpecializationSlowPathOnlyModeTest {
 
     @AlwaysGenerateOnlySlowPath
@@ -96,7 +97,7 @@ public class SpecializationSlowPathOnlyModeTest {
         @SuppressWarnings("unused")
         public boolean s1(int arg,
                         @Shared("argLib") @CachedLibrary(limit = "2") InteropLibrary argLib,
-                        @Shared("branch") @Cached BranchProfile profile) {
+                        @Shared("branch") @Cached(inline = false) BranchProfile profile) {
             profile.enter();
             return argLib.fitsInByte(arg);
         }
@@ -142,7 +143,7 @@ public class SpecializationSlowPathOnlyModeTest {
         @ExportMessage
         @SuppressWarnings("unused")
         public boolean isArrayElementRemovable(long index,
-                        @Shared("branch1") @Cached BranchProfile branch1) {
+                        @Shared("branch1") @Cached(inline = false) BranchProfile branch1) {
             branch1.enter();
             return true;
         }
@@ -162,7 +163,7 @@ public class SpecializationSlowPathOnlyModeTest {
             @Specialization(replaces = "doCached")
             @SuppressWarnings("unused")
             static Object doGeneric(SpecializationTestingTruffleObj receiver, long index,
-                            @Shared("branch2") @Cached BranchProfile branch2) {
+                            @Shared("branch2") @Cached(inline = false) BranchProfile branch2) {
                 branch2.enter();
                 return "generic";
             }
@@ -174,7 +175,7 @@ public class SpecializationSlowPathOnlyModeTest {
             @Specialization
             @SuppressWarnings("unused")
             static void doIt(SpecializationTestingTruffleObj receiver, long index, Object value,
-                            @Shared("branch3") @Cached BranchProfile branch3) {
+                            @Shared("branch3") @Cached(inline = false) BranchProfile branch3) {
                 branch3.enter();
             }
         }

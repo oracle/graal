@@ -58,6 +58,7 @@ import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
@@ -158,8 +159,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return reportAnalysisStatistics;
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method) {
-        return new MethodTypeFlowBuilder(bb, method);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
+        return new MethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }
 
     public void registerUnsafeLoad(AbstractUnsafeLoadTypeFlow unsafeLoad) {
@@ -298,6 +299,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     @SuppressWarnings("try")
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial) {
+        assert aMethod.isOriginalMethod();
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
         AnalysisType declaringClass = aMethod.getDeclaringClass();
         boolean isStatic = aMethod.isStatic();
@@ -313,11 +315,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              */
             postTask(() -> {
                 pointsToMethod.registerAsDirectRootMethod();
-                pointsToMethod.registerAsImplementationInvoked(null);
-                MethodFlowsGraph methodFlowsGraph = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
+                pointsToMethod.registerAsImplementationInvoked("root method");
+                MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
                 for (int idx = 0; idx < paramCount; idx++) {
                     AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);
-                    FormalParamTypeFlow parameter = methodFlowsGraph.getParameter(idx);
+                    FormalParamTypeFlow parameter = flowInfo.getParameter(idx);
                     if (declaredParamType.getJavaKind() == JavaKind.Object && parameter != null) {
                         TypeFlow<?> initialParameterFlow = declaredParamType.getTypeFlow(this, true);
                         initialParameterFlow.addUse(this, parameter);
@@ -349,7 +351,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 } else {
                     pointsToMethod.registerAsVirtualRootMethod();
                 }
-                InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial);
+                InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial, pointsToMethod.getMultiMethodKey());
                 /*
                  * Initialize the type flow of the invoke's actual parameters with the corresponding
                  * parameter declared type. Thus, when the invoke links callees it will propagate
@@ -387,16 +389,16 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public AnalysisType addRootClass(Class<?> clazz, boolean addFields, boolean addArrayClass) {
         AnalysisType type = metaAccess.lookupJavaType(clazz);
-        type.registerAsReachable();
         return addRootClass(type, addFields, addArrayClass);
     }
 
     @SuppressWarnings({"try"})
     @Override
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
+        type.registerAsReachable("root class");
         for (AnalysisField field : type.getInstanceFields(false)) {
             if (addFields) {
-                field.registerAsAccessed();
+                field.registerAsAccessed("field of root class");
             }
             /*
              * For system classes any instantiated (sub)type of the declared field type can be
@@ -420,7 +422,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         AnalysisType type = addRootClass(clazz, false, false);
         for (AnalysisField field : type.getInstanceFields(true)) {
             if (field.getName().equals(fieldName)) {
-                field.registerAsAccessed();
+                field.registerAsAccessed("root field");
                 /*
                  * For system classes any instantiated (sub)type of the declared field type can be
                  * written to the field flow.
@@ -440,7 +442,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         try {
             reflectField = clazz.getField(fieldName);
             AnalysisField field = metaAccess.lookupJavaField(reflectField);
-            field.registerAsAccessed();
+            field.registerAsAccessed("static root field");
             TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
             fieldFlow.addUse(this, field.getStaticFieldFlow());
             return field.getType();

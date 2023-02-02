@@ -236,7 +236,7 @@ def vm_executable_path(executable, config=None):
 @contextmanager
 def native_image_context(common_args=None, hosted_assertions=True, native_image_cmd='', config=None, build_if_missing=False):
     common_args = [] if common_args is None else common_args
-    base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods']
+    base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods', '-H:+ReportExceptionStackTraces']
     base_args += ['-H:Path=' + svmbuild_dir()]
     if mx.get_opts().verbose:
         base_args += ['--verbose']
@@ -277,7 +277,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         stdoutdata = []
         def stdout_collector(x):
             stdoutdata.append(x.rstrip())
-        _native_image(['--dry-run'] + all_args, out=stdout_collector)
+        _native_image(['--dry-run', '--verbose'] + all_args, out=stdout_collector)
 
         def remove_quotes(val):
             if len(val) >= 2 and val.startswith("'") and val.endswith("'"):
@@ -351,7 +351,29 @@ def truffle_unittest_task(extra_image_args=None):
     native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + compiler_args)
 
 
+def _check_catch_files():
+    """
+    Verifies that there is a "catch_files" array in common.json at the root of
+    the repository containing this suite and that the array contains elements
+    matching NativeImageOptions.DEFAULT_ERROR_FILE_NAME.
+    """
+
+    expected_default_error_file_name_pattern = "svm_err_b_%t_pid%p.md"
+    expected_catch_files_entry = " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)"
+
+    source_path = join(suite.dir, 'src', 'com.oracle.svm.hosted', 'src', 'com', 'oracle', 'svm', 'hosted', 'NativeImageOptions.java')
+    actual_pattern = mx_compiler.find_field_value(source_path, 'DEFAULT_ERROR_FILE_NAME')
+    if expected_default_error_file_name_pattern != actual_pattern:
+        mx.abort('DEFAULT_ERROR_FILE_NAME pattern has changed (expect: "{}", got: "{}")'.format(expected_default_error_file_name_pattern, actual_pattern))
+
+    catch_files, common_path = mx_compiler.get_catch_files_and_common_path()
+    if not expected_catch_files_entry in catch_files:
+        mx.abort('Could not find catch_files entry in {} matching "{}"'.format(common_path, expected_catch_files_entry))
+
+
 def svm_gate_body(args, tasks):
+    with Task('CheckCatchFiles', tasks, tags=[mx_gate.Tags.style]) as t:
+        if t: _check_catch_files()
 
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
@@ -415,7 +437,7 @@ def svm_gate_body(args, tasks):
         if t:
             hellomodule(args.extra_image_builder_arguments)
 
-    with Task('Validate JSON build output', tasks, tags=[mx_gate.Tags.style]) as t:
+    with Task('Validate JSON build info', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
             import json
             try:
@@ -423,20 +445,28 @@ def svm_gate_body(args, tasks):
                 from jsonschema.exceptions import ValidationError, SchemaError
             except ImportError:
                 mx.abort('Unable to import jsonschema')
-            with open(join(suite.dir, '..', 'docs', 'reference-manual', 'native-image', 'assets', 'build-output-schema-v0.9.1.json')) as f:
-                json_schema = json.load(f)
-            with tempfile.NamedTemporaryFile(prefix='build_json') as json_file:
-                helloworld(['--output-path', svmbuild_dir(), f'-H:BuildOutputJSONFile={json_file.name}'])
-                try:
-                    with open(json_file.name) as f:
-                        json_output = json.load(f)
-                    json_validate(json_output, json_schema)
-                except IOError as e:
-                    mx.abort(f'Unable to load JSON build output: {e}')
-                except ValidationError as e:
-                    mx.abort(f'Unable to validate JSON build output against the schema: {e}')
-                except SchemaError as e:
-                    mx.abort(f'JSON schema not valid: {e}')
+
+            json_and_schema_file_pairs = [
+                ('build-artifacts.json', 'build-artifacts-schema-v0.9.0.json'),
+                ('build-output.json', 'build-output-schema-v0.9.1.json'),
+            ]
+
+            build_output_file = join(svmbuild_dir(), 'build-output.json')
+            helloworld(['--output-path', svmbuild_dir(), f'-H:BuildOutputJSONFile={build_output_file}', '-H:+GenerateBuildArtifactsFile'])
+
+            try:
+                for json_file, schema_file in json_and_schema_file_pairs:
+                    with open(join(svmbuild_dir(), json_file)) as f:
+                        json_contents = json.load(f)
+                    with open(join(suite.dir, '..', 'docs', 'reference-manual', 'native-image', 'assets', schema_file)) as f:
+                        schema_contents = json.load(f)
+                    json_validate(json_contents, schema_contents)
+            except IOError as e:
+                mx.abort(f'Unable to load JSON build info: {e}')
+            except ValidationError as e:
+                mx.abort(f'Unable to validate JSON build info against the schema: {e}')
+            except SchemaError as e:
+                mx.abort(f'JSON schema not valid: {e}')
 
 
 def native_unittests_task(extra_build_args=None):
@@ -784,10 +814,9 @@ def _helloworld(native_image, javac_command, path, build_only, args):
         if actual_output != expected_output:
             raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
 
-def _debuginfotest(native_image, path, build_only, args):
+def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
     mkpath(path)
-    parent = os.path.dirname(path)
-    mx.log("parent=%s"%parent)
+    mx.log("path=%s"%path)
     sourcepath = mx.project('com.oracle.svm.test').source_dirs()[0]
     mx.log("sourcepath=%s"%sourcepath)
     sourcecache = join(path, 'sources')
@@ -824,17 +853,21 @@ def _debuginfotest(native_image, path, build_only, args):
     if '--libc=musl' in args:
         os.environ.update({'debuginfotest_musl' : 'yes'})
 
+    testhello_py = join(suite.dir, 'mx.substratevm', 'testhello.py')
+    hello_binary = join(path, 'hello.hello')
+
     build_debug_test(['-H:+SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_arch' : mx.get_arch()})
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_isolates' : 'yes'})
-        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
+        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', testhello_py, hello_binary])
 
-    build_debug_test(['-H:-SpawnIsolates'])
-    if mx.get_os() == 'linux' and not build_only:
-        os.environ.update({'debuginfotest_isolates' : 'no'})
-        mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
+    if not with_isolates_only:
+        build_debug_test(['-H:-SpawnIsolates'])
+        if mx.get_os() == 'linux' and not build_only:
+            os.environ.update({'debuginfotest_isolates' : 'no'})
+            mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', testhello_py, hello_binary])
 
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
@@ -1221,17 +1254,19 @@ def debuginfotest(args, config=None):
     builds a debuginfo Hello native image and tests it with gdb.
     """
     parser = ArgumentParser(prog='mx debuginfotest')
-    all_args = ['--output-path', '--build-only']
+    all_args = ['--output-path', '--build-only', '--with-isolates-only']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
     parser.add_argument(all_args[1], action='store_true', help='Only build the native image')
+    parser.add_argument(all_args[2], action='store_true', help='Only build and test the native image with isolates')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     output_path = unmask(parsed.output_path)[0]
     build_only = parsed.build_only
+    with_isolates_only = parsed.with_isolates_only
     native_image_context_run(
         lambda native_image, a:
-            _debuginfotest(native_image, output_path, build_only, a), unmask(parsed.image_args),
+            _debuginfotest(native_image, output_path, build_only, with_isolates_only, a), unmask(parsed.image_args),
         config=config
     )
 
@@ -1732,8 +1767,12 @@ def native_image_on_jvm(args, **kwargs):
         for key, value in javaProperties.items():
             args.append("-D" + key + "=" + value)
 
-    mx.run([executable] + args, **kwargs)
-
+    arg = [executable]
+    jacoco_args = mx_gate.get_jacoco_agent_args(agent_option_prefix='-J')
+    if jacoco_args is not None:
+        arg += jacoco_args
+    arg += args
+    mx.run(arg, **kwargs)
 
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):

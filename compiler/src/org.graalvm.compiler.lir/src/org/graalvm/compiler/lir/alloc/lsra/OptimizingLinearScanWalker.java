@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,10 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterBinding;
-import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterBindingLists;
 import org.graalvm.compiler.lir.alloc.lsra.Interval.RegisterPriority;
 import org.graalvm.compiler.lir.alloc.lsra.Interval.State;
 import org.graalvm.compiler.options.Option;
@@ -73,18 +72,12 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         }
     }
 
-    @SuppressWarnings("unused")
-    private static void printRegisterBindingList(DebugContext debug, RegisterBindingLists list, RegisterBinding binding) {
-        for (Interval interval = list.get(binding); !interval.isEndMarker(); interval = interval.next) {
-            debug.log("%s", interval);
-        }
-    }
-
     @SuppressWarnings("try")
     @Override
     void walk() {
         try (DebugContext.Scope s = allocator.getDebug().scope("OptimizingLinearScanWalker")) {
-            for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+            for (int blockId : allocator.sortedBlocks()) {
+                BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
                 optimizeBlock(block);
             }
         }
@@ -92,7 +85,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     }
 
     @SuppressWarnings("try")
-    private void optimizeBlock(AbstractBlockBase<?> block) {
+    private void optimizeBlock(BasicBlock<?> block) {
         if (block.getPredecessorCount() == 1) {
             int nextBlock = allocator.getFirstLirInstructionId(block);
             DebugContext debug = allocator.getDebug();
@@ -130,7 +123,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
     }
 
     @SuppressWarnings("try")
-    private boolean optimize(int currentPos, AbstractBlockBase<?> currentBlock, Interval currentInterval, RegisterBinding binding) {
+    private boolean optimize(int currentPos, BasicBlock<?> currentBlock, Interval currentInterval, RegisterBinding binding) {
         // BEGIN initialize and sanity checks
         assert currentBlock != null : "block must not be null";
         assert currentInterval != null : "interval must not be null";
@@ -152,7 +145,7 @@ public class OptimizingLinearScanWalker extends LinearScanWalker {
         assert currentLocation != null : "active intervals must have a location assigned!";
 
         // get predecessor stuff
-        AbstractBlockBase<?> predecessorBlock = currentBlock.getPredecessors()[0];
+        BasicBlock<?> predecessorBlock = currentBlock.getPredecessorAt(0);
         int predEndId = allocator.getLastLirInstructionId(predecessorBlock);
         Interval predecessorInterval = currentInterval.getIntervalCoveringOpId(predEndId);
         assert predecessorInterval != null : "variable not live at the end of the only predecessor! " + predecessorBlock + " -> " + currentBlock + " interval: " + currentInterval;

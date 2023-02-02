@@ -27,7 +27,7 @@ package org.graalvm.compiler.lir.alloc.lsra;
 import java.util.ArrayList;
 import java.util.BitSet;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -56,11 +56,10 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
         allocator.printIntervals("After resolve data flow");
     }
 
-    protected void resolveCollectMappings(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, AbstractBlockBase<?> midBlock, MoveResolver moveResolver) {
+    protected void resolveCollectMappings(BasicBlock<?> fromBlock, BasicBlock<?> toBlock, BasicBlock<?> midBlock, MoveResolver moveResolver) {
         assert moveResolver.checkEmpty();
         assert midBlock == null ||
-                        (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessors()[0].equals(fromBlock) && midBlock.getSuccessors()[0].equals(
-                                        toBlock));
+                        (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessorAt(0).equals(fromBlock) && midBlock.getSuccessorAt(0).equals(toBlock));
 
         int toBlockFirstInstructionId = allocator.getFirstLirInstructionId(toBlock);
         int fromBlockLastInstructionId = allocator.getLastLirInstructionId(fromBlock) + 1;
@@ -82,7 +81,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
         }
     }
 
-    void resolveFindInsertPos(AbstractBlockBase<?> fromBlock, AbstractBlockBase<?> toBlock, MoveResolver moveResolver) {
+    void resolveFindInsertPos(BasicBlock<?> fromBlock, BasicBlock<?> toBlock, MoveResolver moveResolver) {
         DebugContext debug = allocator.getDebug();
         if (fromBlock.getSuccessorCount() <= 1) {
             if (debug.isLogEnabled()) {
@@ -111,7 +110,8 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
                  * blocks which are reached by switch statements may have be more than one
                  * predecessor but it will be guaranteed that all predecessors will be the same.
                  */
-                for (AbstractBlockBase<?> predecessor : toBlock.getPredecessors()) {
+                for (int i = 0; i < toBlock.getPredecessorCount(); i++) {
+                    BasicBlock<?> predecessor = toBlock.getPredecessorAt(i);
                     assert fromBlock == predecessor : "all critical edges must be broken";
                 }
             }
@@ -139,7 +139,8 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
     }
 
     protected void optimizeEmptyBlocks(MoveResolver moveResolver, BitSet blockCompleted) {
-        for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+        for (int blockId : allocator.sortedBlocks()) {
+            BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
 
             // check if block has only one predecessor and only one successor
             if (block.getPredecessorCount() == 1 && block.getSuccessorCount() == 1) {
@@ -149,8 +150,8 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
 
                 // check if block is empty (only label and branch)
                 if (instructions.size() == 2) {
-                    AbstractBlockBase<?> pred = block.getPredecessors()[0];
-                    AbstractBlockBase<?> sux = block.getSuccessors()[0];
+                    BasicBlock<?> pred = block.getPredecessorAt(0);
+                    BasicBlock<?> sux = block.getSuccessorAt(0);
 
                     // prevent optimization of two consecutive blocks
                     if (!blockCompleted.get(pred.getLinearScanNumber()) && !blockCompleted.get(sux.getLinearScanNumber())) {
@@ -178,12 +179,14 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
 
     protected void resolveDataFlow0(MoveResolver moveResolver, BitSet blockCompleted) {
         BitSet alreadyResolved = new BitSet(allocator.blockCount());
-        for (AbstractBlockBase<?> fromBlock : allocator.sortedBlocks()) {
+        for (int blockId : allocator.sortedBlocks()) {
+            BasicBlock<?> fromBlock = allocator.getLIR().getBlockById(blockId);
             if (!blockCompleted.get(fromBlock.getLinearScanNumber())) {
                 alreadyResolved.clear();
                 alreadyResolved.or(blockCompleted);
 
-                for (AbstractBlockBase<?> toBlock : fromBlock.getSuccessors()) {
+                for (int i = 0; i < fromBlock.getSuccessorCount(); i++) {
+                    BasicBlock<?> toBlock = fromBlock.getSuccessorAt(i);
 
                     /*
                      * Check for duplicate edges between the same blocks (can happen with switch

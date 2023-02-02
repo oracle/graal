@@ -98,8 +98,8 @@ local devkits = common_json.devkits;
   sulong_windows: common_json.sulong.deps.common + common_json.sulong.deps.windows,
 
   # TRUFFLERUBY, needs OpenSSL 1.0.2+, so OracleLinux 7+
-  truffleruby_linux_amd64: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux + graal_common.ol7,
-  truffleruby_linux_aarch64: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux, # OL7 is default on linux-aarch64
+  truffleruby_linux_amd64: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux,
+  truffleruby_linux_aarch64: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux,
   truffleruby_darwin_amd64: self.sulong_darwin_amd64 + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
   truffleruby_darwin_aarch64: self.sulong_darwin_aarch64 + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
 
@@ -404,7 +404,7 @@ local devkits = common_json.devkits;
   deploy_sdk_components_dry_run(os):          [$.mx_vm_installables + self.maven_deploy_sdk_components_dry_run, $.mx_vm_installables + self.artifact_deploy_sdk_components_dry_run(os)],
 
 
-  svm_vm_build_ol6_amd64: self.svm_common_linux_amd64 + vm.custom_vm_linux,
+  svm_vm_build_linux_amd64: self.svm_common_linux_amd64 + vm.custom_vm_linux,
 
   ruby_vm_build_linux: self.svm_common_linux_amd64 + self.sulong_linux + self.truffleruby_linux_amd64 + vm.custom_vm_linux,
   full_vm_build_linux: self.ruby_vm_build_linux + self.fastr_linux + self.graalpython_linux,
@@ -464,53 +464,28 @@ local devkits = common_json.devkits;
   patch_env(os, arch, java_version):
     # linux
     if (os == 'linux') then
-      if (arch == 'amd64') then
-        if (java_version == 'java11') then [
-          # default
-        ] else if (java_version == 'java17') then [
-          # default
-        ] else if (java_version == 'java19') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-19'],
-        ] else error "java_version not found: " + java_version
-      else if (arch == 'aarch64') then
-        if (java_version == 'java11') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-aarch64'],
-        ] else if (java_version == 'java17') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-aarch64'],
-        ] else if (java_version == 'java19') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-aarch64-19'],
-        ] else error "java_version not found: " + java_version
+      if (arch == 'amd64') then [
+        # default
+      ]
+      else if (arch == 'aarch64') then [
+        ['set-export', 'VM_ENV', '${VM_ENV}-aarch64'],
+      ]
       else error "arch not found: " + arch
     # darwin
     else if (os == 'darwin') then
-      if (arch == 'amd64') then
-        if (java_version == 'java11') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin'],
-        ] else if (java_version == 'java17') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin'],
-        ] else if (java_version == 'java19') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin-19'],
-        ] else error "java_version not found: " + java_version
-      else if (arch == 'aarch64') then
+      if (arch == 'amd64') then [
+        ['set-export', 'VM_ENV', '${VM_ENV}-darwin'],
+      ]
+      else if (arch == 'aarch64') then [
         # GR-34811: `ce-darwin-aarch64` can be removed once svml builds
-        if (java_version == 'java11') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
-        ] else if (java_version == 'java17') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
-        ] else if (java_version == 'java19') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64-19'],
-        ] else error "java_version not found: " + java_version
+        ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
+      ]
       else error "arch not found: " + arch
     # windows
     else if (os == 'windows') then
-      if (arch == 'amd64') then
-        if (java_version == 'java11') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-win'],
-        ] else if (java_version == 'java17') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-win'],
-        ] else if (java_version == 'java19') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-win-19'],
-        ] else error "java_version not found: " + java_version
+      if (arch == 'amd64') then [
+        ['set-export', 'VM_ENV', '${VM_ENV}-win'],
+      ]
       else error "arch not found: " + arch
     else error "os not found: " + os,
 
@@ -548,6 +523,7 @@ local devkits = common_json.devkits;
     ] + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "aarch64", java_version),
     notify_groups:: ['deploy'],
     timelimit: '1:30:00',
+    capabilities+: ["!xgene3"]
   },
 
   deploy_graalvm_base_darwin_amd64(java_version): vm.check_structure + {
@@ -632,8 +608,8 @@ local devkits = common_json.devkits;
   #
 
   # Linux/AMD64
-  deploy_vm_java17_linux_amd64: vm.vm_java_17_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java17") + {name: 'post-merge-deploy-vm-java17-linux-amd64', diskspace_required: vm.diskspace_required.java17_linux_mad64, notify_groups:: ["deploy"]},
-  deploy_vm_java19_linux_amd64: vm.vm_java_19_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java19") + {name: 'post-merge-deploy-vm-java19-linux-amd64', diskspace_required: vm.diskspace_required.java19_linux_mad64, notify_groups:: ["deploy"]},
+  deploy_vm_java17_linux_amd64: vm.vm_java_17_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java17") + {name: 'post-merge-deploy-vm-java17-linux-amd64', diskspace_required: vm.diskspace_required.java17_linux_amd64, notify_groups:: ["deploy"]},
+  deploy_vm_java19_linux_amd64: vm.vm_java_19_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java19") + {name: 'post-merge-deploy-vm-java19-linux-amd64', diskspace_required: vm.diskspace_required.java19_linux_amd64, notify_groups:: ["deploy"]},
 
   # Linux/AARCH64
   deploy_vm_java17_linux_aarch64: vm.vm_java_17 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64("java17") + {name: 'daily-deploy-vm-java17-linux-aarch64', notify_groups:: ["deploy"]},

@@ -28,7 +28,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapUtil;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.core.inlining.InliningPath;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * Represents an immutable optimization (applied graph transformation) in a compilation unit at a
@@ -38,6 +39,11 @@ import org.graalvm.profdiff.util.Writer;
  * performed by an {@link OptimizationPhase optimization phase} like {@code LoopPeelingPhase}.
  */
 public class Optimization extends OptimizationTreeNode {
+    /**
+     * A special bci value indicating that the true bci is unknown.
+     */
+    public static final int UNKNOWN_BCI = -1;
+
     /**
      * The name of the transformation performed by the optimization phase. One optimization phase
      * can perform several transformations.
@@ -192,13 +198,13 @@ public class Optimization extends OptimizationTreeNode {
 
     /**
      * Writes {@link #toString(boolean) the representation of this optimization} to the destination
-     * writer according to the current verbosity level.
+     * writer according to the option values.
      *
      * @param writer the destination writer
      */
     @Override
     public void writeHead(Writer writer) {
-        writer.writeln(toString(writer.getVerbosityLevel().isBciLongForm()));
+        writer.writeln(toString(writer.getOptionValues().isBciLongForm()));
     }
 
     private int calculateHashCode() {
@@ -234,5 +240,22 @@ public class Optimization extends OptimizationTreeNode {
     @Override
     public void writeRecursive(Writer writer) {
         writeHead(writer);
+    }
+
+    @Override
+    public Optimization cloneMatchingPath(InliningPath prefix) {
+        InliningPath path = InliningPath.ofEnclosingMethod(this);
+        if (!prefix.isPrefixOf(path)) {
+            return null;
+        }
+        EconomicMap<String, Integer> newPosition = EconomicMap.create();
+        UnmodifiableMapCursor<String, Integer> cursor = position.getEntries();
+        int i = 0;
+        int size = position.size() - prefix.size() + 1;
+        while (cursor.advance() && i < size) {
+            newPosition.put(cursor.getKey(), cursor.getValue());
+            ++i;
+        }
+        return new Optimization(getName(), eventName, newPosition, properties);
     }
 }

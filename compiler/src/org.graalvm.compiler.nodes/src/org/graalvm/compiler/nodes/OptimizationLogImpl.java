@@ -56,6 +56,8 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.util.json.JSONFormatter;
 
+import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -117,6 +119,11 @@ public class OptimizationLogImpl implements OptimizationLog {
     public static final String INLINED_PROPERTY = "inlined";
 
     /**
+     * The key of the property which is {@code true} iff the call is known to be indirect.
+     */
+    public static final String INDIRECT_PROPERTY = "indirect";
+
+    /**
      * The key of the reason property. The property holds a list of reasons for inlining decisions
      * in their original order.
      */
@@ -156,11 +163,42 @@ public class OptimizationLogImpl implements OptimizationLog {
     public static final String OPTIMIZATION_LOG_DIRECTORY = "optimization_log";
 
     /**
+     * The key of the maturity flag in profiling info.
+     */
+    public static final String MATURE_PROPERTY = "mature";
+
+    /**
      * The line separator, which separates compilation units in optimization log files. Profdiff
      * makes strong assumptions about the structure of the files to speed up parsing. Therefore, a
      * common line separator for all platform simplifies the logic.
      */
     public static final char LINE_SEPARATOR = '\n';
+
+    /**
+     * The name of the property holding the name of a receiver type.
+     */
+    public static final String TYPE_NAME_PROPERTY = "typeName";
+
+    /**
+     * The name of the property holding a probability of a receiver type.
+     */
+    public static final String PROBABILITY_PROPERTY = "probability";
+
+    /**
+     * The name of the property holding a list of receiver types with probabilities.
+     */
+    public static final String PROFILED_TYPES_PROPERTY = "profiledTypes";
+
+    /**
+     * The name of the property holding a receiver-type profile for a polymorphic callsite.
+     */
+    public static final String RECEIVER_TYPE_PROFILE_PROPERTY = "receiverTypeProfile";
+
+    /**
+     * The name of the property holding the name of the concrete method called for a given receiver
+     * type.
+     */
+    public static final String CONCRETE_METHOD_NAME_PROPERTY = "concreteMethodName";
 
     /**
      * Represents an optimization phase, which can trigger its own subphases and/or individual
@@ -687,36 +725,48 @@ public class OptimizationLogImpl implements OptimizationLog {
     }
 
     private EconomicMap<String, Object> inliningTreeAsJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
-        if (graph.getInliningLog() == null) {
-            return null;
-        }
-        return callsiteAsJSONMap(graph.getInliningLog().getRootCallsite(), true, null, methodNameFormatter);
+        assert graph.getInliningLog() != null;
+        EconomicMap<InliningLog.Callsite, EconomicMap<String, Object>> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        return callsiteAsJSONMap(graph.getInliningLog().getRootCallsite(), true, null, methodNameFormatter, replacements);
     }
 
     /**
      * Converts an inlining subtree to a JSON map starting from a callsite.
      *
+     * The tree built by this method respects {@link InliningLog.Callsite#getOverriddenParent() the
+     * overriden parents}. As a result of this, the tree is slightly different from what is printed
+     * by {@link GraalOptions#TraceInlining}. This is achieved by remembering the mapping from
+     * callsites to their JSON representations in the {@code replacements} parameter. Each callsite
+     * then attaches itself to the correct {@link InliningLog.Callsite#getOverriddenParent() parent}
+     * by querying {@code replacements}.
+     *
      * @param callsite the root of the inlining subtree
      * @param isInlined {@code true} if the callsite was inlined
      * @param reason the list of reasons for the inlining decisions made about the callsite
      * @param methodNameFormatter a function that formats method names
+     * @param replacements a mapping of callsites to their respective JSON maps
      * @return inlining subtree as a JSON map
      */
+    @SuppressWarnings("unchecked")
     private EconomicMap<String, Object> callsiteAsJSONMap(InliningLog.Callsite callsite, boolean isInlined, List<String> reason,
-                    Function<ResolvedJavaMethod, String> methodNameFormatter) {
+                    Function<ResolvedJavaMethod, String> methodNameFormatter, EconomicMap<InliningLog.Callsite, EconomicMap<String, Object>> replacements) {
         EconomicMap<String, Object> map = EconomicMap.create();
-        map.put(METHOD_NAME_PROPERTY, callsite.target == null ? null : methodNameFormatter.apply(callsite.target));
+        replacements.put(callsite, map);
+        map.put(METHOD_NAME_PROPERTY, callsite.getTarget() == null ? null : methodNameFormatter.apply(callsite.getTarget()));
         map.put(CALLSITE_BCI_PROPERTY, callsite.getBci());
         map.put(INLINED_PROPERTY, isInlined);
         map.put(REASON_PROPERTY, reason);
-        if (!isInlined) {
-            return map;
+        map.put(INDIRECT_PROPERTY, callsite.isIndirect());
+        if (callsite.isIndirect()) {
+            EconomicMap<String, Object> receiverTypeProfile = receiverTypeProfileAsJSONMap(callsite, methodNameFormatter);
+            if (receiverTypeProfile != null) {
+                map.put(RECEIVER_TYPE_PROFILE_PROPERTY, receiverTypeProfile);
+            }
         }
-        List<Object> invokes = null;
-        for (InliningLog.Callsite child : callsite.children) {
+        for (InliningLog.Callsite child : callsite.getChildren()) {
             boolean childIsInlined = false;
             List<String> childReason = null;
-            for (InliningLog.Decision childDecision : child.decisions) {
+            for (InliningLog.Decision childDecision : child.getDecisions()) {
                 childIsInlined = childIsInlined || childDecision.isPositive();
                 if (childDecision.getReason() != null) {
                     if (childReason == null) {
@@ -725,12 +775,55 @@ public class OptimizationLogImpl implements OptimizationLog {
                     childReason.add(childDecision.getReason());
                 }
             }
-            if (invokes == null) {
-                invokes = new ArrayList<>();
-            }
-            invokes.add(callsiteAsJSONMap(child, childIsInlined, childReason, methodNameFormatter));
+            callsiteAsJSONMap(child, childIsInlined, childReason, methodNameFormatter, replacements);
         }
-        map.put(INVOKES_PROPERTY, invokes);
+        if (callsite.getOverriddenParent() != null) {
+            EconomicMap<String, Object> parentMap = replacements.get(callsite.getOverriddenParent());
+            assert parentMap != null;
+            List<Object> parentInvokesProperty = (List<Object>) parentMap.get(INVOKES_PROPERTY);
+            if (parentInvokesProperty == null) {
+                parentInvokesProperty = new ArrayList<>();
+                parentMap.put(INVOKES_PROPERTY, parentInvokesProperty);
+            }
+            parentInvokesProperty.add(map);
+        }
         return map;
+    }
+
+    /**
+     * Converts the type profile of the receiver to a JSON map. Returns {@code null} if there is no
+     * profiling info available.
+     *
+     * @param callsite the callsite whose profiling info is returned
+     * @return the type profile as a map or {@code null}
+     */
+    private EconomicMap<String, Object> receiverTypeProfileAsJSONMap(InliningLog.Callsite callsite, Function<ResolvedJavaMethod, String> methodNameFormatter) {
+        if (callsite.getParent() == null || callsite.getParent().getTarget() == null) {
+            return null;
+        }
+        ProfilingInfo profilingInfo = graph.getProfileProvider().getProfilingInfo(callsite.getParent().getTarget());
+        if (profilingInfo == null) {
+            return null;
+        }
+        EconomicMap<String, Object> typeProfileMap = EconomicMap.create();
+        typeProfileMap.put(MATURE_PROPERTY, profilingInfo.isMature());
+        JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(callsite.getBci());
+        if (typeProfile != null) {
+            List<EconomicMap<String, Object>> profiledTypes = new ArrayList<>();
+            for (JavaTypeProfile.ProfiledType profiledType : typeProfile.getTypes()) {
+                EconomicMap<String, Object> profiledTypeMap = EconomicMap.create();
+                profiledTypeMap.put(TYPE_NAME_PROPERTY, profiledType.getType().toJavaName(true));
+                profiledTypeMap.put(PROBABILITY_PROPERTY, profiledType.getProbability());
+                if (callsite.getTarget() != null) {
+                    ResolvedJavaMethod concreteMethod = profiledType.getType().resolveConcreteMethod(callsite.getTarget(), callsite.getParent().getTarget().getDeclaringClass());
+                    if (concreteMethod != null) {
+                        profiledTypeMap.put(CONCRETE_METHOD_NAME_PROPERTY, methodNameFormatter.apply(concreteMethod));
+                    }
+                }
+                profiledTypes.add(profiledTypeMap);
+            }
+            typeProfileMap.put(PROFILED_TYPES_PROPERTY, profiledTypes);
+        }
+        return typeProfileMap;
     }
 }

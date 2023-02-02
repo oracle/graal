@@ -447,6 +447,26 @@ class DevirtualizedCallUsageMustBeDelayed {
     }
 }
 
+class LargeAllocation1MustBeDelayed {
+    static final Object value = computeValue();
+
+    private static Object computeValue() {
+        Object[] result = new Object[1_000_000];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = new int[1_000_000];
+        }
+        return result;
+    }
+}
+
+class LargeAllocation2MustBeDelayed {
+    static final Object value = computeValue();
+
+    private static Object computeValue() {
+        return new int[Integer.MAX_VALUE][Integer.MAX_VALUE];
+    }
+}
+
 class TestClassInitializationMustBeSafeEarlyFeature implements Feature {
 
     static final Class<?>[] checkedClasses = new Class<?>[]{
@@ -479,7 +499,8 @@ class TestClassInitializationMustBeSafeEarlyFeature implements Feature {
                     ReferencesOtherPureClassMustBeSafeEarly.class, HelperClassMustBeSafeEarly.class,
                     CycleMustBeSafeLate.class, HelperClassMustBeSafeLate.class,
                     ReflectionMustBeSafeEarly.class, ForNameMustBeSafeEarly.class, ForNameMustBeDelayed.class,
-                    DevirtualizedCallMustBeDelayed.class, DevirtualizedCallSuperMustBeSafeEarly.class, DevirtualizedCallSubMustBeSafeEarly.class, DevirtualizedCallUsageMustBeDelayed.class
+                    DevirtualizedCallMustBeDelayed.class, DevirtualizedCallSuperMustBeSafeEarly.class, DevirtualizedCallSubMustBeSafeEarly.class, DevirtualizedCallUsageMustBeDelayed.class,
+                    LargeAllocation1MustBeDelayed.class, LargeAllocation2MustBeDelayed.class,
     };
 
     private static void checkClasses(boolean checkSafeEarly, boolean checkSafeLate) {
@@ -660,6 +681,15 @@ public class TestClassInitializationMustBeSafeEarly {
         assertSame("field", ReflectionMustBeSafeEarly.f2.getName());
 
         System.out.println(DevirtualizedCallUsageMustBeDelayed.value);
+
+        if (System.currentTimeMillis() == 0) {
+            /*
+             * Make the class initializers reachable at run time, but do not actually execute them
+             * because they will allocate a lot of memory before throwing an OutOfMemoryError.
+             */
+            System.out.println(LargeAllocation1MustBeDelayed.value);
+            System.out.println(LargeAllocation2MustBeDelayed.value);
+        }
     }
 
     private static void assertSame(Object expected, Object actual) {

@@ -67,6 +67,7 @@ import com.oracle.truffle.tck.TruffleRunner.Inject;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class KeyInfoNFITest extends NFITest {
 
     private static void addTest(List<Object[]> ret, String symbol, Supplier<Object> object, String description, boolean read, boolean invoke, boolean optional) {

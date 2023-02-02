@@ -82,7 +82,7 @@ public class IdentityValueProfileTest {
 
     @Before
     public void create() {
-        profile = (ValueProfile) invokeStatic(loadRelative(IdentityValueProfileTest.class, "ValueProfile$Identity"), "create");
+        profile = (ValueProfile) invokeStatic(loadRelative(IdentityValueProfileTest.class, "ValueProfile$Identity"), "create0");
     }
 
     private static boolean isGeneric(ValueProfile profile) {

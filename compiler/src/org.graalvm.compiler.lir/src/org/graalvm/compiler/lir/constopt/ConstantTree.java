@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,18 +28,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Predicate;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
-import org.graalvm.compiler.core.common.cfg.PrintableDominatorOptimizationProblem;
+import org.graalvm.compiler.core.common.cfg.DominatorOptimizationProblem;
 import org.graalvm.compiler.core.common.cfg.PropertyConsumable;
 
 /**
  * Represents a dominator (sub-)tree for a constant definition.
  */
-public class ConstantTree extends PrintableDominatorOptimizationProblem<ConstantTree.Flags, ConstantTree.NodeCost> {
+public class ConstantTree extends DominatorOptimizationProblem<ConstantTree.Flags, ConstantTree.NodeCost> {
 
     public enum Flags {
         SUBTREE,
@@ -69,13 +68,6 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
             action.accept("numUsages", Integer.toString(usages.size()));
         }
 
-        public void addUsage(UseEntry usage) {
-            if (usages == null) {
-                usages = new ArrayList<>();
-            }
-            usages.add(usage);
-        }
-
         public List<UseEntry> getUsages() {
             if (usages == null) {
                 return Collections.emptyList();
@@ -89,10 +81,6 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
 
         public int getNumMaterializations() {
             return numMat;
-        }
-
-        public void setBestCost(double cost) {
-            bestCost = cost;
         }
 
         @Override
@@ -109,7 +97,7 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
         tree.forEach(u -> getOrInitList(u.getBlock()).add(u));
     }
 
-    private List<UseEntry> getOrInitList(AbstractBlockBase<?> block) {
+    private List<UseEntry> getOrInitList(BasicBlock<?> block) {
         List<UseEntry> list = blockMap.get(block);
         if (list == null) {
             list = new ArrayList<>();
@@ -118,7 +106,7 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
         return list;
     }
 
-    public List<UseEntry> getUsages(AbstractBlockBase<?> block) {
+    public List<UseEntry> getUsages(BasicBlock<?> block) {
         List<UseEntry> list = blockMap.get(block);
         if (list == null) {
             return Collections.emptyList();
@@ -130,7 +118,7 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
      * Returns the cost object associated with {@code block}. If there is none, a new cost object is
      * created.
      */
-    NodeCost getOrInitCost(AbstractBlockBase<?> block) {
+    NodeCost getOrInitCost(BasicBlock<?> block) {
         NodeCost cost = getCost(block);
         if (cost == null) {
             cost = new NodeCost(block.getRelativeFrequency(), blockMap.get(block), 1);
@@ -154,36 +142,24 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
         return super.getName(type);
     }
 
-    @Override
-    public void forEachPropertyPair(AbstractBlockBase<?> block, BiConsumer<String, String> action) {
-        if (get(Flags.SUBTREE, block) && (block.getDominator() == null || !get(Flags.SUBTREE, block.getDominator()))) {
-            action.accept("hasDefinition", "true");
-        }
-        super.forEachPropertyPair(block, action);
-    }
-
-    public long subTreeSize() {
-        return stream(Flags.SUBTREE).count();
-    }
-
-    public AbstractBlockBase<?> getStartBlock() {
+    public BasicBlock<?> getStartBlock() {
         return stream(Flags.SUBTREE).findFirst().get();
     }
 
     public void markBlocks() {
-        for (AbstractBlockBase<?> block : getBlocks()) {
+        for (BasicBlock<?> block : getBlocks()) {
             if (get(Flags.USAGE, block)) {
                 setDominatorPath(Flags.SUBTREE, block);
             }
         }
     }
 
-    public boolean isMarked(AbstractBlockBase<?> block) {
+    public boolean isMarked(BasicBlock<?> block) {
         return get(Flags.SUBTREE, block);
     }
 
-    public boolean isLeafBlock(AbstractBlockBase<?> block) {
-        AbstractBlockBase<?> dom = block.getFirstDominated();
+    public boolean isLeafBlock(BasicBlock<?> block) {
+        BasicBlock<?> dom = block.getFirstDominated();
         while (dom != null) {
             if (isMarked(dom)) {
                 return false;
@@ -193,25 +169,12 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
         return true;
     }
 
-    public void setSolution(AbstractBlockBase<?> block) {
+    public void setSolution(BasicBlock<?> block) {
         set(Flags.MATERIALIZE, block);
     }
 
     public int size() {
         return getBlocks().length;
-    }
-
-    public void traverseTreeWhileTrue(AbstractBlockBase<?> block, Predicate<AbstractBlockBase<?>> action) {
-        assert block != null : "block must not be null!";
-        if (action.test(block)) {
-            AbstractBlockBase<?> dom = block.getFirstDominated();
-            while (dom != null) {
-                if (this.isMarked(dom)) {
-                    traverseTreeWhileTrue(dom, action);
-                }
-                dom = dom.getDominatedSibling();
-            }
-        }
     }
 
 }

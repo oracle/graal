@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -226,6 +226,8 @@ public abstract class LayoutStrategy {
 
     /** @since 0.17 or earlier */
     protected ShapeImpl removeProperty(ShapeImpl shape, Property property) {
+        shape.onPropertyTransition(property);
+
         boolean direct = shape.isShared();
         RemovePropertyTransition transition = newRemovePropertyTransition(property, direct);
         ShapeImpl cachedShape = shape.queryTransition(transition);
@@ -271,8 +273,7 @@ public abstract class LayoutStrategy {
             newShape = applyTransition(newShape, previous, true);
         }
 
-        shape.addIndirectTransition(transition, newShape);
-        return newShape;
+        return shape.addIndirectTransition(transition, newShape);
     }
 
     /**
@@ -282,8 +283,7 @@ public abstract class LayoutStrategy {
         PropertyMap newPropertyMap = shape.getPropertyMap().removeCopy(property);
         ShapeImpl newShape = shape.createShape(shape.getLayout(), shape.sharedData, shape, shape.objectType, newPropertyMap, transition, shape.allocator(), shape.flags);
 
-        shape.addDirectTransition(transition, newShape);
-        return newShape;
+        return shape.addDirectTransition(transition, newShape);
     }
 
     protected ShapeImpl directReplaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
@@ -291,6 +291,16 @@ public abstract class LayoutStrategy {
     }
 
     protected ShapeImpl directReplaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty, boolean ensureValid) {
+        ShapeImpl newShape = directReplacePropertyInner(shape, oldProperty, newProperty);
+
+        Property actualProperty = newShape.getProperty(newProperty.getKey());
+        // Ensure the actual property location is of the same type or more general.
+        ensureSameTypeOrMoreGeneral(actualProperty, newProperty);
+
+        return ensureValid ? ensureValid(newShape) : newShape;
+    }
+
+    private static ShapeImpl directReplacePropertyInner(ShapeImpl shape, Property oldProperty, Property newProperty) {
         assert oldProperty.getKey().equals(newProperty.getKey());
         if (oldProperty.equals(newProperty)) {
             return shape;
@@ -301,18 +311,16 @@ public abstract class LayoutStrategy {
         Transition replacePropertyTransition = new Transition.DirectReplacePropertyTransition(oldProperty, newProperty);
         ShapeImpl cachedShape = shape.queryTransition(replacePropertyTransition);
         if (cachedShape != null) {
-            return ensureValid ? ensureValid(cachedShape) : cachedShape;
+            return cachedShape;
         }
         PropertyMap newPropertyMap = shape.getPropertyMap().replaceCopy(oldProperty, newProperty);
         BaseAllocator allocator = shape.allocator().addLocation(newProperty.getLocation());
         ShapeImpl newShape = shape.createShape(shape.getLayout(), shape.sharedData, shape, shape.objectType, newPropertyMap, replacePropertyTransition, allocator, shape.flags);
 
-        assert ((PropertyImpl) newProperty).isSame(newShape.getProperty(newProperty.getKey())) : newShape.getProperty(newProperty.getKey());
+        newShape = shape.addDirectTransition(replacePropertyTransition, newShape);
 
-        shape.addDirectTransition(replacePropertyTransition, newShape);
         if (!shape.isValid()) {
             newShape.invalidateValidAssumption();
-            return ensureValid ? ensureValid(newShape) : newShape;
         }
         return newShape;
     }
@@ -352,22 +360,32 @@ public abstract class LayoutStrategy {
 
     /** @since 0.17 or earlier */
     protected ShapeImpl addProperty(ShapeImpl shape, Property property, boolean ensureValid) {
+        ShapeImpl newShape = addPropertyInner(shape, property);
+
+        Property actualProperty = newShape.getLastProperty();
+        // Ensure the actual property location is of the same type or more general.
+        ensureSameTypeOrMoreGeneral(actualProperty, property);
+
+        return ensureValid ? ensureValid(newShape) : newShape;
+    }
+
+    private ShapeImpl addPropertyInner(ShapeImpl shape, Property property) {
         assert !(shape.hasProperty(property.getKey())) : "duplicate property " + property.getKey();
         shape.onPropertyTransition(property);
 
         AddPropertyTransition addTransition = newAddPropertyTransition(property);
         ShapeImpl cachedShape = shape.queryTransition(addTransition);
         if (cachedShape != null) {
-            return ensureValid ? ensureValid(cachedShape) : cachedShape;
+            return cachedShape;
         }
 
         ShapeImpl oldShape = ensureSpace(shape, property.getLocation());
 
         ShapeImpl newShape = ShapeImpl.makeShapeWithAddedProperty(oldShape, addTransition);
-        oldShape.addDirectTransition(addTransition, newShape);
+        newShape = oldShape.addDirectTransition(addTransition, newShape);
+
         if (!oldShape.isValid()) {
             newShape.invalidateValidAssumption();
-            return ensureValid ? ensureValid(newShape) : newShape;
         }
         return newShape;
     }
@@ -438,5 +456,12 @@ public abstract class LayoutStrategy {
         }
 
         return null;
+    }
+
+    protected void ensureSameTypeOrMoreGeneral(Property generalProperty, Property specificProperty) {
+        assert ((PropertyImpl) generalProperty).isSame(specificProperty) : generalProperty;
+        if (generalProperty.getLocation() != specificProperty.getLocation()) {
+            assert ((LocationImpl) generalProperty.getLocation()).getType() == ((LocationImpl) specificProperty.getLocation()).getType() : generalProperty;
+        }
     }
 }

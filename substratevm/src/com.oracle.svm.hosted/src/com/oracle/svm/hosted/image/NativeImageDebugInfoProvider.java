@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.UniqueShortNameProvider;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
@@ -293,7 +294,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private static ResolvedJavaType getOriginal(HostedType hostedType) {
         /* partially unwrap then traverse through substitutions to the original */
-        ResolvedJavaType javaType = hostedType.getWrapped().getWrappedWithoutResolve();
+        ResolvedJavaType javaType = hostedType.getWrapped().getWrapped();
         if (javaType instanceof SubstitutionType) {
             return ((SubstitutionType) javaType).getOriginal();
         } else if (javaType instanceof CustomSubstitutionType<?, ?>) {
@@ -1139,7 +1140,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             JavaKind kind = ownerType.getJavaKind();
             JavaKind storageKind = isPseudoObjectType(ownerType, ownerType) ? JavaKind.Long : kind;
             assert kind == JavaKind.Object : "must be an object";
-            paramInfos.add(new NativeImageDebugLocalValueInfo("this", storageKind, ownerType, slot, line));
+            paramInfos.add(new NativeImageDebugLocalInfo("this", storageKind, ownerType, slot, line));
             slot += kind.getSlotCount();
         }
         for (int i = 0; i < parameterCount; i++) {
@@ -1148,7 +1149,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             ResolvedJavaType paramType = (ResolvedJavaType) signature.getParameterType(i, null);
             JavaKind kind = paramType.getJavaKind();
             JavaKind storageKind = isPseudoObjectType(paramType, ownerType) ? JavaKind.Long : kind;
-            paramInfos.add(new NativeImageDebugLocalValueInfo(name, storageKind, paramType, slot, line));
+            paramInfos.add(new NativeImageDebugLocalInfo(name, storageKind, paramType, slot, line));
             slot += kind.getSlotCount();
         }
         return paramInfos;
@@ -1699,6 +1700,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private int hi;
         private DebugLocationInfo callersLocationInfo;
         private List<DebugLocalValueInfo> localInfoList;
+        private boolean isLeaf;
 
         NativeImageDebugLocationInfo(FrameNode frameNode, NativeImageDebugLocationInfo callersLocationInfo, int framesize) {
             this(frameNode.frame, frameNode.getStartPos(), frameNode.getEndPos() + 1, callersLocationInfo, framesize);
@@ -1711,9 +1713,15 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.hi = hi;
             this.callersLocationInfo = callersLocationInfo;
             this.localInfoList = initLocalInfoList(bcpos, framesize);
+            // assume this is a leaf until we find out otherwise
+            this.isLeaf = true;
+            // tag the caller as a non-leaf
+            if (callersLocationInfo != null) {
+                callersLocationInfo.isLeaf = false;
+            }
         }
 
-        // special constructor for synthetic lcoation info added at start of method
+        // special constructor for synthetic location info added at start of method
         NativeImageDebugLocationInfo(ResolvedJavaMethod method, int hi, ParamLocationProducer locProducer) {
             super(method);
             // bci is always 0 and lo is always 0.
@@ -1724,8 +1732,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.callersLocationInfo = null;
             // location info is synthesized off the method signature
             this.localInfoList = initSyntheticInfoList(locProducer);
+            // assume this is a leaf until we find out otherwise
+            this.isLeaf = true;
         }
 
+        // special constructor for synthetic location info which splits off the initial segment
+        // of the first range to accommodate a stack access prior to the stack push
         NativeImageDebugLocationInfo(NativeImageDebugLocationInfo toSplit, int stackDecrement, int frameSize) {
             super(toSplit.method);
             this.lo = stackDecrement;
@@ -1733,11 +1745,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             toSplit.hi = this.lo;
             this.bci = toSplit.bci;
             this.callersLocationInfo = toSplit.callersLocationInfo;
+            this.isLeaf = toSplit.isLeaf;
+            toSplit.isLeaf = true;
             this.localInfoList = new ArrayList<>(toSplit.localInfoList.size());
             for (DebugLocalValueInfo localInfo : toSplit.localInfoList) {
                 if (localInfo.localKind() == DebugLocalValueInfo.LocalKind.STACKSLOT) {
                     int newSlot = localInfo.stackSlot() + frameSize;
-                    NativeImageDebugLocalValue value = new NativeImageDebugStackValue(newSlot);
+                    NativeImageDebugLocalValue value = NativeImageDebugStackValue.create(newSlot);
                     NativeImageDebugLocalValueInfo nativeLocalInfo = (NativeImageDebugLocalValueInfo) localInfo;
                     NativeImageDebugLocalValueInfo newLocalinfo = new NativeImageDebugLocalValueInfo(nativeLocalInfo.name,
                                     value,
@@ -1883,6 +1897,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
+        @Override
+        public boolean isLeaf() {
+            return isLeaf;
+        }
+
         public int depth() {
             int depth = 1;
             DebugLocationInfo caller = getCaller();
@@ -1911,6 +1930,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          */
         NativeImageDebugLocationInfo merge(NativeImageDebugLocationInfo that) {
             assert callersLocationInfo == that.callersLocationInfo;
+            assert isLeaf == that.isLeaf;
             assert depth() == that.depth() : "should only compare sibling ranges";
             assert this.hi <= that.lo : "later nodes should not overlap earlier ones";
             if (this.hi != that.lo) {
@@ -2105,7 +2125,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         public NativeImageDebugLocalValue nextFloatingLocation() {
             if (nextFPregIdx < fregs.length) {
-                return new NativeImageDebugRegisterValue(fregs[nextFPregIdx++].number);
+                return NativeImageDebugRegisterValue.create(fregs[nextFPregIdx++].number);
             } else {
                 return nextStackLocation();
             }
@@ -2113,7 +2133,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         public NativeImageDebugLocalValue nextIntegerLocation() {
             if (nextGPRegIdx < gpregs.length) {
-                return new NativeImageDebugRegisterValue(gpregs[nextGPRegIdx++].number);
+                return NativeImageDebugRegisterValue.create(gpregs[nextGPRegIdx++].number);
             } else {
                 return nextStackLocation();
             }
@@ -2124,7 +2144,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // offset to adjust for any intervening return address and frame pointer
             assert nextStackIdx < stackParamCount : "encountered too many stack params";
             int stackIdx = nextStackIdx++;
-            return new NativeImageDebugStackValue((stackIdx * 8) + stackOffset);
+            return NativeImageDebugStackValue.create((stackIdx * 8) + stackOffset);
         }
 
         public boolean usesStack() {
@@ -2165,20 +2185,14 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public class NativeImageDebugLocalValueInfo implements DebugLocalValueInfo {
-        private final String name;
-        private ResolvedJavaType type;
-        private final NativeImageDebugLocalValue value;
-        private final JavaKind kind;
-        private int slot;
-        private int line;
-        private LocalKind localKind;
+    public class NativeImageDebugLocalInfo implements DebugLocalInfo {
+        protected final String name;
+        protected ResolvedJavaType type;
+        protected final JavaKind kind;
+        protected int slot;
+        protected int line;
 
-        NativeImageDebugLocalValueInfo(String name, JavaKind kind, ResolvedJavaType type, int slot, int line) {
-            this(name, Value.ILLEGAL, 0, kind, type, slot, line);
-        }
-
-        NativeImageDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType resolvedType, int slot, int line) {
+        NativeImageDebugLocalInfo(String name, JavaKind kind, ResolvedJavaType resolvedType, int slot, int line) {
             this.name = name;
             this.kind = kind;
             this.slot = slot;
@@ -2186,49 +2200,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // if we don't have a type default it for the JavaKind
             // it may still end up null when kind is Undefined.
             this.type = (resolvedType != null ? resolvedType : hostedTypeForKind(kind));
-            if (value instanceof RegisterValue) {
-                this.localKind = LocalKind.REGISTER;
-                this.value = new NativeImageDebugRegisterValue((RegisterValue) value);
-            } else if (value instanceof StackSlot) {
-                this.localKind = LocalKind.STACKSLOT;
-                this.value = new NativeImageDebugStackValue((StackSlot) value, framesize);
-            } else if (value instanceof JavaConstant) {
-                JavaConstant constant = (JavaConstant) value;
-                if (constant instanceof PrimitiveConstant || constant.isNull()) {
-                    this.localKind = LocalKind.CONSTANT;
-                    this.value = new NativeImageDebugConstantValue(constant);
-                } else {
-                    long heapOffset = objectOffset(constant);
-                    if (heapOffset >= 0) {
-                        this.localKind = LocalKind.CONSTANT;
-                        this.value = new NativeImageDebugConstantValue(constant, heapOffset);
-                    } else {
-                        this.localKind = LocalKind.UNDEFINED;
-                        this.value = null;
-                    }
-                }
-            } else {
-                this.localKind = LocalKind.UNDEFINED;
-                this.value = null;
-            }
-        }
-
-        NativeImageDebugLocalValueInfo(String name, NativeImageDebugLocalValue value, JavaKind kind, ResolvedJavaType type, int slot, int line) {
-            this.name = name;
-            this.kind = kind;
-            this.type = type;
-            this.slot = slot;
-            this.line = line;
-            if (value == null) {
-                this.localKind = LocalKind.UNDEFINED;
-            } else if (value instanceof NativeImageDebugRegisterValue) {
-                this.localKind = LocalKind.REGISTER;
-            } else if (value instanceof NativeImageDebugStackValue) {
-                this.localKind = LocalKind.STACKSLOT;
-            } else if (value instanceof NativeImageDebugConstantValue) {
-                this.localKind = LocalKind.CONSTANT;
-            }
-            this.value = value;
         }
 
         @Override
@@ -2237,40 +2208,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 return getOriginal((HostedType) type);
             }
             return type;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (!(o instanceof NativeImageDebugLocalValueInfo)) {
-                return false;
-            }
-            NativeImageDebugLocalValueInfo that = (NativeImageDebugLocalValueInfo) o;
-            // values need to have the same name
-            if (!name.equals(that.name)) {
-                return false;
-            }
-            // values need to be for the same line
-            if (line != that.line) {
-                return false;
-            }
-            // location kinds must match
-            if (localKind != that.localKind) {
-                return false;
-            }
-            // locations must match
-            switch (localKind) {
-                case REGISTER:
-                case STACKSLOT:
-                case CONSTANT:
-                    return value.equals(that.value);
-                default:
-                    return true;
-            }
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(name, value) * 31 + line;
         }
 
         @Override
@@ -2302,6 +2239,88 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public int line() {
             return line;
+        }
+    }
+
+    public class NativeImageDebugLocalValueInfo extends NativeImageDebugLocalInfo implements DebugLocalValueInfo {
+        private final NativeImageDebugLocalValue value;
+        private LocalKind localKind;
+
+        NativeImageDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType resolvedType, int slot, int line) {
+            super(name, kind, resolvedType, slot, line);
+            if (value instanceof RegisterValue) {
+                this.localKind = LocalKind.REGISTER;
+                this.value = NativeImageDebugRegisterValue.create((RegisterValue) value);
+            } else if (value instanceof StackSlot) {
+                this.localKind = LocalKind.STACKSLOT;
+                this.value = NativeImageDebugStackValue.create((StackSlot) value, framesize);
+            } else if (value instanceof JavaConstant) {
+                JavaConstant constant = (JavaConstant) value;
+                if (constant instanceof PrimitiveConstant || constant.isNull()) {
+                    this.localKind = LocalKind.CONSTANT;
+                    this.value = NativeImageDebugConstantValue.create(constant);
+                } else {
+                    long heapOffset = objectOffset(constant);
+                    if (heapOffset >= 0) {
+                        this.localKind = LocalKind.CONSTANT;
+                        this.value = new NativeImageDebugConstantValue(constant, heapOffset);
+                    } else {
+                        this.localKind = LocalKind.UNDEFINED;
+                        this.value = null;
+                    }
+                }
+            } else {
+                this.localKind = LocalKind.UNDEFINED;
+                this.value = null;
+            }
+        }
+
+        NativeImageDebugLocalValueInfo(String name, NativeImageDebugLocalValue value, JavaKind kind, ResolvedJavaType type, int slot, int line) {
+            super(name, kind, type, slot, line);
+            if (value == null) {
+                this.localKind = LocalKind.UNDEFINED;
+            } else if (value instanceof NativeImageDebugRegisterValue) {
+                this.localKind = LocalKind.REGISTER;
+            } else if (value instanceof NativeImageDebugStackValue) {
+                this.localKind = LocalKind.STACKSLOT;
+            } else if (value instanceof NativeImageDebugConstantValue) {
+                this.localKind = LocalKind.CONSTANT;
+            }
+            this.value = value;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof NativeImageDebugLocalValueInfo)) {
+                return false;
+            }
+            NativeImageDebugLocalValueInfo that = (NativeImageDebugLocalValueInfo) o;
+            // values need to have the same name
+            if (!name().equals(that.name())) {
+                return false;
+            }
+            // values need to be for the same line
+            if (line != that.line) {
+                return false;
+            }
+            // location kinds must match
+            if (localKind != that.localKind) {
+                return false;
+            }
+            // locations must match
+            switch (localKind) {
+                case REGISTER:
+                case STACKSLOT:
+                case CONSTANT:
+                    return value.equals(that.value);
+                default:
+                    return true;
+            }
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name(), value) * 31 + line;
         }
 
         @Override
@@ -2344,18 +2363,28 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public class NativeImageDebugLocalValue {
+    public abstract static class NativeImageDebugLocalValue {
     }
 
-    public class NativeImageDebugRegisterValue extends NativeImageDebugLocalValue {
+    public static final class NativeImageDebugRegisterValue extends NativeImageDebugLocalValue {
+        private static EconomicMap<Integer, NativeImageDebugRegisterValue> registerValues = EconomicMap.create();
         private int number;
 
-        NativeImageDebugRegisterValue(RegisterValue value) {
-            number = value.getRegister().number;
+        private NativeImageDebugRegisterValue(int number) {
+            this.number = number;
         }
 
-        NativeImageDebugRegisterValue(int number) {
-            this.number = number;
+        static NativeImageDebugRegisterValue create(RegisterValue value) {
+            return create(value.getRegister().number);
+        }
+
+        static NativeImageDebugRegisterValue create(int number) {
+            NativeImageDebugRegisterValue value = registerValues.get(number);
+            if (value == null) {
+                value = new NativeImageDebugRegisterValue(number);
+                registerValues.put(number, value);
+            }
+            return value;
         }
 
         public int getNumber() {
@@ -2377,15 +2406,25 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public class NativeImageDebugStackValue extends NativeImageDebugLocalValue {
+    public static final class NativeImageDebugStackValue extends NativeImageDebugLocalValue {
+        private static EconomicMap<Integer, NativeImageDebugStackValue> stackValues = EconomicMap.create();
         private int offset;
 
-        NativeImageDebugStackValue(StackSlot value, int framesize) {
-            offset = value.getOffset(framesize);
+        private NativeImageDebugStackValue(int offset) {
+            this.offset = offset;
         }
 
-        NativeImageDebugStackValue(int offset) {
-            this.offset = offset;
+        private static NativeImageDebugStackValue create(StackSlot value, int framesize) {
+            return create(value.getOffset(framesize));
+        }
+
+        private static NativeImageDebugStackValue create(int offset) {
+            NativeImageDebugStackValue value = stackValues.get(offset);
+            if (value == null) {
+                value = new NativeImageDebugStackValue(offset);
+                stackValues.put(offset, value);
+            }
+            return value;
         }
 
         public int getOffset() {
@@ -2407,17 +2446,28 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public class NativeImageDebugConstantValue extends NativeImageDebugLocalValue {
+    public static final class NativeImageDebugConstantValue extends NativeImageDebugLocalValue {
+        private static EconomicMap<JavaConstant, NativeImageDebugConstantValue> constantValues = EconomicMap.create();
         private JavaConstant value;
         private long heapoffset;
 
-        NativeImageDebugConstantValue(JavaConstant value) {
-            this(value, -1);
-        }
-
-        NativeImageDebugConstantValue(JavaConstant value, long heapoffset) {
+        private NativeImageDebugConstantValue(JavaConstant value, long heapoffset) {
             this.value = value;
             this.heapoffset = heapoffset;
+        }
+
+        static NativeImageDebugConstantValue create(JavaConstant value) {
+            return create(value, -1);
+        }
+
+        static NativeImageDebugConstantValue create(JavaConstant value, long heapoffset) {
+            NativeImageDebugConstantValue c = constantValues.get(value);
+            if (c == null) {
+                c = new NativeImageDebugConstantValue(value, heapoffset);
+                constantValues.put(value, c);
+            }
+            assert c.heapoffset == heapoffset;
+            return c;
         }
 
         public JavaConstant getConstant() {

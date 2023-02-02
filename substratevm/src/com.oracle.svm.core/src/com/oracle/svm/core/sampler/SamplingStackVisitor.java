@@ -32,17 +32,18 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
 import com.oracle.svm.core.util.VMError;
 
-class SamplingStackVisitor extends ParameterizedStackFrameVisitor<SamplingStackVisitor.StackTrace> {
+class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
 
     @Override
-    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, SamplingStackVisitor.StackTrace data) {
-        VMError.guarantee(data.num < StackTrace.MAX_STACK_DEPTH, "The call stack depth of the thread  exceeds the maximal set value.");
-        data.data[data.num++] = ip.rawValue();
+    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
+        SamplingStackVisitor.StackTrace stackTrace = (SamplingStackVisitor.StackTrace) data;
+        VMError.guarantee(stackTrace.num < StackTrace.MAX_STACK_DEPTH, "The call stack depth of the thread  exceeds the maximal set value.");
+        stackTrace.data[stackTrace.num++] = ip.rawValue();
         return true;
     }
 
     @Override
-    protected boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, StackTrace data) {
+    protected boolean unknownFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame, Object data) {
         return false;
     }
 

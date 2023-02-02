@@ -64,6 +64,11 @@ public class BasicInductionVariable extends InductionVariable {
     }
 
     @Override
+    public InductionVariable duplicateWithNewInit(ValueNode newInit) {
+        return new BasicInductionVariable(loop, phi, newInit, rawStride, (BinaryArithmeticNode<?>) op.copyWithInputs(true));
+    }
+
+    @Override
     public StructuredGraph graph() {
         return phi.graph();
     }
@@ -153,6 +158,11 @@ public class BasicInductionVariable extends InductionVariable {
 
     @Override
     public ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp) {
+        return extremumNode(assumeLoopEntered, stamp, loop.counted.maxTripCountNode(assumeLoopEntered));
+    }
+
+    @Override
+    public ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp, ValueNode maxTripCount) {
         Stamp fromStamp = phi.stamp(NodeView.DEFAULT);
         StructuredGraph graph = graph();
         ValueNode stride = strideNode();
@@ -161,11 +171,11 @@ public class BasicInductionVariable extends InductionVariable {
             stride = IntegerConvertNode.convert(stride, stamp, graph(), NodeView.DEFAULT);
             initNode = IntegerConvertNode.convert(initNode, stamp, graph(), NodeView.DEFAULT);
         }
-        ValueNode maxTripCount = loop.counted().maxTripCountNode(assumeLoopEntered);
-        if (!maxTripCount.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
-            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph(), NodeView.DEFAULT);
+        ValueNode effectiveTripCount = maxTripCount;
+        if (!effectiveTripCount.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
+            effectiveTripCount = IntegerConvertNode.convert(effectiveTripCount, stamp, graph(), NodeView.DEFAULT);
         }
-        return add(graph, mul(graph, stride, sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
+        return add(graph, mul(graph, stride, sub(graph, effectiveTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
     }
 
     @Override

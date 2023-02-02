@@ -434,7 +434,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
     }
 
     private boolean suppressType(AnalysisType type) {
-        AnalysisType elementalType = (AnalysisType) type.getElementalType();
+        AnalysisType elementalType = type.getElementalType();
         String elementalTypeName = elementalType.toJavaName(true);
 
         if (expandTypeMatcher.matches(elementalTypeName)) {

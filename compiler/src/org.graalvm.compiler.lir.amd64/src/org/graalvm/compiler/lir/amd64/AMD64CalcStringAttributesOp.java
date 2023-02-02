@@ -1068,9 +1068,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.movl(tmp, CR_BROKEN_MULTIBYTE);
             asm.cmovl(Equal, retBroken, tmp);
             // high surrogate mask: 0x1b << 1 == 0x36
-            asm.psllw(vectorSize, vecMaskSurrogate, 1);
+            asm.psllw(vectorSize, vecMaskSurrogate, vecMaskSurrogate, 1);
             // mask 0xff80 >> 15 == 0x1
-            asm.psrlw(vectorSize, vecMaskAscii, 15);
+            asm.psrlw(vectorSize, vecMaskAscii, vecMaskAscii, 15);
             // low surrogate mask: 0x1 | 0x36 == 0x37
             asm.por(vectorSize, vecMaskAscii, vecMaskSurrogate);
             // if there is no tail, we would read out of bounds in the loop, so remove the last
@@ -1182,9 +1182,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
             asm.bind(tailSingleVectorSurrogate);
             // high surrogate mask: 0x1b << 1 == 0x36
-            asm.psllw(vectorSize, vecMaskSurrogate, 1);
+            asm.psllw(vectorSize, vecMaskSurrogate, vecMaskSurrogate, 1);
             // mask 0xff80 >> 15 == 0x1
-            asm.psrlw(vectorSize, vecMaskAscii, 15);
+            asm.psrlw(vectorSize, vecMaskAscii, vecMaskAscii, 15);
             // low surrogate mask: 0x1 | 0x36 == 0x37
             asm.por(vectorSize, vecMaskAscii, vecMaskSurrogate);
 
@@ -1204,7 +1204,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         if (assumeValid) {
             asm.orq(ret, CR_VALID_MULTIBYTE);
         } else {
-            asm.ptest(vectorSize, vecResult);
+            asm.ptest(vectorSize, vecResult, vecResult);
             asm.movl(tmp, CR_BROKEN_MULTIBYTE);
             asm.cmovl(NotZero, retBroken, tmp);
             asm.orq(ret, retBroken);
@@ -1234,7 +1234,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
     private void utf16MatchSurrogates(AMD64MacroAssembler asm, Register vecArray, Register vecMaskSurrogate) {
         // identify only high or low surrogates
-        asm.psrlw(vectorSize, vecArray, 10);
+        asm.psrlw(vectorSize, vecArray, vecArray, 10);
         asm.pcmpeqw(vectorSize, vecArray, vecMaskSurrogate);
     }
 

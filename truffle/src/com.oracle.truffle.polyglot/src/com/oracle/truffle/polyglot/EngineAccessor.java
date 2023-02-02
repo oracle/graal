@@ -71,7 +71,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
@@ -87,6 +86,7 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -232,7 +232,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getLanguageView(LanguageInfo viewLanguage, Object value) {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            PolyglotLanguage language = context.engine.idToLanguage.get(viewLanguage.getId());
+            PolyglotLanguage language = context.engine.findLanguage(viewLanguage);
             PolyglotLanguageContext languageContext = context.getContextInitialized(language, null);
             return languageContext.getLanguageView(value);
         }
@@ -329,7 +329,7 @@ final class EngineAccessor extends Accessor {
                 return null;
             }
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            PolyglotLanguage language = context.engine.idToLanguage.get(info.getId());
+            PolyglotLanguage language = context.engine.findLanguage(info);
             PolyglotLanguageContext languageContext = context.getContext(language);
             languageContext.ensureCreated(language);
             return languageContext.lookupService(serviceClass);
@@ -375,6 +375,16 @@ final class EngineAccessor extends Accessor {
         public void leaveLanguageFromRuntime(TruffleLanguage<?> language, Object prev) {
             PolyglotLanguageInstance instance = (PolyglotLanguageInstance) EngineAccessor.LANGUAGE.getPolyglotLanguageInstance(language);
             PolyglotFastThreadLocals.leaveLanguage(instance, prev);
+        }
+
+        @Override
+        public Object enterRootNodeVisit(RootNode root) {
+            return PolyglotFastThreadLocals.enterLayer(root);
+        }
+
+        @Override
+        public void leaveRootNodeVisit(RootNode root, Object prev) {
+            PolyglotFastThreadLocals.leaveLayer(prev);
         }
 
         @Override
@@ -426,7 +436,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleLanguage.Env getEnvForInstrument(LanguageInfo info) {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
-            PolyglotLanguage language = context.engine.idToLanguage.get(info.getId());
+            PolyglotLanguage language = context.engine.findLanguage(info);
             return context.getContextInitialized(language, null).env;
         }
 
@@ -1211,13 +1221,16 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isInternal(FileSystem fs) {
-            return FileSystems.isInternal(fs);
-        }
-
-        @Override
-        public boolean hasAllAccess(FileSystem fs) {
-            return FileSystems.hasAllAccess(fs);
+        public boolean isInternal(Object engineObject, FileSystem fs) {
+            AbstractPolyglotImpl polyglot;
+            if (engineObject instanceof PolyglotLanguageContext) {
+                polyglot = ((PolyglotLanguageContext) engineObject).getImpl();
+            } else if (engineObject instanceof EmbedderFileSystemContext) {
+                polyglot = ((EmbedderFileSystemContext) engineObject).getImpl();
+            } else {
+                throw new AssertionError("Unsupported engine object " + engineObject);
+            }
+            return polyglot.getRootImpl().isInternalFileSystem(fs);
         }
 
         @Override
@@ -1295,8 +1308,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Handler getLogHandler(Object loggerCache) {
-            return ((PolyglotLoggers.LoggerCache) loggerCache).getLogHandler();
+        public void publish(Object loggerCache, LogRecord logRecord) {
+            ((PolyglotLoggers.LoggerCache) loggerCache).getLogHandler().publish(logRecord);
         }
 
         @Override
@@ -1387,12 +1400,12 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public <S> S lookupService(Object polyglotLanguageContext, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type) {
-            PolyglotLanguage lang = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.idToLanguage.get(language.getId());
+            PolyglotLanguage lang = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.findLanguage(language);
             if (!lang.cache.supportsService(type)) {
                 return null;
             }
             PolyglotLanguageContext context = ((PolyglotLanguageContext) polyglotLanguageContext).context.getContext(lang);
-            PolyglotLanguage accessingLang = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.idToLanguage.get(accessingLanguage.getId());
+            PolyglotLanguage accessingLang = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.findLanguage(accessingLanguage);
             context.ensureCreated(accessingLang);
             return context.lookupService(type);
         }
@@ -1527,7 +1540,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean initializeLanguage(Object polyglotLanguageContext, LanguageInfo targetLanguage) {
-            PolyglotLanguage targetPolyglotLanguage = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.idToLanguage.get(targetLanguage.getId());
+            PolyglotLanguage targetPolyglotLanguage = ((PolyglotLanguageContext) polyglotLanguageContext).context.engine.findLanguage(targetLanguage);
             PolyglotLanguageContext targetLanguageContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getContext(targetPolyglotLanguage);
             PolyglotLanguage accessingPolyglotLanguage = ((PolyglotLanguageContext) polyglotLanguageContext).language;
             try {
@@ -1873,12 +1886,12 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Handler getEngineLogHandler(Object polyglotEngineImpl) {
+        public LogHandler getEngineLogHandler(Object polyglotEngineImpl) {
             return ((PolyglotEngineImpl) polyglotEngineImpl).logHandler;
         }
 
         @Override
-        public Handler getContextLogHandler(Object polyglotContextImpl) {
+        public LogHandler getContextLogHandler(Object polyglotContextImpl) {
             return ((PolyglotContextImpl) polyglotContextImpl).config.logHandler;
         }
 

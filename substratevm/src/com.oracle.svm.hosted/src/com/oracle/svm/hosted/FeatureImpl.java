@@ -40,6 +40,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -82,6 +83,7 @@ import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -245,7 +247,9 @@ public class FeatureImpl {
 
         public Set<Executable> reachableMethodOverrides(Executable baseMethod) {
             return reachableMethodOverrides(getMetaAccess().lookupJavaMethod(baseMethod)).stream()
-                            .map(AnalysisMethod::getJavaMethod).collect(Collectors.toCollection(LinkedHashSet::new));
+                            .map(AnalysisMethod::getJavaMethod)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toCollection(LinkedHashSet::new));
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
@@ -341,16 +345,20 @@ public class FeatureImpl {
 
         @Override
         public void registerAsUsed(Class<?> clazz) {
-            registerAsUsed(getMetaAccess().lookupJavaType(clazz));
+            registerAsUsed(getMetaAccess().lookupJavaType(clazz), "registered from Feature API");
         }
 
-        public void registerAsUsed(AnalysisType aType) {
-            bb.markTypeAsReachable(aType);
+        public void registerAsUsed(Class<?> clazz, Object reason) {
+            registerAsUsed(getMetaAccess().lookupJavaType(clazz), reason);
+        }
+
+        public void registerAsUsed(AnalysisType aType, Object reason) {
+            bb.registerTypeAsReachable(aType, reason);
         }
 
         @Override
         public void registerAsInHeap(Class<?> clazz) {
-            registerAsInHeap(getMetaAccess().lookupJavaType(clazz), "Registered from Feature API.");
+            registerAsInHeap(getMetaAccess().lookupJavaType(clazz), "registered from Feature API");
         }
 
         public void registerAsInHeap(Class<?> clazz, Object reason) {
@@ -363,16 +371,14 @@ public class FeatureImpl {
 
         @Override
         public void registerAsAccessed(Field field) {
-            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
-            registerAsAccessed(getMetaAccess().lookupJavaField(field));
+            registerAsAccessed(getMetaAccess().lookupJavaField(field), "registered from Feature API");
         }
 
-        public void registerAsAccessed(AnalysisField aField) {
-            bb.markFieldAccessed(aField);
+        public void registerAsAccessed(AnalysisField aField, Object reason) {
+            bb.markFieldAccessed(aField, reason);
         }
 
         public void registerAsRead(Field field, Object reason) {
-            getMetaAccess().lookupJavaType(field.getDeclaringClass()).registerAsReachable();
             registerAsRead(getMetaAccess().lookupJavaField(field), reason);
         }
 
@@ -382,31 +388,29 @@ public class FeatureImpl {
 
         @Override
         public void registerAsUnsafeAccessed(Field field) {
-            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
-            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
+            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), "registered from Feature API");
         }
 
-        public boolean registerAsUnsafeAccessed(AnalysisField aField) {
-            return registerAsUnsafeAccessed(aField, DefaultUnsafePartition.get());
+        public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
+            return registerAsUnsafeAccessed(aField, DefaultUnsafePartition.get(), reason);
         }
 
-        public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind) {
-            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind);
+        public void registerAsUnsafeAccessed(Field field, UnsafePartitionKind partitionKind, Object reason) {
+            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), partitionKind, reason);
         }
 
-        public boolean registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind) {
+        public boolean registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind, Object reason) {
             assert !AnnotationAccess.isAnnotationPresent(aField, Delete.class);
-            return bb.registerAsUnsafeAccessed(aField, partitionKind);
+            return bb.registerAsUnsafeAccessed(aField, partitionKind, reason);
         }
 
-        public void registerAsFrozenUnsafeAccessed(Field field) {
-            registerAsUsed(getMetaAccess().lookupJavaType(field.getDeclaringClass()));
-            registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field));
+        public void registerAsFrozenUnsafeAccessed(Field field, Object reason) {
+            registerAsFrozenUnsafeAccessed(getMetaAccess().lookupJavaField(field), reason);
         }
 
-        public void registerAsFrozenUnsafeAccessed(AnalysisField aField) {
+        public void registerAsFrozenUnsafeAccessed(AnalysisField aField, Object reason) {
             bb.registerAsFrozenUnsafeAccessed(aField);
-            registerAsUnsafeAccessed(aField);
+            registerAsUnsafeAccessed(aField, reason);
         }
 
         public void registerAsRoot(Executable method, boolean invokeSpecial) {
@@ -646,11 +650,14 @@ public class FeatureImpl {
 
     public static class AfterCompilationAccessImpl extends CompilationAccessImpl implements Feature.AfterCompilationAccess {
         private final Map<HostedMethod, CompileTask> compilations;
+        private final NativeImageCodeCache codeCache;
 
         public AfterCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
-                        Map<HostedMethod, CompileTask> compilations, NativeImageHeap heap, DebugContext debugContext, SharedRuntimeConfigurationBuilder runtimeBuilder) {
+                        Map<HostedMethod, CompileTask> compilations, NativeImageCodeCache codeCache, NativeImageHeap heap, DebugContext debugContext,
+                        SharedRuntimeConfigurationBuilder runtimeBuilder) {
             super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeBuilder);
             this.compilations = compilations;
+            this.codeCache = codeCache;
         }
 
         public Collection<CompileTask> getCompilationTasks() {
@@ -659,6 +666,10 @@ public class FeatureImpl {
 
         public Map<HostedMethod, CompileTask> getCompilations() {
             return compilations;
+        }
+
+        public NativeImageCodeCache getCodeCache() {
+            return codeCache;
         }
     }
 

@@ -95,56 +95,55 @@ public final class AnnotationProcessor<M extends Template> {
         services.put(implBinaryName, sourceElement);
     }
 
-    public void process(Element element, boolean callback) {
+    public void process(Element element) {
         // since it is not guaranteed to be called only once by the compiler
         // we check for already processed elements to avoid errors when writing files.
-        if (!callback) {
-            String qualifiedName = ElementUtils.getQualifiedName((TypeElement) element);
-            if (processedElements.contains(qualifiedName)) {
-                return;
-            }
-            processedElements.add(qualifiedName);
+        String qualifiedName = ElementUtils.getQualifiedName((TypeElement) element);
+        if (processedElements.contains(qualifiedName)) {
+            return;
         }
+        processedElements.add(qualifiedName);
 
-        processImpl(element, callback);
+        processImpl(element);
     }
 
-    @SuppressWarnings({"unchecked"})
-    private void processImpl(Element element, boolean callback) {
+    @SuppressWarnings({"unchecked", "try"})
+    private void processImpl(Element element) {
         ProcessorContext context = ProcessorContext.getInstance();
         TypeElement type = (TypeElement) element;
+        M model = context.parseIfAbsent(type, parser.getClass(), (e) -> {
+            try (Timer timer = Timer.create("Parse", e)) {
+                return parser.parse(e);
+            }
+        });
 
-        M model = (M) context.getTemplate(type.asType(), false);
-        boolean firstRun = !context.containsTemplate(type);
-
-        if (firstRun || !callback) {
-            context.registerTemplate(type, null);
-            model = parser.parse(element);
-            context.registerTemplate(type, model);
-
-            if (model != null) {
-                List<CodeTypeElement> units;
-                try {
+        if (model != null) {
+            List<CodeTypeElement> units;
+            try {
+                try (Timer timer = Timer.create("Generate", element)) {
                     units = factory.create(ProcessorContext.getInstance(), this, model);
-                } catch (Throwable e) {
-                    RuntimeException ex = new RuntimeException(String.format("Failed to write code for %s.", ElementUtils.getQualifiedName(type)));
-                    e.addSuppressed(ex);
-                    throw e;
                 }
-                if (units == null || units.isEmpty()) {
-                    return;
-                }
+            } catch (Throwable e) {
+                RuntimeException ex = new RuntimeException(String.format("Failed to write code for %s.", ElementUtils.getQualifiedName(type)));
+                e.addSuppressed(ex);
+                throw e;
+            }
+            if (units == null || units.isEmpty()) {
+                return;
+            }
+            try (Timer timer = Timer.create("Fixup", element)) {
                 for (CodeTypeElement unit : units) {
                     unit.setGeneratorAnnotationMirror(model.getTemplateTypeAnnotation());
                     unit.setGeneratorElement(model.getTemplateType());
 
                     DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
                     unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                    unit.accept(new FixWarningsVisitor(model.getTemplateType(), overrideType), null);
-
-                    if (!callback) {
-                        unit.accept(new CodeWriter(context.getEnvironment(), element), null);
-                    }
+                    unit.accept(new FixWarningsVisitor(overrideType), null);
+                }
+            }
+            try (Timer timer = Timer.create("CodeWriter", element)) {
+                for (CodeTypeElement unit : units) {
+                    unit.accept(new CodeWriter(context.getEnvironment(), element), null);
                 }
             }
         }

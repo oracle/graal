@@ -2181,11 +2181,11 @@ public final class TruffleFile {
     }
 
     private <T extends Throwable> RuntimeException wrapHostException(T t) {
-        throw wrapHostException(t, fileSystemContext.fileSystem);
+        throw wrapHostException(t, fileSystemContext);
     }
 
-    static <T extends Throwable> RuntimeException wrapHostException(T t, FileSystem fs) {
-        if (LanguageAccessor.engineAccess().isInternal(fs)) {
+    static <T extends Throwable> RuntimeException wrapHostException(T t, FileSystemContext fsContext) {
+        if (LanguageAccessor.engineAccess().isInternal(fsContext.engineObject, fsContext.fileSystem)) {
             throw Env.engineToLanguageException(t);
         }
         throw LanguageAccessor.engineAccess().wrapHostException(null, LanguageAccessor.engineAccess().getCurrentHostContext(), t);

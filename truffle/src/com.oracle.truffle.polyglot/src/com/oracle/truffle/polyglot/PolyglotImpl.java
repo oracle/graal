@@ -62,7 +62,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.logging.Handler;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -233,7 +232,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @SuppressWarnings("unchecked")
     @Override
     public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties,
-                    final boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly,
+                    final boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage, boolean hostLanguageOnly,
                     boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
         PolyglotEngineImpl impl = null;
         try {
@@ -245,7 +244,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             InputStream resolvedIn = in == null ? System.in : in;
             DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
             DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
-            Handler logHandler = PolyglotLoggers.asHandler(logHandlerOrStream);
             boolean useAllowExperimentalOptions = allowExperimentalOptions || Boolean.parseBoolean(EngineAccessor.RUNTIME.getSavedProperty(PROP_ALLOW_EXPERIMENTAL_OPTIONS));
 
             Map<String, String> options = originalOptions;
@@ -256,8 +254,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             LogConfig logConfig = new LogConfig();
             OptionValuesImpl engineOptions = createEngineOptions(options, logConfig, useAllowExperimentalOptions);
 
-            logHandler = logHandler != null ? logHandler : PolyglotEngineImpl.createLogHandler(logConfig, dispatchErr);
-            EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
+            LogHandler useHandler = logHandler != null ? logHandler : PolyglotEngineImpl.createLogHandler(this, logConfig, dispatchErr);
+            EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(useHandler, logConfig.logLevels);
 
             AbstractPolyglotHostService usePolyglotHostService;
             if (polyglotHostService != null) {
@@ -282,7 +280,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 options,
                                 useAllowExperimentalOptions,
                                 boundEngine,
-                                logHandler,
+                                useHandler,
                                 (TruffleLanguage<?>) hostLanguage,
                                 usePolyglotHostService);
 
@@ -300,7 +298,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 useAllowExperimentalOptions,
                                 boundEngine, false,
                                 messageInterceptor,
-                                logHandler,
+                                useHandler,
                                 (TruffleLanguage<Object>) hostLanguage,
                                 hostLanguageOnly,
                                 usePolyglotHostService);
@@ -360,7 +358,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         OptionValuesImpl engineOptions = PolyglotImpl.createEngineOptions(options, logConfig, true);
         DispatchOutputStream out = INSTRUMENT.createDispatchOutput(System.out);
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
-        Handler logHandler = PolyglotEngineImpl.createLogHandler(logConfig, err);
+        LogHandler logHandler = PolyglotEngineImpl.createLogHandler(this, logConfig, err);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, new String[0], out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         true, true, null, logHandler, hostLanguage, false, new DefaultPolyglotHostService(this));
@@ -478,6 +476,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+        return FileSystems.newNIOFileSystem(fileSystem);
+    }
+
+    @Override
     public ProcessHandler newDefaultProcessHandler() {
         if (PolyglotEngineImpl.ALLOW_CREATE_PROCESS) {
             return ProcessHandlers.newDefaultProcessHandler();
@@ -492,8 +495,18 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public boolean isInternalFileSystem(FileSystem fileSystem) {
+        return FileSystems.isInternal(getRootImpl(), fileSystem);
+    }
+
+    @Override
     public ThreadScope createThreadScope() {
         return null;
+    }
+
+    @Override
+    public LogHandler newLogHandler(Object logHandlerOrStream) {
+        return PolyglotLoggers.asLogHandler(this, logHandlerOrStream);
     }
 
     @Override
@@ -525,7 +538,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public String findMimeType(File file) throws IOException {
         Objects.requireNonNull(file);
-        TruffleFile truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
+        TruffleFile truffleFile;
+        try {
+            truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
+        } catch (UnsupportedOperationException | IllegalArgumentException e) {
+            throw new AssertionError("Inconsistent path", e);
+        }
         return truffleFile.detectMimeType();
     }
 
@@ -608,7 +626,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             synchronized (this) {
                 res = defaultFileSystemContext;
                 if (res == null) {
-                    EmbedderFileSystemContext context = new EmbedderFileSystemContext();
+                    EmbedderFileSystemContext context = new EmbedderFileSystemContext(this);
                     res = EngineAccessor.LANGUAGE.createFileSystemContext(context, context.fileSystem);
                     defaultFileSystemContext = res;
                 }
@@ -618,6 +636,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     static final class EmbedderFileSystemContext {
+
+        private final PolyglotImpl impl;
+
+        EmbedderFileSystemContext(PolyglotImpl impl) {
+            this.impl = Objects.requireNonNull(impl);
+        }
+
+        PolyglotImpl getImpl() {
+            return impl;
+        }
 
         final FileSystem fileSystem = FileSystems.newDefaultFileSystem();
         final Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();
@@ -729,6 +757,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         APIAccess access = polyglot.getAPIAccess();
         PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(polyglot, e);
         return access.newLanguageException(exceptionImpl.getMessage(), getInstance().exceptionDispatch, exceptionImpl);
+    }
+
+    static RuntimeException hostToGuestException(PolyglotEngineImpl engine, Throwable t) {
+        return engine.polyglotHostService.hostToGuestException(engine.host, t);
     }
 
     static boolean isGuestPrimitive(Object receiver) {

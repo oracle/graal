@@ -26,10 +26,13 @@ package com.oracle.svm.hosted.image;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UniqueShortNameProvider;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedType;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -466,9 +469,8 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
         }
 
         private void mangleReturnType(Signature methodSignature, ResolvedJavaType owner) {
-            ResolvedJavaType type = (ResolvedJavaType) methodSignature.getReturnType(owner);
             sb.append('J');
-            mangleType(type);
+            mangleType(methodSignature.getReturnType(owner));
         }
 
         private void mangleReturnType(Class<?> type) {
@@ -482,8 +484,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
                 mangleTypeChar('V');
             } else {
                 for (int i = 0; i < count; i++) {
-                    ResolvedJavaType type = (ResolvedJavaType) methodSignature.getParameterType(i, owner);
-                    mangleType(type);
+                    mangleType(methodSignature.getParameterType(i, owner));
                 }
             }
         }
@@ -498,6 +499,16 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             }
         }
 
+        private void mangleType(JavaType type) {
+            if (type instanceof ResolvedJavaType) {
+                mangleType((ResolvedJavaType) type);
+            } else if (type instanceof UnresolvedJavaType) {
+                mangleType((UnresolvedJavaType) type);
+            } else {
+                throw VMError.shouldNotReachHere("Unexpected JavaType for " + type);
+            }
+        }
+
         private void mangleType(ResolvedJavaType type) {
             if (type.isPrimitive()) {
                 manglePrimitiveType(type);
@@ -507,6 +518,16 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             } else {
                 sb.append('P');
                 mangleClassName(nameProvider.classLoaderNameAndId(type), type.toJavaName());
+            }
+        }
+
+        private void mangleType(UnresolvedJavaType type) {
+            if (type.isArray()) {
+                sb.append('P');
+                mangleArrayType(type);
+            } else {
+                sb.append('P');
+                mangleClassName("", type.toJavaName());
             }
         }
 
@@ -537,6 +558,16 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             }
             String loaderName = nameProvider.classLoaderNameAndId(baseType);
             mangleArrayName(loaderName, baseType.toJavaName(), count);
+        }
+
+        private void mangleArrayType(UnresolvedJavaType arrayType) {
+            int count = 1;
+            JavaType baseType = arrayType.getComponentType();
+            while (baseType.isArray()) {
+                count++;
+                baseType = baseType.getComponentType();
+            }
+            mangleArrayName("", baseType.toJavaName(), count);
         }
 
         private void mangleArrayType(Class<?> arrayType) {

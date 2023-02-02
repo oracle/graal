@@ -49,20 +49,25 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.ExportMethodTest.ExportsTestLibrary4;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
-@SuppressWarnings({"unused", "hiding"})
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused", "hiding"})
 public class ExportNodeTest extends AbstractLibraryTest {
 
     @GenerateLibrary
@@ -342,7 +347,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         @ExportMessage(name = "m1")
         @ExportMessage(name = "m2")
         static class M {
-            @Specialization(guards = "receiver == cachedReceiver")
+            @Specialization(guards = "receiver == cachedReceiver", limit = "3")
             static String m(MultiExportMethod5 receiver, String arg, @Exclusive @Cached("arg") String cachedArg,
                             @Exclusive @Cached("receiver") MultiExportMethod5 cachedReceiver) {
                 return cachedArg;
@@ -423,15 +428,103 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
     }
 
+    @GenerateInline
+    @GenerateCached(false)
+    @GenerateUncached
+    abstract static class InlinableNode extends Node {
+
+        abstract String execute(Node node, String value);
+
+        @Specialization(guards = "equalsOne(value)")
+        String one(String value) {
+            return "one";
+        }
+
+        @Specialization(guards = "equalsTwo(value)")
+        String two(String value) {
+            return "two";
+        }
+
+        static boolean equalsOne(String s) {
+            return s.equals("1");
+        }
+
+        static boolean equalsTwo(String s) {
+            return s.equals("2");
+        }
+
+    }
+
+    @ExportLibrary(MultiNodeExportLibrary.class)
+    static class ExportInlinedObject1 {
+
+        @ExportMessage
+        public String m0(String argument, @Exclusive @Cached InlinableNode inlinableNode,
+                        @Bind("$node") Node node) {
+            return inlinableNode.execute(node, argument);
+        }
+
+        @ExportMessage
+        public String m1(String argument, @Exclusive @Cached InlinableNode inlinableNode,
+                        @Bind("$node") Node node) {
+            return inlinableNode.execute(node, argument);
+        }
+
+        @ExportMessage
+        static class M2 {
+
+            @Specialization(guards = "argument == cachedArgument", limit = "3")
+            static String doCached(ExportInlinedObject1 receiver, String argument,
+                            @Bind("this") Node node,
+                            @Cached("argument") String cachedArgument,
+                            @Cached InlinableNode inlinableNode) {
+                return inlinableNode.execute(node, argument);
+            }
+
+            @Specialization(replaces = "doCached")
+            static String doGeneric(ExportInlinedObject1 receiver, String argument,
+                            @Exclusive @Cached InlinableNode node,
+                            @Bind("this") Node library) {
+                return node.execute(library, argument);
+            }
+        }
+    }
+
+    @ExportLibrary(MultiNodeExportLibrary.class)
+    static class ErrorBindThisInExport {
+
+        @ExportMessage
+        public String m0(String argument,
+                        @ExpectError("Variable 'this' is reserved for library receiver values in methods annotated with @ExportMessage. " +
+                                        "If the intention was to access the encapsulting Node for inlined nodes or profiles, you may use '$node' as expression instead.") @Bind("this") Node node) {
+            throw new AssertionError();
+        }
+
+    }
+
+    @Test
+    public void testExportInlinedObject() {
+        ExportInlinedObject1 o = new ExportInlinedObject1();
+        MultiNodeExportLibrary cached = createCached(MultiNodeExportLibrary.class, o);
+        assertEquals("one", cached.m0(o, "1"));
+        assertEquals("two", cached.m0(o, "2"));
+        assertEquals("one", cached.m1(o, "1"));
+        assertEquals("two", cached.m1(o, "2"));
+        assertEquals("one", cached.m2(o, "1"));
+        assertEquals("two", cached.m2(o, "2"));
+
+    }
+
     // forgot ExportMessage
+    @SuppressWarnings("truffle")
     @ExportLibrary(ExportNodeLibrary1.class)
-    @ExpectError({"The method has the same name 'Foo' as a message in the exported library ExportNodeLibrary1. " +
-                    "Did you forget to export it? " +
-                    "Use @ExportMessage to export the message, @Ignore to ignore this warning, rename the method or reduce the visibility of the method to private to resolve this warning.",
-                    "Exported library ExportNodeLibrary1 does not export any messages and therefore has no effect. Remove the export declaration to resolve this."
-    })
     static class TestObjectError1 {
 
+        @ExpectError({"The method has the same name 'Foo' as a message in the exported library ExportNodeLibrary1. " +
+                        "Did you forget to export it? " +
+                        "Use @ExportMessage to export the message, @Ignore to ignore this warning, rename the method or reduce the visibility of the method to private to resolve this warning.",
+                        "Exported library ExportNodeLibrary1 does not export any messages and therefore has no effect. Remove the export declaration to resolve this."
+        })
         static class Foo {
 
         }
@@ -439,10 +532,10 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
     // no message found
     @ExportLibrary(ExportNodeLibrary1.class)
-    @ExpectError("No message 'foo2' found for library ExportNodeLibrary1. Did you mean 'foo'?")
     static class TestObjectError2 {
 
         @ExportMessage
+        @ExpectError("No message 'foo2' found for library ExportNodeLibrary1. Did you mean 'foo'?")
         static class Foo2 {
 
         }
@@ -511,10 +604,10 @@ public class ExportNodeTest extends AbstractLibraryTest {
     @ExportLibrary(ExportNodeLibrary1.class)
     static class TestObjectError8 {
 
-        @ExpectError("An @ExportMessage annotated class must not declare any visible methods starting with 'execute'.%")
         @ExportMessage
         abstract static class Foo {
 
+            @ExpectError("An @ExportMessage annotated class must not declare any visible methods starting with 'execute'.%")
             abstract void execute(TestObjectError8 receiver);
         }
 
@@ -525,9 +618,9 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError9 {
 
         @ExportMessage
-        @ExpectError("An @ExportMessage annotated class must not declare any visible methods starting with 'execute'.%")
         static class Foo {
 
+            @ExpectError("An @ExportMessage annotated class must not declare any visible methods starting with 'execute'.%")
             void execute(TestObjectError9 receiver, int param) {
             }
         }
@@ -611,7 +704,6 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError14 {
 
         @ExportMessage
-        @ExpectError("Failed to generate code for @GenerateUncached: The node must not declare any instance variables. Found instance variable Foo.instanceVar. Remove instance variable to resolve this.")
         abstract static class Foo {
 
             Object instanceVar;
@@ -650,7 +742,6 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError16 {
 
         @ExportMessage
-        @ExpectError("Failed to generate code for @GenerateUncached: The node must not declare any instance variables. Found instance variable Foo.guard. Remove instance variable to resolve this.")
         abstract static class Foo {
 
             boolean guard;

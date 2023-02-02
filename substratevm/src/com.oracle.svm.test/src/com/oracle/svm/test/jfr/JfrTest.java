@@ -28,7 +28,14 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assume.assumeTrue;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -41,6 +48,7 @@ import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.test.jfr.utils.Jfr;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.LocalJfr;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.jfr.Recording;
@@ -58,42 +66,35 @@ public abstract class JfrTest {
     }
 
     @Before
-    public void startRecording() {
-        try {
-            jfr = new LocalJfr();
-            recording = jfr.createRecording(getClass().getName());
-            enableEvents();
-            jfr.startRecording(recording);
-        } catch (Exception e) {
-            Assert.fail("Fail to start recording! Cause: " + e.getMessage());
-        }
+    public void startRecording() throws Throwable {
+        jfr = new LocalJfr();
+        recording = jfr.createRecording(getClass().getName());
+        enableEvents();
+        jfr.startRecording(recording);
     }
 
     @After
-    public void endRecording() {
+    public void endRecording() throws Throwable {
         try {
             jfr.endRecording(recording);
             checkRecording();
-        } catch (Exception e) {
-            Assert.fail("Fail to stop recording! Cause: " + e.getMessage());
+            validateEvents();
         } finally {
-            try {
-                jfr.cleanupRecording(recording);
-            } catch (Exception e) {
-                Assert.fail("Fail to cleanup recording! Cause: " + e.getMessage());
-            }
+            jfr.cleanupRecording(recording);
         }
     }
 
     protected abstract String[] getTestedEvents();
 
     private void enableEvents() {
+        /* Additionally, enable all events that the test case wants to test explicitly. */
         String[] events = getTestedEvents();
-        if (events != null) {
-            for (String event : events) {
-                recording.enable(event);
-            }
+        for (String event : events) {
+            recording.enable(event);
         }
+    }
+
+    public void validateEvents() throws Throwable {
     }
 
     private void checkEvents() {
@@ -125,6 +126,32 @@ public abstract class JfrTest {
             Assert.fail("Failed to parse recording: " + e.getMessage());
         }
     }
+
+    private static class ChronologicalComparator implements Comparator<RecordedEvent> {
+        @Override
+        public int compare(RecordedEvent e1, RecordedEvent e2) {
+            return e1.getEndTime().compareTo(e2.getEndTime());
+        }
+    }
+
+    private Path makeCopy(String testName) throws IOException { // from jdk 19
+        Path p = recording.getDestination();
+        if (p == null) {
+            File directory = new File(".");
+            p = new File(directory.getAbsolutePath(), "recording-" + recording.getId() + "-" + testName + ".jfr").toPath();
+            recording.dump(p);
+        }
+        return p;
+    }
+
+    protected List<RecordedEvent> getEvents() throws IOException {
+        Path p = makeCopy(ClassUtil.getUnqualifiedName(getClass()));
+        List<RecordedEvent> events = RecordingFile.readAllEvents(p);
+        Collections.sort(events, new ChronologicalComparator());
+        // remove events that are not in the list of tested events
+        events.removeIf(event -> (Arrays.stream(getTestedEvents()).noneMatch(testedEvent -> (testedEvent.equals(event.getEventType().getName())))));
+        return events;
+    }
 }
 
 class JfrTestFeature implements Feature {
@@ -135,15 +162,5 @@ class JfrTestFeature implements Feature {
          * com.oracle.svm.test.jfr.utils.poolparsers.ClassConstantPoolParser.parse
          */
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrTestFeature.class, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.serviceprovider");
-
-        /*
-         * Use of com.oracle.svm.core.sampler.SamplerBuffer,
-         * com.oracle.svm.core.sampler.SamplerBufferAccess.allocate,
-         * com.oracle.svm.core.sampler.SamplerBufferAccess.free,
-         * com.oracle.svm.core.sampler.SamplerBuffersAccess.processSamplerBuffer and
-         * com.oracle.svm.core.sampler.SamplerThreadLocal.setThreadLocalBuffer in
-         * com.oracle.svm.test.jfr.TestStackTraceEvent.test.
-         */
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrTestFeature.class, false, "org.graalvm.nativeimage.builder", "com.oracle.svm.core.sampler");
     }
 }

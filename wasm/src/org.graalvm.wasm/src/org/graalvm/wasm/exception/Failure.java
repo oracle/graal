@@ -91,6 +91,7 @@ public enum Failure {
     CONSTANT_EXPRESSION_REQUIRED(Type.INVALID, "constant expression required"),
     LIMIT_EXCEEDED(Type.INVALID, "limit exceeded"),
     MEMORY_SIZE_LIMIT_EXCEEDED(Type.INVALID, "memory size must be at most 65536 pages (4GiB)"),
+    MEMORY_64_SIZE_LIMIT_EXCEEDED(Type.INVALID, "memory size must be at most 976562500 pages"),
     ALIGNMENT_LARGER_THAN_NATURAL(Type.INVALID, "alignment must not be larger than natural"),
     UNEXPECTED_END_OF_BLOCK(Type.INVALID, "cannot exit unspecified block"),
     UNKNOWN_ELEM_SEGMENT(Type.INVALID, "unknown elem segment"),
@@ -139,11 +140,14 @@ public enum Failure {
     MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "memory instance size exceeds limit"),
     UNSUPPORTED_MULTI_VALUE_TYPE(Type.TRAP, "multi-value has to be provided by an array type"),
 
+    MEMORY_OVERHEAD_MODE(Type.TRAP, "functions cannot be executed with memory overhead mode enabled"),
+
     CALL_STACK_EXHAUSTED(Type.EXHAUSTION, "call stack exhausted"),
     MEMORY_ALLOCATION_FAILED(Type.EXHAUSTION, "could not allocate memory"),
 
     // TODO(mbovel): replace UNSPECIFIED_INTERNAL usages with assertInternal/shouldNotReachHere.
     UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified"),
+    INCOMPATIBLE_OPTIONS(Type.INTERNAL, "some of the provided options are incompatible"),
 
     NON_REPRESENTABLE_EXTRA_DATA_VALUE(Type.MALFORMED, "value cannot be represented in extra data");
 

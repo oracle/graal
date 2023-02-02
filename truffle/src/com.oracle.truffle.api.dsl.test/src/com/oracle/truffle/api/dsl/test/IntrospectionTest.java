@@ -63,6 +63,7 @@ import com.oracle.truffle.api.dsl.test.IntrospectionTestFactory.Introspection1No
 import com.oracle.truffle.api.dsl.test.IntrospectionTestFactory.TrivialNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("truffle")
 public class IntrospectionTest {
 
     @TypeSystem

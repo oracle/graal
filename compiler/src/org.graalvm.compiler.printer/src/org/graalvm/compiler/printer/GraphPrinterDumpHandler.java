@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -192,13 +192,15 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                 properties.put("scope", currentScopeName);
                 graph.getDebugProperties(properties);
                 if (graph instanceof StructuredGraph) {
+                    StructuredGraph structuredGraph = (StructuredGraph) graph;
                     try {
-                        int size = NodeCostUtil.computeGraphSize((StructuredGraph) graph);
+                        int size = NodeCostUtil.computeGraphSize(structuredGraph);
                         properties.put("node-cost graph size", size);
                     } catch (Throwable t) {
                         properties.put("node-cost-exception", t.getMessage());
                     }
-                    properties.put("StageFlags", ((StructuredGraph) graph).getGraphState().getStageFlags());
+                    properties.put("StageFlags", structuredGraph.getGraphState().getStageFlags());
+                    properties.put("speculationLog", structuredGraph.getSpeculationLog() != null ? structuredGraph.getSpeculationLog().toString() : "null");
                 }
                 if (PrintUnmodifiedGraphs.getValue(options) || lastGraph != graph || lastModCount != graph.getEdgeModificationCount()) {
                     printer.print(debug, graph, properties, nextDumpId(), format, arguments);

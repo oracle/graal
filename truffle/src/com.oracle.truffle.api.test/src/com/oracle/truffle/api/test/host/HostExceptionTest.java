@@ -102,7 +102,6 @@ public class HostExceptionTest {
 
     @Test
     public void testExceptionFromExecutionListener() {
-        TruffleTestAssumptions.assumeWeakEncapsulation(); // GR-42498
         ExecutionListener.newBuilder().statements(true).onEnter(new Consumer<ExecutionEvent>() {
             @Override
             public void accept(ExecutionEvent executionEvent) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,16 +88,7 @@ public class CompilationInfo {
 
     public boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
         return method.isDeoptTarget() && (method.getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting ||
-                        SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException));
-    }
-
-    /**
-     * Returns whether this bci was registered as a potential deoptimization entrypoint via
-     * {@link SubstrateCompilationDirectives#registerDeoptEntry}.
-     */
-    public boolean isRegisteredDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
-        return method.isDeoptTarget() && SubstrateCompilationDirectives.singleton().isDeoptTarget(method) &&
-                        SubstrateCompilationDirectives.singleton().isDeoptEntry(method, bci, duringCall, rethrowException);
+                        SubstrateCompilationDirectives.singleton().isRegisteredDeoptEntry(method, bci, duringCall, rethrowException));
     }
 
     public boolean canDeoptForTesting() {
@@ -167,9 +158,5 @@ public class CompilationInfo {
 
     public CompileFunction getCustomCompileFunction() {
         return customCompileFunction;
-    }
-
-    public boolean hasDefaultParseFunction() {
-        return customCompileFunction == null;
     }
 }

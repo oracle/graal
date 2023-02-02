@@ -86,6 +86,7 @@ import com.oracle.truffle.api.dsl.test.examples.ExampleNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class AssumptionsTest {
 
     @Test
@@ -663,7 +664,6 @@ public class AssumptionsTest {
             assertEquals(i, node.execute(i));
         }
 
-        // check fallback first
         node = CachedAssumptionNodeGen.create();
         assertEquals(Integer.MAX_VALUE, node.execute(Integer.MAX_VALUE - 1));
         for (int i = 0; i < CachedAssumptionNode.SPECIALIZATIONS; i++) {

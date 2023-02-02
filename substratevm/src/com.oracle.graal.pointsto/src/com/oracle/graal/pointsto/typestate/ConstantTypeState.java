@@ -100,8 +100,8 @@ public class ConstantTypeState extends SingleTypeState {
     }
 
     @Override
-    public boolean isConstant() {
-        return true;
+    public JavaConstant asConstant() {
+        return constant;
     }
 
     @Override

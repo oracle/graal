@@ -46,7 +46,7 @@ public class ContinuationsFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         boolean supportLoom = false;
-        if (JavaVersionUtil.JAVA_SPEC == 19) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
             boolean haveLoom = false;
             try {
                 haveLoom = (Boolean) Class.forName("jdk.internal.misc.PreviewFeatures")

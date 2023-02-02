@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 106 CONTINUE "start"
+BREAK 107 CONTINUE "start"
     OPEN_SCOPE
         MEMBER int "long int" "l1" "-9223372036854775808"
         MEMBER int "long int" "l2" "1"

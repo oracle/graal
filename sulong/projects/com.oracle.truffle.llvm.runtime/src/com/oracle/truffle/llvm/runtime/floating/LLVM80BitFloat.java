@@ -103,7 +103,7 @@ public final class LLVM80BitFloat extends LLVMInternalTruffleObject {
         } else {
             short exponent = value.getExponent();
             if (value.getSign()) {
-                exponent |= (1 << EXPONENT_BIT_WIDTH);
+                exponent |= (short) (1 << EXPONENT_BIT_WIDTH);
             }
             long fraction = value.getFraction();
             return String.format("0xK%4x%16x", exponent, fraction).replace(' ', '0');

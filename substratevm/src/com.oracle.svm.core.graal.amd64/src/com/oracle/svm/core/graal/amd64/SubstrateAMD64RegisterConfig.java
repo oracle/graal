@@ -69,6 +69,7 @@ import org.graalvm.nativeimage.Platform;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
@@ -125,7 +126,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             regs.addAll(MASK_REGISTERS.asList());
         } else {
             regs = new ArrayList<>(valueRegistersSSE.asList());
-            if (SubstrateUtil.HOSTED && AMD64CalleeSavedRegisters.isRuntimeCompilationEnabled()) {
+            if (SubstrateUtil.HOSTED && RuntimeCompilation.isEnabled()) {
                 // The stub calling convention must be able to generate runtime checked code for
                 // saving and restoring mask registers.
                 regs.addAll(MASK_REGISTERS.asList());

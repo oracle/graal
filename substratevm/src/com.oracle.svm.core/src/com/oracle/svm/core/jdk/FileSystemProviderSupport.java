@@ -379,7 +379,7 @@ class WindowsFileSystemAccessors {
             return;
         }
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_IN_REINITIALIZATION;
-        that.originalConstructor(that.provider, ImageSingletons.lookup(SystemPropertiesSupport.class).userDir());
+        that.originalConstructor(that.provider, SystemPropertiesSupport.singleton().userDir());
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_REINITIALIZED;
     }
 }
@@ -433,7 +433,7 @@ class UserDirAccessors {
          */
         return Platform.includedIn(Platform.WINDOWS.class)
                         ? that.normalize(System.getProperty("user.dir"))
-                        : ImageSingletons.lookup(SystemPropertiesSupport.class).userDir();
+                        : SystemPropertiesSupport.singleton().userDir();
     }
 }
 
