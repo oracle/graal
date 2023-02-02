@@ -39,7 +39,7 @@ import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
 public class SafepointProfilingSampler implements ProfilingSampler, ThreadListener {
 
-    private final LockFreePrefixTree prefixTree = new LockFreePrefixTree();
+    private final LockFreePrefixTree prefixTree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SafepointProfilingSampler() {

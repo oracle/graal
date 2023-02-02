@@ -363,6 +363,7 @@ public class LockFreePrefixTree {
         }
     }
 
+    private Allocator allocator;
     private Node root;
 
     /**
@@ -370,7 +371,8 @@ public class LockFreePrefixTree {
      * 
      * @since 22.3
      */
-    public LockFreePrefixTree() {
+    public LockFreePrefixTree(Allocator allocator) {
+        this.allocator = allocator;
         this.root = new Node(0);
     }
 
@@ -401,5 +403,33 @@ public class LockFreePrefixTree {
      */
     public <C> void topDown(C initialContext, BiFunction<C, Long, C> createContext, BiConsumer<C, Long> consumeValue) {
         root.topDown(initialContext, createContext, consumeValue);
+    }
+
+    /**
+     *
+     */
+    public static abstract class Allocator {
+        public abstract Node allocateNode(long key);
+
+        public abstract Node.LinearChildren allocateLinearChildren(int length);
+
+        public abstract Node.HashChildren allocateHashChildren(int length);
+    }
+
+    public static class HeapAllocator extends Allocator {
+        @Override
+        public Node allocateNode(long key) {
+            return new Node(key);
+        }
+
+        @Override
+        public Node.LinearChildren allocateLinearChildren(int length) {
+            return new Node.LinearChildren(length);
+        }
+
+        @Override
+        public Node.HashChildren allocateHashChildren(int length) {
+            return new Node.HashChildren(length);
+        }
     }
 }

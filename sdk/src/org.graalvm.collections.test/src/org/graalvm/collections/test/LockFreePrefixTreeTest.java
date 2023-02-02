@@ -50,7 +50,7 @@ public class LockFreePrefixTreeTest {
 
     @Test
     public void smallAlphabet() {
-        LockFreePrefixTree tree = new LockFreePrefixTree();
+        LockFreePrefixTree tree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
 
         tree.root().at(2L).at(12L).at(18L).setValue(42);
         tree.root().at(2L).at(12L).at(19L).setValue(43);
@@ -84,7 +84,7 @@ public class LockFreePrefixTreeTest {
 
     @Test
     public void largeAlphabet() {
-        LockFreePrefixTree tree = new LockFreePrefixTree();
+        LockFreePrefixTree tree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
         for (long i = 1L; i < 128L; i++) {
             LockFreePrefixTree.Node first = tree.root().at(i);
             for (long j = 1L; j < 64L; j++) {
@@ -126,7 +126,7 @@ public class LockFreePrefixTreeTest {
 
     @Test
     public void hashFlatMultithreaded() {
-        final LockFreePrefixTree tree = new LockFreePrefixTree();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
         final int parallelism = 10;
         final int size = 10000;
         inParallel(parallelism, threadIndex -> {
@@ -141,7 +141,7 @@ public class LockFreePrefixTreeTest {
 
     @Test
     public void linearFlatMultithreaded() {
-        final LockFreePrefixTree tree = new LockFreePrefixTree();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
         final int parallelism = 10;
         final int size = 7;
         inParallel(parallelism, threadIndex -> {
@@ -156,7 +156,7 @@ public class LockFreePrefixTreeTest {
 
     @Test
     public void largeMultithreaded() {
-        final LockFreePrefixTree tree = new LockFreePrefixTree();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
         final int parallelism = 8;
         inParallel(parallelism, threadIndex -> {
             for (long i = 1L; i < 2048L; i++) {
@@ -191,7 +191,7 @@ public class LockFreePrefixTreeTest {
 
     @Test
     public void deepHashMultiThreaded() {
-        final LockFreePrefixTree tree = new LockFreePrefixTree();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
         final int depth = 6;
         final int parallelism = 8;
         final long multiplier = 14L;
@@ -237,7 +237,7 @@ public class LockFreePrefixTreeTest {
 
     @Test
     public void deepLinearMultiThreaded() {
-        final LockFreePrefixTree tree = new LockFreePrefixTree();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
         final int depth = 10;
         final int parallelism = 8;
         final int numChildren = 4;
@@ -252,7 +252,7 @@ public class LockFreePrefixTreeTest {
 
     @Test
     public void deepHashMultiThreadedv2() {
-        final LockFreePrefixTree tree = new LockFreePrefixTree();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
         final int depth = 6;
         final int parallelism = 8;
         final int numChildren = 10;
@@ -267,7 +267,7 @@ public class LockFreePrefixTreeTest {
 
     @Test
     public void manyMultiThreaded() {
-        final LockFreePrefixTree tree = new LockFreePrefixTree();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
         int parallelism = 8;
         int multiplier = 1024;
         long batch = 2000L;
