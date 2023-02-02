@@ -192,9 +192,8 @@ public final class DebuggerConnection implements Commands {
         @Override
         public void run() {
             while (!Thread.currentThread().isInterrupted()) {
-                Object previous = null;
                 try {
-                    previous = controller.enterTruffleContext();
+                    controller.enterTruffleContext();
                     processPacket(Packet.fromByteArray(connection.readPacket()));
                 } catch (IOException e) {
                     if (!Thread.currentThread().isInterrupted()) {
@@ -203,7 +202,7 @@ public final class DebuggerConnection implements Commands {
                 } catch (ConnectionClosedException e) {
                     // we closed the session, so let the thread run dry
                 } finally {
-                    controller.leaveTruffleContext(previous);
+                    controller.leaveTruffleContext();
                 }
             }
         }
