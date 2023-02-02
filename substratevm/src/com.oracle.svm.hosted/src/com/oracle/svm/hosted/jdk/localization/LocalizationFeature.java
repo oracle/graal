@@ -85,7 +85,6 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -136,7 +135,7 @@ public class LocalizationFeature implements InternalFeature {
 
     protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
-    private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? new ForkJoinPool(NativeImageOptions.NumberOfThreads.getValue()) : null;
+    private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? ForkJoinPool.commonPool() : null;
 
     /**
      * The Locale that the native image is built for.
@@ -363,13 +362,6 @@ public class LocalizationFeature implements InternalFeature {
         }
         if (localeCache != null) {
             access.rescanField(localeCache, localeObjectCacheMapField);
-        }
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        if (compressionPool != null) {
-            compressionPool.shutdown();
         }
     }
 

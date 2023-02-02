@@ -26,6 +26,7 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.thread.ThreadStatus.JVMTI_THREAD_STATE_TERMINATED;
 
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
@@ -697,6 +698,10 @@ public final class Target_java_lang_Thread {
     boolean isTerminated() {
         return (holder.threadStatus & JVMTI_THREAD_STATE_TERMINATED) != 0;
     }
+
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    static volatile UncaughtExceptionHandler defaultUncaughtExceptionHandler;
 
     @Alias
     @TargetElement(onlyWith = JDK19OrLater.class)

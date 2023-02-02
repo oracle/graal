@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -400,14 +400,14 @@ public class SubstrateOptions {
     @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 
-    @Option(help = "Colorize build output", type = OptionType.User)//
-    public static final HostedOptionKey<Boolean> BuildOutputColorful = new HostedOptionKey<>(true);
+    @Option(help = "Colorize build output (enabled by default if colors are supported by terminal)", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputColorful = new HostedOptionKey<>(false);
 
-    @Option(help = "Show links in build output", type = OptionType.User)//
-    public static final HostedOptionKey<Boolean> BuildOutputLinks = new HostedOptionKey<>(true);
+    @Option(help = "Show links in build output (defaults to the value of BuildOutputColorful)", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputLinks = new HostedOptionKey<>(false);
 
-    @Option(help = "Report progress in build output", type = OptionType.User)//
-    public static final HostedOptionKey<Boolean> BuildOutputProgress = new HostedOptionKey<>(true);
+    @Option(help = "Report progress in build output (default is adaptive)", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputProgress = new HostedOptionKey<>(false);
 
     @Option(help = "Show code and heap breakdowns as part of the build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputBreakdowns = new HostedOptionKey<>(true);
