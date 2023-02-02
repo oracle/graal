@@ -395,9 +395,9 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2);
 
     @NodeIntrinsic
-    @GenerateStub(name = "indexOf1S1", parameters = {"S1", "matchAny"})
-    @GenerateStub(name = "indexOf1S2", parameters = {"S2", "matchAny"})
-    @GenerateStub(name = "indexOf1S4", parameters = {"S4", "matchAny"})
+    @GenerateStub(name = "indexOf1S1", parameters = {"S1", "MatchAny"})
+    @GenerateStub(name = "indexOf1S2", parameters = {"S2", "MatchAny"})
+    @GenerateStub(name = "indexOf1S4", parameters = {"S4", "MatchAny"})
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
@@ -411,18 +411,18 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1);
 
     @NodeIntrinsic
-    @GenerateStub(name = "indexOf2S1", parameters = {"S1", "matchAny"})
-    @GenerateStub(name = "indexOf2S2", parameters = {"S2", "matchAny"})
-    @GenerateStub(name = "indexOf2S4", parameters = {"S4", "matchAny"})
-    @GenerateStub(name = "indexOfRange1S1", parameters = {"S1", "matchRange"})
-    @GenerateStub(name = "indexOfRange1S2", parameters = {"S2", "matchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfRange1S4", parameters = {"S4", "matchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfWithMaskS1", parameters = {"S1", "withMask"})
-    @GenerateStub(name = "indexOfWithMaskS2", parameters = {"S2", "withMask"})
-    @GenerateStub(name = "indexOfWithMaskS4", parameters = {"S4", "withMask"})
-    @GenerateStub(name = "indexOfTwoConsecutiveS1", parameters = {"S1", "findTwoConsecutive"})
-    @GenerateStub(name = "indexOfTwoConsecutiveS2", parameters = {"S2", "findTwoConsecutive"})
-    @GenerateStub(name = "indexOfTwoConsecutiveS4", parameters = {"S4", "findTwoConsecutive"})
+    @GenerateStub(name = "indexOf2S1", parameters = {"S1", "MatchAny"})
+    @GenerateStub(name = "indexOf2S2", parameters = {"S2", "MatchAny"})
+    @GenerateStub(name = "indexOf2S4", parameters = {"S4", "MatchAny"})
+    @GenerateStub(name = "indexOfRange1S1", parameters = {"S1", "MatchRange"})
+    @GenerateStub(name = "indexOfRange1S2", parameters = {"S2", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfRange1S4", parameters = {"S4", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfWithMaskS1", parameters = {"S1", "WithMask"})
+    @GenerateStub(name = "indexOfWithMaskS2", parameters = {"S2", "WithMask"})
+    @GenerateStub(name = "indexOfWithMaskS4", parameters = {"S4", "WithMask"})
+    @GenerateStub(name = "indexOfTwoConsecutiveS1", parameters = {"S1", "FindTwoConsecutive"})
+    @GenerateStub(name = "indexOfTwoConsecutiveS2", parameters = {"S2", "FindTwoConsecutive"})
+    @GenerateStub(name = "indexOfTwoConsecutiveS4", parameters = {"S4", "FindTwoConsecutive"})
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
@@ -436,9 +436,9 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2);
 
     @NodeIntrinsic
-    @GenerateStub(name = "indexOf3S1", parameters = {"S1", "matchAny"})
-    @GenerateStub(name = "indexOf3S2", parameters = {"S2", "matchAny"})
-    @GenerateStub(name = "indexOf3S4", parameters = {"S4", "matchAny"})
+    @GenerateStub(name = "indexOf3S1", parameters = {"S1", "MatchAny"})
+    @GenerateStub(name = "indexOf3S2", parameters = {"S2", "MatchAny"})
+    @GenerateStub(name = "indexOf3S4", parameters = {"S4", "MatchAny"})
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
@@ -452,15 +452,15 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3);
 
     @NodeIntrinsic
-    @GenerateStub(name = "indexOf4S1", parameters = {"S1", "matchAny"})
-    @GenerateStub(name = "indexOf4S2", parameters = {"S2", "matchAny"})
-    @GenerateStub(name = "indexOf4S4", parameters = {"S4", "matchAny"})
-    @GenerateStub(name = "indexOfRange2S1", parameters = {"S1", "matchRange"})
-    @GenerateStub(name = "indexOfRange2S2", parameters = {"S2", "matchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfRange2S4", parameters = {"S4", "matchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS1", parameters = {"S1", "findTwoConsecutiveWithMask"})
-    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS2", parameters = {"S2", "findTwoConsecutiveWithMask"})
-    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS4", parameters = {"S4", "findTwoConsecutiveWithMask"})
+    @GenerateStub(name = "indexOf4S1", parameters = {"S1", "MatchAny"})
+    @GenerateStub(name = "indexOf4S2", parameters = {"S2", "MatchAny"})
+    @GenerateStub(name = "indexOf4S4", parameters = {"S4", "MatchAny"})
+    @GenerateStub(name = "indexOfRange2S1", parameters = {"S1", "MatchRange"})
+    @GenerateStub(name = "indexOfRange2S2", parameters = {"S2", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfRange2S4", parameters = {"S4", "MatchRange"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS1", parameters = {"S1", "FindTwoConsecutiveWithMask"})
+    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS2", parameters = {"S2", "FindTwoConsecutiveWithMask"})
+    @GenerateStub(name = "indexOfTwoConsecutiveWithMaskS4", parameters = {"S4", "FindTwoConsecutiveWithMask"})
     public static native int optimizedArrayIndexOf(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,
@@ -474,9 +474,9 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
                     Object array, long arrayOffset, int arrayLength, int fromIndex, int v1, int v2, int v3, int v4);
 
     @NodeIntrinsic
-    @GenerateStub(name = "indexOfTableS1", parameters = {"S1", "table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfTableS2", parameters = {"S2", "table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
-    @GenerateStub(name = "indexOfTableS4", parameters = {"S4", "table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfTableS1", parameters = {"S1", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfTableS2", parameters = {"S2", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
+    @GenerateStub(name = "indexOfTableS4", parameters = {"S4", "Table"}, minimumCPUFeaturesAMD64 = "amd64FeaturesSSE41", minimumCPUFeaturesAARCH64 = "aarch64FeaturesNone")
     public static native int optimizedArrayIndexOfTable(
                     @ConstantNodeParameter Stride stride,
                     @ConstantNodeParameter ArrayIndexOfVariant variant,

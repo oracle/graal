@@ -32,10 +32,10 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmeti
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.DEC;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.INC;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
 import static org.graalvm.compiler.core.common.NumUtil.isByte;
 
-import java.util.function.BiConsumer;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
@@ -1015,18 +1015,18 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void pminub(AVXSize size, Register dst, Register src1, Register src2) {
-        simdRVMOp(VexRVMOp.VPMINUB, this::pminub, size, dst, src1, src2, true);
+        simdRVMOp(VexRVMOp.VPMINUB, SSEOp.PMINUB, size, dst, src1, src2, true);
     }
 
     public final void pminuw(AVXSize size, Register dst, Register src1, Register src2) {
-        simdRVMOp(VexRVMOp.VPMINUW, this::pminuw, size, dst, src1, src2, true);
+        simdRVMOp(VexRVMOp.VPMINUW, SSEOp.PMINUW, size, dst, src1, src2, true);
     }
 
     public final void pminud(AVXSize size, Register dst, Register src1, Register src2) {
-        simdRVMOp(VexRVMOp.VPMINUD, this::pminud, size, dst, src1, src2, true);
+        simdRVMOp(VexRVMOp.VPMINUD, SSEOp.PMINUD, size, dst, src1, src2, true);
     }
 
-    private void simdRVMOp(VexRVMOp avxOp, BiConsumer<Register, Register> sseOp, AVXSize vectorSize, Register dst, Register src1, Register src2, boolean isCommutative) {
+    private void simdRVMOp(VexRVMOp avxOp, SSEOp sseOp, AVXSize vectorSize, Register dst, Register src1, Register src2, boolean isCommutative) {
         if (isAVX()) {
             avxOp.emit(this, vectorSize, dst, src1, src2);
         } else {
@@ -1034,18 +1034,18 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
-    private void threeVectorOpSSE(BiConsumer<Register, Register> op, Register dst, Register src1, Register src2, boolean isCommutative) {
+    private void threeVectorOpSSE(SSEOp op, Register dst, Register src1, Register src2, boolean isCommutative) {
         if (dst.equals(src1)) {
-            op.accept(dst, src2);
+            op.emit(this, PD, dst, src2);
         } else if (dst.equals(src2)) {
             if (isCommutative) {
-                op.accept(dst, src1);
+                op.emit(this, PD, dst, src1);
             } else {
                 throw GraalError.shouldNotReachHere("can't simulate non-commutative 3-vector AVX op on SSE when dst == src2!");
             }
         } else {
             movdqu(dst, src1);
-            op.accept(dst, src2);
+            op.emit(this, PD, dst, src2);
         }
     }
 
@@ -1211,7 +1211,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void packuswb(AVXSize size, Register dst, Register src1, Register src2) {
-        simdRVMOp(VexRVMOp.VPACKUSWB, this::packuswb, size, dst, src1, src2, false);
+        simdRVMOp(VexRVMOp.VPACKUSWB, SSEOp.PACKUSWB, size, dst, src1, src2, false);
     }
 
     public final void packusdw(AVXSize size, Register dst, Register src) {
@@ -1219,7 +1219,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void packusdw(AVXSize size, Register dst, Register src1, Register src2) {
-        simdRVMOp(VexRVMOp.VPACKUSDW, this::packusdw, size, dst, src1, src2, false);
+        simdRVMOp(VexRVMOp.VPACKUSDW, SSEOp.PACKUSDW, size, dst, src1, src2, false);
     }
 
     public final void palignr(AVXSize size, Register dst, Register src, int imm8) {
@@ -1357,7 +1357,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void pshufb(AVXSize size, Register dst, Register src1, Register src2) {
-        simdRVMOp(VexRVMOp.VPSHUFB, this::pshufb, size, dst, src1, src2, false);
+        simdRVMOp(VexRVMOp.VPSHUFB, SSEOp.PSHUFB, size, dst, src1, src2, false);
     }
 
     public final void pshufb(AVXSize size, Register dst, Register src) {
