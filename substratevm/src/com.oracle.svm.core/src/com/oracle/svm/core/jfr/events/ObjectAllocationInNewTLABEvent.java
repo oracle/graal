@@ -33,7 +33,6 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
 import org.graalvm.nativeimage.StackValue;
 
 public class ObjectAllocationInNewTLABEvent {
@@ -45,15 +44,7 @@ public class ObjectAllocationInNewTLABEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(long startTicks, Class<?> clazz, long allocationSize, long tlabSize) {
-
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ObjectAllocationInNewTLAB)) {
-            JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
-
-            // This check is needed to avoid issues upon allocation from the thread that invokes the
-            // Java main method and shutdown.
-            if (!jfrThreadLocal.initialized()) {
-                return;
-            }
+        if (JfrEvent.ObjectAllocationInNewTLAB.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ObjectAllocationInNewTLAB);
