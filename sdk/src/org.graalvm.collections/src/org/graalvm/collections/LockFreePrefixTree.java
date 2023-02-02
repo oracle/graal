@@ -173,27 +173,27 @@ public class LockFreePrefixTree {
          * @since 22.3
          */
         @SuppressWarnings("unchecked")
-        public Node at(long childKey) {
-            ensureChildren();
+        public Node at(Allocator allocator, long childKey) {
+            ensureChildren(allocator);
             while (true) {
                 AtomicReferenceArray<Node> children0 = readChildren();
                 if (children0 instanceof LinearChildren) {
                     // Find first empty slot.
-                    Node newChild = getOrAddLinear(childKey, children0);
+                    Node newChild = getOrAddLinear(allocator, childKey, children0);
                     if (newChild != null) {
                         return newChild;
                     } else {
                         // Children array is full, we need to resize.
-                        tryResizeLinear(children0);
+                        tryResizeLinear(allocator, children0);
                     }
                 } else {
                     // children0 instanceof HashChildren.
-                    Node newChild = getOrAddHash(childKey, children0);
+                    Node newChild = getOrAddHash(allocator, childKey, children0);
                     if (newChild != null) {
                         return newChild;
                     } else {
                         // Case for growth: the MAX_HASH_SKIPS have been exceeded.
-                        tryResizeHash(children0);
+                        tryResizeHash(allocator, children0);
                     }
                 }
             }
@@ -201,11 +201,11 @@ public class LockFreePrefixTree {
 
         // Postcondition: if return value is null, then no subsequent mutations will be done on the
         // array object ( the children array is full)
-        private static Node getOrAddLinear(long childKey, AtomicReferenceArray<Node> childrenArray) {
+        private Node getOrAddLinear(Allocator allocator, long childKey, AtomicReferenceArray<Node> childrenArray) {
             for (int i = 0; i < childrenArray.length(); i++) {
                 Node child = read(childrenArray, i);
                 if (child == null) {
-                    Node newChild = new Node(childKey);
+                    Node newChild = allocator.newNode(childKey);
                     if (cas(childrenArray, i, null, newChild)) {
                         return newChild;
                     } else {
@@ -227,16 +227,16 @@ public class LockFreePrefixTree {
         }
 
         // Precondition: childrenArray is full.
-        private void tryResizeLinear(AtomicReferenceArray<Node> childrenArray) {
+        private void tryResizeLinear(Allocator allocator, AtomicReferenceArray<Node> childrenArray) {
             AtomicReferenceArray<Node> newChildrenArray;
             if (childrenArray.length() < MAX_LINEAR_NODE_SIZE) {
-                newChildrenArray = new LinearChildren(2 * childrenArray.length());
+                newChildrenArray = allocator.newLinearChildren(2 * childrenArray.length());
                 for (int i = 0; i < childrenArray.length(); i++) {
                     Node toCopy = read(childrenArray, i);
                     write(newChildrenArray, i, toCopy);
                 }
             } else {
-                newChildrenArray = new HashChildren(INITIAL_HASH_NODE_SIZE);
+                newChildrenArray = allocator.newHashChildren(INITIAL_HASH_NODE_SIZE);
                 for (int i = 0; i < childrenArray.length(); i++) {
                     Node toCopy = read(childrenArray, i);
                     addChildToLocalHash(toCopy, newChildrenArray);
@@ -245,13 +245,13 @@ public class LockFreePrefixTree {
             CHILDREN_UPDATER.compareAndSet(this, childrenArray, newChildrenArray);
         }
 
-        private static Node getOrAddHash(long childKey, AtomicReferenceArray<Node> hashTable) {
+        private static Node getOrAddHash(Allocator allocator, long childKey, AtomicReferenceArray<Node> hashTable) {
             int index = hash(childKey) % hashTable.length();
             int skips = 0;
             while (true) {
                 Node node0 = read(hashTable, index);
                 if (node0 == null) {
-                    Node newNode = new Node(childKey);
+                    Node newNode = allocator.newNode(childKey);
                     if (cas(hashTable, index, null, newNode)) {
                         return newNode;
                     } else {
@@ -281,11 +281,11 @@ public class LockFreePrefixTree {
             write(hashTable, index, node);
         }
 
-        private void tryResizeHash(AtomicReferenceArray<Node> children0) {
+        private void tryResizeHash(Allocator allocator, AtomicReferenceArray<Node> children0) {
             freezeHash(children0);
             // All elements of children0 are non-null => ensures no updates are made to old children
             // while we are copying to new children.
-            AtomicReferenceArray<Node> newChildrenHash = new HashChildren(2 * children0.length());
+            AtomicReferenceArray<Node> newChildrenHash = allocator.newHashChildren(2 * children0.length());
             for (int i = 0; i < children0.length(); i++) {
                 Node toCopy = read(children0, i);
                 if (toCopy != FROZEN_NODE) {
@@ -316,9 +316,9 @@ public class LockFreePrefixTree {
             childrenArray.set(i, newNode);
         }
 
-        private void ensureChildren() {
+        private void ensureChildren(Allocator allocator) {
             if (readChildren() == null) {
-                AtomicReferenceArray<Node> newChildren = new LinearChildren(INITIAL_LINEAR_NODE_SIZE);
+                AtomicReferenceArray<Node> newChildren = allocator.newLinearChildren(INITIAL_LINEAR_NODE_SIZE);
                 casChildren(null, newChildren);
             }
         }
@@ -373,7 +373,11 @@ public class LockFreePrefixTree {
      */
     public LockFreePrefixTree(Allocator allocator) {
         this.allocator = allocator;
-        this.root = new Node(0);
+        this.root = allocator.newNode(0);
+    }
+
+    public Allocator allocator() {
+        return allocator;
     }
 
     /**
@@ -409,26 +413,26 @@ public class LockFreePrefixTree {
      *
      */
     public static abstract class Allocator {
-        public abstract Node allocateNode(long key);
+        public abstract Node newNode(long key);
 
-        public abstract Node.LinearChildren allocateLinearChildren(int length);
+        public abstract Node.LinearChildren newLinearChildren(int length);
 
-        public abstract Node.HashChildren allocateHashChildren(int length);
+        public abstract Node.HashChildren newHashChildren(int length);
     }
 
     public static class HeapAllocator extends Allocator {
         @Override
-        public Node allocateNode(long key) {
+        public Node newNode(long key) {
             return new Node(key);
         }
 
         @Override
-        public Node.LinearChildren allocateLinearChildren(int length) {
+        public Node.LinearChildren newLinearChildren(int length) {
             return new Node.LinearChildren(length);
         }
 
         @Override
-        public Node.HashChildren allocateHashChildren(int length) {
+        public Node.HashChildren newHashChildren(int length) {
             return new Node.HashChildren(length);
         }
     }
