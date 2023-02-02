@@ -127,9 +127,9 @@ Follow the steps to test debugging a native executable with GDB. The below workf
     f = 1
     (gdb) ...
     ```
-The `(gdb) info func ::main` command places a breakpoint on the main entry point for the class `GDBDemo`.
-    
-If the native executable segfaults, you can print the backtrace of the entire stack (`bt`).
+
+     
+In case your native executable segfaults, you can print the backtrace of the entire stack (`bt`).
 
 The debugger points machine instructions back from the binary to specific source lines in Java files. Note that single stepping within a compiled method includes file and line number information for inlined code. GDB may switch files even though you are still in the same compiled method.
 
