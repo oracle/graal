@@ -410,13 +410,22 @@ public class LockFreePrefixTree {
     }
 
     /**
-     *
+     * Policy for allocating objects of the lock-free prefix tree.
      */
     public static abstract class Allocator {
+        /**
+         * Allocates a new Node object.
+         */
         public abstract Node newNode(long key);
 
+        /**
+         * Allocates a new reference array of child nodes stored linearly.
+         */
         public abstract Node.LinearChildren newLinearChildren(int length);
 
+        /**
+         * Allocates a new reference array of child nodes stored as a hash table.
+         */
         public abstract Node.HashChildren newHashChildren(int length);
     }
 
