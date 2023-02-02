@@ -34,25 +34,25 @@ import org.graalvm.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
 import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
-class SubstrateAMD64Feature implements Feature {
+class SubstrateAMD64Feature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -67,7 +67,6 @@ class SubstrateAMD64Feature implements Feature {
         ImageSingletons.add(ReservedRegisters.class, new AMD64ReservedRegisters());
 
         if (!SubstrateOptions.useLLVMBackend()) {
-            AMD64CalleeSavedRegisters.createAndRegister();
 
             ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
                 @Override
@@ -86,6 +85,13 @@ class SubstrateAMD64Feature implements Feature {
 
             ImageSingletons.add(TargetGraphBuilderPlugins.class, new AMD64GraphBuilderPlugins());
             ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new SubstrateAMD64SuitesCreatorProvider());
+        }
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (!SubstrateOptions.useLLVMBackend()) {
+            AMD64CalleeSavedRegisters.createAndRegister();
         }
     }
 }

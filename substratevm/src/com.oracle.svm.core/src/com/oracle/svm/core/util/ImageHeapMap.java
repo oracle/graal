@@ -24,24 +24,23 @@
  */
 package com.oracle.svm.core.util;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapWrap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.BuildPhaseProvider;
 
 /**
  * A thread-safe map implementation that optimizes its run time representation for space efficiency.
  * 
  * At image build time the map is implemented as a {@link ConcurrentHashMap} wrapped into an
- * {@link EconomicMap}. The {@link ImageHeapMapFeature} intercepts each build time map and
- * transforms it into an actual memory-efficient {@link EconomicMap} backed by a flat object array
- * during analysis. The later image building stages see only the {@link EconomicMap}.
+ * {@link EconomicMap}. The ImageHeapMapFeature intercepts each build time map and transforms it
+ * into an actual memory-efficient {@link EconomicMap} backed by a flat object array during
+ * analysis. The later image building stages see only the {@link EconomicMap}.
  * 
  * This map implementation allows thread-safe collection of data at image build time and storing it
  * into a space efficient data structure at run time.
@@ -59,50 +58,24 @@ public final class ImageHeapMap {
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
     public static <K, V> EconomicMap<K, V> create() {
-        return new HostedImageHeapMap<>(new ConcurrentHashMap<>());
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class) //
-final class HostedImageHeapMap<K, V> extends EconomicMapWrap<K, V> {
-
-    EconomicMap<K, V> runtimeMap;
-
-    HostedImageHeapMap(Map<K, V> map) {
-        super(map);
+        VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
+        return new HostedImageHeapMap<>(Equivalence.DEFAULT);
     }
 
-    /** Initializing the run time map in an instance method avoids complicated casting. */
-    void initRuntimeMap() {
-        this.runtimeMap = EconomicMap.create(this);
-    }
-}
-
-@AutomaticFeature
-final class ImageHeapMapFeature implements Feature {
-
-    private boolean afterAnalysis;
-
-    @Override
-    public void duringSetup(DuringSetupAccess config) {
-        config.registerObjectReplacer(this::imageHeapMapTransformer);
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public static <K, V> EconomicMap<K, V> create(Equivalence strategy) {
+        VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
+        return new HostedImageHeapMap<>(strategy);
     }
 
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        afterAnalysis = true;
-    }
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public static final class HostedImageHeapMap<K, V> extends EconomicMapWrap<K, V> {
 
-    private Object imageHeapMapTransformer(Object obj) {
-        if (obj instanceof HostedImageHeapMap) {
-            HostedImageHeapMap<?, ?> hosted = (HostedImageHeapMap<?, ?>) obj;
-            if (afterAnalysis) {
-                VMError.guarantee(hosted.runtimeMap != null, "Discoverd object not seen during analysis: " + hosted);
-            } else {
-                hosted.initRuntimeMap();
-            }
-            return hosted.runtimeMap;
+        public final EconomicMap<Object, Object> runtimeMap;
+
+        HostedImageHeapMap(Equivalence strategy) {
+            super((strategy == Equivalence.IDENTITY) ? new ConcurrentIdentityHashMap<>() : new ConcurrentHashMap<>());
+            this.runtimeMap = EconomicMap.create(strategy);
         }
-        return obj;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,9 @@ import org.graalvm.word.WordBase;
 /**
  * Medium-level memory access for Objects. Similarly to the readXxx and writeXxx methods defined for
  * {@link Pointer} and {@link ObjectAccess}, these methods access the memory without any null
- * checks. However, these methods use read- or write barriers. When the VM uses compressed pointers,
- * then readObject and writeObject methods access compressed pointers.
+ * checks. However, these methods use read- or write barriers. In addition, readXxxVolatile variants
+ * also adhere to volatile semantics. When the VM uses compressed pointers, then readObject and
+ * writeObject methods access compressed pointers.
  */
 public final class BarrieredAccess {
 
@@ -939,4 +940,139 @@ public final class BarrieredAccess {
      */
     @Operation(opcode = Opcode.WRITE_BARRIERED)
     public static native void writeObject(Object object, int offset, Object val);
+
+    /**
+     * Reads the memory at address {@code (object + offset)} in accordance with the volatile
+     * semantics. The offset is in bytes.
+     * <p>
+     * The offset is always treated as a {@link SignedWord} value. However, the static type is
+     * {@link WordBase} to avoid the frequent casts of {@link UnsignedWord} values (where the caller
+     * knows that the highest-order bit of the unsigned value is never used).
+     *
+     * @param object the base object for the memory access
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    @Operation(opcode = Opcode.READ_BARRIERED_VOLATILE)
+    public static native byte readByteVolatile(Object object, WordBase offset);
+
+    /**
+     * Reads the memory at address {@code (object + offset)} in accordance with the volatile
+     * semantics. The offset is in bytes.
+     * <p>
+     * The offset is always treated as a {@link SignedWord} value. However, the static type is
+     * {@link WordBase} to avoid the frequent casts of {@link UnsignedWord} values (where the caller
+     * knows that the highest-order bit of the unsigned value is never used).
+     *
+     * @param object the base object for the memory access
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    @Operation(opcode = Opcode.READ_BARRIERED_VOLATILE)
+    public static native char readCharVolatile(Object object, WordBase offset);
+
+    /**
+     * Reads the memory at address {@code (object + offset)} in accordance with the volatile
+     * semantics. The offset is in bytes.
+     * <p>
+     * The offset is always treated as a {@link SignedWord} value. However, the static type is
+     * {@link WordBase} to avoid the frequent casts of {@link UnsignedWord} values (where the caller
+     * knows that the highest-order bit of the unsigned value is never used).
+     *
+     * @param object the base object for the memory access
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    @Operation(opcode = Opcode.READ_BARRIERED_VOLATILE)
+    public static native short readShortVolatile(Object object, WordBase offset);
+
+    /**
+     * Reads the memory at address {@code (object + offset)} in accordance with the volatile
+     * semantics. The offset is in bytes.
+     * <p>
+     * The offset is always treated as a {@link SignedWord} value. However, the static type is
+     * {@link WordBase} to avoid the frequent casts of {@link UnsignedWord} values (where the caller
+     * knows that the highest-order bit of the unsigned value is never used).
+     *
+     * @param object the base object for the memory access
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    @Operation(opcode = Opcode.READ_BARRIERED_VOLATILE)
+    public static native int readIntVolatile(Object object, WordBase offset);
+
+    /**
+     * Reads the memory at address {@code (object + offset)} in accordance with the volatile
+     * semantics. The offset is in bytes.
+     * <p>
+     * The offset is always treated as a {@link SignedWord} value. However, the static type is
+     * {@link WordBase} to avoid the frequent casts of {@link UnsignedWord} values (where the caller
+     * knows that the highest-order bit of the unsigned value is never used).
+     *
+     * @param object the base object for the memory access
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    @Operation(opcode = Opcode.READ_BARRIERED_VOLATILE)
+    public static native long readLongVolatile(Object object, WordBase offset);
+
+    /**
+     * Reads the memory at address {@code (object + offset)} in accordance with the volatile
+     * semantics. The offset is in bytes.
+     * <p>
+     * The offset is always treated as a {@link SignedWord} value. However, the static type is
+     * {@link WordBase} to avoid the frequent casts of {@link UnsignedWord} values (where the caller
+     * knows that the highest-order bit of the unsigned value is never used).
+     *
+     * @param object the base object for the memory access
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    @Operation(opcode = Opcode.READ_BARRIERED_VOLATILE)
+    public static native float readFloatVolatile(Object object, WordBase offset);
+
+    /**
+     * Reads the memory at address {@code (object + offset)} in accordance with the volatile
+     * semantics. The offset is in bytes.
+     * <p>
+     * The offset is always treated as a {@link SignedWord} value. However, the static type is
+     * {@link WordBase} to avoid the frequent casts of {@link UnsignedWord} values (where the caller
+     * knows that the highest-order bit of the unsigned value is never used).
+     *
+     * @param object the base object for the memory access
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    @Operation(opcode = Opcode.READ_BARRIERED_VOLATILE)
+    public static native double readDoubleVolatile(Object object, WordBase offset);
+
+    /**
+     * Reads the memory at address {@code (object + offset)} in accordance with the volatile
+     * semantics. The offset is in bytes.
+     * <p>
+     * The offset is always treated as a {@link SignedWord} value. However, the static type is
+     * {@link WordBase} to avoid the frequent casts of {@link UnsignedWord} values (where the caller
+     * knows that the highest-order bit of the unsigned value is never used).
+     *
+     * @param object the base object for the memory access
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    @Operation(opcode = Opcode.READ_BARRIERED_VOLATILE)
+    public static native <T extends WordBase> T readWordVolatile(Object object, WordBase offset);
+
+    /**
+     * Reads the memory at address {@code (object + offset)} in accordance with the volatile
+     * semantics. The offset is in bytes.
+     * <p>
+     * The offset is always treated as a {@link SignedWord} value. However, the static type is
+     * {@link WordBase} to avoid the frequent casts of {@link UnsignedWord} values (where the caller
+     * knows that the highest-order bit of the unsigned value is never used).
+     *
+     * @param object the base object for the memory access
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    @Operation(opcode = Opcode.READ_BARRIERED_VOLATILE)
+    public static native Object readObjectVolatile(Object object, WordBase offset);
 }

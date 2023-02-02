@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,13 +47,14 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 
 /**
- * A common supertype to the root node and look-ahead and look-behind assertions. Every AST subtree
- * contains a {@link Group} which contains the syntactic subtree, as well as a {@link MatchFound}
- * node, which is needed for NFA-like traversal of the AST, see
+ * A common supertype to the root node, lookahead and lookbehind assertions and atomic groups. Every
+ * AST subtree contains a {@link Group} which contains the syntactic subtree, as well as a
+ * {@link MatchFound} node, which is needed for NFA-like traversal of the AST, see
  * {@link com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTVisitor}.
  */
 public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVisitorIterable {
 
+    private int globalSubTreeId = -1;
     private int subTreeId = -1;
     private Group group;
     private PositionAssertion anchoredInitialState;
@@ -61,6 +62,8 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     private PositionAssertion anchoredFinalState;
     private MatchFound matchFound;
     private boolean visitorGroupVisited = false;
+
+    private final SubTreeIndex subtrees = new SubTreeIndex();
 
     RegexASTSubtreeRootNode() {
     }
@@ -81,6 +84,18 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
         setGroup(copy.group.copyRecursive(ast, compilationBuffer));
     }
 
+    public boolean globalSubTreeIdInitialized() {
+        return globalSubTreeId >= 0;
+    }
+
+    public int getGlobalSubTreeId() {
+        return globalSubTreeId;
+    }
+
+    public void setGlobalSubTreeId(int globalSubTreeId) {
+        this.globalSubTreeId = globalSubTreeId;
+    }
+
     public boolean subTreeIdInitialized() {
         return subTreeId >= 0;
     }
@@ -91,6 +106,10 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
 
     public void setSubTreeId(int subTreeId) {
         this.subTreeId = subTreeId;
+    }
+
+    public SubTreeIndex getSubtrees() {
+        return subtrees;
     }
 
     @Override

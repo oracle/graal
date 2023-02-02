@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -57,8 +61,10 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -260,6 +266,10 @@ import org.graalvm.polyglot.proxy.Proxy;
  * like ASTs or optimized code by specifying a single underlying engine. See {@link Engine} for more
  * details about code sharing.
  *
+ * <p>
+ * Context can be configured to allow value sharing between multiple contexts (allowed by default).
+ * See {@link Builder#allowValueSharing(boolean)} for details.
+ *
  * <h3>Proxies</h3>
  *
  * The {@link Proxy proxy interfaces} allow to mimic guest language objects, arrays, executables,
@@ -285,6 +295,26 @@ import org.graalvm.polyglot.proxy.Proxy;
  * currently executing code. If the context is currently executing some code, a different thread may
  * kill the running execution and close the context using {@link #close(boolean)}.
  *
+ * <h3>Context Exit</h3>
+ *
+ * A context is exited naturally by calling the {@link #close} method. A context may also be exited
+ * at the guest application request. There are two ways a guest language may exit.
+ * <ul>
+ * <li>Soft exit. A guest language throws a special exception that causes the embedder thread to
+ * eventually throw a {@link PolyglotException} with {@link PolyglotException#isExit()} returning
+ * <code>true</code> and {@link PolyglotException#getExitStatus()} returning the exit status code
+ * specified by the guest application. The special exception does not influence other threads and
+ * does not trigger context close on its own. Closing the context is up to the embedder.
+ * <li>Hard exit. A guest language uses a builtin command that unwinds all context threads and
+ * closes the context by force. Embedder threads also throw a {@link PolyglotException} with
+ * {@link PolyglotException#isExit()} returning <code>true</code> and
+ * {@link PolyglotException#getExitStatus()} returning the exit status code specified by the guest
+ * application. However, the context is closed automatically. The hard exit can be customized using
+ * {@link Builder#useSystemExit(boolean)}. If <code>true</code>, the context threads are unwound by
+ * calling {@link System#exit(int)} with the exit status parameter specified by the guest
+ * application. This operation terminates the whole host application.
+ * </ul>
+ *
  * <h3>Pre-Initialization</h3>
  *
  * The context pre-initialization can be used to perform expensive builtin creation in the time of
@@ -303,10 +333,32 @@ import org.graalvm.polyglot.proxy.Proxy;
  */
 public final class Context implements AutoCloseable {
 
-    final AbstractContextImpl impl;
+    final AbstractContextDispatch dispatch;
+    final Object receiver;
+    final Context currentAPI;
+    final Engine engine;
 
-    Context(AbstractContextImpl impl) {
-        this.impl = impl;
+    @SuppressWarnings("unchecked")
+    <T> Context(AbstractContextDispatch dispatch, T receiver, Engine engine) {
+        this.dispatch = dispatch;
+        this.receiver = receiver;
+        this.engine = engine;
+        this.currentAPI = new Context(this);
+        dispatch.setAPI(receiver, this);
+    }
+
+    private Context() {
+        this.dispatch = null;
+        this.receiver = null;
+        this.engine = null;
+        this.currentAPI = null;
+    }
+
+    private <T> Context(Context creatorAPI) {
+        this.dispatch = creatorAPI.dispatch;
+        this.receiver = creatorAPI.receiver;
+        this.engine = creatorAPI.engine.currentAPI;
+        this.currentAPI = null;
     }
 
     /**
@@ -316,7 +368,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Engine getEngine() {
-        return impl.getEngineImpl(this);
+        return engine;
     }
 
     /**
@@ -346,7 +398,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value eval(Source source) {
-        return impl.eval(source.getLanguage(), source.impl);
+        return dispatch.eval(receiver, source.getLanguage(), source);
     }
 
     /**
@@ -427,7 +479,7 @@ public final class Context implements AutoCloseable {
      * @since 20.2
      */
     public Value parse(Source source) throws PolyglotException {
-        return impl.parse(source.getLanguage(), source.impl);
+        return dispatch.parse(receiver, source.getLanguage(), source);
     }
 
     /**
@@ -490,7 +542,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getPolyglotBindings() {
-        return impl.getPolyglotBindings();
+        return dispatch.getPolyglotBindings(receiver);
     }
 
     /**
@@ -507,7 +559,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getBindings(String languageId) {
-        return impl.getBindings(languageId);
+        return dispatch.getBindings(receiver, languageId);
     }
 
     /**
@@ -523,7 +575,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public boolean initialize(String languageId) {
-        return impl.initializeLanguage(languageId);
+        return dispatch.initializeLanguage(receiver, languageId);
     }
 
     /**
@@ -532,7 +584,7 @@ public final class Context implements AutoCloseable {
      * @since 19.3
      */
     public void resetLimits() {
-        impl.resetLimits();
+        dispatch.resetLimits(receiver);
     }
 
     /**
@@ -560,6 +612,22 @@ public final class Context implements AutoCloseable {
      * it will be interpreted as polyglot {@link Value#isString() string}.
      * <li>If the <code>hostValue</code> is an instance of {@link Boolean}, then it will be
      * interpreted as polyglot {@link Value#isBoolean() boolean}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Instant}, {@link LocalTime},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Date} or
+     * {@link java.sql.Time} then it will be interpreted as polyglot {@link Value#isTime() time}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Instant}, {@link LocalDate},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} or
+     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isDate() date}.
+     * <li>If the <code>hostValue</code> is an instance of {@link ZoneId}, {@link Instant},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} and
+     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isTimeZone() time
+     * zone}.
+     * <li>If the <code>hostValue</code> is an instance of {@link ZonedDateTime}, {@link Instant},
+     * {@link ZonedDateTime}, {@link java.util.Date} but not {@link java.sql.Time} and
+     * {@link java.sql.Date} then it will be interpreted as polyglot {@link Value#isInstant()
+     * instant}.
+     * <li>If the <code>hostValue</code> is an instance of {@link Duration} then it will be
+     * interpreted as polyglot {@link Value#isDuration() duration}.
      * <li>If the <code>hostValue</code> is a {@link Proxy polyglot proxy}, then it will be
      * interpreted according to the behavior specified by the proxy. See the javadoc of the proxy
      * subclass for further details.
@@ -666,7 +734,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value asValue(Object hostValue) {
-        return impl.asValue(hostValue);
+        return dispatch.asValue(receiver, hostValue);
     }
 
     /**
@@ -683,7 +751,8 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public void enter() {
-        impl.explicitEnter(this);
+        checkCreatorAccess("entered");
+        dispatch.explicitEnter(receiver);
     }
 
     /**
@@ -695,7 +764,7 @@ public final class Context implements AutoCloseable {
     public boolean equals(Object obj) {
         if (obj instanceof Context) {
             Context other = ((Context) obj);
-            return impl.equals(other.impl);
+            return receiver.equals(other.receiver);
         }
         return false;
     }
@@ -707,7 +776,7 @@ public final class Context implements AutoCloseable {
      */
     @Override
     public int hashCode() {
-        return impl.hashCode();
+        return Objects.hashCode(receiver);
     }
 
     /**
@@ -720,7 +789,14 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public void leave() {
-        impl.explicitLeave(this);
+        checkCreatorAccess("left");
+        dispatch.explicitLeave(receiver);
+    }
+
+    private void checkCreatorAccess(String operation) {
+        if (this.currentAPI == null) {
+            throw new IllegalStateException(String.format("Context instances that were received using Context.get() cannot be %s.", operation));
+        }
     }
 
     /**
@@ -736,18 +812,25 @@ public final class Context implements AutoCloseable {
      * {@link Builder#err(OutputStream) error output stream}. If a context was closed, then its
      * methods will throw an {@link IllegalStateException} when invoked. If an attempt to close a
      * context was successful, then consecutive calls to close have no effect.
+     * <p>
+     * For convenience, before the actual closing process begins, the close method leaves the
+     * context on the current thread, if it was entered {@link #enter() explicitly}.
      *
      * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
      *            {@link PolyglotException#isCancelled() cancelled}, else an
      *            {@link IllegalStateException} is thrown.
      * @see Engine#close() close an engine.
-     * @throws PolyglotException in case the close failed due to a guest language error.
+     * @throws PolyglotException in case the close failed due to a guest language error, or, if
+     *             cancelIfExecuting is <code>false</code>, the exception is also thrown when the
+     *             context was {@link PolyglotException#isCancelled() cancelled} or the context was
+     *             {@link PolyglotException#isExit() exited} at request of the guest application.
      * @throws IllegalStateException if the context is still running and cancelIfExecuting is
      *             <code>false</code>
      * @since 19.0
      */
     public void close(boolean cancelIfExecuting) {
-        impl.close(this, cancelIfExecuting);
+        checkCreatorAccess("closed");
+        dispatch.close(receiver, cancelIfExecuting);
     }
 
     /**
@@ -761,8 +844,13 @@ public final class Context implements AutoCloseable {
      * {@link Builder#err(OutputStream) error output stream}. If a context was closed, then its
      * methods will throw an {@link IllegalStateException}, when invoked. If an attempt to close a
      * context was successful, then consecutive calls to close have no effect.
+     * <p>
+     * For convenience, before the actual closing process begins, the close method leaves the
+     * context on the current thread, if it was entered {@link #enter() explicitly}.
      *
-     * @throws PolyglotException in case the close failed due to a guest language error.
+     * @throws PolyglotException in case the close failed due to a guest language error, or the
+     *             context was {@link PolyglotException#isCancelled() cancelled} or the context was
+     *             {@link PolyglotException#isExit() exited} at request of the guest application.
      * @throws IllegalStateException if the context is currently executing on another thread.
      * @see Engine#close() close an engine.
      * @since 19.0
@@ -777,7 +865,7 @@ public final class Context implements AutoCloseable {
      * executed during interrupt. A context thread may not be interruptiple if it uses
      * non-interruptible waiting or executes non-interruptible host code.
      *
-     * This method may be used as a "soft exit", meaning that it can be used before
+     * This method may be used as a "soft cancel", meaning that it can be used before
      * {@link #close(boolean) close(true)} is executed.
      *
      * @param timeout specifies the duration the interrupt method will wait for the active threads
@@ -790,7 +878,8 @@ public final class Context implements AutoCloseable {
      * @since 20.3
      */
     public void interrupt(Duration timeout) throws TimeoutException {
-        if (!impl.interrupt(this, timeout)) {
+        checkCreatorAccess("interrupted");
+        if (!dispatch.interrupt(receiver, timeout)) {
             throw new TimeoutException("Interrupt timed out.");
         }
     }
@@ -838,7 +927,7 @@ public final class Context implements AutoCloseable {
      * @since 21.1
      */
     public void safepoint() {
-        impl.safepoint();
+        dispatch.safepoint(receiver);
     }
 
     /**
@@ -870,15 +959,19 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public static Context getCurrent() {
-        return Engine.getImpl().getCurrentContext();
+        Context context = Engine.getImpl().getCurrentContext();
+        if (context.currentAPI == null) {
+            return context;
+        } else {
+            return context.currentAPI;
+        }
     }
 
     /**
-     * Creates a context with default configuration.
+     * Creates a context with default configuration. This method is a shortcut for
+     * {@link #newBuilder(String...) newBuilder(permittedLanuages).build()}.
      *
-     * @param permittedLanguages names of languages permitted in this context. If no languages are
-     *            provided, then all installed languages will be permitted.
-     * @return a new context
+     * @see #newBuilder(String...)
      * @since 19.0
      */
     public static Context create(String... permittedLanguages) {
@@ -889,7 +982,12 @@ public final class Context implements AutoCloseable {
      * Creates a builder for constructing a context with custom configuration.
      *
      * @param permittedLanguages names of languages permitted in the context. If no languages are
-     *            provided, then all installed languages will be permitted.
+     *            provided, then all installed languages will be permitted. If an explicit
+     *            {@link Builder#engine(Engine) engine} was specified then only those languages may
+     *            be used that were installed and {@link Engine#newBuilder(String...) permitted} by
+     *            the specified engine. Languages are validated when the context is
+     *            {@link Builder#build() built}. An {@link IllegalArgumentException} will be thrown
+     *            if an unknown or a language denied by the engine was used.
      * @return a builder that can create a context
      * @since 19.0
      */
@@ -897,21 +995,21 @@ public final class Context implements AutoCloseable {
         return EMPTY.new Builder(permittedLanguages);
     }
 
-    private static final Context EMPTY = new Context(null);
+    private static final Context EMPTY = new Context();
 
-    static final Predicate<String> UNSET_HOST_LOOKUP = new Predicate<String>() {
+    static final Predicate<String> UNSET_HOST_LOOKUP = new Predicate<>() {
         public boolean test(String t) {
             return false;
         }
     };
 
-    static final Predicate<String> NO_HOST_CLASSES = new Predicate<String>() {
+    static final Predicate<String> NO_HOST_CLASSES = new Predicate<>() {
         public boolean test(String t) {
             return false;
         }
     };
 
-    static final Predicate<String> ALL_HOST_CLASSES = new Predicate<String>() {
+    static final Predicate<String> ALL_HOST_CLASSES = new Predicate<>() {
         public boolean test(String t) {
             return true;
         }
@@ -928,7 +1026,7 @@ public final class Context implements AutoCloseable {
     public final class Builder {
 
         private Engine sharedEngine;
-        private String[] onlyLanguages;
+        private String[] permittedLanguages;
 
         private OutputStream out;
         private OutputStream err;
@@ -943,8 +1041,11 @@ public final class Context implements AutoCloseable {
         private Boolean allowHostClassLoading;
         private Boolean allowExperimentalOptions;
         private Boolean allowHostAccess;
+        private boolean allowValueSharing = true;
+        private Boolean allowInnerContextOptions;
         private PolyglotAccess polyglotAccess;
         private HostAccess hostAccess;
+        private IOAccess ioAccess;
         private FileSystem customFileSystem;
         private MessageTransport messageTransport;
         private Object customLogHandler;
@@ -956,13 +1057,14 @@ public final class Context implements AutoCloseable {
         private ZoneId zone;
         private Path currentWorkingDirectory;
         private ClassLoader hostClassLoader;
+        private boolean useSystemExit;
 
-        Builder(String... onlyLanguages) {
-            Objects.requireNonNull(onlyLanguages);
-            for (String onlyLanguage : onlyLanguages) {
-                Objects.requireNonNull(onlyLanguage);
+        Builder(String... permittedLanguages) {
+            Objects.requireNonNull(permittedLanguages);
+            for (String language : permittedLanguages) {
+                Objects.requireNonNull(language);
             }
-            this.onlyLanguages = onlyLanguages;
+            this.permittedLanguages = permittedLanguages;
         }
 
         /**
@@ -1026,7 +1128,7 @@ public final class Context implements AutoCloseable {
          * @deprecated use {@link #allowHostAccess(HostAccess)} or
          *             {@link #allowHostClassLookup(Predicate)} instead.
          */
-        @Deprecated
+        @Deprecated(since = "19.0")
         public Builder allowHostAccess(boolean enabled) {
             this.allowHostAccess = enabled;
             return this;
@@ -1098,11 +1200,13 @@ public final class Context implements AutoCloseable {
          * entries to the class path.
          * <li>Exporting new members into the polyglot {@link Context#getPolyglotBindings()
          * bindings}.
-         * <li>Unrestricted {@link #allowIO(boolean) IO operations} on host system.
+         * <li>Unrestricted {@link #allowIO(IOAccess) IO operations} on host system.
          * <li>Passing {@link #allowExperimentalOptions(boolean) experimental options}.
          * <li>The {@link #allowCreateProcess(boolean) creation} and use of new sub-processes.
          * <li>The {@link #allowEnvironmentAccess(org.graalvm.polyglot.EnvironmentAccess) access} to
          * process environment variables.
+         * <li>The {@link #allowInnerContextOptions(boolean) changing} of options for of inner
+         * contexts spawned by the language.
          * </ul>
          *
          * @param enabled <code>true</code> for all access by default.
@@ -1117,7 +1221,7 @@ public final class Context implements AutoCloseable {
          * If host class loading is enabled, then the guest language is allowed to load new host
          * classes via jar or class files. If {@link #allowAllAccess(boolean) all access} is set to
          * <code>true</code>, then the host class loading is enabled if it is not disallowed
-         * explicitly. For host class loading to be useful, {@link #allowIO(boolean) IO} operations
+         * explicitly. For host class loading to be useful, {@link #allowIO(IOAccess) IO} operations
          * {@link #allowHostClassLookup(Predicate) host class lookup}, and the
          * {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access policy} needs to be
          * configured as well.
@@ -1241,6 +1345,64 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Enables or disables sharing of any {@link Value value} between contexts. Value sharing is
+         * enabled by default and is not affected by {@link #allowAllAccess(boolean)}.
+         * <p>
+         * If this option is set to <code>true</code> (default) then any value that is associated
+         * with one context will be automatically migrated when passed to another context.
+         * Primitive, {@link Value#isHostObject() host} and {@link Value#isHostObject() proxy}
+         * values can be migrated without limitation. When guest language values are migrated, they
+         * capture and remember their original context. Guest language objects need to be accessed
+         * when their respective context is {@link Context#enter() entered}, therefore before any
+         * access their original context is entered and subsequently left. Entering the original
+         * context may fail, for example when the context of a original context value only allows
+         * single threaded access to values or if it was {@link Context#close() closed} in the mean
+         * time.
+         * <p>
+         * If this option is set to <code>false</code> then any value passed from one context to
+         * another will fail with an error indicating that sharing is disallowed. Turning sharing
+         * off can be useful when strict safety is required and it would be considered an error if a
+         * value of one context is passed to another.
+         * <p>
+         * Values of a guest language that are passed from one context to another are restricted to
+         * using the interoperability protocol only. In practice this often leads to slight changes
+         * and incompatibilities in behavior. For example, the prototype of a JavaScript object
+         * passed from one context to another is not writable, as the interoperability protocol does
+         * not allow such an operation (yet). A typical use-case is passing big immutable data
+         * structures that are infrequently accessed from one context to another, without copying
+         * them. In practice, passing values from one context to another should be avoided if
+         * possible, as their access is slower and their language compatibility reduced. This
+         * feature was introduced in 21.3. Older versions fail when guest values are passed from one
+         * context to another.
+         *
+         * @since 21.3
+         */
+        public Builder allowValueSharing(boolean enabled) {
+            this.allowValueSharing = enabled;
+            return this;
+        }
+
+        /**
+         * Allows this context to spawn inner contexts that may change option values set for the
+         * outer context. If this privilege is set to <code>false</code> then inner contexts are
+         * only allowed to use the same option values as its outer context. If this privilege is set
+         * to <code>true</code> then the context may modify option values for inner contexts it
+         * creates. This privilege should not be enabled for security sensitive use-cases. The
+         * default value for this privilege is inherited from {@link #allowAllAccess(boolean)}.
+         * <p>
+         * Inner contexts are spawned by language implementations to implement language embeddings
+         * of their own. For example, some languages provide dedicated APIs to spawn language
+         * virtual machines. Such APIs are often implemented using the inner context mechanism.
+         *
+         * @see #allowAllAccess(boolean)
+         * @since 22.3
+         */
+        public Builder allowInnerContextOptions(boolean enabled) {
+            this.allowInnerContextOptions = enabled;
+            return this;
+        }
+
+        /**
          * Sets a class filter that allows to limit the classes that are allowed to be loaded by
          * guest languages. If the filter returns <code>true</code>, then the class is accessible,
          * otherwise it is not accessible and throws a guest language error when accessed. In order
@@ -1252,7 +1414,7 @@ public final class Context implements AutoCloseable {
          * @since 19.0
          * @deprecated use {@link #allowHostClassLookup(Predicate)} instead.
          */
-        @Deprecated
+        @Deprecated(since = "19.0")
         public Builder hostClassFilter(Predicate<String> classFilter) {
             Objects.requireNonNull(classFilter);
             this.hostClassFilter = classFilter;
@@ -1294,8 +1456,8 @@ public final class Context implements AutoCloseable {
          * @since 19.0
          */
         public Builder options(Map<String, String> options) {
-            for (String key : options.keySet()) {
-                option(key, options.get(key));
+            for (var entry : options.entrySet()) {
+                option(entry.getKey(), entry.getValue());
             }
             return this;
         }
@@ -1330,6 +1492,26 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Configures guest language access to host IO. Default is {@link IOAccess#NONE}. If
+         * {@link #allowAllAccess(boolean) all access} is set to {@code true}, then
+         * {@link IOAccess#ALL} is used unless explicitly set. This method can be used to virtualize
+         * file system access in the guest language by using an {@link IOAccess} with a custom
+         * filesystem.
+         *
+         * @see IOAccess#ALL - to allow full host IO access
+         * @see IOAccess#NONE - to disable host IO access
+         * @see IOAccess#newBuilder() - to create a custom configuration.
+         *
+         * @param ioAccess the IO configuration
+         * @return the {@link Builder}
+         * @since 23.0
+         */
+        public Builder allowIO(IOAccess ioAccess) {
+            this.ioAccess = ioAccess;
+            return this;
+        }
+
+        /**
          * If <code>true</code>, allows guest language to perform unrestricted IO operations on host
          * system. Default is <code>false</code>. If {@link #allowAllAccess(boolean) all access} is
          * set to <code>true</code>, then IO is enabled if not allowed explicitly.
@@ -1337,7 +1519,10 @@ public final class Context implements AutoCloseable {
          * @param enabled {@code true} to enable Input/Output
          * @return the {@link Builder}
          * @since 19.0
+         * @deprecated If the value was previously {@code true} pass {@link IOAccess#ALL}, otherwise
+         *             pass {@link IOAccess#NONE}.
          */
+        @Deprecated(since = "23.0")
         public Builder allowIO(final boolean enabled) {
             allowIO = enabled;
             return this;
@@ -1349,7 +1534,10 @@ public final class Context implements AutoCloseable {
          * @param fileSystem the file system to be installed
          * @return the {@link Builder}
          * @since 19.0
+         * @deprecated If a file system was previously set use
+         *             {@code allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build())}.
          */
+        @Deprecated(since = "23.0")
         public Builder fileSystem(final FileSystem fileSystem) {
             Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
             this.customFileSystem = fileSystem;
@@ -1579,6 +1767,18 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Specifies whether {@link System#exit(int)} may be used to improve efficiency of stack
+         * unwinding for context exit requested by the guest application.
+         *
+         * @since 22.0
+         * @see Context
+         */
+        public Builder useSystemExit(boolean enabled) {
+            this.useSystemExit = enabled;
+            return this;
+        }
+
+        /**
          * Creates a new context instance from the configuration provided in the builder. The same
          * context builder can be used to create multiple context instances.
          *
@@ -1587,12 +1787,18 @@ public final class Context implements AutoCloseable {
         public Context build() {
             boolean nativeAccess = orAllAccess(allowNativeAccess);
             boolean createThread = orAllAccess(allowCreateThread);
-            boolean io = orAllAccess(allowIO);
             boolean hostClassLoading = orAllAccess(allowHostClassLoading);
             boolean experimentalOptions = orAllAccess(allowExperimentalOptions);
+            boolean innerContextOptions = orAllAccess(allowInnerContextOptions);
 
             if (this.allowHostAccess != null && this.hostAccess != null) {
-                throw new IllegalArgumentException("The method allowHostAccess with boolean and with HostAccess are mutually exclusive.");
+                throw new IllegalArgumentException("The method Context.Builder.allowHostAccess(boolean) and the method Context.Builder.allowHostAccess(HostAccess) are mutually exclusive.");
+            }
+            if (ioAccess != null && allowIO != null) {
+                throw new IllegalArgumentException("The method Context.Builder.allowIO(boolean) and the method Context.Builder.allowIO(IOAccess) are mutually exclusive.");
+            }
+            if (ioAccess != null && customFileSystem != null) {
+                throw new IllegalArgumentException("The method Context.Builder.allowIO(IOAccess) and the method Context.Builder.fileSystem(FileSystem) are mutually exclusive.");
             }
 
             Predicate<String> localHostLookupFilter = this.hostClassFilter;
@@ -1633,18 +1839,47 @@ public final class Context implements AutoCloseable {
             }
             Object limits;
             if (resourceLimits != null) {
-                limits = resourceLimits.impl;
+                limits = resourceLimits.receiver;
             } else {
                 limits = null;
             }
 
-            if (!io && customFileSystem != null) {
-                throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
+            IOAccess useIOAccess;
+            if (ioAccess != null) {
+                useIOAccess = ioAccess;
+            } else if (allowIO != null || customFileSystem != null) {
+                if (orAllAccess(allowIO)) {
+                    if (customFileSystem != null) {
+                        useIOAccess = IOAccess.newBuilder().fileSystem(customFileSystem).build();
+                    } else {
+                        useIOAccess = IOAccess.ALL;
+                    }
+                } else {
+                    if (customFileSystem != null) {
+                        throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
+                    } else {
+                        useIOAccess = IOAccess.NONE;
+                    }
+                }
+            } else {
+                useIOAccess = allowAllAccess ? IOAccess.ALL : IOAccess.NONE;
             }
             String localCurrentWorkingDirectory = currentWorkingDirectory == null ? null : currentWorkingDirectory.toString();
             Engine engine = this.sharedEngine;
+            Context ctx;
+            OutputStream contextOut;
+            OutputStream contextErr;
+            InputStream contextIn;
+            Map<String, String> contextOptions;
             if (engine == null) {
-                org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder().options(options == null ? Collections.emptyMap() : options);
+                org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder(permittedLanguages).options(options == null ? Collections.emptyMap() : options);
+                // for bound engines we just pass all the options to the engine so they can be
+                // processed in one step.
+                contextOptions = Collections.emptyMap();
+                contextOut = null;
+                contextErr = null;
+                contextIn = null;
+
                 if (out != null) {
                     engineBuilder.out(out);
                 }
@@ -1665,22 +1900,22 @@ public final class Context implements AutoCloseable {
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                Context ctx = engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
-                                io, hostClassLoading, experimentalOptions,
-                                localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
-                                localCurrentWorkingDirectory, hostClassLoader);
-                return ctx;
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
                 }
-                return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
-                                io, hostClassLoading, experimentalOptions,
-                                localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
-                                localCurrentWorkingDirectory, hostClassLoader);
+                contextOptions = options == null ? Collections.emptyMap() : options;
+                contextOut = out;
+                contextErr = err;
+                contextIn = in;
             }
+            LogHandler logHandler = customLogHandler != null ? Engine.getImpl().newLogHandler(customLogHandler) : null;
+            ctx = engine.dispatch.createContext(engine.receiver, contextOut, contextErr, contextIn, hostClassLookupEnabled,
+                            hostAccess, polyglotAccess, nativeAccess, createThread, hostClassLoading, innerContextOptions,
+                            experimentalOptions, localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
+                            permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
+                            localCurrentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);
+            return ctx;
         }
 
         private boolean orAllAccess(Boolean optionalBoolean) {

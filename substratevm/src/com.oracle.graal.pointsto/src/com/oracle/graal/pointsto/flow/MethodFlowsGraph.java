@@ -24,298 +24,118 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
-
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
+
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
 
-public class MethodFlowsGraph {
+public class MethodFlowsGraph implements MethodFlowsGraphInfo {
+    /**
+     * The type of method flows graph.
+     */
+    public enum GraphKind {
+        /**
+         * A stub MethodFlowsGraph is a graph which only has typeflows for parameter and return
+         * values, but does not have an internal flow. Stubs are used as a placeholder and may be
+         * dynamically replaced with a full flows graph throughout the analysis phase.
+         */
+        STUB,
+        /**
+         * A full MethodFlowsGraph has the full internal flow. Whether the graph flows for all
+         * object parameters and return values, regardless of whether they are linked to the
+         * internal flows, is dependent on
+         * {@code HostVM.MultiMethodAnalysisPolicy#insertPlaceholderParamAndReturnFlows}.
+         */
+        FULL,
+    }
 
     protected final int id;
-
-    private final AnalysisMethod method;
-    private AnalysisContext context;
-    private boolean isClone;
-
-    public TypeFlow<?>[] linearizedGraph;
+    protected final PointsToAnalysisMethod method;
+    protected TypeFlow<?>[] linearizedGraph;
 
     // parameters, sources and field loads are the possible data entry
     // points in the method
-    private FormalParamTypeFlow[] parameters;
-    private InitialParamTypeFlow[] initialParameterFlows;
-    private List<SourceTypeFlow> sources;
-    private List<LoadFieldTypeFlow> fieldLoads;
-    private List<LoadIndexedTypeFlow> indexedLoads;
-    private List<TypeFlow<?>> miscEntryFlows;
-
-    private List<NewInstanceTypeFlow> allocations;
-    private List<DynamicNewInstanceTypeFlow> dynamicAllocations;
-    private List<CloneTypeFlow> clones;
-    private List<MonitorEnterTypeFlow> monitorEntries;
-
+    protected FormalParamTypeFlow[] parameters;
+    protected List<TypeFlow<?>> miscEntryFlows;
+    protected EconomicMap<EncodedNodeReference, TypeFlow<?>> nodeFlows;
     /*
      * We keep a bci->flow mapping for instanceof and invoke flows since they are queried by the
      * analysis results builder.
      */
-    private Set<Object> nonUniqueBcis;
-    private Map<Object, InstanceOfTypeFlow> instanceOfFlows;
-    private Map<Object, InvokeTypeFlow> invokeFlows;
+    protected EconomicSet<Object> nonUniqueBcis;
+    protected EconomicMap<Object, InstanceOfTypeFlow> instanceOfFlows;
+    protected EconomicMap<Object, InvokeTypeFlow> invokeFlows;
 
-    private FormalReturnTypeFlow result;
+    protected FormalReturnTypeFlow returnFlow;
 
-    private boolean isLinearized = false;
-    private boolean sealed;
+    protected volatile boolean isLinearized;
+
+    private GraphKind graphKind;
 
     /**
      * Constructor for the 'original' method flows graph. This is used as a source for creating
      * clones. It has a <code>null</code> context and <code>null</code> original method flows.
      */
-    public MethodFlowsGraph(AnalysisMethod analysisMethod) {
+    public MethodFlowsGraph(PointsToAnalysisMethod method, GraphKind graphKind) {
 
         id = TypeFlow.nextId.incrementAndGet();
 
-        method = analysisMethod;
-        context = null;
-        isClone = false;
+        this.method = method;
+        this.graphKind = graphKind;
 
         // parameters
         boolean isStatic = Modifier.isStatic(method.getModifiers());
         int parameterCount = method.getSignature().getParameterCount(!isStatic);
         parameters = new FormalParamTypeFlow[parameterCount];
-
-        // lookup the parameters type so that they are added to the universe even if the method is
-        // never linked and parsed
-        int offset = isStatic ? 0 : 1;
-        for (int i = offset; i < parameters.length; i++) {
-            method.getSignature().getParameterType(i - offset, method.getDeclaringClass());
-        }
-
-        // initial parameter flows
-        initialParameterFlows = new InitialParamTypeFlow[parameterCount];
-
-        // lookup the return type so that it is added to the universe even if the method is
-        // never linked and parsed
-        method.getSignature().getReturnType(method.getDeclaringClass());
-
-        // allocations
-        allocations = new ArrayList<>();
-
-        dynamicAllocations = new ArrayList<>();
-
-        monitorEntries = new ArrayList<>();
-
-        // clones
-        clones = new ArrayList<>();
-
-        // sources
-        sources = new ArrayList<>();
-
-        // field loads
-        fieldLoads = new ArrayList<>();
-
-        // indexed loads
-        indexedLoads = new ArrayList<>();
-
-        // misc entry inputs
-        miscEntryFlows = new ArrayList<>();
-
-        // instanceof
-        instanceOfFlows = new HashMap<>();
-
-        // invoke
-        invokeFlows = new HashMap<>(4, 0.75f);
-        nonUniqueBcis = new HashSet<>();
     }
 
-    public MethodFlowsGraph(AnalysisMethod method, AnalysisContext context) {
-        this.id = TypeFlow.nextId.incrementAndGet();
-        this.context = context;
-        this.method = method;
-        this.isClone = true;
+    public <T extends TypeFlow<?>> T lookupCloneOf(@SuppressWarnings("unused") PointsToAnalysis bb, T original) {
+        return original;
     }
 
-    public void cloneOriginalFlows(BigBang bb) {
-
-        assert this.isClone && context != null;
-
-        /*
-         * The original method flows represent the source for cloning.
-         */
-        MethodFlowsGraph originalMethodFlowsGraph = method.getTypeFlow().originalMethodFlows;
-        assert originalMethodFlowsGraph != null && originalMethodFlowsGraph.isLinearized() : " Method " + this + " is not linearized";
-
-        linearizedGraph = new TypeFlow<?>[originalMethodFlowsGraph.linearizedGraph.length];
-
-        // parameters
-        parameters = new FormalParamTypeFlow[originalMethodFlowsGraph.parameters.length];
-        for (int i = 0; i < originalMethodFlowsGraph.parameters.length; i++) {
-            // copy the flow
-            if (originalMethodFlowsGraph.getParameter(i) != null) {
-                parameters[i] = lookupCloneOf(bb, originalMethodFlowsGraph.getParameter(i));
+    public void init(final PointsToAnalysis bb) {
+        for (TypeFlow<?> flow : flows()) {
+            if (flow instanceof AbstractUnsafeLoadTypeFlow) {
+                bb.registerUnsafeLoad((AbstractUnsafeLoadTypeFlow) flow);
             }
-        }
-
-        // initial parameter flows
-        initialParameterFlows = new InitialParamTypeFlow[originalMethodFlowsGraph.initialParameterFlows.length];
-
-        // allocations
-        allocations = originalMethodFlowsGraph.allocations.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
-
-        // dynamic allocations
-        dynamicAllocations = originalMethodFlowsGraph.dynamicAllocations.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
-
-        // monitor entries
-        monitorEntries = originalMethodFlowsGraph.monitorEntries.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
-
-        // clones
-        clones = originalMethodFlowsGraph.clones.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
-
-        // sources
-        sources = originalMethodFlowsGraph.sources.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
-
-        // result
-        result = originalMethodFlowsGraph.getResult() != null ? lookupCloneOf(bb, originalMethodFlowsGraph.getResult()) : null;
-
-        // field loads
-        fieldLoads = originalMethodFlowsGraph.fieldLoads.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
-
-        // indexed loads
-        indexedLoads = originalMethodFlowsGraph.indexedLoads.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
-
-        // instanceof
-        instanceOfFlows = originalMethodFlowsGraph.instanceOfFlows.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> lookupCloneOf(bb, e.getValue())));
-
-        // misc entry flows (merge, proxy, etc.)
-        miscEntryFlows = originalMethodFlowsGraph.miscEntryFlows.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
-
-        // instanceof
-        invokeFlows = originalMethodFlowsGraph.invokeFlows.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> lookupCloneOf(bb, e.getValue())));
-
-        /* At this point all the clones should have been created. */
-        sealed = true;
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T extends TypeFlow<?>> T lookupCloneOf(BigBang bb, T original) {
-        assert original != null : "Looking for the clone of a 'null' flow in " + this;
-        assert !original.isClone() : "Looking for the clone of the already cloned flow " + original + " in " + this;
-        assert !(original instanceof FieldTypeFlow) : "Trying to clone a field type flow";
-        assert !(original instanceof ArrayElementsTypeFlow) : "Trying to clone an mixed elements type flow";
-
-        if (original instanceof AllInstantiatedTypeFlow || original instanceof AllSynchronizedTypeFlow) {
-            /* All instantiated is not cloneable. */
-            return original;
-        }
-        if (original instanceof ProxyTypeFlow) {
-            /* The ProxyTypeFlow is just a place holder in the original graph for its input. */
-            return (T) ((ProxyTypeFlow) original).getInput();
-        }
-
-        int slot = original.getSlot();
-
-        assert slot >= 0 && slot < linearizedGraph.length : "Slot index out of bounds " + slot + " : " + original + " [" + original.getSource() + "]";
-
-        TypeFlow<?> clone = linearizedGraph[slot];
-        if (clone == null) {
-
-            if (sealed) {
-                shouldNotReachHere("Trying to create a clone after the method flows have been sealed.");
+            if (flow instanceof AbstractUnsafeStoreTypeFlow) {
+                bb.registerUnsafeStore((AbstractUnsafeStoreTypeFlow) flow);
             }
-
-            // copy only makes a shallow copy of the original flows;
-            // it does not copy it's uses or inputs (for those flows that have inputs)
-            clone = original.copy(bb, this);
-            assert slot == clone.getSlot();
-
-            assert linearizedGraph[slot] == null : "Clone already exists: " + slot + " : " + original;
-            linearizedGraph[slot] = clone;
-        }
-
-        return (T) clone;
-    }
-
-    public void linkClones(final BigBang bb) {
-
-        MethodFlowsGraph originalMethodFlowsGraph = method.getTypeFlow().originalMethodFlows;
-
-        /* Link the initial parameter flows to the parameters. */
-        for (int i = 0; i < originalMethodFlowsGraph.initialParameterFlows.length; i++) {
-            InitialParamTypeFlow initialParameterFlow = originalMethodFlowsGraph.getInitialParameterFlow(i);
-            if (initialParameterFlow != null && parameters[i] != null) {
-                initialParameterFlow.addUse(bb, parameters[i]);
-                initialParameterFlows[i] = initialParameterFlow;
-            }
-        }
-
-        for (TypeFlow<?> original : originalMethodFlowsGraph.linearizedGraph) {
-            TypeFlow<?> clone = lookupCloneOf(bb, original);
 
             /*
              * Run initialization code for corner case type flows. This can be used to add link from
              * 'outside' into the graph.
              */
-            clone.initClone(bb);
+            flow.initFlow(bb);
 
-            /* Link all 'internal' observers. */
-            for (TypeFlow<?> originalObserver : original.getObservers()) {
-                // only clone the original observers
-                assert !(originalObserver instanceof AllInstantiatedTypeFlow);
-                assert !(originalObserver.isClone());
-
-                if (nonCloneableFlow(originalObserver)) {
-                    clone.addObserver(bb, originalObserver);
-                } else if (crossMethodUse(original, originalObserver)) {
-                    // cross method uses (parameters, return and unwind) are linked by
-                    // InvokeTypeFlow.linkCallee
-                } else {
-                    TypeFlow<?> clonedObserver = lookupCloneOf(bb, originalObserver);
-                    clone.addObserver(bb, clonedObserver);
-                }
-            }
-
-            /* Link all 'internal' uses. */
-            for (TypeFlow<?> originalUse : original.getUses()) {
-                // only clone the original uses
-                assert !(originalUse instanceof AllInstantiatedTypeFlow);
-                assert !(originalUse.isClone());
-
-                if (nonCloneableFlow(originalUse)) {
-                    clone.addUse(bb, originalUse);
-                } else if (crossMethodUse(original, originalUse)) {
-                    // cross method uses (parameters, return and unwind) are linked by
-                    // InvokeTypeFlow.linkCallee
-                } else {
-                    TypeFlow<?> clonedUse = lookupCloneOf(bb, originalUse);
-                    clone.addUse(bb, clonedUse);
-                }
-            }
-
-            if (clone instanceof StaticInvokeTypeFlow) {
-                /* Trigger the update for static invokes, there is no receiver to trigger it. */
-                StaticInvokeTypeFlow invokeFlow = (StaticInvokeTypeFlow) clone;
-                bb.postFlow(invokeFlow);
+            /* Trigger the update for static invokes, there is no receiver to trigger it. */
+            if (flow instanceof AbstractStaticInvokeTypeFlow) {
+                bb.postFlow(flow);
             }
         }
     }
 
-    public static boolean nonCloneableFlow(TypeFlow<?> flow) {
+    protected static boolean nonCloneableFlow(TypeFlow<?> flow) {
         /*
          * References to field flows and to array elements flows are not part of the method itself;
          * field and indexed load and store flows will instead be cloned, and used to access the
@@ -324,7 +144,7 @@ public class MethodFlowsGraph {
         return flow instanceof FieldTypeFlow || flow instanceof ArrayElementsTypeFlow;
     }
 
-    public static boolean crossMethodUse(TypeFlow<?> flow, TypeFlow<?> use) {
+    protected static boolean crossMethodUse(TypeFlow<?> flow, TypeFlow<?> use) {
         /*
          * Formal returns and unwinds are method exit points. Formal parameters are entry points
          * into callees.
@@ -332,81 +152,158 @@ public class MethodFlowsGraph {
         return flow instanceof FormalReturnTypeFlow || use instanceof FormalParamTypeFlow;
     }
 
-    public void linearizeGraph() {
-        linearizedGraph = doLinearizeGraph();
-        isLinearized = true;
+    private static boolean nonMethodFlow(TypeFlow<?> flow) {
+        /*
+         * All-instantiated flow doesn't belong to any method, but it can be reachable from a use.
+         */
+        return flow instanceof AllInstantiatedTypeFlow || flow instanceof AllSynchronizedTypeFlow;
     }
 
-    private TypeFlow<?>[] doLinearizeGraph() {
+    /**
+     * Return the linearized graph, i.e., the graph represented as an array where each flow has a
+     * unique slot, blocking until the array is available.
+     */
+    public TypeFlow<?>[] getLinearizedGraph() {
+        ensureLinearized();
+        return linearizedGraph;
+    }
 
-        Deque<TypeFlow<?>> worklist = new ArrayDeque<>();
-
-        for (TypeFlow<?> param : parameters) {
-            if (param != null) {
-                worklist.add(param);
-            }
+    protected void ensureLinearized() {
+        if (!isLinearized) {
+            linearizeGraph(false);
         }
+    }
 
-        worklist.addAll(allocations);
-        worklist.addAll(dynamicAllocations);
-        worklist.addAll(monitorEntries);
-        worklist.addAll(clones);
-        worklist.addAll(sources);
-        worklist.addAll(miscEntryFlows);
-        worklist.addAll(fieldLoads);
-        worklist.addAll(indexedLoads);
-
-        worklist.addAll(instanceOfFlows.values());
-        worklist.addAll(invokeFlows.values());
-
-        if (result != null) {
-            worklist.add(result);
-        }
-
-        // temporary list in which the linearized graph is built
-        List<TypeFlow<?>> resultFlows = new ArrayList<>();
-
-        while (worklist.size() > 0) {
-            TypeFlow<?> flow = worklist.pop();
-            if (flow.getSlot() != -1) {
-                // flow already discovered and processed
-                continue;
-            }
-            if (flow instanceof AllInstantiatedTypeFlow) {
-                continue;
-            }
-
-            int slot = resultFlows.size();
-            flow.setSlot(slot);
-            resultFlows.add(flow);
-
-            for (TypeFlow<?> use : flow.getUses()) {
-                assert use != null;
-                if (use.isClone() || crossMethodUse(flow, use) || nonCloneableFlow(use)) {
-                    /*
-                     * use is already cloned, or crosses method boundary, or is not a cloneable flow
-                     */
-                    continue;
+    private synchronized void linearizeGraph(boolean isRedo) {
+        /* Synchronize access to ensure that the slot is set only once. */
+        if (isRedo || !isLinearized) {
+            List<TypeFlow<?>> resultFlows = new ArrayList<>();
+            for (TypeFlow<?> flow : flows()) {
+                int slotNum = flow.getSlot();
+                if (slotNum != -1) {
+                    assert flow instanceof FormalParamTypeFlow || flow instanceof FormalReturnTypeFlow : "Unexpected flow " + flow;
+                    AnalysisError.guarantee(isRedo && flow.getSlot() == resultFlows.size(), "Flow already discovered: %s", flow);
+                } else {
+                    flow.setSlot(resultFlows.size());
                 }
-                worklist.add(use);
+                resultFlows.add(flow);
             }
+            linearizedGraph = resultFlows.toArray(new TypeFlow<?>[0]);
+            isLinearized = true;
         }
+    }
 
-        return resultFlows.toArray(new TypeFlow<?>[resultFlows.size()]);
+    /**
+     * creates an iterator containing all flows which are internal to this method. This does not
+     * include the following types of flows:
+     * <ul>
+     * <li>A cloned flow</li>
+     * <li>A flow which is from another method</li>
+     * <li>A flow which does not belong to any method</li>
+     * </ul>
+     */
+    public final Iterable<TypeFlow<?>> flows() {
+        return () -> flowsIterator(false);
+    }
+
+    private Iterator<TypeFlow<?>> flowsIterator(boolean iterateClones) {
+        return new Iterator<>() {
+            final Deque<TypeFlow<?>> worklist = new ArrayDeque<>();
+            final Set<TypeFlow<?>> seen = new HashSet<>();
+            TypeFlow<?> next;
+
+            {
+                /*
+                 * Note parameter and return flows must be processed first to ensure they have a
+                 * stable id if the graph is updated.
+                 */
+                for (TypeFlow<?> param : parameters) {
+                    if (param != null) {
+                        worklist.add(param);
+                    }
+                }
+                if (returnFlow != null) {
+                    worklist.add(returnFlow);
+                }
+                if (nodeFlows != null) {
+                    for (var value : nodeFlows.getValues()) {
+                        worklist.add(value);
+                    }
+                }
+                if (miscEntryFlows != null) {
+                    worklist.addAll(miscEntryFlows);
+                }
+                if (instanceOfFlows != null) {
+                    for (var value : instanceOfFlows.getValues()) {
+                        worklist.add(value);
+                    }
+                }
+                if (invokeFlows != null) {
+                    for (var value : invokeFlows.getValues()) {
+                        worklist.add(value);
+                    }
+                }
+
+                /* Initialize next. */
+                next = findNext();
+            }
+
+            @Override
+            public boolean hasNext() {
+                return next != null;
+            }
+
+            @Override
+            public TypeFlow<?> next() {
+                TypeFlow<?> current = next;
+                next = findNext();
+                return current;
+            }
+
+            /** Get the next flow and expand the work list. */
+            private TypeFlow<?> findNext() {
+                /* pollFirst returns null if the deque is empty. */
+                TypeFlow<?> nextFlow = worklist.pollFirst();
+                while (seen.contains(nextFlow)) {
+                    nextFlow = worklist.pollFirst();
+                }
+                if (nextFlow != null) {
+                    seen.add(nextFlow);
+                    expand(nextFlow);
+                }
+                return nextFlow;
+            }
+
+            private void expand(TypeFlow<?> flow) {
+                for (TypeFlow<?> use : flow.getUses()) {
+                    if ((!iterateClones && use.isClone()) || crossMethodUse(flow, use) || nonCloneableFlow(use) || nonMethodFlow(use)) {
+                        continue;
+                    }
+                    worklist.add(use);
+                }
+            }
+        };
     }
 
     public int id() {
         return id;
     }
 
-    public AnalysisContext context() {
-        return context;
-    }
-
-    public AnalysisMethod getMethod() {
+    @Override
+    public PointsToAnalysisMethod getMethod() {
         return method;
     }
 
+    @Override
+    public boolean isStub() {
+        return graphKind == GraphKind.STUB;
+    }
+
+    public GraphKind getGraphKind() {
+        return graphKind;
+    }
+
+    @Override
     public FormalReceiverTypeFlow getFormalReceiver() {
         return (FormalReceiverTypeFlow) getParameter(0);
     }
@@ -416,6 +313,7 @@ public class MethodFlowsGraph {
         parameters[index] = parameter;
     }
 
+    @Override
     public FormalParamTypeFlow getParameter(int idx) {
         assert idx >= 0 && idx < this.parameters.length;
         return parameters[idx];
@@ -425,108 +323,82 @@ public class MethodFlowsGraph {
         return parameters;
     }
 
-    public void setInitialParameterFlow(InitialParamTypeFlow initialParameterFlow, int i) {
-        assert i >= 0 && i < this.initialParameterFlows.length;
-        initialParameterFlows[i] = initialParameterFlow;
+    public void addNodeFlow(PointsToAnalysis bb, Node node, TypeFlow<?> input) {
+        if (bb.strengthenGraalGraphs()) {
+            addNodeFlow(new EncodedNodeReference(node), input);
+        } else {
+            addMiscEntryFlow(input);
+        }
     }
 
-    public InitialParamTypeFlow getInitialParameterFlow(int i) {
-        assert i >= 0 && i < this.initialParameterFlows.length;
-        return initialParameterFlows[i];
+    public void addNodeFlow(EncodedNodeReference key, TypeFlow<?> flow) {
+        assert flow != null && !(flow instanceof AllInstantiatedTypeFlow);
+        if (nodeFlows == null) {
+            nodeFlows = EconomicMap.create();
+        }
+        nodeFlows.put(key, flow);
     }
 
-    public TypeFlow<?>[] getInitialParameterFlows() {
-        return initialParameterFlows;
+    public Collection<TypeFlow<?>> getMiscFlows() {
+        return miscEntryFlows == null ? Collections.emptyList() : miscEntryFlows;
     }
 
-    public void addAllocation(NewInstanceTypeFlow allocation) {
-        allocations.add(allocation);
-    }
-
-    public List<NewInstanceTypeFlow> getAllocations() {
-        return allocations;
-    }
-
-    public void addDynamicAllocation(DynamicNewInstanceTypeFlow allocation) {
-        dynamicAllocations.add(allocation);
-    }
-
-    public List<DynamicNewInstanceTypeFlow> getDynamicAllocations() {
-        return dynamicAllocations;
-    }
-
-    public void addMonitorEntry(MonitorEnterTypeFlow monitorEntry) {
-        monitorEntries.add(monitorEntry);
-    }
-
-    public List<MonitorEnterTypeFlow> getMonitorEntries() {
-        return monitorEntries;
-    }
-
-    public void addClone(CloneTypeFlow clone) {
-        clones.add(clone);
-    }
-
-    public List<CloneTypeFlow> getClones() {
-        return clones;
-    }
-
-    public void addSource(SourceTypeFlow source) {
-        sources.add(source);
+    public EconomicMap<EncodedNodeReference, TypeFlow<?>> getNodeFlows() {
+        return nodeFlows == null ? EconomicMap.emptyMap() : nodeFlows;
     }
 
     public void addMiscEntryFlow(TypeFlow<?> entryFlow) {
-        assert !(entryFlow instanceof AllInstantiatedTypeFlow);
+        if (miscEntryFlows == null) {
+            miscEntryFlows = new ArrayList<>();
+        }
         miscEntryFlows.add(entryFlow);
     }
 
-    public void addFieldLoad(LoadFieldTypeFlow fieldLoad) {
-        fieldLoads.add(fieldLoad);
+    public void setReturnFlow(FormalReturnTypeFlow returnFlow) {
+        this.returnFlow = returnFlow;
     }
 
-    public void addIndexedLoad(LoadIndexedTypeFlow indexedLoad) {
-        indexedLoads.add(indexedLoad);
+    @Override
+    public FormalReturnTypeFlow getReturnFlow() {
+        return this.returnFlow;
     }
 
-    public void setResult(FormalReturnTypeFlow result) {
-        this.result = result;
+    public EconomicMap<Object, InvokeTypeFlow> getInvokes() {
+        return invokeFlows == null ? EconomicMap.emptyMap() : invokeFlows;
     }
 
-    public FormalReturnTypeFlow getResult() {
-        return this.result;
-    }
-
-    public Set<Entry<Object, InvokeTypeFlow>> getInvokes() {
-        return invokeFlows.entrySet();
-    }
-
-    public Collection<InvokeTypeFlow> getInvokeFlows() {
-        return invokeFlows.values();
-    }
-
-    public Set<Entry<Object, InstanceOfTypeFlow>> getInstanceOfFlows() {
-        return instanceOfFlows.entrySet();
+    public EconomicMap<Object, InstanceOfTypeFlow> getInstanceOfFlows() {
+        return instanceOfFlows == null ? EconomicMap.emptyMap() : instanceOfFlows;
     }
 
     void addInstanceOf(Object key, InstanceOfTypeFlow instanceOf) {
+        if (instanceOfFlows == null) {
+            instanceOfFlows = EconomicMap.create();
+        }
         doAddFlow(key, instanceOf, instanceOfFlows);
     }
 
     void addInvoke(Object key, InvokeTypeFlow invokeTypeFlow) {
+        if (invokeFlows == null) {
+            invokeFlows = EconomicMap.create();
+        }
         doAddFlow(key, invokeTypeFlow, invokeFlows);
     }
 
-    private <T extends TypeFlow<BytecodePosition>> void doAddFlow(Object key, T flow, Map<Object, T> map) {
+    private <T extends TypeFlow<BytecodePosition>> void doAddFlow(Object key, T flow, EconomicMap<Object, T> map) {
         assert map == instanceOfFlows || map == invokeFlows : "Keys of these maps must not be overlapping";
         Object uniqueKey = key;
-        if (nonUniqueBcis.contains(key) || removeNonUnique(key, instanceOfFlows) || removeNonUnique(key, invokeFlows)) {
+        if ((nonUniqueBcis != null && nonUniqueBcis.contains(key)) || removeNonUnique(key, instanceOfFlows) || removeNonUnique(key, invokeFlows)) {
             uniqueKey = new Object();
         }
         map.put(uniqueKey, flow);
     }
 
-    private <T extends TypeFlow<BytecodePosition>> boolean removeNonUnique(Object key, Map<Object, T> map) {
-        T oldFlow = map.remove(key);
+    private <T extends TypeFlow<BytecodePosition>> boolean removeNonUnique(Object key, EconomicMap<Object, T> map) {
+        if (map == null) {
+            return false;
+        }
+        T oldFlow = map.removeKey(key);
         if (oldFlow != null) {
             /*
              * This can happen when Graal inlines jsr/ret routines and the inlined nodes share the
@@ -535,15 +407,14 @@ public class MethodFlowsGraph {
              * uniqueKey->flow pairing.
              */
             map.put(new Object(), oldFlow);
+            if (nonUniqueBcis == null) {
+                nonUniqueBcis = EconomicSet.create();
+            }
             nonUniqueBcis.add(key);
             return true;
         } else {
             return false;
         }
-    }
-
-    public InvokeTypeFlow getInvoke(Object key) {
-        return invokeFlows.get(key);
     }
 
     public boolean isLinearized() {
@@ -555,7 +426,7 @@ public class MethodFlowsGraph {
      *
      * @return a list containing all the callers for the given context sensitive method
      */
-    public List<MethodFlowsGraph> callers(BigBang bb) {
+    public List<MethodFlowsGraph> callers(PointsToAnalysis bb) {
         /*
          * This list is seldom needed thus it is created lazily instead of storing a mapping from a
          * caller context to a caller graph for each method graph.
@@ -564,14 +435,14 @@ public class MethodFlowsGraph {
          */
         List<MethodFlowsGraph> callers = new ArrayList<>();
         for (AnalysisMethod caller : method.getCallers()) {
-            for (MethodFlowsGraph callerFlowGraph : caller.getTypeFlow().getFlows()) {
-                for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokeFlows()) {
+            for (MethodFlowsGraph callerFlowGraph : PointsToAnalysis.assertPointsToAnalysisMethod(caller).getTypeFlow().getFlows()) {
+                for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokes().getValues()) {
                     InvokeTypeFlow invoke = callerInvoke;
                     if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(callerInvoke)) {
                         /* The invoke has been replaced by the context insensitive one. */
-                        invoke = callerInvoke.getTargetMethod().getContextInsensitiveInvoke();
+                        invoke = callerInvoke.getTargetMethod().getContextInsensitiveVirtualInvoke(method.getMultiMethodKey());
                     }
-                    for (MethodFlowsGraph calleeFlowGraph : invoke.getCalleesFlows(bb)) {
+                    for (MethodFlowsGraph calleeFlowGraph : invoke.getOriginalCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one
                         // of the clones of the caller methods, hence we regiter that clone as a
                         // caller for 'this' method clone
@@ -592,9 +463,9 @@ public class MethodFlowsGraph {
      * @param callerFlowGraph the context sensitive caller.
      * @return the InvokeTypeFlow object belonging to the caller that linked to this callee.
      */
-    public InvokeTypeFlow invokeFlow(MethodFlowsGraph callerFlowGraph, BigBang bb) {
-        for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokeFlows()) {
-            for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getCalleesFlows(bb)) {
+    public InvokeTypeFlow invokeFlow(MethodFlowsGraph callerFlowGraph, PointsToAnalysis bb) {
+        for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokes().getValues()) {
+            for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getOriginalCalleesFlows(bb)) {
                 // 'this' method graph was found among the callees of an invoke flow in the caller
                 // method clone, hence we register return it
                 if (calleeFlowGraph.equals(this)) {
@@ -606,28 +477,49 @@ public class MethodFlowsGraph {
     }
 
     @Override
-    public boolean equals(Object obj) {
-
-        if (this == obj) {
-            return true;
-        }
-
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-
-        MethodFlowsGraph that = (MethodFlowsGraph) obj;
-        return this.method.equals(that.method) && this.isClone == that.isClone && this.context.equals(that.context);
-    }
-
-    @Override
-    public int hashCode() {
-        /* The context is not null only for clone's method flows. */
-        return 42 ^ method.hashCode() ^ (this.isClone ? context.hashCode() : 1);
-    }
-
-    @Override
     public String toString() {
-        return "MethodFlowsGraph<" + method.format("%h.%n(%p)") + " " + (isClone ? context : "original") + ">";
+        return "MethodFlowsGraph<" + method.format("%h.%n(%p)") + ">";
+    }
+
+    /**
+     * Removes all internal flows of the graph and leave behind only the parameter and return flows.
+     * This is expected to only be used by {@link MethodTypeFlow#updateFlowsGraph}.
+     */
+    final void removeInternalFlows(PointsToAnalysis bb) {
+
+        // Clear out the parameter uses and observers
+        for (var param : getParameters()) {
+            if (param != null) {
+                param.clearUses();
+                param.clearObservers();
+            }
+        }
+
+        // Clear out the return value inputs and observees
+        if (returnFlow != null && bb.trackTypeFlowInputs()) {
+            returnFlow.clearInputs();
+            returnFlow.clearObservees();
+        }
+
+        // Clearing out all other flows
+        miscEntryFlows = null;
+        nodeFlows = null;
+
+        nonUniqueBcis = null;
+        instanceOfFlows = null;
+        invokeFlows = null;
+    }
+
+    /**
+     * Updates the graphkind and relinearizes the graph if necessary. This is expected to only be
+     * used by {@link MethodTypeFlow#updateFlowsGraph}.
+     */
+    void updateInternalState(GraphKind newGraphKind) {
+
+        graphKind = newGraphKind;
+
+        if (isLinearized) {
+            linearizeGraph(true);
+        }
     }
 }

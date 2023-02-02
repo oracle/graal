@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,51 +25,53 @@ package com.oracle.truffle.espresso.jdwp.impl;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Semaphore;
 
 public final class SocketConnection implements Runnable {
     private final Socket socket;
-    private final ServerSocket serverSocket;
-    private boolean closed = false;
     private final OutputStream socketOutput;
     private final InputStream socketInput;
     private final Object receiveLock = new Object();
     private final Object sendLock = new Object();
-    private final Object closeLock = new Object();
+    private final Semaphore isOpen = new Semaphore(1);
 
-    private final BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(512);
+    private final BlockingQueue<PacketStream> queue = new ArrayBlockingQueue<>(4096);
 
-    SocketConnection(Socket socket, ServerSocket serverSocket) throws IOException {
+    SocketConnection(Socket socket) throws IOException {
         this.socket = socket;
-        this.serverSocket = serverSocket;
         socket.setTcpNoDelay(true);
         socketInput = socket.getInputStream();
         socketOutput = socket.getOutputStream();
     }
 
-    public void close() throws IOException {
-        synchronized (closeLock) {
-            if (closed) {
-                return;
+    public void close(DebuggerController controller) throws IOException {
+        // send outstanding packets before closing
+        while (!queue.isEmpty()) {
+            for (PacketStream packetStream : queue) {
+                byte[] shipment = packetStream.prepareForShipment();
+                try {
+                    writePacket(shipment);
+                } catch (ConnectionClosedException e) {
+                    controller.finest(() -> "connection was closed when trying to flush queue");
+                }
             }
-            if (serverSocket != null) {
-                serverSocket.close();
-            }
-            socketOutput.close();
-            socketInput.close();
-            socket.close();
-            queue.clear();
-            closed = true;
         }
+        socketOutput.flush();
+        if (!isOpen.tryAcquire()) {
+            return;
+        }
+        controller.fine(() -> "closing socket now");
+        socketOutput.close();
+        socketInput.close();
+        socket.close();
+        queue.clear();
     }
 
     public boolean isOpen() {
-        synchronized (closeLock) {
-            return !closed;
-        }
+        return isOpen.availablePermits() > 0;
     }
 
     @Override
@@ -217,6 +219,16 @@ public final class SocketConnection implements Runnable {
             return socketInput.available() > 0;
         } catch (IOException e) {
             return false;
+        }
+    }
+
+    public void sendVMDied(PacketStream stream, DebuggerController controller) {
+        byte[] shipment = stream.prepareForShipment();
+        try {
+            writePacket(shipment);
+            socketOutput.flush();
+        } catch (Exception e) {
+            controller.fine(() -> "sending VM_DEATH packet to client failed");
         }
     }
 }

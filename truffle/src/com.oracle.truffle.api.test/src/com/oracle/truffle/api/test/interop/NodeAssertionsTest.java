@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -273,7 +273,7 @@ public class NodeAssertionsTest extends InteropLibraryBaseTest {
             context.initialize(ProxyLanguage.ID);
             context.enter();
             Frame frame = Truffle.getRuntime().createMaterializedFrame(new Object[]{});
-            TestAssertsNode n = new TestAssertsNode(ProxyLanguage.getCurrentLanguage(), frame.getFrameDescriptor());
+            TestAssertsNode n = new TestAssertsNode(ProxyLanguage.get(null), frame.getFrameDescriptor());
             NodeLibrary l = createLibrary(NodeLibrary.class, n);
 
             n.getView = (f, x) -> x;
@@ -284,7 +284,7 @@ public class NodeAssertionsTest extends InteropLibraryBaseTest {
             NodeDefaultsTest.ProxyLanguageValue pv = new NodeDefaultsTest.ProxyLanguageValue();
             assertSame(pv, l.getView(n, frame, pv));
             assertFails(() -> l.getView(n, null, pv), AssertionError.class);
-            assertFails(() -> l.getView(new TestAssertsNode(ProxyLanguage.getCurrentLanguage(), null), frame, pv), AssertionError.class);
+            assertFails(() -> l.getView(new TestAssertsNode(ProxyLanguage.get(null), null), frame, pv), AssertionError.class);
             assertFails(() -> l.getView(new TestAssertsNode(null, frame.getFrameDescriptor()), frame, pv), AssertionError.class);
         }
     }

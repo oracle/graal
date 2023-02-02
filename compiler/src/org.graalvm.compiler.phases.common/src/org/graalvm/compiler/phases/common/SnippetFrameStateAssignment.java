@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,9 +42,11 @@ import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueProxyNode;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
+import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
 /**
@@ -81,7 +83,16 @@ public class SnippetFrameStateAssignment {
          */
         AFTER_BCI,
         /**
-         * An invalid state setup (e.g. multiple subsequent effects inside a snippet)for a
+         * The frame state after the snippet replacee, but invalid for deoptimization. This is used
+         * for side effects inside loops in the snippet.
+         */
+        AFTER_BCI_INVALID_FOR_DEOPTIMIZATION,
+        /**
+         * The frame state at the exception edge of the snippet replacee.
+         */
+        AFTER_EXCEPTION_BCI,
+        /**
+         * An invalid state setup (e.g. multiple subsequent effects inside a snippet) for a
          * side-effecting node inside a snippet.
          */
         INVALID
@@ -147,14 +158,20 @@ public class SnippetFrameStateAssignment {
                 stateMapping.put(node, stateAssignment);
             }
             if (node instanceof StateSplit && ((StateSplit) node).hasSideEffect() && !(node instanceof StartNode || node instanceof AbstractMergeNode)) {
-                if (stateAssignment == NodeStateAssignment.BEFORE_BCI) {
+                if (node instanceof ExceptionObjectNode) {
+                    nextStateAssignment = NodeStateAssignment.AFTER_EXCEPTION_BCI;
+                } else if (stateAssignment == NodeStateAssignment.BEFORE_BCI) {
                     nextStateAssignment = NodeStateAssignment.AFTER_BCI;
+                } else if (stateAssignment == NodeStateAssignment.AFTER_BCI_INVALID_FOR_DEOPTIMIZATION) {
+                    // Remain in this state.
+                    nextStateAssignment = NodeStateAssignment.AFTER_BCI_INVALID_FOR_DEOPTIMIZATION;
                 } else {
                     if (logOnInvalid) {
                         node.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Node %s creating invalid assignment", node);
                     }
                     nextStateAssignment = NodeStateAssignment.INVALID;
                 }
+                stateMapping.put(node, nextStateAssignment);
             }
             return nextStateAssignment;
         }
@@ -167,36 +184,43 @@ public class SnippetFrameStateAssignment {
              * in its return values. If such a snippet is encountered the subsequent logic will
              * assign an invalid state to the merge.
              */
-            int beforeCount = 0;
-            int afterCount = 0;
-            int invalidCount = 0;
-
-            for (int i = 0; i < states.size(); i++) {
-                if (states.get(i) == NodeStateAssignment.BEFORE_BCI) {
-                    beforeCount++;
-                } else if (states.get(i) == NodeStateAssignment.AFTER_BCI) {
-                    afterCount++;
-                } else {
-                    invalidCount++;
+            NodeStateAssignment bci = null;
+            forAllStates: for (int i = 0; i < states.size(); i++) {
+                NodeStateAssignment assignment = states.get(i);
+                switch (assignment) {
+                    case BEFORE_BCI:
+                        /* If we only see BEFORE_BCI, the result will be BEFORE_BCI. */
+                        if (bci == null) {
+                            bci = NodeStateAssignment.BEFORE_BCI;
+                        }
+                        break;
+                    case AFTER_BCI:
+                    case AFTER_BCI_INVALID_FOR_DEOPTIMIZATION:
+                        /* If we see at least one kind of AFTER_BCI, the result will be the same. */
+                        if (bci == NodeStateAssignment.AFTER_BCI || bci == NodeStateAssignment.AFTER_BCI_INVALID_FOR_DEOPTIMIZATION) {
+                            GraalError.guarantee(bci == assignment, "Cannot mix valid and invalid AFTER_BCI versions");
+                        }
+                        bci = assignment;
+                        break;
+                    case AFTER_EXCEPTION_BCI:
+                        /* AFTER_EXCEPTION_BCI can only be merged with itself. */
+                        if (bci == null || bci == NodeStateAssignment.AFTER_EXCEPTION_BCI) {
+                            bci = NodeStateAssignment.AFTER_EXCEPTION_BCI;
+                            break;
+                        }
+                        /* Cannot merge AFTER_EXCEPTION_BCI with anything else. */
+                        bci = NodeStateAssignment.INVALID;
+                        break forAllStates;
+                    case INVALID:
+                        bci = NodeStateAssignment.INVALID;
+                        break forAllStates;
+                    default:
+                        throw GraalError.shouldNotReachHere("Unhandled node state assignment: " + assignment + " at merge " + merge);
                 }
             }
-            if (invalidCount > 0) {
-                stateMapping.put(merge, NodeStateAssignment.INVALID);
-                return NodeStateAssignment.INVALID;
-            } else {
-                if (afterCount == 0) {
-                    // only before states
-                    assert beforeCount == states.size();
-                    stateMapping.put(merge, NodeStateAssignment.BEFORE_BCI);
-                    return NodeStateAssignment.BEFORE_BCI;
-                } else {
-                    // some before, and at least one after
-                    assert afterCount > 0;
-                    stateMapping.put(merge, NodeStateAssignment.AFTER_BCI);
-                    return NodeStateAssignment.AFTER_BCI;
-                }
-            }
-
+            assert bci != null;
+            stateMapping.put(merge, bci);
+            return bci;
         }
 
         @Override
@@ -230,6 +254,25 @@ public class SnippetFrameStateAssignment {
             if (selected != initialState) {
                 for (LoopExitNode exit : loop.loopExits()) {
                     loopInfo.exitStates.put(exit, selected);
+                }
+                if (selected == NodeStateAssignment.AFTER_BCI) {
+                    /*
+                     * The loop's exit states are set to AFTER_BCI and should remain as such, but
+                     * side effects inside the loop must get AFTER_BCI_INVALID_FOR_DEOPTIMIZATION.
+                     * Re-iterate over the loop. We are only interested in the iteration's side
+                     * effects (i.e., modifying the state mapping), not the returned states.
+                     *
+                     * However, we will not be able to assign a frame state to nodes inside the loop
+                     * if the loop has proxied values since they might be accessible from the state.
+                     * This would lead to an unschedulable graph.
+                     */
+                    for (LoopExitNode exit : loop.loopExits()) {
+                        if (exit.proxies().filter(ValueProxyNode.class).isNotEmpty()) {
+                            GraalError.shouldNotReachHere("Snippet graphs containing loops with value proxies are not supported by snippet frame state assignment.");
+                        }
+                    }
+                    stateMapping.put(loop, NodeStateAssignment.AFTER_BCI_INVALID_FOR_DEOPTIMIZATION);
+                    ReentrantNodeIterator.processLoop(this, loop, NodeStateAssignment.AFTER_BCI_INVALID_FOR_DEOPTIMIZATION);
                 }
             }
             return loopInfo.exitStates;

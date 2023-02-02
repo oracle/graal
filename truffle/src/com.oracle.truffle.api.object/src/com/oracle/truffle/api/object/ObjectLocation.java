@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,19 @@
 package com.oracle.truffle.api.object;
 
 /**
- * Planned to be deprecated.
+ * Object location.
  *
  * @since 0.8 or earlier
+ * @deprecated no replacement.
+ * @see Location
+ * @see DynamicObjectLibrary#getOrDefault
+ * @see DynamicObjectLibrary#put
  */
+@Deprecated(since = "22.2")
 @SuppressWarnings("deprecation")
-public interface ObjectLocation extends TypedLocation {
+public interface ObjectLocation {
     /** @since 0.8 or earlier */
+    @Deprecated(since = "22.2")
     Class<? extends Object> getType();
 
     /**
@@ -55,5 +61,6 @@ public interface ObjectLocation extends TypedLocation {
      *
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     boolean isNonNull();
 }

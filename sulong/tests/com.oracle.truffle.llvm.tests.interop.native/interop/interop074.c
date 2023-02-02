@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ int main() {
     global_array[0] = &global;
     global_array[1] = NULL;
 
-    void (*returnObject)(void *) = polyglot_import("returnObject");
+    void (*returnObject)(void *) = (void *) polyglot_import("returnObject");
     returnObject(global);
 
     int index = 0;

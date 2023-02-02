@@ -64,14 +64,13 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport {
         }
 
         /**
-         * Multiple image generators can run simultaneously in one hosting VM. Therefore, the
-         * {@link ImageSingletons} is not a singleton during image generation, i.e., we cannot store
-         * the {@link ImageSingletons} in a static field. Instead, we store it in a thread local
-         * variable. The image generator is responsible to {@link #installInThread install} the same
-         * configuration in all worker threads, and {@link #clearInThread clear} it when it is no
-         * longer needed.
+         * The {@link ImageSingletons} removes static state from the image generator, and in theory
+         * would allow multiple image builds to run at the same time in the same HotSpot VM. But in
+         * practice, this is not possible because JDK state would leak between image builds. So it
+         * is OK (and better for performance) to store all the {@link ImageSingletons} in a static
+         * field here.
          */
-        private static final ThreadLocal<HostedManagement> hostedVMConfig = new ThreadLocal<>();
+        private static HostedManagement singletonDuringImageBuild;
 
         public static HostedManagement getAndAssertExists() {
             HostedManagement result = get();
@@ -80,17 +79,16 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport {
         }
 
         public static HostedManagement get() {
-            return hostedVMConfig.get();
+            return singletonDuringImageBuild;
         }
 
-        public static void installInThread(HostedManagement vmConfig) {
-            assert hostedVMConfig.get() == null;
-            hostedVMConfig.set(vmConfig);
+        public static void install(HostedManagement vmConfig) {
+            UserError.guarantee(singletonDuringImageBuild == null, "Only one native image build can run at a time");
+            singletonDuringImageBuild = vmConfig;
         }
 
-        public static void clearInThread() {
-            assert hostedVMConfig.get() != null;
-            hostedVMConfig.set(null);
+        public static void clear() {
+            singletonDuringImageBuild = null;
         }
 
         private final Map<Class<?>, Object> configObjects;

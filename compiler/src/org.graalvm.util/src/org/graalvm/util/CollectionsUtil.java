@@ -36,6 +36,8 @@ import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.Pair;
+
 /**
  * This class contains utility methods for commonly used functional patterns for collections.
  */
@@ -65,14 +67,14 @@ public final class CollectionsUtil {
         for (Iterable<T> iterable : iterables) {
             Objects.requireNonNull(iterable);
         }
-        return new Iterable<T>() {
+        return new Iterable<>() {
             @Override
             public Iterator<T> iterator() {
                 if (iterables.size() == 0) {
                     return Collections.emptyIterator();
                 }
-                return new Iterator<T>() {
-                    Iterator<Iterable<T>> cursor = iterables.iterator();
+                return new Iterator<>() {
+                    final Iterator<Iterable<T>> cursor = iterables.iterator();
                     Iterator<T> currentIterator = cursor.next().iterator();
 
                     private void advance() {
@@ -290,4 +292,83 @@ public final class CollectionsUtil {
         return strb.toString();
     }
 
+    /**
+     * Combines two iterables into an iterable of pairs with as many elements as the longer
+     * iterable. Elements are paired in the order of the original iterables. When one of the
+     * iterators is exhausted, {@code null}s are returned in its place.
+     *
+     * @param lhs the first iterable
+     * @param rhs the second iterable
+     * @return an iterable of pairs of the input elements
+     */
+    public static <L, R> Iterable<Pair<L, R>> zipLongest(Iterable<L> lhs, Iterable<R> rhs) {
+        Iterator<L> lhsIterator = lhs.iterator();
+        Iterator<R> rhsIterator = rhs.iterator();
+        return () -> new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return lhsIterator.hasNext() || rhsIterator.hasNext();
+            }
+
+            @Override
+            public Pair<L, R> next() {
+                if (lhsIterator.hasNext() && rhsIterator.hasNext()) {
+                    return Pair.create(lhsIterator.next(), rhsIterator.next());
+                } else if (lhsIterator.hasNext()) {
+                    return Pair.createLeft(lhsIterator.next());
+                } else {
+                    return Pair.createRight(rhsIterator.next());
+                }
+            }
+        };
+    }
+
+    /**
+     * Returns an iterable over all pairs of elements.
+     *
+     * Suppose that the first iterable returns the elements {@code a1, a2, ..., an} and the second
+     * iterable returns the elements {@code b1, b2, ..., bm}. Then, the method returns the pairs
+     * {@code (a1, b1), (a1, b2), ..., (a1, bm), (a2, b1), (a2, b2), ... (an, bm)}.
+     *
+     * @param lhs the first iterable (left elements of the {@link Pair})
+     * @param rhs the second iterable (right elements of the {@link Pair})
+     * @return an iterable over all pairs of elements
+     */
+    public static <L, R> Iterable<Pair<L, R>> cartesianProduct(Iterable<L> lhs, Iterable<R> rhs) {
+        return () -> new Iterator<>() {
+
+            private L lhsLast = null;
+
+            private final Iterator<L> lhsIterator = lhs.iterator();
+
+            private boolean rhsReachedEnd = true;
+
+            private Iterator<R> rhsIterator = null;
+
+            @Override
+            public boolean hasNext() {
+                if (rhsReachedEnd) {
+                    if (!lhsIterator.hasNext()) {
+                        return false;
+                    }
+                    lhsLast = lhsIterator.next();
+                    rhsIterator = rhs.iterator();
+                    rhsReachedEnd = !rhsIterator.hasNext();
+                    return !rhsReachedEnd;
+                }
+                return true;
+            }
+
+            @Override
+            public Pair<L, R> next() {
+                if (rhsReachedEnd) {
+                    lhsLast = lhsIterator.next();
+                    rhsIterator = rhs.iterator();
+                }
+                R rhsItem = rhsIterator.next();
+                rhsReachedEnd = !rhsIterator.hasNext();
+                return Pair.create(lhsLast, rhsItem);
+            }
+        };
+    }
 }

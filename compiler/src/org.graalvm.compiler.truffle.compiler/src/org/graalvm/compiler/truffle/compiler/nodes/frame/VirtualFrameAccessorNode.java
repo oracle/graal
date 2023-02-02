@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,26 +47,59 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public abstract class VirtualFrameAccessorNode extends FixedWithNextNode implements ControlFlowAnchored {
+public abstract class VirtualFrameAccessorNode extends FixedWithNextNode implements ControlFlowAnchored, VirtualFrameAccessVerificationNode {
     public static final NodeClass<VirtualFrameAccessorNode> TYPE = NodeClass.create(VirtualFrameAccessorNode.class);
 
     @Input protected NewFrameNode frame;
 
     protected final int frameSlotIndex;
     protected final int accessTag;
+    protected final VirtualFrameAccessType type;
+    protected final VirtualFrameAccessFlags accessFlags;
 
-    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, Receiver frame, int frameSlotIndex, int accessTag) {
-        super(c, stamp);
-        this.frame = (NewFrameNode) frame.get();
-        this.frameSlotIndex = frameSlotIndex;
-        this.accessTag = accessTag;
+    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, Receiver frame, int frameSlotIndex,
+                    int accessTag, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        this(c, stamp, (NewFrameNode) frame.get(), frameSlotIndex, accessTag, type, accessFlags);
     }
 
-    protected ValueNode getConstant(int n) {
+    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, NewFrameNode frame, int frameSlotIndex,
+                    int accessTag, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        super(c, stamp);
+        this.type = type;
+        this.frame = frame;
+        this.frameSlotIndex = frameSlotIndex;
+        this.accessTag = accessTag;
+        this.accessFlags = accessFlags;
+    }
+
+    protected final ValueNode getConstant(int n) {
         return frame.smallIntConstants.get(n);
     }
 
-    protected void insertDeoptimization(VirtualizerTool tool) {
+    protected final ValueNode getConstantWithStaticModifier(int n) {
+        return frame.smallIntConstants.get(n | NewFrameNode.FrameSlotKindStaticTag);
+    }
+
+    @Override
+    public final NewFrameNode getFrame() {
+        return frame;
+    }
+
+    @Override
+    public final int getFrameSlotIndex() {
+        return frameSlotIndex;
+    }
+
+    @Override
+    public final VirtualFrameAccessType getType() {
+        return type;
+    }
+
+    public final int getAccessTag() {
+        return accessTag;
+    }
+
+    protected final void insertDeoptimization(VirtualizerTool tool) {
         /*
          * Escape analysis does not allow insertion of a DeoptimizeNode. We work around this
          * restriction by inserting an always-failing guard, which will be canonicalized to a
@@ -88,5 +121,10 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
             tool.addNode(unusedValue);
             tool.replaceWith(unusedValue);
         }
+    }
+
+    @Override
+    public <State> void updateVerificationState(VirtualFrameVerificationStateUpdater<State> updater, State state) {
+        assert !accessFlags.updatesFrame() : "This node modifies the frame and must override `updateVerificationState`.";
     }
 }

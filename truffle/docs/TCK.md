@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Polyglot API Based TCK
+permalink: /graalvm-as-a-platform/language-implementation-framework/TCK/
+---
 # Polyglot API-based Test Compatibility Kit
 
 The Test Compatibility Kit (TCK) is a collection of tests verifying the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) inter-operability and instrumentation.

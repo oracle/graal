@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,6 +53,9 @@ int foo(int x, ...) {
 int main() {
     struct _point p1 = { 2, 3 };
     struct _point p2 = { 5, 7 };
+    struct _point p3 = { 4, 6 };
+    struct _point p4 = { 1, 8 };
+    struct _point p5 = { 0xa, 0xc };
 
-    return foo(1, p1, p2, p1, p2, p1, p2, p1, p2, p1, p2);
+    return foo(1, p1, p2, p3, p4, p5, p1, p2, p3, p4, p5);
 }

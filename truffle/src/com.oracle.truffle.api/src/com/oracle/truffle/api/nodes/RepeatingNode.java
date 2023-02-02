@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  *
  * Repeating nodes are intended to be implemented by guest language implementations. For a full
  * usage example please see {@link LoopNode}.
+ *
+ * Note: The result of <code>{@link RepeatingNode#shouldContinue shouldContinue}(
+ * {@link RepeatingNode#executeRepeatingWithValue executeRepeatingWithValue}())</code> is
+ * automatically profiled by the loop node, so the {@link RepeatingNode repeating node} should not
+ * use a loop condition profile.
  *
  * @see LoopNode
  * @see TruffleRuntime#createLoopNode(RepeatingNode)

@@ -40,7 +40,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Represents an atomic read-and-write operation like
- * {@link sun.misc.Unsafe#getAndSetInt(Object, long, int)}.
+ * {@code sun.misc.Unsafe.getAndSetInt(Object, long, int)}.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_2)
 public final class AtomicReadAndWriteNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill {

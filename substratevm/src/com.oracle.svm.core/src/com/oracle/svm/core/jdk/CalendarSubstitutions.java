@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Locale;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
+import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
@@ -65,7 +65,7 @@ import jdk.vm.ci.code.TargetDescription;
  * or while transitioning between those two calls. Having different reference maps would lead to
  * wrong roots and therefore a crash of the GC.
  */
-public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimizationPhase {
+public class VerifyCFunctionReferenceMapsLIRPhase extends FinalCodeAnalysisPhase {
 
     @Override
     protected CharSequence createName() {
@@ -73,7 +73,7 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
     }
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, FinalCodeAnalysisContext context) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             /*
              * We only have explicit thread state transitions with a slow path in multi-threaded
@@ -83,7 +83,11 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
         }
 
         LIR ir = lirGenRes.getLIR();
-        for (AbstractBlockBase<?> block : ir.linearScanOrder()) {
+        for (int blockId : ir.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
+                continue;
+            }
+            BasicBlock<?> block = ir.getBlockById(blockId);
             List<LIRInstruction> instructions = ir.getLIRforBlock(block);
             for (int i = 0; i < instructions.size(); i++) {
                 LIRInstruction op = instructions.get(i);
@@ -101,8 +105,8 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
         private final int newThreadStatus;
         private final CFunctionEpilogueMarker epilogueMarker;
 
-        private final Set<AbstractBlockBase<?>> processed = new HashSet<>();
-        private final Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
+        private final Set<BasicBlock<?>> processed = new HashSet<>();
+        private final Deque<BasicBlock<?>> worklist = new ArrayDeque<>();
 
         private final List<LIRFrameState> states = new ArrayList<>();
 
@@ -112,7 +116,7 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
             this.epilogueMarker = epilogueMarker;
         }
 
-        void run(AbstractBlockBase<?> startBlock, int startInstruction) {
+        void run(BasicBlock<?> startBlock, int startInstruction) {
 
             /*
              * Traverse all instructions of the control flow graph, starting with the instruction
@@ -146,7 +150,7 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
             }
         }
 
-        private void processBlock(AbstractBlockBase<?> block, int startInstruction) {
+        private void processBlock(BasicBlock<?> block, int startInstruction) {
             processed.add(block);
 
             List<LIRInstruction> instructions = ir.getLIRforBlock(block);
@@ -165,7 +169,8 @@ public class VerifyCFunctionReferenceMapsLIRPhase extends PostAllocationOptimiza
             if (block.getSuccessorCount() == 0) {
                 throw VMError.shouldNotReachHere("No epilogue marker found");
             }
-            for (AbstractBlockBase<?> successor : block.getSuccessors()) {
+            for (int i = 0; i < block.getSuccessorCount(); i++) {
+                BasicBlock<?> successor = block.getSuccessorAt(i);
                 if (!processed.contains(successor)) {
                     worklist.add(successor);
                 }

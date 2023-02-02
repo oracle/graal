@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,8 @@ import com.oracle.truffle.nfi.ConvertTypeNode.ConvertFromNativeNode;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertToNativeNode;
 import com.oracle.truffle.nfi.NFISignature.SignatureCachedState;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 @ExportLibrary(InteropLibrary.class)
 final class NFIClosure implements TruffleObject {
 
@@ -83,7 +85,7 @@ final class NFIClosure implements TruffleObject {
             return ret;
         }
 
-        @Specialization(guards = {"receiver.signature.cachedState != null", "receiver.signature.cachedState == cachedState"})
+        @Specialization(guards = {"receiver.signature.cachedState != null", "receiver.signature.cachedState == cachedState"}, limit = "3")
         static Object doOptimizedDirect(NFIClosure receiver, Object[] args,
                         @Cached("receiver.signature.cachedState") SignatureCachedState cachedState,
                         @Cached("cachedState.createOptimizedClosureCall()") CallSignatureNode call) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
@@ -106,7 +108,7 @@ final class NFIClosure implements TruffleObject {
             NFISignature signature = receiver.signature;
             if (args.length != signature.nativeArgCount) {
                 exception.enter();
-                throw ArityException.create(signature.nativeArgCount, args.length);
+                throw ArityException.create(signature.nativeArgCount, signature.nativeArgCount, args.length);
             }
 
             Object[] preparedArgs = new Object[signature.managedArgCount];

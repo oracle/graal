@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,17 +25,20 @@ package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
+import com.oracle.truffle.espresso.impl.ObjectKlass.KlassVersion;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * Implementation of {@link Klass} for primitive types. Primitive classes don't have a .class
@@ -50,22 +53,16 @@ public final class PrimitiveKlass extends Klass {
      * @param primitiveKind the kind to create the type for
      */
     public PrimitiveKlass(EspressoContext context, JavaKind primitiveKind) {
-        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(), null, ObjectKlass.EMPTY_ARRAY,
+        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(),
                         Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC);
         assert primitiveKind.isPrimitive() : primitiveKind + " not a primitive kind";
         this.primitiveKind = primitiveKind;
+        assert getMeta().java_lang_Class != null;
+        initializeEspressoClass();
     }
 
     public JavaKind getPrimitiveJavaKind() {
         return primitiveKind;
-    }
-
-    @Override
-    protected ArrayKlass createArrayKlass() {
-        if (getJavaKind() == JavaKind.Void) {
-            return null;
-        }
-        return super.createArrayKlass();
     }
 
     @Override
@@ -74,7 +71,7 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+    public @JavaType(ClassLoader.class) StaticObject getDefiningClassLoader() {
         return StaticObject.NULL; // BCL
     }
 
@@ -114,7 +111,12 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
+    public Method.MethodVersion[] getDeclaredMethodVersions() {
+        return Method.EMPTY_VERSION_ARRAY;
+    }
+
+    @Override
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
         return null;
     }
 
@@ -146,5 +148,29 @@ public final class PrimitiveKlass extends Klass {
     @Override
     public int getClassModifiers() {
         return getModifiers();
+    }
+
+    @TruffleBoundary
+    public StaticObject allocatePrimitiveArray(int length) {
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length);
+        return getAllocator().createNewPrimitiveArray(this, length);
+    }
+
+    @Override
+    protected Klass[] getSuperTypes() {
+        // default implementation for primitive classes
+        return new Klass[]{this};
+    }
+
+    @Override
+    protected int getHierarchyDepth() {
+        // default implementation for primitive classes
+        return 0;
+    }
+
+    @Override
+    protected KlassVersion[] getTransitiveInterfacesList() {
+        // default implementation for primitive classes
+        return ObjectKlass.EMPTY_KLASSVERSION_ARRAY;
     }
 }

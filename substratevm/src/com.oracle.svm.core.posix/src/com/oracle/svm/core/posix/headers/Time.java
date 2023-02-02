@@ -25,10 +25,14 @@
 package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
@@ -62,9 +66,6 @@ public class Time {
     public interface timezone extends PointerBase {
     }
 
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int gettimeofday(timeval tv, timezone tz);
-
     @CStruct(addStructKeyword = true)
     public interface timespec extends PointerBase {
         @CField
@@ -78,5 +79,39 @@ public class Time {
 
         @CField
         void set_tv_nsec(long value);
+    }
+
+    @CStruct(addStructKeyword = true)
+    public interface itimerval extends PointerBase {
+        @CFieldAddress
+        timeval it_interval();
+
+        @CFieldAddress
+        timeval it_value();
+    }
+
+    @CEnum
+    @CContext(PosixDirectives.class)
+    public enum TimerTypeEnum {
+        ITIMER_REAL,
+        ITIMER_VIRTUAL,
+        ITIMER_PROF;
+
+        @CEnumValue
+        public native int getCValue();
+    }
+
+    public static class NoTransitions {
+        /**
+         * @param which from {@link TimerTypeEnum#getCValue()}
+         */
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native int setitimer(TimerTypeEnum which, itimerval newValue, itimerval oldValue);
+
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native int gettimeofday(timeval tv, timezone tz);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int nanosleep(timespec requestedtime, timespec remaining);
     }
 }

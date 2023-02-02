@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 /**
  * Guard {@link PhiNode}s merge guard dependencies at control flow merges.
@@ -45,7 +46,7 @@ public final class GuardPhiNode extends PhiNode implements GuardingNode {
         this.values = new NodeInputList<>(this);
     }
 
-    public GuardPhiNode(AbstractMergeNode merge, ValueNode[] values) {
+    public GuardPhiNode(AbstractMergeNode merge, ValueNode... values) {
         super(TYPE, StampFactory.forVoid(), merge);
         this.values = new NodeInputList<>(this, values);
     }
@@ -58,5 +59,30 @@ public final class GuardPhiNode extends PhiNode implements GuardingNode {
     @Override
     public PhiNode duplicateOn(AbstractMergeNode newMerge) {
         return graph().addWithoutUnique(new GuardPhiNode(newMerge));
+    }
+
+    @Override
+    public ProxyNode createProxyFor(LoopExitNode lex) {
+        return graph().addWithoutUnique(new GuardProxyNode(this, lex));
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (isLoopPhi()) {
+            boolean allBackValuesNull = true;
+            for (int i = 1; i < valueCount(); i++) {
+                ValueNode value = valueAt(i);
+                if (value != null) {
+                    allBackValuesNull = false;
+                    break;
+                }
+            }
+            if (allBackValuesNull) {
+                // all values but the first are null, an allowed value for the guard phi, return the
+                // first value instead
+                return valueAt(0);
+            }
+        }
+        return super.canonical(tool);
     }
 }

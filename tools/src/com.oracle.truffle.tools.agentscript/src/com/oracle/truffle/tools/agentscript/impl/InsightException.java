@@ -112,6 +112,11 @@ final class InsightException extends AbstractTruffleException {
     }
 
     @TruffleBoundary
+    static InsightException alreadyClosed() {
+        throw new InsightException("The script has already been closed", null, -1);
+    }
+
+    @TruffleBoundary
     static void throwWhenExecuted(Instrumenter instrumenter, Source source, Exception ex) {
         TruffleStackTrace.getStackTrace(ex);
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().sourceIs(source).build();
@@ -121,13 +126,12 @@ final class InsightException extends AbstractTruffleException {
             @TruffleBoundary
             public void onEnter(EventContext context, VirtualFrame frame) {
                 waitForSourceBeingExecuted[0].dispose();
-                EventContextObject obj = new EventContextObject(context);
                 InteropLibrary interopLib = InteropLibrary.getUncached();
                 if (interopLib.isException(ex)) {
-                    throw obj.rethrow((RuntimeException) ex, interopLib);
+                    throw EventContextObject.rethrow((RuntimeException) ex, interopLib);
                 }
                 InsightException wrapper = new InsightException(ex, context.getInstrumentedNode());
-                throw obj.rethrow(wrapper, interopLib);
+                throw EventContextObject.rethrow(wrapper, interopLib);
             }
 
             @Override

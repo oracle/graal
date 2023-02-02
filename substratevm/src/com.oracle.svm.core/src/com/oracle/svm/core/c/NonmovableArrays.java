@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.c;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -46,7 +44,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -427,7 +425,7 @@ public final class NonmovableArrays {
             return (T) hosted[index];
         }
         assert matches(array, false, ConfigurationValues.getObjectLayout().getReferenceSize());
-        return (T) KnownIntrinsics.convertUnknownValue(ReferenceAccess.singleton().readObjectAt(addressOf(array, index), true), Object.class);
+        return (T) ReferenceAccess.singleton().readObjectAt(addressOf(array, index), true);
     }
 
     /** Writes the value at the given index in an object array. */
@@ -445,7 +443,6 @@ public final class NonmovableArrays {
     /**
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
         if (array.isNonNull()) {
             return walkUnmanagedObjectArray(array, visitor, 0, lengthOf(array));
@@ -456,7 +453,6 @@ public final class NonmovableArrays {
     /**
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor, int startIndex, int count) {
         if (array.isNonNull()) {
             assert startIndex >= 0 && count <= lengthOf(array) - startIndex;
@@ -464,7 +460,7 @@ public final class NonmovableArrays {
             assert refSize == (1 << readElementShift(array));
             Pointer p = ((Pointer) array).add(readArrayBase(array)).add(startIndex * refSize);
             for (int i = 0; i < count; i++) {
-                if (!visitor.visitObjectReference(p, true)) {
+                if (!visitor.visitObjectReference(p, true, null)) {
                     return false;
                 }
                 p = p.add(refSize);

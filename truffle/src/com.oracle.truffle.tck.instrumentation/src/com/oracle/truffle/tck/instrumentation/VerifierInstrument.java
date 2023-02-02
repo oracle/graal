@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import org.junit.Assert;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
@@ -268,7 +267,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
             if (!hasParentRootTag(node) &&
                             node.getRootNode().getFrameDescriptor() == frame.getFrameDescriptor()) {
                 Object defaultValue = frame.getFrameDescriptor().getDefaultValue();
-                for (FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
+                for (int slot = 0; slot < frame.getFrameDescriptor().getNumberOfSlots(); slot++) {
                     Assert.assertEquals("Top-most nodes tagged with RootTag should have clean frames.", defaultValue, frame.getValue(slot));
                 }
             }

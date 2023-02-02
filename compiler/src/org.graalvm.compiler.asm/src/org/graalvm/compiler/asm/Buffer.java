@@ -29,7 +29,6 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
 
 /**
  * Code buffer management for the assembler.
@@ -45,11 +44,6 @@ final class Buffer {
 
     public int position() {
         return data.position();
-    }
-
-    public void setPosition(int position) {
-        assert position >= 0 && position <= data.limit();
-        BufferUtil.asBaseBuffer(data).position(position);
     }
 
     /**
@@ -78,23 +72,12 @@ final class Buffer {
         return Arrays.copyOfRange(data.array(), start, end);
     }
 
-    /**
-     * Copies the data from this buffer into a given array.
-     *
-     * @param dst the destination array
-     * @param off starting position in {@code dst}
-     * @param len number of bytes to copy
-     */
-    public void copyInto(byte[] dst, int off, int len) {
-        System.arraycopy(data.array(), 0, dst, off, len);
-    }
-
     protected void ensureSize(int length) {
         if (length >= data.limit()) {
             byte[] newBuf = Arrays.copyOf(data.array(), length * 4);
             ByteBuffer newData = ByteBuffer.wrap(newBuf);
             newData.order(data.order());
-            BufferUtil.asBaseBuffer(newData).position(data.position());
+            newData.position(data.position());
             data = newData;
         }
     }
@@ -171,6 +154,6 @@ final class Buffer {
     }
 
     public void reset() {
-        BufferUtil.asBaseBuffer(data).clear();
+        data.clear();
     }
 }

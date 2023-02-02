@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,7 @@ import java.util.EnumSet;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMap;
@@ -50,7 +49,6 @@ import jdk.vm.ci.code.RegisterSaveLayout;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -97,13 +95,13 @@ public class StandardOp {
          */
         @Def({REG, STACK}) private Value[] incomingValues;
         private final Label label;
-        private final boolean align;
+        private int alignment;
         private int numbPhis;
 
-        public LabelOp(Label label, boolean align) {
+        public LabelOp(Label label, int alignment) {
             super(TYPE);
             this.label = label;
-            this.align = align;
+            this.alignment = alignment;
             this.incomingValues = Value.NO_VALUES;
             this.numbPhis = 0;
         }
@@ -153,14 +151,22 @@ public class StandardOp {
             incomingValues = newArray;
         }
 
+        public void setAlignment(int alignment) {
+            this.alignment = alignment;
+        }
+
+        public int getAlignment() {
+            return alignment;
+        }
+
         private boolean checkRange(int idx) {
             return idx < incomingValues.length;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb) {
-            if (align) {
-                crb.asm.align(GraalOptions.LoopHeaderAlignment.getValue(crb.getOptions()));
+            if (alignment != 0) {
+                crb.asm.align(alignment);
             }
             crb.asm.bind(label);
         }
@@ -299,11 +305,6 @@ public class StandardOp {
             return op.isLoadConstantOp();
         }
 
-        default boolean canRematerialize() {
-            // By default only JavaConstants are assumed to be handled by the generic move
-            // operation.
-            return getConstant() instanceof JavaConstant;
-        }
     }
 
     /**
@@ -434,12 +435,6 @@ public class StandardOp {
     }
 
     /**
-     * Marker interface for an operation that kills some set register and stack locations.
-     */
-    public interface ZapRegistersOp {
-    }
-
-    /**
      * A LIR operation that does nothing. If the operation records its position, it can be
      * subsequently {@linkplain #replace(LIR, LIRInstruction) replaced}.
      */
@@ -449,14 +444,14 @@ public class StandardOp {
         /**
          * The block in which this instruction is located.
          */
-        final AbstractBlockBase<?> block;
+        final BasicBlock<?> block;
 
         /**
          * The block index of this instruction.
          */
         final int index;
 
-        public NoOp(AbstractBlockBase<?> block, int index) {
+        public NoOp(BasicBlock<?> block, int index) {
             super(TYPE);
             this.block = block;
             this.index = index;

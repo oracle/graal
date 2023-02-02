@@ -38,10 +38,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -49,12 +51,18 @@ import org.junit.rules.ExpectedException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 public class EagerParsingLazyFailingTest {
 
+    @Before
+    public void bundledLLVMOnly() {
+        TestOptions.assumeBundledLLVM();
+    }
+
     private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "other").toPath();
-    private static final String FILENAME = "O0_MEM2REG.bc";
+    private static final String FILENAME = "bitcode-O0.bc";
 
     private static final class Runner implements AutoCloseable {
         private final String testName;
@@ -68,7 +76,12 @@ public class EagerParsingLazyFailingTest {
 
         Runner(String testName, Map<String, String> options) {
             this.testName = testName;
-            this.context = Context.newBuilder().options(options).allowAllAccess(true).build();
+            Builder builder = Context.newBuilder();
+            if (!Platform.isLinux() || !Platform.isAMD64()) {
+                // ignore target triple
+                CommonTestUtils.disableBitcodeVerification(builder);
+            }
+            this.context = builder.options(options).allowAllAccess(true).build();
             this.library = null;
         }
 
@@ -103,14 +116,14 @@ public class EagerParsingLazyFailingTest {
 
     @Test
     public void unsupportedInlineAsmNotExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c")) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll")) {
             Assert.assertEquals(2, runner.load().invokeMember("run", 0).asInt());
         }
     }
 
     @Test
     public void unsupportedInlineAsmExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c")) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll")) {
             exception.expect(PolyglotException.class);
             exception.expectMessage(containsString("Unsupported operation"));
             Assert.assertEquals(1, runner.load().invokeMember("run", 4).asInt());
@@ -119,14 +132,14 @@ public class EagerParsingLazyFailingTest {
 
     @Test
     public void unsupportedInlineAsmEagerParsingNotExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c", eagerParsingOptions())) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll", eagerParsingOptions())) {
             Assert.assertEquals(2, runner.load().invokeMember("run", 0).asInt());
         }
     }
 
     @Test
     public void unsupportedInlineAsmEagerParsingExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c", eagerParsingOptions())) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll", eagerParsingOptions())) {
             exception.expect(PolyglotException.class);
             exception.expectMessage(containsString("Unsupported operation"));
             Assert.assertEquals(1, runner.load().invokeMember("run", 4).asInt());

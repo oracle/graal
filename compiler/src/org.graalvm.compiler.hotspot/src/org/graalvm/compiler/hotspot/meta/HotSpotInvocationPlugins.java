@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,25 +27,29 @@ package org.graalvm.compiler.hotspot.meta;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.phases.AheadOfTimeVerificationPhase;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
-import org.graalvm.compiler.replacements.nodes.MacroNode;
+import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 
-import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -54,69 +58,110 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 final class HotSpotInvocationPlugins extends InvocationPlugins {
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final GraalHotSpotVMConfig config;
-    private final Predicate<ResolvedJavaType> intrinsificationPredicate;
+    private final UnimplementedGraalIntrinsics unimplementedIntrinsics;
+    private EconomicMap<String, Integer> missingIntrinsicMetrics;
 
-    HotSpotInvocationPlugins(HotSpotGraalRuntimeProvider graalRuntime, GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration) {
+    /**
+     * Predicates that determine which types may be intrinsified.
+     */
+    private final List<Predicate<ResolvedJavaType>> intrinsificationPredicates = new ArrayList<>();
+
+    HotSpotInvocationPlugins(HotSpotGraalRuntimeProvider graalRuntime, GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration,
+                    TargetDescription target, OptionValues options) {
         this.graalRuntime = graalRuntime;
         this.config = config;
-        this.intrinsificationPredicate = runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass());
+        if (Options.WarnMissingIntrinsic.getValue(options)) {
+            this.unimplementedIntrinsics = new UnimplementedGraalIntrinsics(config, target.arch);
+        } else {
+            this.unimplementedIntrinsics = null;
+        }
+        this.missingIntrinsicMetrics = null;
+
+        registerIntrinsificationPredicate(runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass()));
     }
 
     @Override
-    protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
+    protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
         if (!config.usePopCountInstruction) {
-            if (name.equals("bitCount")) {
-                assert declaringClass.equals(Integer.class) || declaringClass.equals(Long.class);
+            if ("bitCount".equals(plugin.name)) {
+                GraalError.guarantee(declaringClass.equals(Integer.class) || declaringClass.equals(Long.class), declaringClass.getTypeName());
                 return;
             }
         }
-        super.register(plugin, isOptional, allowOverwrite, declaringClass, name, argumentTypes);
+        if (!config.useUnalignedAccesses) {
+            if (plugin.name.endsWith("Unaligned") && declaringClass.getTypeName().equals("jdk.internal.misc.Unsafe")) {
+                return;
+            }
+        }
+        super.register(declaringClass, plugin, allowOverwrite);
     }
 
     @Override
     public void checkNewNodes(GraphBuilderContext b, InvocationPlugin plugin, NodeIterable<Node> newNodes) {
         for (Node node : newNodes) {
-            if (node instanceof MacroNode) {
+            if (node instanceof MacroInvokable) {
                 // MacroNode based plugins can only be used for inlining since they
                 // require a valid bci should they need to replace themselves with
                 // an InvokeNode during lowering.
-                assert plugin.inlineOnly() : String.format("plugin that creates a %s (%s) must return true for inlineOnly(): %s", MacroNode.class.getSimpleName(), node, plugin);
-            }
-        }
-        if (GraalOptions.ImmutableCode.getValue(b.getOptions())) {
-            for (Node node : newNodes) {
-                if (node.hasUsages() && node instanceof ConstantNode) {
-                    ConstantNode c = (ConstantNode) node;
-                    if (c.getStackKind() == JavaKind.Object && AheadOfTimeVerificationPhase.isIllegalObjectConstant(c)) {
-                        if (isClass(c)) {
-                            // This will be handled later by LoadJavaMirrorWithKlassPhase
-                        } else {
-                            // Tolerate uses in unused FrameStates
-                            if (node.usages().filter((n) -> !(n instanceof FrameState) || n.hasUsages()).isNotEmpty()) {
-                                throw new AssertionError("illegal constant node in AOT: " + node);
-                            }
-                        }
-                    }
-                }
+                GraalError.guarantee(plugin.inlineOnly(), "plugin that creates a %s (%s) must return true for inlineOnly(): %s", MacroInvokable.class.getSimpleName(), node, plugin);
             }
         }
         super.checkNewNodes(b, plugin, newNodes);
     }
 
-    private static boolean isClass(ConstantNode node) {
-        ResolvedJavaType type = StampTool.typeOrNull(node);
-        return type != null && "Ljava/lang/Class;".equals(type.getName());
+    @Override
+    public void registerIntrinsificationPredicate(Predicate<ResolvedJavaType> predicate) {
+        intrinsificationPredicates.add(predicate);
     }
 
     @Override
     public boolean canBeIntrinsified(ResolvedJavaType declaringClass) {
-        if (!intrinsificationPredicate.test(declaringClass)) {
+        boolean ok = false;
+        for (Predicate<ResolvedJavaType> p : intrinsificationPredicates) {
+            ok |= p.test(declaringClass);
+        }
+        if (!ok) {
             if (graalRuntime.isBootstrapping()) {
                 throw GraalError.shouldNotReachHere("Class declaring a method for which a Graal intrinsic is available should be trusted for intrinsification: " + declaringClass.toJavaName());
             }
             return false;
         }
         return true;
+    }
 
+    @Override
+    public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
+        if (Options.WarnMissingIntrinsic.getValue(options)) {
+            String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(), targetMethod.getSignature().toMethodDescriptor());
+            if (unimplementedIntrinsics.isMissing(method)) {
+                synchronized (this) {
+                    if (missingIntrinsicMetrics == null) {
+                        missingIntrinsicMetrics = EconomicMap.create();
+                        try {
+                            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                                if (missingIntrinsicMetrics.size() > 0) {
+                                    TTY.println("[Warning] Missing intrinsics found: %d", missingIntrinsicMetrics.size());
+                                    List<Pair<String, Integer>> data = new ArrayList<>();
+                                    final MapCursor<String, Integer> cursor = missingIntrinsicMetrics.getEntries();
+                                    while (cursor.advance()) {
+                                        data.add(Pair.create(cursor.getKey(), cursor.getValue()));
+                                    }
+                                    data.stream().sorted(Comparator.comparing(Pair::getRight, Comparator.reverseOrder())).forEach(
+                                                    pair -> TTY.println("        - %d occurrences during parsing: %s", pair.getRight(), pair.getLeft()));
+                                }
+                            }));
+                        } catch (IllegalStateException e) {
+                            // shutdown in progress, no need to register the hook
+                        }
+                    }
+                    if (missingIntrinsicMetrics.containsKey(method)) {
+                        missingIntrinsicMetrics.put(method, missingIntrinsicMetrics.get(method) + 1);
+                    } else {
+                        TTY.println("[Warning] Missing intrinsic %s found during parsing.", method);
+                        missingIntrinsicMetrics.put(method, 1);
+                    }
+                }
+            }
+        }
     }
 }

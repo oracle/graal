@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -169,6 +169,13 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
             index++;
         }
         return signaturetypes;
+    }
+
+    public TypeMirror getParameterTypeOrDie(NodeExecutionData execution) {
+        if (execution.getIndex() >= getEvaluatedCount()) {
+            throw new AssertionError("Parameter type not evaluated.");
+        }
+        return getEvaluatedParameters().get(execution.getIndex());
     }
 
     public int getVarArgsIndex(int parameterIndex) {
@@ -359,23 +366,6 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
     @Override
     public String toString() {
         return String.format("%s %s(%s,%s)", formatType(getReturnType()), getName(), formatType(getFrameParameter()), getEvaluatedParameters());
-    }
-
-    public boolean sameParameters(ExecutableTypeData other) {
-        if (!typeEquals(other.getFrameParameter(), getFrameParameter())) {
-            return false;
-        }
-
-        if (getEvaluatedCount() != other.getEvaluatedCount()) {
-            return false;
-        }
-
-        for (int i = 0; i < getEvaluatedCount(); i++) {
-            if (!typeEquals(getEvaluatedParameters().get(i), other.getEvaluatedParameters().get(i))) {
-                return false;
-            }
-        }
-        return true;
     }
 
     public boolean sameSignature(ExecutableTypeData other) {

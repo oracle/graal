@@ -24,10 +24,43 @@
  */
 package com.oracle.svm.configure.filters;
 
-@SuppressWarnings("unused")
+import java.lang.module.ModuleDescriptor;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
+import com.oracle.svm.configure.filters.ConfigurationFilter.Inclusion;
+
 public class ModuleFilterTools {
-    /** This method is replaced via an overlay. */
-    public static RuleNode generateFromModules(String[] moduleNames, RuleNode.Inclusion rootInclusion, RuleNode.Inclusion exportedInclusion, RuleNode.Inclusion unexportedInclusion, boolean reduce) {
-        throw new RuntimeException("Module-based filter generation is not available in JDK 8 and below.");
+
+    public static HierarchyFilterNode generateFromModules(String[] moduleNames, Inclusion rootInclusion, Inclusion exportedInclusion, Inclusion unexportedInclusion, boolean reduce) {
+        Set<String> includedModuleNameSet = new HashSet<>();
+        Collections.addAll(includedModuleNameSet, moduleNames);
+        for (Module module : ModuleLayer.boot().modules()) {
+            if (includedModuleNameSet.contains(module.getName())) {
+                checkDependencies(module, includedModuleNameSet);
+            }
+        }
+        HierarchyFilterNode rootNode = HierarchyFilterNode.createRoot();
+        rootNode.addOrGetChildren("**", rootInclusion);
+        for (Module module : ModuleLayer.boot().modules()) {
+            for (String qualifiedPkg : module.getPackages()) {
+                Inclusion pkgInclusion = module.isExported(qualifiedPkg) ? exportedInclusion : unexportedInclusion;
+                rootNode.addOrGetChildren(qualifiedPkg + ".*", pkgInclusion);
+            }
+        }
+        if (reduce) {
+            rootNode.reduceExhaustiveTree();
+        }
+        return rootNode;
+    }
+
+    private static void checkDependencies(Module module, Set<String> includedModuleNames) {
+        for (ModuleDescriptor.Requires require : module.getDescriptor().requires()) {
+            if (!includedModuleNames.contains(require.name())) {
+                System.err.println("Warning: dependency missing from input set of modules: " + module.getName() + " -> " + require.name());
+                checkDependencies(module.getLayer().findModule(require.name()).get(), includedModuleNames);
+            }
+        }
     }
 }

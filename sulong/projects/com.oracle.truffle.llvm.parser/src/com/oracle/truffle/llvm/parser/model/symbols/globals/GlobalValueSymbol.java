@@ -131,7 +131,7 @@ public abstract class GlobalValueSymbol extends GlobalSymbol implements Constant
 
     @Override
     public boolean isExternal() {
-        return getInitialiser() == 0 && isExported();
+        return (getInitialiser() == 0 && isExported()) || isExternalWeak();
     }
 
     @Override

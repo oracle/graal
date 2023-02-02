@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.lir.aarch64;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -56,7 +57,7 @@ public class AArch64SaveRegistersOp extends SaveRegistersOp {
     }
 
     protected void saveRegister(CompilationResultBuilder crb, AArch64MacroAssembler masm, StackSlot result, Register input) {
-        AArch64Move.reg2stack(crb, masm, result, input.asValue());
+        AArch64Move.reg2stack((AArch64Kind) result.getPlatformKind(), crb, masm, result, input);
     }
 
     @Override

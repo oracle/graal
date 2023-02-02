@@ -1,30 +1,37 @@
-From de2dd98c10fe393f86db67be1d2cfce9606b9e5a Mon Sep 17 00:00:00 2001
+From 777b567689748c60a0e38249e9e66ba4907cc9ac Mon Sep 17 00:00:00 2001
 From: Roland Schatz <roland.schatz@oracle.com>
-Date: Wed, 21 Oct 2020 12:52:24 +0200
+Date: Thu, 7 Apr 2022 18:09:05 +0200
 Subject: [PATCH 1/2] Preconfigure sources for x64 Windows build
 
-The configuration was created with this command from
-the Developer Command Prompt (with Git for windows on
-the PATH for sh.exe):
+The configuration was done using Git for Windows to run
+`configure` from Developer Command Prompt:
 
-sh ./configure LD=link --target=amd64-mingw64 --disable-dependency-tracking --disable-builddir
+> sh configure --disable-builddir ^
+    --disable-dependency-tracking ^
+    --disable-shared ^
+    CC="./msvcc.sh -m64" ^
+    CXX="./msvcc.sh -m64" ^
+    LD=link ^
+    CPP="cl -nologo -EP" ^
+    CXXCPP="cl -nologo -EP" ^
+    --build=amd64-mingw64
 ---
- fficonfig.h.in => fficonfig.h    | 117 ++++++++++++++++---------------
+ fficonfig.h.in => fficonfig.h    | 127 ++++++++++++++++---------------
  include/{ffi.h.in => ffi.h}      |  18 ++---
  {src/x86 => include}/ffitarget.h |   0
- 3 files changed, 68 insertions(+), 67 deletions(-)
- rename fficonfig.h.in => fficonfig.h (71%)
+ 3 files changed, 73 insertions(+), 72 deletions(-)
+ rename fficonfig.h.in => fficonfig.h (70%)
  rename include/{ffi.h.in => ffi.h} (98%)
  rename {src/x86 => include}/ffitarget.h (100%)
 
 diff --git a/fficonfig.h.in b/fficonfig.h
-similarity index 71%
+similarity index 70%
 rename from fficonfig.h.in
 rename to fficonfig.h
-index c675685..8a271fb 100644
+index 36ffbfb..85b6143 100644
 --- a/fficonfig.h.in
 +++ b/fficonfig.h
-@@ -1,161 +1,162 @@
+@@ -1,176 +1,177 @@
 +/* fficonfig.h.  Generated from fficonfig.h.in by configure.  */
  /* fficonfig.h.in.  Generated from configure.ac by autoheader.  */
  
@@ -40,7 +47,7 @@ index c675685..8a271fb 100644
  
  /* Define to 1 if using `alloca.c'. */
 -#undef C_ALLOCA
-+#define C_ALLOCA 1
++/* #undef C_ALLOCA */
  
  /* Define to the flags needed for the .section .eh_frame directive. */
 -#undef EH_FRAME_FLAGS
@@ -49,6 +56,10 @@ index c675685..8a271fb 100644
  /* Define this if you want extra debugging. */
 -#undef FFI_DEBUG
 +/* #undef FFI_DEBUG */
+ 
+ /* Define this if you want statically defined trampolines */
+-#undef FFI_EXEC_STATIC_TRAMP
++/* #undef FFI_EXEC_STATIC_TRAMP */
  
  /* Cannot use PROT_EXEC on this target, so, we revert to alternative means */
 -#undef FFI_EXEC_TRAMPOLINE_TABLE
@@ -72,7 +83,7 @@ index c675685..8a271fb 100644
  
  /* Define to 1 if you have `alloca', as a function or macro. */
 -#undef HAVE_ALLOCA
-+/* #undef HAVE_ALLOCA */
++#define HAVE_ALLOCA 1
  
  /* Define to 1 if you have <alloca.h> and it should be used (not on Ultrix).
     */
@@ -114,7 +125,7 @@ index c675685..8a271fb 100644
  
  /* Define to 1 if you have the <inttypes.h> header file. */
 -#undef HAVE_INTTYPES_H
-+/* #undef HAVE_INTTYPES_H */
++#define HAVE_INTTYPES_H 1
  
  /* Define if you have the long double type and it is bigger than a double */
 -#undef HAVE_LONG_DOUBLE
@@ -128,6 +139,10 @@ index c675685..8a271fb 100644
 -#undef HAVE_MEMCPY
 +/* #undef HAVE_MEMCPY */
  
+ /* Define to 1 if you have the `memfd_create' function. */
+-#undef HAVE_MEMFD_CREATE
++/* #undef HAVE_MEMFD_CREATE */
+ 
  /* Define to 1 if you have the <memory.h> header file. */
 -#undef HAVE_MEMORY_H
 +#define HAVE_MEMORY_H 1
@@ -135,6 +150,10 @@ index c675685..8a271fb 100644
  /* Define to 1 if you have the `mkostemp' function. */
 -#undef HAVE_MKOSTEMP
 +/* #undef HAVE_MKOSTEMP */
+ 
+ /* Define to 1 if you have the `mkstemp' function. */
+-#undef HAVE_MKSTEMP
++/* #undef HAVE_MKSTEMP */
  
  /* Define to 1 if you have the `mmap' function. */
 -#undef HAVE_MMAP
@@ -151,6 +170,10 @@ index c675685..8a271fb 100644
  /* Define if read-only mmap of a plain file works. */
 -#undef HAVE_MMAP_FILE
 +/* #undef HAVE_MMAP_FILE */
+ 
+ /* Define if your compiler supports pointer authentication. */
+-#undef HAVE_PTRAUTH
++/* #undef HAVE_PTRAUTH */
  
  /* Define if .eh_frame sections should be read-only. */
 -#undef HAVE_RO_EH_FRAME
@@ -171,6 +194,10 @@ index c675685..8a271fb 100644
  /* Define to 1 if you have the <string.h> header file. */
 -#undef HAVE_STRING_H
 +#define HAVE_STRING_H 1
+ 
+ /* Define to 1 if you have the <sys/memfd.h> header file. */
+-#undef HAVE_SYS_MEMFD_H
++/* #undef HAVE_SYS_MEMFD_H */
  
  /* Define to 1 if you have the <sys/mman.h> header file. */
 -#undef HAVE_SYS_MMAN_H
@@ -210,7 +237,7 @@ index c675685..8a271fb 100644
  
  /* Define to the full name and version of this package. */
 -#undef PACKAGE_STRING
-+#define PACKAGE_STRING "libffi 3.3"
++#define PACKAGE_STRING "libffi 3.4.2"
  
  /* Define to the one symbol short name of this package. */
 -#undef PACKAGE_TARNAME
@@ -222,15 +249,15 @@ index c675685..8a271fb 100644
  
  /* Define to the version of this package. */
 -#undef PACKAGE_VERSION
-+#define PACKAGE_VERSION "3.3"
++#define PACKAGE_VERSION "3.4.2"
  
  /* The size of `double', as computed by sizeof. */
 -#undef SIZEOF_DOUBLE
-+#define SIZEOF_DOUBLE 0
++#define SIZEOF_DOUBLE 8
  
  /* The size of `long double', as computed by sizeof. */
 -#undef SIZEOF_LONG_DOUBLE
-+#define SIZEOF_LONG_DOUBLE 0
++#define SIZEOF_LONG_DOUBLE 8
  
  /* The size of `size_t', as computed by sizeof. */
 -#undef SIZEOF_SIZE_T
@@ -238,12 +265,12 @@ index c675685..8a271fb 100644
  
  /* If using the C implementation of alloca, define if you know the
     direction of stack growth for your system; otherwise it will be
-@@ -163,20 +164,20 @@
+@@ -178,20 +179,20 @@
  	STACK_DIRECTION > 0 => grows toward higher addresses
  	STACK_DIRECTION < 0 => grows toward lower addresses
  	STACK_DIRECTION = 0 => direction of growth unknown */
 -#undef STACK_DIRECTION
-+#define STACK_DIRECTION -1
++/* #undef STACK_DIRECTION */
  
  /* Define to 1 if you have the ANSI C header files. */
 -#undef STDC_HEADERS
@@ -260,16 +287,16 @@ index c675685..8a271fb 100644
  
  /* Version number of package */
 -#undef VERSION
-+#define VERSION "3.3"
++#define VERSION "3.4.2"
  
  /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
     significant byte first (like Motorola and SPARC, unlike Intel). */
-@@ -186,12 +187,12 @@
+@@ -201,12 +202,12 @@
  # endif
  #else
  # ifndef WORDS_BIGENDIAN
 -#  undef WORDS_BIGENDIAN
-+#  define WORDS_BIGENDIAN 1
++/* #  undef WORDS_BIGENDIAN */
  # endif
  #endif
  
@@ -283,17 +310,17 @@ diff --git a/include/ffi.h.in b/include/ffi.h
 similarity index 98%
 rename from include/ffi.h.in
 rename to include/ffi.h
-index 71cc05c..5edd4a9 100644
+index d16f307..51dca0b 100644
 --- a/include/ffi.h.in
 +++ b/include/ffi.h
 @@ -1,5 +1,5 @@
  /* -----------------------------------------------------------------*-C-*-
--   libffi @VERSION@ - Copyright (c) 2011, 2014, 2019 Anthony Green
-+   libffi 3.3 - Copyright (c) 2011, 2014, 2019 Anthony Green
-                     - Copyright (c) 1996-2003, 2007, 2008 Red Hat, Inc.
+-   libffi @VERSION@
++   libffi 3.4.2
+      - Copyright (c) 2011, 2014, 2019, 2021 Anthony Green
+      - Copyright (c) 1996-2003, 2007, 2008 Red Hat, Inc.
  
-    Permission is hereby granted, free of charge, to any person
-@@ -49,8 +49,8 @@ extern "C" {
+@@ -50,8 +50,8 @@ extern "C" {
  #endif
  
  /* Specify which architecture libffi is configured for. */
@@ -304,7 +331,7 @@ index 71cc05c..5edd4a9 100644
  #endif
  
  /* ---- System configuration information --------------------------------- */
-@@ -197,7 +197,7 @@ FFI_EXTERN ffi_type ffi_type_float;
+@@ -198,7 +198,7 @@ FFI_EXTERN ffi_type ffi_type_float;
  FFI_EXTERN ffi_type ffi_type_double;
  FFI_EXTERN ffi_type ffi_type_pointer;
  
@@ -313,7 +340,7 @@ index 71cc05c..5edd4a9 100644
  FFI_EXTERN ffi_type ffi_type_longdouble;
  #else
  #define ffi_type_longdouble ffi_type_double
-@@ -206,7 +206,7 @@ FFI_EXTERN ffi_type ffi_type_longdouble;
+@@ -207,7 +207,7 @@ FFI_EXTERN ffi_type ffi_type_longdouble;
  #ifdef FFI_TARGET_HAS_COMPLEX_TYPE
  FFI_EXTERN ffi_type ffi_type_complex_float;
  FFI_EXTERN ffi_type ffi_type_complex_double;
@@ -322,7 +349,7 @@ index 71cc05c..5edd4a9 100644
  FFI_EXTERN ffi_type ffi_type_complex_longdouble;
  #else
  #define ffi_type_complex_longdouble ffi_type_complex_double
-@@ -306,7 +306,7 @@ size_t ffi_java_raw_size (ffi_cif *cif) __attribute__((deprecated));
+@@ -308,7 +308,7 @@ size_t ffi_java_raw_size (ffi_cif *cif) __attribute__((deprecated));
  __declspec(align(8))
  #endif
  typedef struct {
@@ -331,7 +358,7 @@ index 71cc05c..5edd4a9 100644
    void *trampoline_table;
    void *trampoline_table_entry;
  #else
-@@ -353,7 +353,7 @@ ffi_prep_closure_loc (ffi_closure*,
+@@ -366,7 +366,7 @@ ffi_prep_closure_loc (ffi_closure*,
  # pragma pack 8
  #endif
  typedef struct {
@@ -340,7 +367,7 @@ index 71cc05c..5edd4a9 100644
    void *trampoline_table;
    void *trampoline_table_entry;
  #else
-@@ -378,7 +378,7 @@ typedef struct {
+@@ -391,7 +391,7 @@ typedef struct {
  } ffi_raw_closure;
  
  typedef struct {
@@ -349,9 +376,9 @@ index 71cc05c..5edd4a9 100644
    void *trampoline_table;
    void *trampoline_table_entry;
  #else
-@@ -488,7 +488,7 @@ ffi_status ffi_get_struct_offsets (ffi_abi abi, ffi_type *struct_type,
+@@ -501,7 +501,7 @@ ffi_status ffi_get_struct_offsets (ffi_abi abi, ffi_type *struct_type,
  #define FFI_TYPE_INT        1
- #define FFI_TYPE_FLOAT      2    
+ #define FFI_TYPE_FLOAT      2
  #define FFI_TYPE_DOUBLE     3
 -#if @HAVE_LONG_DOUBLE@
 +#if 0
@@ -363,5 +390,5 @@ similarity index 100%
 rename from src/x86/ffitarget.h
 rename to include/ffitarget.h
 -- 
-2.28.0
+2.32.0.windows.1
 

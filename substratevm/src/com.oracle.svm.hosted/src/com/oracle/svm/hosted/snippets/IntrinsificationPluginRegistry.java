@@ -24,73 +24,42 @@
  */
 package com.oracle.svm.hosted.snippets;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class IntrinsificationPluginRegistry {
 
-    public static class CallSiteDescriptor {
-        private final AnalysisMethod[] caller;
-        private final int[] bci;
-        private final int length;
+    static final class CallSiteDescriptor {
+        private final AnalysisMethod method;
+        private final int bci;
 
-        public CallSiteDescriptor(List<Pair<ResolvedJavaMethod, Integer>> callingContext) {
-            this.length = callingContext.size();
-            this.caller = new AnalysisMethod[length];
-            this.bci = new int[length];
-            int i = 0;
-            for (Pair<ResolvedJavaMethod, Integer> pair : callingContext) {
-                this.caller[i] = toAnalysisMethod(pair.getLeft());
-                this.bci[i] = pair.getRight();
-                i++;
-            }
-        }
-
-        public AnalysisMethod[] getCaller() {
-            return caller;
-        }
-
-        public int[] getBci() {
-            return bci;
-        }
-
-        public int getLength() {
-            return length;
+        private CallSiteDescriptor(ResolvedJavaMethod method, int bci) {
+            this.method = toAnalysisMethod(method);
+            this.bci = bci;
         }
 
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof CallSiteDescriptor) {
                 CallSiteDescriptor other = (CallSiteDescriptor) obj;
-                return Arrays.equals(this.bci, other.bci) && Arrays.equals(this.caller, other.caller);
+                return other.bci == this.bci && other.method.equals(this.method);
             }
             return false;
         }
 
         @Override
         public int hashCode() {
-            return java.util.Arrays.hashCode(caller) ^ java.util.Arrays.hashCode(bci);
+            return method.hashCode() ^ bci;
         }
 
         @Override
         public String toString() {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < caller.length; i++) {
-                sb.append(caller[i].format("%h.%n(%p)")).append("@").append(bci[i]).append(System.lineSeparator());
-            }
-            return sb.toString();
+            return method.format("%h.%n(%p)") + "@" + bci;
         }
 
         private static AnalysisMethod toAnalysisMethod(ResolvedJavaMethod method) {
@@ -104,62 +73,29 @@ public class IntrinsificationPluginRegistry {
     }
 
     private static final Object NULL_MARKER = new Object();
+
     /**
      * Contains all the elements intrinsified during analysis. Only these elements will be
      * intrinsified during compilation. We cannot intrinsify an element during compilation if it was
      * not intrinsified during analysis since it can lead to compiling code that was not seen during
      * analysis.
      */
-    private final ConcurrentHashMap<CallSiteDescriptor, Object> globalAnalysisElements = new ConcurrentHashMap<>();
-    public final Set<AnalysisMethod> methodsWithIntrinsification = ConcurrentHashMap.newKeySet();
-    public final ThreadLocal<ConcurrentHashMap<CallSiteDescriptor, Object>> threadLocalRegistry = new ThreadLocal<>();
+    private final ConcurrentHashMap<CallSiteDescriptor, Object> analysisElements = new ConcurrentHashMap<>();
 
-    public AutoCloseable startThreadLocalReflectionRegistry() {
-        return new AutoCloseable() {
-            {
-                ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).threadLocalRegistry.set(new ConcurrentHashMap<>());
-            }
-
-            @Override
-            public void close() {
-                ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).threadLocalRegistry.remove();
-            }
-        };
-    }
-
-    public AutoCloseable startThreadLocalIntrinsificationRegistry() {
-        return new AutoCloseable() {
-            {
-                ImageSingletons.lookup(IntrinsifyMethodHandlesInvocationPlugin.IntrinsificationRegistry.class).threadLocalRegistry.set(new ConcurrentHashMap<>());
-            }
-
-            @Override
-            public void close() {
-                ImageSingletons.lookup(IntrinsifyMethodHandlesInvocationPlugin.IntrinsificationRegistry.class).threadLocalRegistry.remove();
-            }
-        };
-    }
-
-    private ConcurrentHashMap<CallSiteDescriptor, Object> getAnalysisElements() {
-        return threadLocalRegistry.get() == null ? globalAnalysisElements : threadLocalRegistry.get();
-    }
-
-    public void add(List<Pair<ResolvedJavaMethod, Integer>> callingContext, Object element) {
+    public void add(ResolvedJavaMethod method, int bci, Object element) {
         Object nonNullElement = element != null ? element : NULL_MARKER;
-        Object previous = getAnalysisElements().putIfAbsent(new CallSiteDescriptor(callingContext), nonNullElement);
-        VMError.guarantee(previous == null || previous == nonNullElement, "Newly intrinsified element is different than the previous");
+        Object previous = analysisElements.put(new CallSiteDescriptor(method, bci), nonNullElement);
 
-        /* save information that method has intrinsification */
-        methodsWithIntrinsification.add((AnalysisMethod) callingContext.get(0).getLeft());
+        /*
+         * New elements can only be added when the intrinsification is executed during the analysis.
+         * If an intrinsified element was already registered that's an error.
+         */
+        VMError.guarantee(previous == null, "Detected previously intrinsified element");
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T get(List<Pair<ResolvedJavaMethod, Integer>> callingContext) {
-        Object nonNullElement = getAnalysisElements().get(new CallSiteDescriptor(callingContext));
+    public <T> T get(ResolvedJavaMethod method, int bci) {
+        Object nonNullElement = analysisElements.get(new CallSiteDescriptor(method, bci));
         return nonNullElement != NULL_MARKER ? (T) nonNullElement : null;
-    }
-
-    public boolean hasIntrinsifications(AnalysisMethod method) {
-        return methodsWithIntrinsification.contains(method);
     }
 }

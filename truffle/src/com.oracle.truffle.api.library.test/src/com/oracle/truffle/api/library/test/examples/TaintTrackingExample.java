@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -58,8 +57,8 @@ import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ArgumentNode;
-import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExpressionNode;
 import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExampleRootNode;
+import com.oracle.truffle.api.library.test.examples.ArrayStrategy1.ExpressionNode;
 import com.oracle.truffle.api.library.test.examples.TaintTrackingExampleFactory.UnknownOperationNodeGen;
 
 /**
@@ -159,7 +158,7 @@ public class TaintTrackingExample {
     public void runExample() {
         TaintLibrary taintLibrary = LibraryFactory.resolve(TaintLibrary.class).getUncached();
         UnknownOperationNode sample = UnknownOperationNodeGen.create(new ArgumentNode(0));
-        CallTarget target = Truffle.getRuntime().createCallTarget(new ExampleRootNode(sample));
+        CallTarget target = new ExampleRootNode(sample).getCallTarget();
 
         Object value = new UnknownValue();
 

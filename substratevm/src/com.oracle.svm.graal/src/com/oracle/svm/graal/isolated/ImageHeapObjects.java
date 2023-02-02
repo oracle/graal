@@ -29,7 +29,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
@@ -72,7 +72,7 @@ public final class ImageHeapObjects {
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             objectAddress = objectAddress.add(KnownIntrinsics.heapBase());
         }
-        Object obj = KnownIntrinsics.convertUnknownValue(objectAddress.toObject(), Object.class);
+        Object obj = objectAddress.toObject();
         VMError.guarantee(Heap.getHeap().isInImageHeap(obj));
 
         @SuppressWarnings("unchecked")

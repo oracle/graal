@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
 
+import jdk.vm.ci.code.Architecture;
+
 /**
  * Main interface providing access to suites used for compilation.
  */
@@ -39,7 +41,7 @@ public interface SuitesProvider {
      * returning an appropriately constructed suite. The returned suite is immutable by default but
      * {@link Suites#copy} can be used to create a customized version.
      */
-    Suites getDefaultSuites(OptionValues values);
+    Suites getDefaultSuites(OptionValues values, Architecture arch);
 
     /**
      * Get the default phase suite for creating new graphs.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +24,46 @@
  */
 package org.graalvm.compiler.nodes.debug;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.ReachabilityFenceNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(cycles = CYCLES_UNKNOWN, cyclesRationale = "Node is literally a blackhole", size = SIZE_UNKNOWN)
-public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable {
+/**
+ * Ensures that the provided values remains alive in the high-level IR and LIR until after register
+ * allocation. No machine code is emitted for the LIR instruction.
+ *
+ * This node also prevents escape analysis, i.e., objects are materialized before this node even if
+ * there are no other usages of the object. If you do not want this behavior, consider using
+ * {@link ReachabilityFenceNode} (but keep in mind that {@link ReachabilityFenceNode} currently does
+ * not keep primitive values alive).
+ */
+@NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED, nameTemplate = "Blackhole {p#reason}")
+public final class BlackholeNode extends FixedWithNextNode implements LIRLowerable, NodeWithIdentity {
 
     public static final NodeClass<BlackholeNode> TYPE = NodeClass.create(BlackholeNode.class);
     @Input ValueNode value;
+    /** Indicates the reason why we need the blackhole, to be seen in IGV. */
+    String reason;
 
     public BlackholeNode(ValueNode value) {
         super(TYPE, StampFactory.forVoid());
         this.value = value;
+        this.reason = "";
+    }
+
+    public BlackholeNode(ValueNode value, String reason) {
+        this(value);
+        assert reason != null;
+        this.reason = reason;
     }
 
     public ValueNode getValue() {

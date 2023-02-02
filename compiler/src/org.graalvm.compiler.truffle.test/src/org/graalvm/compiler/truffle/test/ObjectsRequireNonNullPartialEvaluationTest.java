@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.util.Objects;
+
 import org.graalvm.compiler.truffle.test.ObjectsRequireNonNullPartialEvaluationTest.TestClass.InnerClass;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
@@ -31,12 +33,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
-
-import java.util.Objects;
 
 public class ObjectsRequireNonNullPartialEvaluationTest extends PartialEvaluationTest {
 
@@ -78,8 +76,7 @@ public class ObjectsRequireNonNullPartialEvaluationTest extends PartialEvaluatio
 
     private void testCommon(AbstractTestNode testNode, String testName, Object arg) {
         FrameDescriptor fd = new FrameDescriptor();
-        RootNode rootNode = new RootTestNode(fd, testName, testNode);
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        RootCallTarget callTarget = new RootTestNode(fd, testName, testNode).getCallTarget();
         Assert.assertEquals(42, callTarget.call(arg));
         assertPartialEvalNoInvokes(callTarget, new Object[]{arg});
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,9 +44,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Represents the target of a call. Do not subclass {@link CallTarget} directly but implement
- * {@link RootNode} instead and create a {@link CallTarget target} using {@link Truffle}.
- * {@link Truffle#getRuntime() getRuntime()}.{@link TruffleRuntime#createCallTarget(RootNode)
- * createCallTarget(rootNode)}.
+ * {@link RootNode} instead and retrieve its {@link CallTarget target} via
+ * {@link RootNode#getCallTarget()}.
  *
  * @see RootNode
  * @since 0.8 or earlier

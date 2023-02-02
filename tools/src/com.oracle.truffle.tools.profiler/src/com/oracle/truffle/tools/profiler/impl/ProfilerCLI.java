@@ -24,15 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionType;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -41,55 +32,33 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
+
+import org.graalvm.options.OptionKey;
+
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 abstract class ProfilerCLI {
 
-    static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
-                    new Function<String, Object[]>() {
-                        @Override
-                        public Object[] apply(String filterWildcardExpression) {
-                            if (filterWildcardExpression == null) {
-                                return null;
-                            }
-                            String[] expressions = filterWildcardExpression.split(",");
-                            Object[] builtExpressions = new Object[expressions.length];
-                            for (int i = 0; i < expressions.length; i++) {
-                                String expression = expressions[i];
-                                expression = expression.trim();
-                                Object result = expression;
-                                if (expression.contains("?") || expression.contains("*")) {
-                                    try {
-                                        result = Pattern.compile(wildcardToRegex(expression));
-                                    } catch (PatternSyntaxException e) {
-                                        throw new IllegalArgumentException(
-                                                        String.format("Invalid wildcard pattern %s.", expression), e);
-                                    }
-                                }
-                                builtExpressions[i] = result;
-                            }
-                            return builtExpressions;
-                        }
-                    }, new Consumer<Object[]>() {
-                        @Override
-                        public void accept(Object[] objects) {
-
-                        }
-                    });
+    public static final String UNKNOWN = "<Unknown>";
 
     static SourceSectionFilter buildFilter(boolean roots, boolean statements, boolean calls, boolean internals,
-                    Object[] filterRootName, Object[] filterFile, String filterMimeType, String filterLanguage) {
+                    WildcardFilter filterRootName, WildcardFilter filterFile, String filterMimeType, String filterLanguage) {
         SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
         if (!internals || filterFile != null || filterMimeType != null || filterLanguage != null) {
             builder.sourceIs(new SourceSectionFilter.SourcePredicate() {
                 @Override
                 public boolean test(Source source) {
                     boolean internal = (internals || !source.isInternal());
-                    boolean file = testWildcardExpressions(source.getPath(), filterFile);
+                    boolean file = filterFile.testWildcardExpressions(source.getPath());
                     boolean mimeType = filterMimeType.equals("") || filterMimeType.equals(source.getMimeType());
                     final boolean languageId = filterLanguage.equals("") || filterMimeType.equals(source.getLanguage());
                     return internal && file && mimeType && languageId;
@@ -116,7 +85,7 @@ abstract class ProfilerCLI {
         builder.rootNameIs(new Predicate<String>() {
             @Override
             public boolean test(String s) {
-                return testWildcardExpressions(s, filterRootName);
+                return filterRootName.testWildcardExpressions(s);
             }
         });
 
@@ -133,10 +102,13 @@ abstract class ProfilerCLI {
 
     // custom version of SourceSection#getShortDescription
     static String getShortDescription(SourceSection sourceSection) {
+        if (sourceSection == null) {
+            return UNKNOWN;
+        }
         if (sourceSection.getSource() == null) {
             // TODO the source == null branch can be removed if the deprecated
             // SourceSection#createUnavailable has be removed.
-            return "<Unknown>";
+            return UNKNOWN;
         }
         StringBuilder b = new StringBuilder();
         if (sourceSection.getSource().getPath() == null) {
@@ -157,6 +129,9 @@ abstract class ProfilerCLI {
     }
 
     static String formatIndices(SourceSection sourceSection, boolean needsColumnSpecifier) {
+        if (sourceSection == null) {
+            return UNKNOWN;
+        }
         StringBuilder b = new StringBuilder();
         boolean singleLine = sourceSection.getStartLine() == sourceSection.getEndLine();
         if (singleLine) {
@@ -196,42 +171,6 @@ abstract class ProfilerCLI {
             }
         }
         return false;
-    }
-
-    private static String wildcardToRegex(String wildcard) {
-        StringBuilder s = new StringBuilder(wildcard.length());
-        s.append('^');
-        for (int i = 0, is = wildcard.length(); i < is; i++) {
-            char c = wildcard.charAt(i);
-            switch (c) {
-                case '*':
-                    s.append("\\S*");
-                    break;
-                case '?':
-                    s.append("\\S");
-                    break;
-                // escape special regexp-characters
-                case '(':
-                case ')':
-                case '[':
-                case ']':
-                case '$':
-                case '^':
-                case '.':
-                case '{':
-                case '}':
-                case '|':
-                case '\\':
-                    s.append("\\");
-                    s.append(c);
-                    break;
-                default:
-                    s.append(c);
-                    break;
-            }
-        }
-        s.append('$');
-        return s.toString();
     }
 
     static JSONObject sourceSectionToJSON(SourceSection sourceSection) {
@@ -284,11 +223,10 @@ abstract class ProfilerCLI {
             }
 
             SourceLocation that = (SourceLocation) o;
-
-            if (sourceSection != null ? !sourceSection.equals(that.sourceSection) : that.sourceSection != null) {
+            if (!Objects.equals(sourceSection, that.sourceSection)) {
                 return false;
             }
-            return rootName != null ? rootName.equals(that.rootName) : that.rootName == null;
+            return Objects.equals(rootName, that.rootName);
         }
 
         @Override
@@ -304,15 +242,23 @@ abstract class ProfilerCLI {
             if (option.hasBeenSet(env.getOptions())) {
                 final String outputPath = option.getValue(env.getOptions());
                 final File file = new File(outputPath);
-                if (file.exists()) {
-                    throw new IllegalArgumentException("Cannot redirect output to an existing file!");
-                }
                 return new PrintStream(new FileOutputStream(file));
             } else {
                 return new PrintStream(env.out());
             }
         } catch (FileNotFoundException e) {
-            throw new IllegalArgumentException("Cannot redirect output to a directory");
+            throw handleFileNotFound();
         }
+    }
+
+    protected static AbstractTruffleException handleFileNotFound() {
+        return new AbstractTruffleException() {
+            static final long serialVersionUID = -1;
+
+            @Override
+            public String getMessage() {
+                return "File IO Exception caught during output printing.";
+            }
+        };
     }
 }

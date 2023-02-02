@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.backend.spi;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -52,6 +53,7 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
  * Library that specifies the protocol between the Truffle NFI and its backend implementations.
  */
 @GenerateLibrary
+@GenerateAOT
 @SuppressWarnings("unused")
 public abstract class NFIBackendSignatureLibrary extends Library {
 

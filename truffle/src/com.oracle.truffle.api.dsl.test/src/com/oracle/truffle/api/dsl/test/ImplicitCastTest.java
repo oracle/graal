@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,9 @@
 package com.oracle.truffle.api.dsl.test;
 
 import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
+import static org.junit.Assert.assertEquals;
 
-import java.util.concurrent.locks.ReentrantLock;
+import java.lang.reflect.Field;
 
 import org.junit.Assert;
 import org.junit.Assume;
@@ -70,6 +71,8 @@ import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals1Node
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals2NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.StringEquals3NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.TestImplicitCastWithCacheNodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.TestUnusedImplicitCast1NodeGen;
+import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.TestUnusedImplicitCast2NodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ThirtyThreeBitsNodeGen;
 import com.oracle.truffle.api.dsl.test.ImplicitCastTestFactory.ThirtyTwoBitsNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
@@ -81,6 +84,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
+@SuppressWarnings("truffle")
+@DisableStateBitWidthModfication
 public class ImplicitCastTest {
 
     @TypeSystem({int.class, String.class, boolean.class})
@@ -134,7 +139,7 @@ public class ImplicitCastTest {
 
         public abstract Object execute(int value);
 
-        // TODO: this should not be an error
+        // TODO:GR-38632 this should not be an error
         @ExpectError("Method signature (boolean) does not match to the expected signature: %")
         @Specialization
         public boolean op1(boolean value) {
@@ -191,7 +196,7 @@ public class ImplicitCastTest {
 
     @TypeSystemReference(ImplicitCast0Types.class)
     @NodeChildren({@NodeChild(value = "operand0", type = ImplicitCast2Node.class), @NodeChild(value = "operand1", type = ImplicitCast2Node.class, executeWith = "operand0")})
-    // TODO temporary workaround
+    // TODO GR-38632 temporary workaround
     abstract static class ImplicitCast2Node extends ValueNode {
 
         @Specialization
@@ -594,19 +599,19 @@ public class ImplicitCastTest {
     public void testImplicitCastWithCache() {
         TestImplicitCastWithCacheNode node = TestImplicitCastWithCacheNodeGen.create();
 
-        Assert.assertEquals(0, node.specializeCalls);
+        Assert.assertEquals(0, node.specializeCount);
 
         ConcreteString concrete = new ConcreteString();
         node.execute("a", true);
-        Assert.assertEquals(1, node.specializeCalls);
+        Assert.assertEquals(1, node.specializeCount);
         node.execute(concrete, true);
-        Assert.assertEquals(2, node.specializeCalls);
+        Assert.assertEquals(1, node.specializeCount);
         node.execute(concrete, true);
         node.execute(concrete, true);
         node.execute(concrete, true);
 
         // ensure we stabilize
-        Assert.assertEquals(2, node.specializeCalls);
+        Assert.assertEquals(1, node.specializeCount);
     }
 
     interface AbstractString {
@@ -624,26 +629,15 @@ public class ImplicitCastTest {
     }
 
     @TypeSystemReference(TestTypeSystem.class)
-    abstract static class TestImplicitCastWithCacheNode extends Node {
-
-        int specializeCalls;
+    abstract static class TestImplicitCastWithCacheNode extends SlowPathListenerNode {
 
         public abstract int execute(Object arg, boolean flag);
 
-        @Specialization(guards = {"specializeCall(flag)", "cachedFlag == flag"})
+        @Specialization(guards = {"cachedFlag == flag"})
         @SuppressWarnings("unused")
         protected static int test(AbstractString arg, boolean flag,
                         @Cached("flag") boolean cachedFlag) {
             return flag ? 100 : -100;
-        }
-
-        boolean specializeCall(@SuppressWarnings("unused") boolean flag) {
-            ReentrantLock lock = (ReentrantLock) getLock();
-            if (lock.isHeldByCurrentThread()) {
-                // the lock is held for guards executed in executeAndSpecialize
-                specializeCalls++;
-            }
-            return true;
         }
 
     }
@@ -720,4 +714,79 @@ public class ImplicitCastTest {
             return "s3";
         }
     }
+
+    @Test
+    public void testImplicitCastOrder() {
+        // the first type is always the direct implicit target type
+        // we assume it is the most likely type to find.
+        assertEquals(0b1, ImplicitCastOrderGen.specializeImplicitLong(42L));
+        // we expect types are specialized in implicit cast declaration order
+        assertEquals(0b10, ImplicitCastOrderGen.specializeImplicitLong(42));
+        assertEquals(0b100, ImplicitCastOrderGen.specializeImplicitLong((short) 42));
+        assertEquals(0b1000, ImplicitCastOrderGen.specializeImplicitLong(42d));
+    }
+
+    @TypeSystem
+    static class ImplicitCastOrder {
+
+        // we use method names that would cause ambiguities if the order would not be declaration
+        // order but some alphabetical or type based order.
+
+        @ImplicitCast
+        static long do1(int v) {
+            return v;
+        }
+
+        @ImplicitCast
+        static long do0(short v) {
+            return v;
+        }
+
+        @ImplicitCast
+        static long do11(double v) {
+            return (long) v;
+        }
+    }
+
+    @TypeSystemReference(ImplicitCastOrder.class)
+    public abstract static class TestUnusedImplicitCast1Node extends Node {
+
+        public abstract long execute(long a0, long a1, long a2, long a3, long a4,
+                        long a5, long a6, long a7, long a8, long a9);
+
+        @Specialization
+        protected long doDefault(long a0, long a1, long a2, long a3, long a4,
+                        long a5, long a6, long a7, long a8, long a9) {
+            return a0 + a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9;
+        }
+    }
+
+    @TypeSystemReference(ImplicitCastOrder.class)
+    public abstract static class TestUnusedImplicitCast2Node extends Node {
+
+        public abstract long execute(long a0, long a1, long a2, long a3, long a4,
+                        long a5, long a6, long a7, long a8, Object a9);
+
+        @Specialization
+        protected long doDefault(long a0, long a1, long a2, long a3, long a4,
+                        long a5, long a6, long a7, long a8, long a9) {
+            return a0 + a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9;
+        }
+    }
+
+    @Test
+    public void testUnusedImplicitCast() {
+        Field[] fields = TestUnusedImplicitCast1NodeGen.class.getDeclaredFields();
+
+        // no fields for unused implicit casts
+        assertEquals(0, fields.length);
+
+        fields = TestUnusedImplicitCast2NodeGen.class.getDeclaredFields();
+
+        // single state field expected. unused states are filtered otherwise
+        // there would be two fields.
+        assertEquals(1, fields.length);
+
+    }
+
 }

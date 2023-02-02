@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,11 +43,10 @@ package com.oracle.truffle.sl.nodes.local;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.interop.NodeObjectDescriptor;
 
@@ -61,14 +60,14 @@ import com.oracle.truffle.sl.nodes.interop.NodeObjectDescriptor;
  * values are boxed. Even a mixture of {@code long} and {@code boolean} writes leads to both being
  * stored boxed.
  */
-@NodeField(name = "slot", type = FrameSlot.class)
+@NodeField(name = "slot", type = int.class)
 public abstract class SLReadLocalVariableNode extends SLExpressionNode {
 
     /**
      * Returns the descriptor of the accessed local variable. The implementation of this method is
      * created by the Truffle DSL based on the {@link NodeField} annotation on the class.
      */
-    protected abstract FrameSlot getSlot();
+    protected abstract int getSlot();
 
     @Specialization(guards = "frame.isLong(getSlot())")
     protected long readLong(VirtualFrame frame) {
@@ -77,12 +76,12 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
          * written to the local variable. So we do not need to check that the frame really contains
          * a primitive long value.
          */
-        return FrameUtil.getLongSafe(frame, getSlot());
+        return frame.getLong(getSlot());
     }
 
     @Specialization(guards = "frame.isBoolean(getSlot())")
     protected boolean readBoolean(VirtualFrame frame) {
-        return FrameUtil.getBooleanSafe(frame, getSlot());
+        return frame.getBoolean(getSlot());
     }
 
     @Specialization(replaces = {"readLong", "readBoolean"})
@@ -101,7 +100,7 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
             return result;
         }
 
-        return FrameUtil.getObjectSafe(frame, getSlot());
+        return frame.getObject(getSlot());
     }
 
     @Override
@@ -111,6 +110,6 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
 
     @Override
     public Object getNodeObject() {
-        return NodeObjectDescriptor.readVariable(getSlot().getIdentifier().toString());
+        return NodeObjectDescriptor.readVariable((TruffleString) getRootNode().getFrameDescriptor().getSlotName(getSlot()));
     }
 }

@@ -28,10 +28,10 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.log.Log;
 
 class GCCExceptionTable {
@@ -68,7 +68,7 @@ class GCCExceptionTable {
     static Long getHandlerOffset(Pointer buffer, long pcOffset) {
         Log log = Log.noopLog();
 
-        CIntPointer offset = StackValue.get(Integer.BYTES);
+        CIntPointer offset = UnsafeStackValue.get(Integer.BYTES);
         offset.write(0);
 
         int header = Byte.toUnsignedInt(buffer.readByte(offset.read()));

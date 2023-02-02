@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package org.graalvm.compiler.lir.phases;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.lir.alloc.AllocationStageVerifier;
 import org.graalvm.compiler.lir.alloc.lsra.LinearScanPhase;
-import org.graalvm.compiler.lir.dfa.LocationMarkerPhase;
 import org.graalvm.compiler.lir.dfa.MarkBasePointersPhase;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
 import org.graalvm.compiler.lir.stackslotalloc.LSStackSlotAllocator;
@@ -46,8 +45,6 @@ public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
         } else {
             appendPhase(new SimpleStackSlotAllocator());
         }
-        // currently we mark locations only if we do register allocation
-        appendPhase(new LocationMarkerPhase());
 
         if (Assertions.detailedAssertionsEnabled(options)) {
             appendPhase(new AllocationStageVerifier());

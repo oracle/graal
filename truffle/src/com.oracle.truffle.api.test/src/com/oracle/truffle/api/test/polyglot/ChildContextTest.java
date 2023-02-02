@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,14 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class ChildContextTest extends AbstractPolyglotTest {
     @Test
@@ -75,8 +76,10 @@ public class ChildContextTest extends AbstractPolyglotTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             Source source = Source.newBuilder(InternalLang.ID, "", "").build();
-            return getCurrentContext(PublicLang.class).env.parseInternal(source);
+            return REFERENCE.get(null).env.parseInternal(source);
         }
+
+        private static final ContextReference<LanguageContext> REFERENCE = ContextReference.create(PublicLang.class);
     }
 
     @TruffleLanguage.Registration(name = InternalLang.NAME, id = InternalLang.ID, internal = true)
@@ -93,8 +96,11 @@ public class ChildContextTest extends AbstractPolyglotTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            getCurrentContext(InternalLang.class).env.newContextBuilder().build();
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode("foo"));
+            TruffleContext tc = REFERENCE.get(null).env.newInnerContextBuilder().build();
+            tc.close();
+            return RootNode.createConstantNode("foo").getCallTarget();
         }
+
+        private static final ContextReference<LanguageContext> REFERENCE = ContextReference.create(InternalLang.class);
     }
 }

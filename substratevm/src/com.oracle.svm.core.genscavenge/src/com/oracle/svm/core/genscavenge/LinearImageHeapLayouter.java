@@ -25,18 +25,22 @@
 package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 
 public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
     private final long startOffset;
-    private final boolean compressedNullPadding;
+    private final int nullRegionSize;
 
-    public LinearImageHeapLayouter(ImageHeapInfo heapInfo, long startOffset, boolean compressedNullPadding) {
+    public LinearImageHeapLayouter(ImageHeapInfo heapInfo, long startOffset, int nullRegionSize) {
+        assert startOffset >= 0;
+        assert startOffset == 0 || startOffset >= Heap.getHeap().getImageHeapOffsetInAddressSpace() : "must be relative to the heap base";
+        assert nullRegionSize >= 0;
         this.heapInfo = heapInfo;
         this.startOffset = startOffset;
-        this.compressedNullPadding = compressedNullPadding;
+        this.nullRegionSize = nullRegionSize;
     }
 
     @Override
@@ -51,20 +55,21 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
 
     @Override
     protected ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
-        long beginOffset = startOffset;
-        if (compressedNullPadding) {
-            /*
-             * Zero designates null, so adding some explicit padding at the beginning of the native
-             * image heap is the easiest approach to make object offsets strictly greater than 0.
-             */
-            beginOffset += ConfigurationValues.getObjectLayout().getAlignment();
-        }
+        long beginOffset = startOffset + spaceReservedForNull();
+        assert beginOffset >= ConfigurationValues.getObjectLayout().getAlignment() : "Zero designates null";
         LinearImageHeapAllocator allocator = new LinearImageHeapAllocator(beginOffset);
         for (LinearImageHeapPartition partition : getPartitions()) {
             partition.allocateObjects(allocator);
         }
         initializeHeapInfo(imageHeap.countDynamicHubs());
         return createLayoutInfo(startOffset, getWritablePrimitive().getStartOffset());
+    }
+
+    private long spaceReservedForNull() {
+        if (startOffset == 0 && nullRegionSize == 0) {
+            return ConfigurationValues.getObjectLayout().getAlignment();
+        }
+        return nullRegionSize;
     }
 
     /**

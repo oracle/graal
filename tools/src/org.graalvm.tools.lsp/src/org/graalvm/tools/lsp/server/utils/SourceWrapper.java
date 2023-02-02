@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,11 @@
  */
 package org.graalvm.tools.lsp.server.utils;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
 
 public final class SourceWrapper {
     private Source source;
     private boolean parsingSuccessful = false;
-    /**
-     * Needed to have a strong reference to the RootNode so that it and its children will not be
-     * garbage collected.
-     */
-    // TODO: Review why this needs to be held
-    @SuppressWarnings("unused") private CallTarget callTarget;
 
     public SourceWrapper(Source source) {
         this.setSource(source);
@@ -55,9 +48,5 @@ public final class SourceWrapper {
 
     public void setParsingSuccessful(boolean parsingSuccessful) {
         this.parsingSuccessful = parsingSuccessful;
-    }
-
-    public void setCallTarget(CallTarget callTarget) {
-        this.callTarget = callTarget;
     }
 }

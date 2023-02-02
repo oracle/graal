@@ -38,7 +38,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -71,7 +70,7 @@ public final class CoverageEventNode extends ExecutionEventNode {
 
     @Override
     protected void onEnter(VirtualFrame frame) {
-        if (entered || creatorThreadId != Thread.currentThread().getId()) {
+        if (entered || creatorThreadId != ThreadId.getCurrent()) {
             // We had problems with a finalizer thread, so we filter only for the thread which
             // created the node
             // TODO ?
@@ -130,59 +129,41 @@ public final class CoverageEventNode extends ExecutionEventNode {
     private static MaterializedFrame copyFrame(MaterializedFrame frame) {
         FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
         FrameDescriptor descriptorCopy = frameDescriptor.copy();
-        for (FrameSlot slotCopy : descriptorCopy.getSlots()) {
-            FrameSlotKind frameSlotKind = frameDescriptor.getFrameSlotKind(frameDescriptor.findFrameSlot(slotCopy.getIdentifier()));
-            descriptorCopy.setFrameSlotKind(slotCopy, frameSlotKind);
-        }
         Object[] arguments = frame.getArguments();
         MaterializedFrame frameCopy = Truffle.getRuntime().createMaterializedFrame(Arrays.copyOf(arguments, arguments.length), descriptorCopy);
-        try {
-            for (FrameSlot slot : frameDescriptor.getSlots()) {
-                FrameSlotKind slotKind = frameDescriptor.getFrameSlotKind(slot);
-                FrameSlot id = descriptorCopy.findFrameSlot(slot.getIdentifier());
 
+        for (int slot = 0; slot < frameDescriptor.getNumberOfSlots(); slot++) {
+            FrameSlotKind slotKind = frameDescriptor.getSlotKind(slot);
+
+            try {
                 switch (slotKind) {
                     case Illegal:
                         break;
                     case Object:
-                        if (frame.isObject(slot)) {
-                            frameCopy.setObject(id, frame.getObject(slot));
-                        }
+                        frameCopy.setObject(slot, frame.getObject(slot));
                         break;
                     case Boolean:
-                        if (frame.isBoolean(slot)) {
-                            frameCopy.setBoolean(id, frame.getBoolean(slot));
-                        }
+                        frameCopy.setBoolean(slot, frame.getBoolean(slot));
                         break;
                     case Int:
-                        if (frame.isInt(slot)) {
-                            frameCopy.setInt(id, frame.getInt(slot));
-                        }
+                        frameCopy.setInt(slot, frame.getInt(slot));
                         break;
                     case Byte:
-                        if (frame.isByte(slot)) {
-                            frameCopy.setByte(id, frame.getByte(slot));
-                        }
+                        frameCopy.setByte(slot, frame.getByte(slot));
                         break;
                     case Long:
-                        if (frame.isLong(slot)) {
-                            frameCopy.setLong(id, frame.getLong(slot));
-                        }
+                        frameCopy.setLong(slot, frame.getLong(slot));
                         break;
                     case Double:
-                        if (frame.isDouble(slot)) {
-                            frameCopy.setDouble(id, frame.getDouble(slot));
-                        }
+                        frameCopy.setDouble(slot, frame.getDouble(slot));
                         break;
                     case Float:
-                        if (frame.isFloat(slot)) {
-                            frameCopy.setFloat(id, frame.getFloat(slot));
-                        }
+                        frameCopy.setFloat(slot, frame.getFloat(slot));
                         break;
                 }
+            } catch (FrameSlotTypeException e) {
+                // ignore
             }
-        } catch (FrameSlotTypeException e) {
-            throw new RuntimeException(e);
         }
         return frameCopy;
     }

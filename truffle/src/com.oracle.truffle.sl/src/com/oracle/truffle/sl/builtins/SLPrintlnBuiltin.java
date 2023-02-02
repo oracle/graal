@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,12 +41,10 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLLanguageView;
 
@@ -65,9 +63,8 @@ public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
     @Specialization
     @TruffleBoundary
     public Object println(Object value,
-                    @CachedLibrary(limit = "3") InteropLibrary interop,
-                    @CachedContext(SLLanguage.class) SLContext context) {
-        context.getOutput().println(interop.toDisplayString(SLLanguageView.forValue(value)));
+                    @CachedLibrary(limit = "3") InteropLibrary interop) {
+        SLContext.get(this).getOutput().println(interop.toDisplayString(SLLanguageView.forValue(value)));
         return value;
     }
 

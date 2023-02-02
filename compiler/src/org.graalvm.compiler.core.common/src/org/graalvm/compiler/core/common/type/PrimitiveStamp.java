@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,10 @@
  */
 package org.graalvm.compiler.core.common.type;
 
+import org.graalvm.compiler.debug.GraalError;
+
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 
 /**
@@ -59,10 +62,27 @@ public abstract class PrimitiveStamp extends ArithmeticStamp {
         }
     }
 
+    private static boolean isAligned(long displacement, int numBits) {
+        GraalError.guarantee((numBits & 7) == 0, "numBits not a multiple of 8: %d", numBits);
+        int numBytes = numBits / 8;
+        return displacement % numBytes == 0;
+    }
+
     @Override
     public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement) {
+        return readJavaConstant(provider, base, displacement, getBits());
+    }
+
+    /**
+     * @param accessBits the number of bits to read from memory (must be 8, 16, 32 or 64)
+     */
+    protected JavaConstant readJavaConstant(MemoryAccessProvider provider, Constant base, long displacement, int accessBits) {
+        if (!isAligned(displacement, accessBits)) {
+            // Avoid crash when performing unaligned reads (JDK-8275645)
+            return null;
+        }
         try {
-            return provider.readPrimitiveConstant(getStackKind(), base, displacement, getBits());
+            return provider.readPrimitiveConstant(getStackKind(), base, displacement, accessBits);
         } catch (IllegalArgumentException e) {
             /*
              * It's possible that the base and displacement aren't valid together so simply return

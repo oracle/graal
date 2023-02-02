@@ -64,12 +64,12 @@ final class PolyglotStackFramesRetriever {
         Future<Void> future;
         synchronized (context) {
             threads = context.getSeenThreads().keySet().toArray(new Thread[0]);
-            if (!context.closed) {
+            if (!context.state.isClosed()) {
                 future = context.threadLocalActions.submit(null, PolyglotEngineImpl.ENGINE_ID, new ThreadLocalAction(false, false) {
                     @Override
                     protected void perform(Access access) {
                         List<FrameInstance> frameInstances = new ArrayList<>();
-                        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+                        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                             @Override
                             public Object visitFrame(FrameInstance frameInstance) {
                                 return frameInstances.add(frameInstance);
@@ -83,7 +83,7 @@ final class PolyglotStackFramesRetriever {
             }
         }
 
-        TruffleSafepoint.setBlockedThreadInterruptible(context.engine.getUncachedLocation(), new TruffleSafepoint.Interruptible<Future<Void>>() {
+        TruffleSafepoint.setBlockedThreadInterruptible(context.uncachedLocation, new TruffleSafepoint.Interruptible<Future<Void>>() {
             @Override
             public void apply(Future<Void> arg) throws InterruptedException {
                 try {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.graph;
 
-import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static org.graalvm.compiler.graph.Node.NOT_ITERABLE;
 
 import java.util.ArrayList;
@@ -77,6 +77,11 @@ public abstract class Edges extends Fields {
         return (NodeList<Node>) UNSAFE.getObject(node, offset);
     }
 
+    public void putNodeUnsafeChecked(Node node, long offset, Node value, int index) {
+        verifyUpdateValid(node, index, value);
+        putNodeUnsafe(node, offset, value);
+    }
+
     public static void putNodeUnsafe(Node node, long offset, Node value) {
         UNSAFE.putObject(node, offset, value);
     }
@@ -114,35 +119,6 @@ public abstract class Edges extends Fields {
      */
     public static NodeList<Node> getNodeList(Node node, long[] offsets, int index) {
         return getNodeListUnsafe(node, offsets[index]);
-    }
-
-    /**
-     * Clear edges in a given node. This is accomplished by setting {@linkplain #getDirectCount()
-     * direct} edges to null and replacing the lists containing indirect edges with new lists. The
-     * latter is important so that this method can be used to clear the edges of cloned nodes.
-     *
-     * @param node the node whose edges are to be cleared
-     */
-    public void clear(Node node) {
-        final long[] curOffsets = this.offsets;
-        final Type curType = this.type;
-        int index = 0;
-        int curDirectCount = getDirectCount();
-        while (index < curDirectCount) {
-            initializeNode(node, index++, null);
-        }
-        int curCount = getCount();
-        while (index < curCount) {
-            NodeList<Node> list = getNodeList(node, curOffsets, index);
-            if (list != null) {
-                int size = list.initialSize;
-                NodeList<Node> newList = curType == Edges.Type.Inputs ? new NodeInputList<>(node, size) : new NodeSuccessorList<>(node, size);
-
-                // replacing with a new list object is the expected behavior!
-                initializeList(node, index, newList);
-            }
-            index++;
-        }
     }
 
     /**
@@ -199,9 +175,13 @@ public abstract class Edges extends Fields {
         }
     }
 
-    @Override
-    public void set(Object node, int index, Object value) {
-        throw new IllegalArgumentException("Cannot call set on " + this);
+    void minimizeSize(Node node) {
+        for (int i = getDirectCount(); i < getCount(); i++) {
+            NodeList<Node> list = getNodeList(node, offsets, i);
+            if (list != null) {
+                list.minimizeSize();
+            }
+        }
     }
 
     /**
@@ -213,8 +193,7 @@ public abstract class Edges extends Fields {
      * @param value the node to be written to the edge
      */
     public void initializeNode(Node node, int index, Node value) {
-        verifyUpdateValid(node, index, value);
-        putNodeUnsafe(node, offsets[index], value);
+        putNodeUnsafeChecked(node, offsets[index], value, index);
     }
 
     public void initializeList(Node node, int index, NodeList<Node> value) {
@@ -224,7 +203,7 @@ public abstract class Edges extends Fields {
 
     private void verifyUpdateValid(Node node, int index, Object newValue) {
         if (newValue != null && !getType(index).isAssignableFrom(newValue.getClass())) {
-            throw new IllegalArgumentException("Can not assign " + newValue.getClass() + " to " + getType(index) + " in " + node);
+            throw new IllegalArgumentException("Can not assign " + newValue + " to " + getType(index) + " in " + node);
         }
     }
 
@@ -244,22 +223,6 @@ public abstract class Edges extends Fields {
     }
 
     public abstract void update(Node node, Node oldValue, Node newValue);
-
-    public boolean contains(Node node, Node value) {
-        final long[] curOffsets = this.offsets;
-        for (int i = 0; i < directCount; i++) {
-            if (getNode(node, curOffsets, i) == value) {
-                return true;
-            }
-        }
-        for (int i = directCount; i < getCount(); i++) {
-            NodeList<?> curList = getNodeList(node, curOffsets, i);
-            if (curList != null && curList.contains(value)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     /**
      * An iterator that will iterate over edges.
@@ -349,7 +312,7 @@ public abstract class Edges extends Fields {
 
         private EdgesWithModCountIterator(Node node, Edges edges) {
             super(node, edges);
-            assert isModificationCountsEnabled();
+            assert isNodeModificationCountsEnabled();
             this.modCount = node.modCount();
         }
 
@@ -373,11 +336,11 @@ public abstract class Edges extends Fields {
     }
 
     public Iterable<Position> getPositionsIterable(final Node node) {
-        return new Iterable<Position>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<Position> iterator() {
-                if (isModificationCountsEnabled()) {
+                if (isNodeModificationCountsEnabled()) {
                     return new EdgesWithModCountIterator(node, Edges.this);
                 } else {
                     return new EdgesIterator(node, Edges.this);

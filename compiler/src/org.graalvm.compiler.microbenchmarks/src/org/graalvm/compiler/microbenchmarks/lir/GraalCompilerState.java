@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,9 +44,9 @@ import org.graalvm.compiler.core.GraalCompiler.Request;
 import org.graalvm.compiler.core.LIRGenerationPhase;
 import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
+import org.graalvm.compiler.core.common.alloc.LinearScanOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.target.Backend;
@@ -66,7 +66,7 @@ import org.graalvm.compiler.microbenchmarks.graal.util.GraalUtil;
 import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -250,7 +250,7 @@ public abstract class GraalCompilerState {
     }
 
     protected Suites createSuites(OptionValues opts) {
-        return backend.getSuites().getDefaultSuites(opts).copy();
+        return backend.getSuites().getDefaultSuites(opts, backend.getTarget().arch).copy();
     }
 
     protected LIRSuites createLIRSuites(OptionValues opts) {
@@ -308,8 +308,8 @@ public abstract class GraalCompilerState {
     private NodeLIRBuilderTool nodeLirGen;
     private RegisterConfig registerConfig;
     private ScheduleResult schedule;
-    private AbstractBlockBase<?>[] codeEmittingOrder;
-    private AbstractBlockBase<?>[] linearScanOrder;
+    private CodeEmissionOrder<?> blockOrder;
+    private char[] linearScanOrder;
 
     /**
      * Copies the {@link #originalGraph original graph} and prepares the {@link #request}.
@@ -368,15 +368,15 @@ public abstract class GraalCompilerState {
         Object stub = null;
         schedule = request.graph.getLastSchedule();
         ControlFlowGraph cfg = deepCopy(schedule.getCFG());
-        Block[] blocks = cfg.getBlocks();
-        Block startBlock = cfg.getStartBlock();
+        HIRBlock[] blocks = cfg.getBlocks();
+        HIRBlock startBlock = cfg.getStartBlock();
         assert startBlock != null;
         assert startBlock.getPredecessorCount() == 0;
 
-        codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
-        linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
+        blockOrder = request.backend.newBlockOrder(blocks.length, startBlock);
+        linearScanOrder = LinearScanOrder.computeLinearScanOrder(blocks.length, startBlock);
 
-        LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder, getGraphOptions(), getGraphDebug());
+        LIR lir = new LIR(cfg, linearScanOrder, getGraphOptions(), getGraphDebug());
         LIRGenerationProvider lirBackend = (LIRGenerationProvider) request.backend;
         RegisterAllocationConfig registerAllocationConfig = request.backend.newRegisterAllocationConfig(registerConfig, null);
         lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, request.graph, stub);
@@ -393,7 +393,7 @@ public abstract class GraalCompilerState {
     }
 
     private static ControlFlowGraph deepCopy(ControlFlowGraph cfg) {
-        return ControlFlowGraph.compute(cfg.graph, true, true, true, true);
+        return ControlFlowGraph.compute(cfg.graph, true, true, true, true, true, true);
     }
 
     /**
@@ -456,7 +456,7 @@ public abstract class GraalCompilerState {
     }
 
     protected PostAllocationOptimizationContext createPostAllocationOptimizationContext() {
-        return new PostAllocationOptimizationContext(lirGenTool);
+        return new PostAllocationOptimizationContext(lirGenTool, blockOrder);
     }
 
     /**
@@ -466,9 +466,9 @@ public abstract class GraalCompilerState {
         int bytecodeSize = request.graph.method() == null ? 0 : request.graph.getBytecodeSize();
         SpeculationLog speculationLog = null;
         request.compilationResult.setHasUnsafeAccess(request.graph.hasUnsafeAccess());
-        LIRCompilerBackend.emitCode(request.backend, request.graph.getAssumptions(), request.graph.method(), request.graph.getMethods(), request.graph.getFields(),
-                        speculationLog, bytecodeSize, lirGenRes,
-                        request.compilationResult, request.installedCodeOwner, request.factory);
+        LIRCompilerBackend.emitCode(request.backend, request.graph.getAssumptions(), request.graph.method(), request.graph.getMethods(), speculationLog,
+                        bytecodeSize, lirGenRes, request.compilationResult,
+                        request.installedCodeOwner, request.factory);
     }
 
     protected StructuredGraph graph() {

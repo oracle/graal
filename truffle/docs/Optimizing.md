@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Optimizing Truffle Interpreters
+permalink: /graalvm-as-a-platform/language-implementation-framework/Optimizing/
+---
 # Optimizing Truffle Interpreters
 
 This document discusses tools for optimizing or debugging Truffle interpreters for peak temporal performance.
@@ -37,23 +43,54 @@ Note: Most options also require the additional `--experimental-options` flag set
 The `--engine.TraceCompilation` command prints a line each time a method is compiled:
 
 ```shell
-[engine] opt done     EqualityConstraint.execute                                  |AST   17|Tier      2|Time  152( 143+9   )ms|Inlined   2Y   0N|IR   266/  300|CodeSize   1010|Addr 0x7f60068c82d0|Src octane-deltablue.js:528
+[engine] opt done   id=244   EqualityConstraint.execute                         |Tier 1|Time   268( 220+47  )ms|AST   17|Inlined   0Y   2N|IR    238/   437|CodeSize    1874|Timestamp 758868036671903|Src octane-deltablue.js:528
 ```
 
-The `--engine.TraceCompilationDetail` command prints a line when compilation is queued, started, or completed:
+Here is a quick overview of the information provided in these logs:
+- `id` - Unique identifier of the call target.
+- `Tier` - For which compilation tier was the targed scheduled.
+- `Time` - How long did the compilation last, with separation between the Truffle tier (mainly partial evaluation) and the Graal Tiers.
+- `AST` - The targets non-trivial node count.
+- `Inlined` - How many calls were inlined and how many remained calls after inlining.
+- `IR` - Graal node count after partial evaluation and after compilation.
+- `CodeSize` - The size of the code generated for the call target.
+- `Timestamp` - The time when the event happened as reported by `System.nanoTime()`.
+- `Src` - Abbreviated source section of the call target.
+
+The `--engine.TraceCompilationDetails` command prints a line when compilation is queued, unqueued, started, or completed:
 
 ```shell
-[engine] opt queued   BinaryConstraint.output                                     |AST   19|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:416|QueueSize      0|Time 1725905750
-[engine] opt start    BinaryConstraint.output                                     |AST   19|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:416|QueueSize      0|Time 1734518023
-[engine] opt queued   OrderedCollection.size                                      |AST   10|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:71|QueueSize      0|Time 1743713143
-[engine] opt start    OrderedCollection.size                                      |AST   10|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:71|QueueSize      0|Time 1744034479
-[engine] opt queued   Planner.addConstraintsConsumingTo                           |AST   51|Tier      2|Calls/Thres     368/    3|CallsAndLoop/Thres    1001/ 1000|Src octane-deltablue.js:743|QueueSize      1|Time 1791073465
-... more queues ...
-[engine] opt queued   BinaryConstraint.markInputs                                 |AST   13|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:402|QueueSize     27|Time 2813136318
-[engine] opt done     BinaryConstraint.output                                     |AST   19|Tier      2|Time 1146( 851+295 )ms|Inlined   0Y   0N|IR   106/  167|CodeSize    634|Addr 0x7f600586f990|Src octane-deltablue.js:416
-[engine] opt start    Planner.removePropagateFrom                                 |AST  149|Tier      2|Calls/Thres       8/    3|CallsAndLoop/Thres    2052/ 1000|Src octane-deltablue.js:717|QueueSize     26|Time 2903518862
-[engine] opt queued   UnaryConstraint.output                                      |AST    7|Tier      2|Calls/Thres    1000/    3|CallsAndLoop/Thres    1000/ 1000|Src octane-deltablue.js:255|QueueSize     27|Time 3175165217
+[engine] opt queued id=237   BinaryConstraint.output                            |Tier 1|Count/Thres         25/       25|Queue: Size    1 Change +1  Load  0.06 Time     0us|Timestamp 758865671350686|Src octane-deltablue.js:416
+[engine] opt start  id=237   BinaryConstraint.output                            |Tier 1|Priority        25|Rate 0.000000|Queue: Size    0 Change +0  Load  0.06 Time     0us|Timestamp 758865708273384|Src octane-deltablue.js:416
+[engine] opt queued id=239   OrderedCollection.size                             |Tier 1|Count/Thres         25/       25|Queue: Size    1 Change +1  Load  0.06 Time     0us|Timestamp 758865727664193|Src octane-deltablue.js:71
+[engine] opt queued id=52    Array.prototype.push                               |Tier 1|Count/Thres         25/       50|Queue: Size    2 Change +1  Load  0.13 Time     0us|Timestamp 758865744191674|Src <builtin>:1
+... more log ...
+[engine] opt start  id=239   OrderedCollection.size                             |Tier 1|Priority    181875|Rate 0.000001|Queue: Size   11 Change -1  Load  0.63 Time   575us|Timestamp 758866381654116|Src octane-deltablue.js:71
+[engine] opt done   id=237   BinaryConstraint.output                            |Tier 1|Time   717( 654+64  )ms|AST   19|Inlined   0Y   0N|IR    143/   220|CodeSize     882|Timestamp 758866435391354|Src octane-deltablue.js:416
+[engine] opt start  id=236   BinaryConstraint.input                             |Tier 1|Priority    144000|Rate 0.000001|Queue: Size   10 Change -1  Load  0.56 Time    48us|Timestamp 758866452554530|Src octane-deltablue.js:409
+... more log ...
+[engine] opt queued id=239   OrderedCollection.size                             |Tier 2|Count/Thres       8750/     8125|Queue: Size   18 Change +1  Load  0.81 Time     0us|Timestamp 758867756295139|Src octane-deltablue.js:71
+[engine] opt queued id=237   BinaryConstraint.output                            |Tier 2|Count/Thres       8499/     8750|Queue: Size   19 Change +1  Load  0.88 Time     0us|Timestamp 758867758263099|Src octane-deltablue.js:416
+[engine] opt start  id=244   EqualityConstraint.execute                         |Tier 1|Priority   2618289|Rate 0.000015|Queue: Size   19 Change -1  Load  0.88 Time   180us|Timestamp 758867767116908|Src octane-deltablue.js:528
+... more log ...
+[engine] opt done   id=246   OrderedCollection.at                               |Tier 2|Time    89(  80+9   )ms|AST   15|Inlined   0Y   0N|IR     50/   110|CodeSize     582|Timestamp 758873628915755|Src octane-deltablue.js:67
+[engine] opt start  id=237   BinaryConstraint.output                            |Tier 2|Priority    173536|Rate 0.000054|Queue: Size   18 Change -1  Load  0.94 Time    18us|Timestamp 758873629411012|Src octane-deltablue.js:416
+[engine] opt queued id=238   Planner.addPropagate                               |Tier 2|Count/Thres       9375/     8750|Queue: Size   19 Change +1  Load  0.88 Time     0us|Timestamp 758873663196884|Src octane-deltablue.js:696
+[engine] opt queued id=226   Variable.addConstraint                             |Tier 2|Count/Thres       8771/     9375|Queue: Size   20 Change +1  Load  0.94 Time     0us|Timestamp 758873665823697|Src octane-deltablue.js:556
+[engine] opt done   id=293   change                                             |Tier 1|Time   167( 130+37  )ms|AST   60|Inlined   0Y   6N|IR    576/  1220|CodeSize    5554|Timestamp 758873669483749|Src octane-deltablue.js:867
+[engine] opt start  id=270   Plan.execute                                       |Tier 2|Priority    157871|Rate 0.000072|Queue: Size   19 Change -1  Load  1.00 Time    17us|Timestamp 758873669912101|Src octane-deltablue.js:778
+[engine] opt done   id=237   BinaryConstraint.output                            |Tier 2|Time    58(  52+6   )ms|AST   19|Inlined   0Y   0N|IR    103/   181|CodeSize     734|Timestamp 758873687678394|Src octane-deltablue.js:416
+... more log ...
+[engine] opt unque. id=304   Date.prototype.valueOf                             |Tier 2|Count/Thres      80234/     3125|Queue: Size    4 Change  0  Load  0.31 Time     0us|Timestamp 758899904132076|Src <builtin>:1|Reason Target inlined into only caller
 ```
+
+Here is a quick overview of the information added in these logs:
+- `Count/Thres` - What is the call and loop count of the target and what is the threshold needed to add the compilation to the queue.
+- `Queue: Size` - How many compilations are in the compilation queue.
+- `Queue: Change` - How did this event impact the compilation queue (e.g. certain events can prune the queue of unneeded compilation tasks).
+- `Queue: Load` - A metric of whether the queue is over/under loaded. Normal load is represented with 1, less then 1 is underloaded and greater than 1 is overloaded.
+- `Queue: Time` - How long did the event take.
+- `Reason` - The runtime reported reason for the event.
 
 The `--engine.TraceCompilationAST` command prints the Truffle AST for each compilation:
 
@@ -101,27 +138,6 @@ The `--engine.TraceSplitting` command prints guest-language splitting decisions:
 [engine] split   1-4b0d79fc-1     Strength                                                    |ASTSize       6/    6 |Calls/Thres       2/    3 |CallsAndLoop/Thres       2/ 1000 |SourceSection /Users/christianhumer/graal/4dev/js-benchmarks/octane-deltablue.js~140:4119-4150
 ```
 
-The `--engine.TraceTransferToInterpreter` command prints a stack trace on explicit internal invalidations:
-
-```shell
-[engine] transferToInterpreter at
-  BinaryConstraint.output(../../../../4dev/js-benchmarks/octane-deltablue.js:416)
-    Constraint.satisfy(../../../../4dev/js-benchmarks/octane-deltablue.js:183)
-    Planner.incrementalAdd(../../../../4dev/js-benchmarks/octane-deltablue.js:597) <split-609bcfb6>
-    Constraint.addConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:165) <split-7d94beb9>
-    UnaryConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:219) <split-560348e6>
-    Function.prototype.call(<builtin>:1) <split-1df8b5b8>
-    EditConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:315) <split-23202fce>
-    ...
-  com.oracle.truffle.api.CompilerDirectives.transferToInterpreterAndInvalidate(CompilerDirectives.java:90)
-    com.oracle.truffle.js.nodes.access.PropertyCacheNode.deoptimize(PropertyCacheNode.java:1269)
-    com.oracle.truffle.js.nodes.access.PropertyGetNode.getValueOrDefault(PropertyGetNode.java:305)
-    com.oracle.truffle.js.nodes.access.PropertyGetNode.getValueOrUndefined(PropertyGetNode.java:191)
-    com.oracle.truffle.js.nodes.access.PropertyNode.executeWithTarget(PropertyNode.java:153)
-    com.oracle.truffle.js.nodes.access.PropertyNode.execute(PropertyNode.java:140)
-    ...
-```
-
 
 The `--engine.TracePerformanceWarnings=(call|instanceof|store|all)` command prints code which may not be ideal for performance. The `call` enables warnings when partial evaluation cannot inline the virtual runtime call. The `instanceof` enables warnings when partial evaluation cannot resolve virtual instanceof to an exact type.
 The `store` enables warnings when the store location argument is not a partial evaluation constant:
@@ -141,44 +157,97 @@ The `--engine.CompilationStatistics` command prints statistics on compilations a
 
 ```shell
 [engine] Truffle runtime statistics for engine 1
-  Compilations                                      : 170
-    Success                                         : 166
-    Temporary Bailouts                              : 4
-      org.graalvm.compiler.core.common.CancellationBailoutException: Compilation cancelled.: 4
-    Permanent Bailouts                              : 0
-    Failed                                          : 0
-    Interrupted                                     : 0
-  Invalidated                                       : 0
-  Queues                                            : 479
-  Dequeues                                          : 315
-      Target inlined into only caller               : 314
-      Split call node                               : 1
-  Splits                                            : 450
-  Compilation Accuracy                              : 1.000000
-  Queue Accuracy                                    : 0.342380
-  Compilation Utilization                           : 0.984846
-  Remaining Compilation Queue                       : 0
-  Time to queue                                     : count= 479, sum= 2595151, min=      39, average=     5417.85, max=   19993 (milliseconds), maxTarget=Array
-  Time waiting in queue                             : count= 170, sum=  681895, min=       0, average=     4011.15, max=    8238 (milliseconds), maxTarget=EditConstraint.isInput
-  Time for compilation                              : count= 170, sum=   39357, min=       5, average=      231.51, max=    2571 (milliseconds), maxTarget=change
-    Truffle Tier                                    : count= 166, sum=   23654, min=       4, average=      142.50, max=    1412 (milliseconds), maxTarget=change
-    Graal Tier                                      : count= 166, sum=   13096, min=       0, average=       78.89, max=    1002 (milliseconds), maxTarget=change
-    Code Installation                               : count= 166, sum=    1865, min=       0, average=       11.24, max=     190 (milliseconds), maxTarget=deltaBlue
-  Graal node count                                  :
-    After Truffle Tier                              : count= 168, sum=  146554, min=      13, average=      872.35, max=    7747, maxTarget=change
-    After Graal Tier                                : count= 166, sum=  213434, min=       3, average=     1285.75, max=   15430, maxTarget=MeasureDefault
-  Graal compilation result                          :
-    Code size                                       : count= 166, sum=  874667, min=      70, average=     5269.08, max=   64913, maxTarget=deltaBlue
-    Total frame size                                : count= 166, sum=   25328, min=      16, average=      152.58, max=    1248, maxTarget=MeasureDefault
-    Exception handlers                              : count= 166, sum=     199, min=       0, average=        1.20, max=      41, maxTarget=MeasureDefault
-    Infopoints                                      : count= 166, sum=    6414, min=       3, average=       38.64, max=     517, maxTarget=MeasureDefault
-      CALL                                          : count= 166, sum=    4125, min=       3, average=       24.85, max=     357, maxTarget=MeasureDefault
-      IMPLICIT_EXCEPTION                            : count= 166, sum=    2164, min=       0, average=       13.04, max=     156, maxTarget=MeasureDefault
-      SAFEPOINT                                     : count= 166, sum=     125, min=       0, average=        0.75, max=       9, maxTarget=change
-    Marks                                           : count= 166, sum=    1385, min=       5, average=        8.34, max=      52, maxTarget=MeasureDefault
-    Data references                                 : count= 166, sum=   10219, min=       1, average=       61.56, max=     758, maxTarget=MeasureDefault
+    Compilations                : 2763
+      Success                   : 2743
+      Temporary Bailouts        : 17
+        org.graalvm.compiler.core.common.CancellationBailoutException: Compilation cancelled.: 16
+        org.graalvm.compiler.core.common.RetryableBailoutException: Assumption invalidated while compiling code: IsolatedObjectConstant[Object]: 1
+      Permanent Bailouts        : 0
+      Failed                    : 0
+      Interrupted               : 3
+    Invalidated                 : 84
+        Unknown Reason          : 45
+        Profiled Argument Types : 22
+        validRootAssumption Split call node: 12
+        expression invalidatePropertyAssumption: 1
+        getTextPos invalidatePropertyAssumption: 1
+        X_OK invalidateAllPropertyAssumptions: 1
+        statements invalidatePropertyAssumption: 1
+        typed object location generalizing object type !class com.oracle.truffle.js.runtime.objects.Nullish => !class java.lang.Object Object@0[final=false][type=class com.oracle.truffle.js.runtime.objects.Nullish]: 1
+    Queues                      : 3410
+    Dequeues                    : 262
+        Split call node         : 124
+        Target inlined into only caller: 87
+        validRootAssumption Split call node: 28
+        null                    : 17
+        Profiled Argument Types : 6
+    Splits                      : 5581
+    Compilation Accuracy        : 0,969598
+    Queue Accuracy              : 0,923167
+    Compilation Utilization     : 2,685016
+    Remaining Compilation Queue : 409
+    Time to queue               : count=3410, sum=12895957640, min=       0, average=  3781805,76, max=11311217, maxTarget=Math.floor
+    Time waiting in queue       : count=2763, sum=1247424699, min=      40, average=   451474,74, max= 4762017, maxTarget=tryGetTypeFromEffectiveTypeNode
+  ---------------------------   :
+  AST node statistics           :
+    Truffle node count          : count=2752, sum=    348085, min=       1, average=      126,48, max=    5404, maxTarget=checkSignatureDeclaration
+      Trivial                   : count=2752, sum=    124817, min=       0, average=       45,36, max=    2707, maxTarget=visitEachChild
+      Non Trivial               : count=2752, sum=    223268, min=       1, average=       81,13, max=    3162, maxTarget=checkSignatureDeclaration
+        Monomorphic             : count=2752, sum=    217660, min=       1, average=       79,09, max=    3042, maxTarget=checkSignatureDeclaration
+        Polymorphic             : count=2752, sum=      4239, min=       0, average=        1,54, max=      71, maxTarget=checkSignatureDeclaration
+        Megamorphic             : count=2752, sum=      1369, min=       0, average=        0,50, max=      49, maxTarget=checkSignatureDeclaration
+    Truffle call count          : count=2752, sum=      7789, min=       0, average=        2,83, max=     110, maxTarget=forEachChild
+      Indirect                  : count=2752, sum=        29, min=       0, average=        0,01, max=       3, maxTarget=emitLeadingComments
+      Direct                    : count=2752, sum=      7760, min=       0, average=        2,82, max=     110, maxTarget=forEachChild
+        Dispatched              : count=2752, sum=      6285, min=       0, average=        2,28, max=     110, maxTarget=forEachChild
+        Inlined                 : count=2752, sum=      1475, min=       0, average=        0,54, max=      60, maxTarget=parseList <split-8113>
+        ----------              :
+        Cloned                  : count=2752, sum=         0, min=       0, average=        0,00, max=       0, maxTarget=Array.prototype.push
+        Not Cloned              : count=2752, sum=      7747, min=       0, average=        2,82, max=     110, maxTarget=forEachChild
+    Truffle loops               : count=2752, sum=       723, min=       0, average=        0,26, max=      12, maxTarget=pipelineEmitWithComments
+  ---------------------------   :
+  Compilation Tier 1            :
+    Compilation Rate            :    471075,74 bytes/second
+    Truffle Tier Rate           :   1273853,94 bytes/second
+    Graal Tier Rate             :    922948,70 bytes/second
+    Installation Rate           :   5640071,94 bytes/second
+    Time for compilation (us)   : count=2637, sum=  20538922, min=     727, average=     7788,75, max= 2154173, maxTarget=createPrinter
+      Truffle Tier (us)         : count=2623, sum=   7595366, min=     255, average=     2895,68, max=  306107, maxTarget=createPrinter
+      Graal Tier (us)           : count=2623, sum=  10483126, min=     378, average=     3996,62, max= 1665018, maxTarget=createPrinter
+      Code Installation (us)    : count=2623, sum=   1715472, min=      39, average=      654,01, max=  183048, maxTarget=createPrinter
+    Graal node count            :
+      After Truffle Tier        : count=2627, sum=   1089218, min=      88, average=      414,62, max=   12999, maxTarget=forEachChild
+      After Graal Tier          : count=2624, sum=   2190826, min=     127, average=      834,92, max=   63837, maxTarget=createPrinter
+    Graal compilation result    :
+      Code size                 : count=2623, sum=   9675388, min=     492, average=     3688,67, max=  238448, maxTarget=createPrinter
+      Total frame size          : count=2623, sum=    350080, min=      64, average=      133,47, max=    5328, maxTarget=createPrinter
+      Exception handlers        : count=2623, sum=      9316, min=       1, average=        3,55, max=     125, maxTarget=forEachChild
+      Infopoints                : count=2623, sum=    105619, min=       5, average=       40,27, max=    1837, maxTarget=forEachChild
+        CALL                    : count=2623, sum=    105619, min=       5, average=       40,27, max=    1837, maxTarget=forEachChild
+    Marks                       : count=2623, sum=     13115, min=       5, average=        5,00, max=       5, maxTarget=Array.prototype.push
+    Data references             : count=2623, sum=    185670, min=       9, average=       70,79, max=    4153, maxTarget=createPrinter
+  ---------------------------   :
+  Compilation Tier 2            :
+    Compilation Rate            :    141825,62 bytes/second
+    Truffle Tier Rate           :    397107,38 bytes/second
+    Graal Tier Rate             :    243094,58 bytes/second
+    Installation Rate           :   4122848,22 bytes/second
+    Time for compilation (us)   : count= 123, sum=  11418247, min=     745, average=    92831,28, max=  456707, maxTarget=checkSignatureDeclaration
+      Truffle Tier (us)         : count= 120, sum=   4077990, min=     288, average=    33983,25, max=  152158, maxTarget=WhileNode$WhileDoRepeatingNode@72d2eaac typescript-polybench.js:16129~ 'utf8ToBytes'<OSR>
+      Graal Tier (us)           : count= 120, sum=   6661604, min=     310, average=    55513,37, max=  343028, maxTarget=checkSignatureDeclaration
+      Code Installation (us)    : count= 120, sum=    392786, min=      42, average=     3273,22, max=   68576, maxTarget=JSArrayBufferView.@52bcd02
+    Graal node count            :
+      After Truffle Tier        : count= 125, sum=    331695, min=      13, average=     2653,56, max=   11989, maxTarget=checkSignatureDeclaration
+      After Graal Tier          : count= 120, sum=    432639, min=      46, average=     3605,33, max=   19199, maxTarget=checkSignatureDeclaration
+    Graal compilation result    :
+      Code size                 : count= 120, sum=   1619400, min=     192, average=    13495,00, max=   72744, maxTarget=checkSignatureDeclaration
+      Total frame size          : count= 120, sum=     25728, min=      48, average=      214,40, max=     768, maxTarget=bindEach <split-2459>
+      Exception handlers        : count= 120, sum=      1080, min=       0, average=        9,00, max=      84, maxTarget=checkSignatureDeclaration
+      Infopoints                : count= 120, sum=      7236, min=       3, average=       60,30, max=     401, maxTarget=checkSignatureDeclaration
+        CALL                    : count= 120, sum=      7236, min=       3, average=       60,30, max=     401, maxTarget=checkSignatureDeclaration
+    Marks                       : count= 120, sum=      1116, min=       5, average=        9,30, max=      35, maxTarget=checkIndexConstraintForProperty
+    Data references             : count= 120, sum=     25252, min=       4, average=      210,43, max=    1369, maxTarget=checkSignatureDeclaration
 ```
-
 
 The `--engine.CompilationStatisticDetails` command prints histogram information on individual Graal nodes in addition to the previous compilation statistics:
 
@@ -456,14 +525,101 @@ Note: Specialization statistics require a recompilation of the interpeter.
  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
 
-The `--vm.XX:+TraceDeoptimization` command prints deoptimization events, whether the code is compiled by Truffle or conventional compilers (the output of HotSpot and native images may vary for this flag):
+## Controlling What Is Compiled
+
+To make the best use of the former options, limit what is compiled to the methods that you are interested in.
+
+* `--engine.CompileOnly=foo` restricts compilation to methods with `foo` in their name. Use this in combination with returning a value or taking parameters to avoid code being compiled away.
+
+* `--engine.CompileImmediately` compiles methods as soon as they are run.
+
+* `--engine.BackgroundCompilation=false` compiles synchronously, which can simplify things.
+
+* `--engine.Inlining=false` disables inlining which can make code easier to understand.
+
+* `--engine.OSR=false` disables on-stack-replacement (compilation of the bodies of `while` loops for example) which can make code easier to understand.
+
+* `--engine.Compilation=false` turns off Truffle compilation all together.
+
+## Debugging Deoptimizations
+
+Sometimes compiled code deoptimizes (goes from Truffle compiled code back to the interpreter) unexpectedly.
+These are some ways to investigate why the code is deoptimized.
+It is very important for performance to avoid repeated deoptimizations.
+
+The `--engine.TraceCompilation` option shows deoptimizations with an `[engine] opt deopt` prefix, which is useful to evaluate if many deoptimizations happen.
+However, it shows no other details.
+
+Materializing a frame with `FrameInstance#getFrame(READ_WRITE|MATERIALIZE)` from the stack causes deoptimizations (but no invalidation).
+These deoptimizations can be traced with `--engine.TraceDeoptimizeFrame`.
+
+When using native images, you need to build the native image with `-H:+IncludeNodeSourcePositions` to enable stack traces for deoptimizations.
+These are disabled by default to save on image size.
+
+On natives images, `--engine.TraceTransferToInterpreter` prints an accurate stack trace for any deoptimization, it is effectively the same as `--vm.XX:+TraceDeoptimization --engine.NodeSourcePositions`.
+This is often the most efficient way to find where a deoptimization comes from thanks to the stracktrace.
+
+```shell
+[Deoptimization initiated
+    name: String#[]
+    sp: 0x7ffd7b992710  ip: 0x7f26a8d8079f
+    reason: TransferToInterpreter  action: InvalidateReprofile
+    debugId: 25  speculation: jdk.vm.ci.meta.SpeculationLog$NoSpeculationReason@13dbed9e
+    stack trace that triggered deoptimization:
+        at org.truffleruby.core.string.StringNodesFactory$StringSubstringPrimitiveNodeFactory$StringSubstringPrimitiveNodeGen.execute(StringNodesFactory.java:12760)
+        at org.truffleruby.core.string.StringNodes$GetIndexNode.substring(StringNodes.java:836)
+        at org.truffleruby.core.string.StringNodes$GetIndexNode.getIndex(StringNodes.java:650)
+        at org.truffleruby.core.string.StringNodesFactory$GetIndexNodeFactory$GetIndexNodeGen.execute(StringNodesFactory.java:1435)
+        at org.truffleruby.language.RubyCoreMethodRootNode.execute(RubyCoreMethodRootNode.java:53)
+        at org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.executeRootNode(OptimizedCallTarget.java:632)
+        at org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot(OptimizedCallTarget.java:603)
+[Deoptimization of frame
+    name: String#[]
+    sp: 0x7ffd7b992710  ip: 0x7f26a8d8079f
+    stack trace where execution continues:
+        at org.truffleruby.core.string.StringNodesFactory$StringSubstringPrimitiveNodeFactory$StringSubstringPrimitiveNodeGen.execute(StringNodesFactory.java:12760) bci 99  return address 0x4199a1d
+        at org.truffleruby.core.string.StringNodes$GetIndexNode.substring(StringNodes.java:836) bci 32 duringCall  return address 0x41608e0
+        at org.truffleruby.core.string.StringNodes$GetIndexNode.getIndex(StringNodes.java:650) bci 25 duringCall  return address 0x415f197
+        at org.truffleruby.core.string.StringNodesFactory$GetIndexNodeFactory$GetIndexNodeGen.execute(StringNodesFactory.java:1435) bci 109 duringCall  return address 0x4182391
+        at org.truffleruby.language.RubyCoreMethodRootNode.execute(RubyCoreMethodRootNode.java:53) bci 14 duringCall  return address 0x4239a29
+        at org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.executeRootNode(OptimizedCallTarget.java:632) bci 9 duringCall  return address 0x3f1c4c9
+        at org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot(OptimizedCallTarget.java:603) bci 37 duringCall  return address 0x3f1d965
+]
+]
+```
+
+On HotSpot, `--engine.TraceTransferToInterpreter` prints a stack trace only for explicit deoptimizations via `CompilerDirectives.transferToInterpreterAndInvalidate()` or `CompilerDirectives.transferToInterpreter()`.
+The reported location can be incorrect if the deoptimization was caused by something else.
+In that case it will report the stracktrace of the next `CompilerDirectives.transferToInterpreter*` call even though it is not the cause.
+
+```shell
+[engine] transferToInterpreter at
+  BinaryConstraint.output(../../../../4dev/js-benchmarks/octane-deltablue.js:416)
+    Constraint.satisfy(../../../../4dev/js-benchmarks/octane-deltablue.js:183)
+    Planner.incrementalAdd(../../../../4dev/js-benchmarks/octane-deltablue.js:597) <split-609bcfb6>
+    Constraint.addConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:165) <split-7d94beb9>
+    UnaryConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:219) <split-560348e6>
+    Function.prototype.call(<builtin>:1) <split-1df8b5b8>
+    EditConstraint(../../../../4dev/js-benchmarks/octane-deltablue.js:315) <split-23202fce>
+    ...
+  com.oracle.truffle.api.CompilerDirectives.transferToInterpreterAndInvalidate(CompilerDirectives.java:90)
+    com.oracle.truffle.js.nodes.access.PropertyCacheNode.deoptimize(PropertyCacheNode.java:1269)
+    com.oracle.truffle.js.nodes.access.PropertyGetNode.getValueOrDefault(PropertyGetNode.java:305)
+    com.oracle.truffle.js.nodes.access.PropertyGetNode.getValueOrUndefined(PropertyGetNode.java:191)
+    com.oracle.truffle.js.nodes.access.PropertyNode.executeWithTarget(PropertyNode.java:153)
+    com.oracle.truffle.js.nodes.access.PropertyNode.execute(PropertyNode.java:140)
+    ...
+```
+
+On HotSpot, `--vm.XX:+UnlockDiagnosticVMOptions --vm.XX:+DebugNonSafepoints --vm.XX:+TraceDeoptimization` prints all deoptimization events (but no stacktraces), whether the code is compiled by Truffle or conventional compilers.
+The `TraceDeoptimization` option might require using a `fastdebug` JDK.
 
 ```shell
 Uncommon trap   bci=9 pc=0x00000001097f2235, relative_pc=501, method=com.oracle.truffle.js.nodes.access.PropertyNode.executeInt(Ljava/lang/Object;Ljava/lang/Object;)I, debug_id=0
 Uncommon trap occurred in org.graalvm.compiler.truffle.runtime.OptimizedCallTarget::profiledPERoot compiler=JVMCI compile_id=2686 (JVMCI: installed code name=BinaryConstraint.output#2)  (@0x00000001097f2235) thread=5891 reason=transfer_to_interpreter action=reinterpret unloaded_class_index=-1 debug_id=0
 ```
 
-The `--vm.XX:+TraceDeoptimizationDetails` command prints more information (only available for native images):
+Finally, on native images, `--vm.XX:+TraceDeoptimizationDetails` prints additional information:
 
 ```shell
 [Deoptimization initiated
@@ -484,25 +640,28 @@ The `--vm.XX:+TraceDeoptimizationDetails` command prints more information (only 
 ]
 ```
 
-## Controlling What Is Compiled
+You might notice the presence of a `debugId` or `debug_id` in the output of these options.
+This id might only be set if you also enable dumping, e.g., via `--vm.Dgraal.Dump=Truffle:1` (see below).
+In that case, the debug id will correspond to the id of a node in the IGV graph.
+First, open the first phase of the relevant compilation.
+That id can be searched via `id=NUMBER` in IGV's `Search in Nodes` search box,
+then selecting `Open Search for node NUMBER in Node Searches window`,
+and then clicking the `Search in following phases` button.
 
-To make the best use of the former options, limit what is compiled to the methods that you are interested in.
+## Debugging Invalidations
 
-* `--engine.CompileOnly=foo` restricts compilation to methods with `foo` in their name. Use this in combination with returning a value or taking parameters to avoid code being compiled away.
+Invalidations happen when a compiled CallTarget is thrown away.
 
-* `--engine.CompileImmediately` compiles methods as soon as they are run.
+The most common causes are:
+* An explicit `CompilerDirectives.transferToInterpreterAndInvalidate()` (an internal invalidation)
+* One of the `Assumption` used by that CallTarget has been invalidated (an external invalidation).
+  Use `--engine.TraceAssumptions` to trace those with more details.
 
-* `--engine.BackgroundCompilation=false` compiles synchronously, which can simplify things.
-
-* `--engine.Inlining=false` disables inlining which can make code easier to understand.
-
-* `--engine.OSR=false` disables on-stack-replacement (compilation of the bodies of `while` loops for example) which can make code easier to understand.
-
-* `--engine.Compilation=false` turns off Truffle compilation all together.
+The `--engine.TraceCompilation` option also shows CallTarget invalidations with an `[engine] opt inv.` prefix.
 
 ## Ideal Graph Visualizer
 
-The [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/docs/tools/igv/) is a tool to understand Truffle ASTs and the GraalVM compiler graphs.
+The [Ideal Graph Visualizer (IGV)](../../docs/tools/ideal-graph-visualizer.md) is a tool to understand Truffle ASTs and the Graal Compiler graphs.
 
 A typical usage is to run with `--vm.Dgraal.Dump=Truffle:1 --vm.Dgraal.PrintGraph=Network`, which will show you Truffle ASTs, guest-language call graphs, and the Graal graphs as they leave the Truffle phase.
 If the `-Dgraal.PrintGraph=Network` flag is omitted then the dump files are placed in the `graal_dumps` directory, which you should then open in IGV.

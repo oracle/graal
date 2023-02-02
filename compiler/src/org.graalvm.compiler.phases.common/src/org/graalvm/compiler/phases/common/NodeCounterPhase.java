@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,11 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.Option;
@@ -35,7 +38,7 @@ import org.graalvm.compiler.phases.BasePhase;
 
 public class NodeCounterPhase extends BasePhase<CoreProviders> {
 
-    private Stage stage;
+    private final Stage stage;
 
     public NodeCounterPhase(Stage stage) {
         this.stage = stage;
@@ -55,11 +58,14 @@ public class NodeCounterPhase extends BasePhase<CoreProviders> {
     }
 
     @Override
-    protected void run(StructuredGraph graph, CoreProviders context) {
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
 
+    @Override
+    protected void run(StructuredGraph graph, CoreProviders context) {
         for (Node node : graph.getNodes()) {
             String nodeName = node.getNodeClass().getClazz().getSimpleName();
-
             DebugContext.counter("NodeCounter_%s_%s", this.stage, nodeName).increment(node.getDebug());
         }
     }

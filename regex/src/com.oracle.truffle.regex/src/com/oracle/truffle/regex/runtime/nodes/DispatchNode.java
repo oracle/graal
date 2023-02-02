@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,23 +47,24 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.result.RegexResult;
 
 @GenerateUncached
 public abstract class DispatchNode extends Node {
 
-    public abstract Object execute(CallTarget receiver, Object[] args);
+    public abstract Object execute(CallTarget receiver, RegexResult result);
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"target == cachedTarget"})
-    static Object executeDirect(CallTarget target, Object[] args,
+    static Object doDirect(CallTarget target, RegexResult result,
                     @Cached("target") CallTarget cachedTarget,
                     @Cached("create(cachedTarget)") DirectCallNode callNode) {
-        return callNode.call(args);
+        return callNode.call(result);
     }
 
-    @Specialization(replaces = "executeDirect")
-    static Object executeIndirect(CallTarget target, Object[] args,
+    @Specialization(replaces = "doDirect")
+    static Object doIndirect(CallTarget target, RegexResult result,
                     @Cached IndirectCallNode callNode) {
-        return callNode.call(target, args);
+        return callNode.call(target, result);
     }
 }

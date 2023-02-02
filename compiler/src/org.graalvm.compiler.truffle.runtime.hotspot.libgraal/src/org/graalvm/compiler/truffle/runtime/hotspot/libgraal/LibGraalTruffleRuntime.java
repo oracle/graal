@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
+import org.graalvm.libgraal.DestroyedIsolateException;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
@@ -96,5 +97,10 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             return TruffleToLibGraalCalls.isPrintGraphEnabled(getIsolateThread(), handle());
         }
+    }
+
+    @Override
+    protected boolean isSuppressedTruffleRuntimeException(Throwable throwable) {
+        return throwable instanceof DestroyedIsolateException && ((DestroyedIsolateException) throwable).isVmExit();
     }
 }

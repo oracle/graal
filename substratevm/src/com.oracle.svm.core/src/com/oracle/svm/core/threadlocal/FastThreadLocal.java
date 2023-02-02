@@ -32,8 +32,7 @@ import org.graalvm.word.LocationIdentity;
  * Base class for fast thread local variables.
  */
 public abstract class FastThreadLocal {
-
-    static class FastThreadLocalLocationIdentity extends LocationIdentity {
+    class FastThreadLocalLocationIdentity extends LocationIdentity {
         @Override
         public boolean isImmutable() {
             return false;
@@ -41,15 +40,18 @@ public abstract class FastThreadLocal {
 
         @Override
         public String toString() {
-            return "THREAD_LOCAL@" + Integer.toHexString(hashCode());
+            return "FastThreadLocal:" + name;
         }
+
     }
 
     private final LocationIdentity locationIdentity;
+    private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    FastThreadLocal() {
+    FastThreadLocal(String name) {
         this.locationIdentity = new FastThreadLocalLocationIdentity();
+        this.name = name;
     }
 
     /**
@@ -62,6 +64,9 @@ public abstract class FastThreadLocal {
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private int maxOffset = Integer.MAX_VALUE;
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private boolean allowFloatingReads = false;
 
     /**
      * Useful value for {@link #setMaxOffset}: The thread local variable is in the first cache line
@@ -96,4 +101,32 @@ public abstract class FastThreadLocal {
     public int getMaxOffset() {
         return maxOffset;
     }
+
+    /**
+     * Sets whether non-volatile fast thread local reads can be read using floating semantics in the
+     * compiler graph. If this is set to <code>false</code> (default) then reads will always remain
+     * fixed in the graph and do not move. If this is set to <code>true</code> then reads can float
+     * according to the location identity of the fast thread local.
+     */
+    @SuppressWarnings("unchecked")
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public <T extends FastThreadLocal> T setAllowFloatingReads(boolean allow) {
+        this.allowFloatingReads = allow;
+        return (T) this;
+    }
+
+    /**
+     * Returns <code>true</code> if the floating reads is enabled, else <code>false</code>.
+     *
+     * @see #setAllowFloatingReads(boolean)
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean getAllowFloatingReads() {
+        return this.allowFloatingReads;
+    }
+
+    public String getName() {
+        return name;
+    }
+
 }

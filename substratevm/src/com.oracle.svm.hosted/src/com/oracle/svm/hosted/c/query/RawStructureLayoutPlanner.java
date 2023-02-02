@@ -39,6 +39,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
+import com.oracle.svm.hosted.c.info.RawPointerToInfo;
 import com.oracle.svm.hosted.c.info.RawStructureInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
@@ -112,6 +113,11 @@ public final class RawStructureLayoutPlanner extends NativeInfoTreeVisitor {
         }
 
         planLayout(info);
+    }
+
+    @Override
+    protected void visitRawPointerToInfo(RawPointerToInfo info) {
+        info.getSizeInfo().setProperty(getSizeInBytes(info.getAnnotatedElement()));
     }
 
     private void computeSize(StructFieldInfo info) {

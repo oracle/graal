@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle Branches Instrumentation
+permalink: /graalvm-as-a-platform/language-implementation-framework/BranchInstrumentation/
+---
 # Truffle Branches Instrumentation
 
 In languages implemented on top of Truffle, it is common that the AST implementations contain fast and slow

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,7 @@
  */
 package org.graalvm.compiler.core.common.memory;
 
-import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_READ;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_WRITE;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_READ;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_LOAD;
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * The new memory order modes (JDK9+) are defined with cumulative effect, from weakest to strongest:
@@ -40,29 +34,58 @@ import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
  * requested for any access.) In JDK 9, these are provided without a full formal specification.
  */
 public enum MemoryOrderMode {
-    PLAIN(0, 0, 0, 0, false),
     /**
-     * Opaque accesses are wrapped by dummy membars to avoid floating/hoisting, this is stronger
-     * than required since Opaque mode does not directly impose any ordering constraints with
-     * respect to other variables beyond Plain mode.
+     * {@code PLAIN} accesses are "normal" Java memory operations. They do not have any memory
+     * ordering guarantees.
      */
-    OPAQUE(0, 0, 0, 0, true),
-    ACQUIRE(0, LOAD_LOAD | LOAD_STORE, 0, 0, true),
-    RELEASE(0, 0, LOAD_STORE | STORE_STORE, 0, true),
-    RELEASE_ACQUIRE(0, LOAD_LOAD | LOAD_STORE, LOAD_STORE | STORE_STORE, 0, true),
-    VOLATILE(JMM_PRE_VOLATILE_READ, JMM_POST_VOLATILE_READ, JMM_PRE_VOLATILE_WRITE, JMM_POST_VOLATILE_WRITE, true);
+    PLAIN,
+    /**
+     * {@code OPAQUE} accesses are similar to {@link #PLAIN} accesses; they also do not have any
+     * memory ordering guarantees. However, opaque writes are guaranteed to eventually become
+     * visible to other threads.
+     */
+    OPAQUE,
+    /**
+     * {@code ACQUIRE} accesses are guaranteed to execute <b>before</b> all subsequent memory
+     * accesses on the same thread. However, they do not impose any ordering requirements on prior
+     * memory accesses (prior memory accesses can be executed after a subsequent acquire).
+     * Traditionally {@code ACQUIRE}s are associated with loads.
+     */
+    ACQUIRE,
+    /**
+     * {@code RELEASE} accesses are guaranteed to execute <b>after</b> all prior memory accesses on
+     * the same thread. However, they do not impose any ordering requirements on subsequent memory
+     * accesses (subsequent memory accesses can be executed before a prior release). Traditionally
+     * {@code RELEASE}s are associated with stores.
+     */
+    RELEASE,
+    /**
+     * {@code RELEASE_ACQUIRE} accesses are guaranteed to execute <b>after</b> all prior memory
+     * access and <b>before</b> all subsequent memory accesses on the same thread. Traditionally
+     * {@code RELEASE_ACQUIRE}s are associated with atomic operations.
+     */
+    RELEASE_ACQUIRE,
+    /**
+     * The behavior of {@code VOLATILE} is dependent on the type of access (load, store,
+     * load&store):
+     *
+     * <ul>
+     * <li>Load: same ordering requirements as {@link #ACQUIRE}</li>
+     * <li>Store: same ordering requirements as {@link #RELEASE}</li>
+     * <li>Load&Store (i.e., atomic): same ordering requirements as {@link #RELEASE_ACQUIRE}</li>
+     * </ul>
+     *
+     * In addition, all volatile accesses are strictly ordered. This means that, within a given
+     * thread, every volatile access must execute in program order w.r.t every other volatile access
+     * in that same thread.
+     */
+    VOLATILE;
 
-    public final boolean emitBarriers;
-    public final int preReadBarriers;
-    public final int postReadBarriers;
-    public final int preWriteBarriers;
-    public final int postWriteBarriers;
+    public static boolean ordersMemoryAccesses(MemoryOrderMode memoryOrder) {
+        return memoryOrder != PLAIN;
+    }
 
-    MemoryOrderMode(int preReadBarriers, int postReadBarriers, int preWriteBarriers, int postWriteBarriers, boolean emitBarriers) {
-        this.emitBarriers = emitBarriers;
-        this.preReadBarriers = preReadBarriers;
-        this.postReadBarriers = postReadBarriers;
-        this.preWriteBarriers = preWriteBarriers;
-        this.postWriteBarriers = postWriteBarriers;
+    public static MemoryOrderMode getMemoryOrder(ResolvedJavaField field) {
+        return field.isVolatile() ? VOLATILE : PLAIN;
     }
 }

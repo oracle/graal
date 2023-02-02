@@ -28,6 +28,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Type;
 import java.util.List;
 
@@ -46,6 +47,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.vm.ci.meta.Constant;
@@ -65,7 +67,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * assembles the arguments into an array, performing necessary boxing operations. The wrapper then
  * transfers execution to the underlying varargs method.
  */
-public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, GraphProvider {
+public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, GraphProvider, AnnotationWrapper {
 
     private final SubstitutionMethod substitutionBaseMethod;
     private final ResolvedJavaMethod originalMethod;
@@ -91,7 +93,8 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
             receiver = args.remove(0);
         }
 
-        ValueNode parameterArray = kit.append(new NewArrayNode(metaAccess.lookupJavaType(Object.class), kit.createInt(args.size()), false));
+        ValueNode parameterArray = kit.append(new NewArrayNode(metaAccess.lookupJavaType(Object.class), kit.createInt(args.size()), true));
+
         for (int i = 0; i < args.size(); ++i) {
             ValueNode arg = args.get(i);
             if (arg.getStackKind().isPrimitive()) {
@@ -173,7 +176,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                     retVal = kit.createInvokeWithExceptionAndUnwind(unboxMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), retVal, methodHandleOrMemberName);
                     break;
                 default:
-                    retVal = kit.createUnboxing(invoke, returnKind, metaAccess);
+                    retVal = kit.createUnboxing(invoke, returnKind);
             }
         }
         kit.createReturn(retVal, returnKind);
@@ -335,18 +338,8 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
     }
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return substitutionBaseMethod.getAnnotation(annotationClass);
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return substitutionBaseMethod.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return substitutionBaseMethod.getDeclaredAnnotations();
+    public AnnotatedElement getAnnotationRoot() {
+        return substitutionBaseMethod;
     }
 
     @Override

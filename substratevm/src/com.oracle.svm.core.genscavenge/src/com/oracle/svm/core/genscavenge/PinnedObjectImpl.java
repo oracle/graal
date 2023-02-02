@@ -25,32 +25,29 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.VMOperation;
 
 /** Support for pinning objects to a memory address with {@link PinnedObject}. */
 final class PinnedObjectImpl implements PinnedObject {
+
+    @AutomaticallyRegisteredImageSingleton(value = PinnedObjectSupport.class, onlyWith = UseSerialOrEpsilonGC.class)
     static class PinnedObjectSupportImpl implements PinnedObjectSupport {
         @Override
         public PinnedObject create(Object object) {
-            Log trace = Log.noopLog().string("[PinnedObject.open:").string(" object: ").object(object).newline();
             PinnedObjectImpl result = new PinnedObjectImpl(object);
             PinnedObjectImpl.pushPinnedObject(result);
-            trace.string("  returns: ]").object(result).newline();
             return result;
         }
 
@@ -67,21 +64,9 @@ final class PinnedObjectImpl implements PinnedObject {
         }
     }
 
-    @AutomaticFeature
-    static class PinnedObjectFeature implements Feature {
-        @Override
-        public boolean isInConfiguration(IsInConfigurationAccess access) {
-            return SubstrateOptions.UseCardRememberedSetHeap.getValue();
-        }
-
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
-        }
-    }
-
     static void pushPinnedObject(PinnedObjectImpl newHead) {
-        Log trace = Log.noopLog().string("[PinnedObject.pushPinnedObject:").string("  newHead: ").object(newHead);
+        // To avoid ABA problems, the application may only push data. All other operations may only
+        // be executed by the GC.
         HeapImpl heap = HeapImpl.getHeapImpl();
         UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = heap.getPinHead();
         PinnedObjectImpl sampleHead;
@@ -89,17 +74,18 @@ final class PinnedObjectImpl implements PinnedObject {
             sampleHead = pinHead.get();
             newHead.next = sampleHead;
         } while (!pinHead.compareAndSet(sampleHead, newHead));
-        trace.string("  returns: ").object(newHead).string("]").newline();
     }
 
-    /** Clears the list head reference and returns the former head object. */
-    static PinnedObjectImpl claimPinnedObjectList() {
-        Log trace = Log.noopLog().string("[PinnedObject.claimPinnedObjectList:").newline();
-        HeapImpl heap = HeapImpl.getHeapImpl();
-        UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = heap.getPinHead();
-        PinnedObjectImpl result = pinHead.getAndSet(null);
-        trace.string("  returns: ").object(result);
-        return result;
+    static PinnedObjectImpl getPinnedObjects() {
+        assert VMOperation.isGCInProgress();
+        UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = HeapImpl.getHeapImpl().getPinHead();
+        return pinHead.get();
+    }
+
+    static void setPinnedObjects(PinnedObjectImpl list) {
+        assert VMOperation.isGCInProgress();
+        UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = HeapImpl.getHeapImpl().getPinHead();
+        pinHead.set(list);
     }
 
     private final Object referent;
@@ -149,5 +135,12 @@ final class PinnedObjectImpl implements PinnedObject {
 
     public PinnedObjectImpl getNext() {
         return next;
+    }
+
+    void setNext(PinnedObjectImpl value) {
+        // Avoid useless writes as those would dirty the card table unnecessarily.
+        if (value != next) {
+            this.next = value;
+        }
     }
 }

@@ -1,7 +1,6 @@
-
 # GraalWasm
 
-GraalWasm is a WebAssembly engine implemented in the GraalVM.
+GraalWasm is a WebAssembly engine implemented in GraalVM.
 It can interpret and compile WebAssembly programs in the binary format,
 or be embedded into other programs.
 
@@ -9,84 +8,152 @@ We are working hard towards making GraalWasm more stable and more efficient,
 as well as to implement various WebAssembly extensions.
 Feedback, bug reports, and open-source contributions are welcome!
 
-
 ## Building GraalWasm
+
+### Prerequisites
+
+- Python 3 (required by `mx`)
+- GIT (to download, update, and locate repositories)
+- JDK 11+
+- emscripten or wasi-sdk for translating C files
+
+### Building
 
 To build GraalWasm, you need to follow the standard workflow for Graal projects.
 We summarize the basic steps below:
 
-0. Download the Mx tool from [GitHub](https://github.com/graalvm/mx), and put the `mx` script to your `PATH`.
-1. Clone GraalVM from [GitHub](https://github.com/oracle/graal).
-2. Make sure that you have the latest [JVMCI-enabled JDK](https://github.com/graalvm/openjdk8-jvmci-builder).
-3. Set `JAVA_HOME` to point to your JVMCI-enabled JDK.
-4. In the `wasm` subdirectory of the GraalVM project, run:
+1. Create a new folder where your repositories `mx` and `graal` should be located:
 
+```bash
+$ mkdir graalvm
+$ cd graalvm
 ```
+
+2. Clone `mx` and add it to the `PATH`:
+
+```bash
+$ git clone https://github.com/graalvm/mx.git
+$ export PATH=$PWD/mx:$PATH
+```
+
+3. Clone the `graal` repository and enter the wasm directory:
+
+```bash
+$ git clone https://github.com/oracle/graal.git
+$ cd graal/wasm
+```
+
+4. Set `JAVA_HOME`:
+
+```bash
+$ export JAVA_HOME=[path to JDK]
+```
+
+5. Build the project:
+
+```bash
 $ mx --dy /truffle,/compiler build
 ```
 
-These steps will build the `wasm.jar` file in `mxbuild/dists/jdk<version>` directory,
+These steps will build the `wasm.jar` file in the `mxbuild/dists/jdk<version>` directory,
 which contains the GraalWasm implementation.
 
+## Tests and Benchmarks
 
-## Running the basic tests
+### Test setup
 
-The `build` command will also create the `wasm-tests.jar`, which contains the main test cases.
-After building GraalWasm, the tests can be run as follows:
+The `build` command will also create the `wasm-tests.jar`, which contains the main test cases. To run these tests, the
+WebAssembly binary toolkit is needed.
 
-1. Download the binary of the [WebAssembly binary toolkit](https://github.com/WebAssembly/wabt).
-2. Set the `WABT_DIR` variable to the path to the root folder of the WebAssembly binary toolkit.
-3. Run a specific test suite. The following command runs all the test suites:
+1. Download the binary of the [WebAssembly binary toolkit(wabt)](https://github.com/WebAssembly/wabt) and extract it.
+2. Set `WABT_DIR`:
 
+```bash
+$ export WABT_DIR=[path to wabt]/bin
 ```
-mx --dy /truffle,/compiler --jdk jvmci unittest \
-  -Dwasmtest.watToWasmExecutable=$WABT_DIR \
+
+### Run basic tests
+
+After building GraalWasm, the `WasmTestSuite` can be run as follows:
+
+```bash
+$ mx --dy /truffle,/compiler --jdk jvmci unittest \
+  -Dwasmtest.watToWasmExecutable=$WABT_DIR/wat2wasm \
   -Dwasmtest.testFilter="^.*\$" \
   WasmTestSuite
 ```
 
-4. To run a specific test, you can specify a regex for its name with the `testFilter` flag.
-   Here is an example command that runs all the tests that mention `branch` in their name:
+To run a specific test, you can specify a regex for its name with the `testFilter` flag.
+Here is an example command that runs all the tests that mention `branch` in their name:
 
-```
-mx --dy /truffle,/compiler --jdk jvmci unittest \
-  -Dwasmtest.watToWasmExecutable=$WABT_DIR \
+```bash
+$ mx --dy /truffle,/compiler --jdk jvmci unittest \
+  -Dwasmtest.watToWasmExecutable=$WABT_DIR/wat2wasm \
   -Dwasmtest.testFilter="^.*branch.*\$" \
   WasmTestSuite
 ```
 
-This command results with the following output:
+This command results in the following output:
 
 ```
 --------------------------------------------------------------------------------
 Running: BranchBlockSuite (4/16 tests - you have enabled filters)
 --------------------------------------------------------------------------------
 Using runtime: org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleRuntime@7b1d7fff
-😍😍😍😍                                       
+😍😍😍😍
 Finished running: BranchBlockSuite
 🍀 4/4 Wasm tests passed.
 ```
 
-The `WasmTestSuite` is the aggregation of all the basic tests.
+The `WasmTestSuite` is the aggregation of all basic tests.
 
-
-## Building the additional tests and benchmarks
+### Test setup for additional tests and benchmarks
 
 The GraalWasm repository includes a set of additional tests and benchmarks
-that are written in C, and are not a part of the default build.
+that are written in C, and are not part of the default build.
 To compile these programs, you will need to install additional dependencies on your system.
 
 To build these additional tests and benchmarks, you need to:
 
-1. Install the [Emscripten SDK]( https://github.com/emscripten-core/emsdk).
-   We currently test against Emscripten 1.39.13.
-2. Set the `EMCC_DIR` variable to the `emscripten/emscripten-1.39.13` folder of the SDK.
-3. Run the `mx emscripten-init ~/.emscripten <Emscripten-SDK-root-folder>` command.
-3. Set the `GCC_DIR` variable to the path to your GCC binary folder
-   (usually `/usr/bin`).
-4. Run the following Mx command:
+1. Install the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html). We currently test against
+   Emscripten **1.39.13**.
 
+```bash
+$ cd [preferred emsdk install location]
+
+# Clone repository
+$ git clone https://github.com/emscripten-core/emsdk.git
+
+# Move to folder
+$ cd emsdk
+
+# Install sdk
+$ ./emsdk install [version number]
+
+# Activate sdk
+$ ./emsdk activate [version number]
+
+# Set up environment
+$ source ./emsdk_env.sh
 ```
+
+2. Set `EMCC_DIR` and `GCC_DIR`:
+
+```bash
+$ export EMCC_DIR=[path to emsdk]/upstream/emscripten
+$ export GCC_DIR=[path to gcc (usually /usr/bin)]
+```
+
+3. Run `emscripten-init`:
+
+```bash
+$ cd grallvm/graal/wasm
+$ mx emscripten-init ~/.emscripten [path to emsdk] --local
+```
+
+4. Build with additional dependencies:
+
+```bash
 $ mx --dy /truffle,/compiler build --all
 ```
 
@@ -95,11 +162,13 @@ This will build several additional JARs in `mxbuild/dists/jdk<version>`:
 These JAR files contain `.wasm` files that correspond to the tests and the benchmarks
 whose source code is in C.
 
+### Run additional tests
+
 You can run the additional tests as follows:
 
-```
-mx --dy /truffle,/compiler --jdk jvmci unittest \
-  -Dwasmtest.watToWasmExecutable=$WABT_DIR \
+```bash
+$ mx --dy /truffle,/compiler --jdk jvmci unittest \
+  -Dwasmtest.watToWasmExecutable=$WABT_DIR/wat2wasm \
   -Dwasmtest.testFilter="^.*\$" \
   CSuite
 ```
@@ -111,7 +180,7 @@ This will result in the following output:
 Running: CSuite (1 tests)
 --------------------------------------------------------------------------------
 Using runtime: org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleRuntime@368239c8
-😍                 
+😍
 Finished running: CSuite
 🍀 1/1 Wasm tests passed.
 ```
@@ -121,26 +190,32 @@ We currently have the following extra test suites:
 - `CSuite` -- set of programs written in the C language
 - `WatSuite` -- set of programs written in textual WebAssembly
 
-
-## Running the benchmarks
+### Run benchmarks
 
 The GraalWasm project includes a custom JMH-based benchmark suite,
 which is capable of running WebAssembly benchmark programs.
 The benchmark programs consist of several special functions,
 most notably `benchmarkRun`, which runs the body of the benchmark.
-The benchmarks are kept in the `src/com.oracle.truffle.wasm.benchcases` Mx project.
+The benchmarks are kept in the `src/com.oracle.truffle.wasm.benchcases` MX project.
+
+For the benchmarks to run `NODE_DIR` has to be set. You can use the node version that is part of Emscripten, for
+example:
+
+```bash
+$ export NODE_DIR=[path to emsdk]/node/14.15.5_64bit/bin
+```
 
 After building the additional benchmarks, as described in the last section,
 they can be executed as follows:
 
-```
-mx --dy /compiler benchmark wasm:WASM_BENCHMARKCASES -- \
-  -Dwasmbench.benchmarkName=<-benchmark-name-> -- \
-  CBenchmarkSuite
+```bash
+$ mx --dy /compiler benchmark wasm:WASM_BENCHMARKCASES -- \
+  -Dwasmbench.benchmarkName=[benchmark-name] -- \
+  CMicroBenchmarkSuite
 ```
 
-In the previous command, replace `<-benchmark-name->` with the particular benchmark name,
-for example, `loop-posterize`.
+In the previous command, replace `[benchmark-name]` with the particular benchmark name,
+for example, `cdf`.
 This runs the JMH wrapper for the test, and produces an output similar to the following:
 
 ```
@@ -170,11 +245,65 @@ Result "com.oracle.truffle.wasm.benchcases.bench.CBenchmarkSuite.run":
 # Run complete. Total time: 00:03:47
 ```
 
-We current have the following benchmark suites:
+We currently have the following benchmark suites:
 
 - `CMicroBenchmarkSuite` -- set of programs written in C
 - `WatBenchmarkSuite` -- set of programs written in textual WebAssembly
 
+## Extracting the internal GraalWasm Memory Layout based on a given WebAssembly program
+
+GraalWasm contains a tool for extracting the internal memory layout for a given WebAssembly application. This is useful
+for detecting the causes of memory overhead.
+
+To execute the memory layout extractor, run:
+
+```bash
+$ mx --dy /compiler wasm-memory-layout -Djol.magicFieldOffset=true -- [wasm-file]
+```
+
+This prints the memory layout tree of the given file to the console. The application provides additional options:
+
+* --warmup-iterations: to set the number of warmup iterations.
+* --entry-point: to set the entry point of the application. This is used to perform linking
+* --output: to extract the memory layout into a file instead of the console.
+
+You can also pass all other options available in GraalWasm such as `--wasm.Builtins=wasi_snapshot_preview1`.
+
+The resulting tree represents a recursive representation of the Objects alive in GraalWasm starting from
+the `WasmContext`. The output looks similar to this:
+
+```
+-context: 6598280 Byte [100%]
+  -equivalenceClasses: 1320 Byte [0%]
+    -table: 80 Byte [0%]
+    -table[0]: 384 Byte [0%]
+      -key: 72 Byte [0%]
+        -paramTypes: 24 Byte [0%]
+        -resultTypes: 24 Byte [0%]
+      -next: 280 Byte [0%]
+        -key: 64 Byte [0%]
+          -paramTypes: 24 Byte [0%]
+          -resultTypes: 16 Byte [0%]
+        -next: 184 Byte [0%]
+          -key: 56 Byte [0%]
+            -paramTypes: 16 Byte [0%]
+            -resultTypes: 16 Byte [0%]
+          -next: 96 Byte [0%]
+            -key: 64 Byte [0%]
+              -paramTypes: 24 Byte [0%]
+              -resultTypes: 16 Byte [0%]
+    -table[2]: 208 Byte [0%]
+      -key: 72 Byte [0%]
+        -paramTypes: 24 Byte [0%]
+        -resultTypes: 24 Byte [0%]
+      -next: 104 Byte [0%]
+...
+```
+
+The **names** represent the names of fields in classes. For example `equivalenceClasses` is a field in `WasmContext`.
+The **values** next to the names represent the absolute amount of memory in bytes while the number in brackets represent
+the relative contribution to the overall memory overhead.
+**Names** with indices represent array entries such as `table[0]`.
 
 ## Running WebAssembly programs using a launcher
 
@@ -183,14 +312,14 @@ For the latest GraalWasm release, see
 If downloading GraalWasm as a separate GraalVM component,
 you can download it as follows (replace JDK and GraalVM versions with appropriate values):
 
-```
-# graalvm-ce-java8-19.3.0/bin/gu install --force -L wasm-installable-java8-linux-<version>.jar
+```bash
+$ graalvm-ce-java8-21.2.0/bin/gu install --force -L wasm-installable-java8-linux-<version>.jar
 ```
 
 This will install a launcher, which runs WebAssembly modules.
 For example, assuming that compiled the following C program with Emscripten:
 
-```
+```c
 #include <stdio.h>
 
 int main() {
@@ -209,13 +338,12 @@ int main() {
 
 You can run the compiled WebAssembly binary as follows:
 
-```
-graalvm/bin/wasm --Builtins=memory,env:emscripten floyd.wasm
+```bash
+$ graalvm/bin/wasm --Builtins=memory,env:emscripten floyd.wasm
 ```
 
 In this example, the flag `--Builtins` specifies built-in modules
 that the Emscripten toolchain assumes.
-
 
 ## Embedding GraalWasm inside other programs
 
@@ -225,22 +353,38 @@ which allows embedding GraalWasm into user programs.
 Here is a simple example of how to run a WebAssembly program using GraalWasm
 from a Java application:
 
-```
+```java
 import org.graalvm.polyglot.*;
 import org.graalvm.polyglot.io.ByteSequence;
 
-byte[] binary = readBytes("example.wasm"); // You need to load the .wasm contents into a byte array.
-Context.Builder contextBuilder = Context.newBuilder("wasm");
-Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binary), "example");
-Source source = sourceBuilder.build();
-Context context = contextBuilder.build();
+byte[]binary=readBytes("example.wasm"); // You need to load the .wasm contents into a byte array.
+        Context.Builder contextBuilder=Context.newBuilder("wasm");
+        Source.Builder sourceBuilder=Source.newBuilder("wasm",ByteSequence.create(binary),"example");
+        Source source=sourceBuilder.build();
+        Context context=contextBuilder.build();
 
-context.eval(source);
+        context.eval(source);
 
-Value mainFunction = context.getBindings("wasm").getMember("example").getMember("_main");
-mainFunction.execute();
+        Value mainFunction=context.getBindings("wasm").getMember("example").getMember("_main");
+        mainFunction.execute();
 ```
 
-For more Polyglot-related examples, consult the documentation at the
-[GraalVM website](https://www.graalvm.org/docs/reference-manual/polyglot/).
+For more polyglot-related examples, consult the documentation at the
+[GraalVM website](https://www.graalvm.org/reference-manual/polyglot-programming/).
 
+## Compiling C files with the wasi-sdk
+
+1. Download the [wasi-sdk](https://github.com/WebAssembly/wasi-sdk/releases) and unpack it.
+2. Set `WASI_SDK`:
+   ```bash
+   $ export WASI_SDK=[path to wasi-sdk]
+   ```
+3. Compile the C files
+   ```bash
+   $ $WASI_SDK/bin/clang -O3 -o test.wasm test.c
+   ```
+   To export a specific function use the linker flag `-Wl,--export="[function name]"`.
+4. Most applications compiled with the wasi-sdk require WASI. To run a file with WASI enabled use the following command:
+   ```bash
+   $ graalvm/bin/wasm --Builtins=wasi_snapshot_preview1 test.wasm 
+   ```

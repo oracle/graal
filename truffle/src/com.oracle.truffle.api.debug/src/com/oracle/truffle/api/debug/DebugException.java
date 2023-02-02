@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,6 +70,7 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 19.0
  */
+@SuppressWarnings("serial")
 public final class DebugException extends RuntimeException {
 
     private static final long serialVersionUID = 5017970176581546348L;
@@ -96,7 +97,7 @@ public final class DebugException extends RuntimeException {
     }
 
     static DebugException create(DebuggerSession session, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
-        return new DebugException(session, exception.getLocalizedMessage(), exception, preferredLanguage, throwLocation, isCatchNodeComputed, catchLocation);
+        return new DebugException(session, getTheMessage(exception), exception, preferredLanguage, throwLocation, isCatchNodeComputed, catchLocation);
     }
 
     private DebugException(DebuggerSession session, String message, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
@@ -124,6 +125,17 @@ public final class DebugException extends RuntimeException {
         this.catchLocation = catchLocation != null ? catchLocation.cloneFor(session) : null;
         // we need to materialize the stack for the case that this exception is printed
         super.setStackTrace(getStackTrace());
+    }
+
+    private static String getTheMessage(Throwable exception) {
+        if (isTruffleException(exception)) {
+            try {
+                return InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getExceptionMessage(exception));
+            } catch (UnsupportedMessageException ex) {
+                // No interop message
+            }
+        }
+        return exception.getLocalizedMessage();
     }
 
     void setSuspendedEvent(SuspendedEvent suspendedEvent) {
@@ -221,7 +233,7 @@ public final class DebugException extends RuntimeException {
                 }
                 if (hostInfo) {
                     StackTraceElement[] stack = SuspendedEvent.cutToHostDepth(getRawStackTrace());
-                    Iterator<DebugStackTraceElement> mergedElements = Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(stack, debugStack.iterator(), true,
+                    Iterator<DebugStackTraceElement> mergedElements = Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(session.getDebugger().getEnv(), stack, debugStack.iterator(), true,
                                     new Function<StackTraceElement, DebugStackTraceElement>() {
                                         @Override
                                         public DebugStackTraceElement apply(StackTraceElement element) {
@@ -311,7 +323,6 @@ public final class DebugException extends RuntimeException {
      *
      * @since 19.0
      */
-    @SuppressWarnings("deprecation")
     public boolean isInternalError() {
         if (!isTruffleException(exception)) {
             if (exception instanceof DebugException) {
@@ -328,13 +339,8 @@ public final class DebugException extends RuntimeException {
      * @return an exception object, or <code>null</code>
      * @since 19.0
      */
-    @SuppressWarnings("deprecation")
     public DebugValue getExceptionObject() {
         if (!isTruffleException(exception)) {
-            return null;
-        }
-        Object obj = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject();
-        if (obj == null) {
             return null;
         }
         LanguageInfo language = preferredLanguage;
@@ -344,7 +350,7 @@ public final class DebugException extends RuntimeException {
                 language = throwRoot.getLanguageInfo();
             }
         }
-        return new DebugValue.HeapValue(session, language, null, obj);
+        return new DebugValue.HeapValue(session, language, null, exception);
     }
 
     /**

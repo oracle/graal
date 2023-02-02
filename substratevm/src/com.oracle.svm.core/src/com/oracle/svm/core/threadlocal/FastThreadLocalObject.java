@@ -44,7 +44,8 @@ public final class FastThreadLocalObject<T> extends FastThreadLocal {
     private final Class<T> valueClass;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    FastThreadLocalObject(Class<T> clazz) {
+    FastThreadLocalObject(Class<T> clazz, String name) {
+        super(name);
         this.valueClass = clazz;
     }
 

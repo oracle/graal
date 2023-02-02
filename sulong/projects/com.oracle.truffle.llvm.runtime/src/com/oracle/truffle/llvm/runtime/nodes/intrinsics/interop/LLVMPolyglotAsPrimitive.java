@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -64,6 +65,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(guards = "foreigns.isForeign(receiver)", limit = "3")
+        @GenerateAOT.Exclude
         boolean asBoolean(Object receiver,
                         @CachedLibrary("receiver") LLVMAsForeignLibrary foreigns,
                         @CachedLibrary(limit = "3") InteropLibrary interop,
@@ -83,7 +85,13 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
             return AsI8NodeGen.create(arg);
         }
 
+        @Specialization
+        byte asI8(byte receiver) {
+            return receiver;
+        }
+
         @Specialization(guards = "foreigns.isForeign(receiver)", limit = "3")
+        @GenerateAOT.Exclude
         byte asI8(Object receiver,
                         @CachedLibrary("receiver") LLVMAsForeignLibrary foreigns,
                         @CachedLibrary(limit = "3") InteropLibrary interop,
@@ -104,6 +112,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(guards = "foreigns.isForeign(receiver)", limit = "3")
+        @GenerateAOT.Exclude
         short asI16(Object receiver,
                         @CachedLibrary("receiver") LLVMAsForeignLibrary foreigns,
                         @CachedLibrary(limit = "3") InteropLibrary interop,
@@ -124,6 +133,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(guards = "foreigns.isForeign(receiver)", limit = "3")
+        @GenerateAOT.Exclude
         int asI32(Object receiver,
                         @CachedLibrary("receiver") LLVMAsForeignLibrary foreigns,
                         @CachedLibrary(limit = "3") InteropLibrary interop,
@@ -144,6 +154,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(guards = "foreigns.isForeign(receiver)", limit = "3")
+        @GenerateAOT.Exclude
         long asI64(Object receiver,
                         @CachedLibrary("receiver") LLVMAsForeignLibrary foreigns,
                         @CachedLibrary(limit = "3") InteropLibrary interop,
@@ -164,6 +175,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(guards = "foreigns.isForeign(receiver)", limit = "3")
+        @GenerateAOT.Exclude
         float asFloat(Object receiver,
                         @CachedLibrary("receiver") LLVMAsForeignLibrary foreigns,
                         @CachedLibrary(limit = "3") InteropLibrary interop,
@@ -184,6 +196,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(guards = "foreigns.isForeign(receiver)", limit = "3")
+        @GenerateAOT.Exclude
         double asDouble(Object receiver,
                         @CachedLibrary("receiver") LLVMAsForeignLibrary foreigns,
                         @CachedLibrary(limit = "3") InteropLibrary interop,

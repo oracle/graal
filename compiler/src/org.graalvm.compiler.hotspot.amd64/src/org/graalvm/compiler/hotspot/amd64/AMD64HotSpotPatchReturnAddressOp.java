@@ -53,7 +53,7 @@ final class AMD64HotSpotPatchReturnAddressOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        int returnAddressOffset = crb.frameMap.totalFrameSize() - masm.target.arch.getReturnAddressSize();
+        int returnAddressOffset = crb.frameMap.totalFrameSize() - masm.getReturnAddressSize();
         masm.movq(new AMD64Address(rsp, returnAddressOffset), asRegister(address));
     }
 }

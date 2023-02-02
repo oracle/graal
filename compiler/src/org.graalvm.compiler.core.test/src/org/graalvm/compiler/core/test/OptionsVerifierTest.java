@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,7 +55,7 @@ import org.objectweb.asm.Type;
  */
 public class OptionsVerifierTest {
 
-    private static Set<String> WHITELIST = new TreeSet<>(Arrays.asList(//
+    private static Set<String> ALLOWLIST = new TreeSet<>(Arrays.asList(//
                     // Generated options delegating default values to PolyglotCompilerOptions
                     "org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions",
                     // Deprecated options delegating default values to PolyglotCompilerOptions
@@ -67,7 +67,7 @@ public class OptionsVerifierTest {
         for (OptionDescriptors opts : OptionsParser.getOptionsLoader()) {
             for (OptionDescriptor desc : opts) {
                 Class<?> descDeclaringClass = desc.getDeclaringClass();
-                if (!WHITELIST.contains(descDeclaringClass.getName())) {
+                if (!ALLOWLIST.contains(descDeclaringClass.getName())) {
                     OptionsVerifier.checkClass(descDeclaringClass, desc, checked);
                 }
             }
@@ -124,7 +124,7 @@ public class OptionsVerifierTest {
         }
 
         OptionsVerifier(Class<?> cls, OptionDescriptor desc) {
-            super(Opcodes.ASM5);
+            super(Opcodes.ASM7);
             this.cls = cls;
             this.option = desc;
         }

@@ -43,6 +43,7 @@ package com.oracle.truffle.dsl.processor.parser;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -76,8 +77,6 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         MethodSpec spec = createDefaultMethodSpec(method, mirror, true, null);
         spec.getAnnotations().add(new CachedParameterSpec(types.Cached));
         spec.getAnnotations().add(new CachedParameterSpec(types.CachedLibrary));
-        spec.getAnnotations().add(new CachedParameterSpec(types.CachedContext));
-        spec.getAnnotations().add(new CachedParameterSpec(types.CachedLanguage));
         spec.getAnnotations().add(new CachedParameterSpec(types.Bind));
         return spec;
     }
@@ -139,19 +138,18 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
             List<String> replacesDefs = new ArrayList<>();
             replacesDefs.addAll(ElementUtils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "replaces"));
 
-            Set<String> containsNames = specialization.getReplacesNames();
-            containsNames.clear();
+            Set<String> replaceNames = new LinkedHashSet<>();
             if (replacesDefs != null) {
                 for (String include : replacesDefs) {
-                    if (!containsNames.contains(include)) {
-                        specialization.getReplacesNames().add(include);
+                    if (!replaceNames.contains(include)) {
+                        replaceNames.add(include);
                     } else {
                         AnnotationValue value = ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "replaces");
                         specialization.addError(value, "Duplicate replace declaration '%s'.", include);
                     }
                 }
-
             }
+            specialization.setReplacesNames(replaceNames);
         }
 
         return specialization;

@@ -23,16 +23,15 @@
 
 package com.oracle.truffle.espresso.nodes.helper;
 
-import java.util.Arrays;
-import java.util.List;
-
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -50,34 +49,18 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * checks should fold.
  */
 @SuppressWarnings("unused")
-public abstract class TypeCheckNode extends Node implements ContextAccess {
+@GenerateUncached
+public abstract class TypeCheckNode extends EspressoNode {
     protected static final int LIMIT = 4;
 
-    private final EspressoContext context;
-
     public abstract boolean executeTypeCheck(Klass typeToCheck, Klass k);
-
-    public TypeCheckNode(EspressoContext context) {
-        this.context = context;
-        assert checkConsistency();
-    }
-
-    private boolean checkConsistency() {
-        ObjectKlass[] arrayInterfaces = getMeta().java_lang_Object_array.getSuperInterfaces();
-        assert arrayInterfaces != null : "Null interface array for array types.";
-        assert arrayInterfaces.length == 2 : "Unexpected number of interfaces for array types";
-        List<ObjectKlass> interfaceList = Arrays.asList(arrayInterfaces);
-        assert interfaceList.contains(getMeta().java_io_Serializable) : "j.l.Serializable removed from array superinterfaces";
-        assert interfaceList.contains(getMeta().java_lang_Cloneable) : "j.l.Cloneable removed from array superinterfaces";
-        return true;
-    }
 
     @Specialization(guards = "typeToCheck == k")
     protected boolean typeCheckEquals(Klass typeToCheck, Klass k) {
         return true;
     }
 
-    @Specialization(guards = "isJLObject(typeToCheck)")
+    @Specialization(guards = "isJLObject(getContext(), typeToCheck)")
     protected boolean typeCheckJLObject(Klass typeToCheck, Klass k) {
         return !k.isPrimitive();
     }
@@ -87,10 +70,11 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
         return typeToCheck == k;
     }
 
-    @Specialization(guards = {"typeToCheck == cachedTTC", "k == cachedKlass"}, limit = "LIMIT")
+    @Specialization(guards = {"typeToCheck == cachedTTC", "k == cachedKlass"}, assumptions = {"redefineAssumption"}, limit = "LIMIT")
     protected boolean typeCheckCached(Klass typeToCheck, Klass k,
                     @Cached("typeToCheck") Klass cachedTTC,
                     @Cached("k") Klass cachedKlass,
+                    @Cached("k.getRedefineAssumption()") Assumption redefineAssumption,
                     @Cached("doTypeCheck(typeToCheck, k)") boolean result) {
         return result;
     }
@@ -102,8 +86,11 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
 
     @Specialization(replaces = "typeCheckCached", guards = "arrayBiggerDim(k, typeToCheck)")
     protected boolean typeCheckArrayLowerDim(ArrayKlass typeToCheck, ArrayKlass k) {
+        Meta meta = getMeta();
         Klass elem = typeToCheck.getElementalType();
-        return elem == getMeta().java_lang_Object || elem == getMeta().java_io_Serializable || elem == getMeta().java_lang_Cloneable;
+        return elem == meta.java_lang_Object ||
+                        elem == meta.java_io_Serializable ||
+                        elem == meta.java_lang_Cloneable;
     }
 
     /*
@@ -119,7 +106,7 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
                     "arraySameDim(typeToCheck, k)",
     })
     protected boolean typeCheckArraySameDim(ArrayKlass typeToCheck, ArrayKlass k,
-                    @Cached("createChild()") TypeCheckNode tcn) {
+                    @Cached TypeCheckNode tcn) {
         return tcn.executeTypeCheck(typeToCheck.getElementalType(), k.getElementalType());
     }
 
@@ -137,14 +124,15 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
 
     @Specialization(replaces = "typeCheckCached", guards = {
                     "typeToCheck != k", // Re-specialize to add typeCheckEquals
-                    "!isInterface(typeToCheck)"
+                    "!isInterface(typeToCheck)",
+                    "!typeToCheck.isArray()"
     })
     protected boolean typeCheckRegular(Klass typeToCheck, Klass k) {
         return typeToCheck.checkOrdinaryClassSubclassing(k);
     }
 
-    protected final boolean isJLObject(Klass k) {
-        return k == getMeta().java_lang_Object;
+    protected static boolean isJLObject(EspressoContext context, Klass k) {
+        return k == context.getMeta().java_lang_Object;
     }
 
     protected static boolean isFinal(Klass k) {
@@ -159,24 +147,15 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
         return typeToCheck.isAssignableFrom(k);
     }
 
-    protected boolean arraySameDim(ArrayKlass k1, ArrayKlass k2) {
+    protected static boolean arraySameDim(ArrayKlass k1, ArrayKlass k2) {
         return k1.getDimension() == k2.getDimension();
     }
 
-    protected boolean arrayBiggerDim(ArrayKlass k1, ArrayKlass k2) {
+    protected static boolean arrayBiggerDim(ArrayKlass k1, ArrayKlass k2) {
         return k1.getDimension() > k2.getDimension();
     }
 
-    protected boolean isInterface(Klass k) {
+    protected static boolean isInterface(Klass k) {
         return k.isInterface();
-    }
-
-    protected TypeCheckNode createChild() {
-        return TypeCheckNodeGen.create(context);
-    }
-
-    @Override
-    public final EspressoContext getContext() {
-        return context;
     }
 }

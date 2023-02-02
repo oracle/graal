@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  * Copyright (c) 2020, Arm Limited.
  *
  * All rights reserved.
@@ -63,7 +63,8 @@ public class Platform {
     public enum OS {
         Linux,
         Solaris,
-        Darwin;
+        Darwin,
+        Windows;
 
         private static OS findOS() {
             final String name = System.getProperty("os.name");
@@ -76,6 +77,9 @@ public class Platform {
             if (name.equals("Mac OS X") || name.equals("Darwin")) {
                 return Darwin;
             }
+            if (name.startsWith("Windows")) {
+                return Windows;
+            }
             throw new IllegalArgumentException("unknown OS: " + name);
         }
 
@@ -83,6 +87,14 @@ public class Platform {
 
         public static OS getOS() {
             return os;
+        }
+
+        public String exeName(String path) {
+            if (this == Windows) {
+                return path + ".exe";
+            } else {
+                return path;
+            }
         }
 
         public String getDirectory() {
@@ -108,6 +120,10 @@ public class Platform {
 
     public static boolean isLinux() {
         return OS.getOS() == OS.Linux;
+    }
+
+    public static boolean isWindows() {
+        return OS.getOS() == OS.Windows;
     }
 
     public static boolean isSolaris() {

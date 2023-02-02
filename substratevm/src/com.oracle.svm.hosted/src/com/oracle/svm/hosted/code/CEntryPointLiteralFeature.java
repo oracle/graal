@@ -31,23 +31,23 @@ import java.util.function.Function;
 
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@AutomaticFeature
-public class CEntryPointLiteralFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class CEntryPointLiteralFeature implements InternalFeature {
 
     class CEntryPointLiteralObjectReplacer implements Function<Object, Object> {
 
@@ -81,7 +81,7 @@ public class CEntryPointLiteralFeature implements Feature {
                      * Only during compilation and native image writing, we do the actual
                      * replacement.
                      */
-                    return MethodPointer.factory(hStub);
+                    return new MethodPointer(hStub);
                 }
             }
             return source;

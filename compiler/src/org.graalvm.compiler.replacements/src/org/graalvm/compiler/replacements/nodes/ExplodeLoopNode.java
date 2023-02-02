@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import org.graalvm.compiler.api.replacements.Snippet.VarargsParameter;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
@@ -44,7 +45,7 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
  * @see VarargsParameter
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class ExplodeLoopNode extends FixedWithNextNode {
+public final class ExplodeLoopNode extends FixedWithNextNode implements NodeWithIdentity {
     public static final NodeClass<ExplodeLoopNode> TYPE = NodeClass.create(ExplodeLoopNode.class);
 
     public ExplodeLoopNode() {

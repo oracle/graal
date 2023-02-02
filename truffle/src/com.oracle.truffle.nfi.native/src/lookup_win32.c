@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,13 +53,14 @@ static void throwError(JNIEnv *env, jlong context) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
     LPSTR msg;
 
-    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                   NULL, error, 0, (LPSTR) &msg, 0, NULL);
+    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPSTR) &msg, 0,
+                   NULL);
     (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, msg);
     LocalFree(msg);
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name,
+                                                                                             jint flags) {
     jsize nameLen = (*env)->GetStringLength(env, name);
     const jchar *nameChars = (*env)->GetStringChars(env, name, NULL);
 
@@ -82,7 +83,8 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_
     FreeLibrary((HMODULE) handle);
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library, jstring name) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_lookup(JNIEnv *env, jclass self, jlong context, jlong library,
+                                                                                        jstring name) {
     struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
     HMODULE module;
@@ -100,7 +102,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
     }
     (*env)->ReleaseStringUTFChars(env, name, utfName);
 
-    return (jlong) ret;
+    return (jlong) (intptr_t) check_intrinsify(ctx, ret);
 }
 
 #endif

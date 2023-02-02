@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,4 +104,47 @@ public class RemoveKeyTest extends AbstractParametrizedLibraryTest {
         DOTestAsserts.verifyValues(obj, archive);
     }
 
+    @Test
+    public void testRemoveAfterReplaceGR30786() {
+        DynamicObject obj = new TestDynamicObjectDefault(rootShape);
+
+        DynamicObjectLibrary in = createLibrary(DynamicObjectLibrary.class, obj);
+        in.put(obj, "head", new Object());
+        in.put(obj, "fun", new Object());
+        in.put(obj, "body", new Object());
+        in.put(obj, "async", 42);
+        in.put(obj, "sync", true);
+        in.put(obj, "timeout", 1000);
+        in.put(obj, "slow", 30);
+        in.put(obj, "retries", 5);
+        in.put(obj, "mock", new Object());
+        in.put(obj, "id", new Object());
+        in.put(obj, "timedOut", new Object());
+        in.put(obj, "retry", 1);
+        in.put(obj, "pending", new Object());
+        in.put(obj, "type", new Object());
+        in.put(obj, "parent", new Object());
+
+        // change the type of the location from int to double
+        in.put(obj, "timeout", 1000.5);
+        in.put(obj, "slow", 30.5);
+
+        in.put(obj, "ctx", new Object());
+        in.put(obj, "file", new Object());
+        in.put(obj, "path", new Object());
+        in.put(obj, "random", new Object());
+        in.put(obj, "events", new Object());
+        in.put(obj, "eventsCount", 17);
+        in.put(obj, "callback", new Object());
+        in.put(obj, "timer", new Object());
+        in.put(obj, "duration", 9000.9);
+        in.put(obj, "error", new Object());
+
+        Map<Object, Object> archive = DOTestAsserts.archive(obj);
+
+        DynamicObjectLibrary rm = createLibrary(DynamicObjectLibrary.class, obj);
+        rm.removeKey(obj, "fun");
+
+        DOTestAsserts.verifyValues(obj, archive);
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@ import java.util.ArrayList;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
@@ -38,7 +38,6 @@ import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
 import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 import org.graalvm.compiler.lir.ValueConsumer;
 import org.graalvm.compiler.lir.gen.DiagnosticLIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.DiagnosticLIRGeneratorTool.ZapRegistersAfterInstruction;
@@ -84,15 +83,17 @@ public final class HotSpotZapRegistersPhase extends PostAllocationOptimizationPh
 
     private static void processLIR(DiagnosticLIRGeneratorTool diagnosticLirGenTool, LIR lir, EconomicSet<Register> allocatableRegisters, boolean zapRegisters, boolean zapStack) {
         LIRInsertionBuffer buffer = new LIRInsertionBuffer();
-        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
-            if (block != null) {
-                processBlock(diagnosticLirGenTool, lir, allocatableRegisters, buffer, block, zapRegisters, zapStack);
+        for (int blockId : lir.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
+                continue;
             }
+            BasicBlock<?> block = lir.getBlockById(blockId);
+            processBlock(diagnosticLirGenTool, lir, allocatableRegisters, buffer, block, zapRegisters, zapStack);
         }
     }
 
     @SuppressWarnings("try")
-    private static void processBlock(DiagnosticLIRGeneratorTool diagnosticLirGenTool, LIR lir, EconomicSet<Register> allocatableRegisters, LIRInsertionBuffer buffer, AbstractBlockBase<?> block,
+    private static void processBlock(DiagnosticLIRGeneratorTool diagnosticLirGenTool, LIR lir, EconomicSet<Register> allocatableRegisters, LIRInsertionBuffer buffer, BasicBlock<?> block,
                     boolean zapRegisters, boolean zapStack) {
         DebugContext debug = lir.getDebug();
         try (Indent indent = debug.logAndIndent("Process block %s", block)) {
@@ -125,8 +126,8 @@ public final class HotSpotZapRegistersPhase extends PostAllocationOptimizationPh
                     inst.visitEachTemp(tempConsumer);
                     inst.visitEachOutput(defConsumer);
 
-                    ZapRegistersOp zap = diagnosticLirGenTool.createZapRegisters(destroyedRegisters.toArray(new Register[destroyedRegisters.size()]));
-                    buffer.append(index + 1, (LIRInstruction) zap);
+                    LIRInstruction zap = diagnosticLirGenTool.createZapRegisters(destroyedRegisters.toArray(new Register[destroyedRegisters.size()]));
+                    buffer.append(index + 1, zap);
                     debug.log("Insert ZapRegister after %s", inst);
                 }
             }

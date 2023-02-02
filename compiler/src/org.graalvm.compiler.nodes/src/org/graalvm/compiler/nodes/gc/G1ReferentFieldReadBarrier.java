@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,19 +42,12 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 public final class G1ReferentFieldReadBarrier extends ObjectWriteBarrier {
     public static final NodeClass<G1ReferentFieldReadBarrier> TYPE = NodeClass.create(G1ReferentFieldReadBarrier.class);
 
-    private final boolean dynamicCheck;
-
-    public G1ReferentFieldReadBarrier(AddressNode address, ValueNode expectedObject, boolean dynamicCheck) {
+    public G1ReferentFieldReadBarrier(AddressNode address, ValueNode expectedObject) {
         super(TYPE, address, expectedObject, true);
-        this.dynamicCheck = dynamicCheck;
     }
 
     public ValueNode getExpectedObject() {
         return getValue();
-    }
-
-    public boolean isDynamicCheck() {
-        return dynamicCheck;
     }
 
     @Override

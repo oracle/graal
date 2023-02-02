@@ -23,13 +23,12 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import static java.lang.annotation.ElementType.METHOD;
-
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {METHOD})
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.METHOD)
 public @interface ManagementImpl {
 }

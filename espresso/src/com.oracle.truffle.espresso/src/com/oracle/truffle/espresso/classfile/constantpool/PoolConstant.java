@@ -67,7 +67,7 @@ public interface PoolConstant {
     void dump(ByteBuffer buf);
 
     static byte u1(int i) {
-        assert (byte) i == i;
+        assert (i & 0xff) == i;
         return (byte) i;
     }
 

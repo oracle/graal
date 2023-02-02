@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -163,7 +163,7 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
     }
 
     /**
-     * Tests {@link ArrayCopySnippets#arraycopyGenericSnippet} with checkcast.
+     * Tests {@link ArrayCopySnippets#genericArraycopySnippet} with checkcast.
      */
     @Test
     public void testArrayStoreException() {

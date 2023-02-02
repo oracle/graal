@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,7 +109,7 @@ public class ComputeInliningRelevance {
             return rootScope.computeInvokeRelevance(invoke);
         }
         assert nodeRelevances != null : "uninitialized relevance";
-        return nodeRelevances.get(invoke.asNode());
+        return nodeRelevances.get(invoke.asFixedNode());
     }
 
     /**
@@ -243,7 +243,7 @@ public class ComputeInliningRelevance {
          * scope's fastPathMinProbability, adjusted by scopeRelevanceWithinParent.
          */
         public double computeInvokeRelevance(Invoke invoke) {
-            double invokeProbability = nodeProbabilities.applyAsDouble(invoke.asNode());
+            double invokeProbability = nodeProbabilities.applyAsDouble(invoke.asFixedNode());
             assert !Double.isNaN(invokeProbability);
 
             double relevance = (invokeProbability / getFastPathMinProbability()) * Math.min(1.0, getScopeRelevanceWithinParent());

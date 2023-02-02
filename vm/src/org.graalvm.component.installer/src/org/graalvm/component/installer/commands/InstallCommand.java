@@ -159,6 +159,11 @@ public class InstallCommand implements InstallerCommand {
      */
     Map<ComponentParam, Installer> realInstallers = new LinkedHashMap<>();
 
+    /**
+     * Original (possibly catalog) ComponentInfos.
+     */
+    Map<ComponentParam, ComponentInfo> parameterInfos = new LinkedHashMap<>();
+
     private String current;
 
     private StringBuilder parameterList = new StringBuilder();
@@ -201,12 +206,6 @@ public class InstallCommand implements InstallerCommand {
             executeStep(this::doInstallation, false);
             // execute the post-install steps for all processed installers
             executeStep(this::printMessages, true);
-            /*
-             * if (rebuildPolyglot && WARN_REBUILD_IMAGES) { Path p =
-             * SystemUtils.fromCommonString(CommonConstants.PATH_JRE_BIN);
-             * feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator,
-             * input.getGraalHomePath().resolve(p).normalize()); }
-             */
         } finally {
             for (Map.Entry<ComponentParam, Installer> e : realInstallers.entrySet()) {
                 ComponentParam p = e.getKey();
@@ -233,7 +232,7 @@ public class InstallCommand implements InstallerCommand {
     /**
      * Adds a license to be accepted. Does not add a license ID that has been already processed in
      * previous round(s).
-     * 
+     *
      * @param id license ID
      * @param ldr loader that can deliver the license details.
      */
@@ -636,6 +635,17 @@ public class InstallCommand implements InstallerCommand {
             Installer i = realInstallers.get(p);
             if (i == null) {
                 MetadataLoader floader = p.createFileLoader();
+                ComponentInfo initialInfo = parameterInfos.get(p);
+                ComponentInfo finfo = floader.getComponentInfo();
+                if (initialInfo != null && (!initialInfo.getId().equals(finfo.getId()) ||
+                                !initialInfo.getVersion().equals(finfo.getVersion()))) {
+                    String msg = String.format(
+                                    feedback.l10n("@INSTALL_Error_ComponentDiffers_Report"),
+                                    initialInfo.getId(), finfo.getId(),
+                                    initialInfo.getVersionString(), finfo.getVersionString());
+                    feedback.verbatimPart(msg, true, false);
+                    throw feedback.failure("INSTALL_Error_ComponentDiffers", null);
+                }
                 i = createInstaller(p, floader);
                 if (!verifyInstaller(i)) {
                     continue;
@@ -725,6 +735,7 @@ public class InstallCommand implements InstallerCommand {
     Installer createInstaller(ComponentParam p, MetadataLoader ldr) throws IOException {
         ComponentInfo partialInfo;
         partialInfo = ldr.getComponentInfo();
+        parameterInfos.putIfAbsent(p, partialInfo);
         feedback.verboseOutput("INSTALL_PrepareToInstall",
                         p.getDisplayName(),
                         partialInfo.getId(),
@@ -765,7 +776,7 @@ public class InstallCommand implements InstallerCommand {
 
     /**
      * Forces the user to accept the licenses.
-     * 
+     *
      * @throws IOException
      */
     void acceptLicenses() throws IOException {

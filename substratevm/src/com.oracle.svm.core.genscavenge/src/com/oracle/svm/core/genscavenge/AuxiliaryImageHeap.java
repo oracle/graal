@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 
 public interface AuxiliaryImageHeap {
@@ -45,9 +45,6 @@ public interface AuxiliaryImageHeap {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean containsObject(Pointer address);
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean containsObjectSlow(Pointer address);
 
     boolean walkObjects(ObjectVisitor visitor);
 

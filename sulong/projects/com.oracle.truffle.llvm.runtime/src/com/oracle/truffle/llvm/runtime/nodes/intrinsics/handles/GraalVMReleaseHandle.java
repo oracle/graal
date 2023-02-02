@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -46,14 +42,12 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 public abstract class GraalVMReleaseHandle extends LLVMIntrinsic {
 
     @Specialization
-    protected Object doIntrinsic(LLVMNativePointer handle,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @CachedLanguage LLVMLanguage language) {
+    protected Object doIntrinsic(LLVMNativePointer handle) {
         long address = handle.asNative();
-        if (!language.getNoDerefHandleAssumption().isValid() && LLVMHandleMemoryBase.isDerefHandleMemory(address)) {
-            context.getDerefHandleContainer().free(this, address);
+        if (!getLanguage().getNoDerefHandleAssumption().isValid() && LLVMHandleMemoryBase.isDerefHandleMemory(address)) {
+            getContext().getDerefHandleContainer().free(this, address);
         } else {
-            context.getHandleContainer().free(this, address);
+            getContext().getHandleContainer().free(this, address);
         }
         return null;
     }

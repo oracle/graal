@@ -34,9 +34,9 @@ import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
@@ -65,7 +65,6 @@ public class ImageCodeInfo {
     @UnknownObjectField(types = {Object[].class}) Object[] frameInfoObjectConstants;
     @UnknownObjectField(types = {Class[].class}) Class<?>[] frameInfoSourceClasses;
     @UnknownObjectField(types = {String[].class}) String[] frameInfoSourceMethodNames;
-    @UnknownObjectField(types = {String[].class}) String[] frameInfoNames;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {
@@ -98,9 +97,28 @@ public class ImageCodeInfo {
         info.setFrameInfoObjectConstants(NonmovableArrays.fromImageHeap(frameInfoObjectConstants));
         info.setFrameInfoSourceClasses(NonmovableArrays.fromImageHeap(frameInfoSourceClasses));
         info.setFrameInfoSourceMethodNames(NonmovableArrays.fromImageHeap(frameInfoSourceMethodNames));
-        info.setFrameInfoNames(NonmovableArrays.fromImageHeap(frameInfoNames));
 
         return info;
+    }
+
+    /**
+     * Use {@link CodeInfoTable#getImageCodeInfo()} and {@link CodeInfoAccess#getCodeStart} instead.
+     * This method is intended only for the early stages of VM initialization when
+     * {@link #prepareCodeInfo()} has not yet run.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public CodePointer getCodeStart() {
+        return codeStart;
+    }
+
+    /**
+     * Use {@link CodeInfoTable#getImageCodeInfo()} and
+     * {@link CodeInfoAccess#getStackReferenceMapEncoding} instead. This method is intended only for
+     * the early stages of VM initialization when {@link #prepareCodeInfo()} has not yet run.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public NonmovableArray<Byte> getStackReferenceMapEncoding() {
+        return NonmovableArrays.fromImageHeap(referenceMapEncoding);
     }
 
     public boolean walkImageCode(MemoryWalker.Visitor visitor) {
@@ -109,6 +127,10 @@ public class ImageCodeInfo {
 
     public HostedImageCodeInfo getHostedImageCodeInfo() {
         return hostedImageCodeInfo;
+    }
+
+    public long getTotalByteArraySize() {
+        return codeInfoIndex.length + codeInfoEncodings.length + referenceMapEncoding.length + frameInfoEncodings.length;
     }
 
     /**
@@ -235,16 +257,6 @@ public class ImageCodeInfo {
         @Override
         public void setFrameInfoSourceMethodNames(NonmovableObjectArray<String> array) {
             frameInfoSourceMethodNames = NonmovableArrays.getHostedArray(array);
-        }
-
-        @Override
-        public NonmovableObjectArray<String> getFrameInfoNames() {
-            return NonmovableArrays.fromImageHeap(frameInfoNames);
-        }
-
-        @Override
-        public void setFrameInfoNames(NonmovableObjectArray<String> array) {
-            frameInfoNames = NonmovableArrays.getHostedArray(array);
         }
 
         @Override

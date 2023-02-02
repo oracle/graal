@@ -36,7 +36,7 @@ JNIEXPORT void* JNICALL initializeManagementContext(void* (*fetch_by_name)(const
 	} else if (version == JMM_VERSION_2) {
 		return initializeManagementContext2(fetch_by_name);
 	} else if (version == JMM_VERSION_3) {
-		return initializeManagementContext2(fetch_by_name);
+		return initializeManagementContext3(fetch_by_name);
 	} else {
 		return (void*)0;
 	}
@@ -48,7 +48,7 @@ JNIEXPORT void JNICALL disposeManagementContext(void* management_ptr, int versio
 	} else if (version == JMM_VERSION_2) {
 		disposeManagementContext2(management_ptr, release_closure);
 	} else if (version == JMM_VERSION_3) {
-		disposeManagementContext2(management_ptr, release_closure);
+		disposeManagementContext3(management_ptr, release_closure);
 	}
 }
 

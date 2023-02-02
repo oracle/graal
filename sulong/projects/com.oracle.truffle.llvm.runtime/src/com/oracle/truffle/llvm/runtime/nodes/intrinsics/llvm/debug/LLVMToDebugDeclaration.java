@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,18 +30,19 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue.Builder;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupportFactory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public final class LLVMToDebugDeclaration implements LLVMDebugValue.Builder {
 
-    private static final LLVMNativeLibrary NATIVE_LIBRARY = LibraryFactory.resolve(LLVMNativeLibrary.class).getUncached();
+    private static final LLVMNativePointerSupport.IsPointerNode IS_POINTER_NODE = LLVMNativePointerSupportFactory.IsPointerNodeGen.getUncached();
+    private static final LLVMNativePointerSupport.ToNativePointerNode TO_NATIVE_POINTER_NODE = LLVMNativePointerSupportFactory.ToNativePointerNodeGen.getUncached();
 
     private static final LLVMToDebugDeclaration INSTANCE = new LLVMToDebugDeclaration();
 
@@ -59,13 +60,13 @@ public final class LLVMToDebugDeclaration implements LLVMDebugValue.Builder {
         if (LLVMPointer.isInstance(value)) {
             pointer = LLVMPointer.cast(value);
         } else {
-            if (!NATIVE_LIBRARY.isPointer(value)) {
+            if (!IS_POINTER_NODE.execute(value)) {
                 // @llvm.dbg.declare is supposed to tell us the location of the variable in memory,
                 // there should never be a case where this cannot be resolved to a pointer. If it
                 // happens anyhow this is a safe default.
                 return LLVMDebugValue.UNAVAILABLE;
             }
-            pointer = NATIVE_LIBRARY.toNativePointer(value);
+            pointer = TO_NATIVE_POINTER_NODE.execute(value);
         }
         if (LLVMManagedPointer.isInstance(pointer)) {
             final Object target = LLVMManagedPointer.cast(pointer).getObject();

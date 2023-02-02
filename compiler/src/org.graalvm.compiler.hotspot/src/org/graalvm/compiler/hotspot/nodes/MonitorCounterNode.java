@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,7 @@ public final class MonitorCounterNode extends FloatingNode implements LIRLowerab
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         assert graph().getNodes().filter(MonitorCounterNode.class).count() == 1 : "monitor counters not canonicalized to single instance";
-        VirtualStackSlot counter = gen.getLIRGeneratorTool().getResult().getFrameMapBuilder().allocateStackSlots(1);
+        VirtualStackSlot counter = gen.getLIRGeneratorTool().allocateStackMemory(Integer.BYTES, Integer.BYTES);
         Value result = gen.getLIRGeneratorTool().emitAddress(counter);
         gen.setResult(this, result);
     }

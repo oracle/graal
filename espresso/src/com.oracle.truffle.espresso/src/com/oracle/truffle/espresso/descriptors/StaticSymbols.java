@@ -56,11 +56,6 @@ public final class StaticSymbols {
         return symbols.symbolify(ByteSequence.create(Types.checkType(internalName)));
     }
 
-    public static Symbol<Type> putType(Class<?> clazz) {
-        EspressoError.guarantee(!isFrozen(), "static symbols are frozen");
-        return symbols.symbolify(ByteSequence.create(Types.internalFromClassName(clazz.getName())));
-    }
-
     @SafeVarargs
     public static Symbol<Signature> putSignature(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
         EspressoError.guarantee(!isFrozen(), "static symbols are frozen");

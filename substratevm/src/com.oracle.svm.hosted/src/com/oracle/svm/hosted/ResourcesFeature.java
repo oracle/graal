@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,165 +25,352 @@
 
 package com.oracle.svm.hosted;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
+
 import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.ArrayList;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.jdk.localization.LocalizationFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributesView;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
-import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 
-@AutomaticFeature
-public final class ResourcesFeature implements Feature {
+/**
+ * <p>
+ * Resources are collected at build time in this feature and stored in a hash map in
+ * {@link Resources} class.
+ * </p>
+ *
+ * <p>
+ * {@link NativeImageResourceFileSystemProvider } is a core class for building a custom file system
+ * on top of resources in the native image.
+ * </p>
+ *
+ * <p>
+ * The {@link NativeImageResourceFileSystemProvider} provides most of the functionality of a
+ * {@link FileSystem}. It is an in-memory file system that upon creation contains a copy of the
+ * resources included in the native-image. Note that changes to files do not affect actual resources
+ * returned by resource manipulation methods like `Class.getResource`. Upon being closed, all
+ * changes are discarded.
+ * </p>
+ *
+ * <p>
+ * As with other file system providers, these methods provide a low-level interface and are not
+ * meant for direct usage - see {@link java.nio.file.Files}
+ * </p>
+ *
+ * @see NativeImageResourceFileSystem
+ * @see NativeImageResourceFileAttributes
+ * @see NativeImageResourceFileAttributesView
+ */
+@AutomaticallyRegisteredFeature
+public final class ResourcesFeature implements InternalFeature {
+
+    static final String MODULE_NAME_ALL_UNNAMED = "ALL-UNNAMED";
 
     public static class Options {
         @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ExcludeResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ExcludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
     }
 
     private boolean sealed = false;
-    private Set<String> newResources = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private Set<String> ignoredResources = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<String> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private int loadedConfigurations;
+    private ImageClassLoader imageClassLoader;
 
-    private class ResourcesRegistryImpl implements ResourcesRegistry {
-        @Override
-        public void addResources(String pattern) {
-            UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
-            newResources.add(pattern);
+    public final Set<String> includedResourcesModules = new HashSet<>();
+
+    private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
+        private final ConfigurationTypeResolver configurationTypeResolver;
+
+        ResourcesRegistryImpl(ConfigurationTypeResolver configurationTypeResolver) {
+            this.configurationTypeResolver = configurationTypeResolver;
         }
 
         @Override
-        public void ignoreResources(String pattern) {
-            UserError.guarantee(!sealed, "Resources ignored too late: %s", pattern);
-            ignoredResources.add(pattern);
+        public void addResources(ConfigurationCondition condition, String pattern) {
+            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
+                return;
+            }
+            registerConditionalConfiguration(condition, () -> {
+                UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
+                resourcePatternWorkSet.add(pattern);
+            });
         }
 
         @Override
-        public void addResourceBundles(String name) {
-            ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name);
+        public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+            var moduleName = module.isNamed() ? module.getName() : null;
+            Resources.registerResource(moduleName, resourcePath, resourceContent);
+        }
+
+        @Override
+        public void ignoreResources(ConfigurationCondition condition, String pattern) {
+            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
+                return;
+            }
+            registerConditionalConfiguration(condition, () -> {
+                UserError.guarantee(!sealed, "Resources ignored too late: %s", pattern);
+
+                excludedResourcePatterns.add(pattern);
+            });
+        }
+
+        @Override
+        public void addResourceBundles(ConfigurationCondition condition, String name) {
+            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
+                return;
+            }
+            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name));
+        }
+
+        @Override
+        public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
+            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
+                return;
+            }
+            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
+        }
+
+        @Override
+        public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
+                return;
+            }
+            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
         }
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ResourcesRegistry.class, new ResourcesRegistryImpl());
+    public void afterRegistration(AfterRegistrationAccess a) {
+        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
+        imageClassLoader = access.getImageClassLoader();
+        ResourcesRegistryImpl resourcesRegistry = new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader));
+        ImageSingletons.add(ResourcesRegistry.class, resourcesRegistry);
+        ImageSingletons.add(RuntimeResourceSupport.class, resourcesRegistry);
+    }
+
+    private static ResourcesRegistryImpl resourceRegistryImpl() {
+        return (ResourcesRegistryImpl) ImageSingletons.lookup(ResourcesRegistry.class);
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ImageClassLoader imageClassLoader = ((BeforeAnalysisAccessImpl) access).getImageClassLoader();
-        ResourceConfigurationParser parser = new ResourceConfigurationParser(ImageSingletons.lookup(ResourcesRegistry.class));
+        ResourceConfigurationParser parser = new ResourceConfigurationParser(ImageSingletons.lookup(ResourcesRegistry.class), ConfigurationFiles.Options.StrictConfiguration.getValue());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
                         ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
-                        ConfigurationFiles.RESOURCES_NAME);
+                        ConfigurationFile.RESOURCES.getFileName());
 
-        newResources.addAll(Options.IncludeResources.getValue().values());
-        ignoredResources.addAll(Options.ExcludeResources.getValue().values());
+        resourcePatternWorkSet.addAll(Options.IncludeResources.getValue().values());
+        excludedResourcePatterns.addAll(Options.ExcludeResources.getValue().values());
+        resourceRegistryImpl().flushConditionalConfiguration(access);
+    }
+
+    private static final class ResourceCollectorImpl implements ResourceCollector {
+        private final DebugContext debugContext;
+        private final ResourcePattern[] includePatterns;
+        private final ResourcePattern[] excludePatterns;
+        private final Set<String> includedResourcesModules;
+
+        private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
+        private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
+        private static final int WATCHDOG_WARNING_AFTER_EVERY_N_SECONDS = 20;
+        private final Runnable heartbeatCallback;
+        private final LongAdder reachedResourceEntries;
+        private boolean initialReport;
+        private volatile String currentlyProcessedEntry;
+        ScheduledExecutorService scheduledExecutor;
+
+        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Set<String> includedResourcesModules,
+                        Runnable heartbeatCallback) {
+            this.debugContext = debugContext;
+            this.includePatterns = includePatterns;
+            this.excludePatterns = excludePatterns;
+            this.includedResourcesModules = includedResourcesModules;
+
+            this.heartbeatCallback = heartbeatCallback;
+            this.reachedResourceEntries = new LongAdder();
+            this.initialReport = true;
+            this.currentlyProcessedEntry = null;
+        }
+
+        private void prepareProgressReporter() {
+            this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+            scheduledExecutor.scheduleAtFixedRate(() -> {
+                if (initialReport) {
+                    initialReport = false;
+                    System.out.println("WARNING: Resource scanning is taking a long time. " +
+                                    "This can be caused by class-path or module-path entries that point to large directory structures. " +
+                                    "Please make sure class-/module-path entries are easily accessible to native-image");
+                }
+                System.out.println("Total scanned entries: " + this.reachedResourceEntries + "," +
+                                " current entry: " + (this.currentlyProcessedEntry != null ? this.currentlyProcessedEntry : "Unknown resource"));
+            }, WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS, WATCHDOG_WARNING_AFTER_EVERY_N_SECONDS, TimeUnit.SECONDS);
+        }
+
+        private void shutDownProgressReporter() {
+            if (!this.scheduledExecutor.isShutdown()) {
+                this.scheduledExecutor.shutdown();
+            }
+        }
+
+        @Override
+        public boolean isIncluded(String moduleName, String resourceName, URI resource) {
+            this.currentlyProcessedEntry = resource.getScheme().equals("jrt") ? (resource + "/" + resourceName) : resource.toString();
+
+            this.reachedResourceEntries.increment();
+            if (this.reachedResourceEntries.longValue() % WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES == 0) {
+                this.heartbeatCallback.run();
+            }
+
+            String relativePathWithTrailingSlash = resourceName + RESOURCES_INTERNAL_PATH_SEPARATOR;
+
+            for (ResourcePattern rp : excludePatterns) {
+                if (!rp.moduleNameMatches(moduleName)) {
+                    continue;
+                }
+                if (rp.pattern.matcher(resourceName).matches() || rp.pattern.matcher(relativePathWithTrailingSlash).matches()) {
+                    return false;
+                }
+            }
+
+            for (ResourcePattern rp : includePatterns) {
+                if (!rp.moduleNameMatches(moduleName)) {
+                    continue;
+                }
+                if (rp.pattern.matcher(resourceName).matches() || rp.pattern.matcher(relativePathWithTrailingSlash).matches()) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        @Override
+        public void addResource(String moduleName, String resourceName, InputStream resourceStream, boolean fromJar) {
+            collectModuleName(moduleName);
+            registerResource(debugContext, moduleName, resourceName, resourceStream, fromJar);
+        }
+
+        @Override
+        public void addDirectoryResource(String moduleName, String dir, String content, boolean fromJar) {
+            collectModuleName(moduleName);
+            registerDirectoryResource(debugContext, moduleName, dir, content, fromJar);
+        }
+
+        private void collectModuleName(String moduleName) {
+            if (moduleName != null) {
+                includedResourcesModules.add(moduleName);
+            }
+        }
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        if (newResources.isEmpty()) {
+        resourceRegistryImpl().flushConditionalConfiguration(access);
+        if (resourcePatternWorkSet.isEmpty()) {
             return;
         }
 
         access.requireAnalysisIteration();
-        DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
-        final Pattern[] includePatterns = compilePatterns(newResources);
-        final Pattern[] excludePatterns = compilePatterns(ignoredResources);
 
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            try {
-                ModuleSupport.findResourcesInModules(name -> matches(includePatterns, excludePatterns, name),
-                                (resName, content) -> registerResource(debugContext, resName, content));
-            } catch (IOException ex) {
-                throw UserError.abort(ex, "Can not read resources from modules. This is possible due to incorrect module path or missing module visibility directives");
-            }
+        DuringAnalysisAccessImpl duringAnalysisAccess = ((DuringAnalysisAccessImpl) access);
+        ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
+        ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
+        DebugContext debugContext = duringAnalysisAccess.getDebugContext();
+        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, includedResourcesModules, duringAnalysisAccess.bb.getHeartbeatCallback());
+        try {
+            collector.prepareProgressReporter();
+            ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
+        } finally {
+            collector.shutDownProgressReporter();
         }
-
-        /*
-         * Since IncludeResources takes regular expressions it's safer to disallow passing
-         * more than one regex with a single IncludeResources option. Note that it's still
-         * possible pass multiple IncludeResources regular expressions by passing each as
-         * its own IncludeResources option. E.g.
-         * @formatter:off
-         * -H:IncludeResources=nobel/prizes.json -H:IncludeResources=fields/prizes.json
-         * @formatter:on
-         */
-
-        final Set<File> todo = new HashSet<>();
-        // Checkstyle: stop
-        final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-        if (contextClassLoader instanceof URLClassLoader) {
-            for (URL url : ((URLClassLoader) contextClassLoader).getURLs()) {
-                try {
-                    final File file = new File(url.toURI());
-                    todo.add(file);
-                } catch (URISyntaxException | IllegalArgumentException e) {
-                    throw UserError.abort("Unable to handle imagecp element '%s'. Make sure that all imagecp entries are either directories or valid jar files.", url.toExternalForm());
-                }
-            }
-        }
-        // Checkstyle: resume
-        for (File element : todo) {
-            try {
-                if (element.isDirectory()) {
-                    scanDirectory(debugContext, element, "", includePatterns, excludePatterns);
-                } else {
-                    scanJar(debugContext, element, includePatterns, excludePatterns);
-                }
-            } catch (IOException ex) {
-                throw UserError.abort("Unable to handle classpath element '%s'. Make sure that all classpath entries are either directories or valid jar files.", element);
-            }
-        }
-        newResources.clear();
+        resourcePatternWorkSet.clear();
     }
 
-    private static Pattern[] compilePatterns(Set<String> patterns) {
+    private ResourcePattern[] compilePatterns(Set<String> patterns) {
         return patterns.stream()
                         .filter(s -> s.length() > 0)
-                        .map(Pattern::compile)
+                        .map(this::makeResourcePattern)
                         .collect(Collectors.toList())
-                        .toArray(new Pattern[]{});
+                        .toArray(new ResourcePattern[]{});
+    }
+
+    private ResourcePattern makeResourcePattern(String rawPattern) {
+        String[] moduleNameWithPattern = SubstrateUtil.split(rawPattern, ":", 2);
+        if (moduleNameWithPattern.length < 2) {
+            return new ResourcePattern(null, Pattern.compile(moduleNameWithPattern[0]));
+        } else {
+            String moduleName = moduleNameWithPattern[0];
+            boolean acceptModuleName = MODULE_NAME_ALL_UNNAMED.equals(moduleName) ? true : imageClassLoader.findModule(moduleName).isPresent();
+            if (acceptModuleName) {
+                return new ResourcePattern(moduleName, Pattern.compile(moduleNameWithPattern[1]));
+            } else {
+                throw UserError.abort("Resource pattern \"" + rawPattern + "\"s specifies unknown module " + moduleName);
+            }
+        }
+    }
+
+    private static final class ResourcePattern {
+        final String moduleName;
+        final Pattern pattern;
+
+        private ResourcePattern(String moduleName, Pattern pattern) {
+            this.moduleName = moduleName;
+            this.pattern = pattern;
+        }
+
+        boolean moduleNameMatches(String resourceContainerModuleName) {
+            if (moduleName == null) {
+                // Accept everything
+                return true;
+            }
+            if (moduleName.equals(MODULE_NAME_ALL_UNNAMED)) {
+                // Only accept if resource is from classpath
+                return resourceContainerModuleName == null;
+            }
+            return moduleName.equals(resourceContainerModuleName);
+        }
     }
 
     @Override
@@ -202,93 +389,21 @@ public final class ResourcesFeature implements Feature {
         }
     }
 
-    private void scanDirectory(DebugContext debugContext, File f, String relativePath, Pattern[] includePatterns, Pattern[] excludePatterns) throws IOException {
-        if (f.isDirectory()) {
-            File[] files = f.listFiles();
-            if (files == null) {
-                throw UserError.abort("Cannot scan directory %s", f);
-            } else {
-                for (File ch : files) {
-                    scanDirectory(debugContext, ch, relativePath.isEmpty() ? ch.getName() : relativePath + "/" + ch.getName(), includePatterns, excludePatterns);
-                }
-            }
-        } else {
-            if (matches(includePatterns, excludePatterns, relativePath)) {
-                try (FileInputStream is = new FileInputStream(f)) {
-                    registerResource(debugContext, relativePath, is);
-                }
-            }
-        }
-    }
-
-    private static void scanJar(DebugContext debugContext, File element, Pattern[] includePatterns, Pattern[] excludePatterns) throws IOException {
-        JarFile jf = new JarFile(element);
-        Enumeration<JarEntry> en = jf.entries();
-
-        Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
-        Set<String> allEntries = new HashSet<>();
-        while (en.hasMoreElements()) {
-            JarEntry e = en.nextElement();
-            if (e.isDirectory()) {
-                String dirName = e.getName().substring(0, e.getName().length() - 1);
-                allEntries.add(dirName);
-                if (matches(includePatterns, excludePatterns, dirName)) {
-                    matchedDirectoryResources.put(dirName, new ArrayList<>());
-                }
-                continue;
-            }
-            allEntries.add(e.getName());
-            if (matches(includePatterns, excludePatterns, e.getName())) {
-                try (InputStream is = jf.getInputStream(e)) {
-                    registerResource(debugContext, e.getName(), is);
-                }
-            }
-        }
-
-        for (String entry : allEntries) {
-            int last = entry.lastIndexOf('/');
-            String key = last == -1 ? "" : entry.substring(0, last);
-            List<String> dirContent = matchedDirectoryResources.get(key);
-            if (dirContent != null && !dirContent.contains(entry)) {
-                dirContent.add(entry.substring(last + 1, entry.length()));
-            }
-        }
-
-        matchedDirectoryResources.forEach((dir, content) -> {
-            content.sort(Comparator.naturalOrder());
-            registerDirectoryResource(debugContext, dir, String.join(System.lineSeparator(), content));
-        });
-    }
-
-    private static boolean matches(Pattern[] includePatterns, Pattern[] excludePatterns, String relativePath) {
-        for (Pattern p : excludePatterns) {
-            if (p.matcher(relativePath).matches()) {
-                return false;
-            }
-        }
-
-        for (Pattern p : includePatterns) {
-            if (p.matcher(relativePath).matches()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     @SuppressWarnings("try")
-    private static void registerResource(DebugContext debugContext, String resourceName, InputStream resourceStream) {
+    private static void registerResource(DebugContext debugContext, String moduleName, String resourceName, InputStream resourceStream, boolean fromJar) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + resourceName);
-            Resources.registerResource(resourceName, resourceStream);
+            String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, resourceName);
+            Resources.registerResource(moduleName, resourceName, resourceStream, fromJar);
         }
     }
 
     @SuppressWarnings("try")
-    private static void registerDirectoryResource(DebugContext debugContext, String dir, String content) {
+    private static void registerDirectoryResource(DebugContext debugContext, String moduleName, String dir, String content, boolean fromJar) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + dir);
-            Resources.registerDirectoryResource(dir, content);
+            String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, moduleName, dir);
+            Resources.registerDirectoryResource(moduleName, dir, content, fromJar);
         }
     }
 }

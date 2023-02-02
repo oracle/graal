@@ -30,19 +30,17 @@ import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.java.AccessMonitorNode;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
@@ -57,7 +55,6 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.nodes.KillMemoryNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -89,7 +86,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     @Snippet
     protected static void monitorEnterSnippet(Object obj) {
         /* Kill all memory locations, like {@link MonitorEnterNode#getLocationIdentity()}. */
-        KillMemoryNode.killMemory(LocationIdentity.any());
+        MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.any());
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             callSlowPath(SLOW_PATH_MONITOR_ENTER, obj);
@@ -99,7 +96,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     @Snippet
     protected static void monitorExitSnippet(Object obj) {
         /* Kill all memory locations, like {@link MonitorEnterNode#getLocationIdentity()}. */
-        KillMemoryNode.killMemory(LocationIdentity.any());
+        MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.any());
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             callSlowPath(SLOW_PATH_MONITOR_EXIT, obj);
@@ -109,8 +106,14 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     @NodeIntrinsic(value = ForeignCallNode.class)
     protected static native void callSlowPath(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object obj);
 
-    protected MonitorSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
-        super(options, factories, providers, snippetReflection);
+    private final SnippetInfo monitorEnter;
+    private final SnippetInfo monitorExit;
+
+    protected MonitorSnippets(OptionValues options, Providers providers) {
+        super(options, providers);
+
+        this.monitorEnter = snippet(providers, MonitorSnippets.class, "monitorEnterSnippet");
+        this.monitorExit = snippet(providers, MonitorSnippets.class, "monitorExitSnippet");
     }
 
     protected void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -120,9 +123,6 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     }
 
     protected class MonitorLowering implements NodeLoweringProvider<AccessMonitorNode> {
-
-        private final SnippetInfo monitorEnter = snippet(MonitorSnippets.class, "monitorEnterSnippet");
-        private final SnippetInfo monitorExit = snippet(MonitorSnippets.class, "monitorExitSnippet");
 
         @Override
         public final void lower(AccessMonitorNode node, LoweringTool tool) {
@@ -138,11 +138,14 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
             ValueNode object = node.object();
             if (!StampTool.isPointerNonNull(object)) {
                 /*
-                 * This should never happen except in deopt entry methods that contain a cycle
-                 * between a Phi and DeoptProxy node in which case the stamps lose precision.
+                 * GR-30089: the object is null-checked before monitorenter and can therefore never
+                 * be null here, but cycles with loop phis between monitorenter and monitorexit
+                 * (with proxy nodes in deopt targets, for example) can cause the stamp to lose this
+                 * information. This guard should never trigger, but is left here for caution and
+                 * can be replaced with an assertion once the issue is fixed.
                  */
                 GuardingNode nullCheck = tool.createGuard(node, node.graph().unique(IsNullNode.create(object)), NullCheckException, InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
-                node.setObject(node.graph().maybeAddOrUnique(PiNode.create(object, (object.stamp(NodeView.DEFAULT)).join(StampFactory.objectNonNull()), (ValueNode) nullCheck)));
+                node.setObject(node.graph().addOrUnique(PiNode.create(object, StampFactory.objectNonNull(), (ValueNode) nullCheck)));
             }
         }
 
@@ -157,7 +160,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
             }
             Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("obj", node.object());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

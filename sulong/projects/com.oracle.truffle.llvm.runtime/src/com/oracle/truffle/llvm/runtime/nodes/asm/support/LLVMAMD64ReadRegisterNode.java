@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,14 +31,13 @@ package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeField(name = "slot", type = FrameSlot.class)
+@NodeField(name = "slot", type = int.class)
 public abstract class LLVMAMD64ReadRegisterNode extends LLVMExpressionNode {
-    protected abstract FrameSlot getSlot();
+    protected abstract int getSlot();
 
     @Specialization(rewriteOn = FrameSlotTypeException.class)
     protected long readI64(VirtualFrame frame) throws FrameSlotTypeException {

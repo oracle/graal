@@ -55,4 +55,4 @@
 
 #define EXPORT __EXTERNC __DLLEXPORT
 
-EXPORT int format_string(char *buffer, uint64_t size, const char *format, ...);
+EXPORT int format_string(char *buffer, uint16_t size, const char *format, ...);

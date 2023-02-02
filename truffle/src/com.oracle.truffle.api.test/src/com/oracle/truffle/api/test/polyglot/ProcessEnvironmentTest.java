@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,25 @@ package com.oracle.truffle.api.test.polyglot;
 
 import java.util.HashMap;
 import java.util.Map;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+
 public class ProcessEnvironmentTest extends AbstractPolyglotTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public ProcessEnvironmentTest() {
+        needsLanguageEnv = true;
+    }
 
     @Test
     public void testEnvironmentAccessNone() {

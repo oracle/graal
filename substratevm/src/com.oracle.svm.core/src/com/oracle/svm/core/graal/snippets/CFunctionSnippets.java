@@ -30,14 +30,13 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -46,16 +45,18 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.nodes.KillMemoryNode;
 import com.oracle.svm.core.graal.nodes.VerificationMarkerNode;
-import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
@@ -91,19 +92,19 @@ import com.oracle.svm.core.util.VMError;
  */
 public final class CFunctionSnippets extends SubstrateTemplates implements Snippets {
 
-    private final SnippetInfo prologue = snippet(CFunctionSnippets.class, "prologueSnippet");
-    private final SnippetInfo epilogue = snippet(CFunctionSnippets.class, "epilogueSnippet");
+    private final SnippetInfo prologue;
+    private final SnippetInfo epilogue;
 
     /**
      * A unique object that identifies the frame anchor stack value. Multiple C function calls
      * inlined into the same Java method share the stack slots for the frame anchor.
      */
-    private static final StackSlotIdentity frameAnchorIdentity = new StackSlotIdentity("CFunctionSnippets.frameAnchorIdentifier");
+    private static final StackSlotIdentity frameAnchorIdentity = new StackSlotIdentity("CFunctionSnippets.frameAnchorIdentifier", true);
 
     @Snippet
     private static CPrologueData prologueSnippet(@ConstantParameter int newThreadStatus) {
         /* Push a JavaFrameAnchor to the thread-local linked list. */
-        JavaFrameAnchor anchor = (JavaFrameAnchor) StackValueNode.stackValue(1, SizeOf.get(JavaFrameAnchor.class), frameAnchorIdentity);
+        JavaFrameAnchor anchor = (JavaFrameAnchor) LoweredStackValueNode.loweredStackValue(SizeOf.get(JavaFrameAnchor.class), FrameAccess.wordSize(), frameAnchorIdentity);
         JavaFrameAnchors.pushFrameAnchor(anchor);
 
         /*
@@ -120,33 +121,29 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     private static void epilogueSnippet(@ConstantParameter int oldThreadStatus) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
-                /*
-                 * Change the VMThread status from native to Java, blocking if necessary. At this
-                 * point the JavaFrameAnchor still needs to be pushed: a concurrently running
-                 * safepoint code can start a stack traversal at any time.
-                 */
-                Safepoint.transitionNativeToJava();
+                Safepoint.transitionNativeToJava(true);
             } else if (oldThreadStatus == StatusSupport.STATUS_IN_VM) {
-                Safepoint.transitionVMToJava();
+                Safepoint.transitionVMToJava(true);
             } else {
                 ReplacementsUtil.staticAssert(false, "Unexpected thread status");
             }
+        } else {
+            JavaFrameAnchors.popFrameAnchor();
         }
-
-        /* The thread is now back in the Java state, it is safe to pop the JavaFrameAnchor. */
-        JavaFrameAnchors.popFrameAnchor();
 
         /*
          * Ensure that no floating reads are scheduled before we are done with the transition. All
          * memory dependencies of the replaced CEntryPointEpilogueNode are re-wired to this
          * KillMemoryNode since this is the last kill-all node of the snippet.
          */
-        KillMemoryNode.killMemory(LocationIdentity.ANY_LOCATION);
+        MembarNode.memoryBarrier(MembarNode.FenceKind.NONE, LocationIdentity.ANY_LOCATION);
     }
 
-    private CFunctionSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(options, factories, providers, snippetReflection);
+    CFunctionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
+
+        this.prologue = snippet(providers, CFunctionSnippets.class, "prologueSnippet");
+        this.epilogue = snippet(providers, CFunctionSnippets.class, "epilogueSnippet");
 
         lowerings.put(CFunctionPrologueNode.class, new CFunctionPrologueLowering());
         lowerings.put(CFunctionEpilogueNode.class, new CFunctionEpilogueLowering());
@@ -174,9 +171,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
             Arguments args = new Arguments(prologue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("newThreadStatus", newThreadStatus);
-            SnippetTemplate template = template(node, args);
+            SnippetTemplate template = template(tool, node, args);
             template.setMayRemoveLocation(true);
-            template.instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -194,9 +191,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
             Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("oldThreadStatus", oldThreadStatus);
-            SnippetTemplate template = template(node, args);
+            SnippetTemplate template = template(tool, node, args);
             template.setMayRemoveLocation(true);
-            template.instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -249,15 +246,16 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             cur = ((FixedWithNextNode) cur).next();
         }
     }
+}
 
-    @AutomaticFeature
-    static class CFunctionSnippetsFeature implements GraalFeature {
+@AutomaticallyRegisteredFeature
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
+class CFunctionSnippetsFeature implements InternalFeature {
 
-        @Override
-        @SuppressWarnings("unused")
-        public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                        SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-            new CFunctionSnippets(options, factories, providers, snippetReflection, lowerings);
-        }
+    @Override
+    @SuppressWarnings("unused")
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        new CFunctionSnippets(options, providers, lowerings);
     }
 }

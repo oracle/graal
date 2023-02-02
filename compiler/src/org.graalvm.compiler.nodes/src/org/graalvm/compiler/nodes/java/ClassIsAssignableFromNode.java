@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,9 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_32;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.extended.GetClassNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
@@ -74,6 +75,14 @@ public final class ClassIsAssignableFromNode extends BinaryOpLogicNode implement
 
     @Override
     public Node canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        if (forY instanceof GetClassNode) {
+            // Canonicalize `Class.isAssignableFrom(Object.getClass())` to
+            // `Class.isInstance(Object)`.
+            // For non-leaf types, `Object.getClass()` cannot only return a ValueNode stamped
+            // java.lang.Class, which prevents folding to a isNull check when the Object argument is
+            // constant and complicates ClassIsAssignableFrom in the other cases.
+            return InstanceOfDynamicNode.create(tool.getAssumptions(), tool.getConstantReflection(), forX, ((GetClassNode) forY).getObject(), false);
+        }
         if (forX.isConstant() && forY.isConstant()) {
             ConstantReflectionProvider constantReflection = tool.getConstantReflection();
             ResolvedJavaType thisType = constantReflection.asJavaType(forX.asJavaConstant());

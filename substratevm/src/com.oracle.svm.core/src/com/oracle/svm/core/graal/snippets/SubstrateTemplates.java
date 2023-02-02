@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,10 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
@@ -41,7 +37,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
@@ -52,29 +47,53 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class SubstrateTemplates extends AbstractTemplates {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected SubstrateTemplates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
-        super(options, factories, providers, snippetReflection, ConfigurationValues.getTarget());
+    protected SubstrateTemplates(OptionValues options, Providers providers) {
+        super(options, providers);
     }
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, ResolvedJavaMethod original, Object receiver, LocationIdentity... privateLocations) {
-        return snippet(declaringClass, methodName, original, receiver, (Object[]) privateLocations);
+    protected SnippetInfo snippet(Providers providers,
+                    Class<? extends Snippets> declaringClass,
+                    String methodName,
+                    ResolvedJavaMethod original,
+                    Object receiver,
+                    LocationIdentity... privateLocations) {
+        return snippet(providers,
+                        declaringClass,
+                        methodName,
+                        original,
+                        receiver,
+                        (Object[]) privateLocations);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, Object receiver, Object[] privateLocations) {
-        return snippet(declaringClass, methodName, null, receiver, privateLocations);
+    protected SnippetInfo snippet(Providers providers,
+                    Class<? extends Snippets> declaringClass,
+                    String methodName,
+                    Object receiver,
+                    Object[] privateLocations) {
+        return snippet(providers,
+                        declaringClass,
+                        methodName,
+                        null,
+                        receiver,
+                        privateLocations);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, Object[] privateLocations) {
-        return snippet(declaringClass, methodName, null, null, privateLocations);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, ResolvedJavaMethod original, Object receiver, Object[] privateLocations) {
-        return super.snippet(declaringClass, methodName, original, receiver, toLocationIdentity(providers.getMetaAccess(), privateLocations));
+    protected SnippetInfo snippet(Providers providers,
+                    Class<? extends Snippets> declaringClass,
+                    String methodName,
+                    ResolvedJavaMethod original,
+                    Object receiver,
+                    Object[] privateLocations) {
+        return super.snippet(providers,
+                        declaringClass,
+                        methodName,
+                        original,
+                        receiver,
+                        toLocationIdentity(providers.getMetaAccess(), privateLocations));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -93,7 +112,7 @@ public class SubstrateTemplates extends AbstractTemplates {
         if (object instanceof LocationIdentity) {
             location = (LocationIdentity) object;
         } else if (object instanceof Field) {
-            location = new SubstrateFieldLocationIdentity(metaAccess.lookupJavaField((Field) object));
+            location = new SubstrateFieldLocationIdentity(metaAccess.lookupJavaField((Field) object), false);
         } else {
             throw VMError.shouldNotReachHere("Cannot convert to LocationIdentity: " + object.getClass().getName());
         }

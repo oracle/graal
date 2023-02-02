@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@
 package org.graalvm.compiler.graph;
 
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeInsertion;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,6 +74,13 @@ public class Graph {
     public final String name;
 
     /**
+     * Cached actual value of the {@link Options} to avoid expensive map lookup for every time a
+     * node / graph is verified.
+     */
+    public final boolean verifyGraphs;
+    public final boolean verifyGraphEdges;
+
+    /**
      * The set of nodes in the graph, ordered by {@linkplain #register(Node) registration} time.
      */
     Node[] nodes;
@@ -94,6 +99,14 @@ public class Graph {
      * The number of valid entries in {@link #nodes}.
      */
     int nodesSize;
+
+    /**
+     * The modification count driven by the {@link NodeEventListener} machinery. Only changes to
+     * edges are tracked since that captures meaningful changes to the graph. Adding or deleting
+     * nodes without changes edges can't have a material effect on the graph. Changes to other
+     * internal state of the nodes isn't captured by this count.
+     */
+    int edgeModificationCount;
 
     /**
      * Records the modification count for nodes. This is only used in assertions.
@@ -206,15 +219,6 @@ public class Graph {
         return trackNodeSourcePosition() && sourcePosition != null ? new NodeSourcePositionScope(sourcePosition) : null;
     }
 
-    /**
-     * Opens a scope in which newly created nodes do not get any source information added.
-     *
-     * @return a {@link DebugCloseable} for managing the opened scope
-     */
-    public DebugCloseable withoutNodeSourcePosition() {
-        return new NodeSourcePositionScope(null);
-    }
-
     public boolean trackNodeSourcePosition() {
         return trackNodeSourcePosition;
     }
@@ -260,7 +264,7 @@ public class Graph {
      * {@link Graph} class.
      */
     @SuppressWarnings("all")
-    public static boolean isModificationCountsEnabled() {
+    public static boolean isNodeModificationCountsEnabled() {
         boolean enabled = false;
         assert enabled = true;
         return enabled;
@@ -283,10 +287,13 @@ public class Graph {
         assert debug != null;
         this.debug = debug;
 
-        if (isModificationCountsEnabled()) {
+        if (isNodeModificationCountsEnabled()) {
             nodeModCounts = new int[INITIAL_NODES_SIZE];
             nodeUsageModCounts = new int[INITIAL_NODES_SIZE];
         }
+
+        verifyGraphs = Options.VerifyGraalGraphs.getValue(options);
+        verifyGraphEdges = Options.VerifyGraalGraphEdges.getValue(options);
     }
 
     int extractOriginalNodeId(Node node) {
@@ -297,7 +304,7 @@ public class Graph {
         return id;
     }
 
-    int modCount(Node node) {
+    int getNodeModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0 && id < nodeModCounts.length) {
             return nodeModCounts[id];
@@ -305,7 +312,7 @@ public class Graph {
         return 0;
     }
 
-    void incModCount(Node node) {
+    void incNodeModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0) {
             if (id >= nodeModCounts.length) {
@@ -317,7 +324,7 @@ public class Graph {
         }
     }
 
-    int usageModCount(Node node) {
+    int nodeUsageModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0 && id < nodeUsageModCounts.length) {
             return nodeUsageModCounts[id];
@@ -325,7 +332,7 @@ public class Graph {
         return 0;
     }
 
-    void incUsageModCount(Node node) {
+    void incNodeUsageModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0) {
             if (id >= nodeUsageModCounts.length) {
@@ -335,6 +342,10 @@ public class Graph {
         } else {
             assert false;
         }
+    }
+
+    public int getEdgeModificationCount() {
+        return edgeModificationCount;
     }
 
     /**
@@ -358,18 +369,6 @@ public class Graph {
      */
     public final Graph copy(Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, DebugContext debugForCopy) {
         return copy(name, duplicationMapCallback, debugForCopy);
-    }
-
-    /**
-     * Creates a copy of this graph.
-     *
-     * @param newName the name of the copy, used for debugging purposes (can be null)
-     * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
-     *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
-     *            accessed by multiple threads).
-     */
-    public final Graph copy(String newName, DebugContext debugForCopy) {
-        return copy(newName, null, debugForCopy);
     }
 
     /**
@@ -429,15 +428,6 @@ public class Graph {
     }
 
     /**
-     * Gets the number of times this graph has been {@linkplain #maybeCompress() compressed}. Node
-     * identifiers are only stable between compressions. To ensure this constraint is observed, any
-     * entity relying upon stable node identifiers should use {@link NodeIdAccessor}.
-     */
-    public int getCompressions() {
-        return compressions;
-    }
-
-    /**
      * Gets the number of nodes which have been deleted from this graph since it was last
      * {@linkplain #maybeCompress() compressed}.
      */
@@ -470,17 +460,13 @@ public class Graph {
     }
 
     public <T extends Node> T addOrUnique(T node) {
+        if (node.isAlive()) {
+            return node;
+        }
         if (node.getNodeClass().valueNumberable()) {
             return uniqueHelper(node);
         }
         return add(node);
-    }
-
-    public <T extends Node> T maybeAddOrUnique(T node) {
-        if (node.isAlive()) {
-            return node;
-        }
-        return addOrUnique(node);
     }
 
     public <T extends Node> T addOrUniqueWithInputs(T node) {
@@ -528,6 +514,26 @@ public class Graph {
     }
 
     /**
+     * Notifies node event listeners registered with this graph that {@code node} has been created
+     * as part of decoding a graph but its fields have yet to be initialized.
+     */
+    public void beforeDecodingFields(Node node) {
+        if (nodeEventListener != null) {
+            nodeEventListener.event(NodeEvent.BEFORE_DECODING_FIELDS, node);
+        }
+    }
+
+    /**
+     * Notifies node event listeners registered with this graph that {@code node} has been created
+     * as part of decoding a graph and its fields have now been initialized.
+     */
+    public void afterDecodingFields(Node node) {
+        if (nodeEventListener != null) {
+            nodeEventListener.event(NodeEvent.AFTER_DECODING_FIELDS, node);
+        }
+    }
+
+    /**
      * The type of events sent to a {@link NodeEventListener}.
      */
     public enum NodeEvent {
@@ -549,7 +555,22 @@ public class Graph {
         /**
          * A node was removed from the graph.
          */
-        NODE_REMOVED
+        NODE_REMOVED,
+
+        /**
+         * Graph decoding (partial evaluation) may create nodes adding them to the graph in a "stub"
+         * form before filling any node fields. We want to observe these events as well. This event
+         * is triggered before a "stub" node's fields are decoded and initialized.
+         */
+        BEFORE_DECODING_FIELDS,
+
+        /**
+         * Graph decoding (partial evaluation) may create nodes adding them to the graph in a "stub"
+         * form before filling any node fields. We want to observe these events as well. This event
+         * is triggered after a "stub" node's fields are decoded and populated i.e. when the node is
+         * no longer a stub.
+         */
+        AFTER_DECODING_FIELDS,
     }
 
     /**
@@ -572,13 +593,23 @@ public class Graph {
                     inputChanged(node);
                     break;
                 case ZERO_USAGES:
+                    GraalError.guarantee(node.isAlive(), "must be alive");
                     usagesDroppedToZero(node);
+                    if (!node.isAlive()) {
+                        throw new GraalError("%s must not kill %s", this, node);
+                    }
                     break;
                 case NODE_ADDED:
                     nodeAdded(node);
                     break;
                 case NODE_REMOVED:
                     nodeRemoved(node);
+                    break;
+                case BEFORE_DECODING_FIELDS:
+                    beforeDecodingFields(node);
+                    break;
+                case AFTER_DECODING_FIELDS:
+                    afterDecodingFields(node);
                     break;
             }
             changed(e, node);
@@ -599,6 +630,23 @@ public class Graph {
          * @param node a node who has had one of its inputs changed
          */
         public void inputChanged(Node node) {
+        }
+
+        /**
+         * Notifies this listener that the decoding of fields for this node is about to commence.
+         *
+         * @param node a node whose fields are about to be decoded.
+         */
+        public void beforeDecodingFields(Node node) {
+
+        }
+
+        /**
+         * Notifies this listener that the decoding of fields for this node has finished.
+         *
+         * @param node a node who has had fields decoded.
+         */
+        public void afterDecodingFields(Node node) {
         }
 
         /**
@@ -833,13 +881,6 @@ public class Graph {
         }
 
         /**
-         * Determines if this mark is positioned at the first live node in the graph.
-         */
-        public boolean isStart() {
-            return value == 0;
-        }
-
-        /**
          * Gets the {@linkplain Graph#getNodeCount() live node count} of the associated graph when
          * this object was created.
          */
@@ -869,7 +910,7 @@ public class Graph {
      */
     public NodeIterable<Node> getNewNodes(Mark mark) {
         final int index = mark == null ? 0 : mark.getValue();
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
@@ -884,7 +925,7 @@ public class Graph {
      * @return an {@link Iterable} providing all the live nodes.
      */
     public NodeIterable<Node> getNodes() {
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
@@ -896,18 +937,6 @@ public class Graph {
                 return getNodeCount();
             }
         };
-    }
-
-    // Fully qualified annotation name is required to satisfy javac
-    @org.graalvm.compiler.nodeinfo.NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-    static final class PlaceHolderNode extends Node {
-
-        public static final NodeClass<PlaceHolderNode> TYPE = NodeClass.create(PlaceHolderNode.class);
-
-        protected PlaceHolderNode() {
-            super(TYPE);
-        }
-
     }
 
     private static final CounterKey GraphCompressions = DebugContext.counter("GraphCompressions");
@@ -926,15 +955,21 @@ public class Graph {
      * of nodes is compressed such that all non-null entries precede all null entries while
      * preserving the ordering between the nodes within the list.
      */
-    public boolean maybeCompress() {
-        if (debug.isDumpEnabledForMethod() || debug.isLogEnabledForMethod()) {
+    public final boolean maybeCompress() {
+        return compress(false);
+    }
+
+    protected boolean compress(boolean minimizeSize) {
+        if (!minimizeSize && (debug.isDumpEnabledForMethod() || debug.isLogEnabledForMethod())) {
             return false;
         }
         int liveNodeCount = getNodeCount();
-        int liveNodePercent = liveNodeCount * 100 / nodesSize;
-        int compressionThreshold = Options.GraphCompressionThreshold.getValue(options);
-        if (compressionThreshold == 0 || liveNodePercent >= compressionThreshold) {
-            return false;
+        if (!minimizeSize) {
+            int liveNodePercent = liveNodeCount * 100 / nodesSize;
+            int compressionThreshold = Options.GraphCompressionThreshold.getValue(options);
+            if (compressionThreshold == 0 || liveNodePercent >= compressionThreshold) {
+                return false;
+            }
         }
         GraphCompressions.increment(debug);
         int nextId = 0;
@@ -953,7 +988,7 @@ public class Graph {
                 nextId++;
             }
         }
-        if (isModificationCountsEnabled()) {
+        if (isNodeModificationCountsEnabled()) {
             // This will cause any current iteration to fail with an assertion
             Arrays.fill(nodeModCounts, 0);
             Arrays.fill(nodeUsageModCounts, 0);
@@ -962,7 +997,36 @@ public class Graph {
         compressions++;
         nodesDeletedBeforeLastCompression += nodesDeletedSinceLastCompression;
         nodesDeletedSinceLastCompression = 0;
+
+        if (minimizeSize) {
+            /* Trim the array of all alive nodes itself. */
+            nodes = trimArrayToNewSize(nodes, nextId);
+            /* Remove deleted nodes from the linked list of Node.typeCacheNext. */
+            recomputeIterableNodeLists();
+            /* Trim node arrays used within each node. */
+            for (Node node : nodes) {
+                node.extraUsages = trimArrayToNewSize(node.extraUsages, node.extraUsagesCount);
+                node.getNodeClass().getInputEdges().minimizeSize(node);
+                node.getNodeClass().getSuccessorEdges().minimizeSize(node);
+            }
+        }
         return true;
+    }
+
+    static Node[] trimArrayToNewSize(Node[] input, int newSize) {
+        assert input.getClass() == Node[].class;
+        if (input.length == newSize) {
+            return input;
+        }
+        for (int i = newSize; i < input.length; i++) {
+            GraalError.guarantee(input[i] == null, "removing non-null element");
+        }
+
+        if (newSize == 0) {
+            return Node.EMPTY_ARRAY;
+        } else {
+            return Arrays.copyOf(input, newSize, Node[].class);
+        }
     }
 
     /**
@@ -973,7 +1037,7 @@ public class Graph {
      * @return an {@link Iterable} providing all the matching nodes
      */
     public <T extends Node & IterableNodeType> NodeIterable<T> getNodes(final NodeClass<T> nodeClass) {
-        return new NodeIterable<T>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<T> iterator() {
@@ -1112,11 +1176,6 @@ public class Graph {
 
     }
 
-    @SuppressWarnings("unused")
-    private void postDeserialization() {
-        recomputeIterableNodeLists();
-    }
-
     /**
      * Rebuilds the lists used to support {@link #getNodes(NodeClass)}. This is useful for
      * serialization where the underlying {@linkplain NodeClass#iterableId() iterable ids} may have
@@ -1161,12 +1220,11 @@ public class Graph {
         if (nodeEventListener != null) {
             nodeEventListener.event(NodeEvent.NODE_REMOVED, node);
         }
-
         // nodes aren't removed from the type cache here - they will be removed during iteration
     }
 
     public boolean verify() {
-        if (Options.VerifyGraalGraphs.getValue(options)) {
+        if (verifyGraphs) {
             for (Node node : getNodes()) {
                 try {
                     try {
@@ -1231,7 +1289,7 @@ public class Graph {
      * @param replacementsMap the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
-    public UnmodifiableEconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, EconomicMap<Node, Node> replacementsMap) {
+    public EconomicMap<Node, Node> addDuplicates(Iterable<? extends Node> newNodes, final Graph oldGraph, int estimatedNodeCount, UnmodifiableEconomicMap<Node, Node> replacementsMap) {
         DuplicationReplacement replacements;
         if (replacementsMap == null) {
             replacements = null;
@@ -1248,9 +1306,9 @@ public class Graph {
 
     private static final class MapReplacement implements DuplicationReplacement {
 
-        private final EconomicMap<Node, Node> map;
+        private final UnmodifiableEconomicMap<Node, Node> map;
 
-        MapReplacement(EconomicMap<Node, Node> map) {
+        MapReplacement(UnmodifiableEconomicMap<Node, Node> map) {
             this.map = map;
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,14 @@ public final class UnreachableBeginNode extends AbstractBeginNode implements Sin
         super(TYPE);
     }
 
+    /**
+     * Determine which memory location is killed by this node. Since this node can be used on the
+     * {@linkplain WithExceptionNode#exceptionEdge() exception edge} of an {@link WithExceptionNode}
+     * that might also be a {@linkplain org.graalvm.compiler.nodes.memory.MemoryKill memory kill},
+     * this node must be a memory kill as well. Since the branch is unreachable and will be deleted
+     * eventually, killing {@link LocationIdentity#any()} do not cause issues with respect to
+     * optimizations.
+     */
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();

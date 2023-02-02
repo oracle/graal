@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,9 +41,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -53,17 +51,18 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 
 public class MaterializedFrameTest extends PartialEvaluationTest {
     private static RootNode createRootNode() {
-        FrameDescriptor fd = new FrameDescriptor();
-        FrameSlot slot = fd.addFrameSlot("test");
+        var builder = FrameDescriptor.newBuilder();
+        int slot = builder.addSlot(FrameSlotKind.Illegal, "test", null);
+        FrameDescriptor fd = builder.build();
         return new RootNode(null, fd) {
             private final ValueProfile frameClassProfile = ValueProfile.createClassProfile();
 
             @Override
             public Object execute(VirtualFrame frame) {
                 MaterializedFrame mframe = frameClassProfile.profile(GraalDirectives.opaque(frame.materialize()));
-                if (mframe.getFrameDescriptor().getFrameSlotKind(slot) != FrameSlotKind.Int) {
+                if (mframe.getFrameDescriptor().getSlotKind(slot) != FrameSlotKind.Int) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    mframe.getFrameDescriptor().setFrameSlotKind(slot, FrameSlotKind.Int);
+                    mframe.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Int);
                 }
                 mframe.setInt(slot, 42);
                 if (mframe.isInt(slot)) {
@@ -81,7 +80,7 @@ public class MaterializedFrameTest extends PartialEvaluationTest {
     @Test
     public void getFrameSlotKind() {
         RootNode rootNode = createRootNode();
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        RootCallTarget callTarget = rootNode.getCallTarget();
         StructuredGraph graph = partialEval((OptimizedCallTarget) callTarget, new Object[]{}, getCompilationId(callTarget));
 
         NodeIterable<MethodCallTargetNode> calls = graph.getNodes().filter(MethodCallTargetNode.class);
@@ -90,7 +89,8 @@ public class MaterializedFrameTest extends PartialEvaluationTest {
             assertThat("Unexpected IsNull: " + isNull + "(" + isNull.getValue() + ")", isNull.getValue(), not(instanceOf(LoadFieldNode.class)));
         }
         for (LoadFieldNode loadField : graph.getNodes().filter(LoadFieldNode.class)) {
-            assertThat("Unexpected LoadField: " + loadField, loadField.field().getName(), either(equalTo("tags")).or(equalTo("primitiveLocals")));
+            assertThat("Unexpected LoadField: " + loadField, loadField.field().getName(),
+                            either(equalTo("descriptor")).or(equalTo("indexedLocals")).or(equalTo("indexedTags")).or(equalTo("indexedSlotTags")).or(equalTo("indexedPrimitiveLocals")));
         }
     }
 }

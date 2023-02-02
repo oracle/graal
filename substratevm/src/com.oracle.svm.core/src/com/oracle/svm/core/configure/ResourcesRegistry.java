@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,59 @@
  */
 package com.oracle.svm.core.configure;
 
-public interface ResourcesRegistry {
-    void addResources(String pattern);
+import java.util.Collection;
+import java.util.Locale;
 
-    void ignoreResources(String pattern);
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
-    void addResourceBundles(String name);
+public interface ResourcesRegistry extends RuntimeResourceSupport {
+
+    /**
+     * @deprecated Use {@link RuntimeResourceSupport#addResources(ConfigurationCondition, String)}
+     *             instead.
+     */
+    @Deprecated
+    default void addResources(String pattern) {
+        addResources(ConfigurationCondition.alwaysTrue(), pattern);
+    }
+
+    /**
+     * @deprecated Use
+     *             {@link RuntimeResourceSupport#ignoreResources(ConfigurationCondition, String)}
+     *             instead.
+     */
+    @Deprecated
+    default void ignoreResources(String pattern) {
+        ignoreResources(ConfigurationCondition.alwaysTrue(), pattern);
+    }
+
+    /**
+     * @deprecated Use
+     *             {@link RuntimeResourceSupport#addResourceBundles(ConfigurationCondition, String)}
+     *             instead.
+     */
+    @Deprecated
+    default void addResourceBundles(String name) {
+        addResourceBundles(ConfigurationCondition.alwaysTrue(), name);
+    }
+
+    void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className);
+
+    /**
+     * Although the interface-methods below are already defined in the super-interface
+     * {@link RuntimeResourceSupport} they are also needed here for legacy code that accesses them
+     * reflectively.
+     */
+    @Override
+    void addResources(ConfigurationCondition condition, String pattern);
+
+    @Override
+    void ignoreResources(ConfigurationCondition condition, String pattern);
+
+    @Override
+    void addResourceBundles(ConfigurationCondition condition, String name);
+
+    @Override
+    void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales);
 }

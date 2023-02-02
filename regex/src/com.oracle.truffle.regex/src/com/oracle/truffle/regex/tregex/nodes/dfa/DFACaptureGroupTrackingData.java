@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,25 +41,26 @@
 
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import com.oracle.truffle.api.CompilerAsserts;
+
 public final class DFACaptureGroupTrackingData {
 
-    public final int[] results;
     public final int[] currentResultOrder;
+    public final int[] results;
     public final int[] currentResult;
 
-    public DFACaptureGroupTrackingData(int maxNumberOfNFAStates, int getNumberOfCaptureGroups, TRegexDFAExecutorProperties props) {
-        if (props.isSimpleCG()) {
-            results = new int[getNumberOfCaptureGroups * 2];
-            currentResultOrder = null;
-            currentResult = props.isSimpleCGMustCopy() ? new int[getNumberOfCaptureGroups * 2] : null;
-        } else {
-            results = new int[maxNumberOfNFAStates * getNumberOfCaptureGroups * 2];
-            currentResultOrder = new int[maxNumberOfNFAStates];
-            currentResult = new int[getNumberOfCaptureGroups * 2];
-        }
+    public DFACaptureGroupTrackingData(int[] currentResultOrder, int[] results, int[] currentResult) {
+        this.currentResultOrder = currentResultOrder;
+        this.results = results;
+        this.currentResult = currentResult;
     }
 
-    public void exportResult(byte index) {
-        System.arraycopy(results, currentResultOrder[Byte.toUnsignedInt(index)], currentResult, 0, currentResult.length);
+    public void exportResult(TRegexDFAExecutorNode executor, byte index) {
+        CompilerAsserts.partialEvaluationConstant(executor);
+        if (executor.getMaxNumberOfNFAStates() == 1) {
+            System.arraycopy(results, 0, currentResult, 0, currentResult.length);
+        } else {
+            System.arraycopy(results, currentResultOrder[Byte.toUnsignedInt(index)], currentResult, 0, currentResult.length);
+        }
     }
 }

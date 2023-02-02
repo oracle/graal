@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.processor;
 
 /**
- * To keep in sync with com.oracle.truffle.espresso._native.NativeType.
+ * To keep in sync with com.oracle.truffle.espresso.ffi.NativeType .
  */
 public enum NativeType {
 

@@ -29,8 +29,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
@@ -62,11 +62,11 @@ final class GreyObjectsWalker {
         space = s;
         AlignedHeapChunk.AlignedHeader aChunk = s.getLastAlignedHeapChunk();
         alignedHeapChunk = aChunk;
-        trace.string("  alignedHeapChunk: ").hex(alignedHeapChunk).string("  isNull: ").bool(aChunk.isNull());
+        trace.string("  alignedHeapChunk: ").zhex(alignedHeapChunk).string("  isNull: ").bool(aChunk.isNull());
         alignedTop = (aChunk.isNonNull() ? HeapChunk.getTopPointer(aChunk) : WordFactory.nullPointer());
-        trace.string("  alignedTop: ").hex(alignedTop);
+        trace.string("  alignedTop: ").zhex(alignedTop);
         unalignedHeapChunk = s.getLastUnalignedHeapChunk();
-        trace.string("  unalignedChunkPointer: ").hex(unalignedHeapChunk).string("]").newline();
+        trace.string("  unalignedChunkPointer: ").zhex(unalignedHeapChunk).string("]").newline();
     }
 
     /** Compare the snapshot to the current state of the Space to see if there are grey Objects. */

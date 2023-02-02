@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2019, 2020, Arm Limited and affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Arm Limited and affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -207,7 +207,7 @@ public class AArch64BitFieldTest extends AArch64MatchRuleTest {
     // SBFIZ with B2I.
     public int signedB2IInsert(int input) {
         byte b = (byte) input;
-        return b << 31;
+        return b << 30;
     }
 
     @Test

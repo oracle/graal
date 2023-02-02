@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -71,7 +70,7 @@ public class ArrayTest {
                 return test.executeWith(frame, frame.getArguments()[0]);
             }
         };
-        CallTarget target = Truffle.getRuntime().createCallTarget(root);
+        CallTarget target = root.getCallTarget();
 
         Assert.assertEquals(1, (int) target.call(1));
         Assert.assertArrayEquals(new double[0], (double[]) target.call(new int[0]), 0.0d);

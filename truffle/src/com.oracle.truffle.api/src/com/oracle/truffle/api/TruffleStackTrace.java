@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,6 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 
 import sun.misc.Unsafe;
 
@@ -103,7 +102,7 @@ public final class TruffleStackTrace extends Exception {
 
         try {
             Field causeField = Throwable.class.getDeclaredField("cause");
-            causeFieldIndex = UNSAFE.objectFieldOffset(causeField);
+            causeFieldIndex = ArrayUtils.getObjectFieldOffset(causeField);
         } catch (NoSuchFieldException | SecurityException e) {
             throw new RuntimeException(e);
         }
@@ -145,9 +144,9 @@ public final class TruffleStackTrace extends Exception {
      * Called when an exception leaves the guest boundary and is passed to the host language. This
      * requires us to capture the host stack frames to build a polyglot stack trace. This can be
      * done lazily because if an exception stays inside a guest language (is thrown and caught in
-     * the guest language) there is no need to pay the price for host frames. If the error is a non
-     * TruffleException internal error then the exception (e.g. NullPointerException) has already
-     * captured the host stack trace and this host exception stack trace is not used.
+     * the guest language) there is no need to pay the price for host frames. If the error is an
+     * internal error then the exception (e.g. NullPointerException) has already captured the host
+     * stack trace and this host exception stack trace is not used.
      */
     private void materializeHostException() {
         if (this.materializedHostException == null) {
@@ -224,15 +223,8 @@ public final class TruffleStackTrace extends Exception {
     public static List<TruffleStackTraceElement> getAsynchronousStackTrace(CallTarget target, Frame frame) {
         Objects.requireNonNull(target, "CallTarget must not be null");
         Objects.requireNonNull(frame, "Frame must not be null");
-        assert hasContext(target);
+        assert LanguageAccessor.ENGINE.hasCurrentContext();
         return LanguageAccessor.ACCESSOR.nodeSupport().findAsynchronousFrames(target, frame);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static boolean hasContext(CallTarget target) {
-        RootNode root = ((RootCallTarget) target).getRootNode();
-        Object polyglotLanguage = LanguageAccessor.ACCESSOR.nodeSupport().getPolyglotLanguage(root.getLanguageInfo());
-        return LanguageAccessor.ACCESSOR.engineSupport().getCurrentContextReference(polyglotLanguage).get() != null;
     }
 
     static void materializeHostFrames(Throwable t) {
@@ -289,7 +281,6 @@ public final class TruffleStackTrace extends Exception {
      * @since 19.0
      */
     @TruffleBoundary
-    @SuppressWarnings("deprecation")
     public static TruffleStackTrace fillIn(Throwable throwable) {
         if (throwable instanceof ControlFlowException) {
             return EMPTY;
@@ -302,10 +293,9 @@ public final class TruffleStackTrace extends Exception {
 
         int stackFrameLimit;
         Node topCallSite;
-        if (throwable instanceof TruffleException) {
-            TruffleException te = (TruffleException) throwable;
-            topCallSite = te.getLocation();
-            stackFrameLimit = te.getStackTraceElementLimit();
+        if (LanguageAccessor.EXCEPTIONS.isException(throwable)) {
+            topCallSite = LanguageAccessor.EXCEPTIONS.getLocation(throwable);
+            stackFrameLimit = LanguageAccessor.EXCEPTIONS.getStackTraceElementLimit(throwable);
         } else {
             topCallSite = null;
             stackFrameLimit = -1;
@@ -388,7 +378,7 @@ public final class TruffleStackTrace extends Exception {
         @SuppressWarnings("sync-override")
         @Override
         public Throwable initCause(Throwable cause) {
-            throw new IllegalAccessError("cannot change cause of TruffleException stacktrace");
+            throw new IllegalAccessError("cannot change cause of AbstractTruffleException stacktrace");
         }
 
         @Override
@@ -409,11 +399,11 @@ public final class TruffleStackTrace extends Exception {
         }
 
         boolean isTProfiled = CompilerDirectives.isPartialEvaluationConstant(t.getClass());
+        MaterializedFrame frame = null;
         if (currentFrame != null && root.getRootNode().isCaptureFramesForTrace()) {
-            callInnerAddStackFrameInfo(isTProfiled, callNode, root, t, currentFrame.materialize());
-        } else {
-            callInnerAddStackFrameInfo(isTProfiled, callNode, root, t, null);
+            frame = currentFrame.materialize();
         }
+        callInnerAddStackFrameInfo(isTProfiled, callNode, root, t, frame);
     }
 
     private static void callInnerAddStackFrameInfo(boolean isTProfiled, Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
@@ -429,49 +419,29 @@ public final class TruffleStackTrace extends Exception {
         innerAddStackFrameInfo(callNode, root, t, currentFrame);
     }
 
-    @SuppressWarnings("deprecation")
     private static void innerAddStackFrameInfo(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
-        if (!(t instanceof TruffleException) || ((TruffleException) t).isInternalError()) {
+        if (!LanguageAccessor.EXCEPTIONS.isException(t)) {
             // capture as much information as possible for host and internal errors
             fillIn(t);
             return;
         }
 
-        int stackTraceElementLimit = ((TruffleException) t).getStackTraceElementLimit();
-        LazyStackTrace lazy;
-        if (LanguageAccessor.exceptionAccess().isException(t)) {
-            lazy = (LazyStackTrace) LanguageAccessor.exceptionAccess().getLazyStackTrace(t);
-            if (lazy == null) {
-                lazy = new LazyStackTrace();
-                LanguageAccessor.exceptionAccess().setLazyStackTrace(t, lazy);
-            }
-        } else {
-            Throwable cause = getCause(t);
-            if (cause == null) {
-                insert(t, lazy = new LazyStackTrace());
-            } else if (cause instanceof LazyStackTrace) {
-                lazy = (LazyStackTrace) cause;
-            } else {
-                addStackFrameInfoSlowPath(callNode, root, cause, currentFrame, stackTraceElementLimit);
-                return;
-            }
+        int stackTraceElementLimit = LanguageAccessor.EXCEPTIONS.getStackTraceElementLimit(t);
+        LazyStackTrace lazy = (LazyStackTrace) LanguageAccessor.EXCEPTIONS.getLazyStackTrace(t);
+        if (lazy == null) {
+            lazy = new LazyStackTrace();
+            LanguageAccessor.EXCEPTIONS.setLazyStackTrace(t, lazy);
         }
-        appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit);
-    }
-
-    @TruffleBoundary
-    private static void addStackFrameInfoSlowPath(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame, int stackTraceElementLimit) {
-        LazyStackTrace lazy = getOrCreateLazyStackTrace(t);
         appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit);
     }
 
     private static LazyStackTrace getOrCreateLazyStackTrace(Throwable throwable) {
         LazyStackTrace lazy;
-        if (LanguageAccessor.exceptionAccess().isException(throwable)) {
-            lazy = (LazyStackTrace) LanguageAccessor.exceptionAccess().getLazyStackTrace(throwable);
+        if (LanguageAccessor.EXCEPTIONS.isException(throwable)) {
+            lazy = (LazyStackTrace) LanguageAccessor.EXCEPTIONS.getLazyStackTrace(throwable);
             if (lazy == null) {
                 lazy = new LazyStackTrace();
-                LanguageAccessor.exceptionAccess().setLazyStackTrace(throwable, lazy);
+                LanguageAccessor.EXCEPTIONS.setLazyStackTrace(throwable, lazy);
             }
             return lazy;
         } else {
@@ -493,7 +463,7 @@ public final class TruffleStackTrace extends Exception {
                 return;
             }
             lazy.current = new TracebackElement(lazy.current, callNode, root, currentFrame);
-            if (root != null && !root.getRootNode().isInternal()) {
+            if (root != null && LanguageAccessor.ACCESSOR.nodeSupport().countsTowardsStackTraceLimit(root.getRootNode())) {
                 lazy.frameCount++;
             }
         }
@@ -525,7 +495,7 @@ public final class TruffleStackTrace extends Exception {
                 Frame frame = captureFrames ? frameInstance.getFrame(FrameAccess.READ_ONLY) : null;
                 frames.add(new TruffleStackTraceElement(location, target, frame));
                 first = false;
-                if (target != null && !target.getRootNode().isInternal()) {
+                if (target != null && LanguageAccessor.ACCESSOR.nodeSupport().countsTowardsStackTraceLimit(target.getRootNode())) {
                     stackFrameIndex++;
                 }
                 return null;

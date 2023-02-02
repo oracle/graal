@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.chromeinspector;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -36,7 +37,7 @@ import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 public final class RemoteObjectsHandler {
 
     private final Map<String, RemoteObject> remotesByIDs = new HashMap<>(100);
-    private final Map<DebugValue, RemoteObject> remotesByValue = new HashMap<>(100);
+    private final Map<DebugValue, RemoteObject> remotesByValue = new IdentityHashMap<>(100);
     private final Map<String, DebugValue> customPreviewBodies = new HashMap<>();
     private final Map<String, DebugValue> customPreviewConfigs = new HashMap<>();
     private final Map<String, Set<String>> objectGroups = new HashMap<>();

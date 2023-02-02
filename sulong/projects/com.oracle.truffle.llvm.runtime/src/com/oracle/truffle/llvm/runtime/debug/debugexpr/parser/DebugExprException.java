@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,26 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.except.LLVMException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public final class DebugExprException extends RuntimeException {
+public final class DebugExprException extends LLVMException {
 
     private static final long serialVersionUID = -5083864640686842678L;
 
-    private final Node location;
-    private final String message;
-
     private DebugExprException(LLVMExpressionNode operation, String message) {
-        this.location = operation;
-        this.message = message;
+        super(operation, message);
     }
 
     @TruffleBoundary
     public static DebugExprException typeError(LLVMExpressionNode operation, Object... members) {
-        CompilerDirectives.transferToInterpreter();
         StringBuilder sb = new StringBuilder();
         sb.append("unexpected type ");
         if (members != null && members.length > 0 && members[0] != null) {
@@ -70,7 +64,6 @@ public final class DebugExprException extends RuntimeException {
 
     @TruffleBoundary
     public static DebugExprException symbolNotFound(LLVMExpressionNode operation, String name, Object receiver) {
-        CompilerDirectives.transferToInterpreter();
         StringBuilder sb = new StringBuilder();
         sb.append(name);
         sb.append(" not found");
@@ -89,14 +82,5 @@ public final class DebugExprException extends RuntimeException {
     @TruffleBoundary
     public static DebugExprException create(LLVMExpressionNode operation, String message, Object... args) {
         return new DebugExprException(operation, String.format(message, args));
-    }
-
-    @Override
-    public String getMessage() {
-        return message;
-    }
-
-    public Node getLocation() {
-        return location;
     }
 }

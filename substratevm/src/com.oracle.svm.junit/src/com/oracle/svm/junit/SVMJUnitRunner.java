@@ -90,9 +90,7 @@ public class SVMJUnitRunner {
             StringBuilder msg = new StringBuilder("Warning: The test configuration file specified via ").append(testFileOption)
                             .append(" contains missing classes. Test execution will fail at run time. ")
                             .append("Missing classes in configuration file: ").append(missingClassesStr);
-            // Checkstyle: stop
             System.out.println(msg);
-            // Checkstyle: resume
         }
     }
 
@@ -122,7 +120,6 @@ public class SVMJUnitRunner {
         system.out().println("JUnit version " + Version.id());
 
         MxJUnitConfig config = new MxJUnitConfig();
-
         int i = 0;
         while (i < args.length) {
             String arg = args[i++];

@@ -27,20 +27,14 @@ package com.oracle.objectfile.pecoff;
 
 import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.RelocationMethod;
-import com.oracle.objectfile.pecoff.PECoffRelocationTable.PECoffRelocationMethod;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_FILE_HEADER;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_RELOCATION;
+import com.oracle.objectfile.pecoff.PECoffRelocationTable.PECoffRelocationMethod;
 
 /**
  * PECoff machine type (incomplete). Each machine type also defines its set of relocation types.
  */
 public enum PECoffMachine/* implements Integral */ {
-    NONE {
-        @Override
-        Class<? extends Enum<? extends RelocationMethod>> relocationTypes() {
-            return PECoffDummyRelocation.class;
-        }
-    },
     X86_64 {
         @Override
         Class<? extends Enum<? extends RelocationMethod>> relocationTypes() {
@@ -69,15 +63,12 @@ public enum PECoffMachine/* implements Integral */ {
                         throw new IllegalArgumentException("cannot map unknown relocation kind to an PECoff x86-64 relocation type");
                 }
             default:
-            case NONE:
-                return PECoffDummyRelocation.R_NONE;
+                throw new IllegalStateException("unknown PECoff machine type");
         }
     }
 
     public static PECoffMachine from(int m) {
         switch (m) {
-            case IMAGE_FILE_HEADER.IMAGE_FILE_MACHINE_UNKNOWN:
-                return NONE;
             case IMAGE_FILE_HEADER.IMAGE_FILE_MACHINE_AMD64:
                 return X86_64;
             default:
@@ -86,9 +77,7 @@ public enum PECoffMachine/* implements Integral */ {
     }
 
     public short toShort() {
-        if (this == NONE) {
-            return (short) IMAGE_FILE_HEADER.IMAGE_FILE_MACHINE_UNKNOWN;
-        } else if (this == X86_64) {
+        if (this == X86_64) {
             return (short) IMAGE_FILE_HEADER.IMAGE_FILE_MACHINE_AMD64;
         } else {
             throw new IllegalStateException("should not reach here");
@@ -104,27 +93,7 @@ public enum PECoffMachine/* implements Integral */ {
     }
 }
 
-enum PECoffDummyRelocation implements PECoffRelocationMethod {
-    R_NONE;
-
-    @Override
-    public boolean canUseExplicitAddend() {
-        return true;
-    }
-
-    @Override
-    public boolean canUseImplicitAddend() {
-        return true;
-    }
-
-    @Override
-    public long toLong() {
-        return ordinal();
-    }
-}
-
-/**
- * @formatter:off
+/*-
  *
  * IMAGE_REL_AMD64_ABSOLUTE 0x0000 // Reference is absolute, no relocation is necessary
  * IMAGE_REL_AMD64_ADDR64 0x0001   // 64-bit address (VA).
@@ -142,8 +111,6 @@ enum PECoffDummyRelocation implements PECoffRelocationMethod {
  * IMAGE_REL_AMD64_TOKEN 0x000D    // 32 bit metadata token
  * IMAGE_REL_AMD64_SREL32 0x000E   // 32 bit signed span-dependent value emitted into object
  * IMAGE_REL_AMD64_PAIR 0x000F IMAGE_REL_AMD64_SSPAN32 0x0010 // 32 bit signed span-dependent value applied at link time
- *
- * @formatter:on
  */
 enum PECoffX86_64Relocation implements PECoffRelocationMethod {
     ADDR64 {
@@ -176,17 +143,4 @@ enum PECoffX86_64Relocation implements PECoffRelocationMethod {
             return IMAGE_RELOCATION.IMAGE_REL_AMD64_REL32;
         }
     };
-
-    /*
-     * x86-64 relocs always use explicit addends.
-     */
-    @Override
-    public boolean canUseExplicitAddend() {
-        return true;
-    }
-
-    @Override
-    public boolean canUseImplicitAddend() {
-        return false;
-    }
 }

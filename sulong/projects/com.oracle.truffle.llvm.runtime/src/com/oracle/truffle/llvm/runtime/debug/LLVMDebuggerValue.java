@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -66,8 +66,7 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
         try {
             return debuggerInterop.hasMetaObject(this) ? debuggerInterop.getMetaObject(this) : null;
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Unexpected unsupported message.", e);
+            throw CompilerDirectives.shouldNotReachHere("Unexpected unsupported message.", e);
         }
     }
 

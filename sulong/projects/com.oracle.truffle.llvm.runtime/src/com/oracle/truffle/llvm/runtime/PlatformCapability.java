@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,19 +30,23 @@
 package com.oracle.truffle.llvm.runtime;
 
 import java.lang.reflect.Array;
+import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
+import com.oracle.truffle.llvm.runtime.inlineasm.InlineAssemblyParserBase;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
+    public abstract ByteOrder getPlatformByteOrder();
 
     public abstract Path getSulongLibrariesPath();
 
@@ -52,16 +56,43 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
 
     public abstract String getBuiltinsLibrary();
 
+    public abstract String getLibraryPrefix();
+
     public abstract String getLibrarySuffix();
+
+    public abstract String getLibrarySuffixVersioned(int version);
+
+    public String getLibrary(String libname) {
+        return getLibraryPrefix() + libname + '.' + getLibrarySuffix();
+    }
+
+    public String getLibraryVersioned(String libname, int version) {
+        return getLibraryPrefix() + libname + '.' + getLibrarySuffixVersioned(version);
+    }
 
     public abstract boolean isGlobalDLOpenFlagSet(int flag);
 
+    public abstract boolean isFirstDLOpenFlagSet(int flag);
+
     public abstract boolean isLazyDLOpenFlagSet(int flag);
+
+    public abstract boolean isDefaultDLSymFlagSet(long flag);
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final S[] valueToSysCall;
 
     protected PlatformCapability(Class<S> cls) {
         valueToSysCall = initTable(cls);
+    }
+
+    public void initializeThread(@SuppressWarnings("unused") LLVMContext context,
+                    @SuppressWarnings("unused") Thread thread) {
+        // Nothing needs to be done in Sulong for native thread initialization.
+    }
+
+    @SuppressWarnings("deprecation") // GR-41711: we still need Thread.getId() for JDK17 support
+    public void disposeThread(@SuppressWarnings("unused") LLVMContext context,
+                    @SuppressWarnings("unused") Thread thread) {
+        context.getpThreadContext().callDestructors(context, thread.getId());
     }
 
     @SuppressWarnings("unchecked")
@@ -111,15 +142,58 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
     // va_list interface
 
     /**
-     * @param rootNode TODO
+     * @param allocaNode The node that performed the allocation of the va list memory.
+     * @param vaListStackPtr
      * @return a new instance of a platform specific managed va_list object
      */
-    public abstract Object createVAListStorage(RootNode rootNode);
+    public abstract Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr, Type vaListType);
 
     /**
-     * @return the type of a platform specific va_list structure
+     * Normally, there is a single va_list type instance. Then this method returns true as long as
+     * the <code>type</code> is equal to the constant global va_list type, but is not the same. If
+     * <code>type == vaListType</code>, it is an indication that <code>createAlloca</code> is called
+     * from the <code>toNative</code> message implementation to obtain the stack allocation node.
+     * The condition <code>type != vaListType</code> prevents from obtaining another managed va_list
+     * factory node in such a case.
+     * <p>
+     * This method along with {@link PlatformCapability#getGlobalVAListType(Type)} replace
+     * <code>getVAListType</code> as it did not suit platforms where there are more possible va_list
+     * types.
      */
-    public abstract Type getVAListType();
+    public final boolean isManagedVAListType(Type type) {
+        Type global = getGlobalVAListType(type);
+        return global != null && type != global;
+    }
+
+    /**
+     * Returns true if the <code>type</code> is the instance used to recognize a request from
+     * vaList's toNative message.
+     */
+    public final boolean isVAListTypeInstanceForToNative(Type type) {
+        Type global = getGlobalVAListType(type);
+        return global != null && type == global;
+    }
+
+    public Object createActualVAListStorage() {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    /**
+     * Used to get the constant global instance of the va_list type for the <code>type</code>, which
+     * must be another va_list type instance used for an <code>alloca</code> instruction.
+     *
+     * @see LLVMVAListNode
+     * @return the global constant va_list as long as the type is a va_list type instance, otherwise
+     *         null
+     */
+    public abstract Type getGlobalVAListType(Type type);
+
+    /**
+     * @return the alignment of the platform specific va_list structure
+     */
+    public int getVAListAlignment() {
+        return 16;
+    }
 
     /**
      * @return a helper node creating auxiliary wrappers for native LLVM pointers and managed
@@ -128,5 +202,15 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
      *         <code>va_list</code> objects and thus to remain platform independent.
      */
     public abstract VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached);
+
+    public abstract InlineAssemblyParserBase getInlineAssemblyParser();
+
+    public enum OS {
+        Linux,
+        Windows,
+        Darwin;
+    }
+
+    public abstract OS getOS();
 
 }

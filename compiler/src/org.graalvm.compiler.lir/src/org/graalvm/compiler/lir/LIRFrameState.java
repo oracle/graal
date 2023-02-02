@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import java.util.EnumSet;
 
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
-import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.util.IndexedValueMap;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -53,7 +52,7 @@ import jdk.vm.ci.meta.Value;
 public class LIRFrameState {
 
     // A special marker denoting no callee save info.
-    public static final LIRFrameState NO_CALLEE_SAVE_INFO = new LIRFrameState(null, null, null);
+    public static final LIRFrameState NO_CALLEE_SAVE_INFO = new LIRFrameState(null, null, null, false);
 
     public final BytecodeFrame topFrame;
     private final VirtualObject[] virtualObjects;
@@ -62,10 +61,13 @@ public class LIRFrameState {
 
     private IndexedValueMap liveBasePointers;
 
-    public LIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge) {
+    public final boolean validForDeoptimization;
+
+    public LIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge, boolean validForDeoptimization) {
         this.topFrame = topFrame;
         this.virtualObjects = virtualObjects;
         this.exceptionEdge = exceptionEdge;
+        this.validForDeoptimization = validForDeoptimization;
     }
 
     public boolean hasDebugInfo() {
@@ -189,11 +191,8 @@ public class LIRFrameState {
 
     /**
      * Called by the register allocator to initialize the frame state.
-     *
-     * @param frameMap The frame map.
-     * @param canHaveRegisters True if there can be any register map entries.
      */
-    public void initDebugInfo(FrameMap frameMap, boolean canHaveRegisters) {
+    public void initDebugInfo() {
         debugInfo = new DebugInfo(topFrame, virtualObjects);
     }
 

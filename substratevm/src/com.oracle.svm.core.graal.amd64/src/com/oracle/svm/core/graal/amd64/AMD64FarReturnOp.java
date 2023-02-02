@@ -85,12 +85,12 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
         if (fromMethodWithCalleeSavedRegisters) {
             /*
              * Restoring the callee saved registers is going to overwrite the register that holds
-             * the new instruction pointern (ip). We therefore spill the new ip to the stack, and do
+             * the new instruction pointer (ip). We therefore spill the new ip to the stack, and do
              * the indirect jump with an address operand to avoid a temporary register.
              */
             AMD64Address ipAddress = new AMD64Address(AMD64.rsp, -FrameAccess.returnAddressSize());
             masm.movq(ipAddress, ValueUtil.asRegister(ip));
-            AMD64CalleeSavedRegisters.singleton().emitRestore(masm, 0, ValueUtil.asRegister(result));
+            AMD64CalleeSavedRegisters.singleton().emitRestore(masm, 0, ValueUtil.asRegister(result), crb);
             masm.jmp(ipAddress);
 
         } else {

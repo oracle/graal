@@ -37,7 +37,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class InvocationPluginsTest extends GraalCompilerTest {
 
     private static void assertNotIsEmpty(InvocationPlugins invocationPlugins) {
-        InvocationPlugins childInvocationPlugins = new InvocationPlugins(invocationPlugins);
+        InvocationPlugins childInvocationPlugins = new InvocationPlugins(null, invocationPlugins);
         assertFalse(invocationPlugins.isEmpty());
         assertFalse(childInvocationPlugins.isEmpty());
 
@@ -52,7 +52,7 @@ public class InvocationPluginsTest extends GraalCompilerTest {
         assertTrue(invocationPlugins.isEmpty());
 
         Registration r = new Registration(invocationPlugins, Class.class);
-        r.register1("isAnonymousClass", Receiver.class, new InvocationPlugin() {
+        r.register(new InvocationPlugin("isAnonymousClass", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return false;
@@ -71,7 +71,7 @@ public class InvocationPluginsTest extends GraalCompilerTest {
             @Override
             public void run() {
                 Registration r = new Registration(invocationPlugins, Class.class);
-                r.register1("isAnonymousClass", Receiver.class, new InvocationPlugin() {
+                r.register(new InvocationPlugin("isAnonymousClass", Receiver.class) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                         return false;
@@ -89,12 +89,12 @@ public class InvocationPluginsTest extends GraalCompilerTest {
         assertTrue(invocationPlugins.isEmpty());
 
         try (LateRegistration lr = new LateRegistration(invocationPlugins, Class.class)) {
-            lr.register(new InvocationPlugin() {
+            lr.register(new InvocationPlugin("isAnonymousClass", Receiver.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     return false;
                 }
-            }, "isAnonymousClass", Receiver.class);
+            });
         }
         assertNotIsEmpty(invocationPlugins);
     }

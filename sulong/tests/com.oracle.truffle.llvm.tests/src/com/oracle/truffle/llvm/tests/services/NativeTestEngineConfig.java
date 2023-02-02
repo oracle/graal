@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,7 +45,7 @@ public class NativeTestEngineConfig extends TestEngineConfigBase {
     }
 
     @Override
-    public Map<String, String> getContextOptions() {
+    public Map<String, String> getContextOptions(String testName) {
         return new HashMap<>();
     }
 }

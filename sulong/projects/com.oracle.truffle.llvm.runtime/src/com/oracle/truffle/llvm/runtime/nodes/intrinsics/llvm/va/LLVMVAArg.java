@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactoryDelegate;
@@ -51,9 +52,9 @@ public abstract class LLVMVAArg extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object vaArg(LLVMManagedPointer targetAddress,
+    protected Object vaArg(VirtualFrame frame, LLVMManagedPointer targetAddress,
                     @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
                     @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
-        return vaListLibrary.shift(wrapperFactory.execute(targetAddress), type);
+        return vaListLibrary.shift(wrapperFactory.execute(targetAddress), type, frame);
     }
 }

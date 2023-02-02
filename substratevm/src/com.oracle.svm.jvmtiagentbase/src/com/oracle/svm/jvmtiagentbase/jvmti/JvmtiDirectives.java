@@ -29,16 +29,13 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.OS;
 
 class JvmtiDirectives implements CContext.Directives {
 
-    private final Path jdkIncludeDir = JavaVersionUtil.JAVA_SPEC <= 8
-                    ? Paths.get(System.getProperty("java.home")).getParent().resolve("include")
-                    : Paths.get(System.getProperty("java.home")).resolve("include");
+    private final Path jdkIncludeDir = Paths.get(System.getProperty("java.home")).resolve("include");
 
     @Override
     public List<String> getHeaderFiles() {
@@ -48,13 +45,5 @@ class JvmtiDirectives implements CContext.Directives {
     @Override
     public List<String> getOptions() {
         return Collections.singletonList("-I" + jdkIncludeDir.resolve(OS.getCurrent() == OS.WINDOWS ? "win32" : OS.getCurrent().asPackageName()));
-    }
-}
-
-class JvmtiDirectives11 extends JvmtiDirectives {
-
-    @Override
-    public boolean isInConfiguration() {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.parser.Token;
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -50,6 +51,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 
 /**
  * This visitor is used for setting the {@link SourceSection} of AST subtrees that are copied into
@@ -57,7 +59,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
  * multi-line mode. It will set the source section of all nodes in the subtree to the
  * {@link SourceSection} object passed to {@link #run(Group, Token)}.
  *
- * @see com.oracle.truffle.regex.tregex.parser.RegexParser
+ * @see com.oracle.truffle.regex.tregex.parser.RegexASTBuilder
  */
 public final class SetSourceSectionVisitor extends DepthFirstTraversalRegexASTVisitor {
 
@@ -106,7 +108,17 @@ public final class SetSourceSectionVisitor extends DepthFirstTraversalRegexASTVi
     }
 
     @Override
+    protected void visit(AtomicGroup atomicGroup) {
+        ast.addSourceSection(atomicGroup, token);
+    }
+
+    @Override
     protected void visit(CharacterClass characterClass) {
         ast.addSourceSection(characterClass, token);
+    }
+
+    @Override
+    protected void visit(SubexpressionCall subexpressionCall) {
+        ast.addSourceSection(subexpressionCall, token);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAAbstractStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
+import com.oracle.truffle.regex.util.EmptyArrays;
 
 /**
  * Abstract graph node wrapper with lots of extra fields used by the dominator tree algorithm in
@@ -57,7 +58,7 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
  */
 final class GraphNode implements Comparable<GraphNode> {
 
-    private static final int[] NO_DOM_CHILDREN = new int[0];
+    private static final int[] NO_DOM_CHILDREN = EmptyArrays.INT;
 
     private DFAAbstractStateNode originalDfaNode;
     private DFAAbstractStateNode dfaNode;
@@ -202,7 +203,7 @@ final class GraphNode implements Comparable<GraphNode> {
     }
 
     Iterable<GraphNode> getSuccessors(StateIndex<GraphNode> index) {
-        return () -> new Iterator<GraphNode>() {
+        return () -> new Iterator<>() {
 
             private int i = 0;
 
@@ -223,7 +224,7 @@ final class GraphNode implements Comparable<GraphNode> {
     }
 
     Iterable<GraphNode> getDomChildren(StateIndex<GraphNode> index) {
-        return () -> new Iterator<GraphNode>() {
+        return () -> new Iterator<>() {
 
             private int i = 0;
 

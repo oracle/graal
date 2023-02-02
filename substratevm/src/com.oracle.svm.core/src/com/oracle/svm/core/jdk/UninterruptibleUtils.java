@@ -24,18 +24,17 @@
  */
 package com.oracle.svm.core.jdk;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jdk.JavaLangSubstitutions.StringUtil;
 import com.oracle.svm.core.util.VMError;
 
-// Checkstyle: stop
-import sun.misc.Unsafe;
-// Checkstyle: resume
+import jdk.internal.misc.Unsafe;
 
 /**
  * Annotated replacements to be called from uninterruptible code for methods whose source I do not
@@ -46,9 +45,44 @@ import sun.misc.Unsafe;
  */
 public class UninterruptibleUtils {
 
+    public static class AtomicBoolean {
+
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+        private static final long VALUE_OFFSET;
+
+        static {
+            try {
+                VALUE_OFFSET = UNSAFE.objectFieldOffset(AtomicBoolean.class.getDeclaredField("value"));
+            } catch (Throwable ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
+        }
+
+        private volatile boolean value;
+
+        public AtomicBoolean(boolean value) {
+            this.value = value;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public boolean get() {
+            return value;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void set(boolean newValue) {
+            value = newValue;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public boolean compareAndSet(boolean expected, boolean update) {
+            return UNSAFE.compareAndSetBoolean(this, VALUE_OFFSET, expected, update);
+        }
+    }
+
     public static class AtomicInteger {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -92,13 +126,13 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(int expected, int update) {
-            return UNSAFE.compareAndSwapInt(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSetInt(this, VALUE_OFFSET, expected, update);
         }
     }
 
     public static class AtomicLong {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -146,6 +180,11 @@ public class UninterruptibleUtils {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public long getAndIncrement() {
+            return getAndAdd(1);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public long decrementAndGet() {
             return addAndGet(-1);
         }
@@ -157,7 +196,7 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(long expected, long update) {
-            return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSetLong(this, VALUE_OFFSET, expected, update);
         }
     }
 
@@ -284,7 +323,7 @@ public class UninterruptibleUtils {
 
     public static class AtomicPointer<T extends PointerBase> {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -309,13 +348,13 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
-            return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected.rawValue(), update.rawValue());
+            return UNSAFE.compareAndSetLong(this, VALUE_OFFSET, expected.rawValue(), update.rawValue());
         }
     }
 
     public static class AtomicReference<T> {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -347,7 +386,7 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
-            return UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSetObject(this, VALUE_OFFSET, expected, update);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -373,6 +412,16 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static long max(long a, long b) {
             return (a >= b) ? a : b;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int clamp(int value, int min, int max) {
+            return min(max(value, min), max);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int abs(int a) {
+            return (a < 0) ? -a : a;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -450,6 +499,86 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int compareUnsigned(int x, int y) {
             return compare(x + java.lang.Integer.MIN_VALUE, y + java.lang.Integer.MIN_VALUE);
+        }
+    }
+
+    public static class String {
+
+        /**
+         * Gets the number of bytes for a char in modified UTF8 format.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        private static int modifiedUTF8Length(char c) {
+            if (c >= 0x0001 && c <= 0x007F) {
+                // ASCII character.
+                return 1;
+            } else {
+                if (c <= 0x07FF) {
+                    return 2;
+                } else {
+                    return 3;
+                }
+            }
+        }
+
+        /**
+         * Write a char in modified UTF8 format into the buffer.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        private static Pointer writeModifiedUTF8(Pointer buffer, char c) {
+            Pointer pos = buffer;
+            if (c >= 0x0001 && c <= 0x007F) {
+                pos.writeByte(0, (byte) c);
+                pos = pos.add(1);
+            } else if (c <= 0x07FF) {
+                pos.writeByte(0, (byte) (0xC0 | (c >> 6)));
+                pos.writeByte(1, (byte) (0x80 | (c & 0x3F)));
+                pos = pos.add(2);
+            } else {
+                pos.writeByte(0, (byte) (0xE0 | (c >> 12)));
+                pos.writeByte(1, (byte) (0x80 | ((c >> 6) & 0x3F)));
+                pos.writeByte(2, (byte) (0x80 | (c & 0x3F)));
+                pos = pos.add(3);
+            }
+            return pos;
+        }
+
+        /**
+         * Gets the length of {@code string} when encoded using modified UTF8 (null characters that
+         * are present in the input will be encoded in a way that they do not interfere with a
+         * null-terminator).
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int modifiedUTF8Length(java.lang.String string, boolean addNullTerminator) {
+            int result = 0;
+            for (int index = 0; index < string.length(); index++) {
+                char ch = StringUtil.charAt(string, index);
+                result += modifiedUTF8Length(ch);
+            }
+
+            return result + (addNullTerminator ? 1 : 0);
+        }
+
+        /**
+         * Writes the encoded {@code string} into the given {@code buffer} using the modified UTF8
+         * encoding (null characters that are present in the input will be encoded in a way that
+         * they do not interfere with the null terminator).
+         * 
+         * @return pointer on new position in buffer.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator) {
+            Pointer pos = buffer;
+            for (int index = 0; index < string.length(); index++) {
+                pos = writeModifiedUTF8(pos, StringUtil.charAt(string, index));
+            }
+
+            if (addNullTerminator) {
+                pos.writeByte(0, (byte) 0);
+                pos = pos.add(1);
+            }
+            VMError.guarantee(pos.belowOrEqual(bufferEnd), "Must not write out of bounds.");
+            return pos;
         }
     }
 }

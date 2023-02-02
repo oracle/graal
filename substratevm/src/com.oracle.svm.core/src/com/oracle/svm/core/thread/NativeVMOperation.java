@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.core.thread;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.VMOperationInfo;
 
 /**
  * An immutable VM operation that lives in the image heap. All mutable state is kept in native
@@ -37,8 +40,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
  */
 public abstract class NativeVMOperation extends VMOperation {
     @Platforms(value = Platform.HOSTED_ONLY.class)
-    protected NativeVMOperation(String name, SystemEffect systemEffect) {
-        super(name, systemEffect);
+    protected NativeVMOperation(VMOperationInfo info) {
+        super(info);
     }
 
     public void enqueue(NativeVMOperationData data) {
@@ -52,6 +55,16 @@ public abstract class NativeVMOperation extends VMOperation {
         VMOperationControl.get().enqueueFromNonJavaThread(data);
     }
 
+    @Override
+    protected IsolateThread getQueuingThread(NativeVMOperationData data) {
+        return data.getQueuingThread();
+    }
+
+    @Override
+    protected long getQueuingThreadId(NativeVMOperationData data) {
+        return data.getQueuingThreadId();
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected boolean isFinished(NativeVMOperationData data) {
@@ -60,18 +73,16 @@ public abstract class NativeVMOperation extends VMOperation {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void setFinished(NativeVMOperationData data, boolean value) {
-        data.setFinished(value);
+    protected void markAsQueued(NativeVMOperationData data) {
+        data.setFinished(false);
+        data.setQueuingThread(CurrentIsolate.getCurrentThread());
+        data.setQueuingThreadId(JavaThreads.getCurrentThreadIdOrZero());
     }
 
     @Override
-    protected IsolateThread getQueuingThread(NativeVMOperationData data) {
-        return data.getQueuingThread();
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void setQueuingThread(NativeVMOperationData data, IsolateThread value) {
-        data.setQueuingThread(value);
+    protected void markAsFinished(NativeVMOperationData data) {
+        data.setQueuingThread(WordFactory.nullPointer());
+        data.setQueuingThreadId(0);
+        data.setFinished(true);
     }
 }

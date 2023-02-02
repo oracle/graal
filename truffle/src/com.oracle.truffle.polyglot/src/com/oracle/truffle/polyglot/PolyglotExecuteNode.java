@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,13 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -50,75 +54,102 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 
+@GenerateInline(false) // not much improvement in current uses, but field duplication
 abstract class PolyglotExecuteNode extends Node {
 
     private static final Object[] EMPTY = new Object[0];
 
-    private final ToGuestValuesNode toGuests = ToGuestValuesNode.create();
+    public final Object execute(PolyglotLanguageContext languageContext, Object function, Object functionArgsObject) {
+        return execute(languageContext, function, functionArgsObject, Object.class, Object.class, Object.class, null);
+    }
 
     public final Object execute(PolyglotLanguageContext languageContext, Object function, Object functionArgsObject,
-                    Class<?> resultClass, Type resultType) {
+                    Class<?> resultClass, Type resultType, Class<?> paramClass, Type paramType) {
+        // paramType == null => Default conversion of executable value or conversion to
+        // unparameterized Function. We allow varargs-like invocation in this case.
         Object[] argsArray;
-        if (functionArgsObject instanceof Object[]) {
-            argsArray = (Object[]) functionArgsObject;
-        } else {
+        if (paramType != null && paramClass.isArray()) {
             if (functionArgsObject == null) {
                 argsArray = EMPTY;
+            } else if (paramClass.getComponentType().isPrimitive() && !(functionArgsObject instanceof Object[])) {
+                argsArray = copyToObjectArray(paramClass.cast(functionArgsObject));
+            } else {
+                argsArray = (Object[]) functionArgsObject;
+            }
+        } else {
+            if (paramType == null && functionArgsObject == null) {
+                argsArray = EMPTY;
+            } else if (paramType == null && functionArgsObject instanceof Object[]) {
+                argsArray = (Object[]) functionArgsObject;
             } else {
                 argsArray = new Object[]{functionArgsObject};
             }
         }
-        Object[] functionArgs = toGuests.apply(languageContext, argsArray);
-        return executeImpl(languageContext, function, functionArgs, resultClass, resultType);
+
+        return executeImpl(languageContext, function, argsArray, resultClass, resultType);
     }
 
-    protected abstract Object executeImpl(PolyglotLanguageContext languageContext, Object function, Object[] functionArgsObject,
+    @TruffleBoundary
+    private static Object[] copyToObjectArray(Object functionArgs) {
+        assert functionArgs.getClass().isArray();
+        int length = Array.getLength(functionArgs);
+        Object[] copy = new Object[length];
+        for (int i = 0; i < length; i++) {
+            copy[i] = Array.get(functionArgs, 0);
+        }
+        return copy;
+    }
+
+    protected abstract Object executeImpl(PolyglotLanguageContext languageContext, Object function, Object[] argsArray,
                     Class<?> resultClass, Type resultType);
 
     @Specialization(limit = "5")
-    Object doCached(PolyglotLanguageContext languageContext, Object function, Object[] functionArgs,
+    static Object doCached(PolyglotLanguageContext languageContext, Object function, Object[] argsArray,
                     Class<?> resultClass, Type resultType,
+                    @Bind("this") Node node,
                     @CachedLibrary("function") InteropLibrary interop,
-                    @Cached ToHostNode toHost,
-                    @Cached ConditionProfile executableCondition,
-                    @Cached ConditionProfile instantiableCondition,
-                    @Cached BranchProfile unsupportedError,
-                    @Cached BranchProfile arityError,
-                    @Cached BranchProfile unsupportedArgumentError) {
-
+                    @Cached ToGuestValuesNode toGuests,
+                    @Cached PolyglotToHostNode toHost,
+                    @Cached InlinedConditionProfile executableCondition,
+                    @Cached InlinedConditionProfile instantiableCondition,
+                    @Cached InlinedBranchProfile unsupportedError,
+                    @Cached InlinedBranchProfile arityError,
+                    @Cached InlinedBranchProfile unsupportedArgumentError) {
+        Object[] functionArgs = toGuests.execute(node, languageContext, argsArray);
         Object result;
-        boolean executable = executableCondition.profile(interop.isExecutable(function));
+        boolean executable = executableCondition.profile(node, interop.isExecutable(function));
         try {
             if (executable) {
                 result = interop.execute(function, functionArgs);
-            } else if (instantiableCondition.profile(interop.isInstantiable(function))) {
+            } else if (instantiableCondition.profile(node, interop.isInstantiable(function))) {
                 result = interop.instantiate(function, functionArgs);
             } else {
-                throw HostInteropErrors.executeUnsupported(languageContext, function);
+                throw PolyglotInteropErrors.executeUnsupported(languageContext, function);
             }
         } catch (UnsupportedTypeException e) {
-            unsupportedArgumentError.enter();
+            unsupportedArgumentError.enter(node);
             if (executable) {
-                throw HostInteropErrors.invalidExecuteArgumentType(languageContext, function, functionArgs);
+                throw PolyglotInteropErrors.invalidExecuteArgumentType(languageContext, function, functionArgs);
             } else {
-                throw HostInteropErrors.invalidInstantiateArgumentType(languageContext, function, functionArgs);
+                throw PolyglotInteropErrors.invalidInstantiateArgumentType(languageContext, function, functionArgs);
             }
         } catch (ArityException e) {
-            arityError.enter();
+            arityError.enter(node);
             if (executable) {
-                throw HostInteropErrors.invalidExecuteArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
+                throw PolyglotInteropErrors.invalidExecuteArity(languageContext, function, functionArgs, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
             } else {
-                throw HostInteropErrors.invalidInstantiateArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
+                throw PolyglotInteropErrors.invalidInstantiateArity(languageContext, function, functionArgs, e.getExpectedMinArity(), e.getExpectedMaxArity(),
+                                e.getActualArity());
             }
         } catch (UnsupportedMessageException e) {
-            unsupportedError.enter();
-            throw HostInteropErrors.executeUnsupported(languageContext, function);
+            unsupportedError.enter(node);
+            throw PolyglotInteropErrors.executeUnsupported(languageContext, function);
         }
-        return toHost.execute(result, resultClass, resultType, languageContext, true);
+        return toHost.execute(node, languageContext, result, resultClass, resultType);
     }
 
 }

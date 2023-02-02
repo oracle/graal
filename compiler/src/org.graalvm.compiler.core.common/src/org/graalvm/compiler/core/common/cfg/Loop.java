@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,13 @@
 
 package org.graalvm.compiler.core.common.cfg;
 
-import static org.graalvm.compiler.core.common.cfg.AbstractBlockBase.BLOCK_ID_COMPARATOR;
+import static org.graalvm.compiler.core.common.cfg.BasicBlock.BLOCK_ID_COMPARATOR;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class Loop<T extends AbstractBlockBase<T>> {
+public abstract class Loop<T extends BasicBlock<T>> {
 
     private final Loop<T> parent;
     private final ArrayList<Loop<T>> children;
@@ -63,7 +63,7 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
         this.naturalExits = new ArrayList<>();
     }
 
-    public abstract long numBackedges();
+    public abstract int numBackedges();
 
     @Override
     public String toString() {
@@ -72,6 +72,14 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
 
     public Loop<T> getParent() {
         return parent;
+    }
+
+    public Loop<T> getOutmostLoop() {
+        if (parent == null) {
+            return this;
+        } else {
+            return parent.getOutmostLoop();
+        }
     }
 
     public List<Loop<T>> getChildren() {
@@ -94,7 +102,7 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
         return blocks;
     }
 
-    private boolean inverted = true;
+    private boolean inverted = false;
 
     public boolean isInverted() {
         return inverted;
@@ -102,6 +110,21 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
 
     public void setInverted(boolean inverted) {
         this.inverted = inverted;
+    }
+
+    /**
+     * Determine if {@code potentialAncestor} equals {@code this} or an ancestor along the
+     * {@link #getParent()} link.
+     */
+    public boolean isAncestorOrSelf(Loop<?> potentialAncestor) {
+        Loop<?> p = this;
+        while (p != null) {
+            if (p == potentialAncestor) {
+                return true;
+            }
+            p = p.getParent();
+        }
+        return false;
     }
 
     /**
@@ -176,9 +199,9 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
         return Collections.binarySearch(naturalExits, block, BLOCK_ID_COMPARATOR) >= 0;
     }
 
-    private static <T extends AbstractBlockBase<T>> boolean isSorted(List<T> list) {
+    private static <T extends BasicBlock<T>> boolean isSorted(List<T> list) {
         int lastId = Integer.MIN_VALUE;
-        for (AbstractBlockBase<?> block : list) {
+        for (BasicBlock<?> block : list) {
             if (block.getId() < lastId) {
                 return false;
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,13 @@
 #ifndef _EXIT_H_
 #define _EXIT_H_
 
+#if defined(_WIN32)
+#include <windows.h>
+
+#define _EXIT(x) ExitProcess(x)
+
+#elif defined(__unix__) || defined(__APPLE__)
+
 #include <unistd.h>
 #include <sys/syscall.h>
 #ifdef __linux__
@@ -38,5 +45,9 @@
 #else
 #define _EXIT(x) syscall(SYS_exit, x)
 #endif
+
+#endif
+
+extern void __sulong_exit(int status) __attribute__((__noreturn__));
 
 #endif // _EXIT_H_

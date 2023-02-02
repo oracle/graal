@@ -53,9 +53,9 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
         this.methods = methods;
     }
 
-    public void addMethod(String name, String linkageName, LLVMSourceFunctionType function) {
+    public void addMethod(String name, String linkageName, LLVMSourceFunctionType function, long virtualIndex) {
         CompilerAsserts.neverPartOfCompilation();
-        final LLVMSourceMethodType method = new LLVMSourceMethodType(function.getParameterTypes(), name, linkageName, this);
+        final LLVMSourceMethodType method = new LLVMSourceMethodType(function.getParameterTypes(), name, linkageName, this, virtualIndex);
         methods.add(method);
     }
 
@@ -73,7 +73,7 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
         return methods.size();
     }
 
-    public LLVMSourceFunctionType getMethod(int i) {
+    public LLVMSourceMethodType getMethod(int i) {
         return methods.get(i);
     }
 

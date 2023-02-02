@@ -152,8 +152,8 @@ public class SLInspectProfileTest {
         tester.eval(source).get();
         tester.sendMessage("{\"id\":5,\"method\":\"Profiler.takePreciseCoverage\"}");
         assertEquals("{\"result\":{\"result\":[{\"scriptId\":\"1\",\"functions\":["
-                + "{\"ranges\":[{\"endOffset\":34,\"startOffset\":22,\"count\":2}],\"functionName\":\"add\",\"isBlockCoverage\":true},"
-                + "{\"ranges\":[{\"endOffset\":66,\"startOffset\":57,\"count\":1},{\"endOffset\":90,\"startOffset\":69,\"count\":1}],\"functionName\":\"main\",\"isBlockCoverage\":true}],"
+                + "{\"ranges\":[{\"endOffset\":90,\"startOffset\":69,\"count\":1},{\"endOffset\":66,\"startOffset\":57,\"count\":1}],\"functionName\":\"main\",\"isBlockCoverage\":true},"
+                + "{\"ranges\":[{\"endOffset\":34,\"startOffset\":22,\"count\":2}],\"functionName\":\"add\",\"isBlockCoverage\":true}],"
                 + "\"url\":\"" + slTestURI + "\"}]},\"id\":5}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":6,\"method\":\"Profiler.takePreciseCoverage\"}");
         assertEquals("{\"result\":{\"result\":[]},\"id\":6}", tester.getMessages(true).trim());

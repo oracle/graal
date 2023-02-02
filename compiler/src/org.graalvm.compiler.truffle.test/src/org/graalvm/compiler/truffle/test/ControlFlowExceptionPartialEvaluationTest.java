@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,7 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
     @Test
     public void catchControlFlowExceptionFromCall() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "true").build());
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootTestNode(new FrameDescriptor(), "throwControlFlowException", new ThrowControlFlowExceptionTestNode()));
+        CallTarget callTarget = new RootTestNode(new FrameDescriptor(), "throwControlFlowException", new ThrowControlFlowExceptionTestNode()).getCallTarget();
         AbstractTestNode result = new CatchControlFlowExceptionTestNode(new CallTestNode(callTarget));
         assertPartialEvalEquals(ControlFlowExceptionPartialEvaluationTest::constant42, new RootTestNode(new FrameDescriptor(), "catchControlFlowExceptionFromCall", result));
     }

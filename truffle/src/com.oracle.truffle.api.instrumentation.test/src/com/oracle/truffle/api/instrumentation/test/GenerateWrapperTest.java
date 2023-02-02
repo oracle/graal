@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,6 +87,10 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         }
     }
 
+    public GenerateWrapperTest() {
+        needsInstrumentEnv = true;
+    }
+
     @Test
     public void testDefaultWrapper() {
         setupEnv();
@@ -130,6 +134,18 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
                 assertEquals(42, e.getResult());
             }
         });
+    }
+
+    @Test
+    public void testDefaultWrapperIgnore() {
+        setupEnv();
+        TestNodeWithIgnores instrumentedNode = new TestNodeWithIgnoresImpl();
+        Supplier<TestNodeWithIgnores> node = adoptNode(instrumentedNode);
+
+        VirtualFrame testFrame = Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor());
+        assertNoExecutionEvent(() -> assertEquals(42, node.get().executeConcrete(testFrame)));
+        assertNoExecutionEvent(() -> assertEquals(42, node.get().executeIgnoredInt(testFrame)));
+        assertNoExecutionEvent(() -> assertEquals("executeIgnoredObject", node.get().executeIgnoredObject(testFrame)));
     }
 
     @Test
@@ -313,6 +329,24 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         });
         r.run();
         assertEquals("Execution event did not trigger.", Arrays.asList("onEnter", "onReturnValue"), events);
+        binding.dispose();
+    }
+
+    private void assertNoExecutionEvent(Runnable r) {
+        EventBinding<?> binding = instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            public void onEnter(EventContext c, VirtualFrame frame) {
+                throw new AssertionError("Probe should not be entered");
+            }
+
+            public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+                throw new AssertionError("Probe should not be entered");
+            }
+
+            public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+                throw new AssertionError("Probe should not be entered");
+            }
+        });
+        r.run();
         binding.dispose();
     }
 
@@ -748,6 +782,51 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
 
     }
 
+    @GenerateWrapper
+    public abstract static class TestNodeWithIgnores extends Node implements InstrumentableNode {
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probeNode) {
+            return new TestNodeWithIgnoresWrapper(this, probeNode);
+        }
+
+        @SuppressWarnings("unused")
+        public int executeWrapped(VirtualFrame frame) {
+            return 42;
+        }
+
+        @GenerateWrapper.Ignore
+        public abstract int executeIgnoredInt(VirtualFrame frame);
+
+        @GenerateWrapper.Ignore
+        public abstract Object executeIgnoredObject(VirtualFrame frame);
+
+        @SuppressWarnings("unused")
+        @GenerateWrapper.Ignore
+        public int executeConcrete(VirtualFrame frame) {
+            // This method isn't abstract, so no delegation happens. The receiver type should be the
+            // wrapper class.
+            assertTrue(this.getClass().getName().endsWith("Wrapper"));
+            return 42;
+        }
+    }
+
+    public static class TestNodeWithIgnoresImpl extends TestNodeWithIgnores {
+        @Override
+        public int executeIgnoredInt(VirtualFrame frame) {
+            return 42;
+        }
+
+        @Override
+        public Object executeIgnoredObject(VirtualFrame frame) {
+            return "executeIgnoredObject";
+        }
+    }
+
     // test constructor with source section
     @GenerateWrapper
     public abstract static class TestConstructorWithSource extends Node implements InstrumentableNode {
@@ -852,6 +931,11 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
 
         public final void execute3() {
         }
+
+        @SuppressWarnings("unused")
+        @GenerateWrapper.Ignore
+        public void execute4(VirtualFrame frame) {
+        }
     }
 
     @GenerateWrapper
@@ -872,6 +956,7 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         public abstract void foobar();
     }
 
+    @Test
     public void testDelegateAbstractMethod() {
         AtomicInteger foobarInvocations = new AtomicInteger();
         DelegateAbstractMethod node = new DelegateAbstractMethod() {

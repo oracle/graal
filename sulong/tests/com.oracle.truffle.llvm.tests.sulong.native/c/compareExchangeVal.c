@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,13 @@
  */
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 
 void testLong() {
-    long l, cmp, repl;
-    long *ptr = &l;
+    int64_t l, cmp, repl;
+    int64_t *ptr = &l;
     ;
-    long replaced;
+    int64_t replaced;
 
     l = 1L;
     cmp = 2L;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,58 +24,68 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
+
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.tools.insight.Insight;
-import org.graalvm.tools.insight.Insight.SymbolProvider;
+
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.source.Source;
+import java.util.ArrayList;
 
 // @formatter:off
 @TruffleInstrument.Registration(
     id = Insight.ID,
     name = InsightInstrument.NAME,
     version = Insight.VERSION,
-    services = { Function.class }
+    services = { Function.class },
+    website = "https://www.graalvm.org/tools/graalvm-insight/"
 )
 // @formatter:on
 public class InsightInstrument extends TruffleInstrument {
     static final String NAME = "Insight";
 
-    @Option(stability = OptionStability.STABLE, name = "", help = "Use provided file as an insight script", category = OptionCategory.USER) //
+    @Option(stability = OptionStability.STABLE, name = "", help = "Use provided file as an insight script (default: no script).", usageSyntax = "<path>", category = OptionCategory.USER) //
     static final OptionKey<String> SCRIPT = new OptionKey<>("");
 
+    final IgnoreSources ignoreSources = new IgnoreSources();
+    private final ContextLocal<InsightPerContext> perContextData;
     private Env env;
-    private final IgnoreSources ignoreSources = new IgnoreSources();
+    /** @GuardedBy("keys" */
+    private final BitSet keys = new BitSet();
+    /** @GuardedBy("keys" */
+    @CompilerDirectives.CompilationFinal private Assumption keysUnchanged;
+
+    public InsightInstrument() {
+        this.perContextData = createContextLocal((context) -> {
+            return new InsightPerContext(this);
+        });
+        this.keysUnchanged = Truffle.getRuntime().createAssumption();
+    }
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -91,7 +101,7 @@ public class InsightInstrument extends TruffleInstrument {
         if (path != null && path.length() > 0) {
             registerAgentScript(() -> {
                 try {
-                    TruffleFile file = env.getTruffleFile(path);
+                    TruffleFile file = env.getTruffleFile(null, path);
                     if (file == null || !file.exists()) {
                         throw InsightException.notFound(file);
                     }
@@ -118,166 +128,48 @@ public class InsightInstrument extends TruffleInstrument {
         return SCRIPT;
     }
 
-    boolean onlyInsight() {
-        return true;
+    final Env env() {
+        return env;
     }
 
     final AutoCloseable registerAgentScript(final Supplier<Source> src) {
-        final Instrumenter instrumenter = env.getInstrumenter();
-        class InitializeAgent implements ContextsListener, AutoCloseable {
-            private AgentObject insight;
-            private AgentObject agent;
-            private EventBinding<?> agentBinding;
-
-            @CompilerDirectives.TruffleBoundary
-            synchronized boolean initializeAgentObject() {
-                if (insight == null) {
-                    AgentObject.Data sharedData = new AgentObject.Data();
-                    insight = new AgentObject(null, env, ignoreSources, sharedData);
-                    if (!onlyInsight()) {
-                        agent = new AgentObject("Warning: 'agent' is deprecated. Use 'insight'.\n", env, ignoreSources, sharedData);
-                    }
-                    return true;
-                }
-                return false;
-            }
-
-            @CompilerDirectives.TruffleBoundary
-            void initializeAgent() {
-                if (initializeAgentObject()) {
-                    Source script = src.get();
-                    ignoreSources.ignoreSource(script);
-                    List<String> argNames = new ArrayList<>();
-                    List<Object> args = new ArrayList<>();
-                    argNames.add("insight");
-                    args.add(insight);
-                    if (agent != null) {
-                        argNames.add("agent");
-                        args.add(agent);
-                    } else {
-                        collectGlobalSymbols(
-                                        env.getInstruments().values(),
-                                        (instrument, type) -> NAME.equals(instrument.getName()) ? null : env.lookup(instrument, type),
-                                        argNames,
-                                        args);
-
-                        // collectGlobalSymbols(
-                        // env.getLanguages().values(),
-                        // env::lookup,
-                        // argNames,
-                        // args);
-                    }
-
-                    CallTarget target;
-                    try {
-                        target = env.parse(script, argNames.toArray(new String[0]));
-                    } catch (Exception ex) {
-                        throw InsightException.raise(ex);
-                    }
-                    target.call(args.toArray());
-                }
-            }
-
-            @Override
-            public void onContextCreated(TruffleContext context) {
-            }
-
-            @Override
-            public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
-            }
-
-            @Override
-            public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
-                if (agentBinding != null || language.isInternal()) {
-                    return;
-                }
-                if (context.isEntered()) {
-                    initializeAgent();
-                } else {
-                    class InitializeLater implements ExecutionEventListener {
-
-                        @Override
-                        public void onEnter(EventContext ctx, VirtualFrame frame) {
-                            CompilerDirectives.transferToInterpreter();
-                            agentBinding.dispose();
-                            initializeAgent();
-                        }
-
-                        @Override
-                        public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
-                        }
-
-                        @Override
-                        public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
-                        }
-                    }
-                    final SourceSectionFilter anyRoot = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build();
-                    agentBinding = instrumenter.attachExecutionEventListener(anyRoot, new InitializeLater());
-                }
-            }
-
-            @Override
-            public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
-                if (agent != null) {
-                    agent.onClosed();
-                }
-                if (insight != null) {
-                    insight.onClosed();
-                }
-            }
-
-            @Override
-            public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
-            }
-
-            @Override
-            public void onContextClosed(TruffleContext context) {
-            }
-
-            @Override
-            public void close() {
-                if (agent != null) {
-                    agent.onClosed();
-                }
-                if (insight != null) {
-                    insight.onClosed();
-                }
-                if (agentBinding != null) {
-                    agentBinding.dispose();
-                }
-            }
-
-            private <T> void collectGlobalSymbols(Collection<T> values, BiFunction<T, Class<SymbolProvider>, SymbolProvider> check, List<String> argNames, List<Object> args) {
-                for (T item : values) {
-                    SymbolProvider provider = check.apply(item, SymbolProvider.class);
-                    if (provider == null) {
-                        continue;
-                    }
-                    try {
-                        for (Map.Entry<String, ?> e : provider.symbolsWithValues().entrySet()) {
-                            if (e.getValue() == null) {
-                                continue;
-                            }
-                            if (argNames.contains(e.getKey())) {
-                                throw InsightException.unknownAttribute(e.getKey());
-                            }
-                            argNames.add(e.getKey());
-                            args.add(e.getValue());
-
-                        }
-                    } catch (Exception ex) {
-                        throw InsightException.raise(ex);
-                    }
-                }
-            }
-        }
-        final InitializeAgent initializeAgent = new InitializeAgent();
-        instrumenter.attachContextsListener(initializeAgent, true);
-        return initializeAgent;
+        return new InsightPerSource(env.getInstrumenter(), this, src, ignoreSources);
     }
 
     @Override
     protected void onDispose(Env tmp) {
+    }
+
+    AgentObject createInsightObject(InsightPerSource source) {
+        return new AgentObject(null, this, source);
+    }
+
+    @SuppressWarnings("unused")
+    void collectGlobalSymbolsImpl(InsightPerSource source, List<String> argNames, List<Object> args) {
+        for (InstrumentInfo item : env.getInstruments().values()) {
+            if (NAME.equals(item.getName())) {
+                continue;
+            }
+            Insight.SymbolProvider provider = env.lookup(item, Insight.SymbolProvider.class);
+            if (provider == null) {
+                continue;
+            }
+            try {
+                for (Map.Entry<String, ?> e : provider.symbolsWithValues().entrySet()) {
+                    if (e.getValue() == null) {
+                        continue;
+                    }
+                    if (argNames.contains(e.getKey())) {
+                        throw InsightException.unknownAttribute(e.getKey());
+                    }
+                    argNames.add(e.getKey());
+                    args.add(e.getValue());
+
+                }
+            } catch (Exception ex) {
+                throw InsightException.raise(ex);
+            }
+        }
     }
 
     private static Function<?, ?> registerScriptsAPI(InsightInstrument insight) {
@@ -310,5 +202,119 @@ public class InsightInstrument extends TruffleInstrument {
             }
         };
         return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, handler));
+    }
+
+    final InsightPerContext find(TruffleContext ctx) {
+        return this.perContextData.get(ctx);
+    }
+
+    final InsightPerContext findCtx() {
+        return this.perContextData.get();
+    }
+
+    final Key newKey(AgentType type) {
+        synchronized (keys) {
+            int index = keys.nextClearBit(0);
+            invalidateKeys(index, -1);
+            return new Key(type, index);
+        }
+    }
+
+    private void invalidateKeys(int set, int clear) {
+        assert Thread.holdsLock(keys);
+
+        if (set != -1) {
+            keys.set(set);
+        }
+        if (clear != -1) {
+            keys.clear(clear);
+        }
+        keysUnchanged.invalidate();
+    }
+
+    synchronized Assumption keysUnchangedAssumption() {
+        if (!keysUnchanged.isValid()) {
+            keysUnchanged = Truffle.getRuntime().createAssumption("Keys[" + keys + "]");
+        }
+        return keysUnchanged;
+    }
+
+    final int keysLength() {
+        synchronized (keys) {
+            return keys.length();
+        }
+    }
+
+    final void closeKeys(Key... noLongerNeededKeys) {
+        synchronized (keys) {
+            for (Key k : noLongerNeededKeys) {
+                k.close();
+            }
+        }
+    }
+
+    final class Key {
+        @CompilerDirectives.CompilationFinal //
+        private int index;
+        @CompilerDirectives.CompilationFinal //
+        private int functionsMaxLen;
+        private final AgentType type;
+        /* @GuardedBy(keys) */
+        private final List<EventBinding<?>> bindings = new ArrayList<>(2);
+
+        private Key(AgentType type, int index) {
+            if (index < 0) {
+                throw new IllegalArgumentException();
+            }
+            this.type = type;
+            this.index = index;
+        }
+
+        Key assign(EventBinding<?> b) {
+            CompilerAsserts.neverPartOfCompilation();
+            synchronized (keys) {
+                this.bindings.add(b);
+                return this;
+            }
+        }
+
+        int index() {
+            return index;
+        }
+
+        int functionsMaxCount() {
+            return functionsMaxLen;
+        }
+
+        @Override
+        public String toString() {
+            return "Key[" + index + "@" + type + "]";
+        }
+
+        private void close() {
+            List<EventBinding<?>> bs;
+            CompilerAsserts.neverPartOfCompilation();
+            synchronized (keys) {
+                bs = new ArrayList<>(bindings);
+                bindings.clear();
+                index = -1;
+            }
+            for (EventBinding<?> b : bs) {
+                b.dispose();
+            }
+        }
+
+        void adjustSize(int size) {
+            if (size > this.functionsMaxLen) {
+                this.functionsMaxLen = size;
+                keysUnchanged.invalidate();
+            }
+        }
+
+        boolean isClosed() {
+            synchronized (keys) {
+                return index == -1;
+            }
+        }
     }
 }

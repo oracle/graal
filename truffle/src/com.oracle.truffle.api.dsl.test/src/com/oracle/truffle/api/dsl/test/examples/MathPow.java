@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,7 +107,7 @@ public class MathPow extends Node {
         int doPowDoubleInt;
         int doPow;
 
-        @Specialization(guards = {"base == cachedBase", "exponent == cachedExponent"})
+        @Specialization(guards = {"base == cachedBase", "exponent == cachedExponent"}, limit = "3")
         double doPowCached(double base, int exponent, //
                         @Cached("base") double cachedBase, //
                         @Cached("exponent") int cachedExponent, //
@@ -124,7 +124,7 @@ public class MathPow extends Node {
             return Math.pow(base, exponent);
         }
 
-        @Specialization(replaces = "doPowCached", guards = {"exponent == cachedExponent", "cachedExponent <= 10"})
+        @Specialization(replaces = "doPowCached", guards = {"exponent == cachedExponent", "cachedExponent <= 10"}, limit = "3")
         double doPowCachedExponent(double base, int exponent, @Cached("exponent") int cachedExponent) {
             doPowCachedExponent++;
             double result = 1.0;

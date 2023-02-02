@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,8 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.array;
 import static com.oracle.truffle.api.dsl.test.TestHelper.assertRuns;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createRoot;
 import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -51,8 +53,11 @@ import org.junit.Test;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -68,17 +73,25 @@ import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback6Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback7Factory;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback8NodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.Fallback9NodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackGuardWithCachesNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionArrayNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithAssumptionNodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.FallbackWithCachedNodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.GuardNodeGen;
 import com.oracle.truffle.api.dsl.test.FallbackTestFactory.ImplicitCastInFallbackNodeGen;
+import com.oracle.truffle.api.dsl.test.FallbackTestFactory.InvertedGuardNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-public class FallbackTest {
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
+public class FallbackTest extends AbstractPolyglotTest {
 
     private static final Object UNKNOWN_OBJECT = new Object() {
     };
@@ -618,6 +631,7 @@ public class FallbackTest {
 
     @TypeSystemReference(ImplicitCastInFallbackTypeSystem.class)
     @SuppressWarnings("unused")
+    @GenerateInline(false)
     public abstract static class ImplicitCastInFallbackNode extends Node {
 
         public abstract String execute(Object n);
@@ -640,6 +654,7 @@ public class FallbackTest {
      * problems.
      */
     @SuppressWarnings("unused")
+    @GenerateInline(false)
     public abstract static class FrameInFallbackTestNode extends Node {
 
         public abstract String execute(VirtualFrame frame, Object left);
@@ -657,6 +672,297 @@ public class FallbackTest {
         @Fallback
         protected String f0(Object arg0) {
             return "f0";
+        }
+
+    }
+
+    @Test
+    public void testFallbackWithCached() {
+        setupEnv();
+        FallbackWithCachedNode node;
+
+        node = adoptNode(FallbackWithCachedNodeGen.create()).get();
+        Assert.assertEquals("int", node.execute(42));
+        Assert.assertEquals("long", node.execute(42L));
+
+        node = adoptNode(FallbackWithCachedNodeGen.create()).get();
+        Assert.assertEquals("long", node.execute(42L));
+        Assert.assertEquals("int", node.execute(42));
+    }
+
+    abstract static class CachedNode extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization
+        protected String s0(@SuppressWarnings("unused") long arg0) {
+            return "long";
+        }
+
+    }
+
+    @SuppressWarnings({"unused", "deprecation"})
+    public abstract static class FallbackWithCachedNode extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization
+        protected String s0(int arg0) {
+            return "int";
+        }
+
+        @Fallback
+        protected String f0(Object arg0,
+                        @Cached CachedNode node,
+                        @CachedLibrary(limit = "3") InteropLibrary lib,
+                        @Bind("arg0") Object arg0Bound) {
+            lib.fitsInLong(arg0);
+            return node.execute(arg0);
+        }
+
+    }
+
+    @SuppressWarnings({"unused", "deprecation"})
+    public abstract static class FallbackWithCaches extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization
+        protected String s0(int arg0) {
+            return "int";
+        }
+
+        @Fallback
+        protected String f0(Object arg0,
+                        @Cached CachedNode node,
+                        @CachedLibrary(limit = "3") InteropLibrary lib,
+                        @Bind("arg0") Object arg0Bound) {
+            lib.fitsInLong(arg0);
+            return node.execute(arg0);
+        }
+
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class FallbackWithManualDispatchError extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization
+        protected String s0(int arg0) {
+            return "s0";
+        }
+
+        @Fallback
+        protected String f0(Object arg0,
+                        @ExpectError("@CachedLibrary annotations with specialized receivers are not supported in combination with @Fallback annotations. " +
+                                        "Specify the @CachedLibrary(limit=\"...\") attribute and remove the receiver expression to use an dispatched library instead.")//
+                        @CachedLibrary("arg0") InteropLibrary node) {
+            return "f0";
+        }
+
+    }
+
+    /*
+     * Test for GR-33857.
+     */
+    @Test
+    public void testInvertedStaticGuard() {
+        setupEnv();
+        InvertedGuardNode node;
+
+        node = adoptNode(InvertedGuardNodeGen.create()).get();
+
+        assertEquals("f", node.execute(42L));
+        assertEquals("f", node.execute(42L));
+    }
+
+    @SuppressWarnings("unused")
+    abstract static class InvertedGuardNode extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization(guards = {"dynamicGuard(arg0)", "staticGuard()"})
+        protected String s0(long arg0) {
+            return "s0";
+        }
+
+        static boolean staticGuard() {
+            return false;
+        }
+
+        static boolean dynamicGuard(long arg0) {
+            return arg0 == 42;
+        }
+
+        @Fallback
+        protected String f(Object arg0) {
+            return "f";
+        }
+
+    }
+
+    abstract static class GuardNode extends Node {
+
+        public abstract boolean execute(Object left);
+
+        @Specialization
+        protected boolean s0(@SuppressWarnings("unused") int arg0) {
+            return true;
+        }
+
+        @Fallback
+        protected boolean s0(@SuppressWarnings("unused") Object arg0) {
+            return false;
+        }
+
+        // intentionally no never default
+        static GuardNode create() {
+            return GuardNodeGen.create();
+        }
+
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class SharedGuardReachesFallback extends Node {
+
+        public abstract String execute(Object left);
+
+        @Specialization(guards = {"shared.execute(arg0)", "notShared.execute(arg0)"}, limit = "1")
+        protected String s0(Object arg0,
+                        @Cached GuardNode notShared,
+                        @Shared("shared") @Cached(neverDefault = false) GuardNode shared) {
+            return "s0";
+        }
+
+        @Fallback
+        protected String f0(Object arg0,
+                        @Shared("shared") @Cached(neverDefault = false) GuardNode shared) {
+            return "f0";
+        }
+
+    }
+
+    abstract static class GuardIntNode extends Node {
+
+        public abstract boolean execute(int left, int comparison);
+
+        @Specialization
+        protected boolean s0(@SuppressWarnings("unused") int arg0, int comparison) {
+            return arg0 == comparison;
+        }
+
+    }
+
+    @SuppressWarnings("unused")
+    abstract static class FallbackGuardWithCachesNode extends SlowPathListenerNode {
+
+        abstract int execute(int left);
+
+        @Specialization(guards = {"guard0.execute(v, 0)"}, limit = "1")
+        int s0(int v,
+                        @Cached GuardIntNode guard0,
+                        @Cached GuardIntNode guard1) {
+            assertNotNull(guard1);
+            return 0;
+        }
+
+        @Specialization(guards = {"guard0.execute(v, 1)", "!guard1.execute(v, 2)"}, limit = "1")
+        int s1(int v,
+                        @Cached GuardIntNode guard0,
+                        @Cached GuardIntNode guard1,
+                        @Cached GuardIntNode guard2) {
+            assertNotNull(guard2);
+            return 1;
+        }
+
+        @Specialization(guards = {"guard0.execute(v, 3)", "!guard1.execute(v, 4)"}, limit = "1")
+        int s1(int v,
+                        @Cached GuardIntNode guard0,
+                        @Cached GuardIntNode guard1,
+                        @Cached GuardIntNode guard2,
+                        @Cached GuardIntNode guard3) {
+            assertNotNull(guard3);
+            return 2;
+        }
+
+        @SuppressWarnings("unused")
+        @Fallback
+        public static int doGeneric(int v) {
+            return -1;
+        }
+    }
+
+    @Test
+    public void testFallbackGuardWithCachesNode() {
+        FallbackGuardWithCachesNode node;
+
+        int[] values = new int[]{0, 1, 3};
+        int[] fallback = new int[]{2, 4, 5};
+
+        for (int f0 = 0; f0 < 3; f0++) {
+            for (int f1 = 0; f1 < 3; f1++) {
+                for (int v0 = 0; v0 < 3; v0++) {
+                    for (int v1 = 0; v1 < 3; v1++) {
+                        node = FallbackGuardWithCachesNodeGen.create();
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(v1, node.execute(values[v1]));
+
+                        // must be stable now
+                        int slowPathCount = node.specializeCount;
+                        assertEquals(v1, node.execute(values[v1]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(slowPathCount, node.specializeCount);
+
+                        node = FallbackGuardWithCachesNodeGen.create();
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(v1, node.execute(values[v1]));
+
+                        // must be stable now
+                        slowPathCount = node.specializeCount;
+                        assertEquals(v1, node.execute(values[v1]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(slowPathCount, node.specializeCount);
+
+                        node = FallbackGuardWithCachesNodeGen.create();
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(v1, node.execute(values[v1]));
+
+                        // must be stable now
+                        slowPathCount = node.specializeCount;
+                        assertEquals(v1, node.execute(values[v1]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(slowPathCount, node.specializeCount);
+
+                        node = FallbackGuardWithCachesNodeGen.create();
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(v1, node.execute(values[v1]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(-1, node.execute(fallback[f1]));
+
+                        // must be stable now
+                        slowPathCount = node.specializeCount;
+                        assertEquals(-1, node.execute(fallback[f1]));
+                        assertEquals(-1, node.execute(fallback[f0]));
+                        assertEquals(v1, node.execute(values[v1]));
+                        assertEquals(v0, node.execute(values[v0]));
+                        assertEquals(slowPathCount, node.specializeCount);
+
+                    }
+                }
+            }
         }
 
     }

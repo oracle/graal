@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2016, Intel Corporation. All rights reserved.
  * Intel Math Library (LIBM) Source Code
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -53,6 +53,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
@@ -199,6 +200,18 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
  *  cos(0) = 1
  * </pre>
  */
+// @formatter:off
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_cos.cpp",
+          lineStart = 31,
+          lineEnd   = 623,
+          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
+          sha1      = "2dc9ee1a0e80fa0f8d421a57dc37bed4140a9b2a")
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_constants.cpp",
+          lineStart = 30,
+          lineEnd   = 235,
+          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
+          sha1      = "3b493a3a99360abf52d3886bd65f84c9f6048897")
+// @formatter:on
 public final class AMD64MathCosOp extends AMD64MathIntrinsicUnaryOp {
 
     public static final LIRInstructionClass<AMD64MathCosOp> TYPE = LIRInstructionClass.create(AMD64MathCosOp.class);
@@ -417,6 +430,10 @@ public final class AMD64MathCosOp extends AMD64MathIntrinsicUnaryOp {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        /*
+         * This code relies on recordExternalAddress providing the same address when called
+         * repeatedly. Especially for piInvTable.
+         */
         Label block0 = new Label();
         Label block1 = new Label();
         Label block2 = new Label();

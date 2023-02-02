@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,42 +24,73 @@
  */
 package org.graalvm.tools.insight.test.heap;
 
-import java.util.HashMap;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.OutputStream;
+import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.tools.insight.test.InsightObjectFactory;
+import org.graalvm.tools.insight.test.heap.HeapApi.At;
+import org.graalvm.tools.insight.test.heap.HeapApi.Event;
+import org.graalvm.tools.insight.test.heap.HeapApi.Source;
+import org.graalvm.tools.insight.test.heap.HeapApi.StackElement;
+import org.graalvm.tools.insight.test.heap.HeapApi.StackEvent;
+import org.graalvm.tools.insight.test.heap.HeapApi.UnrelatedEvent;
+import static org.graalvm.tools.insight.test.heap.HeapApi.invokeDump;
+import static org.graalvm.tools.insight.test.heap.HeapApi.invokeFlush;
+import org.graalvm.tools.insight.test.heap.HeapResourceRule.HeapParams;
+import org.junit.After;
+import org.junit.Assert;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 
 public class HeapObjectTest {
+    private Context context;
     private Value heap;
+    private File dumpFile;
 
-    @Before
-    public void prepareHeap() throws Exception {
-        Context.Builder b = Context.newBuilder();
-        b.option("heap.dump", "x.hprof");
-        b.allowIO(true);
-        Context ctx = InsightObjectFactory.newContext(b);
-        heap = InsightObjectFactory.readObject(ctx, "heap");
-        assertFalse("Heap object is defined", heap.isNull());
-    }
+    @Rule public HeapResourceRule heapResource = new HeapResourceRule() {
+        @Override
+        protected void before(int cacheSize, String cacheReplacement) throws Throwable {
+            Context.Builder b = Context.newBuilder();
+            b.option("heap.cacheSize", Integer.toString(cacheSize));
+            if (cacheReplacement != null) {
+                b.option("heap.cacheReplacement", cacheReplacement);
+            }
+            dumpFile = File.createTempFile("heap", ".hprof");
+            dumpFile.deleteOnExit();
+            b.option("heap.dump", dumpFile.getAbsolutePath());
+            b.allowIO(IOAccess.ALL);
+            b.allowHostAccess(HostAccess.EXPLICIT);
+            Context ctx = InsightObjectFactory.newContext(b);
+            context = ctx;
+            heap = InsightObjectFactory.readObject(ctx, "heap");
+            assertFalse("Heap object is defined", heap.isNull());
+        }
+    };
 
-    private Object invokeDump(Integer depth, Object[] args) {
-        return heap.invokeMember("dump", new Config("1.0", depth, args));
+    @After
+    public void after() {
+        context.close();
     }
 
     @Test
     public void noEvents() throws Exception {
-        invokeDump(null, new Event[0]);
+        invokeDump(heap, null, new Event[0]);
     }
 
     @Test
     public void noEventsAndDepth() throws Exception {
-        invokeDump(10, new Event[0]);
+        invokeDump(heap, 10, new Event[0]);
     }
 
     @Test
@@ -75,7 +106,7 @@ public class HeapObjectTest {
     @Test
     public void stackMustBeThere() throws Exception {
         try {
-            invokeDump(Integer.MAX_VALUE, new Event[]{
+            invokeDump(heap, Integer.MAX_VALUE, new Event[]{
                             new UnrelatedEvent()
             });
             fail("Should fail");
@@ -87,7 +118,7 @@ public class HeapObjectTest {
     @Test
     public void stackNeedsToBeAnArray() throws Exception {
         try {
-            invokeDump(1, new Event[]{
+            invokeDump(heap, 1, new Event[]{
                             new StackEvent("any")
             });
             fail("Should fail");
@@ -98,11 +129,11 @@ public class HeapObjectTest {
 
     @Test
     public void atMustBePresent() throws Exception {
-        invokeDump(1, new Event[]{
+        invokeDump(heap, 1, new Event[]{
                         new StackEvent(new Object[0])
         });
         try {
-            invokeDump(1, new Event[]{
+            invokeDump(heap, 1, new Event[]{
                             new StackEvent(new Object[]{new UnrelatedEvent()})
             });
             fail("Should fail");
@@ -112,9 +143,25 @@ public class HeapObjectTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    public void cannotAssignStreamWhenPathProvided() throws Exception {
+        Instrument heapInstrument = heap.getContext().getEngine().getInstruments().get("heap");
+        Consumer<OutputStream> consumer = heapInstrument.lookup(Consumer.class);
+        assertNotNull("Consumer of OutputStream found", consumer);
+        try {
+            consumer.accept(new ByteArrayOutputStream());
+            fail("There should be an exception when setting output stream");
+        } catch (IllegalStateException ex) {
+            assertNotEquals("Right message found", -1, ex.getMessage().indexOf("Cannot use path"));
+            assertNotEquals("Right message found", -1, ex.getMessage().indexOf("and stream"));
+            assertNotEquals("Right message found", -1, ex.getMessage().indexOf("at once"));
+        }
+    }
+
+    @Test
     public void nonNullAt() throws Exception {
         try {
-            invokeDump(1, new Event[]{
+            invokeDump(heap, 1, new Event[]{
                             new StackEvent(new StackElement[]{new StackElement(null, null)})
             });
             fail("Expeting failure");
@@ -125,15 +172,23 @@ public class HeapObjectTest {
 
     @Test
     public void everythingIsOK() throws Exception {
-        Source nullSource = new Source(null, null, null, null, null);
-        invokeDump(1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), new HashMap<>())})
+        Source nullSource = new Source("no.source", null, null, null, null);
+        invokeDump(heap, 1, new Event[]{
+                        new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), createDumpObject())})
         });
+        long heapSize = dumpFile.length();
+        if (heapSize != 2295) {
+            fail("Heap dump should be generated. Size = " + heapSize);
+        }
 
         Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
-        invokeDump(1, new Event[]{
-                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), new HashMap<>())})
+        invokeDump(heap, 1, new Event[]{
+                        new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), createDumpObject())})
         });
+        heapSize = dumpFile.length() - heapSize;
+        if (heapSize != 3973 - 2295) {
+            fail("Heap dump should be generated. Size = " + dumpFile.length());
+        }
     }
 
     private static void assertMessage(Throwable ex, String msg, String exp) {
@@ -145,84 +200,83 @@ public class HeapObjectTest {
         }
     }
 
-    public abstract static class Event {
+    @Test
+    @HeapParams(cacheSize = 2, cacheReplacement = "flush")
+    public void memoryDumpTest1() throws Exception {
+        checkDumpAfter(2, 10);
     }
 
-    public static final class UnrelatedEvent extends Event {
-        @HostAccess.Export public final int a = 3;
-        @HostAccess.Export public final int b = 4;
-        @HostAccess.Export public final int c = 5;
+    @Test
+    @HeapParams(cacheSize = 3, cacheReplacement = "flush")
+    public void memoryDumpTest2() throws Exception {
+        checkDumpAfter(3, 10);
     }
 
-    public static final class StackEvent extends Event {
-        @HostAccess.Export public final Object stack;
+    @Test
+    @HeapParams(cacheSize = 1, cacheReplacement = "flush")
+    public void memoryDumpTest3() throws Exception {
+        checkDumpAfter(1, 10);
+    }
 
-        StackEvent(Object stack) {
-            this.stack = stack;
+    @Test
+    @HeapParams(cacheSize = -1, cacheReplacement = "flush")
+    public void memoryDumpTest4() throws Exception {
+        checkDumpAfter(-1, 100);
+    }
+
+    @Test
+    @HeapParams(cacheSize = 0, cacheReplacement = "flush")
+    public void memoryDumpTest5() throws Exception {
+        checkDumpAfter(0, 10);
+    }
+
+    private void checkDumpAfter(int period, int count) {
+        Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
+        int p = 0;
+        long oldSize = dumpFile.length();
+        for (int i = 0; i < count; i++) {
+            invokeDump(heap, 1, new Event[]{
+                            new StackEvent(new StackElement[]{new StackElement(new At("a" + p, source, i, i * 10, 10), createDumpObject())})
+            });
+            long heapSize = dumpFile.length() - oldSize;
+            if (p++ == period) {
+                if (heapSize < 1000) {
+                    fail("Heap dump should be generated. p = " + p + ", i = " + i + ", size = " + heapSize);
+                }
+                p = 0;
+            } else {
+                if (heapSize > 0) {
+                    fail("No heap dump should be generated yet. p = " + p + ", i = " + i + ", size = " + heapSize);
+                }
+            }
+            oldSize += heapSize;
         }
     }
 
-    public static final class StackElement extends Event {
-        @HostAccess.Export public final Object at;
-        @HostAccess.Export public final Object frame;
-
-        StackElement(Object at, Object frame) {
-            this.at = at;
-            this.frame = frame;
+    @Test
+    @HeapParams(cacheSize = 5, cacheReplacement = "lru")
+    public void memoryLRUTest() throws Exception {
+        Source source = new Source("a.text", "application/x-test", "test", "file://a.test", "aaaaa");
+        long oldSize = dumpFile.length();
+        for (int i = 0; i < 100; i++) {
+            invokeDump(heap, 1, new Event[]{
+                            new StackEvent(new StackElement[]{new StackElement(new At("a" + i, source, i, i * 10, 10), createDumpObject())})
+            });
+        }
+        long heapSize = dumpFile.length() - oldSize;
+        Assert.assertEquals(0L, heapSize);
+        invokeFlush(heap);
+        heapSize = dumpFile.length() - oldSize;
+        if (heapSize != 3016) {
+            fail("Heap dump should be generated. Size = " + dumpFile.length());
         }
     }
 
-    public static final class Source {
-        @HostAccess.Export public final String name;
-        @HostAccess.Export public final String mimeType;
-        @HostAccess.Export public final String language;
-        @HostAccess.Export public final String uri;
-        @HostAccess.Export public final String characters;
-
-        Source(String name, String mimeType, String language, String uri, String characters) {
-            this.name = name;
-            this.mimeType = mimeType;
-            this.language = language;
-            this.uri = uri;
-            this.characters = characters;
+    static Object createDumpObject() {
+        class FrameData {
+            @HostAccess.Export public final String var = "variable";
         }
+        return new FrameData();
     }
 
-    public static final class At {
-        @HostAccess.Export public final String name;
-        @HostAccess.Export public final Source source;
-        @HostAccess.Export public final Integer line;
-        @HostAccess.Export public final Integer charIndex;
-        @HostAccess.Export public final Integer charLength;
-
-        At(String name, Source source, Integer line, Integer charIndex, Integer charLength) {
-            this.name = name;
-            this.source = source;
-            this.line = line;
-            this.charIndex = charIndex;
-            this.charLength = charLength;
-        }
-    }
-
-    public static final class Config {
-        @HostAccess.Export public final String format;
-        @HostAccess.Export public final Integer depth;
-        @HostAccess.Export public final Object[] events;
-
-        Config(String format, Integer depth, Object... events) {
-            this.format = format;
-            this.depth = depth;
-            this.events = events;
-        }
-    }
-
-    public static final class NoDepthConfig {
-        @HostAccess.Export public final String format;
-        @HostAccess.Export public final Object[] events;
-
-        NoDepthConfig(String format, Object[] events) {
-            this.format = format;
-            this.events = events;
-        }
-    }
 }

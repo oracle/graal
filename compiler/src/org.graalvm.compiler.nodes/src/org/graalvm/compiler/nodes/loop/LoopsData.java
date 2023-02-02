@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,11 +31,12 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.core.common.util.ReversedList;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
 public class LoopsData {
@@ -44,28 +45,35 @@ public class LoopsData {
     private final List<LoopEx> loops;
 
     static LoopsData compute(final StructuredGraph graph) {
-        return new LoopsData(graph);
+        return new LoopsData(graph, null);
+    }
+
+    static LoopsData compute(final ControlFlowGraph cfg) {
+        return new LoopsData(cfg.graph, cfg);
     }
 
     protected LoopsData(ControlFlowGraph cfg, List<LoopEx> loops, EconomicMap<LoopBeginNode, LoopEx> loopBeginToEx) {
-        super();
         this.cfg = cfg;
         this.loops = loops;
         this.loopBeginToEx = loopBeginToEx;
     }
 
     @SuppressWarnings("try")
-    protected LoopsData(final StructuredGraph graph) {
+    protected LoopsData(final StructuredGraph graph, ControlFlowGraph preComputedCFG) {
         loopBeginToEx = EconomicMap.create(Equivalence.IDENTITY);
         DebugContext debug = graph.getDebug();
-        try (DebugContext.Scope s = debug.scope("ControlFlowGraph")) {
-            cfg = ControlFlowGraph.compute(graph, true, true, true, true);
-        } catch (Throwable e) {
-            throw debug.handle(e);
+        if (preComputedCFG == null) {
+            try (DebugContext.Scope s = debug.scope("ControlFlowGraph")) {
+                this.cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+            } catch (Throwable e) {
+                throw debug.handle(e);
+            }
+        } else {
+            this.cfg = preComputedCFG;
         }
         assert checkLoopOrder(cfg.getLoops());
         loops = new ArrayList<>(cfg.getLoops().size());
-        for (Loop<Block> loop : cfg.getLoops()) {
+        for (Loop<HIRBlock> loop : cfg.getLoops()) {
             LoopEx ex = new LoopEx(loop, this);
             loops.add(ex);
             loopBeginToEx.put(ex.loopBegin(), ex);
@@ -75,9 +83,9 @@ public class LoopsData {
     /**
      * Checks that loops are ordered such that outer loops appear first.
      */
-    protected static boolean checkLoopOrder(Iterable<Loop<Block>> loops) {
-        EconomicSet<Loop<Block>> seen = EconomicSet.create(Equivalence.IDENTITY);
-        for (Loop<Block> loop : loops) {
+    protected static boolean checkLoopOrder(Iterable<Loop<HIRBlock>> loops) {
+        EconomicSet<Loop<HIRBlock>> seen = EconomicSet.create(Equivalence.IDENTITY);
+        for (Loop<HIRBlock> loop : loops) {
             if (loop.getParent() != null && !seen.contains(loop.getParent())) {
                 return false;
             }
@@ -86,22 +94,69 @@ public class LoopsData {
         return true;
     }
 
-    public LoopEx loop(Loop<Block> loop) {
+    /**
+     * Get the {@link LoopEx} corresponding to {@code loop}.
+     */
+    public LoopEx loop(Loop<HIRBlock> loop) {
         return loopBeginToEx.get((LoopBeginNode) loop.getHeader().getBeginNode());
     }
 
+    /**
+     * Get the {@link LoopEx} corresponding to {@code loopBegin}.
+     */
     public LoopEx loop(LoopBeginNode loopBegin) {
         return loopBeginToEx.get(loopBegin);
     }
 
+    /**
+     * Get all loops.
+     *
+     * @return all loops.
+     */
     public List<LoopEx> loops() {
         return loops;
     }
 
+    /**
+     * Get all loops, with outer loops ordered before inner loops.
+     *
+     * @return all loops, with outer loops first.
+     */
     public List<LoopEx> outerFirst() {
         return loops;
     }
 
+    /**
+     * Get all loops, with inner loops ordered before outer loops.
+     *
+     * @return all loops, with inner loops first.
+     */
+    public List<LoopEx> innerFirst() {
+        return ReversedList.reversed(loops);
+    }
+
+    /**
+     * Get all non-counted loops. Counted loop detection must have already been performed with
+     * {@link #detectCountedLoops()}.
+     *
+     * @return all loops that are not counted.
+     */
+    public List<LoopEx> nonCountedLoops() {
+        List<LoopEx> nonCounted = new ArrayList<>();
+        for (LoopEx loop : loops()) {
+            if (!loop.isCounted()) {
+                nonCounted.add(loop);
+            }
+        }
+        return nonCounted;
+    }
+
+    /**
+     * Get all counted loops. Counted loop detection must have already been performed with
+     * {@link #detectCountedLoops()}.
+     *
+     * @return all loops that are counted.
+     */
     public List<LoopEx> countedLoops() {
         List<LoopEx> counted = new ArrayList<>();
         for (LoopEx loop : loops()) {
@@ -112,16 +167,25 @@ public class LoopsData {
         return counted;
     }
 
-    public void detectedCountedLoops() {
+    /**
+     * Perform counted loop detection for all loops which have not already been checked.
+     */
+    public void detectCountedLoops() {
         for (LoopEx loop : loops()) {
             loop.detectCounted();
         }
     }
 
+    /**
+     * Get the CFG this loops data is calculated from.
+     */
     public ControlFlowGraph getCFG() {
         return cfg;
     }
 
+    /**
+     * Get information for an induction variable, or null if not found in one of the loops.
+     */
     public InductionVariable getInductionVariable(ValueNode value) {
         InductionVariable match = null;
         for (LoopEx loop : loops()) {

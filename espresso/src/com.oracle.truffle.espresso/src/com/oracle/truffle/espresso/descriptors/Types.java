@@ -23,9 +23,11 @@
 package com.oracle.truffle.espresso.descriptors;
 
 import static com.oracle.truffle.espresso.descriptors.ByteSequence.EMPTY;
+import static com.oracle.truffle.espresso.descriptors.ByteSequence.wrap;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -56,6 +58,17 @@ public final class Types {
         return type;
     }
 
+    public Symbol<Type> getOrCreate(String name) {
+        return getOrCreate(ByteSequence.create(name));
+    }
+
+    public Symbol<Type> getOrCreate(ByteSequence name) {
+        if (!Validation.validTypeDescriptor(name, true)) {
+            return null;
+        }
+        return symbols.symbolify(name);
+    }
+
     public static String internalFromClassName(String className) {
         if (className.startsWith("[") || className.endsWith(";")) {
             return className.replace('.', '/');
@@ -83,6 +96,22 @@ public final class Types {
         }
         // Reference type.
         return "L" + className.replace('.', '/') + ";";
+    }
+
+    public static ByteSequence hiddenClassName(Symbol<Type> type, long id) {
+        assert type.byteAt(0) == 'L';
+        assert type.byteAt(type.length() - 1) == ';';
+        int idSize = ByteSequence.positiveLongStringSize(id);
+        int length = type.length() - 2 + 1 + idSize;
+        byte[] newBytes = new byte[length];
+        ByteSequence name = type.substring(1, type.length() - 1);
+        name.writeTo(newBytes, 0);
+        int sepIndex = name.length();
+        newBytes[sepIndex] = '+';
+        ByteSequence.writePositiveLongString(id, newBytes, sepIndex + 1, idSize);
+        ByteSequence result = wrap(newBytes, 0, length);
+        assert Validation.validModifiedUTF8(result) : String.format("Not valid anymore: %s + %d -> %s", type.toHexString(), id, result.toHexString());
+        return result;
     }
 
     @TruffleBoundary
@@ -201,7 +230,7 @@ public final class Types {
         return index;
     }
 
-    public static boolean isReference(Symbol<Type> type) {
+    public static boolean isReference(ByteSequence type) {
         return type.length() > 1;
     }
 
@@ -304,7 +333,8 @@ public final class Types {
     public static String checkType(String type) {
         // FIXME(peterssen): Do check.
         if (type.length() <= 0) {
-            throw EspressoError.unimplemented("boom");
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.unimplemented();
         }
         return type;
         // throw EspressoError.unimplemented();
@@ -359,5 +389,20 @@ public final class Types {
             return EMPTY;
         }
         return symbol.subSequence(1, lastSlash - 1);
+    }
+
+    /**
+     * Returns the number of stack slots used by the specified type.
+     */
+    public static int slotCount(Symbol<Type> type) {
+        switch (type.byteAt(0)) {
+            case 'V': // void
+                return 0;
+            case 'D': // double
+            case 'J': // long
+                return 2;
+            default: // ZBCSIF[L
+                return 1;
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,49 +40,47 @@
  */
 package com.oracle.truffle.api.test;
 
-import com.oracle.truffle.api.Assumption;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class FrameDescriptorTest {
 
-    private FrameSlot s1;
-    private FrameSlot s2;
-    private FrameSlot s3;
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    private int s1;
+    private int s2;
+    private int s3;
 
     @Test
     public void localsDefaultValue() throws FrameSlotTypeException {
         Object defaultValue = "default";
-        FrameDescriptor d = new FrameDescriptor(defaultValue);
-        s1 = d.addFrameSlot("v1");
-        s2 = d.addFrameSlot("v2");
-        s3 = d.addFrameSlot("v3");
-        VirtualFrame f = Truffle.getRuntime().createVirtualFrame(new Object[]{1, 2}, d);
+        var builder = FrameDescriptor.newBuilder().defaultValue(defaultValue);
+        s1 = builder.addSlot(FrameSlotKind.Illegal, "v1", null);
+        s2 = builder.addSlot(FrameSlotKind.Illegal, "v2", null);
+        s3 = builder.addSlot(FrameSlotKind.Illegal, "v3", null);
+        FrameDescriptor descriptor = builder.build();
+        VirtualFrame f = Truffle.getRuntime().createVirtualFrame(new Object[]{1, 2}, descriptor);
 
-        assertFrame(f, d);
-        assertFrame(f.materialize(), d);
+        assertFrame(f, descriptor);
+        assertFrame(f.materialize(), descriptor);
     }
 
     private void assertFrame(Frame f, FrameDescriptor d) throws FrameSlotTypeException {
-        assertEquals("Three slots", 3, d.getSize());
-        assertEquals("Three slots list", 3, d.getSlots().size());
-        assertEquals("1st slot", d.getSlots().get(0), s1);
-        assertEquals("2nd slot", d.getSlots().get(1), s2);
-        assertEquals("3rd slot", d.getSlots().get(2), s3);
+        assertEquals("Three slots", 3, d.getNumberOfSlots());
         assertEquals("default", f.getObject(s1));
         assertEquals("default", f.getObject(s2));
         f.setInt(s3, (int) f.getArguments()[0]);
@@ -97,114 +95,20 @@ public class FrameDescriptorTest {
     @Test
     public void copy() {
         Object defaultValue = "default";
-        FrameDescriptor d = new FrameDescriptor(defaultValue);
-        s1 = d.addFrameSlot("v1", "i1", FrameSlotKind.Boolean);
-        s2 = d.addFrameSlot("v2", "i2", FrameSlotKind.Float);
+        var builder = FrameDescriptor.newBuilder().defaultValue(defaultValue);
+        s1 = builder.addSlot(FrameSlotKind.Boolean, "v1", "i1");
+        s2 = builder.addSlot(FrameSlotKind.Float, "v2", "i2");
 
-        assertEquals(2, d.getSize());
-        assertEquals("i2", d.getSlots().get(1).getInfo());
-        assertEquals(FrameSlotKind.Float, d.getFrameSlotKind(d.getSlots().get(1)));
+        FrameDescriptor d = builder.build();
+
+        assertEquals(2, d.getNumberOfSlots());
+        assertEquals("i2", d.getSlotInfo(s2));
+        assertEquals(FrameSlotKind.Float, d.getSlotKind(s2));
 
         FrameDescriptor copy = d.copy();
-        assertEquals(2, copy.getSize());
-        assertEquals("Info is copied", "i2", copy.getSlots().get(1).getInfo());
-        assertEquals("Kind isn't copied", FrameSlotKind.Illegal, copy.getFrameSlotKind(copy.getSlots().get(1)));
+        assertEquals(2, copy.getNumberOfSlots());
+        assertEquals("Info is copied", "i2", d.getSlotInfo(s2));
+        assertEquals("Kind isn't copied", FrameSlotKind.Float, d.getSlotKind(s2));
     }
 
-    @Test
-    public void version() {
-        FrameDescriptor d = new FrameDescriptor();
-        s1 = d.addFrameSlot("v1", "i1", FrameSlotKind.Boolean);
-        s2 = d.addFrameSlot("v2", "i2", FrameSlotKind.Float);
-
-        Assumption version;
-        version = d.getVersion();
-        assertTrue(version.isValid());
-        // add slot
-        s3 = d.addFrameSlot("v3", "i3", FrameSlotKind.Int);
-        assertEquals(3, d.getSize());
-        assertFalse(version.isValid());
-        version = d.getVersion();
-        assertTrue(version.isValid());
-        assertSame("1st slot", s1, d.getSlots().get(0));
-        assertSame("2nd slot", s2, d.getSlots().get(1));
-        assertSame("3rd slot", s3, d.getSlots().get(2));
-
-        // change kind
-        d.setFrameSlotKind(s3, FrameSlotKind.Object);
-        assertFalse(version.isValid());
-        version = d.getVersion();
-        assertTrue(version.isValid());
-
-        // remove slot
-        d.removeFrameSlot("v3");
-        assertFalse(version.isValid());
-        version = d.getVersion();
-        assertTrue(version.isValid());
-    }
-
-    @Test
-    public void notInFrameAssumption() {
-        FrameDescriptor d = new FrameDescriptor();
-        Assumption[] ass = new Assumption[]{d.getNotInFrameAssumption("v1"), d.getNotInFrameAssumption("v2"), d.getNotInFrameAssumption("v3")};
-        assertTrue(ass[0].isValid());
-        assertTrue(ass[1].isValid());
-        assertTrue(ass[2].isValid());
-        s1 = d.addFrameSlot("v1", "i1", FrameSlotKind.Boolean);
-        assertFalse(ass[0].isValid());
-        assertTrue(ass[1].isValid());
-        assertTrue(ass[2].isValid());
-        s2 = d.addFrameSlot("v2", "i2", FrameSlotKind.Float);
-        assertFalse(ass[0].isValid());
-        assertFalse(ass[1].isValid());
-        assertTrue(ass[2].isValid());
-        s3 = d.addFrameSlot("v3", "i3", FrameSlotKind.Int);
-        assertFalse(ass[0].isValid());
-        assertFalse(ass[1].isValid());
-        assertFalse(ass[2].isValid());
-
-        for (String identifier : new String[]{"v1", "v2", "v3"}) {
-            try {
-                d.getNotInFrameAssumption(identifier);
-                fail("expected IllegalArgumentException");
-            } catch (IllegalArgumentException e) {
-                // expected
-            }
-        }
-        d.getNotInFrameAssumption("v4");
-    }
-
-    @Test
-    public void removeFrameSlot() throws FrameSlotTypeException {
-        TruffleRuntime runtime = Truffle.getRuntime();
-        FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot slot1 = frameDescriptor.addFrameSlot("var1", FrameSlotKind.Object);
-        FrameSlot slot2 = frameDescriptor.addFrameSlot("var2", FrameSlotKind.Object);
-        Frame frame = runtime.createMaterializedFrame(new Object[0], frameDescriptor);
-        frame.setObject(slot1, "a");
-        frame.setObject(slot2, "b");
-        assertEquals("a", frame.getObject(slot1));
-        assertEquals("b", frame.getObject(slot2));
-        assertEquals(2, frameDescriptor.getSize());
-
-        frameDescriptor.removeFrameSlot("var1");
-        assertNull(frameDescriptor.findFrameSlot("var1"));
-        assertEquals("b", frame.getObject(slot2));
-        assertEquals(2, frameDescriptor.getSize());
-        assertEquals(1, frameDescriptor.copy().getSize());
-
-        FrameSlot slot3 = frameDescriptor.addFrameSlot("var3", FrameSlotKind.Object);
-        FrameSlot slot4 = frameDescriptor.addFrameSlot("var4", FrameSlotKind.Object);
-        assertEquals("b", frame.getObject(slot2));
-        assertEquals(null, frame.getObject(slot3));
-        assertEquals(null, frame.getObject(slot4));
-        assertEquals(4, frameDescriptor.getSize());
-        assertEquals(3, frameDescriptor.copy().getSize());
-
-        frame.setObject(slot3, "c");
-        frame.setObject(slot4, "d");
-        assertEquals("b", frame.getObject(slot2));
-        assertEquals("c", frame.getObject(slot3));
-        assertEquals("d", frame.getObject(slot4));
-    }
 }

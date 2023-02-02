@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,13 +47,12 @@ import java.util.function.Supplier;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
-class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
+class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     Instrument api;
     InstrumentInfo info;
@@ -73,12 +72,10 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     LocalLocation[] contextThreadLocalLocations;
 
     PolyglotInstrument(PolyglotEngineImpl engine, InstrumentCache cache) {
-        super(engine.impl);
         this.engine = engine;
         this.cache = cache;
     }
 
-    @Override
     public OptionDescriptors getOptions() {
         try {
             engine.checkState();
@@ -107,7 +104,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         if (optionValues == null) {
             synchronized (instrumentLock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(engine, getAllOptionsInternal(), false);
+                    optionValues = new OptionValuesImpl(getAllOptionsInternal(), false);
                 }
             }
         }
@@ -123,7 +120,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         return engine;
     }
 
-    void ensureInitialized() {
+    private void ensureInitialized() {
         if (!initialized) {
             synchronized (instrumentLock) {
                 if (!initialized) {
@@ -187,20 +184,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
             }
             if (contexts != null) {
                 for (PolyglotContextImpl context : contexts) {
-                    synchronized (context) {
-                        if (context.localsCleared) {
-                            continue;
-                        }
-                        /*
-                         * contextLocals might not be initialized yet, in which case the context
-                         * local factory for this instrument will be invoked during contextLocals
-                         * initialization.
-                         */
-                        if (context.contextLocals != null) {
-                            context.invokeContextLocalsFactory(context.contextLocals, contextLocalLocations);
-                            context.invokeContextThreadLocalFactory(contextThreadLocalLocations);
-                        }
-                    }
+                    context.invokeLocalsFactories(contextLocalLocations, contextThreadLocalLocations);
                 }
             }
         }
@@ -217,7 +201,6 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     }
 
     void ensureClosed() {
-        assert Thread.holdsLock(engine.lock);
         if (created && !closed) {
             synchronized (instrumentLock) {
                 if (created && !closed) {
@@ -230,7 +213,6 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         }
     }
 
-    @Override
     public <T> T lookup(Class<T> serviceClass) {
         try {
             engine.checkState();
@@ -249,24 +231,24 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         }
     }
 
-    @Override
     public String getId() {
         return cache.getId();
     }
 
-    @Override
     public String getName() {
         return cache.getName();
     }
 
-    @Override
     public String getVersion() {
         final String version = cache.getVersion();
         if (version.equals("inherit")) {
-            return engine.creatorApi.getVersion();
+            return engine.getVersion();
         } else {
             return version;
         }
     }
 
+    public String getWebsite() {
+        return PolyglotLanguage.websiteSubstitutions(cache.getWebsite());
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,15 +30,14 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -49,8 +48,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMReadStringNode extends LLVMNode {
-
-    @Child PointerReadStringNode readOther;
 
     public abstract String executeWithTarget(Object address);
 
@@ -65,6 +62,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
     }
 
     @Specialization(guards = "foreigns.isForeign(pointer)")
+    @GenerateAOT.Exclude
     String readForeign(LLVMManagedPointer pointer,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
                     @Cached("create()") ForeignReadStringNode read) {
@@ -72,11 +70,8 @@ public abstract class LLVMReadStringNode extends LLVMNode {
     }
 
     @Fallback
-    String readOther(Object address) {
-        if (readOther == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            readOther = insert(PointerReadStringNode.create());
-        }
+    String readOther(Object address,
+                    @Cached PointerReadStringNode readOther) {
         return readOther.execute(address);
     }
 
@@ -94,6 +89,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
         protected abstract String execute(LLVMManagedPointer pointer, Object foreign);
 
         @Specialization(limit = "3")
+        @GenerateAOT.Exclude
         String doDefault(@SuppressWarnings("unused") LLVMManagedPointer object, Object foreign,
                         @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached PointerReadStringNode read) {
@@ -119,7 +115,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
 
         boolean isReadOnlyMemory(LLVMPointer address) {
             CompilerAsserts.neverPartOfCompilation();
-            LLVMGlobal global = lookupContextReference(LLVMLanguage.class).get().findGlobal(address);
+            LLVMGlobal global = getContext().findGlobal(address);
             if (global != null) {
                 return global.isReadOnly();
             } else {

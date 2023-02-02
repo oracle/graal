@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,15 +27,20 @@ package org.graalvm.compiler.truffle.compiler.nodes.frame;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -45,27 +50,61 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
 
     @Input private ValueNode value;
 
-    public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value) {
-        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag);
+    public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag, type, accessFlags);
         this.value = value;
+        assert accessFlags.updatesFrame();
+    }
+
+    public VirtualFrameSetNode(NewFrameNode frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag, type, accessFlags);
+        this.value = value;
+        assert accessFlags.updatesFrame();
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        ValueNode tagAlias = tool.getAlias(frame.virtualFrameTagArray);
-        ValueNode dataAlias = tool.getAlias(
-                        TruffleCompilerRuntime.getRuntime().getJavaKindForFrameSlotKind(accessTag) == JavaKind.Object ? frame.virtualFrameObjectArray : frame.virtualFramePrimitiveArray);
+        JavaKind valueKind = value.getStackKind();
+        if (type == VirtualFrameAccessType.Auxiliary) {
+            ValueNode dataAlias = tool.getAlias(frame.getObjectArray(type));
 
-        if (tagAlias instanceof VirtualObjectNode && dataAlias instanceof VirtualObjectNode) {
-            VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
-            VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
+            assert valueKind == JavaKind.Object;
+            // no tags array
+            if (dataAlias instanceof VirtualObjectNode) {
+                VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
 
-            if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
-                tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag));
+                if (frameSlotIndex < dataVirtual.entryCount()) {
+                    if (tool.setVirtualEntry(dataVirtual, frameSlotIndex, value, valueKind, -1)) {
+                        tool.delete();
+                        return;
+                    }
+                }
+            }
+        } else {
+            ValueNode tagAlias = tool.getAlias(frame.getTagArray(type));
+            ValueNode dataAlias = tool.getAlias(valueKind == JavaKind.Object ? frame.getObjectArray(type) : frame.getPrimitiveArray(type));
+            if (tagAlias instanceof VirtualObjectNode && dataAlias instanceof VirtualObjectNode) {
 
-                ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
-                if (dataEntry.getStackKind() == value.getStackKind()) {
-                    if (tool.setVirtualEntry(dataVirtual, frameSlotIndex, value, value.getStackKind(), -1)) {
+                VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
+                VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
+
+                if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
+                    if (accessFlags.setsTag()) {
+                        if (accessFlags.isStatic()) {
+                            tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstantWithStaticModifier(accessTag));
+                        } else {
+                            tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag));
+                        }
+                    }
+                    ValueNode actualValue = maybeExtendForOSRStaticAccess(tool);
+                    if (tool.setVirtualEntry(dataVirtual, frameSlotIndex, actualValue, valueKind == JavaKind.Object ? JavaKind.Object : JavaKind.Long, -1)) {
+                        if (valueKind == JavaKind.Object) {
+                            // clear out native entry
+                            ValueNode primitiveAlias = tool.getAlias(frame.getPrimitiveArray(type));
+                            if (primitiveAlias instanceof VirtualObjectNode) {
+                                tool.setVirtualEntry((VirtualObjectNode) primitiveAlias, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
+                            }
+                        }
                         tool.delete();
                         return;
                     }
@@ -78,5 +117,52 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
          * do not have a FrameState to use for the memory store.
          */
         insertDeoptimization(tool);
+    }
+
+    private ValueNode maybeExtendForOSRStaticAccess(VirtualizerTool tool) {
+        if (!isOSRRawStaticAccess()) {
+            return value;
+        }
+        Stamp valueStamp = value.stamp(NodeView.DEFAULT);
+        if (!(valueStamp instanceof PrimitiveStamp)) {
+            return value;
+        }
+        // Force all primitive to be long for bytecode OSR frame.
+        return extendForOSRStaticAccess(tool, tool.getAlias(value));
+    }
+
+    private static ValueNode extendForOSRStaticAccess(VirtualizerTool tool, ValueNode entry) {
+        JavaKind entryKind = entry.stamp(NodeView.DEFAULT).getStackKind();
+        if (entryKind == JavaKind.Long) {
+            return entry;
+        }
+        assert entryKind.isPrimitive();
+        ValueNode tmpValue = entry;
+        if (entryKind.isNumericFloat()) {
+            // Convert from numeric float to numeric integer
+            entryKind = entryKind == JavaKind.Float ? JavaKind.Int : JavaKind.Long;
+            tmpValue = new ReinterpretNode(entryKind, tmpValue);
+            tool.addNode(tmpValue);
+        }
+        if (entryKind != JavaKind.Long) {
+            tmpValue = new ZeroExtendNode(tmpValue, JavaKind.Long.getBitCount());
+            tool.addNode(tmpValue);
+        }
+        assert tmpValue.stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Long;
+        return tmpValue;
+    }
+
+    private boolean isOSRRawStaticAccess() {
+        return accessFlags.isStatic() && frame.isBytecodeOSRTransferTarget();
+    }
+
+    @Override
+    public <State> void updateVerificationState(VirtualFrameVerificationStateUpdater<State> updater, State state) {
+        if (isOSRRawStaticAccess()) {
+            // Static accesses to bytecode OSR frames are advertised as long.
+            updater.set(state, getFrameSlotIndex(), NewFrameNode.FrameSlotKindLongTag);
+        } else {
+            updater.set(state, getFrameSlotIndex(), (byte) getAccessTag());
+        }
     }
 }

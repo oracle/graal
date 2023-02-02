@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
+import com.oracle.truffle.llvm.runtime.inlineasm.InlineAssemblyParserBase;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
@@ -42,16 +45,32 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
 
     // Flags for DLOpen
     public static final int RTLD_LAZY = 1;
-    public static final int RTLD_Global = 256;
+    public static final int RTLD_GLOBAL = 256;
+    public static final long RTLD_DEFAULT = 0;
+
+    @Override
+    public ByteOrder getPlatformByteOrder() {
+        return ByteOrder.nativeOrder();
+    }
 
     @Override
     public boolean isGlobalDLOpenFlagSet(int flag) {
-        return (flag & RTLD_Global) == RTLD_Global;
+        return (flag & RTLD_GLOBAL) == RTLD_GLOBAL;
     }
 
     @Override
     public boolean isLazyDLOpenFlagSet(int flag) {
         return (flag & RTLD_LAZY) == RTLD_LAZY;
+    }
+
+    @Override
+    public boolean isFirstDLOpenFlagSet(int flag) {
+        return false;
+    }
+
+    @Override
+    public boolean isDefaultDLSymFlagSet(long flag) {
+        return flag == RTLD_DEFAULT;
     }
 
     public static BasicPlatformCapability<?> create(boolean loadCxxLibraries) {
@@ -63,23 +82,33 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
                 return new LinuxAArch64PlatformCapability(loadCxxLibraries);
             }
         }
-        if (LLVMInfo.SYSNAME.equalsIgnoreCase("mac os x") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
-            return new DarwinAMD64PlatformCapability(loadCxxLibraries);
+        if (LLVMInfo.SYSNAME.equalsIgnoreCase("mac os x")) {
+            if (LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
+                return new DarwinAMD64PlatformCapability(loadCxxLibraries);
+            }
+            if (LLVMInfo.MACHINE.equalsIgnoreCase("aarch64")) {
+                return new DarwinAArch64PlatformCapability(loadCxxLibraries);
+            }
+        }
+        if (LLVMInfo.SYSNAME.toLowerCase(Locale.ROOT).startsWith("windows") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
+            return new WindowsAMD64PlatformCapability(loadCxxLibraries);
         }
         return new UnknownBasicPlatformCapability(loadCxxLibraries);
     }
 
     private static final Path SULONG_LIBDIR = Paths.get("native", "lib");
-    public static final String LIBSULONG_FILENAME = "libsulong." + NativeContextExtension.getNativeLibrarySuffix();
-    public static final String LIBSULONGXX_FILENAME = "libsulong++." + NativeContextExtension.getNativeLibrarySuffix();
+    public static final String LIBCXX_FILENAME = NativeContextExtension.getNativeLibrary("c++");
+    public static final String LIBCXXABI_FILENAME = NativeContextExtension.getNativeLibrary("c++abi");
+    public static final String LIBSULONG_FILENAME = NativeContextExtension.getNativeLibrary("sulong");
+    public static final String LIBSULONGXX_FILENAME = NativeContextExtension.getNativeLibrary("sulong++");
 
-    protected BasicPlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
-        super(cls, loadCxxLibraries);
+    protected BasicPlatformCapability(Class<S> cls, boolean loadCxxLibraries, InlineAssemblyParserBase inlineAssemblyParser) {
+        super(cls, loadCxxLibraries, inlineAssemblyParser);
     }
 
     @Override
     public String getBuiltinsLibrary() {
-        return "libgraalvm-llvm." + NativeContextExtension.getNativeLibrarySuffixVersioned(1);
+        return NativeContextExtension.getNativeLibraryVersioned("graalvm-llvm", 1);
     }
 
     @Override
@@ -98,6 +127,16 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     }
 
     @Override
+    public String getCxxFilename() {
+        return LIBCXX_FILENAME;
+    }
+
+    @Override
+    public String getCxxAbiFilename() {
+        return LIBCXXABI_FILENAME;
+    }
+
+    @Override
     public LLVMSyscallOperationNode createSyscallNode(long index) {
         try {
             return createSyscallNode(getSyscall(index));
@@ -107,8 +146,18 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
     }
 
     @Override
+    public String getLibraryPrefix() {
+        return NativeContextExtension.getNativeLibraryPrefix();
+    }
+
+    @Override
     public String getLibrarySuffix() {
         return NativeContextExtension.getNativeLibrarySuffix();
+    }
+
+    @Override
+    public String getLibrarySuffixVersioned(int version) {
+        return NativeContextExtension.getNativeLibrarySuffixVersioned(version);
     }
 
     protected abstract LLVMSyscallOperationNode createSyscallNode(S syscall);

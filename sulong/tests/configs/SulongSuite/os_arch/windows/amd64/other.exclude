@@ -1,0 +1,13 @@
+libc/ctypes/cornercases.c.dir
+cpp/test035.cpp.dir
+cpp/test037.cpp.dir
+#cpp/test038.cpp.dir
+#cpp/test039.cpp.dir
+cpp/test040.cpp.dir
+cpp/test045.cpp.dir
+cpp/test047.cpp.dir
+cpp/test050.cpp.dir
+libc/file-operations/fopen-append-newfile.c.dir
+libc/file-operations/fopen-null.c.dir
+libc/printf/printf-int-args.c.dir
+libc/printf/printf-mixed.c.dir

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,27 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 
 public abstract class LLVMSyscallOperationNode extends LLVMNode {
+    /*
+     * Every subclass has to override at least one of {@link #executeLong} and {@link
+     * #executeGeneric}, otherwise this will cause an infinite recursion.
+     */
 
-    public abstract long execute(Object arg0, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5);
+    public long executeLong(Object arg0, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLong(executeGeneric(arg0, arg1, arg2, arg3, arg4, arg5));
+    }
+
+    public Object executeGeneric(Object arg0, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
+        try {
+            return executeLong(arg0, arg1, arg2, arg3, arg4, arg5);
+        } catch (UnexpectedResultException ex) {
+            return ex.getResult();
+        }
+    }
 
     public abstract String getName();
 }

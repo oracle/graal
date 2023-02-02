@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -597,7 +597,7 @@ public class CountedLoopTest extends GraalCompilerTest {
     }
 
     private void registerPlugins(Registration r, JavaKind ivKind) {
-        r.register2("get", IVProperty.class, ivKind.toJavaClass(), new InvocationPlugin() {
+        r.register(new InvocationPlugin("get", IVProperty.class, ivKind.toJavaClass()) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 IVProperty property = null;
@@ -612,7 +612,7 @@ public class CountedLoopTest extends GraalCompilerTest {
                 }
             }
         });
-        r.register4("get", IVProperty.class, StaticIVProperty.class, IVPredicate.class, ivKind.toJavaClass(), new InvocationPlugin() {
+        r.register(new InvocationPlugin("get", IVProperty.class, StaticIVProperty.class, IVPredicate.class, ivKind.toJavaClass()) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4) {
                 IVProperty property = null;
@@ -640,7 +640,7 @@ public class CountedLoopTest extends GraalCompilerTest {
     @Override
     protected void checkHighTierGraph(StructuredGraph graph) {
         LoopsData loops = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
-        loops.detectedCountedLoops();
+        loops.detectCountedLoops();
         for (IVPropertyNode node : graph.getNodes().filter(IVPropertyNode.class)) {
             node.rewrite(loops);
         }

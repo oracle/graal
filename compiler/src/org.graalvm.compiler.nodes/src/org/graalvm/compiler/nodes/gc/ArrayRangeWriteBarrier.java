@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,16 @@
  */
 package org.graalvm.compiler.nodes.gc;
 
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+
+import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo
 public abstract class ArrayRangeWriteBarrier extends WriteBarrier implements Lowerable {
@@ -50,5 +55,12 @@ public abstract class ArrayRangeWriteBarrier extends WriteBarrier implements Low
 
     public int getElementStride() {
         return elementStride;
+    }
+
+    /**
+     * Returns this barrier's length, extended to {@code long} if needed.
+     */
+    public ValueNode getLengthAsLong() {
+        return IntegerConvertNode.convert(length, StampFactory.forKind(JavaKind.Long), graph(), NodeView.DEFAULT);
     }
 }

@@ -48,8 +48,8 @@ public abstract class FloatableAccessNode extends FixedAccessNode {
     }
 
     protected FloatableAccessNode(NodeClass<? extends FloatableAccessNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType,
-                    boolean nullCheck, FrameState stateBefore) {
-        super(c, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
+                    boolean usedAsNullCheck, FrameState stateBefore) {
+        super(c, address, location, stamp, guard, barrierType, usedAsNullCheck, stateBefore);
     }
 
     public abstract FloatingAccessNode asFloatingNode();

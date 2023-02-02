@@ -1,0 +1,16 @@
+#
+# The compiled LL code containing the va_arg instruction returns invalid values
+#
+va_arg
+#
+# The following tests do not work on Aarch64 as they use AMD64 args passing stack specifics
+#
+c/varargs/varStructBeforePrimitiveAMD64Explicite.c.dir
+c/varargs/varStructStackOnlyAMD64Explicite.c.dir
+#
+# Aarch64 uses zext instead of sext to cast char to int (the Sulong and native results actually match but give different results on Aarch64 and X86. The return code exceeds 255 and is rejected by the unit test framework.)
+#
+c/truffle-c/arrayTest/arrayTest22.c.dir
+c/truffle-c/charTest/charArray.c.dir
+c/truffle-c/unionTest/memberInitialization2.c.dir
+c/truffle-c/unionTest/unionTest12.c.dir

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 package org.graalvm.compiler.lir.alloc.lsra.ssa;
 
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.alloc.lsra.LinearScan;
 import org.graalvm.compiler.lir.alloc.lsra.LinearScanEliminateSpillMovePhase;
@@ -33,14 +33,14 @@ import org.graalvm.compiler.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
 import org.graalvm.compiler.lir.alloc.lsra.LinearScanResolveDataFlowPhase;
 import org.graalvm.compiler.lir.alloc.lsra.MoveResolver;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.lir.ssa.SSAUtil;
 
 import jdk.vm.ci.code.TargetDescription;
 
 public final class SSALinearScan extends LinearScan {
 
-    public SSALinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, AbstractBlockBase<?>[] sortedBlocks,
+    public SSALinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, char[] sortedBlocks,
                     boolean neverSpillConstants) {
         super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks, neverSpillConstants);
     }
@@ -75,7 +75,8 @@ public final class SSALinearScan extends LinearScan {
          * matches (ie. there is no resolution move) are falsely detected as errors.
          */
         try (DebugContext.Scope s1 = debug.scope("Remove Phi In")) {
-            for (AbstractBlockBase<?> toBlock : sortedBlocks()) {
+            for (int blockId : sortedBlocks()) {
+                BasicBlock<?> toBlock = getLIR().getBlockById(blockId);
                 if (toBlock.getPredecessorCount() > 1) {
                     SSAUtil.removePhiIn(getLIR(), toBlock);
                 }

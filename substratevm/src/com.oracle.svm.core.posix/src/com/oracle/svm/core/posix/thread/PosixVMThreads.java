@@ -24,29 +24,33 @@
  */
 package com.oracle.svm.core.posix.thread;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Pthread;
+import com.oracle.svm.core.posix.headers.Sched;
+import com.oracle.svm.core.posix.headers.Time;
+import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.TimeUtils;
 
+@AutomaticallyRegisteredImageSingleton(VMThreads.class)
 public final class PosixVMThreads extends VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    protected OSThreadHandle getCurrentOSThreadHandle() {
+    public OSThreadHandle getCurrentOSThreadHandle() {
         return Pthread.pthread_self();
     }
 
@@ -63,6 +67,27 @@ public final class PosixVMThreads extends VMThreads {
         PosixUtils.checkStatusIs0(Pthread.pthread_join_no_transition(pthread, WordFactory.nullPointer()), "Pthread.joinNoTransition");
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public void nativeSleep(int milliseconds) {
+        timespec ts = StackValue.get(timespec.class);
+        ts.set_tv_sec(milliseconds / TimeUtils.millisPerSecond);
+        ts.set_tv_nsec((milliseconds % TimeUtils.millisPerSecond) * TimeUtils.nanosPerMilli);
+        Time.NoTransitions.nanosleep(ts, WordFactory.nullPointer());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public void yield() {
+        Sched.NoTransitions.sched_yield();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public boolean supportsNativeYieldAndSleep() {
+        return true;
+    }
+
     @Uninterruptible(reason = "Thread state not set up.")
     @Override
     protected boolean initializeOnce() {
@@ -75,7 +100,7 @@ public final class PosixVMThreads extends VMThreads {
     @CFunction(value = "fdopen", transition = Transition.NO_TRANSITION)
     private static native FILE fdopen(int fd, CCharPointer mode);
 
-    @CFunction(value = "fprintf", transition = Transition.NO_TRANSITION)
+    @CFunction(value = "fprintfSD", transition = Transition.NO_TRANSITION)
     private static native int fprintfSD(FILE stream, CCharPointer format, CCharPointer arg0, int arg1);
 
     private static final CGlobalData<CCharPointer> FAIL_FATALLY_FDOPEN_MODE = CGlobalDataFactory.createCString("w");
@@ -87,13 +112,5 @@ public final class PosixVMThreads extends VMThreads {
         FILE stderr = fdopen(2, FAIL_FATALLY_FDOPEN_MODE.get());
         fprintfSD(stderr, FAIL_FATALLY_MESSAGE_FORMAT.get(), message, code);
         LibC.exit(code);
-    }
-}
-
-@AutomaticFeature
-class PosixVMThreadsFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(VMThreads.class, new PosixVMThreads());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,7 +118,7 @@ public class HotSpotCompiledCodeBuilder {
 
         int totalFrameSize = compResult.getTotalFrameSize();
         StackSlot customStackArea = compResult.getCustomStackArea();
-        boolean isImmutablePIC = compResult.isImmutablePIC();
+        boolean isImmutablePIC = false; // Legacy API from jaotc that no longer does anything
 
         if (method instanceof HotSpotResolvedJavaMethod) {
             HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;

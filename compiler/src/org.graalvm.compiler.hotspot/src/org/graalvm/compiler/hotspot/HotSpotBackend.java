@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,9 +30,9 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Tra
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
+import static org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.UNSAFE_ARRAYCOPY;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_END_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_TOP_LOCATION;
-import static org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls.UNSAFE_ARRAYCOPY;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.EnumSet;
@@ -43,7 +43,8 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
@@ -53,16 +54,10 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
-import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantStubCall;
-import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
-import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
-import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions;
-import org.graalvm.compiler.hotspot.replacements.DigestBaseSubstitutions;
 import org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
-import org.graalvm.compiler.hotspot.word.MethodCountersPointer;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -82,10 +77,8 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -94,9 +87,11 @@ import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
+import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -111,7 +106,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static class Options {
         // @formatter:off
         @Option(help = "Use Graal arithmetic stubs instead of HotSpot stubs where possible")
-        public static final OptionKey<Boolean> GraalArithmeticStubs = new OptionKey<>(JavaVersionUtil.JAVA_SPEC >= 9);
+        public static final OptionKey<Boolean> GraalArithmeticStubs = new OptionKey<>(true);
         @Option(help = "Enables instruction profiling on assembler level. Valid values are a comma separated list of supported instructions." +
                         " Compare with subclasses of Assembler.InstructionCounter.", type = OptionType.Debug)
         public static final OptionKey<String> ASMInstructionProfiling = new OptionKey<>(null);
@@ -131,11 +126,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor IC_MISS_HANDLER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "icMissHandler", void.class);
 
     /**
-     * Descriptor for SharedRuntime::get_handle_wrong_method_stub().
-     */
-    public static final HotSpotForeignCallDescriptor WRONG_METHOD_HANDLER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "wrongMethodHandler", void.class);
-
-    /**
      * Descriptor for {@link UnwindExceptionToCallerStub}. This stub is called by code generated
      * from {@link UnwindNode}.
      */
@@ -150,72 +140,20 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
 
     private final HotSpotGraalRuntimeProvider runtime;
 
-    /**
-     * @see AESCryptSubstitutions#encryptBlockStub(ForeignCallDescriptor, Word, Word, Pointer)
-     */
-    public static final HotSpotForeignCallDescriptor ENCRYPT_BLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "encrypt_block",
-                    void.class, Word.class, Word.class, Pointer.class);
-
-    /**
-     * @see AESCryptSubstitutions#decryptBlockStub(ForeignCallDescriptor, Word, Word, Pointer)
-     */
-    public static final HotSpotForeignCallDescriptor DECRYPT_BLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "decrypt_block",
-                    void.class, Word.class, Word.class, Pointer.class);
-
-    /**
-     * @see AESCryptSubstitutions#decryptBlockStub(ForeignCallDescriptor, Word, Word, Pointer)
-     */
-    public static final HotSpotForeignCallDescriptor DECRYPT_BLOCK_WITH_ORIGINAL_KEY = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
-                    "decrypt_block_with_original_key", void.class, Word.class, Word.class, Pointer.class,
-                    Pointer.class);
-
-    /**
-     * @see CipherBlockChainingSubstitutions#crypt
-     */
-    public static final HotSpotForeignCallDescriptor ENCRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "encrypt", void.class,
-                    Word.class, Word.class, Pointer.class, Pointer.class, int.class);
-
-    /**
-     * @see CipherBlockChainingSubstitutions#crypt
-     */
-    public static final HotSpotForeignCallDescriptor DECRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte), "decrypt", void.class,
-                    Word.class, Word.class, Pointer.class, Pointer.class, int.class);
-
-    /**
-     * @see CipherBlockChainingSubstitutions#crypt
-     */
-    public static final HotSpotForeignCallDescriptor DECRYPT_WITH_ORIGINAL_KEY = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
-                    "decrypt_with_original_key", void.class, Word.class, Word.class, Pointer.class, Pointer.class,
-                    int.class, Pointer.class);
-
-    /**
-     * @see BigIntegerSubstitutions#multiplyToLen
-     */
-    public static final HotSpotForeignCallDescriptor MULTIPLY_TO_LEN = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
-                    "multiplyToLen",
-                    void.class, Word.class, int.class, Word.class, int.class, Word.class, int.class);
-
-    public static void multiplyToLenStub(Word xAddr, int xlen, Word yAddr, int ylen, Word zAddr, int zLen) {
-        multiplyToLenStub(HotSpotBackend.MULTIPLY_TO_LEN, xAddr, xlen, yAddr, ylen, zAddr, zLen);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native void multiplyToLenStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word xIn, int xLen, Word yIn, int yLen, Word zIn, int zLen);
-
     public static final HotSpotForeignCallDescriptor MUL_ADD = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int), "mulAdd",
-                    int.class,
-                    Word.class, Word.class, int.class, int.class, int.class);
+                    int.class, Word.class, Word.class, int.class, int.class, int.class);
 
     public static final HotSpotForeignCallDescriptor MONTGOMERY_MULTIPLY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
-                    "implMontgomeryMultiply", void.class, Word.class, Word.class, Word.class, int.class, long.class,
-                    Word.class);
+                    "implMontgomeryMultiply", void.class, Word.class, Word.class, Word.class, int.class, long.class, Word.class);
 
     public static final HotSpotForeignCallDescriptor MONTGOMERY_SQUARE = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "implMontgomerySquare", void.class, Word.class, Word.class, int.class, long.class, Word.class);
 
     public static final HotSpotForeignCallDescriptor SQUARE_TO_LEN = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
-                    "implSquareToLen",
-                    void.class, Word.class, int.class, Word.class, int.class);
+                    "implSquareToLen", void.class, Word.class, int.class, Word.class, int.class);
+
+    public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "md5ImplCompress", void.class, Word.class,
+                    Object.class);
 
     public static final HotSpotForeignCallDescriptor SHA_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "shaImplCompress", void.class, Word.class,
                     Object.class);
@@ -226,9 +164,19 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor SHA5_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha5ImplCompress", void.class, Word.class,
                     Object.class);
 
-    /**
-     * @see DigestBaseSubstitutions#implCompressMultiBlock0
-     */
+    public static final HotSpotForeignCallDescriptor SHA3_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha3ImplCompress", void.class, Word.class,
+                    Object.class);
+
+    public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "md5ImplCompress", int.class, Word.class,
+                    Object.class, int.class, int.class);
+
+    public static int md5ImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
+        return md5ImplCompressMBStub(HotSpotBackend.MD5_IMPL_COMPRESS_MB, bufAddr, stateAddr, ofs, limit);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native int md5ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
+
     public static final HotSpotForeignCallDescriptor SHA_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "shaImplCompressMB", int.class, Word.class,
                     Object.class, int.class, int.class);
 
@@ -259,6 +207,16 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @NodeIntrinsic(ForeignCallNode.class)
     private static native int sha5ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
 
+    public static final HotSpotForeignCallDescriptor SHA3_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha3ImplCompressMB", int.class, Word.class,
+                    Object.class, int.class, int.class);
+
+    public static int sha3ImplCompressMBStub(Word bufAddr, Object stateAddr, int ofs, int limit) {
+        return shaImplCompressMBStub(HotSpotBackend.SHA3_IMPL_COMPRESS_MB, bufAddr, stateAddr, ofs, limit);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native int sha3ImplCompressMBStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state, int ofs, int limit);
+
     public static void unsafeArraycopy(Word srcAddr, Word dstAddr, Word size) {
         unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
     }
@@ -279,25 +237,21 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     int.class, int.class, Word.class, int.class, boolean.class);
 
     /**
+     * Descriptor for {@code StubRoutines::_base64_decodeBlock}.
+     *
+     * JDK-8268276 - added isMIME parameter
+     */
+    public static final HotSpotForeignCallDescriptor BASE64_DECODE_BLOCK = GraalHotSpotVMConfig.base64DecodeBlockHasIsMIMEParameter()
+                    ? new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "base64DecodeBlock", int.class, Word.class,
+                                    int.class, int.class, Word.class, int.class, boolean.class, boolean.class)
+                    : new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "base64DecodeBlock", int.class, Word.class,
+                                    int.class, int.class, Word.class, int.class, boolean.class);
+
+    /**
      * Descriptor for {@code StubRoutines::_counterMode_AESCrypt}.
      */
     public static final HotSpotForeignCallDescriptor COUNTERMODE_IMPL_CRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "counterModeAESCrypt", int.class,
-                    Word.class, Word.class, Word.class, Word.class, int.class,
-                    Word.class, Word.class);
-
-    public static int counterModeAESCrypt(Word srcAddr, Word dstAddr, Word kPtr, Word cntPtr, int len, Word encCntPtr, Word used) {
-        return counterModeAESCrypt(COUNTERMODE_IMPL_CRYPT, srcAddr, dstAddr, kPtr, cntPtr, len, encCntPtr, used);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native int counterModeAESCrypt(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word srcAddr, Word dstAddr, Word kPtr, Word cntPtr, int len, Word encCntPtr,
-                    Word used);
-
-    /**
-     * Descriptor for {@code StubRoutines::_vectorizedMismatch}.
-     */
-    public static final HotSpotForeignCallDescriptor VECTORIZED_MISMATCH = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "vectorizedMismatch", int.class, Word.class,
-                    Word.class, int.class, int.class);
+                    Word.class, Word.class, Word.class, Word.class, int.class, Word.class, Word.class);
 
     public static final LocationIdentity CRC_TABLE_LOCATION = NamedLocationIdentity.immutable("crc32_table");
 
@@ -307,7 +261,24 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor UPDATE_BYTES_CRC32C = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "updateBytesCRC32C", int.class, int.class,
                     WordBase.class, int.class);
 
-    public static String copyMemoryName = JavaVersionUtil.JAVA_SPEC <= 8 ? "copyMemory" : "copyMemory0";
+    public static final HotSpotForeignCallDescriptor UPDATE_BYTES_ADLER32 = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "updateBytesAdler32", int.class, int.class,
+                    WordBase.class, int.class);
+
+    public static final HotSpotForeignCallDescriptor BIGINTEGER_LEFT_SHIFT_WORKER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "bigIntegerLeftShiftWorker", void.class,
+                    WordBase.class, WordBase.class, int.class, int.class, int.class);
+
+    public static final HotSpotForeignCallDescriptor BIGINTEGER_RIGHT_SHIFT_WORKER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "bigIntegerRightShiftWorker", void.class,
+                    WordBase.class, WordBase.class, int.class, int.class, int.class);
+
+    public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(),
+                    "_electronicCodeBook_encryptAESCrypt", int.class,
+                    WordBase.class, WordBase.class, WordBase.class, int.class);
+
+    public static final HotSpotForeignCallDescriptor ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(),
+                    "_electronicCodeBook_decryptAESCrypt", int.class,
+                    WordBase.class, WordBase.class, WordBase.class, int.class);
+
+    public static final HotSpotForeignCallDescriptor CONTINUATION_DO_YIELD = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(), "_cont_doYield", int.class);
 
     /**
      * @see VMErrorNode
@@ -352,45 +323,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor NEW_INSTANCE_OR_NULL = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, TLAB_LOCATIONS, "new_instance_or_null", Object.class,
                     KlassPointer.class);
 
-    /**
-     * @see ResolveConstantStubCall
-     */
-    public static final HotSpotForeignCallDescriptor RESOLVE_STRING_BY_SYMBOL = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, TLAB_LOCATIONS, "resolve_string_by_symbol", Object.class,
-                    Word.class, Word.class);
-
-    /**
-     * @see ResolveConstantStubCall
-     */
-    public static final HotSpotForeignCallDescriptor RESOLVE_DYNAMIC_INVOKE = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, any(), "resolve_dynamic_invoke", Object.class, Word.class);
-
-    /**
-     * @see ResolveConstantStubCall
-     */
-    public static final HotSpotForeignCallDescriptor RESOLVE_KLASS_BY_SYMBOL = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, any(), "resolve_klass_by_symbol", Word.class, Word.class,
-                    Word.class);
-
-    /**
-     * @see ResolveConstantStubCall
-     */
-    public static final HotSpotForeignCallDescriptor INITIALIZE_KLASS_BY_SYMBOL = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(), "initialize_klass_by_symbol", Word.class,
-                    Word.class,
-                    Word.class);
-
-    /**
-     * @see ResolveConstantStubCall
-     */
-    public static final HotSpotForeignCallDescriptor RESOLVE_METHOD_BY_SYMBOL_AND_LOAD_COUNTERS = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS,
-                    "resolve_method_by_symbol_and_load_counters", Word.class, Word.class, Word.class,
-                    Word.class);
-
-    /**
-     * Tiered support.
-     */
-    public static final HotSpotForeignCallDescriptor INVOCATION_EVENT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "invocation_event", void.class,
-                    MethodCountersPointer.class);
-    public static final HotSpotForeignCallDescriptor BACKEDGE_EVENT = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "backedge_event", void.class, MethodCountersPointer.class,
-                    int.class, int.class);
-
     public HotSpotBackend(HotSpotGraalRuntimeProvider runtime, HotSpotProviders providers) {
         super(providers);
         this.runtime = runtime;
@@ -433,10 +365,11 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
             }
         };
         boolean sawSaveRegisters = false;
-        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
-            if (block == null) {
+        for (int blockId : lir.getBlocks()) {
+            if (AbstractControlFlowGraph.blockIsDeletedOrNew(blockId)) {
                 continue;
             }
+            BasicBlock<?> block = lir.getBlockById(blockId);
             // Ignore the effects of instructions bracketed by save/restore
             SaveRegistersOp save = null;
             for (LIRInstruction op : lir.getLIRforBlock(block)) {
@@ -540,5 +473,15 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
             return new HotSpotCompilationIdentifier(request);
         }
         return super.getCompilationIdentifier(resolvedJavaMethod);
+    }
+
+    /**
+     * Gets the minimum alignment for an item in the {@linkplain DataSectionReference data section}.
+     */
+    protected int getMinDataSectionItemAlignment() {
+        HotSpotVMConfigAccess vmAccess = new HotSpotVMConfigAccess(runtime.getVMConfig().getStore());
+        int vmValue = vmAccess.getFieldValue("CompilerToVM::Data::data_section_item_alignment", Integer.class, "int", -1);
+        // Choosing 4 as minimum (JDK-8283626) if JVMCI does not expose the VM value
+        return Math.max(4, vmValue);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,8 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionListenerDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 /**
  * Execution listeners allow to instrument the execution of guest languages. For example, it is
@@ -190,11 +192,13 @@ import org.graalvm.polyglot.Source;
  */
 public final class ExecutionListener implements AutoCloseable {
 
-    private static final ExecutionListener EMPTY = new ExecutionListener(null);
-    private final Object impl;
+    private static final ExecutionListener EMPTY = new ExecutionListener(null, null);
+    final AbstractExecutionListenerDispatch dispatch;
+    final Object receiver;
 
-    private ExecutionListener(Object impl) {
-        this.impl = impl;
+    ExecutionListener(AbstractExecutionListenerDispatch dispatch, Object receiver) {
+        this.dispatch = dispatch;
+        this.receiver = receiver;
     }
 
     /**
@@ -211,7 +215,7 @@ public final class ExecutionListener implements AutoCloseable {
      * @since 19.0
      */
     public void close() {
-        Management.IMPL.closeExecutionListener(impl);
+        dispatch.closeExecutionListener(receiver);
     }
 
     /**
@@ -422,9 +426,9 @@ public final class ExecutionListener implements AutoCloseable {
          * @since 19.0
          */
         public ExecutionListener attach(Engine engine) {
-            return new ExecutionListener(
-                            Management.IMPL.attachExecutionListener(engine, onEnter, onReturn, expressions, statements, roots,
-                                            sourceFilter, rootNameFilter, collectInputValues, collectReturnValues, collectExceptions));
+            APIAccess apiAccess = Management.IMPL.getAPIAccess();
+            return apiAccess.getDispatch(engine).attachExecutionListener(apiAccess.getReceiver(engine), onEnter, onReturn, expressions, statements, roots,
+                            sourceFilter, rootNameFilter, collectInputValues, collectReturnValues, collectExceptions);
         }
     }
 

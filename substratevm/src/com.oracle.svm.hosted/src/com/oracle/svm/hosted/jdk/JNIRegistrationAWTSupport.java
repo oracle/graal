@@ -24,19 +24,18 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 
 @Platforms(Platform.WINDOWS.class)
-@AutomaticFeature
-public class JNIRegistrationAWTSupport implements Feature {
+@AutomaticallyRegisteredFeature
+public class JNIRegistrationAWTSupport implements InternalFeature {
     @Override
-    public void beforeImageWrite(BeforeImageWriteAccess access) {
+    public void afterAnalysis(AfterAnalysisAccess access) {
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();
         if (jniRegistrationSupport.isRegisteredLibrary("awt")) {
             jniRegistrationSupport.addJvmShimExports(
@@ -65,43 +64,31 @@ public class JNIRegistrationAWTSupport implements Feature {
                             "JNU_ThrowOutOfMemoryError",
                             "getEncodingFromLangID",
                             "getJavaIDFromLangID");
-            ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
-                /* Force otherwise unused symbols necessary for the java.dll shim ... */
-                linkerInvocation.addNativeLinkerOption("/include:JDK_LoadSystemLibrary");
-                linkerInvocation.addNativeLinkerOption("/include:getEncodingFromLangID");
-                linkerInvocation.addNativeLinkerOption("/include:getJavaIDFromLangID");
-                /* ... and add a Windows library that is pulled in as a side effect. */
-                linkerInvocation.addNativeLinkerOption("shell32.lib");
-                return linkerInvocation;
-            });
         }
-        if (jniRegistrationSupport.isRegisteredLibrary("dcpr") && JavaVersionUtil.JAVA_SPEC == 8) {
-            jniRegistrationSupport.addJavaShimExports(
-                            "JNU_ThrowClassNotFoundException");
-        }
-        if (jniRegistrationSupport.isRegisteredLibrary("fontmanager") && JavaVersionUtil.JAVA_SPEC >= 11) {
-            /*
-             * Dependency on `harfbuzz` may not be expressed in Java, so we register it manually
-             * here just in case.
-             */
-            jniRegistrationSupport.registerLibrary("harfbuzz");
-        }
-        if (jniRegistrationSupport.isRegisteredLibrary("javaaccessbridge") && JavaVersionUtil.JAVA_SPEC > 8) {
+        if (jniRegistrationSupport.isRegisteredLibrary("javaaccessbridge")) {
             /* Dependency on `jawt` is not expressed in Java, so we register it manually here. */
             jniRegistrationSupport.registerLibrary("jawt");
         }
-        if (jniRegistrationSupport.isRegisteredLibrary(JavaVersionUtil.JAVA_SPEC > 8 ? "javajpeg" : "jpeg")) {
+        if (jniRegistrationSupport.isRegisteredLibrary("javajpeg")) {
             jniRegistrationSupport.addJavaShimExports(
                             "JNU_GetEnv",
                             "JNU_ThrowByName",
                             "JNU_ThrowNullPointerException",
                             "jio_snprintf");
         }
-        if (jniRegistrationSupport.isRegisteredLibrary("jpeg") && JavaVersionUtil.JAVA_SPEC == 8) {
-            jniRegistrationSupport.addJavaShimExports(
-                            "JNU_CallMethodByName",
-                            "JNU_CallStaticMethodByName",
-                            "JNU_NewObjectByName");
+    }
+
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
+        if (JNIRegistrationSupport.singleton().isRegisteredLibrary("awt")) {
+            ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
+                /*
+                 * Add a Windows library that is pulled in as a side effect of exporting the
+                 * `getEncodingFromLangID` and `getJavaIDFromLangID` symbols.
+                 */
+                linkerInvocation.addNativeLinkerOption("shell32.lib");
+                return linkerInvocation;
+            });
         }
     }
 }

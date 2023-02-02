@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,32 +32,48 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
+import jdk.vm.ci.meta.JavaKind;
+
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements Virtualizable, IterableNodeType {
     public static final NodeClass<VirtualFrameClearNode> TYPE = NodeClass.create(VirtualFrameClearNode.class);
 
-    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag) {
-        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, illegalTag);
+    public VirtualFrameClearNode(Receiver frame, int frameSlotIndex, int illegalTag, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, illegalTag, type, accessFlags);
+        assert accessFlags.updatesFrame();
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        ValueNode tagAlias = tool.getAlias(frame.virtualFrameTagArray);
-        if (tagAlias instanceof VirtualObjectNode) {
+        ValueNode tagAlias = tool.getAlias(frame.getTagArray(type));
+        ValueNode localsAlias = tool.getAlias(frame.getObjectArray(type));
+        ValueNode primitiveAlias = tool.getAlias(frame.getPrimitiveArray(type));
+        if (tagAlias instanceof VirtualObjectNode && localsAlias instanceof VirtualObjectNode && primitiveAlias instanceof VirtualObjectNode) {
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
+            VirtualObjectNode localsVirtual = (VirtualObjectNode) localsAlias;
+            VirtualObjectNode primitiveVirtual = (VirtualObjectNode) primitiveAlias;
             if (frameSlotIndex < tagVirtual.entryCount()) {
                 // Simply set kind to illegal. A later phase will clear the slots.
-                boolean success = tool.setVirtualEntry(tagVirtual,
-                                frameSlotIndex,
-                                getConstant(accessTag),
-                                tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex),
-                                -1);
+                JavaKind tagKind = tagVirtual.entryKind(tool.getMetaAccessExtensionProvider(), frameSlotIndex);
+                boolean success;
+                if (accessFlags.isStatic()) {
+                    success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstantWithStaticModifier(accessTag), tagKind, -1);
+                } else {
+                    success = tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag), tagKind, -1);
+                }
+                if (accessFlags.isObject()) {
+                    success = success && tool.setVirtualEntry(localsVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Object, graph()), JavaKind.Object, -1);
+                }
+                if (accessFlags.isPrimitive()) {
+                    success = success && tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
+                }
                 if (success) {
                     tool.delete();
                     return;
@@ -70,5 +86,10 @@ public class VirtualFrameClearNode extends VirtualFrameAccessorNode implements V
          * do not have a FrameState to use for the memory store.
          */
         insertDeoptimization(tool);
+    }
+
+    @Override
+    public <State> void updateVerificationState(VirtualFrameVerificationStateUpdater<State> updater, State state) {
+        updater.clear(state, getFrameSlotIndex());
     }
 }

@@ -32,13 +32,4 @@ public class BranchTargetOutOfBoundsException extends GraalBailoutException {
     public BranchTargetOutOfBoundsException(boolean permanent, String format, Object... args) {
         super(permanent, format, args);
     }
-
-    public BranchTargetOutOfBoundsException(String format, Object... args) {
-        super(format, args);
-    }
-
-    public BranchTargetOutOfBoundsException(Throwable cause, String format, Object... args) {
-        super(cause, format, args);
-    }
-
 }

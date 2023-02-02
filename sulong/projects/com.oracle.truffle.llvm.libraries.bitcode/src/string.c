@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,9 +53,24 @@ char *strcpy(char *dest, const char *source) {
     return dest;
 }
 
+size_t strnlen(const char *s, size_t n) {
+    if (polyglot_has_array_elements(s)) {
+        size_t max = polyglot_get_array_size(s);
+        if (n > max) {
+            n = max;
+        }
+    }
+
+    int len = 0;
+    while (len < n && s[len] != 0) {
+        len++;
+    }
+    return len;
+}
+
 size_t strlen(const char *s) {
     if (polyglot_has_array_elements(s)) {
-        return (size_t) polyglot_get_array_size(s);
+        return strnlen(s, INT_MAX);
     }
 
     int len = 0;
@@ -87,4 +102,18 @@ int strcmp(const char *s1, const char *s2) {
     } else {
         return 0;
     }
+}
+
+#if !defined(_WIN32)
+char *strdup(const char *s) {
+    int length = strlen(s);
+    return strcpy((char *) malloc(length + 1), s);
+}
+#endif
+
+char *strndup(const char *s, size_t size) {
+    int length = strnlen(s, size);
+    char *copy = strncpy((char *) malloc(length + 1), s, length);
+    copy[length] = '\0';
+    return copy;
 }

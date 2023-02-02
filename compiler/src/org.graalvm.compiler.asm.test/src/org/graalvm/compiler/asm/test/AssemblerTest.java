@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,15 +99,17 @@ public abstract class AssemblerTest extends GraalTest {
             byte[] targetCode = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);
             compResult.setTargetCode(targetCode, targetCode.length);
             compResult.setTotalFrameSize(0);
-            compResult.close();
+            compResult.close(options);
 
             InstalledCode code = backend.addInstalledCode(debug, method, asCompilationRequest(compilationId), compResult);
 
             for (DisassemblerProvider dis : GraalServices.load(DisassemblerProvider.class)) {
-                String disasm1 = dis.disassembleCompiledCode(options, codeCache, compResult);
-                Assert.assertTrue(compResult.toString(), disasm1 == null || disasm1.length() > 0);
-                String disasm2 = dis.disassembleInstalledCode(codeCache, compResult, code);
-                Assert.assertTrue(code.toString(), disasm2 == null || disasm2.length() > 0);
+                if (dis.isAvailable(options)) {
+                    String disasm1 = dis.disassembleCompiledCode(options, codeCache, compResult);
+                    Assert.assertTrue(compResult.toString(), disasm1 == null || disasm1.length() > 0);
+                    String disasm2 = dis.disassembleInstalledCode(codeCache, compResult, code);
+                    Assert.assertTrue(code.toString(), disasm2 == null || disasm2.length() > 0);
+                }
             }
             return code;
         } catch (Throwable e) {

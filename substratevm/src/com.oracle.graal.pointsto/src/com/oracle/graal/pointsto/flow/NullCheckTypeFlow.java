@@ -24,9 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -37,12 +35,12 @@ public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
     /** If true, lets anything but null pass through. If false only null passes through. */
     private final boolean blockNull;
 
-    public NullCheckTypeFlow(ValueNode node, AnalysisType inputType, boolean blockNull) {
+    public NullCheckTypeFlow(BytecodePosition position, AnalysisType inputType, boolean blockNull) {
         /*
          * OffsetLoadTypeFlow reflects the state of the receiver array or unsafe read object. Null
          * check type flow filters based on the values that can be written to the object.
          */
-        super(node.getNodeSourcePosition(), inputType);
+        super(position, inputType);
         this.blockNull = blockNull;
     }
 
@@ -52,7 +50,7 @@ public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return new NullCheckTypeFlow(methodFlows, this);
     }
 
@@ -62,7 +60,7 @@ public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState newState) {
+    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
         if (blockNull) {
             return newState.forNonNull(bb);
         } else if (newState.canBeNull()) {
@@ -70,12 +68,6 @@ public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
         } else {
             return TypeState.forEmpty();
         }
-    }
-
-    @Override
-    public boolean addState(BigBang bb, TypeState add) {
-        assert this.isClone();
-        return super.addState(bb, add);
     }
 
     @Override

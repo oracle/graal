@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -147,11 +147,11 @@ public class RelativeSourceInspectDebugTest {
                             "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                     "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"" + funcName + "\"," +
                                                      "\"scopeChain\":[{\"name\":\"" + funcName + "\",\"type\":\"local\",\"object\":{\"description\":\"" + funcName + "\",\"type\":\"object\",\"objectId\":\"" + objId + "\"}}]," +
-                                                     "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"" + (objId + 1) + "\"}," +
+                                                     "\"this\":null," +
                                                      "\"functionLocation\":{\"scriptId\":\"" + i + "\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                      "\"location\":{\"scriptId\":\"" + i + "\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                      "\"url\":\"" + resolvedURI[i] + "\"}]}}\n"));
-            objId += 2;
+            objId++;
             tester.sendMessage("{\"id\":" + cmdId + ",\"method\":\"Debugger.getScriptSource\",\"params\":{\"scriptId\":\"" + i + "\"}}");
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"scriptSource\":\"" + sourceContent[i].replace("\n", "\\n") + "\"},\"id\":" + cmdId + "}\n"));
@@ -186,22 +186,24 @@ public class RelativeSourceInspectDebugTest {
         assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
 
+        String resolvedPath = new File("relative/path").toPath().toAbsolutePath().toUri().toString();
+
         // @formatter:off   The default formatting makes unnecessarily big indents and illogical line breaks
         // CheckStyle: stop line length check
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
-        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":3,\"scriptId\":\"0\",\"endColumn\":0,\"startColumn\":0,\"startLine\":0,\"length\":168,\"executionContextId\":1,\"url\":\"relative/path\",\"hash\":\"ea519706da04092af2f9afd9f84696c2fe44bc91\"}}\n"));
+        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":3,\"scriptId\":\"0\",\"endColumn\":0,\"startColumn\":0,\"startLine\":0,\"length\":168,\"executionContextId\":1,\"url\":\"" + resolvedPath + "\",\"hash\":\"ea519706da04092af2f9afd9f84696c2fe44bc91\"}}\n"));
         // Suspend at the beginning of the script:
         assertTrue(tester.compareReceivedMessages(
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"relative\"," +
                                                  "\"scopeChain\":[{\"name\":\"relative\",\"type\":\"local\",\"object\":{\"description\":\"relative\",\"type\":\"object\",\"objectId\":\"1\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"2\"}," +
+                                                 "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
-                                                 "\"url\":\"relative/path\"}]}}\n"));
+                                                 "\"url\":\"" + resolvedPath + "\"}]}}\n"));
         tester.sendMessage("{\"id\":1,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
@@ -279,9 +281,16 @@ public class RelativeSourceInspectDebugTest {
 
     @Test
     public void testBreakpoints() throws Exception {
+        testBreakpoints(0, 0, 0, 0, "fdfc3c86f176a91df464039fffffffffffffffff");
+        testBreakpoints(10, 4, 10, 0, "f6a4c78bef714d0af464039fffffffffffffffff");
+        testBreakpoints(10, 4, 10, 2, "f6a4c78bef714d0af464039fffffffffffffffff");
+        testBreakpoints(10, 4, 11, 2, "f6a4c78bef714d0af464039fffffffffffffffff");
+    }
+
+    private static void testBreakpoints(int sectionLine, int sectionColumn, int bpLine, int bpColumn, String hash) throws Exception {
         Path testSourcePath = Files.createTempDirectory("testPath").toRealPath();
         String relativePath = "relative/test1.file";
-        String sourceContent = "relative source1\nVarA";
+        String sourceContent = "\n".repeat(sectionLine) + " ".repeat(sectionColumn) + "relative source1\nVarA";
         URI sourcePathURI = testSourcePath.toUri();
         Files.createDirectory(testSourcePath.resolve("relative"));
         Path filePath = testSourcePath.resolve(relativePath);
@@ -290,7 +299,7 @@ public class RelativeSourceInspectDebugTest {
 
         TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, true, true);
         ProxyLanguage.setDelegate(language);
-        Source source = Source.create(ProxyLanguage.ID, "relative source1\nVarA");
+        Source source = Source.create(ProxyLanguage.ID, sourceContent);
 
         InspectorTester tester = InspectorTester.start(false, false, false, Collections.singletonList(sourcePathURI));
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -305,19 +314,96 @@ public class RelativeSourceInspectDebugTest {
                         "{\"result\":{},\"id\":3}\n" +
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
 
-        tester.sendMessage("{\"id\":4,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":0,\"url\":\"" + fileURI + "\",\"columnNumber\":0,\"condition\":\"\"}}");
+        tester.sendMessage("{\"id\":4,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":" + bpLine + ",\"url\":\"" + fileURI + "\",\"columnNumber\":" + bpColumn + ",\"condition\":\"\"}}");
 
         assertEquals("{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":4}", tester.getMessages(true).trim());
         tester.eval(source);
-        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":1,\"scriptId\":\"0\",\"endColumn\":4,\"startColumn\":0,\"startLine\":0,\"length\":" + sourceContent.length() + ",\"executionContextId\":1,\"url\":\"" + fileURI + "\",\"hash\":\"fdfc3c86f176a91df464039fffffffffffffffff\"}}\n"));
+        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":" + (sectionLine + 1) + ",\"scriptId\":\"0\",\"endColumn\":4,\"startColumn\":0,\"startLine\":0,\"length\":" + sourceContent.length() + ",\"executionContextId\":1,\"url\":\"" + fileURI + "\",\"hash\":\"" + hash + "\"}}\n"));
+        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.breakpointResolved\",\"params\":{\"breakpointId\":\"1\",\"location\":{\"scriptId\":\"0\",\"columnNumber\":" + sectionColumn + ",\"lineNumber\":" + sectionLine + "}}}\n"));
         // Suspend at the beginning of the script:
         assertTrue(tester.compareReceivedMessages(
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[\"1\"]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"relative\"," +
                                                  "\"scopeChain\":[{\"name\":\"relative\",\"type\":\"local\",\"object\":{\"description\":\"relative\",\"type\":\"object\",\"objectId\":\"1\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"2\"}," +
-                                                 "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
+                                                 "\"this\":null," +
+                                                 "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":" + sectionColumn + ",\"lineNumber\":" + sectionLine + "}," +
+                                                 "\"location\":{\"scriptId\":\"0\",\"columnNumber\":" + sectionColumn + ",\"lineNumber\":" + sectionLine + "}," +
+                                                 "\"url\":\"" + fileURI + "\"}]}}\n"));
+        tester.sendMessage("{\"id\":5,\"method\":\"Debugger.resume\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":5}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n"));
+        // @formatter:on
+        // CheckStyle: resume line length check
+        language = null;
+        // Reset the delegate so that we can GC the tested Engine
+        ProxyLanguage.setDelegate(new ProxyLanguage());
+        tester.finish();
+    }
+
+    @Test
+    public void testEagerSourceLoad() throws Exception {
+        Path testSourcePath = Files.createTempDirectory("testPath").toRealPath();
+        // testProlog1.file will exist under source path
+        String relativePathProlog1 = "relative/testProlog1.file";
+        // testProlog2.file will not exist
+        String relativePathProlog2 = "relative/testProlog2.file";
+        String relativePath = "relative/test1.file";
+        String sourceContent = "relative source1\nVarA";
+        URI sourcePathURI = testSourcePath.toUri();
+        Files.createDirectory(testSourcePath.resolve("relative"));
+
+        Path filePath = testSourcePath.resolve(relativePathProlog1);
+        Files.write(filePath, sourceContent.getBytes());
+        String prolog1URI = filePath.toUri().toString();
+        String prolog2URI = new File("").toPath().toRealPath().resolve(relativePathProlog2).toUri().toString();
+
+        filePath = testSourcePath.resolve(relativePath);
+        Files.write(filePath, sourceContent.getBytes());
+        String fileURI = filePath.toUri().toString();
+
+        InspectorTester tester = InspectorTester.start(true, false, false, Collections.singletonList(sourcePathURI), (context) -> {
+            TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePathProlog1, true, true);
+            ProxyLanguage.setDelegate(language);
+            Source sourceProlog = Source.create(ProxyLanguage.ID, sourceContent);
+            context.eval(sourceProlog);
+
+            language = new TestDebugNoContentLanguage(relativePathProlog2, true, true);
+            ProxyLanguage.setDelegate(language);
+            sourceProlog = Source.create(ProxyLanguage.ID, "relative source2\nVarB");
+            context.eval(sourceProlog);
+        });
+
+        tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
+        assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
+        tester.sendMessage("{\"id\":2,\"method\":\"Debugger.enable\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":1,\"scriptId\":\"0\",\"endColumn\":4,\"startColumn\":0,\"startLine\":0,\"length\":" + sourceContent.length() +
+                                        ",\"executionContextId\":1,\"url\":\"" + prolog1URI + "\",\"hash\":\"fdfc3c86f176a91df464039fffffffffffffffff\"}}\n"));
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":3,\"scriptId\":\"1\",\"endColumn\":0,\"startColumn\":0,\"startLine\":0,\"length\":" + 180 +
+                                        ",\"executionContextId\":1,\"url\":\"" + prolog2URI + "\",\"hash\":\"ddbb5c60e6d93544f2f9afd9f84696c2ffd09768\"}}\n"));
+        assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
+
+        // @formatter:off   The default formatting makes unnecessarily big indents and illogical line breaks
+        // CheckStyle: stop line length check
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
+        TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, true, true);
+        ProxyLanguage.setDelegate(language);
+        Source sourceMain = Source.create(ProxyLanguage.ID, "relative source3\nVarC");
+        tester.eval(sourceMain);
+        assertTrue(tester.compareReceivedMessages("{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":1,\"scriptId\":\"2\",\"endColumn\":4,\"startColumn\":0,\"startLine\":0,\"length\":" + sourceContent.length() + ",\"executionContextId\":1,\"url\":\"" + fileURI + "\",\"hash\":\"fdfc3c86f176a91df464039fffffffffffffffff\"}}\n"));
+        // Suspend at the beginning of the script:
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"relative\"," +
+                                                 "\"scopeChain\":[{\"name\":\"relative\",\"type\":\"local\",\"object\":{\"description\":\"relative\",\"type\":\"object\",\"objectId\":\"1\"}}]," +
+                                                 "\"this\":null," +
+                                                 "\"functionLocation\":{\"scriptId\":\"2\",\"columnNumber\":0,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"2\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"url\":\"" + fileURI + "\"}]}}\n"));
         tester.sendMessage("{\"id\":5,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(
@@ -340,7 +426,7 @@ public class RelativeSourceInspectDebugTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try (Context context = Context.newBuilder().option("inspect.SourcePath", sourcePath).out(out).err(out).build()) {
             Instrument inspector = context.getEngine().getInstruments().get("inspect");
-            OptionValues optionValues = (OptionValues) ReflectionUtils.getField(ReflectionUtils.getField(inspector, "impl"), "optionValues");
+            OptionValues optionValues = (OptionValues) ReflectionUtils.getField(ReflectionUtils.getField(inspector, "receiver"), "optionValues");
             List<URI> spValue = (List<URI>) optionValues.get(inspector.getOptions().get("inspect.SourcePath").getKey());
             if (validator != null) {
                 validator.accept(spValue.get(0));

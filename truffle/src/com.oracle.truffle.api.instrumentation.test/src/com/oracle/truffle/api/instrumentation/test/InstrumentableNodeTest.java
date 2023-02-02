@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTe
 import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTest.EventKind.INPUT_VALUE;
 import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTest.EventKind.RETURN_VALUE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.LinkedList;
@@ -57,7 +58,6 @@ import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -339,16 +339,21 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
         static final String ID = "truffle-materialization-test-language";
         static final int NUM_CHILDREN = 4;
         static final int DEPTH = 6;
+        private static final LanguageReference<MaterializationLanguage> LANG_REFERENCE = LanguageReference.create(MaterializationLanguage.class);
 
         private int numMaterializations;
         private int numMultipleMaterializations;
         private final List<CallTarget> targets = new LinkedList<>(); // To prevent from GC
 
+        public MaterializationLanguage() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             com.oracle.truffle.api.source.Source source = request.getSource();
             String code = source.getCharacters().toString();
-            CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            CallTarget target = new RootNode(this) {
 
                 @Node.Children private MaterializableNode[] children = code.startsWith("num") ? new MaterializableNode[]{} : createChildren(MaterializationLanguage.this, source, 1);
 
@@ -373,7 +378,7 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
                     return source.createSection(1);
                 }
 
-            });
+            }.getCallTarget();
             targets.add(target);
             return target;
         }
@@ -485,6 +490,13 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
 
             @Override
             public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+                // Test that the language reference is available in materializeInstrumentableNodes()
+                MaterializationLanguage expectedLanguage = this.language;
+                MaterializationLanguage actualLanguage = LANG_REFERENCE.get(this);
+                assertSame(expectedLanguage, actualLanguage);
+                actualLanguage = LANG_REFERENCE.get(null);
+                assertSame(expectedLanguage, actualLanguage);
+
                 if (materialized) {
                     language.numMultipleMaterializations++;
                 }

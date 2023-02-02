@@ -24,9 +24,8 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-
 import com.oracle.graal.pointsto.api.HostVM;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
@@ -56,9 +55,9 @@ public interface Universe {
 
     JavaMethod lookupAllowUnresolved(JavaMethod method);
 
-    WrappedSignature lookup(Signature signature, WrappedJavaType defaultAccessingClass);
+    WrappedSignature lookup(Signature signature, ResolvedJavaType defaultAccessingClass);
 
-    WrappedConstantPool lookup(ConstantPool constantPool, WrappedJavaType defaultAccessingClass);
+    WrappedConstantPool lookup(ConstantPool constantPool, ResolvedJavaType defaultAccessingClass);
 
     JavaConstant lookup(JavaConstant constant);
 

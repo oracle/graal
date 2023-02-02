@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,11 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 struct asdf {
-    long a;
-    long b;
+    int64_t a;
+    int64_t b;
 };
 
 int main() {

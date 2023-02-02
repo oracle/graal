@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.java;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_64;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -80,7 +81,7 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
             VirtualObjectNode virtual = (VirtualObjectNode) alias;
             if (virtual.hasIdentity()) {
                 MonitorIdNode removedLock = tool.removeLock(virtual);
-                assert removedLock == getMonitorId() : "mismatch at " + this + ": " + removedLock + " vs. " + getMonitorId();
+                GraalError.guarantee(MonitorIdNode.monitorIdentityEquals(removedLock, getMonitorId()), "mismatch at %s: %s vs. %s", this, removedLock, getMonitorId());
                 tool.delete();
             }
         }

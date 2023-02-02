@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -303,8 +303,12 @@ public final class DebugStackFrame {
             node = context.getInstrumentedNode();
         } else {
             node = currentFrame.getCallNode();
+            if (node == null) {
+                return null;
+            }
             node = InstrumentableNode.findInstrumentableParent(node);
         }
+
         DebuggerSession session = event.getSession();
         Frame frame = findTruffleFrame(FrameAccess.READ_WRITE);
         try {
@@ -327,7 +331,7 @@ public final class DebugStackFrame {
     /**
      * Returns the current node for this stack frame, or <code>null</code> if the requesting
      * language class does not match the root node guest language.
-     * 
+     *
      * This method is permitted only if the guest language class is available. This is the case if
      * you want to utilize the Debugger API directly from within a guest language, or if you are an
      * instrument bound/dependent on a specific language.

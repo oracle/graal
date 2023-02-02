@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,11 +35,11 @@ import org.graalvm.compiler.nodes.gc.G1PreWriteBarrier;
 import org.graalvm.compiler.nodes.gc.G1ReferentFieldReadBarrier;
 import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.policy.InlineEverythingPolicy;
@@ -85,9 +85,10 @@ public class DeferredBarrierAdditionTest extends HotSpotGraalCompilerTest {
             new InliningPhase(new InlineEverythingPolicy(), createCanonicalizerPhase()).apply(graph, highContext);
             this.createCanonicalizerPhase().apply(graph, highContext);
             new PartialEscapePhase(false, createCanonicalizerPhase(), debug.getOptions()).apply(graph, highContext);
-            new LoweringPhase(createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, highContext);
+            new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, highContext);
             new GuardLoweringPhase().apply(graph, midContext);
-            new LoweringPhase(createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
+            new MidTierLoweringPhase(createCanonicalizerPhase()).apply(graph, midContext);
+            graph.getGraphState().setAfterFSA();
             new WriteBarrierAdditionPhase().apply(graph, midContext);
             debug.dump(DebugContext.BASIC_LEVEL, graph, "After Write Barrier Addition");
 

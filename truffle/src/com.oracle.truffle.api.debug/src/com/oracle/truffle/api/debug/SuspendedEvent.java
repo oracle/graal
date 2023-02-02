@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -848,7 +848,7 @@ public final class SuspendedEvent {
         public Iterator<DebugStackFrame> iterator() {
             if (hostStack != null) {
                 AtomicInteger frameDepth = new AtomicInteger(0);
-                return Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(hostStack, new GuestIterator(true) {
+                return Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(session.getDebugger().getEnv(), hostStack, new GuestIterator(true) {
                     @Override
                     public DebugStackFrame next() {
                         DebugStackFrame frame = super.next();

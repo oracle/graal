@@ -27,7 +27,7 @@
 #include "jni.h"
 #include "os.h"
 
-#include "libespresso_dynamic.h"
+#include "libjavavm_dynamic.h"
 
 #include <trufflenfi.h>
 #include <stddef.h>
@@ -69,9 +69,9 @@ typedef uint64_t julong;
 /* Usage of the JavaVM reserved fields:
  * vm type   | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
  * ----------+----------------+---------------------+----------------+
- * reserved0 | NULL           | LibEspressoIsolate* | context handle |
+ * reserved0 | NULL           | LibJavaVMIsolate* | context handle |
  * reserved1 | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
- * reserved2 | NULL           | JavaVM* (americano) | NULL           |
+ * reserved2 | NULL           | JavaVM* (americano) | JavaVM* (latte)|
  */
 
 #define VM_METHOD_LIST(V) \
@@ -237,6 +237,7 @@ typedef uint64_t julong;
     V(JVM_LatestUserDefinedLoader) \
     V(JVM_Listen) \
     V(JVM_LoadClass0) \
+    V(JVM_LoadZipLibrary) \
     V(JVM_LoadLibrary) \
     V(JVM_Lseek) \
     V(JVM_MaxObjectInspectionAge) \
@@ -322,13 +323,54 @@ typedef uint64_t julong;
     V(JVM_MoreStackWalk) \
     /* V(JVM_RegisterJDKInternalMiscUnsafeMethods) */ \
     V(JVM_SetBootLoaderUnnamedModule) \
-    V(JVM_WaitForReferencePendingList)
+    V(JVM_WaitForReferencePendingList) \
+    /* Java 16 VM methods */ \
+    V(JVM_DefineArchivedModules) \
+    V(JVM_GetExtendedNPEMessage) \
+    V(JVM_GetPermittedSubclasses) \
+    V(JVM_GetProperties) \
+    V(JVM_GetRandomSeedForDumping) \
+    V(JVM_GetRecordComponents) \
+    V(JVM_IsCDSDumpingEnabled) \
+    V(JVM_IsDumpingClassList) \
+    V(JVM_IsHiddenClass) \
+    V(JVM_IsRecord) \
+    V(JVM_IsSharingEnabled) \
+    V(JVM_IsUseContainerSupport) \
+    V(JVM_LogLambdaFormInvoker) \
+    V(JVM_LookupDefineClass) \
+    V(JVM_LookupLambdaProxyClassFromArchive) \
+    V(JVM_PhantomReferenceRefersTo) \
+    V(JVM_ReferenceClear) \
+    V(JVM_ReferenceRefersTo) \
+    V(JVM_RegisterLambdaProxyClassForArchiving) \
+    /* Java 19 VM methods */ \
+    V(JVM_CurrentCarrierThread) \
+    V(JVM_SetCurrentThread) \
+    V(JVM_GetStackTrace) \
+    V(JVM_ScopedValueCache) \
+    V(JVM_SetScopedValueCache) \
+    V(JVM_FindScopedValueBindings) \
+    V(JVM_GetNextThreadIdOffset) \
+    V(JVM_RegisterContinuationMethods) \
+    /* V(JVM_DumpClassListToFile) */ \
+    /* V(JVM_DumpDynamicArchive) */ \
+    /* V(JVM_VirtualThreadMountBegin) */ \
+    /* V(JVM_VirtualThreadMountEnd) */ \
+    /* V(JVM_VirtualThreadUnmountBegin) */ \
+    /* V(JVM_VirtualThreadUnmountEnd) */ \
+    /* Java 20 VM methods */ \
+    /* V(JVM_VirtualThreadHideFrames) */ \
+    /* V(JVM_GetClassFileVersion) */ \
+    V(JVM_ScopedValueCache) \
+    V(JVM_SetScopedValueCache) \
+    V(JVM_FindScopedValueBindings) \
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *));
+JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *, void*));
 
 JNIEXPORT void JNICALL disposeMokapotContext(MokapotEnv* moka_env, void (*release_closure)(void *));
 
@@ -337,6 +379,8 @@ JNIEXPORT JavaVM* JNICALL getJavaVM(MokapotEnv* moka_env);
 JNIEXPORT void JNICALL mokapotAttachThread(MokapotEnv* moka_env);
 
 JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT();
+
+JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle();
 
 JNIEXPORT const char* JNICALL getPackageAt(const char* const* packages, int at);
 
@@ -392,7 +436,9 @@ jlong (*JVM_MaxMemory)(void);
 
 jint (*JVM_ActiveProcessorCount)(void);
 
-void * (*JVM_LoadLibrary)(const char *name);
+void * (*JVM_LoadZipLibrary)(void);
+
+void * (*JVM_LoadLibrary)(const char *name /*, jboolean throwException*/);
 
 void (*JVM_UnloadLibrary)(void * handle);
 
@@ -859,6 +905,84 @@ void (*JVM_WaitForReferencePendingList)(JNIEnv *env);
 
 jboolean (*JVM_IsUseContainerSupport)(void);
 
+void (*JVM_DefineArchivedModules)(JNIEnv *env, jobject platform_loader, jobject system_loader);
+
+jstring (*JVM_GetExtendedNPEMessage)(JNIEnv *env, jthrowable throwable);
+
+jobjectArray (*JVM_GetPermittedSubclasses)(JNIEnv *env, jclass current);
+
+jobjectArray (*JVM_GetProperties)(JNIEnv *env);
+
+jobjectArray (*JVM_GetRecordComponents)(JNIEnv *env, jclass ofClass);
+
+void (*JVM_RegisterLambdaProxyClassForArchiving)(JNIEnv* env, jclass caller,
+                                         jstring invokedName,
+                                         jobject invokedType,
+                                         jobject methodType,
+                                         jobject implMethodMember,
+                                         jobject instantiatedMethodType,
+                                         jclass lambdaProxyClass);
+
+jclass (*JVM_LookupLambdaProxyClassFromArchive)(JNIEnv* env, jclass caller,
+                                      jstring invokedName,
+                                      jobject invokedType,
+                                      jobject methodType,
+                                      jobject implMethodMember,
+                                      jobject instantiatedMethodType);
+
+jboolean (*JVM_IsCDSDumpingEnabled)(JNIEnv* env);
+
+jboolean (*JVM_IsSharingEnabled)(JNIEnv* env);
+
+jboolean (*JVM_IsDumpingClassList)(JNIEnv* env);
+
+jlong (*JVM_GetRandomSeedForDumping)();
+
+void (*JVM_LogLambdaFormInvoker)(JNIEnv* env, jstring line);
+
+jboolean (*JVM_IsHiddenClass)(JNIEnv *env, jclass cls);
+
+jboolean (*JVM_IsRecord)(JNIEnv *env, jclass cls);
+
+jclass (*JVM_LookupDefineClass)(JNIEnv *env, jclass lookup, const char *name, const jbyte *buf,
+                      jsize len, jobject pd, jboolean init, int flags, jobject classData);
+
+jboolean (*JVM_PhantomReferenceRefersTo)(JNIEnv *env, jobject ref, jobject o);
+
+jboolean (*JVM_ReferenceRefersTo)(JNIEnv *env, jobject ref, jobject o);
+
+void (*JVM_ReferenceClear)(JNIEnv *env, jobject ref);
+
+jobject (*JVM_CurrentCarrierThread)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_SetCurrentThread)(JNIEnv *env, jobject thisThread, jobject theThread);
+
+jobject (*JVM_GetStackTrace)(JNIEnv *env, jobject thread);
+
+jobject (*JVM_ExtentLocalCache)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_SetExtentLocalCache)(JNIEnv *env, jclass threadClass, jobject theCache);
+
+jobject (*JVM_ScopedValueCache)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_SetScopedValueCache)(JNIEnv *env, jclass threadClass, jobject theCache);
+
+jobject (*JVM_FindScopedValueBindings)(JNIEnv *env, jclass threadClass);
+
+jlong (*JVM_GetNextThreadIdOffset)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_RegisterContinuationMethods)(JNIEnv *env, jclass cls);
+
+jboolean (*JVM_IsPreviewEnabled)();
+
+jboolean (*JVM_IsContinuationsSupported)();
+
+void (*JVM_SetStackWalkContinuation)(JNIEnv *env, jobject stackStream, jlong anchor, jobjectArray frames, jobject cont);
+
+void (*JVM_ReportFinalizationComplete)(JNIEnv *env, jobject finalizee);
+
+jboolean (*JVM_IsFinalizationEnabled)(JNIEnv *env);
+
 };
 
 struct MokapotEnv_ {
@@ -882,10 +1006,10 @@ void add_java_vm(JavaVM* vm);
 jint remove_java_vm(JavaVM* vm);
 void gather_java_vms(JavaVM** buf, jsize buf_size, jsize* numVms);
 
-#define LIB_ESPRESSO_PLAIN 0
-#define LIB_ESPRESSO_POLYGLOT 1
+#define LIB_JAVAVM_PLAIN 0
+#define LIB_JAVAVM_POLYGLOT 1
 
-typedef struct LibEspresso {
+typedef struct LibJavaVM {
     graal_create_isolate_fn_t create_isolate;
     graal_attach_thread_fn_t attach_thread;
     graal_detach_thread_fn_t detach_thread;
@@ -897,13 +1021,13 @@ typedef struct LibEspresso {
     Espresso_LeaveContext_fn_t Espresso_LeaveContext;       // leave
     Espresso_ReleaseContext_fn_t Espresso_ReleaseContext;   // release
     Espresso_CloseContext_fn_t Espresso_CloseContext;       // release + leave + close
-    Espresso_Exit_fn_t Espresso_Exit;                       // leave + close + exit
-} LibEspresso;
+    Espresso_Shutdown_fn_t Espresso_Shutdown;               // shutdown
+} LibJavaVM;
 
-typedef struct LibEspressoIsolate {
-    LibEspresso *lib;
+typedef struct LibJavaVMIsolate {
+    LibJavaVM *lib;
     graal_isolate_t *isolate;
     jboolean is_sun_standard_launcher; // -Dsun.java.launcher=SUN_STANDARD
-} LibEspressoIsolate;
+} LibJavaVMIsolate;
 
 #endif // _MOKAPOT_H

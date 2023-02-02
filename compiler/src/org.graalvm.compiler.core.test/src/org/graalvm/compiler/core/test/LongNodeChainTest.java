@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,7 +80,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
         graph.start().setNext(returnNode);
 
         for (SchedulingStrategy s : Strategies) {
-            new SchedulePhase(s).apply(graph);
+            SchedulePhase.runWithoutContextOptimizations(graph, s);
         }
 
         this.createCanonicalizerPhase().apply(graph, context);

@@ -30,7 +30,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.junit.Assert;
@@ -148,9 +148,9 @@ public class NestedLoopTest extends GraalCompilerTest {
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
 
         Assert.assertEquals(3, cfg.getLoops().size());
-        Loop<Block> rootLoop = cfg.getLoops().get(0);
-        Loop<Block> nestedLoop = cfg.getLoops().get(1);
-        Loop<Block> innerMostLoop = cfg.getLoops().get(2);
+        Loop<HIRBlock> rootLoop = cfg.getLoops().get(0);
+        Loop<HIRBlock> nestedLoop = cfg.getLoops().get(1);
+        Loop<HIRBlock> innerMostLoop = cfg.getLoops().get(2);
         Invoke a = getInvoke("a", graph);
         Invoke b = getInvoke("b", graph);
         Invoke c = getInvoke("c", graph);
@@ -167,14 +167,14 @@ public class NestedLoopTest extends GraalCompilerTest {
         debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
     }
 
-    private static boolean contains(Loop<Block> loop, Invoke node, ControlFlowGraph cfg) {
-        Block block = cfg.blockFor((Node) node);
+    private static boolean contains(Loop<HIRBlock> loop, Invoke node, ControlFlowGraph cfg) {
+        HIRBlock block = cfg.blockFor((Node) node);
         Assert.assertNotNull(block);
         return loop.getBlocks().contains(block);
     }
 
-    private static boolean containsDirect(Loop<Block> loop, Invoke node, ControlFlowGraph cfg) {
-        for (Loop<Block> child : loop.getChildren()) {
+    private static boolean containsDirect(Loop<HIRBlock> loop, Invoke node, ControlFlowGraph cfg) {
+        for (Loop<HIRBlock> child : loop.getChildren()) {
             if (contains(child, node, cfg)) {
                 return false;
             }

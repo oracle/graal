@@ -2,7 +2,6 @@
 #Version 
 
 CLSS public final com.oracle.truffle.tools.profiler.CPUSampler
-innr public final static !enum Mode
 innr public final static Payload
 intf java.io.Closeable
 meth public boolean hasData()
@@ -11,46 +10,45 @@ meth public boolean isCollecting()
 meth public boolean isGatherSelfHitTimes()
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter getFilter()
 meth public int getStackLimit()
-meth public java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>> getRootNodes()
-meth public java.util.Map<java.lang.Thread,java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>>> getThreadToNodesMap()
+meth public java.util.Map<com.oracle.truffle.api.TruffleContext,com.oracle.truffle.tools.profiler.CPUSamplerData> getData()
 meth public java.util.Map<java.lang.Thread,java.util.List<com.oracle.truffle.tools.profiler.StackTraceEntry>> takeSample()
+meth public java.util.Map<java.lang.Thread,java.util.List<com.oracle.truffle.tools.profiler.StackTraceEntry>> takeSample(long,java.util.concurrent.TimeUnit)
 meth public long getPeriod()
-meth public long getSampleCount()
 meth public static com.oracle.truffle.tools.profiler.CPUSampler find(org.graalvm.polyglot.Engine)
 meth public void clearData()
 meth public void close()
 meth public void setCollecting(boolean)
 meth public void setDelay(long)
-meth public void setDelaySamplingUntilNonInternalLangInit(boolean)
 meth public void setFilter(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
 meth public void setGatherSelfHitTimes(boolean)
-meth public void setMode(com.oracle.truffle.tools.profiler.CPUSampler$Mode)
 meth public void setPeriod(long)
+meth public void setSampleContextInitialization(boolean)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds DEFAULT_FILTER,closed,collecting,copyPayload,delay,delaySamplingUntilNonInternalLangInit,env,filter,gatherSelfHitTimes,mergePayload,mode,nonInternalLanguageContextInitialized,payloadFactory,period,rootNodes,samplerTask,samplerThread,samplesTaken,shadowStack,stackLimit,stackOverflowed,stacksBinding
-hcls SamplingTimerTask
-
-CLSS public final static !enum com.oracle.truffle.tools.profiler.CPUSampler$Mode
- outer com.oracle.truffle.tools.profiler.CPUSampler
-fld public final static com.oracle.truffle.tools.profiler.CPUSampler$Mode EXCLUDE_INLINED_ROOTS
-fld public final static com.oracle.truffle.tools.profiler.CPUSampler$Mode ROOTS
-fld public final static com.oracle.truffle.tools.profiler.CPUSampler$Mode STATEMENTS
-meth public static com.oracle.truffle.tools.profiler.CPUSampler$Mode valueOf(java.lang.String)
-meth public static com.oracle.truffle.tools.profiler.CPUSampler$Mode[] values()
-supr java.lang.Enum<com.oracle.truffle.tools.profiler.CPUSampler$Mode>
+hfds COPY_PAYLOAD,DEFAULT_FILTER,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,period,processingThread,processingThreadRunnable,resultsToProcess,safepointStackSampler,sampleContextInitialization,samplerTask,samplerThread,stackLimit
+hcls MutableSamplerData,ResultProcessingRunnable,SamplingResult,SamplingTimerTask
 
 CLSS public final static com.oracle.truffle.tools.profiler.CPUSampler$Payload
  outer com.oracle.truffle.tools.profiler.CPUSampler
-meth public int getCompiledHitCount()
 meth public int getHitCount()
-meth public int getInterpretedHitCount()
-meth public int getSelfCompiledHitCount()
+meth public int getNumberOfTiers()
 meth public int getSelfHitCount()
-meth public int getSelfInterpretedHitCount()
+meth public int getTierSelfCount(int)
+meth public int getTierTotalCount(int)
 meth public java.util.List<java.lang.Long> getSelfHitTimes()
 supr java.lang.Object
-hfds compiledHitCount,interpretedHitCount,selfCompiledHitCount,selfHitTimes,selfInterpretedHitCount
+hfds selfHitTimes,selfTierCount,tierCount
+
+CLSS public final com.oracle.truffle.tools.profiler.CPUSamplerData
+meth public com.oracle.truffle.api.TruffleContext getContext()
+meth public java.util.LongSummaryStatistics getSampleBias()
+meth public java.util.LongSummaryStatistics getSampleDuration()
+meth public java.util.Map<java.lang.Thread,java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>>> getThreadData()
+meth public long getSampleInterval()
+meth public long getSamples()
+meth public long missedSamples()
+supr java.lang.Object
+hfds biasStatistics,context,durationStatistics,intervalMs,missedSamples,samplesTaken,threadData
 
 CLSS public final com.oracle.truffle.tools.profiler.CPUTracer
 innr public final static Payload
@@ -89,7 +87,7 @@ meth public void clearData()
 meth public void close()
 meth public void setCollecting(boolean)
 supr java.lang.Object
-hfds CLEAN_INTERVAL,RECURSIVE,activeBinding,closed,collecting,env,initializedLanguages,newReferences,processedReferences,referenceQueue,referenceThread,summaryData
+hfds CLEAN_INTERVAL,INTEROP,RECURSIVE,activeBinding,closed,collecting,env,initializedLanguages,newReferences,processedReferences,referenceQueue,referenceThread,summaryData
 hcls Listener,ObjectWeakReference
 
 CLSS public final com.oracle.truffle.tools.profiler.HeapSummary
@@ -118,7 +116,7 @@ meth public void setCollecting(boolean)
 meth public void setFilter(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds DEFAULT_FILTER,activeBinding,closed,collecting,copyPayload,env,filter,mergePayload,payloadFactory,rootNodes,shadowStack,stackLimit,stackOverflowed,stacksBinding
+hfds DEFAULT_FILTER,INTEROP,activeBinding,closed,collecting,copyPayload,env,filter,mergePayload,payloadFactory,rootNodes,shadowStack,stackLimit,stackOverflowed,stacksBinding
 hcls Listener
 
 CLSS public final static com.oracle.truffle.tools.profiler.MemoryTracer$AllocationEventInfo
@@ -151,51 +149,35 @@ hfds children,parent,payload,sourceLocation
 
 CLSS public final com.oracle.truffle.tools.profiler.StackTraceEntry
 meth public boolean equals(java.lang.Object)
+meth public boolean isCompilationRoot()
 meth public boolean isCompiled()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public boolean isInlined()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public boolean isInterpreted()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+meth public int getTier()
 meth public int hashCode()
 meth public java.lang.StackTraceElement toStackTraceElement()
 meth public java.lang.String getRootName()
 meth public java.lang.String toString()
 meth public java.util.Set<java.lang.Class<?>> getTags()
 supr java.lang.Object
-hfds STATE_COMPILATION_ROOT,STATE_COMPILED,STATE_INTERPRETED,STATE_UNKNOWN,instrumentedNode,rootName,sourceSection,stackTraceElement,state,tags
+hfds DEFAULT_TAGS,compilationRoot,compilationTier,instrumentedNode,isSynthetic,rootName,sourceSection,stackTraceElement,tags
 
 CLSS public abstract interface java.io.Closeable
 intf java.lang.AutoCloseable
 meth public abstract void close() throws java.io.IOException
 
-CLSS public abstract interface java.io.Serializable
-
 CLSS public abstract interface java.lang.AutoCloseable
 meth public abstract void close() throws java.lang.Exception
-
-CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
-meth public abstract int compareTo({java.lang.Comparable%0})
-
-CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
-cons protected init(java.lang.String,int)
-intf java.io.Serializable
-intf java.lang.Comparable<{java.lang.Enum%0}>
-meth protected final java.lang.Object clone() throws java.lang.CloneNotSupportedException
-meth protected final void finalize()
-meth public final boolean equals(java.lang.Object)
-meth public final int compareTo({java.lang.Enum%0})
-meth public final int hashCode()
-meth public final int ordinal()
-meth public final java.lang.Class<{java.lang.Enum%0}> getDeclaringClass()
-meth public final java.lang.String name()
-meth public java.lang.String toString()
-meth public static <%0 extends java.lang.Enum<{%%0}>> {%%0} valueOf(java.lang.Class<{%%0}>,java.lang.String)
-supr java.lang.Object
-hfds name,ordinal
 
 CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()

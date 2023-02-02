@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,9 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
-import org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.AddTestNode;
@@ -60,17 +61,17 @@ import org.graalvm.compiler.truffle.test.nodes.explosion.LoopExplosionPhiNode;
 import org.graalvm.compiler.truffle.test.nodes.explosion.NestedExplodedLoopTestNode;
 import org.graalvm.compiler.truffle.test.nodes.explosion.TwoMergesExplodedLoopTestNode;
 import org.graalvm.compiler.truffle.test.nodes.explosion.UnrollingTestNode;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.BailoutException;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.polyglot.Context;
 
 public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
@@ -151,8 +152,11 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
     @Test
     public void localVariable() {
-        FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode("x", fd, new ConstantTestNode(42)), new LoadLocalTestNode("x", fd)});
+        var builder = FrameDescriptor.newBuilder();
+        int x = builder.addSlot(FrameSlotKind.Int, "x", null);
+        FrameDescriptor fd = builder.build();
+
+        AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode(x, new ConstantTestNode(42)), new LoadLocalTestNode(x)});
         assertPartialEvalEquals(SimplePartialEvaluationTest::constant42, new RootTestNode(fd, "localVariable", result));
     }
 
@@ -225,8 +229,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 2;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
-        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter01(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter01(), new ConstantTestNode(37), true);
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 4, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
@@ -238,8 +242,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 2;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
-        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter02(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter02(), new ConstantTestNode(37), true);
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 8, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
@@ -251,8 +255,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 2;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
-        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter03(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter03(), new ConstantTestNode(37), true);
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 4, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
@@ -264,8 +268,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 2;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
-        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter04(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter04(), new ConstantTestNode(37), true);
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 4, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
@@ -277,8 +281,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 2;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
-        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter05(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter05(), new ConstantTestNode(37), true);
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 6, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
@@ -458,7 +462,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         final int loopIterations = 5;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
         AbstractTestNode result = new AddTestNode(t.new Unroll01(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
         //@formatter:off
         /*
@@ -499,7 +503,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         final int loopIterations = 5;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
         AbstractTestNode result = new AddTestNode(t.new Unroll02(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         //@formatter:off
@@ -603,7 +607,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         //@formatter:on
         Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 31, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
         Assert.assertEquals(UnrollingTestNode.OUTSIDE_LOOP_MARKER, 31, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.OUTSIDE_LOOP_MARKER));
-        Assert.assertEquals(UnrollingTestNode.AFTER_LOOP_MARKER, 31, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.AFTER_LOOP_MARKER));
+        Assert.assertEquals(UnrollingTestNode.AFTER_LOOP_MARKER, 63, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.AFTER_LOOP_MARKER));
     }
 
     @Test
@@ -631,25 +635,34 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
     @Test
     public void mixLocalAndAdd() {
-        FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode("x", fd, new ConstantTestNode(40)),
-                        new StoreLocalTestNode("x", fd, new AddTestNode(new LoadLocalTestNode("x", fd), new ConstantTestNode(2))), new LoadLocalTestNode("x", fd)});
+        var builder = FrameDescriptor.newBuilder();
+        int x = builder.addSlot(FrameSlotKind.Int, "x", null);
+        FrameDescriptor fd = builder.build();
+
+        AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode(x, new ConstantTestNode(40)),
+                        new StoreLocalTestNode(x, new AddTestNode(new LoadLocalTestNode(x), new ConstantTestNode(2))), new LoadLocalTestNode(x)});
         assertPartialEvalEquals(SimplePartialEvaluationTest::constant42, new RootTestNode(fd, "mixLocalAndAdd", result));
     }
 
     @Test
     public void loop() {
-        FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode("x", fd, new ConstantTestNode(0)),
-                        new LoopTestNode(7, new StoreLocalTestNode("x", fd, new AddTestNode(new LoadLocalTestNode("x", fd), new ConstantTestNode(6))))});
+        var builder = FrameDescriptor.newBuilder();
+        int x = builder.addSlot(FrameSlotKind.Int, "x", null);
+        FrameDescriptor fd = builder.build();
+
+        AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode(x, new ConstantTestNode(0)),
+                        new LoopTestNode(7, new StoreLocalTestNode(x, new AddTestNode(new LoadLocalTestNode(x), new ConstantTestNode(6))))});
         assertPartialEvalEquals(SimplePartialEvaluationTest::constant42, new RootTestNode(fd, "loop", result));
     }
 
     @Test
     public void longLoop() {
-        FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode("x", fd, new ConstantTestNode(0)),
-                        new LoopTestNode(42, new StoreLocalTestNode("x", fd, new AddTestNode(new LoadLocalTestNode("x", fd), new ConstantTestNode(1))))});
+        var builder = FrameDescriptor.newBuilder();
+        int x = builder.addSlot(FrameSlotKind.Int, "x", null);
+        FrameDescriptor fd = builder.build();
+
+        AbstractTestNode result = new BlockTestNode(new AbstractTestNode[]{new StoreLocalTestNode(x, new ConstantTestNode(0)),
+                        new LoopTestNode(42, new StoreLocalTestNode(x, new AddTestNode(new LoadLocalTestNode(x), new ConstantTestNode(1))))});
         RootTestNode rootNode = new RootTestNode(fd, "loop", result);
         assertPartialEvalNoInvokes(rootNode);
         assertPartialEvalEquals(SimplePartialEvaluationTest::constant42, rootNode);

@@ -24,18 +24,18 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 /**
  * The field filter flow is used for unsafe writes to fields. An unsafe write to an object can write
  * to any of the unsafe accessed fields of that object, however the written values may not be
- * compatible with all the fields. Thus the written values need to be filtered using the field
+ * compatible with all the fields. Thus, the written values need to be filtered using the field
  * FieldFilterTypeFlow type. The FieldFilterTypeFlow is a simplified version of FilterTypeFlow in
- * that it is 'not-exact', i.e., it allows types of that are sub-types of the field declared type,
+ * that it is 'not-exact', i.e., it allows all types that are sub-types of the field declared type,
  * it is always 'assignable', i.e., it allows types that are assignable to the field declared type,
- * and it 'includes-null', i.e., it allows null values to pass through. However it's 'source' is an
+ * and it 'includes-null', i.e., it allows null values to pass through. However, it's 'source' is an
  * AnalysisField and not a ValueNode, thus it's a completely different class.
  */
 public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
@@ -45,21 +45,31 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     @Override
-    public TypeState filter(BigBang bb, TypeState update) {
+    public TypeState filter(PointsToAnalysis bb, TypeState update) {
         if (declaredType.equals(bb.getObjectType())) {
             /* No need to filter. */
             return update;
         } else {
             /* Filter the incoming state with the field type. */
-            return TypeState.forIntersection(bb, update, declaredType.getTypeFlow(bb, true).getState());
+            return TypeState.forIntersection(bb, update, declaredType.getAssignableTypes(true));
         }
     }
 
     @Override
-    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+    protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         setSaturated();
         /* Swap out this flow with its declared type flow. */
         swapOut(bb, declaredType.getTypeFlow(bb, true));
+    }
+
+    @Override
+    protected void notifyUseOfSaturation(PointsToAnalysis bb, TypeFlow<?> use) {
+        swapAtUse(bb, declaredType.getTypeFlow(bb, true), use);
+    }
+
+    @Override
+    protected void notifyObserverOfSaturation(PointsToAnalysis bb, TypeFlow<?> observer) {
+        swapAtObserver(bb, declaredType.getTypeFlow(bb, true), observer);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,30 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.wasm.WasmType;
 
 public enum TableKind {
-    anyfunc;
+    externref(WasmType.EXTERNREF_TYPE),
+    anyfunc(WasmType.FUNCREF_TYPE);
 
-    @CompilerDirectives.TruffleBoundary
-    public static TableKind parse(String name) {
-        return valueOf(name);
+    private final byte byteValue;
+
+    TableKind(byte byteValue) {
+        this.byteValue = byteValue;
+    }
+
+    public byte byteValue() {
+        return byteValue;
+    }
+
+    public static String toString(byte byteValue) {
+        switch (byteValue) {
+            case WasmType.EXTERNREF_TYPE:
+                return "externref";
+            case WasmType.FUNCREF_TYPE:
+                return "anyfunc";
+            default:
+                return "";
+        }
     }
 }

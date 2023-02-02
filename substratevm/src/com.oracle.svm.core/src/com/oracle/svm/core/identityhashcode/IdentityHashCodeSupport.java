@@ -26,12 +26,10 @@ package com.oracle.svm.core.identityhashcode;
 
 import java.util.SplittableRandom;
 
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.word.LocationIdentity;
 
@@ -41,12 +39,12 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.code.TargetDescription;
+import jdk.internal.misc.Unsafe;
 
 public final class IdentityHashCodeSupport {
     public static final LocationIdentity IDENTITY_HASHCODE_LOCATION = NamedLocationIdentity.mutable("identityHashCode");
 
-    private static final FastThreadLocalObject<SplittableRandom> hashCodeGeneratorTL = FastThreadLocalFactory.createObject(SplittableRandom.class);
+    private static final FastThreadLocalObject<SplittableRandom> hashCodeGeneratorTL = FastThreadLocalFactory.createObject(SplittableRandom.class, "IdentityHashCodeSupport.hashCodeGeneratorTL");
 
     /**
      * Initialization can require synchronization which is not allowed during safepoints, so this
@@ -56,8 +54,8 @@ public final class IdentityHashCodeSupport {
         new SplittableRandom().nextInt();
     }
 
-    public static IdentityHashCodeSnippets.Templates createSnippetTemplates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, TargetDescription target) {
-        return new IdentityHashCodeSnippets.Templates(new SubstrateIdentityHashCodeSnippets(), options, factories, providers, target, IDENTITY_HASHCODE_LOCATION);
+    public static IdentityHashCodeSnippets.Templates createSnippetTemplates(OptionValues options, Providers providers) {
+        return new IdentityHashCodeSnippets.Templates(new SubstrateIdentityHashCodeSnippets(), options, providers, IDENTITY_HASHCODE_LOCATION);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -65,7 +63,7 @@ public final class IdentityHashCodeSupport {
 
         // generate a new hashcode and try to store it into the object
         int newHashCode = generateHashCode();
-        if (!GraalUnsafeAccess.getUnsafe().compareAndSwapInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), 0, newHashCode)) {
+        if (!Unsafe.getUnsafe().compareAndSetInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), 0, newHashCode)) {
             newHashCode = ObjectAccess.readInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), IDENTITY_HASHCODE_LOCATION);
         }
         VMError.guarantee(newHashCode != 0, "Missing identity hash code");

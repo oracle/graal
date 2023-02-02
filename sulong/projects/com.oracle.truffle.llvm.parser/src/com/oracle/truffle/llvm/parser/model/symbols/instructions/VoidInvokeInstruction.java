@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public final class VoidInvokeInstruction extends VoidInstruction implements Invoke {
 
@@ -48,11 +49,18 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
 
     private final AttributesCodeEntry paramAttr;
 
-    private VoidInvokeInstruction(InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr, int argCount) {
+    private final OperandBundle operandBundle;
+
+    private final FunctionType functionType;
+
+    private VoidInvokeInstruction(InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr, int argCount, OperandBundle operandBundle,
+                    FunctionType functionType) {
         this.normalSuccessor = normalSuccessor;
         this.unwindSuccessor = unwindSuccessor;
         this.paramAttr = paramAttr;
         this.arguments = argCount == 0 ? NO_ARGS : new SymbolImpl[argCount];
+        this.operandBundle = operandBundle;
+        this.functionType = functionType;
     }
 
     @Override
@@ -86,6 +94,16 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
     }
 
     @Override
+    public OperandBundle getOperandBundle() {
+        return operandBundle;
+    }
+
+    @Override
+    public FunctionType getFunctionType() {
+        return functionType;
+    }
+
+    @Override
     public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (target == original) {
             target = replacement;
@@ -98,10 +116,10 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
     }
 
     public static VoidInvokeInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, InstructionBlock normalSuccessor,
-                    InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr) {
-        final VoidInvokeInstruction inst = new VoidInvokeInstruction(normalSuccessor, unwindSuccessor, paramAttr, arguments.length);
+                    InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr, OperandBundle operandBundle, FunctionType functionType) {
+        final VoidInvokeInstruction inst = new VoidInvokeInstruction(normalSuccessor, unwindSuccessor, paramAttr, arguments.length, operandBundle, functionType);
         inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
-        Call.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
+        Call.parseArguments(scope, inst, inst.arguments, arguments, functionType);
         return inst;
     }
 

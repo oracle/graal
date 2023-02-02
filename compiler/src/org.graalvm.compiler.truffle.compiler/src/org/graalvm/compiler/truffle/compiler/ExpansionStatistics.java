@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,7 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
@@ -294,13 +294,12 @@ final class ExpansionStatistics {
 
     private static TreeNode buildMethodTree(StructuredGraph graph) {
         TreeNode root = new TreeNode(null, null, ExpansionStatistics::buildMethodTreeLabel);
-        SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
-        schedule.apply(graph);
+        SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
         ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
         for (Node node : graph.getNodes()) {
             NodeSourcePosition nodeSourcePosition = node.getNodeSourcePosition();
             TreeNode tree = resolveMethodTree(root, nodeSourcePosition);
-            Block block = cfg.blockFor(node);
+            HIRBlock block = cfg.blockFor(node);
             double frequency;
             if (block != null) {
                 frequency = block.getRelativeFrequency();

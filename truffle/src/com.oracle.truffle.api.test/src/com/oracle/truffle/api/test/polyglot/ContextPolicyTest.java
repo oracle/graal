@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,15 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.evalTestLanguage;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.options.OptionCategory;
@@ -53,8 +57,10 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -62,19 +68,14 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -85,10 +86,12 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
-import com.oracle.truffle.api.test.polyglot.ContextPolicyTestFactory.SupplierAccessorNodeGen;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.TestUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ContextPolicyTest {
 
@@ -116,6 +119,85 @@ public class ContextPolicyTest {
         parseRequest.clear();
     }
 
+    enum AssertType {
+        PARSE_REQUEST_COUNT,
+        LANGUAGE_INSTANCES_COUNT,
+        CONTEXT_CREATE_COUNT,
+        CONTEXT_DISPOSE_COUNT,
+        LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE,
+        LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE,
+        LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE,
+    }
+
+    @Registration(contextPolicy = ContextPolicy.SHARED)
+    static class AssertTestLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(AssertTestLanguage.class);
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String assertTypeString = (String) contextArguments[0];
+            AssertType assertType = AssertType.valueOf(assertTypeString);
+            switch (assertType) {
+                case PARSE_REQUEST_COUNT:
+                    int expectedParseRequestCount = (Integer) contextArguments[1];
+                    assertEquals(expectedParseRequestCount, parseRequest.size());
+                    break;
+                case LANGUAGE_INSTANCES_COUNT:
+                    int expectedLanguageInstanceCount = (Integer) contextArguments[1];
+                    assertEquals(expectedLanguageInstanceCount, languageInstances.size());
+                    break;
+                case CONTEXT_CREATE_COUNT:
+                    int expectedContextCreateCount = (Integer) contextArguments[1];
+                    assertEquals(expectedContextCreateCount, contextCreate.size());
+                    break;
+                case CONTEXT_DISPOSE_COUNT:
+                    int expectedContextDisposeCount = (Integer) contextArguments[1];
+                    assertEquals(expectedContextDisposeCount, contextDispose.size());
+                    break;
+                case LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE:
+                    int liccIdx1 = (Integer) contextArguments[1];
+                    int liccIdx2 = (Integer) contextArguments[2];
+                    assertSame(languageInstances.get(liccIdx1), contextCreate.get(liccIdx2));
+                    break;
+                case LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE:
+                    int liprIdx1 = (Integer) contextArguments[1];
+                    int liprIdx2 = (Integer) contextArguments[2];
+                    assertSame(languageInstances.get(liprIdx1), parseRequest.get(liprIdx2));
+                    break;
+                case LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE:
+                    int licdIdx1 = (Integer) contextArguments[1];
+                    int licdIdx2 = (Integer) contextArguments[2];
+                    assertSame(languageInstances.get(licdIdx1), contextDispose.get(licdIdx2));
+                    break;
+            }
+            return null;
+        }
+    }
+
+    Context assertContext;
+    int assertNo;
+
+    private void remoteAssert(Engine engine, AssertType assertType, Object... args) {
+        if (assertContext == null || assertContext.getEngine() != engine) {
+            if (assertContext != null) {
+                assertContext.close();
+            }
+            assertContext = Context.newBuilder().engine(engine).build();
+        }
+        Object[] finalArgs = new Object[args.length + 1];
+        finalArgs[0] = assertType.name();
+        System.arraycopy(args, 0, finalArgs, 1, args.length);
+        evalTestLanguage(assertContext, AssertTestLanguage.class, "assert no. " + (++assertNo), finalArgs);
+    }
+
+    @After
+    public void closeAssertContext() {
+        if (assertContext != null) {
+            assertContext.close();
+        }
+    }
+
     @Test
     public void testOneLanguageASTParsing() {
         Source source0 = Source.create(EXCLUSIVE0, "s0");
@@ -125,13 +207,13 @@ public class ContextPolicyTest {
         Context context0 = Context.newBuilder().engine(engine).build();
         context0.eval(source0);
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         context0.close();
 
         Context context1 = Context.newBuilder().engine(engine).build();
         context1.eval(source0);
         context1.eval(source1);
-        assertEquals(4, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 4);
 
         engine.close();
     }
@@ -146,28 +228,29 @@ public class ContextPolicyTest {
         Context context0 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "1").build();
         context0.eval(source0);
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         context0.close();
 
         Context context1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "1").build();
         context1.eval(source0);
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         engine.close();
 
-        // different options parse caching disabled
         cleanup();
+
+        // different options parse caching disabled
         engine = Engine.create();
         context0 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "1").build();
         context0.eval(source0);
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         context0.close();
 
         context1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(SHARED0 + ".Dummy", "2").build();
         context1.eval(source0);
         context1.eval(source1);
-        assertEquals(4, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 4);
         engine.close();
     }
 
@@ -180,19 +263,19 @@ public class ContextPolicyTest {
         Context context0 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(REUSE0 + ".Dummy", "1").build();
         context0.eval(source0);
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         context0.close();
 
         Context context1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(REUSE0 + ".Dummy", "1").build();
         context1.eval(source0);
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
         context1.close();
 
         Context context2 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(REUSE0 + ".Dummy", "2").build();
         context2.eval(source0);
         context2.eval(source1);
-        assertEquals(4, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 4);
         context1.close();
 
         engine.close();
@@ -203,52 +286,52 @@ public class ContextPolicyTest {
         Engine engine = Engine.create();
 
         // test ONE
-
-        assertEquals(0, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 0);
         engine.getLanguages().get(EXCLUSIVE0).getOptions();
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context.newBuilder().engine(engine).build().initialize(EXCLUSIVE0);
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context.newBuilder().engine(engine).build().initialize(EXCLUSIVE0);
-        assertEquals(2, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
 
         engine.close();
 
-        // test ONE_REUSE
-
         cleanup();
+
+        // test ONE_REUSE
         engine = Engine.create();
-        assertEquals(0, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 0);
         engine.getLanguages().get(REUSE0).getOptions();
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context context0 = Context.newBuilder().engine(engine).build();
         context0.initialize(REUSE0);
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
         context0.close();
 
         Context.newBuilder().engine(engine).build().initialize(REUSE0);
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context.newBuilder().engine(engine).build().initialize(REUSE0);
-        assertEquals(2, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
 
         engine.close();
 
-        // test MANY
         cleanup();
+
+        // test MANY
         engine = Engine.create();
-        assertEquals(0, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 0);
         engine.getLanguages().get(SHARED0).getOptions();
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context.newBuilder().engine(engine).build().initialize(SHARED0);
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         Context.newBuilder().engine(engine).build().initialize(SHARED0);
-        assertEquals(1, languageInstances.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
 
         engine.close();
     }
@@ -261,73 +344,68 @@ public class ContextPolicyTest {
         Source source1 = Source.create(EXCLUSIVE0, "s1");
 
         Context context0 = Context.newBuilder().engine(engine).build();
-        assertEmpty();
+        assertEmpty(engine);
         context0.initialize(EXCLUSIVE0);
-        assertEquals(1, languageInstances.size());
-        assertEquals(1, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(0), contextCreate.get(0));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0, 0);
 
         Context context1 = Context.newBuilder().engine(engine).build();
         context1.initialize(EXCLUSIVE0);
-        assertEquals(2, languageInstances.size());
-        assertEquals(2, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(1), contextCreate.get(1));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 1, 1);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(0));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 0);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(0));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 0);
 
         context1.eval(source0);
-        assertEquals(2, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(1));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 1);
 
         context1.eval(source0);
-        assertEquals(2, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(1));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 1);
 
         context0.eval(source1);
-        assertEquals(3, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(2));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 3);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 2);
 
         context0.eval(source1);
-        assertEquals(3, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(2));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 3);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 2);
 
         context1.eval(source1);
-        assertEquals(4, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(3));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 4);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 3);
 
         context1.eval(source1);
-        assertEquals(4, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(3));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 4);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 3);
 
-        assertEquals(0, contextDispose.size());
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
 
         context0.close();
-        assertEquals(1, contextDispose.size());
-        assertSame(languageInstances.get(0), contextDispose.get(0));
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE, 0, 0);
 
         context1.close();
-        assertEquals(2, contextDispose.size());
-        assertSame(languageInstances.get(1), contextDispose.get(1));
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE, 1, 1);
 
-        assertEquals(2, languageInstances.size());
-        assertEquals(2, contextCreate.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
 
         engine.close();
-    }
-
-    @Test
-    public void testOneParseCaching() {
-
     }
 
     @Test
@@ -338,53 +416,53 @@ public class ContextPolicyTest {
         Source source1 = Source.create(REUSE0, "s1");
 
         Context context0 = Context.newBuilder().engine(engine).build();
-        assertEmpty();
+        assertEmpty(engine);
         context0.initialize(REUSE0);
-        assertEquals(1, languageInstances.size());
-        assertEquals(1, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(0), contextCreate.get(0));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0, 0);
 
         Context context1 = Context.newBuilder().engine(engine).build();
         context1.initialize(REUSE0);
-        assertEquals(2, languageInstances.size());
-        assertEquals(2, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(1), contextCreate.get(1));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 1, 1);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(0));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 0);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(0));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 0);
 
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(1));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 1);
 
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(1));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 1);
 
         // reuse context1 in context2
         context1.close();
         Context context2 = Context.newBuilder().engine(engine).build();
         context2.initialize(REUSE0);
-        assertEquals(2, languageInstances.size());
-        assertEquals(3, contextCreate.size());
-        assertEquals(1, contextDispose.size());
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 3);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 1);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
 
         context2.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
 
         context2.eval(source0);
-        assertEquals(3, parseRequest.size());
-        assertSame(languageInstances.get(1), parseRequest.get(2));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 3);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 1, 2);
 
         // reuse context0 in context3
         Context context3 = Context.newBuilder().engine(engine).build();
@@ -393,13 +471,13 @@ public class ContextPolicyTest {
         context3.initialize(REUSE0);
 
         context3.eval(source0);
-        assertEquals(3, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 3);
 
         context3.close();
         context2.close();
-        assertEquals(2, languageInstances.size());
-        assertEquals(4, contextCreate.size());
-        assertEquals(4, contextDispose.size());
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 4);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 4);
 
         engine.close();
     }
@@ -416,58 +494,277 @@ public class ContextPolicyTest {
 
         assertEmpty();
         context0.initialize(SHARED0);
-        assertEquals(1, languageInstances.size());
-        assertEquals(1, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(0), contextCreate.get(0));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0, 0);
 
         context1.initialize(SHARED0);
-        assertEquals(1, languageInstances.size());
-        assertEquals(2, contextCreate.size());
-        assertEquals(0, contextDispose.size());
-        assertEquals(0, parseRequest.size());
-        assertSame(languageInstances.get(0), contextCreate.get(1));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_CREATE_COMPARE, 0, 0);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(0));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 0);
 
         context0.eval(source0);
-        assertEquals(1, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
 
         context1.eval(source0);
-        assertEquals(1, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
 
         context1.eval(source0);
-        assertEquals(1, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 1);
 
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
-        assertSame(languageInstances.get(0), parseRequest.get(1));
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_PARSE_REQUEST_COMPARE, 0, 1);
 
         context0.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
 
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
 
         context1.eval(source1);
-        assertEquals(2, parseRequest.size());
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 2);
 
-        assertEquals(0, contextDispose.size());
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
 
         context0.close();
-        assertEquals(1, contextDispose.size());
-        assertSame(languageInstances.get(0), contextDispose.get(0));
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 1);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE, 0, 0);
 
         context1.close();
-        assertEquals(1, languageInstances.size());
-        assertEquals(2, contextCreate.size());
-        assertEquals(2, contextDispose.size());
-        assertSame(languageInstances.get(0), contextDispose.get(0));
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 1);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 2);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 2);
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCE_CONTEXT_DISPOSE_COMPARE, 0, 0);
 
         engine.close();
+    }
+
+    @Test
+    public void testSharingLayersLazyInit() {
+        Engine engine = Engine.create();
+        Context c0 = Context.newBuilder().engine(engine).build();
+        c0.initialize(SHARED0);
+
+        // cannot initialize an exclusive language lazily for a sharing layer.
+        AbstractPolyglotTest.assertFails(() -> {
+            c0.initialize(EXCLUSIVE0);
+        }, PolyglotException.class, (e) -> assertTrue(e.getMessage(),
+                        e.getMessage().contains("The context was configured with a shared engine but lazily initialized language 'ExclusiveLanguage0' does not support sharing.")));
+        c0.close();
+
+        // initializing the exclusive language first works
+        Context c1 = Context.newBuilder().engine(engine).build();
+        c1.initialize(EXCLUSIVE0);
+        c1.initialize(SHARED0);
+        c1.close();
+
+        // also specify them during creation does the trick
+        Context c2 = Context.newBuilder(EXCLUSIVE0, SHARED0).engine(engine).build();
+        c2.initialize(SHARED0);
+        c2.initialize(EXCLUSIVE0);
+        c2.close();
+
+        // or specify an option eagerly
+        Context c3 = Context.newBuilder().allowExperimentalOptions(true).engine(engine).option(EXCLUSIVE1 + ".Dummy", "42").build();
+        c3.initialize(SHARED0);
+        c3.initialize(EXCLUSIVE0);
+        c3.close();
+
+        engine.close();
+    }
+
+    /*
+     * Tests invalid sharing detection for single engine multi layer case.
+     */
+    @Test
+    public void testDisableSharing() {
+        Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.DisableCodeSharing", "true").build();
+        Context c0 = Context.newBuilder().engine(engine).build();
+        c0.initialize(SHARED0);
+
+        // with sharing enabled this would fail.
+        c0.initialize(EXCLUSIVE0);
+
+        c0.close();
+        engine.close();
+    }
+
+    /*
+     * Tests invalid sharing detection for single engine multi layer case.
+     */
+    @Test
+    public void testTraceCacing() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.TraceCodeSharing", "true").logHandler(out).build();
+        Context c0 = Context.newBuilder().engine(engine).build();
+        c0.initialize(SHARED0);
+        c0.close();
+
+        Context c1 = Context.newBuilder().engine(engine).build();
+        c1.initialize(EXCLUSIVE0);
+        c1.close();
+
+        String output = out.toString();
+        assertEquals(3, countOccurences(output, " claiming "));
+        assertEquals(1, countOccurences(output, " failed to claim "));
+        assertEquals(2, countOccurences(output, " claimed "));
+        assertEquals(2, countOccurences(output, " compatible "));
+        assertEquals(1, countOccurences(output, " incompatible "));
+
+        engine.close();
+    }
+
+    private static int countOccurences(String s, String search) {
+        int count = 0;
+        int index = 0;
+        while ((index = s.indexOf(search, index)) != -1) {
+            index += search.length();
+            count++;
+        }
+        return count;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportLibrary(InteropLibrary.class)
+    static class CallTargetExecutable implements TruffleObject {
+        private final CallTarget callTarget;
+
+        CallTargetExecutable(CallTarget callTarget) {
+            this.callTarget = callTarget;
+        }
+
+        @ExportMessage
+        final boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        abstract static class Execute {
+
+            @Specialization
+            protected static Object doIndirect(CallTargetExecutable function, Object[] arguments,
+                            @Cached IndirectCallNode callNode) {
+                return callNode.call(function.getCallTarget(), arguments);
+            }
+        }
+
+        public CallTarget getCallTarget() {
+            return callTarget;
+        }
+    }
+
+    /*
+     * Tests invalid sharing detection for single engine multi layer case.
+     */
+    @Test
+    public void testInvalidSharingLayer() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
+        Engine engine = Engine.create();
+        Context c1 = Context.newBuilder().engine(engine).build();
+        c1.initialize(EXCLUSIVE0);
+        c1.initialize(EXCLUSIVE1);
+
+        Context c2 = Context.newBuilder().engine(engine).build();
+        c2.initialize(EXCLUSIVE0);
+        c2.initialize(EXCLUSIVE1);
+
+        c1.enter();
+        CallTarget t1 = new RootNode(ExclusiveLanguage0.REFERENCE.get(null)) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return ExclusiveLanguage0.REFERENCE.get(this);
+            }
+        }.getCallTarget();
+        CallTarget t2 = new RootNode(ExclusiveLanguage1.REFERENCE.get(null)) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return ExclusiveLanguage1.REFERENCE.get(this);
+            }
+        }.getCallTarget();
+
+        CallTarget t3 = new RootNode(ExclusiveLanguage0.REFERENCE.get(null)) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return ExclusiveLanguage0.CONTEXT_REF.get(this);
+            }
+        }.getCallTarget();
+        CallTarget t4 = new RootNode(ExclusiveLanguage1.REFERENCE.get(null)) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return ExclusiveLanguage1.CONTEXT_REF.get(this);
+            }
+        }.getCallTarget();
+        c1.leave();
+
+        c2.enter();
+
+        AbstractPolyglotTest.assertFails(() -> {
+            t1.call();
+        }, AssertionError.class, (e) -> {
+            assertTrue(e.getMessage(), e.getMessage().contains("Invalid sharing of AST nodes detected."));
+            assertTrue(e.getMessage(), e.getMessage().contains("Sharing Layer Change"));
+        });
+
+        AbstractPolyglotTest.assertFails(() -> {
+            t2.call();
+        }, AssertionError.class, (e) -> {
+            assertTrue(e.getMessage(), e.getMessage().contains("Invalid sharing of AST nodes detected."));
+            assertTrue(e.getMessage(), e.getMessage().contains("Sharing Layer Change"));
+        });
+
+        AbstractPolyglotTest.assertFails(() -> {
+            t3.call();
+        }, AssertionError.class, (e) -> {
+            assertTrue(e.getMessage(), e.getMessage().contains("Invalid sharing of AST nodes detected."));
+            assertTrue(e.getMessage(), e.getMessage().contains("Sharing Layer Change"));
+        });
+
+        AbstractPolyglotTest.assertFails(() -> {
+            t4.call();
+        }, AssertionError.class, (e) -> {
+            assertTrue(e.getMessage(), e.getMessage().contains("Invalid sharing of AST nodes detected."));
+            assertTrue(e.getMessage(), e.getMessage().contains("Sharing Layer Change"));
+        });
+
+        c2.leave();
+
+        c1.close();
+        c2.close();
+    }
+
+    @Test
+    public void testGuestToHostCodeCache() {
+        Engine engine = Engine.create();
+        try (Context c1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(String.format("%s.Dummy", SHARED0), "1").build()) {
+            c1.initialize(SHARED0);
+            try (Context c2 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(String.format("%s.Dummy", SHARED0), "2").build()) {
+                c2.initialize(SHARED0);
+                ProxyObject proxy = ProxyObject.fromMap(Collections.singletonMap("key", "value"));
+                c1.enter();
+                assertEquals("value", c1.asValue(proxy).getMember("key").asString());
+                c1.leave();
+                c2.enter();
+                assertEquals("key", c2.asValue(proxy).getMemberKeys().iterator().next());
+                c2.leave();
+            }
+        }
+    }
+
+    private void assertEmpty(Engine engine) {
+        remoteAssert(engine, AssertType.LANGUAGE_INSTANCES_COUNT, 0);
+        remoteAssert(engine, AssertType.CONTEXT_CREATE_COUNT, 0);
+        remoteAssert(engine, AssertType.CONTEXT_DISPOSE_COUNT, 0);
+        remoteAssert(engine, AssertType.PARSE_REQUEST_COUNT, 0);
     }
 
     private static void assertEmpty() {
@@ -561,7 +858,7 @@ public class ContextPolicyTest {
 
         // opening contexts consecutively
         try (Engine engine = Engine.create()) {
-            Context.Builder b0 = Context.newBuilder().allowExperimentalOptions(true);
+            Context.Builder b0 = Context.newBuilder(sl0.getLanguage(), sl1.getLanguage()).allowExperimentalOptions(true);
             if (!sharedContext1) {
                 b0.engine(engine);
             }
@@ -579,7 +876,7 @@ public class ContextPolicyTest {
                 v0l0.execute(v0l0, v0l1);
             }
 
-            Context.Builder b1 = Context.newBuilder().allowExperimentalOptions(true);
+            Context.Builder b1 = Context.newBuilder(sl0.getLanguage(), sl1.getLanguage()).allowExperimentalOptions(true);
             if (!sharedContext2) {
                 b1.engine(engine);
             }
@@ -600,14 +897,14 @@ public class ContextPolicyTest {
 
         // opening two contexts at the same time
         try (Engine engine = Engine.create()) {
-            Context.Builder b0 = Context.newBuilder().allowExperimentalOptions(true);
+            Context.Builder b0 = Context.newBuilder(sl0.getLanguage(), sl1.getLanguage()).allowExperimentalOptions(true);
             if (!sharedContext1) {
                 b0.engine(engine);
             }
             if (!language0Compatible) {
                 b0.option(sl0.getLanguage() + ".Dummy", "0");
             }
-            Context.Builder b1 = Context.newBuilder().allowExperimentalOptions(true);
+            Context.Builder b1 = Context.newBuilder(sl0.getLanguage(), sl1.getLanguage()).allowExperimentalOptions(true);
             if (!sharedContext2) {
                 b1.engine(engine);
             }
@@ -636,60 +933,28 @@ public class ContextPolicyTest {
         }
     }
 
-    @GenerateUncached
-    abstract static class SupplierAccessor extends Node {
-
-        @SuppressWarnings("rawtypes")
-        public final <T extends TruffleLanguage> LanguageReference<T> getLanguageReference0(Class<T> languageClass) {
-            return lookupLanguageReference(languageClass);
-        }
-
-        public final <C, T extends TruffleLanguage<C>> ContextReference<C> getContextReference0(Class<T> languageClass) {
-            return lookupContextReference(languageClass);
-        }
-
-        public abstract void execute();
-
-        @Specialization
-        void s0() {
-
-        }
-
-    }
-
     @ExportLibrary(InteropLibrary.class)
     static class SharedObject implements TruffleObject {
 
         final TruffleContext context;
-        final TruffleLanguage<?> expectedLanguage;
+        final BaseLanguage expectedLanguage;
         final Env expectedEnvironment;
         final CallTarget target;
 
         @TruffleBoundary
-        SharedObject(TruffleContext context, TruffleLanguage<?> language, Env env) {
+        SharedObject(TruffleContext context, BaseLanguage language, Env env) {
             this.context = context;
             this.expectedLanguage = language;
             this.expectedEnvironment = env;
-            this.target = Truffle.getRuntime().createCallTarget(new RootNode(language) {
+            this.target = new RootNode(language) {
                 @Child InteropLibrary library = InteropLibrary.getFactory().createDispatched(5);
-                @Child SupplierAccessor accessor = SupplierAccessorNodeGen.create();
-                @CompilationFinal private LanguageReference<? extends Object> cachedLanguageReference;
-                @CompilationFinal private ContextReference<? extends Object> cachedContextReference;
 
                 @SuppressWarnings("unchecked")
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    if (cachedLanguageReference == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        cachedLanguageReference = lookupLanguageReference0(accessor);
-                    }
-                    if (cachedContextReference == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        cachedContextReference = lookupContextReference0(accessor);
-                    }
                     Object[] args = frame.getArguments();
 
-                    doAssertions(accessor, cachedLanguageReference, cachedContextReference);
+                    doAssertions();
 
                     if (args.length > 0) {
                         try {
@@ -702,7 +967,7 @@ public class ContextPolicyTest {
                         return "done";
                     }
                 }
-            });
+            }.getCallTarget();
         }
 
         @ExportMessage
@@ -723,16 +988,12 @@ public class ContextPolicyTest {
         @SuppressWarnings("unchecked")
         @ExportMessage
         Object execute(Object[] args,
-                        @CachedLibrary(limit = "5") InteropLibrary library,
-                        @Cached SupplierAccessor accessor,
-                        @Cached(value = "this.lookupLanguageReference0(accessor)", allowUncached = true) LanguageReference<? extends Object> cachedLanguageSupplier,
-                        @Cached(value = "this.lookupContextReference0(accessor)", allowUncached = true) ContextReference<? extends Object> cachedContextSupplier,
-                        @Cached(value = "this.getContextReference()", allowUncached = true) ContextReference<Env> contextReference)
+                        @CachedLibrary(limit = "5") InteropLibrary library)
                         throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
 
             Object prev = enterInner();
             try {
-                doAssertions(accessor, cachedLanguageSupplier, cachedContextSupplier, contextReference);
+                doAssertions();
 
                 target.call(args);
 
@@ -747,20 +1008,9 @@ public class ContextPolicyTest {
         }
 
         @TruffleBoundary
-        private void doAssertions(SupplierAccessor accessor, LanguageReference<? extends Object> cachedLanguageSupplier, ContextReference<? extends Object> cachedContextSupplier,
-                        ContextReference<Env> contextReference) {
-            doAssertions(accessor, cachedLanguageSupplier, cachedContextSupplier);
-            assertSame(expectedEnvironment, contextReference.get());
-        }
-
-        @TruffleBoundary
-        private void doAssertions(SupplierAccessor accessor, LanguageReference<? extends Object> cachedLanguageSupplier, ContextReference<? extends Object> cachedContextSupplier) {
-            assertSame(expectedLanguage, lookupLanguageReference0(accessor).get());
-            assertSame(expectedEnvironment, lookupContextReference0(accessor).get());
-            assertSame(expectedLanguage, cachedLanguageSupplier.get());
-            assertSame(expectedEnvironment, cachedContextSupplier.get());
-            assertSame(cachedLanguageSupplier, lookupLanguageReference0(accessor));
-            assertSame(cachedContextSupplier, lookupContextReference0(accessor));
+        private void doAssertions() {
+            assertSame(expectedLanguage, expectedLanguage.getLanguageReference().get(null));
+            assertSame(expectedEnvironment, expectedLanguage.getContextReference0().get(null).env);
         }
 
         @TruffleBoundary
@@ -776,72 +1026,36 @@ public class ContextPolicyTest {
             Object prev = null;
             if (context != null) {
                 prev = context.enter(null);
-                assertSame(expectedLanguage, ExclusiveLanguage0.getCurrentLanguage(expectedLanguage.getClass()));
-                assertSame(expectedEnvironment, ExclusiveLanguage0.getCurrentContext(expectedLanguage.getClass()));
+                doAssertions();
             }
             return prev;
         }
-
-        @TruffleBoundary
-        private void doAssertions(LanguageReference<?> languageSupplier) {
-            assertSame(expectedLanguage, ExclusiveLanguage0.getCurrentLanguage(expectedLanguage.getClass()));
-            assertSame(languageSupplier.get(), expectedLanguage);
-        }
-
-        @SuppressWarnings("rawtypes")
-        LanguageReference<? extends Object> lookupLanguageReference0(SupplierAccessor node) {
-            Object prev = enterInner();
-            try {
-                LanguageReference<?> o = node.getLanguageReference0(expectedLanguage.getClass());
-                doAssertions(o);
-                return o;
-            } finally {
-                leaveInner(prev);
-            }
-        }
-
-        @SuppressWarnings({"rawtypes", "unchecked", "deprecation"})
-        ContextReference<Env> getContextReference() {
-            Object prev = enterInner();
-            try {
-                // ensure initialized
-                return ExclusiveLanguage0.getCurrentLanguage(expectedLanguage.getClass()).getContextReference();
-            } finally {
-                leaveInner(prev);
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        ContextReference<? extends Object> lookupContextReference0(SupplierAccessor node) {
-            Object prev = enterInner();
-            try {
-                return node.getContextReference0(expectedLanguage.getClass());
-            } finally {
-                leaveInner(prev);
-            }
-        }
-
     }
 
     static class LanguageRootNode extends RootNode {
 
-        private final Class<? extends TruffleLanguage<Env>> languageClass;
+        private final BaseLanguage language;
 
         private final boolean innerContext;
 
         @SuppressWarnings("unchecked")
-        protected LanguageRootNode(TruffleLanguage<?> language, boolean innerContext) {
+        protected LanguageRootNode(BaseLanguage language, boolean innerContext) {
             super(language);
-            this.languageClass = (Class<? extends TruffleLanguage<Env>>) language.getClass();
+            this.language = language;
             this.innerContext = innerContext;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Env env = ExclusiveLanguage0.getCurrentContext(languageClass);
+            LangContext langContext = language.getContextReference0().get(this);
             TruffleContext context = null;
             if (innerContext) {
-                context = env.newContextBuilder().build();
+                if (langContext.innerContext == null) {
+                    context = langContext.env.newInnerContextBuilder().initializeCreatorContext(true).build();
+                    langContext.innerContext = context;
+                } else {
+                    context = langContext.innerContext;
+                }
             }
             Object prev = null;
             if (context != null) {
@@ -850,8 +1064,8 @@ public class ContextPolicyTest {
             try {
                 SharedObject obj = new SharedObject(
                                 context,
-                                ExclusiveLanguage0.getCurrentLanguage(languageClass),
-                                ExclusiveLanguage0.getCurrentContext(languageClass));
+                                language.getLanguageReference().get(null),
+                                language.getContextReference0().get(null).env);
                 return obj;
             } finally {
                 if (context != null) {
@@ -862,8 +1076,24 @@ public class ContextPolicyTest {
         }
     }
 
+    static class LangContext {
+        final Env env;
+        TruffleContext innerContext;
+
+        LangContext(Env env) {
+            this.env = env;
+        }
+    }
+
+    abstract static class BaseLanguage extends TruffleLanguage<LangContext> {
+
+        abstract LanguageReference<? extends BaseLanguage> getLanguageReference();
+
+        abstract ContextReference<LangContext> getContextReference0();
+    }
+
     @Registration(id = EXCLUSIVE0, name = EXCLUSIVE0, contextPolicy = ContextPolicy.EXCLUSIVE)
-    public static class ExclusiveLanguage0 extends TruffleLanguage<Env> {
+    public static class ExclusiveLanguage0 extends BaseLanguage {
 
         public ExclusiveLanguage0() {
             languageInstances.add(this);
@@ -881,46 +1111,71 @@ public class ContextPolicyTest {
         protected CallTarget parse(ParsingRequest request) throws Exception {
             parseRequest.add(this);
             boolean innerContext = request.getSource().getName().equals(RUN_INNER_CONTEXT);
-            return Truffle.getRuntime().createCallTarget(new LanguageRootNode(this, innerContext));
+            return new LanguageRootNode(this, innerContext).getCallTarget();
         }
 
         @Override
-        protected Env createContext(Env env) {
+        protected LangContext createContext(Env env) {
             contextCreate.add(this);
-            return env;
+            return new LangContext(env);
         }
 
         @Override
-        protected void disposeContext(Env context) {
+        protected void finalizeContext(LangContext context) {
+            if (context.innerContext != null) {
+                context.innerContext.close();
+            }
+        }
+
+        @Override
+        protected void disposeContext(LangContext context) {
             contextDispose.add(this);
         }
 
-        @TruffleBoundary
-        public static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
-            return TruffleLanguage.getCurrentLanguage(languageClass);
+        @Override
+        ContextReference<LangContext> getContextReference0() {
+            return CONTEXT_REF;
         }
 
-        @TruffleBoundary
-        public static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
-            return TruffleLanguage.getCurrentContext(languageClass);
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
         }
+
+        static final ContextReference<LangContext> CONTEXT_REF = ContextReference.create(ExclusiveLanguage0.class);
+        static final LanguageReference<ExclusiveLanguage0> REFERENCE = LanguageReference.create(ExclusiveLanguage0.class);
 
     }
 
-    @Registration(id = EXCLUSIVE1, name = EXCLUSIVE1, contextPolicy = ContextPolicy.EXCLUSIVE)
-    public static class ExclusiveLanguage1 extends ExclusiveLanguage0 {
+    @Registration(id = EXCLUSIVE1, name = EXCLUSIVE1, contextPolicy = ContextPolicy.SHARED)
+    public static final class ExclusiveLanguage1 extends ExclusiveLanguage0 {
         @Option(help = "", category = OptionCategory.INTERNAL) //
         static final OptionKey<Integer> Dummy = new OptionKey<>(0);
 
         @Override
         protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
-            return firstOptions.get(Dummy).equals(newOptions.get(Dummy));
+            // this effectively makes it EXCLUSIVE
+            return false;
         }
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {
             return new ExclusiveLanguage1OptionDescriptors();
         }
+
+        @Override
+        ContextReference<LangContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
+        }
+
+        static final ContextReference<LangContext> CONTEXT_REF = ContextReference.create(ExclusiveLanguage1.class);
+        static final LanguageReference<ExclusiveLanguage1> REFERENCE = LanguageReference.create(ExclusiveLanguage1.class);
+
     }
 
     @Registration(id = REUSE0, name = REUSE0, contextPolicy = ContextPolicy.REUSE)
@@ -937,6 +1192,19 @@ public class ContextPolicyTest {
         protected OptionDescriptors getOptionDescriptors() {
             return new ReuseLanguage0OptionDescriptors();
         }
+
+        @Override
+        ContextReference<LangContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
+        }
+
+        static final ContextReference<LangContext> CONTEXT_REF = ContextReference.create(ReuseLanguage0.class);
+        static final LanguageReference<ReuseLanguage0> REFERENCE = LanguageReference.create(ReuseLanguage0.class);
     }
 
     @Registration(id = REUSE1, name = REUSE1, contextPolicy = ContextPolicy.REUSE)
@@ -953,6 +1221,19 @@ public class ContextPolicyTest {
         protected OptionDescriptors getOptionDescriptors() {
             return new ReuseLanguage1OptionDescriptors();
         }
+
+        @Override
+        ContextReference<LangContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
+        }
+
+        static final ContextReference<LangContext> CONTEXT_REF = ContextReference.create(ReuseLanguage1.class);
+        static final LanguageReference<ReuseLanguage1> REFERENCE = LanguageReference.create(ReuseLanguage1.class);
     }
 
     @Registration(id = SHARED0, name = SHARED0, contextPolicy = ContextPolicy.SHARED)
@@ -969,6 +1250,19 @@ public class ContextPolicyTest {
         protected OptionDescriptors getOptionDescriptors() {
             return new SharedLanguage0OptionDescriptors();
         }
+
+        @Override
+        ContextReference<LangContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
+        }
+
+        static final ContextReference<LangContext> CONTEXT_REF = ContextReference.create(SharedLanguage0.class);
+        static final LanguageReference<SharedLanguage0> REFERENCE = LanguageReference.create(SharedLanguage0.class);
     }
 
     @Registration(id = SHARED1, name = SHARED1, contextPolicy = ContextPolicy.SHARED)
@@ -985,6 +1279,19 @@ public class ContextPolicyTest {
         protected OptionDescriptors getOptionDescriptors() {
             return new SharedLanguage1OptionDescriptors();
         }
+
+        @Override
+        ContextReference<LangContext> getContextReference0() {
+            return CONTEXT_REF;
+        }
+
+        @Override
+        LanguageReference<? extends BaseLanguage> getLanguageReference() {
+            return REFERENCE;
+        }
+
+        static final ContextReference<LangContext> CONTEXT_REF = ContextReference.create(SharedLanguage1.class);
+        static final LanguageReference<SharedLanguage1> REFERENCE = LanguageReference.create(SharedLanguage1.class);
     }
 
 }

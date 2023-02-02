@@ -1,0 +1,10 @@
+>[0] javac EmbeddingSymlinks*.java -d ${TMP_DIR}
+>[0] java -ea -cp ${TMP_DIR} EmbeddingSymlinks ${TMP_DIR}
+loaded source named (?:fooMain\.js from truffle:[0-9a-f]+/fooMain\.js|foo from file:.*/baz\.mjs)
+loaded source named (?:fooMain\.js from truffle:[0-9a-f]+/fooMain\.js|foo from file:.*/baz\.mjs)
+computed add at foo from file:.*/baz\.mjs with value 42
+foo add: 42
+loaded source named (?:barMain\.js from truffle:[0-9a-f]+/barMain\.js|bar from file:.*/baz\.mjs)
+loaded source named (?:barMain\.js from truffle:[0-9a-f]+/barMain\.js|bar from file:.*/baz\.mjs)
+computed add at bar from file:.*/baz\.mjs with value 42
+bar add: 42

@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
+import java.util.List;
+
 /**
  * A line number table interface for methods.
  */
@@ -32,7 +34,7 @@ public interface LineNumberTableRef {
      * 
      * @return an array of EntryRef for all entries.
      */
-    EntryRef[] getEntries();
+    List<? extends EntryRef> getEntries();
 
     /**
      * Interface for entries in a line number table.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public interface PyErrorMessages {
 
     String BAD_ESCAPE_END_OF_PATTERN = "bad escape (end of pattern)";
+    String BAD_GROUP_NUMBER = "bad group number";
     String CANNOT_REFER_TO_AN_OPEN_GROUP = "cannot refer to an open group";
     String CANNOT_REFER_TO_GROUP_DEFINED_IN_THE_SAME_LOOKBEHIND_SUBPATTERN = "cannot refer to group defined in the same lookbehind subpattern";
     String CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES = "conditional backref with more than two branches";
@@ -88,13 +89,8 @@ public interface PyErrorMessages {
     }
 
     @TruffleBoundary
-    static String incompleteEscapeU(char chr, String code) {
-        return "bad escape \\" + chr + code;
-    }
-
-    @TruffleBoundary
-    static String incompleteEscapeX(String code) {
-        return "bad escape \\x" + code;
+    static String incompleteEscape(String code) {
+        return "incomplete escape " + code;
     }
 
     @TruffleBoundary
@@ -104,17 +100,32 @@ public interface PyErrorMessages {
 
     @TruffleBoundary
     static String invalidOctalEscape(String code) {
-        return "octal escape value \\" + code + " outside of range 0-0o377";
+        return "octal escape value " + code + " outside of range 0-0o377";
     }
 
     @TruffleBoundary
-    static String invalidUnicodeEscape(char chr, String code) {
-        return "unicode escape value \\" + chr + code + " outside of range 0-0x10FFFF";
+    static String invalidUnicodeEscape(String code) {
+        return "bad escape " + code;
+    }
+
+    @TruffleBoundary
+    static String missing(String name) {
+        return "missing " + name;
+    }
+
+    @TruffleBoundary
+    static String missingUnterminatedName(char terminator) {
+        return "missing " + terminator + ", unterminated name";
     }
 
     @TruffleBoundary
     static String redefinitionOfGroupName(String name, int newId, int oldId) {
         return String.format("redefinition of group name '%s' as group %d; was group %d", name, newId, oldId);
+    }
+
+    @TruffleBoundary
+    static String undefinedCharacterName(String name) {
+        return "undefined character name '" + name + "'";
     }
 
     @TruffleBoundary

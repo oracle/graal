@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,12 +59,6 @@ public class Fields {
     private final Class<?>[] types;
 
     private final Class<?>[] declaringClasses;
-
-    public static Fields forClass(Class<?> clazz, Class<?> endClazz, boolean includeTransient, FieldsScanner.CalcOffset calcOffset) {
-        FieldsScanner scanner = new FieldsScanner(calcOffset == null ? new FieldsScanner.DefaultCalcOffset() : calcOffset);
-        scanner.scan(clazz, endClazz, includeTransient);
-        return create(scanner.data);
-    }
 
     protected Fields(List<? extends FieldsScanner.FieldInfo> fields) {
         Collections.sort(fields);
@@ -302,38 +296,11 @@ public class Fields {
      * @param value a value that will be assigned to the field
      */
     private boolean checkAssignableFrom(Object object, int index, Object value) {
-        assert value == null || getType(index).isAssignableFrom(value.getClass()) : String.format("Field %s.%s of type %s is not assignable from %s", object.getClass().getSimpleName(),
-                        getName(index), getType(index).getSimpleName(), value.getClass().getSimpleName());
-        return true;
-    }
-
-    public void set(Object object, int index, Object value) {
-        long offset = offsets[index];
-        Class<?> type = types[index];
-        if (type.isPrimitive()) {
-            if (type == Integer.TYPE) {
-                UNSAFE.putInt(object, offset, (Integer) value);
-            } else if (type == Long.TYPE) {
-                UNSAFE.putLong(object, offset, (Long) value);
-            } else if (type == Boolean.TYPE) {
-                UNSAFE.putBoolean(object, offset, (Boolean) value);
-            } else if (type == Float.TYPE) {
-                UNSAFE.putFloat(object, offset, (Float) value);
-            } else if (type == Double.TYPE) {
-                UNSAFE.putDouble(object, offset, (Double) value);
-            } else if (type == Short.TYPE) {
-                UNSAFE.putShort(object, offset, (Short) value);
-            } else if (type == Character.TYPE) {
-                UNSAFE.putChar(object, offset, (Character) value);
-            } else if (type == Byte.TYPE) {
-                UNSAFE.putByte(object, offset, (Byte) value);
-            } else {
-                assert false : "unhandled property type: " + type;
-            }
-        } else {
-            assert checkAssignableFrom(object, index, value);
-            UNSAFE.putObject(object, offset, value);
+        if (value != null && !getType(index).isAssignableFrom(value.getClass())) {
+            throw new GraalError(String.format("Field %s.%s of type %s in %s is not assignable from %s", object.getClass().getSimpleName(),
+                            getName(index), object, getType(index).getSimpleName(), value.getClass().getSimpleName()));
         }
+        return true;
     }
 
     public void setRawPrimitive(Object object, int index, long value) {
@@ -420,6 +387,11 @@ public class Fields {
 
     public void putObject(Object object, int i, Object value) {
         assert checkAssignableFrom(object, i, value);
+        UNSAFE.putObject(object, offsets[i], value);
+    }
+
+    public void putObjectChecked(Object object, int i, Object value) {
+        checkAssignableFrom(object, i, value);
         UNSAFE.putObject(object, offsets[i], value);
     }
 }

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -41,8 +40,11 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -52,40 +54,21 @@ public class DeletedMethod extends CustomSubstitutionMethod {
                     "Native method. If you intend to use the Java Native Interface (JNI), specify %1$s+JNI and see also %1$sJNIConfigurationFiles=<path> (use %1$s+PrintFlags for details)",
                     SubstrateOptionsParser.HOSTED_OPTION_PREFIX);
 
-    private final Delete deleteAnnotation;
+    private final String message;
+    private final AnnotationValue[] injectedAnnotations;
 
     public DeletedMethod(ResolvedJavaMethod original, Delete deleteAnnotation) {
         super(original);
-        this.deleteAnnotation = deleteAnnotation;
+        this.message = deleteAnnotation.value();
+        this.injectedAnnotations = SubstrateAnnotationExtractor.prepareInjectedAnnotations(deleteAnnotation);
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return AnnotatedField.appendAnnotationTo(original.getAnnotations(), deleteAnnotation);
+    public AnnotationValue[] getInjectedAnnotations() {
+        return injectedAnnotations;
     }
 
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return AnnotatedField.appendAnnotationTo(original.getDeclaredAnnotations(), deleteAnnotation);
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if (annotationClass.isInstance(deleteAnnotation)) {
-            return annotationClass.cast(deleteAnnotation);
-        }
-        return original.getAnnotation(annotationClass);
-    }
-
-    public static final Method reportErrorMethod;
-
-    static {
-        try {
-            reportErrorMethod = VMError.class.getDeclaredMethod("unsupportedFeature", String.class);
-        } catch (NoSuchMethodException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
+    public static final Method reportErrorMethod = ReflectionUtil.lookupMethod(VMError.class, "unsupportedFeature", String.class);
 
     @Override
     public int getModifiers() {
@@ -98,7 +81,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        return buildGraph(debug, method, providers, deleteAnnotation.value());
+        return buildGraph(debug, method, providers, message);
     }
 
     public static StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, String message) {

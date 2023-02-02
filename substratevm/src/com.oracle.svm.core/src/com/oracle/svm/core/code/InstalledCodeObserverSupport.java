@@ -34,13 +34,14 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
+@AutomaticallyRegisteredImageSingleton
 public final class InstalledCodeObserverSupport {
     private static final InstalledCodeObserverHandleAction ACTION_ATTACH = h -> getAccessor(h).attachToCurrentIsolate(h);
     private static final InstalledCodeObserverHandleAction ACTION_DETACH = h -> getAccessor(h).detachFromCurrentIsolate(h);
@@ -83,7 +84,7 @@ public final class InstalledCodeObserverSupport {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static InstalledCodeObserver.InstalledCodeObserverHandleAccessor getAccessor(InstalledCodeObserverHandle handle) {
-        return KnownIntrinsics.convertUnknownValue(handle.getAccessor(), InstalledCodeObserver.InstalledCodeObserverHandleAccessor.class);
+        return handle.getAccessor();
     }
 
     public static void activateObservers(NonmovableArray<InstalledCodeObserverHandle> observerHandles) {

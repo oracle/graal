@@ -24,16 +24,15 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
+import java.util.Map;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import java.util.Map;
-
-//Checkstyle: allow synchronization
 
 @TargetClass(value = sun.util.resources.OpenListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
 @SuppressWarnings({"static-method"})

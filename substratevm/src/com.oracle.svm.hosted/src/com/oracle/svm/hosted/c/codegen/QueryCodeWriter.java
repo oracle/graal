@@ -42,6 +42,7 @@ import com.oracle.svm.hosted.c.info.EnumConstantInfo;
 import com.oracle.svm.hosted.c.info.InfoTreeVisitor;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
+import com.oracle.svm.hosted.c.info.RawPointerToInfo;
 import com.oracle.svm.hosted.c.info.RawStructureInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
@@ -309,6 +310,11 @@ public class QueryCodeWriter extends InfoTreeVisitor {
             writer.outdent();
             writer.indents().appendln("}");
         }
+    }
+
+    @Override
+    protected void visitRawPointerToInfo(RawPointerToInfo pointerToInfo) {
+        /* Nothing to do, do not visit children. */
     }
 
     @Override

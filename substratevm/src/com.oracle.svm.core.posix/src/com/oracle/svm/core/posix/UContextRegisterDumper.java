@@ -27,12 +27,12 @@ package com.oracle.svm.core.posix;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.RegisterDumper;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 
 public interface UContextRegisterDumper extends RegisterDumper {
-    void dumpRegisters(Log log, ucontext_t uContext);
+    void dumpRegisters(Log log, ucontext_t uContext, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations);
 
     PointerBase getHeapBase(ucontext_t uContext);
 
@@ -43,8 +43,8 @@ public interface UContextRegisterDumper extends RegisterDumper {
     PointerBase getIP(ucontext_t uContext);
 
     @Override
-    default void dumpRegisters(Log log, Context context) {
-        dumpRegisters(log, (ucontext_t) context);
+    default void dumpRegisters(Log log, Context context, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
+        dumpRegisters(log, (ucontext_t) context, printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
     }
 
     @Override
@@ -60,11 +60,13 @@ public interface UContextRegisterDumper extends RegisterDumper {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     default PointerBase getSP(Context context) {
         return getSP((ucontext_t) context);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     default PointerBase getIP(Context context) {
         return getIP((ucontext_t) context);
     }

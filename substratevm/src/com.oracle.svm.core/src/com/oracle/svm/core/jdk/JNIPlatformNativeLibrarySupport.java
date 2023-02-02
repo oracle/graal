@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,8 +36,6 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 
 public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibrarySupport {
 
@@ -62,17 +59,10 @@ public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibr
      * {@code fastEncoding} field must be initialized before the encoding can be used. We need to
      * ensure that the initialization code runs early, for the following reasons:
      *
-     * <ul>
-     * <li>On JDK 8, the C method {@code initializeEncoding()} is called lazily from various places.
-     * But unfortunately the implementation is not thread safe: a second thread can use
-     * uninitialized state while the first thread is still in the initialization. So we need to
-     * force initialization here where we are still single threaded.</li>
-     *
-     * <li>On JDK 11, the initialization is performed from Java during `System.initPhase1` by
+     * The initialization is performed from Java during `System.initPhase1` by
      * `System.initProperties`. However, we do not invoke that part of the system initialization
      * because we already have many system properties pre-initialized in the image heap. So we need
-     * to force initialization here.</li>
-     * </ul>
+     * to force initialization here.
      * 
      * The choice of {@code fastEncoding} depends on the value of the {@code sun.jnu.encoding}
      * system property. This encoding is also known as the <em>platform encoding</em> or <em>JNU
@@ -84,51 +74,16 @@ public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibr
      * (more importantly) also do not look at environment variables to determine the encoding.
      */
     private static void initializeEncoding() {
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            /*
-             * On JDK 11 and later, the method `InitializeEncoding` is an exported JNI function and
-             * we can call it directly.
-             */
-            try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(System.getProperty("sun.jnu.encoding"))) {
-                nativeInitializeEncoding(CurrentIsolate.getCurrentThread(), name.get());
-            }
-        } else {
-            /*
-             * On JDK 8, the method `initializeEncoding` is not an exported JNI function. We call an
-             * exported function that unconditionally calls `initializeEncoding` to trigger the
-             * initialization of `fastEncoding`.
-             */
-            nativeNewStringPlatform(CurrentIsolate.getCurrentThread(), EMPTY_C_STRING.get());
+        /*
+         * The method `InitializeEncoding` is an exported JNI function and we can call it directly.
+         */
+        try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(System.getProperty("sun.jnu.encoding"))) {
+            nativeInitializeEncoding(CurrentIsolate.getCurrentThread(), name.get());
         }
     }
 
     @CFunction("InitializeEncoding")
     private static native void nativeInitializeEncoding(PointerBase env, CCharPointer name);
-
-    private static final CGlobalData<CCharPointer> EMPTY_C_STRING = CGlobalDataFactory.createCString("");
-
-    /**
-     * Converts a C string to a Java String using the platform encoding. On JDK 8, initializes the
-     * platform encoding first by reading the {@code sun.jnu.encoding} system property.
-     */
-    @CFunction("JNU_NewStringPlatform")
-    private static native void nativeNewStringPlatform(PointerBase env, CCharPointer str);
-
-    @Platforms(InternalPlatform.PLATFORM_JNI.class)
-    protected void loadZipLibrary() {
-        /*
-         * On JDK 8, the zip library is loaded early during VM startup and not by individual class
-         * initializers of classes that actually need the library. JDK 11 changed that behavior, the
-         * zip library is properly loaded by classes that depend on it.
-         *
-         * Therefore, this helper method unconditionally loads the zip library for Java 8. The only
-         * other alternative would be to substitute and modify all class initializers of classes
-         * that depend on the zip library, which is complicated.
-         */
-        if (JavaVersionUtil.JAVA_SPEC == 8) {
-            System.loadLibrary("zip");
-        }
-    }
 }
 
 @Platforms(InternalPlatform.PLATFORM_JNI.class)

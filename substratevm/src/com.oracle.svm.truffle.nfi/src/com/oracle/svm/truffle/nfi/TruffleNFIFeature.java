@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.truffle.TruffleFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.truffle.TruffleBaseFeature;
 
 /**
  * Support for the default (trufflenfi/native) backend of the Truffle NFI on SVM. This is re-using
@@ -41,8 +42,8 @@ import com.oracle.svm.truffle.TruffleFeature;
  * re-implementations of the original NFI functions with the C interface of Substrate VM. If this
  * feature is enabled, the image is statically linked with libffi.
  */
-@AutomaticFeature
-public final class TruffleNFIFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public final class TruffleNFIFeature implements InternalFeature {
 
     public static class IsEnabled implements BooleanSupplier {
         @Override
@@ -53,7 +54,7 @@ public final class TruffleNFIFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(TruffleFeature.class);
+        return Arrays.asList(TruffleBaseFeature.class);
     }
 
     @Override

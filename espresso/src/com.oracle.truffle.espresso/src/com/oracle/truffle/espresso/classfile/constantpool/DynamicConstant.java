@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -36,6 +38,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -109,45 +112,59 @@ public interface DynamicConstant extends PoolConstant {
         public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
             Meta meta = accessingKlass.getMeta();
 
-            // Indy constant resolving.
+            // Condy constant resolving.
             BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) ((ObjectKlass) accessingKlass).getAttribute(BootstrapMethodsAttribute.NAME);
 
             assert (bms != null);
             // TODO(garcia) cache bootstrap method resolution
             // Bootstrap method resolution
-            BootstrapMethodsAttribute.Entry bsEntry = bms.at(getBootstrapMethodAttrIndex());
-
-            StaticObject bootstrapmethodMethodHandle = bsEntry.getMethodHandle(accessingKlass, pool);
-            StaticObject[] args = bsEntry.getStaticArguments(accessingKlass, pool);
-
-            StaticObject fieldName = meta.toGuestString(getName(pool));
-            Klass fieldType = meta.resolveSymbolOrFail(Types.fromDescriptor(getSignature(pool)),
-                            accessingKlass.getDefiningClassLoader(),
-                            accessingKlass.protectionDomain());
-
-            Object result = meta.java_lang_invoke_MethodHandleNatives_linkDynamicConstant.invokeDirect(
-                            null,
-                            accessingKlass.mirror(),
-                            thisIndex,
-                            bootstrapmethodMethodHandle,
-                            fieldName, fieldType.mirror(),
-                            StaticObject.wrap(args, meta));
             try {
-                return makeResolved(fieldType, (StaticObject) result);
-            } catch (ClassCastException | NullPointerException e) {
-                throw meta.throwException(meta.java_lang_BootstrapMethodError);
-            } catch (EspressoException e) {
-                if (meta.java_lang_NullPointerException.isAssignableFrom(e.getExceptionObject().getKlass()) ||
-                                meta.java_lang_ClassCastException.isAssignableFrom(e.getExceptionObject().getKlass())) {
-                    throw meta.throwExceptionWithCause(meta.java_lang_BootstrapMethodError, e.getExceptionObject());
+                BootstrapMethodsAttribute.Entry bsEntry = bms.at(getBootstrapMethodAttrIndex());
+
+                StaticObject bootstrapmethodMethodHandle = bsEntry.getMethodHandle(accessingKlass, pool);
+                StaticObject[] args = bsEntry.getStaticArguments(accessingKlass, pool);
+
+                StaticObject fieldName = meta.toGuestString(getName(pool));
+                Klass fieldType = meta.resolveSymbolOrFail(getTypeSymbol(pool),
+                                accessingKlass.getDefiningClassLoader(),
+                                accessingKlass.protectionDomain());
+
+                Object result = null;
+                if (!meta.getJavaVersion().java19OrLater()) {
+                    result = meta.java_lang_invoke_MethodHandleNatives_linkDynamicConstant.invokeDirect(
+                                    null,
+                                    accessingKlass.mirror(),
+                                    thisIndex,
+                                    bootstrapmethodMethodHandle,
+                                    fieldName, fieldType.mirror(),
+                                    StaticObject.wrap(args, meta));
+                } else {
+                    result = meta.java_lang_invoke_MethodHandleNatives_linkDynamicConstant.invokeDirect(
+                                    null,
+                                    accessingKlass.mirror(),
+                                    bootstrapmethodMethodHandle,
+                                    fieldName, fieldType.mirror(),
+                                    StaticObject.wrap(args, meta));
                 }
-                throw e;
+                try {
+                    return makeResolved(fieldType, (StaticObject) result);
+                } catch (ClassCastException | NullPointerException e) {
+                    throw meta.throwException(meta.java_lang_BootstrapMethodError);
+                } catch (EspressoException e) {
+                    if (meta.java_lang_NullPointerException.isAssignableFrom(e.getGuestException().getKlass()) ||
+                                    meta.java_lang_ClassCastException.isAssignableFrom(e.getGuestException().getKlass())) {
+                        throw meta.throwExceptionWithCause(meta.java_lang_BootstrapMethodError, e.getGuestException());
+                    }
+                    throw e;
+                }
+            } catch (EspressoException e) {
+                return new ResolvedFail(e);
             }
         }
     }
 
     interface Resolved extends DynamicConstant, Resolvable.ResolvedConstant {
-        void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node);
+        void putResolved(VirtualFrame frame, int top, BytecodeNode node);
 
         @Override
         default Symbol<Type> getTypeSymbol(ConstantPool pool) {
@@ -161,6 +178,9 @@ public interface DynamicConstant extends PoolConstant {
             }
             return Meta.box(meta, value);
         }
+
+        default void checkFail() {
+        }
     }
 
     final class ResolvedObject implements Resolved {
@@ -171,8 +191,8 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node) {
-            BytecodeNode.putObject(refs, top, resolved);
+        public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
+            EspressoFrame.putObject(frame, top, resolved);
         }
 
         @Override
@@ -194,8 +214,8 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node) {
-            BytecodeNode.putInt(primitives, top, resolved);
+        public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
+            EspressoFrame.putInt(frame, top, resolved);
         }
 
         @Override
@@ -217,8 +237,8 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node) {
-            BytecodeNode.putLong(primitives, top, resolved);
+        public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
+            EspressoFrame.putLong(frame, top, resolved);
         }
 
         @Override
@@ -240,8 +260,8 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node) {
-            BytecodeNode.putDouble(primitives, top, resolved);
+        public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
+            EspressoFrame.putDouble(frame, top, resolved);
         }
 
         @Override
@@ -263,8 +283,8 @@ public interface DynamicConstant extends PoolConstant {
         }
 
         @Override
-        public void putResolved(long[] primitives, Object[] refs, int top, BytecodeNode node) {
-            BytecodeNode.putFloat(primitives, top, resolved);
+        public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
+            EspressoFrame.putFloat(frame, top, resolved);
         }
 
         @Override
@@ -275,6 +295,36 @@ public interface DynamicConstant extends PoolConstant {
         @Override
         public String toString(ConstantPool pool) {
             return "ResolvedDynamicConstant(" + resolved + ")";
+        }
+    }
+
+    final class ResolvedFail implements Resolved {
+        final EspressoException failure;
+
+        public ResolvedFail(EspressoException failure) {
+            this.failure = failure;
+        }
+
+        @Override
+        public void checkFail() {
+            throw failure;
+        }
+
+        @Override
+        public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Failure should have arose earlier.");
+        }
+
+        @Override
+        public Object value() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Failure should have arose earlier.");
+        }
+
+        @Override
+        public String toString(ConstantPool pool) {
+            return "ResolvedDynamicConstant(" + failure + ")";
         }
     }
 }

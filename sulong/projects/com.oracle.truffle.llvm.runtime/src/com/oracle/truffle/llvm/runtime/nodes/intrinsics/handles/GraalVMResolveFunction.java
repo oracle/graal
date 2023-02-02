@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
@@ -48,8 +47,13 @@ public abstract class GraalVMResolveFunction extends LLVMIntrinsic {
 
     @Specialization
     protected Object doNativeResolve(LLVMNativePointer pointer,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        return LLVMManagedPointer.create(context.getFunctionDescriptor(pointer));
+                    @Cached ConditionProfile isFunction) {
+        LLVMFunctionDescriptor descriptor = getContext().getFunctionDescriptor(pointer);
+        if (isFunction.profile(descriptor != null)) {
+            return LLVMManagedPointer.create(descriptor);
+        } else {
+            return pointer;
+        }
     }
 
     @Specialization(guards = "pointsToFunctionDescriptor(pointer)")
@@ -58,12 +62,11 @@ public abstract class GraalVMResolveFunction extends LLVMIntrinsic {
     }
 
     @Specialization(guards = "pointsToLong(pointer)")
-    protected Object doNativePointerResolve(LLVMPointer pointer,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+    protected Object doNativePointerResolve(LLVMPointer pointer) {
         LLVMManagedPointer object = LLVMManagedPointer.cast(pointer);
         Object pointerValue = object.getObject();
         LLVMNativePointer nativePointer = LLVMNativePointer.create((long) pointerValue);
-        return LLVMManagedPointer.create(context.getFunctionDescriptor(nativePointer));
+        return LLVMManagedPointer.create(getContext().getFunctionDescriptor(nativePointer));
     }
 
     @Fallback

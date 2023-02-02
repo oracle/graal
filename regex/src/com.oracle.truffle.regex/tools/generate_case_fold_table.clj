@@ -1,7 +1,5 @@
-#!/usr/bin/env boot
-
 ; ------------------------------------------------------------------------------
-; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+; Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
 ; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;
 ; The Universal Permissive License (UPL), Version 1.0
@@ -48,8 +46,9 @@
 ;; This script assumes that the current working directory contains a folder "dat"
 ;; with the files NonUnicodeFoldTable.txt and UnicodeFoldTable.txt.
 
-(require '[clojure.set :as set]
-         '[clojure.string :as str])
+(ns generate-case-fold-table
+  (:require [clojure.set :as set]
+            [clojure.string :as str]))
 
 (defn pairwise
   "Given a sequence `x_1`, `x_2`, `x_3`..., returns the sequence of pairs `[x_1 x_2]`, `[x_2 x_3]`..."
@@ -324,17 +323,17 @@
         footer               "\n    });\n"
         method-name-and-args (fn [entry]
                                (case (:kind entry)
-                                 :delta       {:lo          (:lo entry) 
-                                               :hi          (:hi entry) 
+                                 :delta       {:lo          (:lo entry)
+                                               :hi          (:hi entry)
                                                :method-name "INTEGER_OFFSET"
                                                :arg         (:delta entry)}
-                                 :alternating {:lo          (:lo entry) 
+                                 :alternating {:lo          (:lo entry)
                                                :hi          (:hi entry)
                                                :method-name (if (:aligned entry)
                                                               "ALTERNATING_AL"
                                                               "ALTERNATING_UL")
                                                :arg         0 }
-                                 :class       {:lo          (:lo entry) 
+                                 :class       {:lo          (:lo entry)
                                                :hi          (:hi entry)
                                                :method-name "DIRECT_MAPPING"
                                                :arg         (:class-id entry)}))

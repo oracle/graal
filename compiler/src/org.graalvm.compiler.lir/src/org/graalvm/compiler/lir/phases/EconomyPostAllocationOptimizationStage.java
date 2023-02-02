@@ -24,9 +24,11 @@
  */
 package org.graalvm.compiler.lir.phases;
 
+import org.graalvm.compiler.lir.ComputeCodeEmissionOrder;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 
 public class EconomyPostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocationOptimizationContext> {
     public EconomyPostAllocationOptimizationStage() {
+        appendPhase(new ComputeCodeEmissionOrder());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -223,24 +223,71 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
      *
      * <code>dst = src[index]</code>
      *
-     * @param eSize width of element.
+     * @param dstESize width of destination element.
+     * @param srcESize width of source element.
      * @param dst Either floating-point or general-purpose register. If general-purpose, register
      *            may not be stackpointer or zero register.
      * @param src SIMD register.
      * @param index lane position of element to copy.
      */
-    public void moveFromIndex(ElementSize eSize, Register dst, Register src, int index) {
+    public void moveFromIndex(ElementSize dstESize, ElementSize srcESize, Register dst, Register src, int index) {
         assert src.getRegisterCategory().equals(SIMD);
 
-        int nBits = eSize.bits();
-        if (index == 0 && (nBits == 32 || nBits == 64)) {
-            masm.fmov(nBits, dst, src);
+        boolean sameWidth = dstESize == srcESize;
+        int dstBits = dstESize.bits();
+        if (index == 0 && sameWidth && (dstBits == 32 || dstBits == 64)) {
+            masm.fmov(dstBits, dst, src);
+        } else if (sameWidth && dst.getRegisterCategory().equals(CPU)) {
+            umovGX(srcESize, dst, src, index);
         } else if (dst.getRegisterCategory().equals(CPU)) {
-            umovGX(eSize, dst, src, index);
+            assert !sameWidth;
+            smovGX(dstESize, srcESize, dst, src, index);
         } else {
             assert dst.getRegisterCategory().equals(SIMD);
-            dupSX(eSize, dst, src, index);
+            dupSX(srcESize, dst, src, index);
         }
+    }
+
+    /**
+     * Reverse the byte-order (endianess) of each element.
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void revVV(ASIMDSize size, ElementSize eSize, Register dst, Register src) {
+        switch (eSize) {
+            case Byte:
+                // nothing to do - only 1 byte
+                break;
+            case HalfWord:
+                masm.neon.rev16VV(size, dst, src);
+                break;
+            case Word:
+                masm.neon.rev32VV(size, ElementSize.Byte, dst, src);
+                break;
+            case DoubleWord:
+                masm.neon.rev64VV(size, ElementSize.Byte, dst, src);
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+    }
+
+    /**
+     * C7.2.200 Move vector element to another vector element.<br>
+     * <p>
+     * Preferred alias for insert vector element from another vector element.
+     *
+     * @param eSize size of value to duplicate.
+     * @param dst SIMD register.
+     * @param dstIdx offset of value to store.
+     * @param src SIMD register.
+     * @param srcIdx offset of value to duplicate.
+     */
+    public void movXX(ElementSize eSize, Register dst, int dstIdx, Register src, int srcIdx) {
+        insXX(eSize, dst, dstIdx, src, srcIdx);
     }
 
     /**
@@ -282,5 +329,19 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
      */
     public void uxtlVV(ElementSize srcESize, Register dst, Register src) {
         ushllVVI(srcESize, dst, src, 0);
+    }
+
+    /**
+     * C7.2.398 Unsigned extend long.<br>
+     * <p>
+     * Preferred alias for ushll2 when only zero-extending the vector elements.
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
+     *            element size will be double this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void uxtl2VV(ElementSize srcESize, Register dst, Register src) {
+        ushll2VVI(srcESize, dst, src, 0);
     }
 }

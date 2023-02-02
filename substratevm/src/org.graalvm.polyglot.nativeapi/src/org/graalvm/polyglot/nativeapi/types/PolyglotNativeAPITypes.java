@@ -36,11 +36,11 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypedef;
 import org.graalvm.polyglot.nativeapi.PolyglotNativeAPICContext;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.c.CTypedef;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolatePointer;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
@@ -51,14 +51,6 @@ public class PolyglotNativeAPITypes {
     @CEnum("poly_status")
     public enum PolyglotStatus {
         poly_ok,
-
-        poly_string_expected,
-
-        poly_number_expected,
-
-        poly_boolean_expected,
-
-        poly_array_expected,
 
         poly_generic_failure,
 
@@ -77,6 +69,8 @@ public class PolyglotNativeAPITypes {
         @CField("error_message")
         void setErrorMessage(CCharPointer errorMessage);
 
+        @CField("error_message")
+        CCharPointer getErrorMessage();
     }
 
     @CPointerTo(value = PolyglotExtendedErrorInfo.class)
@@ -231,5 +225,11 @@ public class PolyglotNativeAPITypes {
 
     @CStruct("poly_isolate_params")
     public interface PolyglotIsolateParameters extends CEntryPointCreateIsolateParameters {
+    }
+
+    @CTypedef(name = "poly_output_handler")
+    public interface PolyglotOutputHandler extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void invoke(CCharPointer bytes, UnsignedWord length);
     }
 }

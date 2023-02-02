@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,14 @@
 package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVM80BitFloatDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMDoubleDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMFloatDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMI16DataEscapeNodeGen;
@@ -45,10 +48,11 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMI8D
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMPointerDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMVoidDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Buffer;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -81,6 +85,8 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
                     return LLVMFloatDataEscapeNodeGen.create();
                 case DOUBLE:
                     return LLVMDoubleDataEscapeNodeGen.create();
+                case X86_FP80:
+                    return LLVM80BitFloatDataEscapeNodeGen.create();
                 default:
                     throw new AssertionError("unexpected type in LLVMDataEscapeNode: " + type);
             }
@@ -259,10 +265,25 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
             return Double.longBitsToDouble(escapingValue);
         }
 
-        @Specialization(limit = "3", replaces = "escapingLong")
+        @Specialization(replaces = "escapingLong")
+        @GenerateAOT.Exclude
         static double escapingPointer(Object escapingValue, LLVMInteropType.Structured type,
-                        @CachedLibrary("escapingValue") LLVMNativeLibrary library) {
-            return escapingLong(library.toNativePointer(escapingValue).asNative(), type);
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer) {
+            return escapingLong(toNativePointer.execute(escapingValue).asNative(), type);
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class LLVM80BitFloatDataEscapeNode extends LLVMDataEscapeNode {
+
+        @Specialization
+        static LLVMPointer escaping80BitFloat(LLVM80BitFloat escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            /*
+             * Currently there is no way to represent FP80 values as interop values, except via the
+             * Truffle NFI. The NFI expects an interop "buffer" to be able to deserialize it.
+             */
+            byte[] value = escapingValue.getBytes();
+            return LLVMManagedPointer.create(value).export(new Buffer(false, 10));
         }
     }
 
@@ -285,12 +306,14 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
         }
 
         @Specialization(guards = {"!isPrimitiveValue(object)", "foreigns.isForeign(object)"}, limit = "3")
+        @GenerateAOT.Exclude
         static Object escapingForeignNonPointer(Object object, @SuppressWarnings("unused") LLVMInteropType.Structured type,
                         @CachedLibrary("object") LLVMAsForeignLibrary foreigns) {
             return foreigns.asForeign(object);
         }
 
         @Specialization(guards = "!foreigns.isForeign(address)", limit = "3")
+        @GenerateAOT.Exclude
         static Object escapingManaged(LLVMPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type,
                         @SuppressWarnings("unused") @CachedLibrary("address") LLVMAsForeignLibrary foreigns,
                         @Cached ConditionProfile typedProfile) {

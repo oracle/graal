@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.nodes;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -44,7 +45,7 @@ public class UnsafePartitionStoreNode extends RawStoreNode {
 
     public UnsafePartitionStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, UnsafePartitionKind partitionKind,
                     ResolvedJavaType partitionType) {
-        super(TYPE, object, offset, value, accessKind, locationIdentity, true, false, null, false);
+        super(TYPE, object, offset, value, accessKind, locationIdentity, true, MemoryOrderMode.PLAIN, null, false);
         this.partitionKind = partitionKind;
         this.partitionType = partitionType;
     }

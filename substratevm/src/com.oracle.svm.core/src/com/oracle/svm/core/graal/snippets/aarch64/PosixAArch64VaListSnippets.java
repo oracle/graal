@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,6 @@ package com.oracle.svm.core.graal.snippets.aarch64;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -39,6 +37,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
@@ -101,11 +100,12 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
     private static final int GP_TOP_LOCATION = 8;
     private static final int FP_TOP_LOCATION = 16;
 
-    private PosixAArch64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
-        super(options, factories, providers, snippetReflection);
+    @Snippet
+    protected static Pointer vaListInitializationSnippet(Pointer vaList) {
+        return vaList;
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     protected static double vaArgDoubleSnippet(Pointer vaList) {
         int fpOffset = vaList.readInt(FP_OFFSET_LOCATION);
         if (fpOffset < MAX_FP_OFFSET) {
@@ -127,7 +127,7 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
         return (float) vaArgDoubleSnippet(vaList);
     }
 
-    @Snippet
+    @Snippet(allowMissingProbabilities = true)
     protected static long vaArgLongSnippet(Pointer vaList) {
         int gpOffset = vaList.readInt(GP_OFFSET_LOCATION);
         if (gpOffset < MAX_GP_OFFSET) {
@@ -149,26 +149,40 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
     }
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-
-        new PosixAArch64VaListSnippets(options, factories, providers, snippetReflection, lowerings);
+    public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        new PosixAArch64VaListSnippets(options, providers, lowerings);
     }
 
-    private PosixAArch64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+    private final SnippetInfo vaListInitialization;
 
-        super(options, factories, providers, snippetReflection);
+    private final SnippetInfo vaArgDouble;
+    private final SnippetInfo vaArgFloat;
+    private final SnippetInfo vaArgLong;
+    private final SnippetInfo vaArgInt;
+
+    private PosixAArch64VaListSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
+        lowerings.put(VaListInitializationNode.class, new VaListInitializationSnippetsLowering());
         lowerings.put(VaListNextArgNode.class, new VaListSnippetsLowering());
+
+        this.vaListInitialization = snippet(providers, PosixAArch64VaListSnippets.class, "vaListInitializationSnippet");
+
+        this.vaArgDouble = snippet(providers, PosixAArch64VaListSnippets.class, "vaArgDoubleSnippet");
+        this.vaArgFloat = snippet(providers, PosixAArch64VaListSnippets.class, "vaArgFloatSnippet");
+        this.vaArgLong = snippet(providers, PosixAArch64VaListSnippets.class, "vaArgLongSnippet");
+        this.vaArgInt = snippet(providers, PosixAArch64VaListSnippets.class, "vaArgIntSnippet");
+    }
+
+    protected class VaListInitializationSnippetsLowering implements NodeLoweringProvider<VaListInitializationNode> {
+        @Override
+        public void lower(VaListInitializationNode node, LoweringTool tool) {
+            Arguments args = new Arguments(vaListInitialization, node.graph().getGuardsStage(), tool.getLoweringStage());
+            args.add("vaList", node.getVaList());
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+        }
     }
 
     protected class VaListSnippetsLowering implements NodeLoweringProvider<VaListNextArgNode> {
-
-        private final SnippetInfo vaArgDouble = snippet(PosixAArch64VaListSnippets.class, "vaArgDoubleSnippet");
-        private final SnippetInfo vaArgFloat = snippet(PosixAArch64VaListSnippets.class, "vaArgFloatSnippet");
-        private final SnippetInfo vaArgLong = snippet(PosixAArch64VaListSnippets.class, "vaArgLongSnippet");
-        private final SnippetInfo vaArgInt = snippet(PosixAArch64VaListSnippets.class, "vaArgIntSnippet");
-
         @Override
         public void lower(VaListNextArgNode node, LoweringTool tool) {
             SnippetInfo snippet;
@@ -192,7 +206,7 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
             }
             Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("vaList", node.getVaList());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

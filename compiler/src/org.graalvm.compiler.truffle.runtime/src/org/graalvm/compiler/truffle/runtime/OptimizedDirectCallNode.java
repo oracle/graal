@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerOptions;
-import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
@@ -55,17 +52,17 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
      */
     OptimizedDirectCallNode(OptimizedCallTarget target) {
         super(target);
-        assert target.getSourceCallTarget() == null;
+        assert target.isSourceCallTarget();
     }
 
     @Override
     public Object call(Object... arguments) {
         OptimizedCallTarget target = getCurrentCallTarget();
+        if (CompilerDirectives.hasNextTier()) {
+            incrementCallCount();
+        }
         if (CompilerDirectives.inInterpreter()) {
             target = onInterpreterCall(target);
-        }
-        if (GraalCompilerDirectives.inFirstTier()) {
-            incrementCallCount();
         }
         try {
             return target.callDirect(this, arguments);
@@ -131,11 +128,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
         return callCount;
     }
 
-    public CompilerOptions getCompilerOptions() {
-        RootNode rootNode = getRootNode();
-        return rootNode != null ? rootNode.getCompilerOptions() : DefaultCompilerOptions.INSTANCE;
-    }
-
     @Override
     public OptimizedCallTarget getCurrentCallTarget() {
         return (OptimizedCallTarget) super.getCurrentCallTarget();
@@ -155,7 +147,6 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
      *         made during this interpreter call, the argument target otherwise.
      */
     private OptimizedCallTarget onInterpreterCall(OptimizedCallTarget target) {
-        incrementCallCount();
         if (target.isNeedsSplit() && !splitDecided) {
             // We intentionally avoid locking here because worst case is a double decision printed
             // and preventing that is not worth the performance impact of locking

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,12 @@ public interface RuntimeProvider {
      * Gets the host backend.
      */
     Backend getHostBackend();
+
+    /**
+     * Returns the unique compiler configuration name that is in use. Useful for users to find out
+     * which configuration is in use.
+     */
+    String getCompilerConfigurationName();
 
     /**
      * Gets the backend for a given architecture.

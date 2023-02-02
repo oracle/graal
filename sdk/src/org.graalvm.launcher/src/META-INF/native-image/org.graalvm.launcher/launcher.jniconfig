@@ -1,0 +1,14 @@
+[
+  {
+    "name": "org.graalvm.launcher.AbstractLanguageLauncher",
+    "methods": [
+      { "name": "runLauncher" }
+    ]
+  }
+  ,{
+    "name": "org.graalvm.launcher.AbstractLanguageLauncher$RelaunchException",
+    "fields": [
+      { "name": "vmArgs" }
+    ]
+  }
+]

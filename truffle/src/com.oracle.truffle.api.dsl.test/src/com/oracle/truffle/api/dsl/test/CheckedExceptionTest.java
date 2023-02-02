@@ -45,18 +45,20 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CheckedExceptionTestFactory.Default1NodeGen;
 import com.oracle.truffle.api.dsl.test.CheckedExceptionTestFactory.Default2NodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused"})
 public class CheckedExceptionTest {
 
     @SuppressWarnings("serial")
     static class CheckedException extends Exception {
     }
 
+    @GenerateInline(false)
     abstract static class Default1Node extends Node {
 
         abstract void execute(Object arg) throws CheckedException;
@@ -81,6 +83,7 @@ public class CheckedExceptionTest {
         }
     }
 
+    @GenerateInline(false)
     abstract static class Default2Node extends Node {
 
         abstract void execute(Object arg) throws CheckedException;

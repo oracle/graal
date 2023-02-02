@@ -29,8 +29,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.svm.core.annotate.StubCallingConvention;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.graal.code.StubCallingConvention;
 
 /**
  * Used for methods that are targets for foreign calls.

@@ -24,28 +24,15 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.heap.ObjectVisitor;
 
 /** A walker over different kinds of allocated memory. */
-public abstract class MemoryWalker {
-
-    /** Get the implementation of the MemoryWalker. */
-    public static MemoryWalker getMemoryWalker() {
-        return ImageSingletons.lookup(MemoryWalker.class);
-    }
-
-    /**
-     * Walk memory applying the visitor. Returns true if all visits returned true, else false when
-     * any visit returns false.
-     */
-    public abstract boolean visitMemory(Visitor visitor);
-
+public final class MemoryWalker {
     public interface ImageHeapRegionVisitor {
         /** Visit a region from the native image heap. */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting memory.")

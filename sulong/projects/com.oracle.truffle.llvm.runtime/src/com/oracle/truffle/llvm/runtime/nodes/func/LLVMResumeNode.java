@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -42,12 +39,12 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 @GenerateWrapper
-@NodeField(name = "exceptionSlot", type = FrameSlot.class)
+@NodeField(name = "exceptionSlot", type = int.class)
 public abstract class LLVMResumeNode extends LLVMControlFlowNode {
 
     public abstract void execute(VirtualFrame frame);
 
-    abstract FrameSlot getExceptionSlot();
+    abstract int getExceptionSlot();
 
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
@@ -71,12 +68,6 @@ public abstract class LLVMResumeNode extends LLVMControlFlowNode {
 
     @Specialization
     void doRethrow(VirtualFrame frame) {
-        try {
-            LLVMUserException thrownException = (LLVMUserException) frame.getObject(getExceptionSlot());
-            throw thrownException;
-        } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
+        throw (LLVMUserException) frame.getObject(getExceptionSlot());
     }
 }

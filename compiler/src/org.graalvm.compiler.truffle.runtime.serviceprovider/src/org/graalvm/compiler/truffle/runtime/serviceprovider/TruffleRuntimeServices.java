@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,25 +24,30 @@
  */
 package org.graalvm.compiler.truffle.runtime.serviceprovider;
 
-import jdk.vm.ci.services.JVMCIPermission;
+import java.util.ServiceLoader;
 
 /**
  * A subset of the methods defined in {@code org.graalvm.compiler.serviceprovider.GraalServices}.
  */
 public final class TruffleRuntimeServices {
 
-    private static InternalError shouldNotReachHere() {
-        throw new InternalError("JDK specific overlay missing");
-    }
-
     /**
      * Gets an {@link Iterable} of the providers available for a given service.
      *
      * @param service the service whose provider is being requested
-     * @throws SecurityException if on JDK8 and a security manager is present and it denies
-     *             {@link JVMCIPermission}
      */
     public static <S> Iterable<S> load(Class<S> service) {
-        throw shouldNotReachHere();
+        Class<?> lookupClass = TruffleRuntimeServices.class;
+        ModuleLayer moduleLayer = lookupClass.getModule().getLayer();
+        Iterable<S> services;
+        if (moduleLayer != null) {
+            services = ServiceLoader.load(moduleLayer, service);
+        } else {
+            services = ServiceLoader.load(service, lookupClass.getClassLoader());
+        }
+        if (!services.iterator().hasNext()) {
+            services = ServiceLoader.load(service);
+        }
+        return services;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -51,15 +52,15 @@ final class EventContextObject extends AbstractContextObject {
     }
 
     @CompilerDirectives.TruffleBoundary
-    RuntimeException wrap(Object target, int arity, InteropException ex) {
+    static RuntimeException wrap(Object target, int arity, InteropException ex) {
         IllegalStateException ill = new IllegalStateException("Cannot invoke " + target + " with " + arity + " arguments: " + ex.getMessage());
         ill.initCause(ex);
-        return context.createError(ill);
+        return ill;
     }
 
-    RuntimeException rethrow(RuntimeException ex, InteropLibrary interopLib) {
+    static RuntimeException rethrow(RuntimeException ex, InteropLibrary interopLib) {
         if (interopLib.isException(ex)) {
-            throw context.createError(ex);
+            throw ex;
         }
         throw ex;
     }
@@ -88,7 +89,7 @@ final class EventContextObject extends AbstractContextObject {
     @ExportMessage
     static Object invokeMember(EventContextObject obj, String member, Object[] args) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         if ("returnNow".equals(member)) {
-            throw AgentExecutionNode.returnNow(obj.context, args);
+            throw InsightHookNode.returnNow(args);
         }
         if ("returnValue".equals(member)) {
             if (args.length == 0 || !(args[0] instanceof VariablesObject)) {
@@ -106,7 +107,7 @@ final class EventContextObject extends AbstractContextObject {
     @CompilerDirectives.TruffleBoundary
     private static Object iterateFrames(Object[] args, EventContextObject obj) throws ArityException, UnsupportedTypeException {
         if (args.length == 0) {
-            throw ArityException.create(1, 0);
+            throw ArityException.create(0, 0, args.length);
         }
         final NodeLibrary lib = NodeLibrary.getUncached();
         final InteropLibrary iop = InteropLibrary.getUncached();
@@ -117,8 +118,8 @@ final class EventContextObject extends AbstractContextObject {
         }
         Object retValue = Truffle.getRuntime().iterateFrames((frameInstance) -> {
             final Node n = frameInstance.getCallNode();
-            if (n == null) {
-                // skip top most record about the instrument
+            if (n == null || n.getRootNode() == null || n.getRootNode().isInternal()) {
+                // skip top most record of the instrument and any internal frames
                 return null;
             }
             LocationObject location = new LocationObject(n);
@@ -128,9 +129,10 @@ final class EventContextObject extends AbstractContextObject {
                 return null;
             }
             final Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
-            if (lib.hasScope(n, frame)) {
+            Node instrumentableNode = findInstrumentableParent(n);
+            if (instrumentableNode != null && lib.hasScope(instrumentableNode, frame)) {
                 try {
-                    Object frameVars = lib.getScope(n, frame, false);
+                    Object frameVars = new CurrentScopeView(lib.getScope(instrumentableNode, frame, false));
                     Object ret = iop.execute(callback, location, frameVars);
                     return iop.isNull(ret) ? null : ret;
                 } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
@@ -177,5 +179,20 @@ final class EventContextObject extends AbstractContextObject {
         return n.getRootNode().getName() + " (" +
                         ss.getSource().getName() + ":" +
                         ss.getStartLine() + ":" + ss.getStartColumn() + ")";
+    }
+
+    static Node findInstrumentableParent(Node node) {
+        Node p = node;
+        while (p != null) {
+            Node n = p;
+            if (n instanceof InstrumentableNode.WrapperNode) {
+                n = ((InstrumentableNode.WrapperNode) n).getDelegateNode();
+            }
+            if (n instanceof InstrumentableNode && ((InstrumentableNode) n).isInstrumentable()) {
+                return n;
+            }
+            p = p.getParent();
+        }
+        return null;
     }
 }

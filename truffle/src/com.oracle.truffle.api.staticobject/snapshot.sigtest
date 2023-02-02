@@ -1,0 +1,110 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract interface com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory
+meth public abstract java.lang.Object create()
+
+CLSS public final com.oracle.truffle.api.staticobject.DefaultStaticProperty
+cons public init(java.lang.String)
+meth public java.lang.String getId()
+supr com.oracle.truffle.api.staticobject.StaticProperty
+hfds id
+
+CLSS public abstract com.oracle.truffle.api.staticobject.StaticProperty
+cons protected init()
+meth protected abstract java.lang.String getId()
+meth public final boolean compareAndExchangeBoolean(java.lang.Object,boolean,boolean)
+meth public final boolean compareAndSwapBoolean(java.lang.Object,boolean,boolean)
+meth public final boolean compareAndSwapByte(java.lang.Object,byte,byte)
+meth public final boolean compareAndSwapChar(java.lang.Object,char,char)
+meth public final boolean compareAndSwapDouble(java.lang.Object,double,double)
+meth public final boolean compareAndSwapFloat(java.lang.Object,float,float)
+meth public final boolean compareAndSwapInt(java.lang.Object,int,int)
+meth public final boolean compareAndSwapLong(java.lang.Object,long,long)
+meth public final boolean compareAndSwapObject(java.lang.Object,java.lang.Object,java.lang.Object)
+meth public final boolean compareAndSwapShort(java.lang.Object,short,short)
+meth public final boolean getBoolean(java.lang.Object)
+meth public final boolean getBooleanVolatile(java.lang.Object)
+meth public final byte compareAndExchangeByte(java.lang.Object,byte,byte)
+meth public final byte getByte(java.lang.Object)
+meth public final byte getByteVolatile(java.lang.Object)
+meth public final char compareAndExchangeChar(java.lang.Object,char,char)
+meth public final char getChar(java.lang.Object)
+meth public final char getCharVolatile(java.lang.Object)
+meth public final double compareAndExchangeDouble(java.lang.Object,double,double)
+meth public final double getDouble(java.lang.Object)
+meth public final double getDoubleVolatile(java.lang.Object)
+meth public final float compareAndExchangeFloat(java.lang.Object,float,float)
+meth public final float getFloat(java.lang.Object)
+meth public final float getFloatVolatile(java.lang.Object)
+meth public final int compareAndExchangeInt(java.lang.Object,int,int)
+meth public final int getAndAddInt(java.lang.Object,int)
+meth public final int getAndSetInt(java.lang.Object,int)
+meth public final int getInt(java.lang.Object)
+meth public final int getIntVolatile(java.lang.Object)
+meth public final java.lang.Object compareAndExchangeObject(java.lang.Object,java.lang.Object,java.lang.Object)
+meth public final java.lang.Object getAndSetObject(java.lang.Object,java.lang.Object)
+meth public final java.lang.Object getObject(java.lang.Object)
+meth public final java.lang.Object getObjectVolatile(java.lang.Object)
+meth public final long compareAndExchangeLong(java.lang.Object,long,long)
+meth public final long getAndAddLong(java.lang.Object,long)
+meth public final long getAndSetLong(java.lang.Object,long)
+meth public final long getLong(java.lang.Object)
+meth public final long getLongVolatile(java.lang.Object)
+meth public final short compareAndExchangeShort(java.lang.Object,short,short)
+meth public final short getShort(java.lang.Object)
+meth public final short getShortVolatile(java.lang.Object)
+meth public final void setBoolean(java.lang.Object,boolean)
+meth public final void setBooleanVolatile(java.lang.Object,boolean)
+meth public final void setByte(java.lang.Object,byte)
+meth public final void setByteVolatile(java.lang.Object,byte)
+meth public final void setChar(java.lang.Object,char)
+meth public final void setCharVolatile(java.lang.Object,char)
+meth public final void setDouble(java.lang.Object,double)
+meth public final void setDoubleVolatile(java.lang.Object,double)
+meth public final void setFloat(java.lang.Object,float)
+meth public final void setFloatVolatile(java.lang.Object,float)
+meth public final void setInt(java.lang.Object,int)
+meth public final void setIntVolatile(java.lang.Object,int)
+meth public final void setLong(java.lang.Object,long)
+meth public final void setLongVolatile(java.lang.Object,long)
+meth public final void setObject(java.lang.Object,java.lang.Object)
+meth public final void setObjectVolatile(java.lang.Object,java.lang.Object)
+meth public final void setShort(java.lang.Object,short)
+meth public final void setShortVolatile(java.lang.Object,short)
+supr java.lang.Object
+hfds UNSAFE,offset,shape,storeAsFinal,type
+hcls CASSupport
+
+CLSS public abstract com.oracle.truffle.api.staticobject.StaticShape<%0 extends java.lang.Object>
+innr public final static Builder
+meth public final {com.oracle.truffle.api.staticobject.StaticShape%0} getFactory()
+meth public static com.oracle.truffle.api.staticobject.StaticShape$Builder newBuilder(com.oracle.truffle.api.TruffleLanguage<?>)
+supr java.lang.Object
+hfds UNSAFE,factory,safetyChecks,storageClass
+hcls StorageStrategy
+
+CLSS public final static com.oracle.truffle.api.staticobject.StaticShape$Builder
+ outer com.oracle.truffle.api.staticobject.StaticShape
+meth public <%0 extends java.lang.Object> com.oracle.truffle.api.staticobject.StaticShape<{%%0}> build(com.oracle.truffle.api.staticobject.StaticShape<{%%0}>)
+meth public <%0 extends java.lang.Object> com.oracle.truffle.api.staticobject.StaticShape<{%%0}> build(java.lang.Class<?>,java.lang.Class<{%%0}>)
+meth public com.oracle.truffle.api.staticobject.StaticShape$Builder property(com.oracle.truffle.api.staticobject.StaticProperty,java.lang.Class<?>,boolean)
+meth public com.oracle.truffle.api.staticobject.StaticShape<com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory> build()
+supr java.lang.Object
+hfds DELIMITER,MAX_NUMBER_OF_PROPERTIES,MAX_PROPERTY_ID_BYTE_LENGTH,counter,hasLongPropertyId,isActive,language,staticProperties,storageClassName
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+

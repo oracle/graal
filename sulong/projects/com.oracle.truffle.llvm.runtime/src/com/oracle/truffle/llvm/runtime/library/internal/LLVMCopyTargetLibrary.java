@@ -29,12 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.library.internal;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMException;
 
 @GenerateLibrary
+@GenerateAOT
 public abstract class LLVMCopyTargetLibrary extends Library {
 
     static final LibraryFactory<LLVMCopyTargetLibrary> FACTORY = LibraryFactory.resolve(LLVMCopyTargetLibrary.class);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,10 @@
 package org.graalvm.compiler.truffle.test.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -38,17 +40,18 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public abstract class SLAssertTrueBuiltin extends SLBuiltinNode {
 
     @Specialization
-    public boolean doAssert(boolean value, String message) {
+    public boolean doAssert(boolean value, TruffleString message,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         if (!value) {
             CompilerDirectives.transferToInterpreter();
-            throw new SLAssertionError(message == null ? "" : message, this);
+            throw new SLAssertionError(message == null ? "" : toJavaStringNode.execute(message), this);
         }
         return value;
     }
 
     @Specialization
     public boolean doAssertNull(boolean value, @SuppressWarnings("unused") SLNull message) {
-        return doAssert(value, null);
+        return doAssert(value, null, null);
     }
 
 }

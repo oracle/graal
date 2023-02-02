@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.UnknownHostException;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 import org.graalvm.options.OptionCategory;
@@ -44,7 +45,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.tools.dap.server.DebugProtocolServerImpl;
 import com.oracle.truffle.tools.dap.server.ExecutionContext;
 
-@Registration(id = DAPInstrument.ID, name = "Debug Protocol Server", version = "0.1")
+@Registration(id = DAPInstrument.ID, name = "Debug Protocol Server", version = "0.1", website = "https://www.graalvm.org/tools/dap/")
 public final class DAPInstrument extends TruffleInstrument {
 
     public static final String ID = "dap";
@@ -52,7 +53,6 @@ public final class DAPInstrument extends TruffleInstrument {
     private static final HostAndPort DEFAULT_ADDRESS = new HostAndPort(null, DEFAULT_PORT);
 
     private OptionValues options;
-    private volatile boolean waitForClose = false;
 
     static final OptionType<HostAndPort> ADDRESS_OR_BOOLEAN = new OptionType<>("[[host:]port]", (address) -> {
         if (address.isEmpty() || address.equals("true")) {
@@ -62,24 +62,26 @@ public final class DAPInstrument extends TruffleInstrument {
         }
     }, (Consumer<HostAndPort>) (address) -> address.verify());
 
-    @Option(name = "", help = "Start the Debug Protocol Server on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT +
-                    ")", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "", help = "Start the Debug Protocol Server on [[host:]port] (default: <loopback address>:" + DEFAULT_PORT +
+                    ")", usageSyntax = "[[<host>:]<port>]", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<HostAndPort> Dap = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
-    @Option(help = "Suspend the execution at first executed source line. (default:true)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(help = "Suspend the execution at first executed source line (default: true).", usageSyntax = "true|false", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> Suspend = new OptionKey<>(true);
 
-    @Option(help = "Do not execute any source code until debugger client is attached. (default:false)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(help = "Do not execute any source code until debugger client is attached.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> WaitAttached = new OptionKey<>(false);
 
-    @Option(help = "Debug internal sources. (default:false)", category = OptionCategory.INTERNAL) //
+    @Option(help = "Debug internal sources.", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> Internal = new OptionKey<>(false);
 
-    @Option(help = "Debug language initialization. (default:false)", category = OptionCategory.INTERNAL) //
+    @Option(help = "Debug language initialization.", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> Initialization = new OptionKey<>(false);
 
-    @Option(help = "Requested maximum length of the Socket queue of incoming connections. (default: -1)", category = OptionCategory.EXPERT) //
+    @Option(help = "Requested maximum length of the Socket queue of incoming connections (default: unspecified).", usageSyntax = "[0, inf)", category = OptionCategory.EXPERT) //
     static final OptionKey<Integer> SocketBacklogSize = new OptionKey<>(-1);
+
+    private DebugProtocolServerImpl dapServer;
 
     @Override
     protected void onCreate(Env env) {
@@ -91,36 +93,14 @@ public final class DAPInstrument extends TruffleInstrument {
 
     @Override
     protected void onFinalize(Env env) {
-        if (waitForClose) {
-            PrintWriter info = new PrintWriter(env.out());
-            info.println("Waiting for the debugger client to disconnect...");
-            info.flush();
-            waitForClose();
+        if (dapServer != null) {
+            dapServer.dispose();
         }
     }
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new DAPInstrumentOptionDescriptors();
-    }
-
-    private synchronized void setWaitForClose() {
-        waitForClose = true;
-    }
-
-    public synchronized void waitForClose() {
-        while (waitForClose) {
-            try {
-                wait();
-            } catch (InterruptedException ex) {
-                break;
-            }
-        }
-    }
-
-    private synchronized void notifyClose() {
-        waitForClose = false;
-        notifyAll();
     }
 
     private void launchServer(TruffleInstrument.Env env, PrintWriter info, PrintWriter err) {
@@ -133,19 +113,15 @@ public final class DAPInstrument extends TruffleInstrument {
             final int port = socketAddress.getPort();
             final ExecutionContext context = new ExecutionContext(env, info, err, options.get(Internal), options.get(Initialization));
             final ServerSocket serverSocket = new ServerSocket(port, options.get(SocketBacklogSize), socketAddress.getAddress());
-            DebugProtocolServerImpl.create(context, options.get(Suspend), options.get(WaitAttached), options.get(Initialization)).start(serverSocket, () -> {
-                setWaitForClose();
-            }).thenRun(() -> {
-                notifyClose();
-            }).exceptionally(throwable -> {
+            dapServer = DebugProtocolServerImpl.create(context, options.get(Suspend), options.get(WaitAttached), options.get(Initialization));
+            dapServer.start(serverSocket).exceptionally(throwable -> {
                 throwable.printStackTrace(err);
-                notifyClose();
                 return null;
             });
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable e) {
-            String message = String.format("[Graal DAP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
+            String message = String.format(Locale.ENGLISH, "[Graal DAP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
             new DAPIOException(message, e).printStackTrace(err);
         }
     }
@@ -230,6 +206,11 @@ public final class DAPInstrument extends TruffleInstrument {
                 ia = inetAddress;
             }
             return new InetSocketAddress(ia, port);
+        }
+
+        @Override
+        public String toString() {
+            return (host != null ? host : "<loopback address>") + ":" + port;
         }
     }
 }

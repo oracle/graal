@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -86,11 +87,13 @@ public abstract class ToI32 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected int fromString(String value) {
-        return getSingleStringCharacter(value);
+    protected int fromString(String value,
+                    @Cached BranchProfile exception) {
+        return getSingleStringCharacter(value, exception);
     }
 
     @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isNumber(foreigns.asForeign(obj))"})
+    @GenerateAOT.Exclude
     protected int fromForeign(Object obj,
                     @CachedLibrary("obj") LLVMAsForeignLibrary foreigns,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
@@ -117,7 +120,7 @@ public abstract class ToI32 extends ForeignToLLVM {
         } else if (value instanceof Character) {
             return (char) value;
         } else if (value instanceof String) {
-            return thiz.getSingleStringCharacter((String) value);
+            return thiz.getSingleStringCharacter((String) value, BranchProfile.getUncached());
         } else {
             try {
                 return InteropLibrary.getFactory().getUncached().asInt(value);

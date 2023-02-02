@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,18 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMThreadLocalPointer;
+import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugThreadLocalGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -222,9 +225,9 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
 
     @Specialization
     protected LLVMDebugValue fromGlobal(LLVMDebugGlobalVariable value,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                    @Cached BranchProfile exception) {
         LLVMGlobal global = value.getDescriptor();
-        LLVMPointer target = context.getSymbol(global);
+        LLVMPointer target = getContext().getSymbol(global, exception);
 
         if (LLVMManagedPointer.isInstance(target)) {
             final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(target);
@@ -233,6 +236,14 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
             }
         }
         return new LLDBGlobalConstant(global);
+    }
+
+    @Specialization
+    protected LLVMDebugValue fromThreadLocalGlobal(LLVMDebugThreadLocalGlobalVariable value, @Cached BranchProfile exception) {
+        LLVMThreadLocalSymbol symbol = value.getDescriptor();
+        Object target = LLVMLanguage.getContext().getSymbol(symbol, exception);
+        LLVMThreadLocalPointer pointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(target).getObject();
+        return new LLDBMemoryValue(pointer.resolve(getLanguage(), exception));
     }
 
     @Fallback

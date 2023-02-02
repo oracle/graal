@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Splitting Algorithm
+permalink: /graalvm-as-a-platform/language-implementation-framework/splitting/Splitting/
+---
 # Splitting Algorithm
 
 This guide gives an overview of the algorithm used in the implementation of Truffle call target splitting.

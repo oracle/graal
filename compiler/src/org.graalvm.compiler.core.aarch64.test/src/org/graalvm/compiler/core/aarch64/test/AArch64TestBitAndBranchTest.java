@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,7 +79,7 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
 
     /**
      * Tests the graceful case, where the estimation for
-     * {@link CompilationResultBuilder#labelWithinRange(LIRInstruction, org.graalvm.compiler.asm.Label, int)}
+     * {@link CompilationResultBuilder#labelWithinLIRRange(LIRInstruction, org.graalvm.compiler.asm.Label, int)}
      * holds.
      */
     public static int testBitTestAndBranchSingleSnippet(int a) {
@@ -102,7 +102,7 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
 
     /**
      * Tests the case, where the estimation for
-     * {@link CompilationResultBuilder#labelWithinRange(LIRInstruction, org.graalvm.compiler.asm.Label, int)}
+     * {@link CompilationResultBuilder#labelWithinLIRRange(LIRInstruction, org.graalvm.compiler.asm.Label, int)}
      * does not hold and the code generation must be redone with large branches.
      */
     public static int testBitTestAndBranchFourSnippet(int a) {
@@ -248,7 +248,7 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
     protected void checkLIR(String methodName, Predicate<LIRInstruction> predicate, int expected) {
         compile(getResolvedJavaMethod(methodName), null);
         int actualOpNum = 0;
-        for (LIRInstruction ins : lir.getLIRforBlock(lir.codeEmittingOrder()[0])) {
+        for (LIRInstruction ins : lir.getLIRforBlock(lir.getControlFlowGraph().getBlocks()[lir.codeEmittingOrder()[0]])) {
             if (predicate.test(ins)) {
                 actualOpNum++;
             }

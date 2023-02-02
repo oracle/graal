@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,17 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.CallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -42,6 +44,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
@@ -124,7 +127,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     static class TwoDummiesAndAnotherNode extends SplittingTestNode {
         int counter;
-        RootCallTarget dummy = runtime.createCallTarget(new DummyRootNode());
+        RootCallTarget dummy = new DummyRootNode().getCallTarget();
 
         @Override
         public Object execute(VirtualFrame frame) {
@@ -132,7 +135,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
                 counter++;
             } else {
                 counter = 0;
-                dummy = runtime.createCallTarget(new DummyRootNode());
+                dummy = new DummyRootNode().getCallTarget();
             }
             return dummy;
         }
@@ -140,26 +143,24 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     public void testSplitsDirectCalls() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsFirstArgumentNode())));
-        Object[] first = new Object[]{runtime.createCallTarget(new DummyRootNode())};
-        Object[] second = new Object[]{runtime.createCallTarget(new DummyRootNode())};
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+        Object[] first = new Object[]{new DummyRootNode().getCallTarget()};
+        Object[] second = new Object[]{new DummyRootNode().getCallTarget()};
         testSplitsDirectCallsHelper(callTarget, first, second);
 
-        callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())));
+        callTarget = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         // two callers for a target are needed
         testSplitsDirectCallsHelper(callTarget, new Object[]{1}, new Object[]{0});
     }
 
     @Test
     public void testDoesNotSplitsDirectCalls() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(new SplittingTestRootNode(
-                        NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroButClassIsExcludedNodeGen.create(new ReturnsFirstArgumentNode())));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroButClassIsExcludedNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         testDoesNotSplitDirectCallHelper(callTarget, new Object[]{1}, new Object[]{0});
 
-        callTarget = (OptimizedCallTarget) runtime.createCallTarget(new SplittingTestRootNode(
-                        NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroButSpecializationIsExcludedNodeGen.create(new ReturnsFirstArgumentNode())));
+        callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroButSpecializationIsExcludedNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         testDoesNotSplitDirectCallHelper(callTarget, new Object[]{1}, new Object[]{0});
     }
 
@@ -188,19 +189,18 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     public void testSplitPropagatesThrongSoleCallers() {
-        OptimizedCallTarget turnsPolymorphic = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())));
+        OptimizedCallTarget turnsPolymorphic = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         testPropagatesThroughSoleCallers(turnsPolymorphic, new Object[]{1}, new Object[]{0});
-        turnsPolymorphic = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsFirstArgumentNode())));
-        Object[] first = new Object[]{runtime.createCallTarget(new DummyRootNode())};
-        Object[] second = new Object[]{runtime.createCallTarget(new DummyRootNode())};
+        turnsPolymorphic = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+        Object[] first = new Object[]{new DummyRootNode().getCallTarget()};
+        Object[] second = new Object[]{new DummyRootNode().getCallTarget()};
         testPropagatesThroughSoleCallers(turnsPolymorphic, first, second);
     }
 
     private void testPropagatesThroughSoleCallers(OptimizedCallTarget turnsPolymorphic, Object[] firstArgs, Object[] secondArgs) {
-        final OptimizedCallTarget callsInner = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerNode(turnsPolymorphic));
-        final OptimizedCallTarget callsCallsInner = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerNode(callsInner));
+        final OptimizedCallTarget callsInner = (OptimizedCallTarget) new CallsInnerNode(turnsPolymorphic).getCallTarget();
+        final OptimizedCallTarget callsCallsInner = (OptimizedCallTarget) new CallsInnerNode(callsInner).getCallTarget();
         // two callers for a target are needed
         runtime.createDirectCallNode(callsCallsInner);
         final DirectCallNode directCallNode = runtime.createDirectCallNode(callsCallsInner);
@@ -236,9 +236,9 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     public void testNoSplitsDirectCallsBecauseFirstExecution() {
-        final OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(new SplittableRootNode() {
-            @Child private OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(runtime.createCallTarget(
-                            new SplittingTestRootNode(NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode()))));
+        final OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittableRootNode() {
+            @Child private OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(
+                            new SplittingTestRootNode(NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget());
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -250,7 +250,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
                 callNode.call(second);
                 return null;
             }
-        });
+        }.getCallTarget();
         // Multiple call nodes
         runtime.createDirectCallNode(callTarget);
         runtime.createDirectCallNode(callTarget);
@@ -262,9 +262,9 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     public void testIncreaseInPolymorphism() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())));
-        final RootCallTarget outerTarget = runtime.createCallTarget(new CallsInnerNode(callTarget));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+        final RootCallTarget outerTarget = new CallsInnerNode(callTarget).getCallTarget();
         Object[] firstArgs = new Object[]{1};
         outerTarget.call(firstArgs);
         Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
@@ -322,8 +322,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
     @Test
     public void testSoloTarget() {
         final ExposesReportPolymorphicSpecializeRootNode rootNode = new ExposesReportPolymorphicSpecializeRootNode();
-        final RootCallTarget callTarget = runtime.createCallTarget(rootNode);
-        callTarget.call(noArguments);
+        rootNode.getCallTarget().call(noArguments);
         rootNode.report();
     }
 
@@ -349,10 +348,10 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
     @Test
     public void testSplitsCalledAfterSplit() {
         final CallableOnlyOnceRootNode rootNode = new CallableOnlyOnceRootNode();
-        final RootCallTarget reportsPolymorphism = runtime.createCallTarget(rootNode);
+        final RootCallTarget reportsPolymorphism = rootNode.getCallTarget();
         reportsPolymorphism.call(noArguments);
-        final RootCallTarget callsInner1 = runtime.createCallTarget(new CallsInnerNode(reportsPolymorphism));
-        final RootCallTarget callsInner2 = runtime.createCallTarget(new CallsInnerNode(reportsPolymorphism));
+        final RootCallTarget callsInner1 = new CallsInnerNode(reportsPolymorphism).getCallTarget();
+        final RootCallTarget callsInner2 = new CallsInnerNode(reportsPolymorphism).getCallTarget();
         // make sure the runtime has seen these calls
         callsInner1.call(noArguments);
         callsInner2.call(noArguments);
@@ -380,8 +379,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     public void testMegamorpic() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.MegamorpicNodeGen.create(new ReturnsFirstArgumentNode())));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.MegamorpicNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         int[] args = {1, 2, 3, 4, 5};
         testMegamorphicHelper(callTarget, args);
     }
@@ -434,8 +432,8 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     public void testTwoMegamorpicSpec1() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.TwoMegamorpicSpecNodeGen.create(new ReturnsFirstArgumentNode())));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.TwoMegamorpicSpecNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         // activates the first spec 2 times than the second (megamorphic)
         int[] args = {1, 2, 3, 4, 5};
         testMegamorphicHelper(callTarget, args);
@@ -443,8 +441,8 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     public void testTwoMegamorpicSpec2() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.TwoMegamorpicSpecNodeGen.create(new ReturnsFirstArgumentNode())));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.TwoMegamorpicSpecNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         // activates the first spec 2 times than the last (megamorphic)
         int[] args = {1, 2, 4, 5, 6};
         testMegamorphicHelper(callTarget, args);
@@ -467,8 +465,8 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     public void testPolymorphicInPolyAndMegamorpic() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.PolymorphicAndMegamorpicNodeGen.create(new ReturnsFirstArgumentNode())));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.PolymorphicAndMegamorpicNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         // activates the first spec 2 times than the last (megamorphic)
         int[] args = {1, 2, 3, 4};
         final DirectCallNode callNode1 = runtime.createDirectCallNode(callTarget);
@@ -492,8 +490,8 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     public void testMegamorphicInPolyAndMegamorpic() {
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
-                        new SplittingTestRootNode(NodeSplittingStrategyTestFactory.PolymorphicAndMegamorpicNodeGen.create(new ReturnsFirstArgumentNode())));
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.PolymorphicAndMegamorpicNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         // activates the first spec 2 times than the last (megamorphic)
         int[] args = {1, 0, 3, 4};
         final DirectCallNode callNode1 = runtime.createDirectCallNode(callTarget);
@@ -513,5 +511,50 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         // Gets split
         callNode1.call(args[3]);
         Assert.assertTrue(callNode1.isCallTargetCloned());
+    }
+
+    @TruffleLanguage.Registration(id = SplittingLimitTestLanguage.ID, name = SplittingLimitTestLanguage.ID)
+    static class SplittingLimitTestLanguage extends ProxyLanguage {
+        static final String ID = "SplittingLimitTestLanguage";
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return new RootNode(null) {
+
+                final OptimizedCallTarget target = (OptimizedCallTarget) new SplittingTestRootNode(
+                                NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+
+                final OptimizedDirectCallNode callNode1 = (OptimizedDirectCallNode) insert(runtime.createDirectCallNode(target));
+                final OptimizedDirectCallNode callNode2 = (OptimizedDirectCallNode) insert(runtime.createDirectCallNode(target));
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    // Target turns monomorphic on 1
+                    callNode1.call(1);
+                    // Target turns polymorphic on 0
+                    callNode2.call(0);
+                    // Give each a chance to split
+                    callNode1.call(0);
+                    callNode2.call(0);
+                    assertExpectations();
+                    return 42;
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private void assertExpectations() {
+                    // First is split because we have the budget
+                    Assert.assertTrue(callNode1.isCallTargetCloned());
+                    // Second is not because we don't have the budget
+                    Assert.assertFalse(callNode2.isCallTargetCloned());
+                }
+            }.getCallTarget();
+        }
+    }
+
+    @Test
+    public void testSplittingBudgetLimit() {
+        try (Context c = Context.newBuilder(SplittingLimitTestLanguage.ID).build()) {
+            c.eval(SplittingLimitTestLanguage.ID, "");
+        }
     }
 }

@@ -25,8 +25,9 @@ package com.oracle.truffle.espresso.runtime;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * Used to implement guest String interning.
@@ -75,7 +76,8 @@ public final class StringTable {
         return value.toString();
     }
 
-    public @Host(String.class) StaticObject intern(@Host(String.class) StaticObject guestString) {
+    @TruffleBoundary
+    public @JavaType(String.class) StaticObject intern(@JavaType(String.class) StaticObject guestString) {
         assert StaticObject.notNull(guestString);
         String hostString = context.getMeta().toHostString(guestString);
         return interned.computeIfAbsent(hostString, new Function<String, StaticObject>() {

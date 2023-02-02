@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,16 +95,22 @@ public final class CTypeConversion {
     }
 
     /**
-     * Copies the provide {@code javaString} into the buffer up to the provide {@code bufferSize}
-     * bytes encoded with the default character set.
+     * Copies the {@code javaString} into the buffer as a 0 terminated C string encoded with the
+     * default character set.
      * <p>
-     * In case the string is larger than the {@code buffer}, the {@code bufferSize} bytes are
-     * copied.
+     * When a nullptr is passed as the buffer and the buffer size is zero, then no copying is
+     * performed but the byte-sized length of the {@code javaString} is still returned.
+     * <p>
+     * In case the string is larger than the {@code buffer}, then an
+     * {@code IllegalArgumentException} is thrown.
      *
      * @param javaString managed Java string
-     * @param buffer to store the bytes of javaString encoded with charset
-     * @param bufferSize size of the buffer
-     * @return number of bytes copied to the buffer
+     * @param buffer to store the bytes of 0 terminated javaString encoded with the default charset
+     *            or a nullptr
+     * @param bufferSize size of the buffer or 0 when the buffer is a nullptr
+     * @return the byte-sized length of the {@code javaString} when represented as a C string
+     *         encoded with the default character set. This length does not include the 0
+     *         terminator.
      *
      * @since 19.0
      */
@@ -113,16 +119,22 @@ public final class CTypeConversion {
     }
 
     /**
-     * Copies the {@code javaString} into the buffer encoded with the {@code charset} character set.
+     * Copies the {@code javaString} into the buffer as a 0 terminated C string encoded with the
+     * {@code charset} character set.
      * <p>
-     * In case the string is larger than the {@code buffer}, the {@code bufferSize} bytes are
-     * copied.
+     * When a nullptr is passed as the buffer and the buffer size is zero, then no copying is
+     * performed but the byte-sized length of the {@code javaString} is still returned.
+     * <p>
+     * In case the string is larger than the {@code buffer}, then an
+     * {@code IllegalArgumentException} is thrown.
      *
      * @param javaString managed Java string
      * @param charset desired character set for the returned string
-     * @param buffer to store the bytes of javaString encoded with charset
-     * @param bufferSize size of the buffer
-     * @return number of bytes copied to the buffer
+     * @param buffer to store the bytes of 0 terminated javaString encoded with charset or a nullptr
+     * @param bufferSize size of the buffer or 0 when the buffer is a nullptr
+     * @return the byte-sized length of the {@code javaString} when represented as C string encoded
+     *         with the {@code charset} character set. This length does not include the 0
+     *         terminator.
      *
      * @since 19.0
      */
@@ -165,6 +177,18 @@ public final class CTypeConversion {
      */
     public static String toJavaString(CCharPointer cString, UnsignedWord length, Charset charset) {
         return ImageSingletons.lookup(CTypeConversionSupport.class).toJavaString(cString, length, charset);
+    }
+
+    /**
+     * Decodes a UTF-8 encoded, 0 terminated C {@code char*} to a Java string.
+     *
+     * @param utf8String the pointer to a UTF-8 encoded, 0 terminated C string
+     * @return a Java string
+     *
+     * @since 22.3
+     */
+    public static String utf8ToJavaString(CCharPointer utf8String) {
+        return ImageSingletons.lookup(CTypeConversionSupport.class).utf8ToJavaString(utf8String);
     }
 
     /**
@@ -274,5 +298,14 @@ public final class CTypeConversion {
      */
     public static ByteBuffer asByteBuffer(PointerBase address, int size) {
         return ImageSingletons.lookup(CTypeConversionSupport.class).asByteBuffer(address, size);
+    }
+
+    /**
+     * Provides access to a C pointer for the provided Java byte array.
+     *
+     * @since 22.2
+     */
+    public static CCharPointerHolder toCBytes(byte[] bytes) {
+        return ImageSingletons.lookup(CTypeConversionSupport.class).toCBytes(bytes);
     }
 }

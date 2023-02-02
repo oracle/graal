@@ -28,12 +28,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
+
+import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.util.VMError;
 
 public abstract class PlatformNativeLibrarySupport {
 
@@ -65,6 +68,8 @@ public abstract class PlatformNativeLibrarySupport {
                     "jdk_internal_org",
                     "jdk_internal_misc",
                     "jdk_internal_util",
+                    "jdk_internal_jimage",
+                    "jdk_internal_vm",
                     "jdk_net",
                     "sun_invoke",
                     "sun_launcher",
@@ -105,12 +110,18 @@ public abstract class PlatformNativeLibrarySupport {
     }
 
     private List<String> builtInPkgNatives;
+    private boolean builtInPkgNativesSealed;
 
     public void addBuiltinPkgNativePrefix(String name) {
+        if (builtInPkgNativesSealed) {
+            throw VMError.shouldNotReachHere("Cannot register any more packages as built-ins because information has already been used.");
+        }
         builtInPkgNatives.add(name);
     }
 
     public boolean isBuiltinPkgNative(String name) {
+        builtInPkgNativesSealed = true;
+
         String commonPrefix = "Java_";
         if (name.startsWith(commonPrefix)) {
             String strippedName = name.substring(commonPrefix.length());
@@ -145,36 +156,16 @@ public abstract class PlatformNativeLibrarySupport {
 
     public abstract PointerBase findBuiltinSymbol(String name);
 
-    private boolean firstIsolate = false;
-
-    /**
-     * This method is called before {@link #initializeBuiltinLibraries()}, which can then use
-     * {@link #isFirstIsolate()}.
-     */
-    public void setIsFirstIsolate() {
-        firstIsolate = true;
-    }
-
-    /**
-     * Indicates if the current isolate is the first isolate in this process and whether it is
-     * therefore responsible for initializing any built-in libraries that are explicitly or
-     * implicitly shared between the isolates of the process (for example, because they have a
-     * single native state that does not distinguish between isolates).
-     */
-    public boolean isFirstIsolate() {
-        return firstIsolate;
-    }
-
     /**
      * Initializes built-in libraries during isolate creation.
      *
-     * @see #isFirstIsolate()
+     * @see Isolates#isCurrentFirst()
      */
     public abstract boolean initializeBuiltinLibraries();
 }
 
-@AutomaticFeature
-class PlatformNativeLibrarySupportFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class PlatformNativeLibrarySupportFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {

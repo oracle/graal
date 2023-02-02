@@ -33,19 +33,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -61,23 +59,24 @@ import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.graal.nodes.LazyConstantNode;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -128,8 +127,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * {@link EnsureClassInitializedNode} necessary in the method that performs the field access.</li>
  * </ul>
  */
-@AutomaticFeature
-final class StaticFinalFieldFoldingFeature implements GraalFeature {
+@AutomaticallyRegisteredFeature
+final class StaticFinalFieldFoldingFeature implements InternalFeature {
 
     public static class Options {
         @Option(help = "Optimize static final fields that get a constant assigned in the class initializer.")//
@@ -145,17 +144,6 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
         return ImageSingletons.lookup(StaticFinalFieldFoldingFeature.class);
     }
 
-    /* Usage of lambdas is not allowed in Graal nodes, so need explicit inner class. */
-    final Supplier<JavaConstant> fieldInitializationStatusArrayOrNullSupplier = new Supplier<JavaConstant>() {
-        @Override
-        public JavaConstant get() {
-            if (fieldInitializationStatus == null) {
-                return null;
-            }
-            return SubstrateObjectConstant.forObject(fieldInitializationStatus);
-        }
-    };
-
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return Options.OptStaticFinalFieldFolding.getValue();
@@ -165,12 +153,19 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
 
-        access.getHostVM().addMethodAfterParsingHook(this::onAnalysisMethodParsed);
+        access.getHostVM().addMethodAfterParsingListener(this::onAnalysisMethodParsed);
     }
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
-        plugins.appendNodePlugin(new StaticFinalFieldFoldingNodePlugin(this));
+        if (reason != ParsingReason.JITCompilation) {
+            /*
+             * All classes we care about that are JIT compiled, like Truffle languages, are
+             * initialized at image build time. So we do not need to make this plugin and the nodes
+             * it references safe for execution at image run time.
+             */
+            plugins.appendNodePlugin(new StaticFinalFieldFoldingNodePlugin(this));
+        }
     }
 
     @Override
@@ -203,16 +198,27 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
     }
 
     /**
+     * When a class is initialized later after static analysis, the
+     * {@link IsStaticFinalFieldInitializedNode} is still folded away during compilation. But since
+     * we have already reserved the memory for the status flag, we are paranoid and set the status
+     * to initialized.
+     */
+    @Override
+    public void afterHeapLayout(AfterHeapLayoutAccess access) {
+        for (Map.Entry<AnalysisField, Integer> entry : fieldCheckIndexMap.entrySet()) {
+            if (entry.getKey().getDeclaringClass().isInitialized()) {
+                fieldInitializationStatus[entry.getValue()] = true;
+            }
+        }
+    }
+
+    /**
      * Invoked for each method that is parsed during static analysis, before the type flow graph of
      * that method is created. If the method is a class initializer, the static final fields that
      * can be optimized are detected and added to {@link #foldedFieldValues}. If the method is not a
      * class initializer, it is verified that there is no illegal store to an optimized field.
      */
     void onAnalysisMethodParsed(AnalysisMethod method, StructuredGraph graph) {
-        if (graph == null) {
-            return;
-        }
-
         boolean isClassInitializer = method.isClassInitializer();
         Map<AnalysisField, JavaConstant> optimizableFields = isClassInitializer ? new HashMap<>() : null;
         Set<AnalysisField> ineligibleFields = isClassInitializer ? new HashSet<>() : null;
@@ -249,11 +255,6 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
             return;
         }
 
-        if (ImageSingletons.lookup(RuntimeReflectionSupport.class).inspectFinalFieldWritableForAnalysis(field.getJavaField())) {
-            /* Final field is explicitly made writable using the reflection configuration. */
-            return;
-        }
-
         if (node.value().isJavaConstant() && !ineligibleFields.contains(field)) {
             JavaConstant existingValue = optimizableFields.get(field);
             JavaConstant newValue = node.value().asJavaConstant();
@@ -281,7 +282,7 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
              * the order in which graphs are parsed during static analysis does not affect the
              * outcome of the optimizable check below.
              */
-            field.getDeclaringClass().getClassInitializer().ensureGraphParsed(bb, false);
+            field.getDeclaringClass().getClassInitializer().ensureGraphParsed(bb);
         }
 
         if (foldedFieldValues.containsKey(field)) {
@@ -340,13 +341,21 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
             return false;
         }
 
+        if (aField.wrapped instanceof ReadableJavaField && !((ReadableJavaField) aField.wrapped).isValueAvailable()) {
+            /*
+             * Cannot optimize static field whose value is recomputed and is not yet available,
+             * i.e., it may depend on analysis/compilation derived data.
+             */
+            return false;
+        }
+
         /*
          * The foldable field values are collected during parsing of the class initializer. If the
          * class initializer is not parsed yet, parsing needs to be forced so that {@link
          * StaticFinalFieldFoldingFeature#onAnalysisMethodParsed} determines which fields can be
          * optimized.
          */
-        classInitializer.ensureGraphParsed(feature.bb, false);
+        classInitializer.ensureGraphParsed(feature.bb);
 
         JavaConstant initializedValue = feature.foldedFieldValues.get(aField);
         if (initializedValue == null) {
@@ -354,26 +363,13 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
             return false;
         }
 
-        /* Usage of lambdas is not allowed in Graal nodes, so need explicit inner class. */
-        Supplier<JavaConstant> fieldCheckIndexOrNullSupplier = new Supplier<JavaConstant>() {
-            @Override
-            public JavaConstant get() {
-                if (feature.fieldCheckIndexMap == null) {
-                    return null;
-                }
-                return JavaConstant.forInt(feature.fieldCheckIndexMap.get(aField));
-            }
-        };
-
         /*
          * Create a if-else structure with a PhiNode that either has the optimized value of the
          * field, or the uninitialized value. The initialization status array and the index into
-         * that array are not known yet during bytecode parsing, so a "lazy constant" is used.
+         * that array are not known yet during bytecode parsing, so the array access will be created
+         * lazily.
          */
-        ValueNode initStatusArrayNode = b.add(LazyConstantNode.create(StampFactory.objectNonNull(), feature.fieldInitializationStatusArrayOrNullSupplier, b.getMetaAccess()));
-        ValueNode fieldCheckIndexNode = b.add(LazyConstantNode.create(StampFactory.forInteger(JavaKind.Int, 0, Integer.MAX_VALUE), fieldCheckIndexOrNullSupplier, b.getMetaAccess()));
-        ValueNode fieldCheckStatusNode = b.add(LoadIndexedNode.create(b.getAssumptions(), initStatusArrayNode, fieldCheckIndexNode,
-                        null, JavaKind.Boolean, b.getMetaAccess(), b.getConstantReflection()));
+        ValueNode fieldCheckStatusNode = b.add(new IsStaticFinalFieldInitializedNode(field));
         LogicNode isUninitializedNode = b.add(IntegerEqualsNode.create(fieldCheckStatusNode, ConstantNode.forBoolean(false), NodeView.DEFAULT));
 
         JavaConstant uninitializedValue = b.getConstantReflection().readFieldValue(field, null);
@@ -454,5 +450,56 @@ final class MarkStaticFinalFieldInitializedNode extends AbstractStateSplit imple
             /* Field is not optimized, just remove ourselves. */
         }
         graph().removeFixed(this);
+    }
+}
+
+/**
+ * Node that checks if a static final field is initialized. This is basically just a load of the
+ * value in the {@link StaticFinalFieldFoldingFeature#fieldInitializationStatus} array. But we
+ * cannot immediately emit a {@link LoadIndexedNode} in the bytecode parser because we do not know
+ * at the time of parsing if the declaring class of the field is initialized at image build time.
+ */
+@NodeInfo(size = NodeSize.SIZE_1, cycles = NodeCycles.CYCLES_1)
+final class IsStaticFinalFieldInitializedNode extends FixedWithNextNode implements Simplifiable {
+    public static final NodeClass<IsStaticFinalFieldInitializedNode> TYPE = NodeClass.create(IsStaticFinalFieldInitializedNode.class);
+
+    private final ResolvedJavaField field;
+
+    protected IsStaticFinalFieldInitializedNode(ResolvedJavaField field) {
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
+        this.field = field;
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        StaticFinalFieldFoldingFeature feature = StaticFinalFieldFoldingFeature.singleton();
+
+        if (feature.fieldInitializationStatus == null) {
+            /*
+             * Static analysis is still running, we do not know yet if class will get initialized at
+             * image build time after static analysis.
+             */
+            return;
+        }
+
+        ValueNode replacementNode;
+        if (field.getDeclaringClass().isInitialized()) {
+            /*
+             * The declaring class of the field has been initialized late after static analysis. So
+             * we can also constant fold the field now unconditionally.
+             */
+            replacementNode = ConstantNode.forBoolean(true, graph());
+
+        } else {
+            Integer fieldCheckIndex = feature.fieldCheckIndexMap.get(StaticFinalFieldFoldingFeature.toAnalysisField(field));
+            assert fieldCheckIndex != null : "Field must be optimizable: " + field;
+            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(feature.fieldInitializationStatus), tool.getMetaAccess(), graph());
+            ConstantNode fieldCheckIndexNode = ConstantNode.forInt(fieldCheckIndex, graph());
+
+            replacementNode = graph().addOrUniqueWithInputs(LoadIndexedNode.create(graph().getAssumptions(), fieldInitializationStatusNode, fieldCheckIndexNode,
+                            null, JavaKind.Boolean, tool.getMetaAccess(), tool.getConstantReflection()));
+        }
+
+        graph().replaceFixed(this, replacementNode);
     }
 }

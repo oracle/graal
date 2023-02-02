@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import com.oracle.truffle.sl.runtime.SLStrings;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.options.OptionDescriptor;
@@ -33,9 +34,8 @@ import org.graalvm.polyglot.Engine;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 
 public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
@@ -54,7 +54,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(2, SLFunction.INLINE_CACHE_SIZE);
 
         // doWhile must run isolated and should not affect other compilation thresholds
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         Runnable doWhile = () -> testCompilationThreshold(50, "50", null);
         testCompilationThreshold(42, "42", doWhile); // test default value
         testCompilationThreshold(target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold), null, doWhile);
@@ -69,7 +69,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
                         "engine.Inlining", "false", //
                         "engine.Splitting", "false", //
                         "engine.Mode", "latency");
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         Assert.assertEquals(27, (int) target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold));
         Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilation));
         Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilationDetails));
@@ -83,9 +83,9 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(OptionStability.STABLE, Engine.create().getOptions().get("engine.Mode").getStability());
 
         setupContext("engine.Mode", "latency");
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
-        Assert.assertEquals(false, target.engine.inlining);
+        Assert.assertEquals(true, target.engine.inlining);
         Assert.assertEquals(false, target.engine.splitting);
     }
 
@@ -100,7 +100,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         Context ctx = setupContext(compilationThresholdOption == null ? new String[]{"engine.MultiTier", "false"}
                         : new String[]{"engine.SingleTierCompilationThreshold", compilationThresholdOption, "engine.MultiTier", "false"});
         ctx.eval("sl", "function test() {}");
-        SLFunction test = SLLanguage.getCurrentContext().getFunctionRegistry().getFunction("test");
+        SLFunction test = SLContext.get(null).getFunctionRegistry().getFunction(SLStrings.fromJavaString("test"));
 
         Assert.assertFalse(isExecuteCompiled(test));
         for (int i = 0; i < iterations - 1; i++) {

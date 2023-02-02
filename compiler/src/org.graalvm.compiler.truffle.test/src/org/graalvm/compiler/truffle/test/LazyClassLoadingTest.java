@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,20 +42,18 @@ import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.nodes.Cancellable;
-import org.graalvm.compiler.options.ModuleSupport;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
-import com.oracle.truffle.api.Truffle;
+
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
@@ -90,7 +88,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
     @Test
     public void testClassLoading() throws IOException, InterruptedException {
         setupContext();
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+        OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(0).getCallTarget();
         Assume.assumeFalse(target.getOptionValue(CompileImmediately));
         List<String> vmCommandLine = getVMCommandLine();
         Assume.assumeFalse("Explicitly enables JVMCI compiler", vmCommandLine.contains("-XX:+UseJVMCINativeLibrary") || vmCommandLine.contains("-XX:+UseJVMCICompiler"));
@@ -101,12 +99,8 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
     private void runTest(Class<?> testClass, boolean expectGraalClassesLoaded) throws IOException, InterruptedException, AssertionError {
         List<String> vmCommandLine = getVMCommandLine();
         List<String> vmArgs = withoutDebuggerArguments(vmCommandLine);
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            vmArgs.add("-XX:+TraceClassLoading");
-        } else {
-            vmArgs.add("-Xlog:class+init=info");
-            vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
-        }
+        vmArgs.add("-Xlog:class+init=info");
+        vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
         vmArgs.add("-dsa");
         vmArgs.add("-da");
         vmArgs.add("-XX:-UseJVMCICompiler");
@@ -161,19 +155,9 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
      * Extracts the class name from a line of log output.
      */
     private static String extractClass(String line) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            String traceClassLoadingPrefix = "[Loaded ";
-            int index = line.indexOf(traceClassLoadingPrefix);
-            if (index != -1) {
-                int start = index + traceClassLoadingPrefix.length();
-                int end = line.indexOf(' ', start);
-                return line.substring(start, end);
-            }
-        } else {
-            Matcher matcher = CLASS_INIT_LOG_PATTERN.matcher(line);
-            if (matcher.find()) {
-                return matcher.group(1).replace('/', '.');
-            }
+        Matcher matcher = CLASS_INIT_LOG_PATTERN.matcher(line);
+        if (matcher.find()) {
+            return matcher.group(1).replace('/', '.');
         }
         return null;
     }
@@ -190,7 +174,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
     }
 
     private List<String> filterGraalCompilerClasses(List<String> loadedGraalClassNames) {
-        HashSet<Class<?>> whitelist = new HashSet<>();
+        HashSet<Class<?>> allowList = new HashSet<>();
         List<Class<?>> loadedGraalClasses = new ArrayList<>();
 
         for (String name : loadedGraalClassNames) {
@@ -205,7 +189,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
             }
         }
         /*
-         * Look for all loaded OptionDescriptors classes, and whitelist the classes that declare the
+         * Look for all loaded OptionDescriptors classes, and allow the classes that declare the
          * options. They may be loaded by the option parsing code.
          */
         for (Class<?> cls : loadedGraalClasses) {
@@ -213,20 +197,20 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
                 try {
                     OptionDescriptors optionDescriptors = cls.asSubclass(OptionDescriptors.class).getDeclaredConstructor().newInstance();
                     for (OptionDescriptor option : optionDescriptors) {
-                        whitelist.add(option.getDeclaringClass());
-                        whitelist.add(option.getOptionValueType());
-                        whitelist.add(option.getOptionType().getDeclaringClass());
+                        allowList.add(option.getDeclaringClass());
+                        allowList.add(option.getOptionValueType());
+                        allowList.add(option.getOptionType().getDeclaringClass());
                     }
                 } catch (ReflectiveOperationException e) {
                 }
             }
         }
 
-        whitelist.add(Cancellable.class);
+        allowList.add(Cancellable.class);
 
         List<String> forbiddenClasses = new ArrayList<>();
         for (Class<?> cls : loadedGraalClasses) {
-            if (whitelist.contains(cls)) {
+            if (allowList.contains(cls)) {
                 continue;
             }
 
@@ -272,7 +256,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
             return true;
         }
 
-        if (cls == Assertions.class || cls == OptionsParser.class || cls == ModuleSupport.class || cls == OptionValues.class ||
+        if (cls == Assertions.class || cls == OptionsParser.class || cls == OptionValues.class ||
                         cls.getName().equals("org.graalvm.compiler.hotspot.HotSpotGraalOptionValues")) {
             // Classes implementing Graal option loading
             return true;

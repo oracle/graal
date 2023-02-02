@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,38 +40,78 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.source.Source;
+import org.junit.Assume;
 
+/**
+ * NFI provides a native isolated namespace on Linux (via dlmopen); one per NFI context.
+ *
+ * This test ensures that the same library can be loaded twice, in two different contexts, and that
+ * the libraries are effectively isolated.
+ */
 public class IsolatedNamespaceTest extends NFITest {
 
-    private static Object isolatedTestLibrary; // test library is loaded 'again' in the
-                                               // isolated namespace
+    private static class IsolatedGetAndSet implements AutoCloseable {
 
-    @BeforeClass
-    public static void loadIsolatedTestLibrary() {
-        try {
-            isolatedTestLibrary = loadLibrary("load(ISOLATED_NAMESPACE) '" + System.getProperty("native.test.lib") + "'");
-        } catch (IllegalArgumentException iea) {
-            Assume.assumeNoException("Cannot load test library in isolated namespace", iea);
+        private final TruffleContext ctx;
+        private final Object getAndSet;
+
+        IsolatedGetAndSet(Env env, Source librarySource, Source signatureSource) {
+            this.ctx = env.newInnerContextBuilder().inheritAllAccess(true).build();
+            Object library;
+            try {
+                library = ctx.evalInternal(null, librarySource);
+            } catch (AbstractTruffleException ex) {
+                if (ex.getMessage().contains("not supported")) {
+                    Assume.assumeNoException(ex);
+                }
+                throw ex;
+            }
+
+            try {
+                Object symbol = UNCACHED_INTEROP.readMember(library, "get_and_set");
+                Object signature = ctx.evalInternal(null, signatureSource);
+                this.getAndSet = UNCACHED_INTEROP.invokeMember(signature, "bind", symbol);
+            } catch (InteropException ex) {
+                throw new AssertionError(ex);
+            }
+        }
+
+        int execute(int arg) throws InteropException {
+            Object prevCtx = ctx.enter(null);
+            try {
+                return (int) UNCACHED_INTEROP.execute(getAndSet, arg);
+            } finally {
+                ctx.leave(null, prevCtx);
+            }
+        }
+
+        @Override
+        public void close() {
+            ctx.close();
         }
     }
 
     @Test
-    public void testIsolatedNamespace() throws UnsupportedMessageException, ArityException, UnsupportedTypeException {
-        // getAndSet mutates some static state, this test ensures that the static state is
-        // effectively isolated.
-        Object getAndSet = lookupAndBind(testLibrary, "getAndSet", "(sint32) : sint32");
-        Object isolatedGetAndSet = lookupAndBind(isolatedTestLibrary, "getAndSet", "(sint32) : sint32");
-        UNCACHED_INTEROP.execute(getAndSet, 123);
-        UNCACHED_INTEROP.execute(isolatedGetAndSet, 456);
-        Assert.assertEquals(123, (int) UNCACHED_INTEROP.execute(getAndSet, 321));
-        Assert.assertEquals(456, (int) UNCACHED_INTEROP.execute(isolatedGetAndSet, 654));
+    public void testIsolatedNamespace() throws InteropException {
+        Source signature = parseSource("(sint32) : sint32");
+        Source library = parseSource(String.format("load(ISOLATED_NAMESPACE) '%s'", getLibPath("isolationtest")));
+
+        Env env = runWithPolyglot.getTruffleTestEnv();
+        try (IsolatedGetAndSet getAndSet1 = new IsolatedGetAndSet(env, library, signature);
+                        IsolatedGetAndSet getAndSet2 = new IsolatedGetAndSet(env, library, signature)) {
+            getAndSet1.execute(123);
+            getAndSet2.execute(456);
+
+            Assert.assertEquals(123, getAndSet1.execute(321));
+            Assert.assertEquals(456, getAndSet2.execute(654));
+        }
     }
 }

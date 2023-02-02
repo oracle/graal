@@ -44,6 +44,12 @@ public abstract class TypeEntry {
     protected String typeName;
 
     /**
+     * The offset of the java.lang.Class instance for this class in the image heap or -1 if no such
+     * object exists.
+     */
+    private long classOffset;
+
+    /**
      * The size of an occurrence of this type in bytes.
      */
     protected int size;
@@ -51,6 +57,11 @@ public abstract class TypeEntry {
     protected TypeEntry(String typeName, int size) {
         this.typeName = typeName;
         this.size = size;
+        this.classOffset = -1;
+    }
+
+    public long getClassOffset() {
+        return classOffset;
     }
 
     public int getSize() {
@@ -95,9 +106,8 @@ public abstract class TypeEntry {
         return isClass() || isHeader();
     }
 
-    public abstract void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext);
-
-    public static String canonicalize(String typeName) {
-        return typeName.replace(" ", "__");
+    public void addDebugInfo(@SuppressWarnings("unused") DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, @SuppressWarnings("unused") DebugContext debugContext) {
+        /* Record the location of the Class instance in the heap if there is one */
+        this.classOffset = debugTypeInfo.classOffset();
     }
 }

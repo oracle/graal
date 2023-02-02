@@ -40,22 +40,25 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.Iterator;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.polyglot.PolyglotIterableFactory.CacheFactory.GetIteratorNodeGen;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.Iterator;
-
-class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
+class PolyglotIterable<T> implements Iterable<T>, PolyglotWrapper {
 
     final Object guestObject;
     final PolyglotLanguageContext languageContext;
@@ -90,18 +93,18 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
 
     @Override
     public String toString() {
-        return HostWrapper.toString(this);
+        return PolyglotWrapper.toString(this);
     }
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(languageContext, guestObject);
+        return PolyglotWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
         if (o instanceof PolyglotIterable) {
-            return HostWrapper.equals(languageContext, guestObject, ((PolyglotIterable<?>) o).guestObject);
+            return PolyglotWrapper.equals(languageContext, guestObject, ((PolyglotIterable<?>) o).guestObject);
         } else {
             return false;
         }
@@ -109,6 +112,7 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
 
     static final class Cache {
 
+        final PolyglotLanguageInstance languageInstance;
         final Class<?> receiverClass;
         final Class<?> valueClass;
         final Type valueType;
@@ -116,12 +120,13 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
         final CallTarget apply;
         final Type iteratorType;
 
-        private Cache(Class<?> receiverClass, Class<?> valueClass, Type valueType) {
+        private Cache(PolyglotLanguageInstance languageInstance, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
+            this.languageInstance = languageInstance;
             this.receiverClass = receiverClass;
             this.valueClass = valueClass;
             this.valueType = valueType;
-            this.getIterator = HostToGuestRootNode.createTarget(GetIteratorNodeGen.create(this));
-            this.apply = HostToGuestRootNode.createTarget(new Apply(this));
+            this.getIterator = GetIteratorNodeGen.create(this).getCallTarget();
+            this.apply = new Apply(this).getCallTarget();
             this.iteratorType = new ParameterizedIteratorType(valueType);
         }
 
@@ -129,7 +134,7 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
             Key cacheKey = new Key(receiverClass, valueClass, valueType);
             Cache cache = HostToGuestRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, valueClass, valueType), Cache.class);
+                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(languageContext.getLanguageInstance(), receiverClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.valueClass == valueClass;
@@ -144,10 +149,8 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
             private final Type valueType;
 
             Key(Class<?> receiverClass, Class<?> valueClass, Type valueType) {
-                assert receiverClass != null;
-                assert valueClass != null;
-                this.receiverClass = receiverClass;
-                this.valueClass = valueClass;
+                this.receiverClass = Objects.requireNonNull(receiverClass);
+                this.valueClass = Objects.requireNonNull(valueClass);
                 this.valueType = valueType;
             }
 
@@ -167,7 +170,7 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
                     return false;
                 }
                 Key other = (Key) obj;
-                return valueType == other.valueType && valueClass == other.valueClass && receiverClass == other.receiverClass;
+                return receiverClass == other.receiverClass && valueClass == other.valueClass && Objects.equals(valueType, other.valueType);
             }
         }
 
@@ -178,6 +181,7 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
             final Cache cache;
 
             PolyglotIterableNode(Cache cache) {
+                super(cache.languageInstance);
                 this.cache = cache;
             }
 
@@ -208,16 +212,17 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
             }
 
             @Specialization(limit = "LIMIT")
-            @SuppressWarnings("unused")
+            @SuppressWarnings({"unused", "truffle-static-method"})
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @Bind("this") Node node,
                             @CachedLibrary("receiver") InteropLibrary iterables,
-                            @Cached ToHostNode toHost,
-                            @Cached BranchProfile error) {
+                            @Cached PolyglotToHostNode toHost,
+                            @Cached InlinedBranchProfile error) {
                 try {
-                    return toHost.execute(iterables.getIterator(receiver), Iterator.class, cache.iteratorType, languageContext, true);
+                    return toHost.execute(node, languageContext, iterables.getIterator(receiver), Iterator.class, cache.iteratorType);
                 } catch (UnsupportedMessageException e) {
-                    error.enter();
-                    throw HostInteropErrors.iterableUnsupported(languageContext, receiver, cache.valueType, "iterator()");
+                    error.enter(node);
+                    throw PolyglotInteropErrors.iterableUnsupported(languageContext, receiver, cache.valueType, "iterator()");
                 }
             }
         }
@@ -237,7 +242,7 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
-                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET], Object.class, Object.class);
+                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET]);
             }
         }
 

@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 
 @CStruct("jvmtiFrameInfo")
 @CContext(JvmtiDirectives.class)

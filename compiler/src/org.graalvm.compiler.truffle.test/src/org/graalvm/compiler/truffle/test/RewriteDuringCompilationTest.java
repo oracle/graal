@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,14 +41,17 @@ import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -89,45 +92,23 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
 
         @Child private LoopNode loop;
 
-        @CompilerDirectives.CompilationFinal FrameSlot loopIndexSlot;
-        @CompilerDirectives.CompilationFinal FrameSlot loopResultSlot;
+        final int loopIndexSlot;
+        final int loopResultSlot;
 
-        WhileLoopNode(Object loopCount, BaseNode child) {
+        WhileLoopNode(Object loopCount, BaseNode child, int loopIndexSlot, int loopResultSlot) {
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, child));
+            this.loopIndexSlot = loopIndexSlot;
+            this.loopResultSlot = loopResultSlot;
         }
 
-        FrameSlot getLoopIndex() {
-            if (loopIndexSlot == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                loopIndexSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopIndex" + getLoopDepth());
-            }
-            return loopIndexSlot;
-        }
-
-        FrameSlot getResult() {
-            if (loopResultSlot == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                loopResultSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopResult" + getLoopDepth());
-            }
-            return loopResultSlot;
-        }
-
-        private int getLoopDepth() {
-            Node node = getParent();
-            int count = 0;
-            while (node != null) {
-                if (node instanceof WhileLoopNode) {
-                    count++;
-                }
-                node = node.getParent();
-            }
-            return count;
+        static WhileLoopNode create(FrameDescriptor.Builder b, Object loopCount, BaseNode child) {
+            return new WhileLoopNode(loopCount, child, b.addSlot(FrameSlotKind.Illegal, "loopIndex", null), b.addSlot(FrameSlotKind.Illegal, "loopResult", null));
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.setObject(getResult(), false);
-            frame.setInt(getLoopIndex(), 0);
+            frame.setObject(loopResultSlot, false);
+            frame.setInt(loopIndexSlot, 0);
             loop.execute(frame);
             try {
                 return frame.getObject(loopResultSlot);
@@ -189,29 +170,38 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
 
     @Test
     public void testRootCompilation() throws IOException, InterruptedException, ExecutionException {
+        // no need to test this in compile immediately mode.
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+
         DetectInvalidCodeNode detectInvalidCodeNode = new DetectInvalidCodeNode();
-        testCompilation(detectInvalidCodeNode, null, detectInvalidCodeNode, 1000, 20);
+        testCompilation(FrameDescriptor.newBuilder(), detectInvalidCodeNode, null, detectInvalidCodeNode, 1000, 20);
     }
 
     @Test
     public void testLoopCompilation() throws IOException, InterruptedException, ExecutionException {
+        // no need to test this in compile immediately mode.
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+
+        var builder = FrameDescriptor.newBuilder();
         DetectInvalidCodeNode detectInvalidCodeNode = new DetectInvalidCodeNode();
-        WhileLoopNode testedCode = new WhileLoopNode(10000000, detectInvalidCodeNode);
-        testCompilation(testedCode, testedCode.loop, detectInvalidCodeNode, 1000, 40);
+        WhileLoopNode testedCode = WhileLoopNode.create(builder, 10000000, detectInvalidCodeNode);
+        testCompilation(builder, testedCode, testedCode.loop, detectInvalidCodeNode, 1000, 40);
     }
 
     private volatile boolean rewriting = false;
 
-    private void testCompilation(BaseNode testedCode, LoopNode loopNode, DetectInvalidCodeNode nodeToRewrite, int rewriteCount, int maxDelayBeforeRewrite)
+    private void testCompilation(FrameDescriptor.Builder builder, BaseNode testedCode, LoopNode loopNode, DetectInvalidCodeNode nodeToRewrite, int rewriteCount, int maxDelayBeforeRewrite)
                     throws IOException, InterruptedException, ExecutionException {
-        setupEnv(Context.create(), new ProxyLanguage() {
+        // DetectInvalidCodeNode.invalidTwice does not work with multi-tier
+        // code can remain active of another tier with local invalidation.
+        setupEnv(Context.newBuilder().allowExperimentalOptions(true).option("engine.MultiTier", "false"), new ProxyLanguage() {
             private CallTarget target;
 
             @Override
             protected synchronized CallTarget parse(ParsingRequest request) throws Exception {
                 com.oracle.truffle.api.source.Source source = request.getSource();
                 if (target == null) {
-                    target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    target = new RootNode(languageInstance, builder.build()) {
 
                         @Node.Child private volatile BaseNode child = testedCode;
 
@@ -225,7 +215,7 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
                             return source.createSection(1);
                         }
 
-                    });
+                    }.getCallTarget();
                 }
                 return target;
             }

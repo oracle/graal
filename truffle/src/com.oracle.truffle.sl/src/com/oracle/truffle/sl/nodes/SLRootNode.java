@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,12 +53,14 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLFunctionBodyNode;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
+import com.oracle.truffle.sl.runtime.SLContext;
 
 /**
  * The root of all SL execution trees. It is a Truffle requirement that the tree root extends the
@@ -72,7 +74,7 @@ public class SLRootNode extends RootNode {
     @Child private SLExpressionNode bodyNode;
 
     /** The name of the function, for printing purposes only. */
-    private final String name;
+    private final TruffleString name;
 
     private boolean isCloningAllowed;
 
@@ -80,7 +82,7 @@ public class SLRootNode extends RootNode {
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private volatile SLWriteLocalVariableNode[] argumentNodesCache;
 
-    public SLRootNode(SLLanguage language, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, String name) {
+    public SLRootNode(SLLanguage language, FrameDescriptor frameDescriptor, SLExpressionNode bodyNode, SourceSection sourceSection, TruffleString name) {
         super(language, frameDescriptor);
         this.bodyNode = bodyNode;
         this.name = name;
@@ -94,7 +96,7 @@ public class SLRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        assert lookupContextReference(SLLanguage.class).get() != null;
+        assert SLContext.get(this) != null;
         return bodyNode.executeGeneric(frame);
     }
 
@@ -104,6 +106,10 @@ public class SLRootNode extends RootNode {
 
     @Override
     public String getName() {
+        return name.toJavaStringUncached();
+    }
+
+    public TruffleString getTSName() {
         return name;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,13 +99,13 @@ public final class CompilationAlarm implements AutoCloseable {
      */
     public static CompilationAlarm trackCompilationPeriod(OptionValues options) {
         int period = Options.CompilationExpirationPeriod.getValue(options);
-        if (Assertions.assertionsEnabled()) {
-            period *= 2;
-        }
-        if (Assertions.detailedAssertionsEnabled(options)) {
-            period *= 2;
-        }
         if (period > 0) {
+            if (Assertions.assertionsEnabled()) {
+                period *= 2;
+            }
+            if (Assertions.detailedAssertionsEnabled(options)) {
+                period *= 2;
+            }
             CompilationAlarm current = currentAlarm.get();
             if (current == null) {
                 long expiration = System.currentTimeMillis() + period * 1000;

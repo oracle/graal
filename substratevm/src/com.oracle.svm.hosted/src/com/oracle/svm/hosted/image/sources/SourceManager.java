@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,13 @@
 
 package com.oracle.svm.hosted.image.sources;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.debug.DebugContext;
-
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+
+import org.graalvm.compiler.debug.DebugContext;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A singleton class responsible for locating source files for classes included in a native image
@@ -44,7 +45,7 @@ public class SourceManager {
     /**
      * Find and cache a source file for a given Java class and return a Path to the file relative to
      * the source.
-     * 
+     *
      * @param resolvedType the Java type whose source file should be located and cached
      * @param clazz the Java class associated with the resolved type
      * @param debugContext context for logging details of any lookup failure
@@ -72,7 +73,7 @@ public class SourceManager {
                 if (path == null) {
                     // as a last ditch effort derive path from the Java class name
                     if (debugContext.areScopesEnabled()) {
-                        debugContext.log(DebugContext.INFO_LEVEL, "Failed to find source file for class %s\n", resolvedType.toJavaName());
+                        debugContext.log(DebugContext.INFO_LEVEL, "Failed to find source file for class %s%n", resolvedType.toJavaName());
                     }
                     if (packageName.length() > 0) {
                         path = Paths.get("", packageName.split("\\."));
@@ -90,7 +91,7 @@ public class SourceManager {
     /**
      * Construct the base file name for a resolved Java class excluding path elements using either
      * the source name embedded in the class file or the class name itself.
-     * 
+     *
      * @param resolvedType the resolved java type whose source file name is required
      * @return the file name or null if it the class cannot be associated with a source file
      */
@@ -125,7 +126,7 @@ public class SourceManager {
 
     /**
      * Construct the package name for a Java type or the empty String if it has no package.
-     * 
+     *
      * @param javaType the Java type whose package name is required
      * @return the package name or the empty String if it has no package
      */
@@ -142,7 +143,7 @@ public class SourceManager {
     /**
      * Construct the prototype name for a Java source file which can be used to resolve and cache an
      * actual source file.
-     * 
+     *
      * @param fileName the base file name for the source file
      * @param packageName the name of the package for the associated Java class
      * @return a protoype name for the source file

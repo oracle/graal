@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,13 @@
  */
 package org.graalvm.compiler.core.phases;
 
-import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
-
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 public class BaseTier<C> extends PhaseSuite<C> {
 
@@ -38,13 +38,13 @@ public class BaseTier<C> extends PhaseSuite<C> {
         return new DefaultLoopPolicies();
     }
 
-    public CanonicalizerPhase createCanonicalizerPhase(OptionValues options) {
-        CanonicalizerPhase canonicalizer = null;
-        if (ImmutableCode.getValue(options)) {
-            canonicalizer = CanonicalizerPhase.createWithoutReadCanonicalization();
-        } else {
-            canonicalizer = CanonicalizerPhase.create();
+    @Override
+    protected void run(StructuredGraph graph, C context) {
+        for (BasePhase<? super C> phase : getPhases()) {
+            // Notify the runtime that most objects allocated in previous HIR phase are dead and can
+            // be reclaimed. This will lower the chance of allocation failure in the next HIR phase.
+            GraalServices.notifyLowMemoryPoint(false);
+            phase.apply(graph, context);
         }
-        return canonicalizer;
     }
 }

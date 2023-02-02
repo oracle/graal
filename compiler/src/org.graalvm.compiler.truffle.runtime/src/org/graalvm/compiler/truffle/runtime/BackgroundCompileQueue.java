@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RunnableFuture;
@@ -129,7 +130,7 @@ public class BackgroundCompileQueue {
             long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
-            initQueue(callTarget);
+            this.compilationQueue = createQueue(callTarget, threads);
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
                             compilationQueue, factory) {
@@ -151,11 +152,18 @@ public class BackgroundCompileQueue {
         }
     }
 
-    private void initQueue(OptimizedCallTarget callTarget) {
+    private BlockingQueue<Runnable> createQueue(OptimizedCallTarget callTarget, int threads) {
         if (callTarget.getOptionValue(PolyglotCompilerOptions.TraversingCompilationQueue)) {
-            this.compilationQueue = new TraversingBlockingQueue();
+            if (callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilationThresholds) && callTarget.getOptionValue(PolyglotCompilerOptions.BackgroundCompilation)) {
+                double minScale = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilationThresholdsMinScale);
+                int minNormalLoad = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilationThresholdsMinNormalLoad);
+                int maxNormalLoad = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilationThresholdsMaxNormalLoad);
+                return new DynamicThresholdsQueue(threads, minScale, minNormalLoad, maxNormalLoad, new IdlingLinkedBlockingDeque<>());
+            } else {
+                return new TraversingBlockingQueue(new IdlingLinkedBlockingDeque<>());
+            }
         } else {
-            this.compilationQueue = new IdlingPriorityBlockingQueue<>();
+            return new IdlingPriorityBlockingQueue<>();
         }
     }
 
@@ -186,17 +194,9 @@ public class BackgroundCompileQueue {
     }
 
     public int getQueueSize() {
-        final ExecutorService threadPool = compilationExecutorService;
-        if (threadPool instanceof ThreadPoolExecutor) {
-            BlockingQueue<Runnable> queue = ((ThreadPoolExecutor) threadPool).getQueue();
-            int count = 0;
-            for (Runnable runnable : queue) {
-                CompilationTask.ExecutorServiceWrapper wrapper = (CompilationTask.ExecutorServiceWrapper) runnable;
-                if (!wrapper.isCancelled() && !wrapper.compileTask.isCancelled()) {
-                    count++;
-                }
-            }
-            return count;
+        final ThreadPoolExecutor threadPool = compilationExecutorService;
+        if (threadPool != null) {
+            return threadPool.getQueue().size();
         } else {
             return 0;
         }
@@ -244,7 +244,7 @@ public class BackgroundCompileQueue {
     /**
      * Called when a compiler thread becomes idle for more than {@code delayMillis}.
      */
-    protected void compilerThreadIdled() {
+    protected void notifyIdleCompilerThread() {
         // nop
     }
 
@@ -276,6 +276,7 @@ public class BackgroundCompileQueue {
             this.runtime = runtime;
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public Thread newThread(Runnable r) {
             final Thread t = new Thread(r) {
@@ -283,12 +284,13 @@ public class BackgroundCompileQueue {
                 @Override
                 public void run() {
                     setContextClassLoader(getClass().getClassLoader());
-                    try (AutoCloseable scope = runtime.openCompilerThreadScope()) {
+                    try (AutoCloseable compilerThreadScope = runtime.openCompilerThreadScope();
+                                    AutoCloseable polyglotThreadScope = GraalRuntimeAccessor.ENGINE.createPolyglotThreadScope()) {
                         super.run();
                         if (compilationExecutorService.allowsCoreThreadTimeOut()) {
                             // If core threads are always kept alive (no timeout), the
                             // IdlingPriorityBlockingQueue.take mechanism is used instead.
-                            compilerThreadIdled();
+                            notifyIdleCompilerThread();
                         }
                     } catch (Exception e) {
                         throw new InternalError(e);
@@ -320,7 +322,7 @@ public class BackgroundCompileQueue {
             while (!compilationExecutorService.allowsCoreThreadTimeOut()) {
                 E elem = poll(delayMillis, TimeUnit.MILLISECONDS);
                 if (elem == null) {
-                    compilerThreadIdled();
+                    notifyIdleCompilerThread();
                 } else {
                     return elem;
                 }
@@ -330,4 +332,49 @@ public class BackgroundCompileQueue {
         }
     }
 
+    /**
+     * {@link LinkedBlockingDeque} with idling notification.
+     *
+     * <p>
+     * The idling notification is triggered when a compiler thread remains idle more than
+     * {@code delayMillis} milliseconds.
+     *
+     * There are no guarantees on which thread will run the {@code onIdleDelayed} hook. Note that,
+     * starved threads can also trigger the notification, even if the compile queue is not idle
+     * during the delay period, the idling criteria is thread-based, not queue-based.
+     */
+    @SuppressWarnings("serial")
+    private final class IdlingLinkedBlockingDeque<E> extends LinkedBlockingDeque<E> {
+        @Override
+        public E takeFirst() throws InterruptedException {
+            while (!compilationExecutorService.allowsCoreThreadTimeOut()) {
+                E elem = poll(delayMillis, TimeUnit.MILLISECONDS);
+                if (elem == null) {
+                    notifyIdleCompilerThread();
+                } else {
+                    return elem;
+                }
+            }
+            // Fallback to blocking version.
+            return super.take();
+        }
+
+        @Override
+        public E pollFirst(long timeout, TimeUnit unit) throws InterruptedException {
+            long timeoutMillis = unit.toMillis(timeout);
+            if (timeoutMillis < delayMillis) {
+                return super.pollFirst(timeout, unit);
+            }
+            while (timeoutMillis > delayMillis) {
+                E elem = super.pollFirst(delayMillis, TimeUnit.MILLISECONDS);
+                if (elem == null) {
+                    notifyIdleCompilerThread();
+                } else {
+                    return elem;
+                }
+                timeoutMillis -= delayMillis;
+            }
+            return super.pollFirst(timeoutMillis, TimeUnit.MILLISECONDS);
+        }
+    }
 }

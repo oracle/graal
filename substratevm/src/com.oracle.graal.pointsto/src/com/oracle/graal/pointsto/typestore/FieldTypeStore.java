@@ -26,7 +26,7 @@ package com.oracle.graal.pointsto.typestore;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FrozenFieldFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.UnsafeWriteSinkTypeFlow;
@@ -69,10 +69,10 @@ public abstract class FieldTypeStore {
     public abstract FieldTypeFlow readFlow();
 
     /** Overridden for field type stores that need lazy initialization. */
-    public void init(@SuppressWarnings("unused") BigBang bb) {
+    public void init(@SuppressWarnings("unused") PointsToAnalysis bb) {
     }
 
-    public UnsafeWriteSinkTypeFlow unsafeWriteSinkFlow(BigBang bb) {
+    public UnsafeWriteSinkTypeFlow unsafeWriteSinkFlow(PointsToAnalysis bb) {
         assert field.hasUnsafeFrozenTypeState() : "Unsafe write sink flow requested for non unsafe accessed frozen field.";
         // first we create the unsafe write sink
         if (unsafeWriteSinkFlow == null) {

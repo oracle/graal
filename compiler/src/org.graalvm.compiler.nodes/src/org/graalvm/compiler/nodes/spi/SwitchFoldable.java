@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -244,7 +243,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
                     data = keyData.fromKey(key);
                     if (data.keySuccessor != KeyData.KEY_UNKNOWN) {
                         // Unreachable key: kill it manually at the end
-                        if (!newSuccessors.contains(keySuccessor) && !duplicates.contains(keySuccessor) && keySuccessor.isAlive()) {
+                        if (keySuccessor.isAlive() && !newSuccessors.contains(keySuccessor) && !duplicates.contains(keySuccessor)) {
                             // This might be a false alert, if one of the next keys points to it.
                             duplicates.add(keySuccessor);
                         }

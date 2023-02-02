@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -62,11 +62,11 @@ public class SchedulingTest extends GraphScheduleTest {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);
         }
-        graph.clearAllStateAfter();
+        graph.clearAllStateAfterForTestingOnly();
         SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST);
-        schedulePhase.apply(graph);
+        schedulePhase.apply(graph, getDefaultHighTierContext());
         ScheduleResult schedule = graph.getLastSchedule();
-        NodeMap<Block> nodeToBlock = schedule.getCFG().getNodeToBlock();
+        NodeMap<HIRBlock> nodeToBlock = schedule.getCFG().getNodeToBlock();
         assertTrue(graph.getNodes().filter(LoopExitNode.class).count() == 1);
         LoopExitNode loopExit = graph.getNodes().filter(LoopExitNode.class).first();
         List<Node> list = schedule.nodesFor(nodeToBlock.get(loopExit));

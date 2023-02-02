@@ -24,17 +24,20 @@
  */
 package com.oracle.svm.core.meta;
 
+import org.graalvm.compiler.core.common.type.CompressibleConstant;
+import org.graalvm.compiler.core.common.type.TypedConstant;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.VMConstant;
 
-public abstract class SubstrateObjectConstant implements JavaConstant, CompressibleConstant, VMConstant {
+public abstract class SubstrateObjectConstant implements JavaConstant, TypedConstant, CompressibleConstant, VMConstant {
     public static JavaConstant forObject(Object object) {
         return forObject(object, false);
     }
@@ -154,8 +157,6 @@ public abstract class SubstrateObjectConstant implements JavaConstant, Compressi
         return getIdentityHashCode();
     }
 
-    public abstract int getIdentityHashCode();
-
     public static int computeIdentityHashCode(Object object) {
         if (SubstrateUtil.HOSTED && object instanceof DynamicHub) {
             /*
@@ -171,10 +172,8 @@ public abstract class SubstrateObjectConstant implements JavaConstant, Compressi
 
     @Override
     public String toString() {
-        return getJavaKind().getJavaName(); // + "[" + toValueString() + "]" + object;
+        return ClassUtil.getUnqualifiedName(getClass()) + '[' + getJavaKind().getJavaName() + ']';
     }
-
-    public abstract ResolvedJavaType getType(MetaAccessProvider provider);
 
     @Override
     public abstract SubstrateObjectConstant compress();

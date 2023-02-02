@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -108,9 +108,17 @@ public interface LLVMSourceFileReference {
             LLVMSourceFileReference srcA = (LLVMSourceFileReference) a;
             LLVMSourceFileReference srcB = (LLVMSourceFileReference) b;
             return srcA.getChecksumKind() == srcB.getChecksumKind() &&
-                            Objects.equals(srcA.getFilename(), srcB.getFilename()) &&
-                            Objects.equals(srcA.getDirectory(), srcB.getDirectory()) &&
-                            Objects.equals(srcA.getChecksum(), srcB.getChecksum());
+                            stringEquals(srcA.getFilename(), srcB.getFilename()) &&
+                            stringEquals(srcA.getDirectory(), srcB.getDirectory()) &&
+                            stringEquals(srcA.getChecksum(), srcB.getChecksum());
+        }
+
+        private boolean stringEquals(String a, String b) {
+            return Objects.equals(a, b) || isEmpty(a) && isEmpty(b);
+        }
+
+        private boolean isEmpty(String s) {
+            return s == null || "".equals(s);
         }
 
         @Override

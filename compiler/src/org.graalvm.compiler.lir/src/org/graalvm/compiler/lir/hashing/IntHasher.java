@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,7 @@ public final class IntHasher {
         this.shift = shift;
     }
 
-    // 1 + the first 9999 prime numbers
+    // 1 + the first 999 prime numbers
     private static final Short[] factors = new Short[1000];
 
     static {

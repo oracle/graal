@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@ package org.graalvm.compiler.graph;
 
 import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 import static org.graalvm.compiler.graph.Edges.Type.Successors;
-import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.ElementType;
@@ -48,12 +48,10 @@ import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
-import org.graalvm.compiler.graph.Graph.Options;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -69,12 +67,18 @@ import sun.misc.Unsafe;
  * {@link Graph}.
  * <p>
  * Once a node has been added to a graph, it has a graph-unique {@link #id()}. Edges in the
- * subclasses are represented with annotated fields. There are two kind of edges : {@link Input} and
- * {@link Successor}. If a field, of a type compatible with {@link Node}, annotated with either
- * {@link Input} and {@link Successor} is not null, then there is an edge from this node to the node
- * this field points to.
+ * subclasses are represented with annotated fields. There are two kind of edges: {@link Input} and
+ * {@link Successor}. If a field of type {@link Node} is annotated with {@link Input} or
+ * {@link Successor}, it must not be {@code null}. There is an edge from this node to the node
+ * denoted by the field's value. A field annotated with {@link OptionalInput} is also such an edge
+ * but it may be {@code null}.
  * <p>
- * Nodes which are be value numberable should implement the {@link ValueNumberable} interface.
+ * Exactly one of {@link Input}, {@link OptionalInput}, or {@link Successor} must be applied to all
+ * fields of a node that are of type {@link Node}. A field of type {@link NodeInputList} must be
+ * annotated with {@link Input} or {@link OptionalInput}. A field of type {@link NodeSuccessorList}
+ * must be annotated with {@link Successor}.
+ * <p>
+ * Nodes which are value numberable should implement the {@link ValueNumberable} interface.
  *
  * <h1>Assertions and Verification</h1>
  *
@@ -85,7 +89,7 @@ import sun.misc.Unsafe;
  * only performed if assertions are enabled.
  */
 @NodeInfo
-public abstract class Node implements Cloneable, Formattable, NodeInterface {
+public abstract class Node implements Cloneable, Formattable {
 
     private static final Unsafe UNSAFE = getUnsafe();
 
@@ -101,10 +105,11 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     // of this file works around a problem javac has resolving symbols
 
     /**
-     * Denotes a non-optional (non-null) node input. This should be applied to exactly the fields of
-     * a node that are of type {@link Node} or {@link NodeInputList}. Nodes that update fields of
-     * type {@link Node} outside of their constructor should call
-     * {@link Node#updateUsages(Node, Node)} just prior to doing the update of the input.
+     * Denotes a non-optional (non-null) node input. This should only be applied to fields of type
+     * {@link Node} or {@link NodeInputList}.
+     *
+     * Nodes that update fields of type {@link Node} outside of their constructor should call
+     * {@link Node#updateUsages(Node, Node)} just prior to the update.
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
@@ -113,10 +118,11 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Denotes an optional (nullable) node input. This should be applied to exactly the fields of a
-     * node that are of type {@link Node} or {@link NodeInputList}. Nodes that update fields of type
-     * {@link Node} outside of their constructor should call {@link Node#updateUsages(Node, Node)}
-     * just prior to doing the update of the input.
+     * Denotes an optional (nullable) node input. This should only be applied to fields of type
+     * {@link Node} or {@link NodeInputList}.
+     *
+     * Nodes that update fields of type {@link Node} outside of their constructor should call
+     * {@link Node#updateUsages(Node, Node)} just prior to the update.
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
@@ -124,6 +130,10 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         InputType value() default InputType.Value;
     }
 
+    /**
+     * Denotes a non-optional (non-null) node successor. This should only be applied to fields of
+     * type {@link Node} or {@link NodeSuccessorList}.
+     */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
     public static @interface Successor {
@@ -224,13 +234,20 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Marker interface for nodes that contains other nodes. When the inputs to this node changes,
-     * users of this node should also be placed on the work list for canonicalization.
+     * Marker interface for nodes that contain other nodes. When the inputs to {@code this} change,
+     * users of {@code this} should also be placed on the work list for canonicalization.
      */
     public interface IndirectCanonicalization {
     }
 
+    /**
+     * The graph owning {@code this}.
+     */
     private Graph graph;
+
+    /**
+     * @see #id()
+     */
     int id;
 
     // this next pointer is used in Graph to implement fast iteration over NodeClass types, it
@@ -238,11 +255,16 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     Node typeCacheNext;
 
     static final int INLINE_USAGE_COUNT = 2;
-    private static final Node[] NO_NODES = {};
+    static final Node[] EMPTY_ARRAY = {};
 
     /**
-     * Head of usage list. The elements of the usage list in order are {@link #usage0},
-     * {@link #usage1} and {@link #extraUsages}. The first null entry terminates the list.
+     * Head of usage list (i.e. list of nodes that have {@code this} as an input). Note that each
+     * element denotes a specific usage so there can be duplicates in the list. For example, a
+     * {@code ConstNode} modeling a compile constant that is added to itself will show up twice in
+     * the usage list of the {@code AddNode}.
+     *
+     * The elements of the usage list in order are {@link #usage0}, {@link #usage1} and
+     * {@link #extraUsages}. The first null entry terminates the list.
      */
     Node usage0;
     Node usage1;
@@ -252,15 +274,10 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     private Node predecessor;
     private NodeClass<? extends Node> nodeClass;
 
-    public static final int NODE_LIST = -2;
     public static final int NOT_ITERABLE = -1;
 
     static class NodeStackTrace {
-        final StackTraceElement[] stackTrace;
-
-        NodeStackTrace() {
-            this.stackTrace = new Throwable().getStackTrace();
-        }
+        final StackTraceElement[] stackTrace = new Throwable().getStackTrace();
 
         private String getString(String label) {
             StringBuilder sb = new StringBuilder();
@@ -297,37 +314,37 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         assert c.getJavaClass() == this.getClass();
         this.nodeClass = c;
         id = INITIAL_ID;
-        extraUsages = NO_NODES;
+        extraUsages = EMPTY_ARRAY;
         if (TRACK_CREATION_POSITION) {
             setCreationPosition(new NodeCreationStackTrace());
         }
     }
 
+    /**
+     * Gets an identifier for {@code this} that is unique in the context of {@link #graph} iff
+     * {@code this.graph() != NULL && this.isAlive()}. The value returned by this method can change
+     * after the graph is {@linkplain Graph#maybeCompress() compressed}.
+     */
     final int id() {
         return id;
     }
 
-    @Override
-    public Node asNode() {
-        return this;
-    }
-
     /**
-     * Gets the graph context of this node.
+     * Gets the graph context of {@code this}.
      */
     public Graph graph() {
         return graph;
     }
 
     /**
-     * Gets the option values associated with this node's graph.
+     * Gets the option values associated with {@code this.graph()}.
      */
     public final OptionValues getOptions() {
         return graph == null ? null : graph.getOptions();
     }
 
     /**
-     * Gets the debug context associated with this node's graph.
+     * Gets the debug context associated with {@code this.graph()}.
      */
     public final DebugContext getDebug() {
         return graph.getDebug();
@@ -335,7 +352,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
     /**
      * Returns an {@link NodeIterable iterable} which can be used to traverse all non-null input
-     * edges of this node.
+     * edges of {@code this}.
      *
      * @return an {@link NodeIterable iterable} for all non-null input edges.
      */
@@ -345,7 +362,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
     /**
      * Returns an {@link Iterable iterable} which can be used to traverse all non-null input edges
-     * of this node.
+     * of {@code this}.
      *
      * @return an {@link Iterable iterable} for all non-null input edges.
      */
@@ -360,7 +377,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Applies the given visitor to all inputs of this node.
+     * Applies the given visitor to all inputs of {@code this}.
      *
      * @param visitor the visitor to be applied to the inputs
      */
@@ -369,7 +386,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Applies the given visitor to all successors of this node.
+     * Applies the given visitor to all successors of {@code this}.
      *
      * @param visitor the visitor to be applied to the successors
      */
@@ -379,7 +396,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
     /**
      * Returns an {@link NodeIterable iterable} which can be used to traverse all non-null successor
-     * edges of this node.
+     * edges of {@code this}.
      *
      * @return an {@link NodeIterable iterable} for all non-null successor edges.
      */
@@ -390,7 +407,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
     /**
      * Returns an {@link Iterable iterable} which can be used to traverse all successor edge
-     * positions of this node.
+     * positions of {@code this}.
      *
      * @return an {@link Iterable iterable} for all successor edge positoins.
      */
@@ -399,7 +416,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Gets the maximum number of usages this node has had at any point in time.
+     * Gets the maximum number of usages {@code this} has had at any point in time.
      */
     public int getUsageCount() {
         if (usage0 == null) {
@@ -412,56 +429,60 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Gets the list of nodes that use this node (i.e., as an input).
+     * Gets the list of nodes that use {@code this} (i.e., as an input).
      */
     public final NodeIterable<Node> usages() {
         return new NodeUsageIterable(this);
     }
 
     /**
-     * Checks whether this node has no usages.
+     * Checks whether {@code this} has no usages.
      */
     public final boolean hasNoUsages() {
         return this.usage0 == null;
     }
 
     /**
-     * Checks whether this node has usages.
+     * Checks whether {@code this} has usages.
      */
     public final boolean hasUsages() {
         return this.usage0 != null;
     }
 
     /**
-     * Checks whether this node has more than one usages.
+     * Checks whether {@code this} has more than one usage.
      */
     public final boolean hasMoreThanOneUsage() {
         return this.usage1 != null;
     }
 
     /**
-     * Checks whether this node has exactly one usage.
+     * Checks whether {@code this} has exactly one usage.
      */
     public final boolean hasExactlyOneUsage() {
         return hasUsages() && !hasMoreThanOneUsage();
     }
 
     /**
-     * Checks whether this node has only usages of that type.
+     * Checks whether {@code this} has only one usage of type {@code inputType}.
      *
-     * @param type the type of usages to look for
+     * @param inputType the type of usages to look for
      */
-    public final boolean hasOnlyUsagesOfType(InputType type) {
+    public final boolean hasExactlyOneUsageOfType(InputType inputType) {
+        int numUses = 0;
         for (Node usage : usages()) {
             for (Position pos : usage.inputPositions()) {
                 if (pos.get(usage) == this) {
-                    if (pos.getInputType() != type) {
-                        return false;
+                    if (pos.getInputType() == inputType) {
+                        numUses++;
+                        if (numUses > 1) {
+                            return false;
+                        }
                     }
                 }
             }
         }
-        return true;
+        return numUses == 1;
     }
 
     /**
@@ -531,7 +552,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Removes a given node from this node's {@linkplain #usages() usages}.
+     * Removes one occurrence of a given node from this node's {@linkplain #usages() usages}.
      *
      * @param node the node to remove
      * @return whether or not {@code usage} was in the usage list
@@ -564,28 +585,28 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     public final int modCount() {
-        if (isModificationCountsEnabled() && graph != null) {
-            return graph.modCount(this);
+        if (isNodeModificationCountsEnabled() && graph != null) {
+            return graph.getNodeModCount(this);
         }
         return 0;
     }
 
     final void incModCount() {
-        if (isModificationCountsEnabled() && graph != null) {
-            graph.incModCount(this);
+        if (isNodeModificationCountsEnabled() && graph != null) {
+            graph.incNodeModCount(this);
         }
     }
 
     final int usageModCount() {
-        if (isModificationCountsEnabled() && graph != null) {
-            return graph.usageModCount(this);
+        if (isNodeModificationCountsEnabled() && graph != null) {
+            return graph.nodeUsageModCount(this);
         }
         return 0;
     }
 
     final void incUsageModCount() {
-        if (isModificationCountsEnabled() && graph != null) {
-            graph.incUsageModCount(this);
+        if (isNodeModificationCountsEnabled() && graph != null) {
+            graph.incNodeUsageModCount(this);
         }
     }
 
@@ -602,16 +623,15 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Updates the usages sets of the given nodes after an input slot is changed from
-     * {@code oldInput} to {@code newInput} by removing this node from {@code oldInput}'s usages and
-     * adds this node to {@code newInput}'s usages.
+     * Removes one occurrence of {@code this} from {@code oldInput}'s usages and adds it to
+     * {@code newInput}'s usages.
      */
     protected void updateUsages(Node oldInput, Node newInput) {
         assert isAlive() && (newInput == null || newInput.isAlive()) : "adding " + newInput + " to " + this + " instead of " + oldInput;
         if (oldInput != newInput) {
             if (oldInput != null) {
                 boolean result = removeThisFromUsages(oldInput);
-                assert assertTrue(result, "not found in usages, old input: %s", oldInput);
+                assertTrue(result, "not found in usages, old input: %s", oldInput);
             }
             maybeNotifyInputChanged(this);
             if (newInput != null) {
@@ -623,33 +643,30 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
-    protected void updateUsagesInterface(NodeInterface oldInput, NodeInterface newInput) {
-        updateUsages(oldInput == null ? null : oldInput.asNode(), newInput == null ? null : newInput.asNode());
-    }
-
     /**
      * Updates the predecessor of the given nodes after a successor slot is changed from
-     * oldSuccessor to newSuccessor: removes this node from oldSuccessor's predecessors and adds
-     * this node to newSuccessor's predecessors.
+     * oldSuccessor to newSuccessor: removes {@code this} from oldSuccessor's predecessors and adds
+     * {@code this} to newSuccessor's predecessors.
      */
     protected void updatePredecessor(Node oldSuccessor, Node newSuccessor) {
-        assert isAlive() && (newSuccessor == null || newSuccessor.isAlive()) || newSuccessor == null && !isAlive() : "adding " + newSuccessor + " to " + this + " instead of " + oldSuccessor;
+        assertTrue(isAlive() && (newSuccessor == null || newSuccessor.isAlive()) || newSuccessor == null && !isAlive(), "adding %s to %s instead of %s", newSuccessor, this, oldSuccessor);
         assert graph == null || !graph.isFrozen();
         if (oldSuccessor != newSuccessor) {
             if (oldSuccessor != null) {
-                assert assertTrue(newSuccessor == null || oldSuccessor.predecessor == this, "wrong predecessor in old successor (%s): %s, should be %s", oldSuccessor, oldSuccessor.predecessor, this);
+                assertTrue(newSuccessor == null || oldSuccessor.predecessor == this, "wrong predecessor in old successor (%s): %s, should be %s", oldSuccessor, oldSuccessor.predecessor, this);
                 oldSuccessor.predecessor = null;
             }
             if (newSuccessor != null) {
-                assert assertTrue(newSuccessor.predecessor == null, "unexpected non-null predecessor in new successor (%s): %s, this=%s", newSuccessor, newSuccessor.predecessor, this);
+                assertTrue(newSuccessor.predecessor == null, "unexpected non-null predecessor in new successor (%s): %s, this=%s", newSuccessor, newSuccessor.predecessor, this);
                 newSuccessor.predecessor = this;
+                maybeNotifyInputChanged(newSuccessor);
             }
             maybeNotifyInputChanged(this);
         }
     }
 
     void initialize(Graph newGraph) {
-        assert assertTrue(id == INITIAL_ID, "unexpected id: %d", id);
+        assertTrue(id == INITIAL_ID, "unexpected id: %d", id);
         this.graph = newGraph;
         newGraph.register(this);
         NodeClass<? extends Node> nc = nodeClass;
@@ -658,7 +675,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Information associated with this node. A single value is stored directly in the field.
+     * Information associated with {@code this}. A single value is stored directly in the field.
      * Multiple values are stored by creating an Object[].
      */
     private Object annotation;
@@ -704,9 +721,8 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Gets the source position information for this node or null if it doesn't exist.
+     * Gets the source position information for {@code this} or null if it doesn't exist.
      */
-
     public NodeSourcePosition getNodeSourcePosition() {
         return getNodeInfo(NodeSourcePosition.class);
     }
@@ -766,60 +782,135 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         return getNodeClass().getAllowedUsageTypes().contains(type);
     }
 
-    private boolean checkReplaceWith(Node other) {
+    private boolean checkReplaceWith(Node replacement) {
         if (graph != null && graph.isFrozen()) {
             fail("cannot modify frozen graph");
         }
-        if (other == this) {
+        if (replacement == this) {
             fail("cannot replace a node with itself");
         }
         if (isDeleted()) {
             fail("cannot replace deleted node");
         }
-        if (other != null && other.isDeleted()) {
-            fail("cannot replace with deleted node %s", other);
+        if (replacement != null && replacement.isDeleted()) {
+            fail("cannot replace with deleted node %s", replacement);
         }
         return true;
     }
 
-    public final void replaceAtUsages(Node other) {
-        replaceAtAllUsages(other, (Node) null);
+    /**
+     * For each use of {@code this} in another node, replace it with {@code replacement}.
+     *
+     * This is shown by the graph transformation below where edges are from usages to inputs (e.g.
+     * {@code this} is an input of {@code n0}).
+     *
+     * Before:
+     *
+     * <pre>
+     *       this
+     *         ^
+     *         |
+     *        /|\
+     *       / | \
+     *      /  |  \
+     *    n0  n1 ..nN
+     *
+     * </pre>
+     *
+     * After:
+     *
+     * <pre>
+     *     replacement
+     *         ^
+     *         |
+     *        /|\
+     *       / | \
+     *      /  |  \
+     *    n0  n1 ..nN
+     * </pre>
+     *
+     * If {@code replacement == null}, then the edges are simply removed.
+     */
+    public final void replaceAtUsages(Node replacement) {
+        replaceAtAllUsages(replacement, false);
     }
 
-    public final void replaceAtUsages(Node other, Predicate<Node> filter) {
-        replaceAtUsages(other, filter, null);
+    /**
+     * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
+     * if {@code filter == null} or {@code filter.test(n) == true}.
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    public final void replaceAtUsages(Node replacement, Predicate<Node> filter) {
+        replaceAtUsages(replacement, filter, false, true);
     }
 
-    public final void replaceAtUsagesAndDelete(Node other) {
-        replaceAtUsages(other, null, this);
+    /**
+     * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
+     * if {@code filter == null} or {@code filter.test(n) == true}.
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    public final void replaceAtUsages(Node replacement, Predicate<Node> filter, boolean checkInvariants) {
+        replaceAtUsages(replacement, filter, false, checkInvariants);
+    }
+
+    /**
+     * For each use of {@code this} in another node, replace it with {@code replacement} and then
+     * {@linkplain #safeDelete() remove} {@code this} from the graph.
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    public final void replaceAtUsagesAndDelete(Node replacement) {
+        replaceAtUsages(replacement, null, true, true);
         safeDelete();
     }
 
-    public final void replaceAtUsagesAndDelete(Node other, Predicate<Node> filter) {
-        replaceAtUsages(other, filter, this);
-        safeDelete();
-    }
-
-    protected void replaceAtUsages(Node other, Predicate<Node> filter, Node toBeDeleted) {
+    /**
+     * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
+     * if {@code filter == null} or {@code filter.test(n) == true}.
+     *
+     * @param forDeletion specifies if the caller will {@linkplain #safeDelete() remove}
+     *            {@code this} from the graph after this method returns
+     * @see #replaceAtUsages(Node)
+     */
+    private void replaceAtUsages(Node replacement, Predicate<Node> filter, boolean forDeletion, boolean checkInvariants) {
         if (filter == null) {
-            replaceAtAllUsages(other, toBeDeleted);
+            replaceAtAllUsages(replacement, forDeletion);
         } else {
-            replaceAtMatchingUsages(other, filter, toBeDeleted);
+            replaceAtMatchingUsages(replacement, filter, forDeletion);
         }
+        assert !checkInvariants || checkReplaceAtUsagesInvariants(replacement);
     }
 
-    protected void replaceAtAllUsages(Node other, Node toBeDeleted) {
-        checkReplaceWith(other);
+    /**
+     * Subclasses can override this to check invariants related to replacing uses of {@code this}.
+     *
+     * @param replacement
+     * @return {@code true} if all invariants hold
+     */
+    protected boolean checkReplaceAtUsagesInvariants(Node replacement) {
+        return true;
+    }
+
+    /**
+     * For each use of {@code this} in another node, replace it with {@code replacement}.
+     *
+     * @param forDeletion specifies if the caller will {@linkplain #safeDelete() remove}
+     *            {@code this} from the graph after this method returns
+     */
+    public final void replaceAtAllUsages(Node replacement, boolean forDeletion) {
+        checkReplaceWith(replacement);
         if (usage0 == null) {
             return;
         }
-        replaceAtUsage(other, toBeDeleted, usage0);
+        replaceAtUsage(replacement, forDeletion, usage0);
         usage0 = null;
 
         if (usage1 == null) {
             return;
         }
-        replaceAtUsage(other, toBeDeleted, usage1);
+        replaceAtUsage(replacement, forDeletion, usage1);
         usage1 = null;
 
         if (extraUsagesCount <= 0) {
@@ -827,37 +918,53 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
         for (int i = 0; i < extraUsagesCount; i++) {
             Node usage = extraUsages[i];
-            replaceAtUsage(other, toBeDeleted, usage);
+            replaceAtUsage(replacement, forDeletion, usage);
         }
-        this.extraUsages = NO_NODES;
+        this.extraUsages = EMPTY_ARRAY;
         this.extraUsagesCount = 0;
     }
 
-    private void replaceAtUsage(Node other, Node toBeDeleted, Node usage) {
-        boolean result = usage.getNodeClass().replaceFirstInput(usage, this, other);
-        assert assertTrue(result, "not found in inputs, usage: %s", usage);
+    /**
+     * For the use of {@code this} in another node represented by {@code usage}, replace it with
+     * {@code replacement}.
+     *
+     * @param forDeletion specifies if the caller will {@linkplain #safeDelete() remove}
+     *            {@code this} from the graph after this method returns
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    private void replaceAtUsage(Node replacement, boolean forDeletion, Node usage) {
+        boolean result = usage.getNodeClass().replaceFirstInput(usage, this, replacement);
+        assertTrue(result, "not found in inputs, usage: %s", usage);
         /*
          * Don't notify for nodes which are about to be deleted.
          */
-        if (toBeDeleted == null || usage != toBeDeleted) {
+        if (!forDeletion || usage != this) {
             maybeNotifyInputChanged(usage);
         }
-        if (other != null) {
-            other.addUsage(usage);
+        if (replacement != null) {
+            replacement.addUsage(usage);
         }
     }
 
-    private void replaceAtMatchingUsages(Node other, Predicate<Node> filter, Node toBeDeleted) {
-        if (filter == null) {
-            throw fail("filter cannot be null");
-        }
-        checkReplaceWith(other);
+    /**
+     * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
+     * if {@code filter.test(n) == true}.
+     *
+     * @param forDeletion specifies if the caller will {@linkplain #safeDelete() remove}
+     *            {@code this} from the graph after this method returns
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    private void replaceAtMatchingUsages(Node replacement, Predicate<Node> filter, boolean forDeletion) {
+        Objects.requireNonNull(filter);
+        checkReplaceWith(replacement);
         int i = 0;
         int usageCount = this.getUsageCount();
         while (i < usageCount) {
             Node usage = this.getUsageAt(i);
             if (filter.test(usage)) {
-                replaceAtUsage(other, toBeDeleted, usage);
+                replaceAtUsage(replacement, forDeletion, usage);
                 this.movUsageFromEndTo(i);
                 usageCount--;
             } else {
@@ -881,21 +988,33 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         return this.usage0;
     }
 
-    public void replaceAtMatchingUsages(Node other, NodePredicate usagePredicate) {
-        checkReplaceWith(other);
-        replaceAtMatchingUsages(other, usagePredicate, null);
+    /**
+     * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
+     * if {@code filter.test(n) == true}.
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    public void replaceAtMatchingUsages(Node replacement, NodePredicate usagePredicate) {
+        checkReplaceWith(replacement);
+        replaceAtMatchingUsages(replacement, usagePredicate, false);
     }
 
-    private void replaceAtUsagePos(Node other, Node usage, Position pos) {
-        pos.initialize(usage, other);
+    private void replaceAtUsagePos(Node replacement, Node usage, Position pos) {
+        pos.initialize(usage, replacement);
         maybeNotifyInputChanged(usage);
-        if (other != null) {
-            other.addUsage(usage);
+        if (replacement != null) {
+            replacement.addUsage(usage);
         }
     }
 
-    public void replaceAtUsages(Node other, InputType type) {
-        checkReplaceWith(other);
+    /**
+     * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
+     * if the type of the use is {@code inputType}.
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    public void replaceAtUsages(Node replacement, InputType inputType) {
+        checkReplaceWith(replacement);
         int i = 0;
         int usageCount = this.getUsageCount();
         if (usageCount == 0) {
@@ -904,8 +1023,8 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         usages: while (i < usageCount) {
             Node usage = this.getUsageAt(i);
             for (Position pos : usage.inputPositions()) {
-                if (pos.getInputType() == type && pos.get(usage) == this) {
-                    replaceAtUsagePos(other, usage, pos);
+                if (pos.getInputType() == inputType && pos.get(usage) == this) {
+                    replaceAtUsagePos(replacement, usage, pos);
                     this.movUsageFromEndTo(i);
                     usageCount--;
                     continue usages;
@@ -918,8 +1037,14 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
-    public void replaceAtUsages(Node other, InputType... inputTypes) {
-        checkReplaceWith(other);
+    /**
+     * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
+     * if the type of the use is in {@code inputTypes}.
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    public void replaceAtUsages(Node replacement, InputType... inputTypes) {
+        checkReplaceWith(replacement);
         int i = 0;
         int usageCount = this.getUsageCount();
         if (usageCount == 0) {
@@ -930,7 +1055,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
             for (Position pos : usage.inputPositions()) {
                 for (InputType type : inputTypes) {
                     if (pos.getInputType() == type && pos.get(usage) == this) {
-                        replaceAtUsagePos(other, usage, pos);
+                        replaceAtUsagePos(replacement, usage, pos);
                         this.movUsageFromEndTo(i);
                         usageCount--;
                         continue usages;
@@ -951,69 +1076,138 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
             if (listener != null) {
                 listener.event(Graph.NodeEvent.INPUT_CHANGED, node);
             }
+            graph.edgeModificationCount++;
         }
     }
 
+    /**
+     * Iterates over each {@link NodeEventListener} attached to {@code this.graph()} if
+     * {@code node.isAlive()} and notifies the listener that {@code node} has had its last usage
+     * removed.
+     */
     public void maybeNotifyZeroUsages(Node node) {
-        if (graph != null) {
+        if (graph != null && node.isAlive()) {
             assert !graph.isFrozen();
             NodeEventListener listener = graph.nodeEventListener;
-            if (listener != null && node.isAlive()) {
+            if (listener != null) {
                 listener.event(Graph.NodeEvent.ZERO_USAGES, node);
             }
         }
     }
 
-    public void replaceAtPredecessor(Node other) {
-        checkReplaceWith(other);
+    /**
+     * Updates the control flow edge, if it exists, from {@link #predecessor()} to {@code this} to
+     * have a target of {@code replacement}.
+     */
+    public void replaceAtPredecessor(Node replacement) {
+        checkReplaceWith(replacement);
         if (predecessor != null) {
-            if (!predecessor.getNodeClass().replaceFirstSuccessor(predecessor, this, other)) {
+            if (!predecessor.getNodeClass().replaceFirstSuccessor(predecessor, this, replacement)) {
                 fail("not found in successors, predecessor: %s", predecessor);
             }
-            predecessor.updatePredecessor(this, other);
+            predecessor.updatePredecessor(this, replacement);
         }
     }
 
-    public void replaceAndDelete(Node other) {
-        checkReplaceWith(other);
-        if (other == null) {
+    /**
+     * Replaces {@code this} at its predecessor (if any) and its usages with {@code replacement} and
+     * removes it from its graph.
+     */
+    public void replaceAndDelete(Node replacement) {
+        checkReplaceWith(replacement);
+        if (replacement == null) {
             fail("cannot replace with null");
         }
         if (this.hasUsages()) {
-            replaceAtUsages(other);
+            replaceAtUsages(replacement);
         }
-        replaceAtPredecessor(other);
+        replaceAtPredecessor(replacement);
         this.safeDelete();
     }
 
+    /**
+     * Finds the first {@link Successor} in {@code this} whose value is {@code oldSuccessor} and
+     * replaces it with {@code newSuccessor}. The predecessor fields in {@code oldSuccessor} and
+     * {@code newSuccessor} are updated to reflect any change made.
+     */
     public void replaceFirstSuccessor(Node oldSuccessor, Node newSuccessor) {
         if (nodeClass.replaceFirstSuccessor(this, oldSuccessor, newSuccessor)) {
             updatePredecessor(oldSuccessor, newSuccessor);
         }
     }
 
+    /**
+     * Finds the first {@link Input} or {@link OptionalInput} in {@code this} whose value is
+     * {@code oldInput} and replaces it with {@code newInput}. If the input is changed, the usage
+     * info for {@code oldInput} and {@code newInput} is updated as well.
+     *
+     * Before {@code this.replaceFirstInput(n0, n2)}:
+     *
+     * <pre>
+     *       n0  n1  n0
+     *        \  |  /
+     *         \ | /
+     *          \|/
+     *           |
+     *           V
+     *         this
+     * </pre>
+     *
+     * After {@code this.replaceFirstInput(n0, n2)}:
+     *
+     * <pre>
+     *       n2  n1  n0
+     *        \  |  /
+     *         \ | /
+     *          \|/
+     *           |
+     *           V
+     *         this
+     * </pre>
+     */
     public void replaceFirstInput(Node oldInput, Node newInput) {
         if (nodeClass.replaceFirstInput(this, oldInput, newInput)) {
             updateUsages(oldInput, newInput);
         }
     }
 
+    /**
+     * Finds all {@link Input}s and {@link OptionalInput}s in {@code this} whose value is
+     * {@code oldInput} and replaces them with {@code newInput}. If any input is changed, the usage
+     * info for {@code oldInput} and {@code newInput} is updated as well.
+     *
+     * Before {@code this.replaceAllInputs(n0, n2)}:
+     *
+     * <pre>
+     *       n0  n1  n0
+     *        \  |  /
+     *         \ | /
+     *          \|/
+     *           |
+     *           V
+     *         this
+     * </pre>
+     *
+     * After {@code this.replaceAllInputs(n0, n2)}:
+     *
+     * <pre>
+     *       n2  n1  n2
+     *        \  |  /
+     *         \ | /
+     *          \|/
+     *           |
+     *           V
+     *         this
+     * </pre>
+     */
     public void replaceAllInputs(Node oldInput, Node newInput) {
         while (nodeClass.replaceFirstInput(this, oldInput, newInput)) {
             updateUsages(oldInput, newInput);
         }
     }
 
-    public void replaceFirstInput(Node oldInput, Node newInput, InputType type) {
-        for (Position pos : inputPositions()) {
-            if (pos.getInputType() == type && pos.get(this) == oldInput) {
-                pos.set(this, newInput);
-            }
-        }
-    }
-
     public void clearInputs() {
-        assert assertFalse(isDeleted(), "cannot clear inputs of deleted node");
+        assertFalse(isDeleted(), "cannot clear inputs of deleted node");
         getNodeClass().unregisterAtInputsAsUsage(this);
     }
 
@@ -1022,7 +1216,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     public void clearSuccessors() {
-        assert assertFalse(isDeleted(), "cannot clear successors of deleted node");
+        assertFalse(isDeleted(), "cannot clear successors of deleted node");
         getNodeClass().unregisterAtSuccessorsAsPredecessor(this);
     }
 
@@ -1034,8 +1228,8 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Removes this node from its graph. This node must have no {@linkplain Node#usages() usages}
-     * and no {@linkplain #predecessor() predecessor}.
+     * Removes {@code this} from {@code this.graph()}. This node must have no
+     * {@linkplain Node#usages() usages} and no {@linkplain #predecessor() predecessor}.
      */
     public void safeDelete() {
         assert checkDeletion();
@@ -1065,19 +1259,8 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Must be overridden by subclasses that implement {@link Simplifiable}. The implementation in
-     * {@link Node} exists to obviate the need to cast a node before invoking
-     * {@link Simplifiable#simplify(SimplifierTool)}.
-     *
-     * @param tool
-     */
-    public void simplify(SimplifierTool tool) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * @param newNode the result of cloning this node or {@link Unsafe#allocateInstance(Class) raw
-     *            allocating} a copy of this node
+     * @param newNode the result of cloning {@code this} or {@link Unsafe#allocateInstance(Class)
+     *            raw allocating} a copy of {@code this}
      * @param type the type of edges to process
      * @param edgesToCopy if {@code type} is in this set, the edges are copied otherwise they are
      *            cleared
@@ -1091,20 +1274,18 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
-    public static final EnumSet<Edges.Type> WithNoEdges = EnumSet.noneOf(Edges.Type.class);
     public static final EnumSet<Edges.Type> WithAllEdges = EnumSet.allOf(Edges.Type.class);
     public static final EnumSet<Edges.Type> WithOnlyInputEdges = EnumSet.of(Inputs);
-    public static final EnumSet<Edges.Type> WithOnlySucessorEdges = EnumSet.of(Successors);
 
     /**
-     * Makes a copy of this node in(to) a given graph.
+     * Makes a copy of {@code this} in(to) a given graph.
      *
-     * @param into the graph in which the copy will be registered (which may be this node's graph)
-     *            or null if the copy should not be registered in a graph
+     * @param into the graph in which the copy will be registered (which may be
+     *            {@code this.graph()}) or null if the copy should not be registered in a graph
      * @param edgesToCopy specifies the edges to be copied. The edges not specified in this set are
      *            initialized to their default value (i.e., {@code null} for a direct edge, an empty
      *            list for an edge list)
-     * @return the copy of this node
+     * @return the copy of {@code this}
      */
     final Node clone(Graph into, EnumSet<Edges.Type> edgesToCopy) {
         final NodeClass<? extends Node> nodeClassTmp = getNodeClass();
@@ -1137,7 +1318,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         if (into != null) {
             into.register(newNode);
         }
-        newNode.extraUsages = NO_NODES;
+        newNode.extraUsages = EMPTY_ARRAY;
 
         if (into != null && useIntoLeafNodeCache) {
             into.putNodeIntoCache(newNode);
@@ -1167,16 +1348,12 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     public boolean verify() {
-        assertTrue(isAlive(), "cannot verify inactive nodes (id=%d)", id);
+        assertTrue(isAlive(), "cannot verify inactive node %s", this);
         assertTrue(graph() != null, "null graph");
         verifyInputs();
-        if (Options.VerifyGraalGraphEdges.getValue(getOptions())) {
+        if (graph.verifyGraphEdges) {
             verifyEdges();
         }
-        return true;
-    }
-
-    public boolean verifySourcePosition() {
         return true;
     }
 
@@ -1232,8 +1409,8 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
-    protected VerificationError fail(String message, Object... args) throws GraalGraphError {
-        throw new VerificationError(message, args).addContext(this);
+    protected GraalGraphError fail(String message, Object... args) throws GraalGraphError {
+        throw new GraalGraphError(message, args).addContext(this);
     }
 
     public Iterable<? extends Node> cfgPredecessors() {
@@ -1245,9 +1422,9 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Returns an iterator that will provide all control-flow successors of this node. Normally this
-     * will be the contents of all fields annotated with {@link Successor}, but some node classes
-     * (like EndNode) may return different nodes.
+     * Returns an iterator that will provide all control-flow successors of {@code this}. Normally
+     * this will be the contents of all fields annotated with {@link Successor}, but some node
+     * classes (like EndNode) may return different nodes.
      */
     public Iterable<? extends Node> cfgSuccessors() {
         return successors();
@@ -1273,16 +1450,16 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      */
 
     /**
-     * Provides a {@link Map} of properties of this node for use in debugging (e.g., to view in the
-     * ideal graph visualizer).
+     * Provides a {@link Map} of properties of {@code this} for use in debugging (e.g., to view in
+     * the ideal graph visualizer).
      */
     public final Map<Object, Object> getDebugProperties() {
         return getDebugProperties(new HashMap<>());
     }
 
     /**
-     * Fills a {@link Map} with properties of this node for use in debugging (e.g., to view in the
-     * ideal graph visualizer). Subclasses overriding this method should also fill the map using
+     * Fills a {@link Map} with properties of {@code this} for use in debugging (e.g., to view in
+     * the ideal graph visualizer). Subclasses overriding this method should also fill the map using
      * their superclass.
      *
      * @param map
@@ -1290,7 +1467,13 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Fields properties = getNodeClass().getData();
         for (int i = 0; i < properties.getCount(); i++) {
-            map.put(properties.getName(i), properties.get(this, i));
+            Object value = properties.get(this, i);
+            if (properties.getType(i) == Character.TYPE) {
+                // Convert a char to an int as chars are not guaranteed to printable/viewable
+                char ch = (char) value;
+                value = Integer.valueOf(ch);
+            }
+            map.put(properties.getName(i), value);
         }
         NodeSourcePosition pos = getNodeSourcePosition();
         if (pos != null) {
@@ -1316,7 +1499,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Creates a String representation for this node with a given {@link Verbosity}.
+     * Creates a String representation for {@code this} with a given {@link Verbosity}.
      */
     public String toString(Verbosity verbosity) {
         switch (verbosity) {
@@ -1414,19 +1597,19 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      *
      * The result of this method undefined if {@code other.getClass() != this.getClass()}.
      *
-     * @param other a node of exactly the same type as this node
+     * @param other a node of exactly the same type as {@code this}
      * @return true if the data fields of this object and {@code other} are equal
      */
-    public boolean valueEquals(Node other) {
+    public final boolean valueEquals(Node other) {
         return getNodeClass().dataEquals(this, other);
     }
 
     /**
-     * Determines if this node is equal to the other node while ignoring differences in
+     * Determines if {@code this} is equal to the other node while ignoring differences in
      * {@linkplain Successor control-flow} edges.
      *
      */
-    public boolean dataFlowEquals(Node other) {
+    public final boolean dataFlowEquals(Node other) {
         return this == other || nodeClass == other.getNodeClass() && this.valueEquals(other) && nodeClass.equalInputs(this, other);
     }
 
@@ -1434,7 +1617,28 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         getNodeClass().pushInputs(this, stack);
     }
 
-    public NodeSize estimatedNodeSize() {
+    public final NodeSize estimatedNodeSize() {
+        try {
+            return dynamicNodeSizeEstimate();
+        } catch (Exception e) {
+            throw GraalError.shouldNotReachHere(e, "Exception during node cost estimation");
+        }
+    }
+
+    /**
+     * Node subclasses should override this method if they need to specify a dynamically calculated
+     * {@link NodeSize} value. If the node size is static please use {@link NodeInfo#size()}.
+     *
+     * NOTE: When overriding this method, make sure that *all* field reads are null checked (even if
+     * Java semantics seemingly make the value of the field non-null). This is necessary because
+     * node size estimates are needed even during graph decoding which, for some nodes, first
+     * reflectively creates a stub and then later, reflectively, populates its fields. This method
+     * could be invoked between these two points. For this reason, when overriding this method
+     * assume that all fields can and will be null.
+     *
+     * @return The estimated node size for this node.
+     */
+    protected NodeSize dynamicNodeSizeEstimate() {
         return nodeClass.size();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.type;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.ArrayList;
@@ -49,7 +49,7 @@ public class LLVMSourceFunctionType extends LLVMSourceType {
         assert types != null;
         this.types = types;
         setName(() -> {
-            CompilerDirectives.transferToInterpreter();
+            CompilerAsserts.neverPartOfCompilation();
 
             StringBuilder nameBuilder = new StringBuilder(getReturnType().getName()).append("(");
 

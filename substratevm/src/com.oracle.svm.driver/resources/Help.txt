@@ -1,21 +1,36 @@
 
-GraalVM native-image building tool
+GraalVM Native Image (https://www.graalvm.org/native-image/)
 
-This tool can be used to generate an image that contains ahead-of-time compiled Java code.
+This tool can ahead-of-time compile Java code to native executables.
 
 Usage: native-image [options] class [imagename] [options]
            (to build an image for a class)
    or  native-image [options] -jar jarfile [imagename] [options]
            (to build an image for a jar file)
+   or  native-image [options] -m <module>[/<mainclass>] [options]
+       native-image [options] --module <module>[/<mainclass>] [options]
+           (to build an image for a module)
+
 where options include:
+
+    @argument files       one or more argument files containing options
     -cp <class search path of directories and zip/jar files>
     -classpath <class search path of directories and zip/jar files>
     --class-path <class search path of directories and zip/jar files>
                           A %pathsep% separated list of directories, JAR archives,
                           and ZIP archives to search for class files.
+    -p <module path>
+    --module-path <module path>...
+                          A %pathsep% separated list of directories, each directory
+                          is a directory of modules.
+    --add-modules <module name>[,<module name>...]
+                          root modules to resolve in addition to the initial module.
+                          <module name> can also be ALL-DEFAULT, ALL-SYSTEM,
+                          ALL-MODULE-PATH.
     -D<name>=<value>      set a system property
     -J<flag>              pass <flag> directly to the JVM running the image generator
-    -O<level>             0 - no optimizations, 1 - basic optimizations (default).
+    --diagnostics-mode    enable diagnostics output: class initialization, substitutions, etc.
+    --enable-preview      allow classes to depend on preview features of this release
     --verbose             enable verbose output
     --version             print product version and exit
     --help                print this help message

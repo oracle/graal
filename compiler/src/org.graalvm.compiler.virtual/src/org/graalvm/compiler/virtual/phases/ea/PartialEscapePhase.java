@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,13 @@ package org.graalvm.compiler.virtual.phases.ea;
 import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalysisIterations;
 import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
 
+import java.util.Optional;
+
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -70,7 +75,7 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
  * branches.
  *
  * Details for the algorithm can be found in
- * <a hre="http://ssw.jku.at/Teaching/PhDTheses/Stadler/Thesis_Stadler_14.pdf">this thesis</a>.
+ * <a href="http://ssw.jku.at/Teaching/PhDTheses/Stadler/Thesis_Stadler_14.pdf">this thesis</a>.
  */
 public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
 
@@ -98,6 +103,12 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
         this.cleanupPhase = cleanupPhase;
     }
 
+    public PartialEscapePhase(int iterations, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase) {
+        super(iterations, canonicalizer);
+        this.readElimination = readElimination;
+        this.cleanupPhase = cleanupPhase;
+    }
+
     public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options,
                     SchedulePhase.SchedulingStrategy strategy) {
         super(iterative ? EscapeAnalysisIterations.getValue(options) : 1, canonicalizer, false, strategy);
@@ -114,10 +125,21 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
     }
 
     @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.HIGH_TIER_LOWERING, graphState),
+                        cleanupPhase != null ? cleanupPhase.notApplicableTo(graphState) : ALWAYS_APPLICABLE);
+    }
+
+    @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
         if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue(graph.getOptions()))) {
             if (readElimination || graph.hasVirtualizableAllocation()) {
-                runAnalysis(graph, context);
+                try (DebugCloseable ignored = graph.getOptimizationLog().enterPartialEscapeAnalysis()) {
+                    runAnalysis(graph, context);
+                }
             }
         }
     }
@@ -139,5 +161,4 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
     public boolean checkContract() {
         return false;
     }
-
 }

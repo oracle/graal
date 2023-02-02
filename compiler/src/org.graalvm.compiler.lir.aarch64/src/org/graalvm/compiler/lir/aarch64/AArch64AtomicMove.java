@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,38 +24,61 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_LOAD;
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
+import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import java.util.function.Consumer;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.gen.LIRGenerator;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 public class AArch64AtomicMove {
+
     /**
-     * Compare and swap instruction. Does the following atomically: <code>
+     * This helper method moves sp to a scratch gp register before generating the code. This is
+     * needed when instructions within the codeGen cannot directly refer to the sp register. This
+     * can happen because both ZR and SP are encoded as '31'.
+     */
+    public static void moveSPAndEmitCode(AArch64MacroAssembler masm, Register input, Consumer<Register> codeGen) {
+        if (input.equals(sp)) {
+            try (ScratchRegister scratch = masm.getScratchRegister()) {
+                Register newInput = scratch.getRegister();
+                masm.mov(64, newInput, sp);
+                codeGen.accept(newInput);
+            }
+        } else {
+            codeGen.accept(input);
+        }
+    }
+
+    /**
+     * Compare and swap instruction. Does the following atomically:
+     *
+     * <pre>
      *  CAS(newVal, expected, address):
      *    oldVal = *address
      *    if oldVal == expected:
      *        *address = newVal
      *    return oldVal
-     * </code>
+     * </pre>
      */
     @Opcode("CAS")
     public static class CompareAndSwapOp extends AArch64LIRInstruction {
@@ -63,23 +86,44 @@ public class AArch64AtomicMove {
 
         private final AArch64Kind accessKind;
         private final MemoryOrderMode memoryOrder;
+        private final boolean setConditionFlags;
 
-        @Def protected AllocatableValue resultValue;
-        @Alive protected Value expectedValue;
-        @Alive protected AllocatableValue newValue;
-        @Alive protected AllocatableValue addressValue;
-        @Temp protected AllocatableValue scratchValue;
+        @Def({REG}) protected AllocatableValue resultValue;
+        @Alive({REG}) protected Value expectedValue;
+        @Alive({REG}) protected AllocatableValue newValue;
+        @Alive({REG}) protected AllocatableValue addressValue;
 
-        public CompareAndSwapOp(AArch64Kind accessKind, AllocatableValue result, Value expectedValue, AllocatableValue newValue, AllocatableValue addressValue, AllocatableValue scratch,
-                        MemoryOrderMode memoryOrder) {
+        public CompareAndSwapOp(AArch64Kind accessKind, MemoryOrderMode memoryOrder, boolean setConditionFlags, AllocatableValue result, Value expectedValue, AllocatableValue newValue,
+                        AllocatableValue addressValue) {
             super(TYPE);
             this.accessKind = accessKind;
+            this.memoryOrder = memoryOrder;
+            this.setConditionFlags = setConditionFlags;
             this.resultValue = result;
             this.expectedValue = expectedValue;
             this.newValue = newValue;
             this.addressValue = addressValue;
-            this.scratchValue = scratch;
-            this.memoryOrder = memoryOrder;
+        }
+
+        /**
+         * Both cas and ld(a)xr produce a zero-extended value. Since comparisons must be at minimum
+         * 32-bits, the expected value must also be zero-extended to produce an accurate comparison.
+         */
+        private static void emitCompare(AArch64MacroAssembler masm, int memAccessSize, Register result, Register expected) {
+            switch (memAccessSize) {
+                case 8:
+                    masm.cmp(32, result, expected, ExtendType.UXTB, 0);
+                    break;
+                case 16:
+                    masm.cmp(32, result, expected, ExtendType.UXTH, 0);
+                    break;
+                case 32:
+                case 64:
+                    masm.cmp(memAccessSize, result, expected);
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
         }
 
         @Override
@@ -89,24 +133,45 @@ public class AArch64AtomicMove {
 
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
-            Register newVal = asRegister(newValue);
             Register expected = asRegister(expectedValue);
 
             /*
              * Determining whether acquire and/or release semantics are needed.
              */
-            boolean acquire = ((memoryOrder.postWriteBarriers & (STORE_LOAD | STORE_STORE)) != 0) || ((memoryOrder.postReadBarriers & (LOAD_LOAD | LOAD_STORE)) != 0);
-            boolean release = ((memoryOrder.preWriteBarriers & (LOAD_STORE | STORE_STORE)) != 0) || ((memoryOrder.preReadBarriers & (LOAD_LOAD | STORE_LOAD)) != 0);
+            boolean acquire;
+            boolean release;
+            switch (memoryOrder) {
+                case PLAIN:
+                case OPAQUE:
+                    acquire = false;
+                    release = false;
+                    break;
+                case ACQUIRE:
+                    acquire = true;
+                    release = false;
+                    break;
+                case RELEASE:
+                    acquire = false;
+                    release = true;
+                    break;
+                case RELEASE_ACQUIRE:
+                case VOLATILE:
+                    acquire = true;
+                    release = true;
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
 
-            if (AArch64LIRFlags.useLSE(masm.target.arch)) {
+            if (AArch64LIRFlags.useLSE(masm)) {
                 masm.mov(Math.max(memAccessSize, 32), result, expected);
-                masm.cas(memAccessSize, result, newVal, address, acquire, release);
-                AArch64Compare.gpCompare(masm, resultValue, expectedValue);
+                moveSPAndEmitCode(masm, asRegister(newValue), newVal -> {
+                    masm.cas(memAccessSize, result, newVal, address, acquire, release);
+                });
+                if (setConditionFlags) {
+                    emitCompare(masm, memAccessSize, result, expected);
+                }
             } else {
-                // We could avoid using a scratch register here, by reusing resultValue for the
-                // stlxr success flag and issue a mov resultValue, expectedValue in case of success
-                // before returning.
-
                 /*
                  * Because the store is only conditionally emitted, a dmb is needed for performing a
                  * release.
@@ -125,33 +190,54 @@ public class AArch64AtomicMove {
                     masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
                 }
 
-                Register scratch = asRegister(scratchValue);
-                Label retry = new Label();
-                Label fail = new Label();
-                masm.bind(retry);
-                masm.loadExclusive(memAccessSize, result, address, acquire);
-                AArch64Compare.gpCompare(masm, resultValue, expectedValue);
-                masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-                /*
-                 * Even with the prior dmb, for releases it is still necessary to use stlxr instead
-                 * of stxr to guarantee subsequent lda(x)r/stl(x)r cannot be hoisted above this
-                 * instruction and thereby violate volatile semantics.
-                 */
-                masm.storeExclusive(memAccessSize, scratch, newVal, address, release);
-                // if scratch == 0 then write successful, else retry.
-                masm.cbnz(32, scratch, retry);
-                masm.bind(fail);
+                moveSPAndEmitCode(masm, asRegister(newValue), newVal -> {
+                    try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
+                        Register scratch = scratchRegister.getRegister();
+                        Label retry = new Label();
+                        Label fail = new Label();
+                        masm.bind(retry);
+                        masm.loadExclusive(memAccessSize, result, address, acquire);
+                        emitCompare(masm, memAccessSize, result, expected);
+                        masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
+                        /*
+                         * Even with the prior dmb, for releases it is still necessary to use stlxr
+                         * instead of stxr to guarantee subsequent lda(x)r/stl(x)r cannot be hoisted
+                         * above this instruction and thereby violate volatile semantics.
+                         */
+                        masm.storeExclusive(memAccessSize, scratch, newVal, address, release);
+                        // if scratch == 0 then write successful, else retry.
+                        masm.cbnz(32, scratch, retry);
+                        masm.bind(fail);
+                    }
+                });
             }
         }
     }
 
     /**
-     * Load (Read) and Add instruction. Does the following atomically: <code>
+     * Determines whether to use the atomic or load-store conditional implementation of atomic
+     * read&add based on the available hardware features.
+     *
+     * These two variants are split into two separate classes, as deltaValue is allowed to be a
+     * constant within the load-store conditional implementation.
+     */
+    public static AArch64LIRInstruction createAtomicReadAndAdd(LIRGenerator gen, AArch64Kind kind, AllocatableValue result, AllocatableValue address, Value delta) {
+        if (AArch64LIRFlags.useLSE((AArch64) gen.target().arch)) {
+            return new AtomicReadAndAddLSEOp(kind, result, address, gen.asAllocatable(delta));
+        } else {
+            return new AtomicReadAndAddOp(kind, result, address, delta);
+        }
+    }
+
+    /**
+     * Load (Read) and Add instruction. Does the following atomically:
+     *
+     * <pre>
      *  ATOMIC_READ_AND_ADD(addend, result, address):
      *    result = *address
      *    *address = result + addend
      *    return result
-     * </code>
+     * </pre>
      */
     @Opcode("ATOMIC_READ_AND_ADD")
     public static final class AtomicReadAndAddOp extends AArch64LIRInstruction {
@@ -163,7 +249,7 @@ public class AArch64AtomicMove {
         @Alive({REG}) protected AllocatableValue addressValue;
         @Alive({REG, CONST}) protected Value deltaValue;
 
-        public AtomicReadAndAddOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, Value delta) {
+        AtomicReadAndAddOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, Value delta) {
             super(TYPE);
             this.accessKind = kind;
             this.resultValue = result;
@@ -213,12 +299,14 @@ public class AArch64AtomicMove {
     }
 
     /**
-     * Load (Read) and Add instruction. Does the following atomically: <code>
+     * Load (Read) and Add instruction. Does the following atomically:
+     *
+     * <pre>
      *  ATOMIC_READ_AND_ADD(addend, result, address):
      *    result = *address
      *    *address = result + addend
      *    return result
-     * </code>
+     * </pre>
      *
      * The LSE version has different properties with regards to the register allocator. To define
      * these differences, we have to create a separate LIR instruction class.
@@ -238,7 +326,7 @@ public class AArch64AtomicMove {
         @Use({REG}) protected AllocatableValue addressValue;
         @Use({REG}) protected AllocatableValue deltaValue;
 
-        public AtomicReadAndAddLSEOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, AllocatableValue delta) {
+        AtomicReadAndAddLSEOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, AllocatableValue delta) {
             super(TYPE);
             this.accessKind = kind;
             this.resultValue = result;
@@ -252,19 +340,22 @@ public class AArch64AtomicMove {
             final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
             Register address = asRegister(addressValue);
-            Register delta = asRegister(deltaValue);
             Register result = asRegister(resultValue);
-            masm.ldadd(memAccessSize, delta, result, address, true, true);
+            moveSPAndEmitCode(masm, asRegister(deltaValue), delta -> {
+                masm.ldadd(memAccessSize, delta, result, address, true, true);
+            });
         }
     }
 
     /**
-     * Load (Read) and Write instruction. Does the following atomically: <code>
+     * Load (Read) and Write instruction. Does the following atomically:
+     *
+     * <pre>
      *  ATOMIC_READ_AND_WRITE(newValue, result, address):
      *    result = *address
      *    *address = newValue
      *    return result
-     * </code>
+     * </pre>
      */
     @Opcode("ATOMIC_READ_AND_WRITE")
     public static final class AtomicReadAndWriteOp extends AArch64LIRInstruction {
@@ -272,51 +363,52 @@ public class AArch64AtomicMove {
 
         private final AArch64Kind accessKind;
 
-        @Def protected AllocatableValue resultValue;
-        @Alive protected AllocatableValue addressValue;
-        @Alive protected AllocatableValue newValue;
-        @Temp protected AllocatableValue scratchValue;
+        @Def({REG}) protected AllocatableValue resultValue;
+        @Alive({REG}) protected AllocatableValue addressValue;
+        @Alive({REG}) protected AllocatableValue newValue;
 
-        public AtomicReadAndWriteOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, AllocatableValue newValue, AllocatableValue scratch) {
+        public AtomicReadAndWriteOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, AllocatableValue newValue) {
             super(TYPE);
+            assert kind.isInteger();
             this.accessKind = kind;
             this.resultValue = result;
             this.addressValue = address;
             this.newValue = newValue;
-            this.scratchValue = scratch;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            assert accessKind.isInteger();
             final int memAccessSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
             Register address = asRegister(addressValue);
-            Register value = asRegister(newValue);
             Register result = asRegister(resultValue);
 
-            if (AArch64LIRFlags.useLSE(masm.target.arch)) {
-                masm.swp(memAccessSize, value, result, address, true, true);
-            } else {
-                Register scratch = asRegister(scratchValue);
-                Label retry = new Label();
-                masm.bind(retry);
-                masm.loadExclusive(memAccessSize, result, address, false);
-                masm.storeExclusive(memAccessSize, scratch, value, address, true);
-                // if scratch == 0 then write successful, else retry
-                masm.cbnz(32, scratch, retry);
-                /*
-                 * Use a full barrier for the acquire semantics instead of ldaxr to guarantee that
-                 * the instruction sequence:
-                 *
-                 * A -> ldaxr -> stlxr -> B
-                 *
-                 * cannot be executed as:
-                 *
-                 * ldaxr -> B -> A -> stlxr
-                 */
-                masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
-            }
+            moveSPAndEmitCode(masm, asRegister(newValue), value -> {
+                if (AArch64LIRFlags.useLSE(masm)) {
+                    masm.swp(memAccessSize, value, result, address, true, true);
+                } else {
+                    try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
+                        Register scratch = scratchRegister.getRegister();
+                        Label retry = new Label();
+                        masm.bind(retry);
+                        masm.loadExclusive(memAccessSize, result, address, false);
+                        masm.storeExclusive(memAccessSize, scratch, value, address, true);
+                        // if scratch == 0 then write successful, else retry
+                        masm.cbnz(32, scratch, retry);
+                        /*
+                         * Use a full barrier for the acquire semantics instead of ldaxr to
+                         * guarantee that the instruction sequence:
+                         *
+                         * A -> ldaxr -> stlxr -> B
+                         *
+                         * cannot be executed as:
+                         *
+                         * ldaxr -> B -> A -> stlxr
+                         */
+                        masm.dmb(AArch64Assembler.BarrierKind.ANY_ANY);
+                    }
+                }
+            });
         }
     }
 }

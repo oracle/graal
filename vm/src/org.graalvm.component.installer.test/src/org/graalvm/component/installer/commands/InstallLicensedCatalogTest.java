@@ -67,7 +67,7 @@ public class InstallLicensedCatalogTest extends CommandTestBase {
 
     private void initCatalogIterable(URL u) {
         GraalChannel channel = new GraalChannel(this, this, getLocalRegistry());
-        channel.setReleasesIndexURL(u);
+        channel.setIndexURL(u);
         cfactory = new CatalogFactory() {
             @Override
             public ComponentCatalog createComponentCatalog(CommandInput input) {

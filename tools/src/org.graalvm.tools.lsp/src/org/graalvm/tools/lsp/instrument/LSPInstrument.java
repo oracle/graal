@@ -34,6 +34,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -55,12 +56,14 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.tools.lsp.exceptions.LSPIOException;
 import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.server.LSPFileSystem;
 import org.graalvm.tools.lsp.server.LanguageServerImpl;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
+import org.graalvm.tools.lsp.server.utils.ThreadId;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -73,7 +76,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-@Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {EnvironmentProvider.class})
+@Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {EnvironmentProvider.class}, website = "https://www.graalvm.org/tools/lsp/")
 public final class LSPInstrument extends TruffleInstrument implements EnvironmentProvider {
 
     public static final String ID = "lsp";
@@ -105,19 +108,19 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         return hostPorts;
     }, (Consumer<List<LanguageAndAddress>>) (addresses) -> addresses.forEach((address) -> address.verify()));
 
-    @Option(help = "Enable features for language developers, e.g. hovering code snippets shows AST related information like the node class or tags. (default:false)", category = OptionCategory.INTERNAL) //
+    @Option(help = "Enable features for language developers, e.g. hovering code snippets shows AST related information like the node class or tags.", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> DeveloperMode = new OptionKey<>(false);
 
-    @Option(help = "Include internal sources in goto-definition, references and symbols search. (default:false)", category = OptionCategory.INTERNAL) //
+    @Option(help = "Include internal sources in goto-definition, references and symbols search.", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> Internal = new OptionKey<>(false);
 
-    @Option(name = "", help = "Start the Language Server on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT + ")", category = OptionCategory.USER) //
+    @Option(name = "", help = "Start the Language Server on [[host:]port].", usageSyntax = "[[<host>:]<port>]", category = OptionCategory.USER) //
     static final OptionKey<HostAndPort> Lsp = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
-    @Option(help = "Requested maximum length of the Socket queue of incoming connections. (default: -1)", category = OptionCategory.EXPERT) //
+    @Option(help = "Requested maximum length of the Socket queue of incoming connections.", usageSyntax = "[0, inf)", category = OptionCategory.EXPERT) //
     static final OptionKey<Integer> SocketBacklogSize = new OptionKey<>(-1);
 
-    @Option(help = "Delegate language servers", category = OptionCategory.USER) //
+    @Option(help = "Delegate language servers (default: no language server).", usageSyntax = "[languageId@][[host:]port],...", category = OptionCategory.USER) //
     static final OptionKey<List<LanguageAndAddress>> Delegates = new OptionKey<>(Collections.emptyList(), DELEGATES);
 
     @Override
@@ -129,7 +132,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
             final TruffleAdapter truffleAdapter = launchServer(new PrintWriter(env.out(), true), new PrintWriter(env.err(), true));
             SourceSectionFilter eventFilter = SourceSectionFilter.newBuilder().includeInternal(options.get(Internal)).build();
             eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(eventFilter, new ExecutionEventNodeFactory() {
-                private final long creatorThreadId = Thread.currentThread().getId();
+                private final long creatorThreadId = ThreadId.getCurrent();
 
                 @Override
                 public ExecutionEventNode create(final EventContext eventContext) {
@@ -200,7 +203,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         Context.Builder builder = Context.newBuilder();
         builder.allowAllAccess(true);
         builder.engine(Engine.create());
-        builder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter));
+        builder.allowIO(IOAccess.newBuilder().fileSystem(LSPFileSystem.newReadOnlyFileSystem(truffleAdapter)).build());
         ContextAwareExecutor executorWrapper = new ContextAwareExecutorImpl(builder);
 
         setWaitForClose();
@@ -238,7 +241,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable e) {
-                String message = String.format("[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
+                String message = String.format(Locale.ENGLISH, "[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
                 new LSPIOException(message, e).printStackTrace(err);
             }
 
@@ -330,7 +333,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         }
 
         private <T> Callable<T> wrapWithNewContext(Callable<T> taskWithResult, boolean cached) {
-            return new Callable<T>() {
+            return new Callable<>() {
 
                 @Override
                 public T call() throws Exception {
@@ -447,6 +450,11 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
                 ia = inetAddress;
             }
             return new InetSocketAddress(ia, port);
+        }
+
+        @Override
+        public String toString() {
+            return (host != null ? host : "<loopback address>") + ":" + port;
         }
     }
 

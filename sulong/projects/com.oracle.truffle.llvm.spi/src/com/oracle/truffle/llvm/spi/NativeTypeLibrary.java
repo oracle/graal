@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.spi;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.Library;
@@ -39,6 +40,7 @@ import com.oracle.truffle.api.library.LibraryFactory;
  * this interface, raw memory access to this object will simulate the layout of the given type.
  */
 @GenerateLibrary
+@GenerateAOT
 public abstract class NativeTypeLibrary extends Library {
 
     @Abstract

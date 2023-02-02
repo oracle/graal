@@ -29,12 +29,12 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.interop.values.NativeValue;
 
@@ -52,7 +52,7 @@ public class HostAllocatedNativePointer extends InteropTestBase {
             f.setAccessible(true);
             unsafeMem = (Unsafe) f.get(null);
         } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new LLVMUnreachableNode.LLVMUnreachableException();
+            throw CompilerDirectives.shouldNotReachHere();
         }
 
         String str = "Hello!";

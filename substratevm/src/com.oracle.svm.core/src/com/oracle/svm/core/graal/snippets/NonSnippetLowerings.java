@@ -30,40 +30,48 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DirectCallTargetNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -71,15 +79,21 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -91,17 +105,27 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class NonSnippetLowerings {
 
+    public static final SnippetRuntime.SubstrateForeignCallDescriptor REPORT_VERIFY_TYPES_ERROR = SnippetRuntime.findForeignCall(
+                    NonSnippetLowerings.class, "reportVerifyTypesError", false, LocationIdentity.any());
+
     private final RuntimeConfiguration runtimeConfig;
+    private final KnownOffsets knownOffsets;
     private final Predicate<ResolvedJavaMethod> mustNotAllocatePredicate;
 
+    final boolean verifyTypes = SubstrateOptions.VerifyTypes.getValue();
+
     @SuppressWarnings("unused")
-    protected NonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options, Iterable<DebugHandlersFactory> factories,
-                    Providers providers, SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+    protected NonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options,
+                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         this.runtimeConfig = runtimeConfig;
+        this.knownOffsets = KnownOffsets.singleton();
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
-        lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
-        lowerings.put(ThrowBytecodeExceptionNode.class, new ThrowBytecodeExceptionLowering());
+        if (hosted) {
+            // These nodes create a FrameState which cannot be deoptimized from
+            lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
+            lowerings.put(ThrowBytecodeExceptionNode.class, new ThrowBytecodeExceptionLowering());
+        }
         lowerings.put(GetClassNode.class, new GetClassLowering());
         lowerings.put(InvokeNode.class, new InvokeLowering());
         lowerings.put(InvokeWithExceptionNode.class, new InvokeLowering());
@@ -116,44 +140,64 @@ public abstract class NonSnippetLowerings {
         getCachedExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.GET_CACHED_NULL_POINTER_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.GET_CACHED_OUT_OF_BOUNDS_EXCEPTION);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.INTRINSIC_OUT_OF_BOUNDS, ImplicitExceptions.GET_CACHED_OUT_OF_BOUNDS_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.GET_CACHED_CLASS_CAST_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.GET_CACHED_ARRAY_STORE_EXCEPTION);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.INCOMPATIBLE_CLASS_CHANGE, ImplicitExceptions.GET_CACHED_INCOMPATIBLE_CLASS_CHANGE_ERROR);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE, ImplicitExceptions.GET_CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.GET_CACHED_ARITHMETIC_EXCEPTION);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW, ImplicitExceptions.GET_CACHED_ARITHMETIC_EXCEPTION);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.GET_CACHED_ARITHMETIC_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.GET_CACHED_ASSERTION_ERROR);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.GET_CACHED_ASSERTION_ERROR);
 
         createExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         createExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.CREATE_NULL_POINTER_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.CREATE_OUT_OF_BOUNDS_EXCEPTION);
+        createExceptionDescriptors.put(BytecodeExceptionKind.INTRINSIC_OUT_OF_BOUNDS, ImplicitExceptions.CREATE_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.CREATE_CLASS_CAST_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.CREATE_ARRAY_STORE_EXCEPTION);
+        createExceptionDescriptors.put(BytecodeExceptionKind.INCOMPATIBLE_CLASS_CHANGE, ImplicitExceptions.CREATE_INCOMPATIBLE_CLASS_CHANGE_ERROR);
         createExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.CREATE_ILLEGAL_ARGUMENT_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.CREATE_ILLEGAL_ARGUMENT_EXCEPTION);
+        createExceptionDescriptors.put(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE, ImplicitExceptions.CREATE_NEGATIVE_ARRAY_SIZE_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.CREATE_DIVISION_BY_ZERO_EXCEPTION);
+        createExceptionDescriptors.put(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW, ImplicitExceptions.CREATE_INTEGER_OVERFLOW_EXCEPTION);
+        createExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.CREATE_LONG_OVERFLOW_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.CREATE_ASSERTION_ERROR_NULLARY);
         createExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.CREATE_ASSERTION_ERROR_OBJECT);
 
         throwCachedExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.THROW_CACHED_NULL_POINTER_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.INTRINSIC_OUT_OF_BOUNDS, ImplicitExceptions.THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.THROW_CACHED_CLASS_CAST_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.THROW_CACHED_ARRAY_STORE_EXCEPTION);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.INCOMPATIBLE_CLASS_CHANGE, ImplicitExceptions.THROW_CACHED_INCOMPATIBLE_CLASS_CHANGE_ERROR);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE, ImplicitExceptions.THROW_CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.THROW_CACHED_ARITHMETIC_EXCEPTION);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW, ImplicitExceptions.THROW_CACHED_ARITHMETIC_EXCEPTION);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.THROW_CACHED_ARITHMETIC_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.THROW_CACHED_ASSERTION_ERROR);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.THROW_CACHED_ASSERTION_ERROR);
 
         throwNewExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.THROW_NEW_NULL_POINTER_EXCEPTION);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.INTRINSIC_OUT_OF_BOUNDS, ImplicitExceptions.THROW_NEW_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.INCOMPATIBLE_CLASS_CHANGE, ImplicitExceptions.THROW_NEW_INCOMPATIBLE_CLASS_CHANGE_ERROR);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE, ImplicitExceptions.THROW_NEW_NEGATIVE_ARRAY_SIZE_EXCEPTION);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.THROW_NEW_DIVISION_BY_ZERO_EXCEPTION);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW, ImplicitExceptions.THROW_NEW_INTEGER_OVERFLOW_EXCEPTION);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, ImplicitExceptions.THROW_NEW_LONG_OVERFLOW_EXCEPTION);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.THROW_NEW_ASSERTION_ERROR_NULLARY);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.THROW_NEW_ASSERTION_ERROR_OBJECT);
     }
@@ -171,20 +215,28 @@ public abstract class NonSnippetLowerings {
             }
             outArguments.addAll(exceptionArguments);
         }
-        assert descriptor != null && descriptor.getArgumentTypes().length == outArguments.size();
+        VMError.guarantee(descriptor != null, "No ForeignCallDescriptor for ByteCodeExceptionKind %s", exceptionKind);
+        assert descriptor.getArgumentTypes().length == outArguments.size();
         return descriptor;
     }
 
     private class BytecodeExceptionLowering implements NodeLoweringProvider<BytecodeExceptionNode> {
         @Override
         public void lower(BytecodeExceptionNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() == StandardLoweringStage.HIGH_TIER) {
+                return;
+            }
+
             StructuredGraph graph = node.graph();
             List<ValueNode> arguments = new ArrayList<>();
             ForeignCallDescriptor descriptor = lookupBytecodeException(node.getExceptionKind(), node.getArguments(), graph, tool,
                             getCachedExceptionDescriptors, createExceptionDescriptors, arguments);
 
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), arguments));
-            foreignCallNode.setStateAfter(node.createStateDuring());
+            // this lowering is not present in deoptimizable code
+            foreignCallNode.setValidateDeoptFrameStates(false);
+            foreignCallNode.setStateDuring(node.createStateDuring());
+            foreignCallNode.setStateAfter(node.stateAfter());
             graph.replaceFixedWithFixed(node, foreignCallNode);
         }
     }
@@ -192,16 +244,22 @@ public abstract class NonSnippetLowerings {
     private class ThrowBytecodeExceptionLowering implements NodeLoweringProvider<ThrowBytecodeExceptionNode> {
         @Override
         public void lower(ThrowBytecodeExceptionNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() == StandardLoweringStage.HIGH_TIER) {
+                return;
+            }
+
             StructuredGraph graph = node.graph();
             List<ValueNode> arguments = new ArrayList<>();
             ForeignCallDescriptor descriptor = lookupBytecodeException(node.getExceptionKind(), node.getArguments(), graph, tool,
                             throwCachedExceptionDescriptors, throwNewExceptionDescriptors, arguments);
 
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(descriptor, node.stamp(NodeView.DEFAULT), arguments));
+            // this lowering is not present in deoptimizable code
+            foreignCallNode.setValidateDeoptFrameStates(false);
             foreignCallNode.setStateDuring(node.stateBefore());
             node.replaceAndDelete(foreignCallNode);
 
-            DeadEndNode deadEnd = graph.add(new DeadEndNode());
+            LoweredDeadEndNode deadEnd = graph.add(new LoweredDeadEndNode());
             foreignCallNode.setNext(deadEnd);
         }
     }
@@ -234,13 +292,54 @@ public abstract class NonSnippetLowerings {
                 }
                 SharedMethod method = (SharedMethod) callTarget.targetMethod();
                 JavaType[] signature = method.getSignature().toParameterTypes(callTarget.isStatic() ? null : method.getDeclaringClass());
-                CallingConvention.Type callType = SubstrateCallingConventionType.JavaCall;
-
+                CallingConvention.Type callType = method.getCallingConventionKind().toType(true);
                 InvokeKind invokeKind = callTarget.invokeKind();
                 SharedMethod[] implementations = method.getImplementations();
+
+                if (verifyTypes && !callTarget.isStatic() && receiver.getStackKind() == JavaKind.Object && !Uninterruptible.Utils.isUninterruptible(graph.method())) {
+                    /*
+                     * Verify that the receiver is an instance of the class that declares the call
+                     * target method. To avoid that the new type check floats above a deoptimization
+                     * entry point, we need to anchor the receiver to the control flow. To avoid
+                     * that Graal optimizes away the InstanceOfNode immediately, we need an
+                     * OpaqueNode that removes all type information from the receiver. Then we wire
+                     * up an IfNode that leads to a ForeignCallNode in case the verification fails.
+                     */
+                    FixedValueAnchorNode anchoredReceiver = graph.add(new FixedValueAnchorNode(receiver));
+                    graph.addBeforeFixed(node, anchoredReceiver);
+                    ValueNode opaqueReceiver = graph.unique(new OpaqueNode(anchoredReceiver));
+                    TypeReference declaringClass = TypeReference.createTrustedWithoutAssumptions(method.getDeclaringClass());
+                    LogicNode instanceOf = graph.addOrUniqueWithInputs(InstanceOfNode.create(declaringClass, opaqueReceiver));
+                    BeginNode passingBegin = graph.add(new BeginNode());
+                    BeginNode failingBegin = graph.add(new BeginNode());
+                    IfNode ifNode = graph.add(new IfNode(instanceOf, passingBegin, failingBegin, BranchProbabilityNode.EXTREMELY_FAST_PATH_PROFILE));
+
+                    ((FixedWithNextNode) node.predecessor()).setNext(ifNode);
+                    passingBegin.setNext(node);
+
+                    String errorMessage;
+                    if (SubstrateUtil.HOSTED) {
+                        errorMessage = "Invoke " + invokeKind + " of " + method.format("%H.%n(%p)%r");
+                        errorMessage += System.lineSeparator() + "  declaringClass = " + declaringClass;
+                        if (implementations.length == 0 || implementations.length > 10) {
+                            errorMessage += System.lineSeparator() + "  implementations.length = " + implementations.length;
+                        } else {
+                            for (int i = 0; i < implementations.length; i++) {
+                                errorMessage += System.lineSeparator() + "  implementations[" + i + "] = " + implementations[i].format("%H.%n(%p)%r");
+                            }
+                        }
+                    } else {
+                        errorMessage = "Invoke (method name not added because message must be a compile-time constant)";
+                    }
+                    ConstantNode errorConstant = ConstantNode.forConstant(tool.getConstantReflection().forString(errorMessage), tool.getMetaAccess(), graph);
+                    ForeignCallNode reportError = graph.add(new ForeignCallNode(REPORT_VERIFY_TYPES_ERROR, opaqueReceiver, errorConstant));
+                    reportError.setStateAfter(invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), node.getStackKind()));
+                    failingBegin.setNext(reportError);
+                    reportError.setNext(graph.add(new LoweredDeadEndNode()));
+                }
+
                 LoadHubNode hub = null;
                 CallTargetNode loweredCallTarget;
-
                 if (invokeKind.isDirect() || implementations.length == 1) {
                     SharedMethod targetMethod = method;
                     if (!invokeKind.isDirect()) {
@@ -254,6 +353,17 @@ public abstract class NonSnippetLowerings {
                     if (!SubstrateBackend.shouldEmitOnlyIndirectCalls()) {
                         loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]),
                                         callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
+                    } else if (!targetMethod.hasCodeOffsetInImage()) {
+                        /*
+                         * The target method is not included in the image. This means that it was
+                         * also not needed for the deoptimization entry point. Thus, we are certain
+                         * that this branch will fold away. If not, we will fail later on.
+                         *
+                         * Also lower the MethodCallTarget below to avoid recursive lowering error
+                         * messages. The invoke and call target are actually dead and will be
+                         * removed by a subsequent dead code elimination pass.
+                         */
+                        loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
                     } else {
                         /*
                          * In runtime-compiled code, we emit indirect calls via the respective heap
@@ -261,11 +371,13 @@ public abstract class NonSnippetLowerings {
                          */
                         JavaConstant codeInfo = SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache());
                         ValueNode codeInfoConstant = ConstantNode.forConstant(codeInfo, tool.getMetaAccess(), graph);
-                        ValueNode codeStartFieldOffset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), runtimeConfig.getImageCodeInfoCodeStartOffset(), graph);
+                        ValueNode codeStartFieldOffset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), knownOffsets.getImageCodeInfoCodeStartOffset(), graph);
                         AddressNode codeStartField = graph.unique(new OffsetAddressNode(codeInfoConstant, codeStartFieldOffset));
-                        // Not constant because runtime code can be persisted and loaded in a
-                        // process where image code is located elsewhere:
-                        ReadNode codeStart = graph.add(new ReadNode(codeStartField, LocationIdentity.ANY_LOCATION, FrameAccess.getWordStamp(), BarrierType.NONE));
+                        /*
+                         * Uses ANY_LOCATION because runtime-compiled code can be persisted and
+                         * loaded in a process where image code is located elsewhere.
+                         */
+                        ReadNode codeStart = graph.add(new ReadNode(codeStartField, LocationIdentity.ANY_LOCATION, FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
                         ValueNode offset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), targetMethod.getCodeOffsetInImage(), graph);
                         AddressNode address = graph.unique(new OffsetAddressNode(codeStart, offset));
 
@@ -278,25 +390,19 @@ public abstract class NonSnippetLowerings {
                      * We are calling an abstract method with no implementation, i.e., the
                      * closed-world analysis showed that there is no concrete receiver ever
                      * allocated. This must be dead code.
-                     */
-                    FixedGuardNode unreachedGuard = graph.add(new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true));
-                    graph.addBeforeFixed(node, unreachedGuard);
-                    // Recursive lowering
-                    unreachedGuard.lower(tool);
-
-                    /*
+                     *
                      * Also lower the MethodCallTarget below to avoid recursive lowering error
                      * messages. The invoke and call target are actually dead and will be removed by
                      * a subsequent dead code elimination pass.
                      */
-                    loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind));
+                    loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
 
                 } else {
-                    int vtableEntryOffset = runtimeConfig.getVTableOffset(method.getVTableIndex());
+                    int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex());
 
-                    hub = graph.unique(new LoadHubNode(runtimeConfig.getProviders().getStampProvider(), graph.maybeAddOrUnique(PiNode.create(receiver, nullCheck))));
+                    hub = graph.unique(new LoadHubNode(runtimeConfig.getProviders().getStampProvider(), graph.addOrUnique(PiNode.create(receiver, nullCheck))));
                     AddressNode address = graph.unique(new OffsetAddressNode(hub, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), vtableEntryOffset, graph)));
-                    ReadNode entry = graph.add(new ReadNode(address, NamedLocationIdentity.FINAL_LOCATION, FrameAccess.getWordStamp(), BarrierType.NONE));
+                    ReadNode entry = graph.add(new ReadNode(address, SubstrateBackend.getVTableIdentity(), FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
                     loweredCallTarget = graph.add(
                                     new IndirectCallTargetNode(entry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind));
 
@@ -314,6 +420,28 @@ public abstract class NonSnippetLowerings {
                 }
             }
         }
+
+        private CallTargetNode createUnreachableCallTarget(LoweringTool tool, FixedNode node, NodeInputList<ValueNode> parameters, StampPair returnStamp, JavaType[] signature, SharedMethod method,
+                        CallingConvention.Type callType, InvokeKind invokeKind) {
+            StructuredGraph graph = node.graph();
+            FixedGuardNode unreachedGuard = graph.add(new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true));
+            graph.addBeforeFixed(node, unreachedGuard);
+            // Recursive lowering
+            unreachedGuard.lower(tool);
+
+            /*
+             * Also lower the MethodCallTarget below to avoid recursive lowering error messages. The
+             * invoke and call target are actually dead and will be removed by a subsequent dead
+             * code elimination pass.
+             */
+            return graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), returnStamp, signature, method, callType, invokeKind));
+        }
     }
 
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void reportVerifyTypesError(Object object, String message) {
+        throw VMError.shouldNotReachHere("VerifyTypes: object=" + (object == null ? "null" : object.getClass().getTypeName()) +
+                        System.lineSeparator() + message +
+                        System.lineSeparator() + "VerifyTypes found a type error");
+    }
 }

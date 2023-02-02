@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.SortedMap;
@@ -49,8 +50,9 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
@@ -58,15 +60,17 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
@@ -75,11 +79,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /** Registration of native JDK libraries. */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
-@AutomaticFeature
-class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature {
+@AutomaticallyRegisteredFeature
+public final class JNIRegistrationSupport extends JNIRegistrationUtil implements InternalFeature {
+
+    public static class Options {
+        @Option(help = "Create a `jvm` shim for native libraries that link against that library.")//
+        public static final HostedOptionKey<Boolean> CreateJvmShim = new HostedOptionKey<>(false);
+    }
 
     private final ConcurrentMap<String, Boolean> registeredLibraries = new ConcurrentHashMap<>();
     private NativeLibraries nativeLibraries = null;
+    private boolean isSunMSCAPIProviderReachable = false;
 
     public static JNIRegistrationSupport singleton() {
         return ImageSingletons.lookup(JNIRegistrationSupport.class);
@@ -91,13 +101,20 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
     }
 
     @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        if (isWindows()) {
+            isSunMSCAPIProviderReachable = access.isReachable(clazz(access, "sun.security.mscapi.SunMSCAPI"));
+        }
+    }
+
+    @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         registerLoadLibraryPlugin(plugins, System.class);
     }
 
-    void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
+    public void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
         Registration r = new Registration(plugins.getInvocationPlugins(), clazz);
-        r.register1("loadLibrary", String.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("loadLibrary", String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode libnameNode) {
                 /*
@@ -115,7 +132,7 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
     }
 
     void registerLibrary(String libname) {
-        if (libname != null && registeredLibraries.putIfAbsent(libname, Boolean.TRUE) != Boolean.TRUE) {
+        if (libname != null && registeredLibraries.putIfAbsent(libname, Boolean.TRUE) == null) {
             /*
              * If a library is in our list of static standard libraries, add the library to the
              * linker command.
@@ -145,6 +162,26 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
     private void addShimExports(String shimName, String... exports) {
         assert exports != null && exports.length > 0;
         shimExports.computeIfAbsent(shimName, s -> new TreeSet<>()).addAll(Arrays.asList(exports));
+    }
+
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
+        if (shimExports.containsKey("jvm") || Options.CreateJvmShim.getValue()) {
+            /* When making a `jvm` shim, also re-export the JNI functions that VM exports. */
+            addJvmShimExports("JNI_CreateJavaVM", "JNI_GetCreatedJavaVMs", "JNI_GetDefaultJavaVMInitArgs");
+        }
+
+        if (isWindows()) {
+            ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
+                /* Make sure the native image exports all the symbols necessary for shim DLLs. */
+                shimExports.values().stream()
+                                .flatMap(Collection::stream)
+                                .distinct()
+                                .map("/export:"::concat)
+                                .forEach(linkerInvocation::addNativeLinkerOption);
+                return linkerInvocation;
+            });
+        }
     }
 
     private AfterImageWriteAccessImpl accessImpl;
@@ -186,10 +223,10 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
                     continue;
                 }
 
-                if (libname.equals("sunec")) {
+                if (libname.equals("sunmscapi") && !isSunMSCAPIProviderReachable) {
                     /*
-                     * Ignore `sunec` library if it is not statically linked (we will use `SunEC` in
-                     * mode without full ECC implementation anyway).
+                     * Ignore `sunmscapi` library if `SunMSCAPI` provider is not reachable (it's
+                     * always registered as a workaround in `Target_java_security_Provider`).
                      */
                     debug.log(DebugContext.INFO_LEVEL, "%s: IGNORED", library);
                     continue;
@@ -198,7 +235,7 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
                 try {
                     Path libraryPath = accessImpl.getImagePath().resolveSibling(library);
                     Files.copy(jdkLibDir.resolve(library), libraryPath, REPLACE_EXISTING);
-                    BuildArtifacts.singleton().add(ArtifactType.JDK_LIB, libraryPath);
+                    BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY, libraryPath);
                     debug.log("%s: OK", library);
                 } catch (NoSuchFileException e) {
                     /* Ignore libraries that are not present in the JDK. */
@@ -247,7 +284,7 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
             if (FileUtils.executeCommand(linkerCommand) != 0) {
                 VMError.shouldNotReachHere();
             }
-            BuildArtifacts.singleton().add(ArtifactType.JDK_LIB_SHIM, shimDLL);
+            BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY_SHIM, shimDLL);
             debug.log("%s.dll: OK", shimName);
         } catch (InterruptedException e) {
             throw new InterruptImageBuilding();

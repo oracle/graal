@@ -27,7 +27,7 @@ package org.graalvm.compiler.lir.alloc.lsra.ssa;
 import java.util.BitSet;
 import java.util.EnumSet;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -63,7 +63,7 @@ public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalys
             Interval to = allocator.getOrCreateInterval((AllocatableValue) targetValue);
 
             LIR lir = allocator.getLIR();
-            AbstractBlockBase<?> block = allocator.blockForId(label.id());
+            BasicBlock<?> block = allocator.blockForId(label.id());
             assert mode == OperandMode.DEF : "Wrong operand mode: " + mode;
             assert lir.getLIRforBlock(block).get(0).equals(label) : String.format("Block %s and Label %s do not match!", block, label);
 
@@ -72,9 +72,10 @@ public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalys
 
             BitSet blockLiveIn = allocator.getBlockData(block).liveIn;
 
-            AbstractBlockBase<?> selectedPredecessor = null;
+            BasicBlock<?> selectedPredecessor = null;
             AllocatableValue selectedSource = null;
-            for (AbstractBlockBase<?> pred : block.getPredecessors()) {
+            for (int i = 0; i < block.getPredecessorCount(); i++) {
+                BasicBlock<?> pred = block.getPredecessorAt(i);
                 if (selectedPredecessor == null || pred.getRelativeFrequency() > selectedPredecessor.getRelativeFrequency()) {
                     StandardOp.JumpOp jump = SSAUtil.phiOut(lir, pred);
                     Value sourceValue = jump.getOutgoingValue(idx);

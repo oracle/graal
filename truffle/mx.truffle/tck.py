@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -274,6 +274,10 @@ def _find_unit_tests(cp, pkgs=None):
 
 def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter, cp, truffle_cp, boot_cp, vm_args, debug_port):
     tests = _find_unit_tests(cp, pkgs=['com.oracle.truffle.tck.tests'])
+    if mode.name == 'default' and not _has_explicit_assertion_option(vm_args):
+        vm_args.append('-ea')
+    if mode.name == 'default' and not _has_explicit_system_assertion_option(vm_args):
+        vm_args.append('-esa')
     vm_args.extend(mode.vm_args)
     if language_filter:
         vm_args.append('-Dtck.language={0}'.format(language_filter))
@@ -290,6 +294,24 @@ def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_
     ret_code = p.wait()
     return ret_code
 
+def _has_explicit_assertion_option(vm_args):
+    """
+        Checks if the vm_args contain any option for enabling or disabling assertions.
+
+        :param vm_args: an iterable containing Java VM args
+        """
+    for vm_arg in vm_args:
+        if vm_arg.startswith('-ea') or vm_arg.startswith('-enableassertions') or vm_arg.startswith('-da') or vm_arg.startswith('-disableassertions'):
+            return True
+    return False
+
+def _has_explicit_system_assertion_option(vm_args):
+    """
+        Checks if the vm_args contain any option for enabling or disabling system assertions.
+
+        :param vm_args: an iterable containing Java VM args
+        """
+    return '-esa' in vm_args or '-enablesystemassertions' in vm_args or '-dsa' in vm_args or '-disablesystemassertions' in vm_args
 
 def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_filter=None, tests_filter=None, cp=None, truffle_cp=None, boot_cp=None, vm_args=None, debug_port=None):
     """
@@ -318,11 +340,30 @@ def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_
     if tests_filter and isinstance(tests_filter, str):
         tests_filter = [tests_filter]
 
+    # Interface InlineVerifier defined in truffle-tck-common.jar is used to define the service exposed by the VerifierInstrument.
+    # Instruments are loaded by our custom ClassLoader and if the InlineVerifier interface is loaded by the custom class loader
+    # when the instrument is defined and by the app class loader when the service is looked up, then the lookup fails.
+    # For that reason we used to put the truffle-tck-common.jar together with its dependencies to bootclasspath on JDK8.
+    # On JDK9+ this does not work as one of the dependencies is Graal SDK which is in Java module org.graalvm.sdk, so instead
+    # we patch the org.graalvm.sdk module to include the truffle-tck-common.jar and also its other dependency polyglot-tck.jar.
+    # GR-35018 was filed to resolve this inconvenience.
+    additional_vm_arguments = []
+    jarsToPatch = []
+    for jarPath in cp:
+        if 'polyglot-tck.jar' in jarPath:
+            additional_vm_arguments.append('--add-exports=org.graalvm.sdk/org.graalvm.polyglot.tck=ALL-UNNAMED')
+            jarsToPatch.append(os.path.abspath(jarPath))
+        if 'truffle-tck-common.jar' in jarPath:
+            additional_vm_arguments.append('--add-exports=org.graalvm.sdk/com.oracle.truffle.tck.common.inline=ALL-UNNAMED')
+            jarsToPatch.append(os.path.abspath(jarPath))
+    if jarsToPatch:
+        additional_vm_arguments.extend(['--patch-module', 'org.graalvm.sdk=' + ':'.join(jarsToPatch)])
+
     return _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter,
         [_ClassPathEntry(os.path.abspath(e)) for e in cp],
         [_ClassPathEntry(os.path.abspath(e)) for e in truffle_cp],
-        [_ClassPathEntry(os.path.abspath(e)) for e in boot_cp],
-        vm_args if isinstance(vm_args, list) else list(vm_args),
+        [],
+        additional_vm_arguments + (vm_args if isinstance(vm_args, list) else list(vm_args)),
         debug_port)
 
 def set_log_level(log_level):
@@ -350,18 +391,6 @@ _MVN_DEPENDENCIES = {
         {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-instrumentation', 'required':True},
     ]
 }
-
-def _is_modular_jvm(java_home):
-    release_file = os.path.join(java_home, 'release')
-    if os.path.isfile(release_file) and os.access(release_file, os.R_OK):
-        p = re.compile(r'JAVA_VERSION="(.*)"')
-        with open(release_file) as f:
-            for l in f.readlines():
-                m = p.match(l)
-                if m:
-                    version = m.group(1)
-                    return not (version.startswith('1.8.') or version.startswith('8.'))
-    return True
 
 def _main(argv):
 
@@ -397,8 +426,22 @@ def _main(argv):
     usage = parser.format_usage().strip()
     if usage.startswith('usage: '):
         usage = usage[len('usage: '):]
-    parser.usage = usage + ' [VM options...] [language [mode [test filters...]]]'
-    parsed_args, args = parser.parse_known_args()
+    parser.usage = usage + ' [--] [VM options...] [language [mode [test filters...]]]'
+
+    args_before_delimiter = []
+    args_after_delimiter = argv[1:]     # remove the script name in argv[0]
+    while len(args_after_delimiter) > 0:
+        arg = args_after_delimiter.pop(0)
+        if arg == '--':
+            break
+        args_before_delimiter.append(arg)
+    if len(args_after_delimiter) == 0:
+        # parse all known arguments
+        parsed_args, args = parser.parse_known_args(args_before_delimiter)
+    else:
+        # all arguments before '--' must be recognized
+        parsed_args = parser.parse_args(args_before_delimiter)
+        args = args_after_delimiter
 
     global _log_level
     _log_level = parsed_args.log_level
@@ -425,10 +468,7 @@ def _main(argv):
         cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['TESTS']]
         truffle_cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['INSTRUMENTS']]
         tck = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['TCK']]
-        if _is_modular_jvm(parsed_args.graalvm_home):
-            cp.extend(tck)
-        else:
-            boot.extend(tck)
+        cp.extend(tck)
         if parsed_args.class_path:
             for e in parsed_args.class_path.split(os.pathsep):
                 cp.append(_ClassPathEntry(os.path.abspath(e)))

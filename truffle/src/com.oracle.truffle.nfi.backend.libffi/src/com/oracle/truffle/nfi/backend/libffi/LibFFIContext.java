@@ -46,7 +46,10 @@ import java.util.function.Supplier;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.EnvType;
 import com.oracle.truffle.nfi.backend.libffi.NativeAllocation.FreeDestructor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
@@ -54,13 +57,16 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 class LibFFIContext {
 
     final LibFFILanguage language;
-    Env env;
+    @CompilationFinal Env env;
+
+    final TruffleLogger attachThreadLogger;
 
     private long nativeContext;
     private final ThreadLocal<NativeEnv> nativeEnv = ThreadLocal.withInitial(new NativeEnvSupplier());
 
     @CompilationFinal(dimensions = 1) final LibFFIType[] simpleTypeMap = new LibFFIType[NativeSimpleType.values().length];
     @CompilationFinal(dimensions = 1) final LibFFIType[] arrayTypeMap = new LibFFIType[NativeSimpleType.values().length];
+    @CompilationFinal(dimensions = 1) final LibFFIType[] varargsTypeMap = new LibFFIType[NativeSimpleType.values().length];
     @CompilationFinal LibFFIType cachedEnvType;
 
     private final HashMap<Long, ClosureNativePointer> nativePointerMap = new HashMap<>();
@@ -99,6 +105,7 @@ class LibFFIContext {
     LibFFIContext(LibFFILanguage language, Env env) {
         this.language = language;
         this.env = env;
+        this.attachThreadLogger = env.getLogger("attachCurrentThread");
     }
 
     void patchEnv(Env newEnv) {
@@ -110,10 +117,35 @@ class LibFFIContext {
         return nativeEnv.get().pointer;
     }
 
+    // called from native, and only from a "new" thread that can not be entered already
+    boolean attachThread() {
+        try {
+            Object ret = env.getContext().enter(null);
+            assert ret == null : "thread already entered";
+            return true;
+        } catch (Throwable t) {
+            // can't enter the context (e.g. because of a single-threaded language being active)
+            attachThreadLogger.severe(t.getMessage());
+            return false;
+        }
+    }
+
+    // called from native immediately before detaching that thread from the VM
+    void detachThread() {
+        env.getContext().leave(null, null);
+    }
+
     void initialize() {
         loadNFILib();
         NativeAllocation.ensureGCThreadRunning();
+
         nativeContext = initializeNativeContext();
+        initializeVarargsPromotedType(NativeSimpleType.UINT8, NativeSimpleType.UINT32);
+        initializeVarargsPromotedType(NativeSimpleType.UINT16, NativeSimpleType.UINT32);
+        initializeVarargsPromotedType(NativeSimpleType.SINT8, NativeSimpleType.SINT32);
+        initializeVarargsPromotedType(NativeSimpleType.SINT16, NativeSimpleType.SINT32);
+        initializeVarargsPromotedType(NativeSimpleType.FLOAT, NativeSimpleType.DOUBLE);
+
         nativeEnv.remove();
     }
 
@@ -170,7 +202,7 @@ class LibFFIContext {
     }
 
     Object lookupSymbol(LibFFILibrary library, String name) {
-        return LibFFISymbol.create(language, library, name, lookup(nativeContext, library.handle, name));
+        return LibFFISymbol.create(library, name, lookup(nativeContext, library.handle, name));
     }
 
     LibFFIType lookupSimpleType(NativeSimpleType type) {
@@ -179,6 +211,10 @@ class LibFFIContext {
 
     LibFFIType lookupArrayType(NativeSimpleType type) {
         return arrayTypeMap[type.ordinal()];
+    }
+
+    LibFFIType lookupVarargsType(NativeSimpleType type) {
+        return varargsTypeMap[type.ordinal()];
     }
 
     @TruffleBoundary
@@ -191,12 +227,14 @@ class LibFFIContext {
         int pointerIdx = NativeSimpleType.POINTER.ordinal();
 
         assert simpleTypeMap[idx] == null : "initializeSimpleType called twice for " + simpleType;
-        if (language.simpleTypeMap[idx] == null) {
-            assert language.arrayTypeMap[idx] == null;
-            language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(language, simpleType, size, alignment);
-            language.arrayTypeMap[idx] = LibFFIType.createArrayTypeInfo(language.simpleTypeMap[pointerIdx], simpleType);
-            if (idx == pointerIdx) {
-                language.cachedEnvType = new EnvType(language.simpleTypeMap[pointerIdx]);
+        synchronized (language) {
+            if (language.simpleTypeMap[idx] == null) {
+                assert language.arrayTypeMap[idx] == null;
+                language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(simpleType, size, alignment);
+                language.arrayTypeMap[idx] = LibFFIType.createArrayTypeInfo(language.simpleTypeMap[pointerIdx], simpleType);
+                if (idx == pointerIdx) {
+                    language.cachedEnvType = new EnvType(language.simpleTypeMap[pointerIdx]);
+                }
             }
         }
         simpleTypeMap[idx] = new LibFFIType(language.simpleTypeMap[idx], ffiType);
@@ -204,6 +242,20 @@ class LibFFIContext {
         if (idx == pointerIdx) {
             cachedEnvType = new LibFFIType(language.cachedEnvType, simpleTypeMap[pointerIdx].type);
         }
+    }
+
+    private void initializeVarargsPromotedType(NativeSimpleType simpleType, NativeSimpleType promotedType) {
+        int idx = simpleType.ordinal();
+        LibFFIType promoted = simpleTypeMap[promotedType.ordinal()];
+
+        assert varargsTypeMap[idx] == null : "initializeVarargsType called twice for " + simpleType;
+        synchronized (language) {
+            if (language.varargsTypeMap[idx] == null) {
+                language.varargsTypeMap[idx] = LibFFIType.createVarargsPromotedTypeInfo(simpleType, promoted.typeInfo);
+            }
+        }
+
+        varargsTypeMap[idx] = new LibFFIType(language.varargsTypeMap[idx], promoted.type);
     }
 
     private native long initializeNativeContext();
@@ -290,4 +342,10 @@ class LibFFIContext {
     private static native long lookup(long nativeContext, long library, String name);
 
     static native void freeLibrary(long library);
+
+    private static final ContextReference<LibFFIContext> REFERENCE = ContextReference.create(LibFFILanguage.class);
+
+    static LibFFIContext get(Node node) {
+        return REFERENCE.get(node);
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,15 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLException;
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -59,11 +59,11 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public abstract class SLImportBuiltin extends SLBuiltinNode {
 
     @Specialization
-    public Object importSymbol(String symbol,
-                    @CachedLibrary(limit = "3") InteropLibrary arrays,
-                    @CachedContext(SLLanguage.class) SLContext context) {
+    public Object importSymbol(TruffleString symbol,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode,
+                    @CachedLibrary(limit = "3") InteropLibrary arrays) {
         try {
-            return arrays.readMember(context.getPolyglotBindings(), symbol);
+            return arrays.readMember(SLContext.get(this).getPolyglotBindings(), toJavaStringNode.execute(symbol));
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             return SLNull.SINGLETON;
         } catch (SecurityException e) {

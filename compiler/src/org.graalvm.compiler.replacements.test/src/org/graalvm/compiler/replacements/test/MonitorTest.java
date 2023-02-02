@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 package org.graalvm.compiler.replacements.test;
 
 import org.junit.Test;
-
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.BoxingSnippets;
@@ -212,9 +212,8 @@ public class MonitorTest extends GraalCompilerTest {
         return new String(dst);
     }
 
-    @SuppressWarnings("synchronization")
     public static String lockBoxedLong(long value) {
-        Long lock = value;
+        Object lock = value;
         synchronized (lock) {
             return lock.toString();
         }
@@ -232,5 +231,21 @@ public class MonitorTest extends GraalCompilerTest {
         test("lockBoxedLong", 5L);
         test("lockBoxedLong", Long.MAX_VALUE - 1);
         test("lockBoxedLong", Long.MIN_VALUE + 1);
+    }
+
+    static void loopPhi(boolean f) {
+        Object j = new Object();
+        int n = f ? 10 : 11;
+        for (int i = 0; GraalDirectives.injectIterationCount(11.5, i < n); i++) {
+            synchronized (j) {
+                j = f ? new Object() : j;
+            }
+        }
+    }
+
+    @Test
+    public void testLoopPhi() {
+        test("loopPhi", true);
+        test("loopPhi", false);
     }
 }

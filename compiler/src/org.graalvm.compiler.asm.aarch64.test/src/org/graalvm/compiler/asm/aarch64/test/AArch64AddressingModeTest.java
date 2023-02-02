@@ -115,7 +115,7 @@ public class AArch64AddressingModeTest extends GraalTest {
     public void testLoadAddressUnscaled() {
         Register dst = AArch64.r26;
         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, base, NumUtil.getNbitNumberInt(8));
-        masm.loadAddress(dst, address, 8);
+        masm.loadAddress(dst, address);
         asm.add(64, dst, base, NumUtil.getNbitNumberInt(8));
         compareAssembly();
     }
@@ -124,7 +124,7 @@ public class AArch64AddressingModeTest extends GraalTest {
     public void testLoadAddressUnscaled2() {
         Register dst = AArch64.r26;
         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, base, -NumUtil.getNbitNumberInt(8));
-        masm.loadAddress(dst, address, 8);
+        masm.loadAddress(dst, address);
         asm.sub(64, dst, base, NumUtil.getNbitNumberInt(8));
         compareAssembly();
     }
@@ -133,7 +133,7 @@ public class AArch64AddressingModeTest extends GraalTest {
     public void testLoadAddressScaled() {
         Register dst = AArch64.r26;
         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, base, NumUtil.getNbitNumberInt(12) << 3);
-        masm.loadAddress(dst, address, 8);
+        masm.loadAddress(dst, address);
         asm.add(64, dst, base, NumUtil.getNbitNumberInt(3) << 12);
         asm.add(64, dst, dst, NumUtil.getNbitNumberInt(9) << 3);
         compareAssembly();
@@ -143,7 +143,7 @@ public class AArch64AddressingModeTest extends GraalTest {
     public void testLoadAddressScaledLowerOnly() {
         Register dst = AArch64.r26;
         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, base, NumUtil.getNbitNumberInt(5) << 3);
-        masm.loadAddress(dst, address, 8);
+        masm.loadAddress(dst, address);
         asm.add(64, dst, base, NumUtil.getNbitNumberInt(5) << 3);
         compareAssembly();
     }
@@ -152,7 +152,7 @@ public class AArch64AddressingModeTest extends GraalTest {
     public void testLoadAddressScaledHigherOnly() {
         Register dst = AArch64.r26;
         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, base, 1 << 14);
-        masm.loadAddress(dst, address, 8);
+        masm.loadAddress(dst, address);
         asm.add(64, dst, base, 1 << 11 << 3);
         compareAssembly();
     }
@@ -160,8 +160,8 @@ public class AArch64AddressingModeTest extends GraalTest {
     @Test
     public void testLoadAddressRegisterOffsetUnscaled() {
         Register dst = AArch64.r26;
-        AArch64Address address = AArch64Address.createRegisterOffsetAddress(base, index, false);
-        masm.loadAddress(dst, address, 4);
+        AArch64Address address = AArch64Address.createRegisterOffsetAddress(32, base, index, false);
+        masm.loadAddress(dst, address);
         asm.add(64, dst, base, index, AArch64Assembler.ShiftType.LSL, 0);
         compareAssembly();
     }
@@ -169,8 +169,8 @@ public class AArch64AddressingModeTest extends GraalTest {
     @Test
     public void testLoadAddressRegisterOffsetScaled() {
         Register dst = AArch64.r26;
-        AArch64Address address = AArch64Address.createRegisterOffsetAddress(base, index, true);
-        masm.loadAddress(dst, address, 4);
+        AArch64Address address = AArch64Address.createRegisterOffsetAddress(32, base, index, true);
+        masm.loadAddress(dst, address);
         asm.add(64, dst, base, index, AArch64Assembler.ShiftType.LSL, 2);
         compareAssembly();
     }
@@ -178,8 +178,8 @@ public class AArch64AddressingModeTest extends GraalTest {
     @Test
     public void testLoadAddressExtendedRegisterOffsetUnscaled() {
         Register dst = AArch64.r26;
-        AArch64Address address = AArch64Address.createExtendedRegisterOffsetAddress(base, index, false, AArch64Assembler.ExtendType.SXTW);
-        masm.loadAddress(dst, address, 4);
+        AArch64Address address = AArch64Address.createExtendedRegisterOffsetAddress(32, base, index, false, AArch64Assembler.ExtendType.SXTW);
+        masm.loadAddress(dst, address);
         asm.add(64, dst, base, index, AArch64Assembler.ExtendType.SXTW, 0);
         compareAssembly();
     }
@@ -187,8 +187,8 @@ public class AArch64AddressingModeTest extends GraalTest {
     @Test
     public void testLoadAddressExtendedRegisterOffsetScaled() {
         Register dst = AArch64.r26;
-        AArch64Address address = AArch64Address.createExtendedRegisterOffsetAddress(base, index, true, AArch64Assembler.ExtendType.SXTW);
-        masm.loadAddress(dst, address, 4);
+        AArch64Address address = AArch64Address.createExtendedRegisterOffsetAddress(32, base, index, true, AArch64Assembler.ExtendType.SXTW);
+        masm.loadAddress(dst, address);
         asm.add(64, dst, base, index, AArch64Assembler.ExtendType.SXTW, 2);
         compareAssembly();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,10 @@ package org.graalvm.compiler.core.phases;
 
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
 import org.graalvm.compiler.lir.phases.EconomyAllocationStage;
+import org.graalvm.compiler.lir.phases.EconomyFinalCodeAnalysisStage;
 import org.graalvm.compiler.lir.phases.EconomyPostAllocationOptimizationStage;
 import org.graalvm.compiler.lir.phases.EconomyPreAllocationOptimizationStage;
+import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase.FinalCodeAnalysisContext;
 import org.graalvm.compiler.lir.phases.LIRPhaseSuite;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
@@ -38,6 +40,8 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 
+import jdk.vm.ci.code.Architecture;
+
 /**
  * A compiler configuration that performs fewer Graal IR optimizations while using the same backend
  * as the {@link CommunityCompilerConfiguration}.
@@ -46,17 +50,17 @@ public class EconomyCompilerConfiguration implements CompilerConfiguration {
 
     @Override
     public PhaseSuite<HighTierContext> createHighTier(OptionValues options) {
-        return new EconomyHighTier(options);
+        return new EconomyHighTier();
     }
 
     @Override
     public PhaseSuite<MidTierContext> createMidTier(OptionValues options) {
-        return new EconomyMidTier(options);
+        return new EconomyMidTier();
     }
 
     @Override
-    public PhaseSuite<LowTierContext> createLowTier(OptionValues options) {
-        return new EconomyLowTier(options);
+    public PhaseSuite<LowTierContext> createLowTier(OptionValues options, Architecture arch) {
+        return new EconomyLowTier();
     }
 
     @Override
@@ -72,6 +76,11 @@ public class EconomyCompilerConfiguration implements CompilerConfiguration {
     @Override
     public LIRPhaseSuite<PostAllocationOptimizationContext> createPostAllocationOptimizationStage(OptionValues options) {
         return new EconomyPostAllocationOptimizationStage();
+    }
+
+    @Override
+    public LIRPhaseSuite<FinalCodeAnalysisContext> createFinalCodeAnalysisStage(OptionValues options) {
+        return new EconomyFinalCodeAnalysisStage();
     }
 
 }

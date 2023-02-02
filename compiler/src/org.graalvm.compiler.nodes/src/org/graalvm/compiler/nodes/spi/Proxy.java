@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeInterface;
+import org.graalvm.compiler.nodes.ValueNodeInterface;
 
 /**
  * This interface marks nodes whose result is the same as one of their inputs. Such nodes are used
@@ -33,7 +33,7 @@ import org.graalvm.compiler.graph.NodeInterface;
  *
  * For some algorithms it is necessary or advantageous to see through these proxies.
  */
-public interface Proxy extends NodeInterface {
+public interface Proxy extends ValueNodeInterface {
 
     Node getOriginalNode();
 

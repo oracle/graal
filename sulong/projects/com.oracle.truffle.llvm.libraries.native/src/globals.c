@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,38 +28,41 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/mman.h>
 #include <stdlib.h>
 #include <stdint.h>
+
+#if defined(_WIN32)
+#include <Windows.h>
+#elif defined(__unix__) || defined(__APPLE__)
+#include <sys/mman.h>
 #include <unistd.h>
-
-struct globals_header {
-    uint64_t size;
-    __int128 data[0]; // align to 128 bit
-};
-
-static uint64_t align_up(uint64_t size) {
-    long pagesize = sysconf(_SC_PAGESIZE);
-    uint64_t ret = size;
-    if (ret % pagesize != 0) {
-        ret += pagesize - ret % pagesize;
-    }
-    return ret;
-}
+#endif
 
 void *__sulong_allocate_globals_block(uint64_t size) {
-    uint64_t finalSize = align_up(size + sizeof(struct globals_header));
-    struct globals_header *page = mmap(NULL, finalSize, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
-    page->size = finalSize;
-    return &page->data;
+#if defined(_WIN32)
+    return VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+#else
+    return mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+#endif
 }
 
-void __sulong_protect_readonly_globals_block(void *ptr) {
-    struct globals_header *header = (struct globals_header *) (ptr - sizeof(struct globals_header));
-    mprotect(header, header->size, PROT_READ);
+void __sulong_protect_readonly_globals_block(void *ptr, uint64_t size) {
+#if defined(_WIN32)
+    DWORD old_protect;
+    VirtualProtect(ptr, size, PAGE_READONLY, &old_protect);
+#else
+    mprotect(ptr, size, PROT_READ);
+#endif
 }
 
-void __sulong_free_globals_block(void *ptr) {
-    struct globals_header *header = (struct globals_header *) (ptr - sizeof(struct globals_header));
-    munmap(header, header->size);
+void __sulong_free_globals_block(void *ptr, uint64_t size) {
+#if defined(_WIN32)
+    /*
+     * The `dwSize` must be 0 when using MEM_RELEASE.
+     * @see https://docs.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-virtualfree
+     */
+    VirtualFree(ptr, 0, MEM_RELEASE);
+#else
+    munmap(ptr, size);
+#endif
 }

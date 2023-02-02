@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
@@ -57,7 +56,6 @@ import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -82,28 +80,35 @@ public class LoadExceptionObjectSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo loadException = snippet(LoadExceptionObjectSnippets.class, "loadException", EXCEPTION_OOP_LOCATION, EXCEPTION_PC_LOCATION);
+        private final SnippetInfo loadException;
         private final HotSpotWordTypes wordTypes;
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, TargetDescription target) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers) {
+            super(options, providers);
+
+            this.loadException = snippet(providers,
+                            LoadExceptionObjectSnippets.class,
+                            "loadException",
+                            EXCEPTION_OOP_LOCATION,
+                            EXCEPTION_PC_LOCATION);
             this.wordTypes = providers.getWordTypes();
         }
 
         public void lower(LoadExceptionObjectNode loadExceptionObject, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = loadExceptionObject.graph();
             if (LoadExceptionObjectInVM.getValue(graph.getOptions())) {
-                ResolvedJavaType wordType = providers.getMetaAccess().lookupJavaType(Word.class);
+                ResolvedJavaType wordType = tool.getMetaAccess().lookupJavaType(Word.class);
                 Stamp stamp = wordTypes.getWordStamp(wordType);
                 ReadRegisterNode thread = graph.add(new ReadRegisterNode(stamp, registers.getThreadRegister(), true, false));
                 graph.addBeforeFixed(loadExceptionObject, thread);
                 ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(LOAD_AND_CLEAR_EXCEPTION, thread));
                 loadExceptionC.setStateAfter(loadExceptionObject.stateAfter());
+                loadExceptionC.computeStateDuring(loadExceptionObject.stateAfter());
                 graph.replaceFixedWithFixed(loadExceptionObject, loadExceptionC);
             } else {
                 Arguments args = new Arguments(loadException, loadExceptionObject.graph().getGuardsStage(), tool.getLoweringStage());
                 args.addConst("threadRegister", registers.getThreadRegister());
-                template(loadExceptionObject, args).instantiate(providers.getMetaAccess(), loadExceptionObject, DEFAULT_REPLACER, args);
+                template(tool, loadExceptionObject, args).instantiate(tool.getMetaAccess(), loadExceptionObject, DEFAULT_REPLACER, args);
             }
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,12 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -40,7 +45,7 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 public final class ArrayKlass extends Klass {
 
@@ -48,18 +53,32 @@ public final class ArrayKlass extends Klass {
     private final Klass elementalType;
     private final int dimension;
 
+    @CompilationFinal private Assumption redefineAssumption;
+    @CompilationFinal private HierarchyInfo hierarchyInfo;
+
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
                         null, // TODO(peterssen): Internal, , or / name?
                         componentType.getTypes().arrayOf(componentType.getType()),
-                        componentType.getMeta().java_lang_Object,
-                        componentType.getMeta().ARRAY_SUPERINTERFACES,
                         // Arrays (of static inner class) may have protected access.
                         (componentType.getElementalType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT);
         EspressoError.guarantee(componentType.getJavaKind() != JavaKind.Void, "Invalid void[] class.");
         this.componentType = componentType;
         this.elementalType = componentType.getElementalType();
         this.dimension = Types.getArrayDimensions(getType());
+        this.redefineAssumption = componentType.getRedefineAssumption();
+        assert getMeta().java_lang_Class != null;
+        initializeEspressoClass();
+    }
+
+    @Override
+    public ObjectKlass getSuperKlass() {
+        return getMeta().java_lang_Object;
+    }
+
+    @Override
+    public ObjectKlass[] getSuperInterfaces() {
+        return getMeta().ARRAY_SUPERINTERFACES;
     }
 
     @Override
@@ -108,18 +127,23 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
+    public Method.MethodVersion[] getDeclaredMethodVersions() {
+        return Method.EMPTY_VERSION_ARRAY;
+    }
+
+    @Override
     public Field[] getDeclaredFields() {
         return Field.EMPTY_ARRAY;
     }
 
     @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode mode) {
         KLASS_LOOKUP_METHOD_COUNT.inc();
-        return getSuperKlass().lookupMethod(methodName, signature, accessingKlass);
+        return getSuperKlass().lookupMethod(methodName, signature, mode);
     }
 
     @Override
-    public @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+    public @JavaType(ClassLoader.class) StaticObject getDefiningClassLoader() {
         return elementalType.getDefiningClassLoader();
     }
 
@@ -174,5 +198,79 @@ public final class ArrayKlass extends Klass {
     @Override
     public String getNameAsString() {
         return "[" + componentType.getNameAsString();
+    }
+
+    @Override
+    public String getExternalName() {
+        String base = super.getExternalName();
+        if (getElementalType().isAnonymous()) {
+            return fixupAnonymousExternalName(base);
+        }
+        if (getElementalType().isHidden()) {
+            return convertHidden(base);
+        }
+        return base;
+    }
+
+    @TruffleBoundary
+    private String fixupAnonymousExternalName(String base) {
+        return base.replace(";", cat("/", getElementalType().getId(), ";"));
+    }
+
+    // index 0 is Object, index hierarchyDepth is this
+    @Override
+    protected Klass[] getSuperTypes() {
+        return getHierarchyInfo().supertypesWithSelfCache;
+    }
+
+    @Override
+    protected int getHierarchyDepth() {
+        return getHierarchyInfo().hierarchyDepth;
+    }
+
+    @Override
+    protected ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
+        return getHierarchyInfo().transitiveInterfaceCache;
+    }
+
+    private HierarchyInfo getHierarchyInfo() {
+        HierarchyInfo info = hierarchyInfo;
+        if (info == null || !redefineAssumption.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            info = hierarchyInfo = updateHierarchyInfo();
+            redefineAssumption = getRedefineAssumption();
+        }
+        return info;
+    }
+
+    private HierarchyInfo updateHierarchyInfo() {
+        int depth = getArraySuperType().getHierarchyDepth() + 1;
+        Klass[] supertypes;
+        Klass[] superKlassTypes = getArraySuperType().getSuperTypes();
+        supertypes = new Klass[superKlassTypes.length + 1];
+        assert supertypes.length == depth + 1;
+        supertypes[depth] = this;
+        System.arraycopy(superKlassTypes, 0, supertypes, 0, depth);
+
+        ObjectKlass.KlassVersion[] transitiveInterfaces;
+        ObjectKlass[] superItfs = getSuperInterfaces();
+        transitiveInterfaces = new ObjectKlass.KlassVersion[superItfs.length];
+        for (int i = 0; i < superItfs.length; i++) {
+            transitiveInterfaces[i] = superItfs[i].getKlassVersion();
+        }
+
+        return new HierarchyInfo(supertypes, depth, transitiveInterfaces);
+    }
+
+    private Klass getArraySuperType() {
+        if (this == getMeta().java_lang_Object.array() || componentType.isPrimitive()) {
+            return getMeta().java_lang_Object;
+        }
+        return componentType.getSupertype().array();
+    }
+
+    @Override
+    public Assumption getRedefineAssumption() {
+        return componentType.getRedefineAssumption();
     }
 }

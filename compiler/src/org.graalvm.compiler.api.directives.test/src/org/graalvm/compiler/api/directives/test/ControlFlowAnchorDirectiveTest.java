@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -187,7 +187,8 @@ public class ControlFlowAnchorDirectiveTest extends GraalCompilerTest {
     public static void verifyUnswitchSnippet(int arg, boolean flag) {
         int ret = arg;
         while (GraalDirectives.injectBranchProbability(0.9999, ret < 1000)) {
-            if (flag) {
+            GraalDirectives.neverStripMine();
+            if (GraalDirectives.injectBranchProbability(0.5, flag)) {
                 ret = ret * 2 + 1;
             } else {
                 ret = ret * 3 + 1;
@@ -200,7 +201,7 @@ public class ControlFlowAnchorDirectiveTest extends GraalCompilerTest {
     public static void preventUnswitchSnippet(int arg, boolean flag) {
         int ret = arg;
         while (GraalDirectives.injectBranchProbability(0.9999, ret < 1000)) {
-            if (flag) {
+            if (GraalDirectives.injectBranchProbability(0.5, flag)) {
                 GraalDirectives.controlFlowAnchor();
                 ret++;
             } else {

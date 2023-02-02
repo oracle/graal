@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.core.test.ea;
 
-import java.util.List;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.IfNode;
@@ -39,10 +37,10 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class ReadEliminationTest extends GraalCompilerTest {
@@ -261,12 +259,7 @@ public class ReadEliminationTest extends GraalCompilerTest {
     public void testPhi() {
         StructuredGraph graph = processMethod("testPhiSnippet", false);
         assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
-        List<ReturnNode> returnNodes = graph.getNodes(ReturnNode.TYPE).snapshot();
-        assertDeepEquals(2, returnNodes.size());
-        assertTrue(returnNodes.get(0).predecessor() instanceof StoreFieldNode);
-        assertTrue(returnNodes.get(1).predecessor() instanceof StoreFieldNode);
-        assertTrue(returnNodes.get(0).result().isConstant());
-        assertTrue(returnNodes.get(1).result().isConstant());
+        Assert.assertEquals(2, graph.getNodes().filter(StoreFieldNode.class).count());
     }
 
     @SuppressWarnings("all")
@@ -310,7 +303,7 @@ public class ReadEliminationTest extends GraalCompilerTest {
         HighTierContext context = getDefaultHighTierContext();
         createInliningPhase().apply(graph, context);
         if (doLowering) {
-            new LoweringPhase(createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, context);
         }
         new ReadEliminationPhase(createCanonicalizerPhase()).apply(graph, context);
         return graph;

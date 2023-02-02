@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.debug.impl;
 
+import java.lang.reflect.Method;
+
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
@@ -53,14 +55,16 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 public final class DebuggerInstrument extends TruffleInstrument {
 
     static final String ID = "debugger";
-    private static DebuggerFactory factory;
+    private static DebuggerFactory factory = getDefaultFactory();
 
-    static {
-        // Be sure that the factory is initialized:
+    @SuppressWarnings("unchecked")
+    private static DebuggerFactory getDefaultFactory() {
         try {
-            Class.forName(Debugger.class.getName(), true, Debugger.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            // Can not happen
+            Method createFactory = Debugger.class.getDeclaredMethod("createFactory");
+            createFactory.setAccessible(true);
+            return (DebuggerFactory) createFactory.invoke(null);
+        } catch (Exception ex) {
+            throw new AssertionError(ex);
         }
     }
 

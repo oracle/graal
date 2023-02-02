@@ -31,7 +31,7 @@ import jdk.vm.ci.meta.JavaKind;
 public class HostedPrimitiveType extends HostedType {
 
     public HostedPrimitiveType(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind) {
-        super(universe, wrapped, kind, storageKind, null, new HostedInterface[0], false);
+        super(universe, wrapped, kind, storageKind, null, new HostedInterface[0]);
     }
 
     @Override
@@ -92,11 +92,5 @@ public class HostedPrimitiveType extends HostedType {
     @Override
     public boolean isMember() {
         return false;
-    }
-
-    @Override
-    int compareToEqualClass(HostedType other) {
-        assert getClass().equals(other.getClass());
-        return getJavaKind().ordinal() - other.getJavaKind().ordinal();
     }
 }

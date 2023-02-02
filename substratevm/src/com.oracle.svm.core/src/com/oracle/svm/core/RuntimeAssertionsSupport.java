@@ -34,12 +34,11 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
 class RuntimeAssertionsOptionTransformer implements Function<Object, Object> {
@@ -77,6 +76,7 @@ class RuntimeAssertionsOptionTransformer implements Function<Object, Object> {
     }
 }
 
+@AutomaticallyRegisteredImageSingleton
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeAssertionsSupport {
 
@@ -96,7 +96,7 @@ public final class RuntimeAssertionsSupport {
         @APIOption(name = {"-da", "-disableassertions"}, valueSeparator = VALUE_SEPARATOR, valueTransformer = RuntimeAssertionsOptionTransformer.Disable.class, defaultValue = "", //
                         customHelp = "also -da[:[packagename]...|:classname] or -disableassertions[:[packagename]...|:classname]. Disable assertions with specified granularity.")//
         @Option(help = "Enable or disable Java assert statements at run time") //
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeAssertions = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeAssertions = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @APIOption(name = {"-esa", "-enablesystemassertions"}, customHelp = "also -enablesystemassertions. Enables assertions in all system classes.") //
         @APIOption(name = {"-dsa", "-disablesystemassertions"}, kind = APIOption.APIOptionKind.Negated, customHelp = "also -disablesystemassertions. Disables assertions in all system classes.") //
@@ -184,19 +184,11 @@ public final class RuntimeAssertionsSupport {
     }
 
     private boolean desiredAssertionStatusImpl(String name, ClassLoader classLoader) {
-        boolean isNativeImageClassLoader = ImageSingletons.lookup(ClassLoaderQuery.class).isNativeImageClassLoader(classLoader);
+        boolean isNativeImageClassLoader = ImageSingletons.lookup(ClassLoaderSupport.class).isNativeImageClassLoader(classLoader);
         return desiredAssertionStatusImpl(name, isNativeImageClassLoader ? defaultAssertionStatus : systemAssertionStatus);
     }
 
     public boolean desiredAssertionStatus(Class<?> clazz) {
         return desiredAssertionStatusImpl(clazz.getName(), clazz.getClassLoader());
-    }
-}
-
-@AutomaticFeature
-class RuntimeAssertionsFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeAssertionsSupport.class, new RuntimeAssertionsSupport());
     }
 }

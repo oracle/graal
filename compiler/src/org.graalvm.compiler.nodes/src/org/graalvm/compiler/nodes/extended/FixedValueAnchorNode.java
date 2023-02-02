@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,26 +27,25 @@ package org.graalvm.compiler.nodes.extended;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 
-@NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy, GuardingNode, Canonicalizable {
+@NodeInfo(cycles = CYCLES_0, size = SIZE_0, allowedUsageTypes = {InputType.Anchor})
+public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy, GuardingNode, Canonicalizable, AnchoringNode {
     public static final NodeClass<FixedValueAnchorNode> TYPE = NodeClass.create(FixedValueAnchorNode.class);
 
     @OptionalInput ValueNode object;
-    private Stamp predefinedStamp;
 
     public ValueNode object() {
         return object;
@@ -61,15 +60,9 @@ public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowera
         this(TYPE, object);
     }
 
-    public FixedValueAnchorNode(ValueNode object, Stamp predefinedStamp) {
-        super(TYPE, predefinedStamp);
-        this.object = object;
-        this.predefinedStamp = predefinedStamp;
-    }
-
     @Override
     public boolean inferStamp() {
-        if (predefinedStamp == null && object != null) {
+        if (object != null) {
             return updateStamp(stamp.join(object.stamp(NodeView.DEFAULT)));
         } else {
             return false;
@@ -80,6 +73,9 @@ public class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowera
     public Node canonical(CanonicalizerTool tool) {
         if (tool.allUsagesAvailable() && hasNoUsages()) {
             return null;
+        }
+        if (object instanceof FixedValueAnchorNode && ((FixedValueAnchorNode) object).next == this) {
+            return object;
         }
         return this;
     }

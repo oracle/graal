@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,7 +72,7 @@ public class InstrumentationCompilerTest extends PartialEvaluationTest {
     private void setup(String enabledInstrument) {
         setupContext(Context.newBuilder().option(enabledInstrument, "true"));
         getContext().initialize(ProxyLanguage.ID);
-        this.language = ProxyLanguage.getCurrentLanguage();
+        this.language = ProxyLanguage.get(null);
     }
 
     private void testEquals(InstrumentationCompilerTestBaseNode expected, InstrumentationCompilerTestBaseNode baseNode, int expectedInstrumentation) {

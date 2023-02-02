@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,37 +25,43 @@ package com.oracle.truffle.espresso.classfile;
 public final class Constants {
 
     /* Access Flags */
-    public static final int ACC_PUBLIC = 0x00000001;
-    public static final int ACC_PRIVATE = 0x00000002;
-    public static final int ACC_PROTECTED = 0x00000004;
-    public static final int ACC_STATIC = 0x00000008;
-    public static final int ACC_FINAL = 0x00000010;
-    public static final int ACC_SYNCHRONIZED = 0x00000020;
-    public static final int ACC_SUPER = 0x00000020;
-    public static final int ACC_VOLATILE = 0x00000040;
-    public static final int ACC_TRANSIENT = 0x00000080;
-    public static final int ACC_NATIVE = 0x00000100;
-    public static final int ACC_INTERFACE = 0x00000200;
-    public static final int ACC_ABSTRACT = 0x00000400;
-    public static final int ACC_STRICT = 0x00000800;
-    public static final int ACC_EXPLICIT = 0x00001000;
+    // @formatter:off
+    public static final int ACC_PUBLIC               = 0x00000001;
+    public static final int ACC_PRIVATE              = 0x00000002;
+    public static final int ACC_PROTECTED            = 0x00000004;
+    public static final int ACC_STATIC               = 0x00000008;
+    public static final int ACC_FINAL                = 0x00000010;
+    public static final int ACC_SYNCHRONIZED         = 0x00000020;
+    public static final int ACC_SUPER                = 0x00000020;
+    public static final int ACC_VOLATILE             = 0x00000040;
+    public static final int ACC_TRANSIENT            = 0x00000080;
+    public static final int ACC_NATIVE               = 0x00000100;
+    public static final int ACC_INTERFACE            = 0x00000200;
+    public static final int ACC_ABSTRACT             = 0x00000400;
+    public static final int ACC_STRICT               = 0x00000800;
+    public static final int ACC_EXPLICIT             = 0x00001000;
 
-    public static final int ACC_BRIDGE = 0x00000040;
-    public static final int ACC_VARARGS = 0x00000080;
-    public static final int ACC_SYNTHETIC = 0x00001000;
-    public static final int ACC_ANNOTATION = 0x00002000;
-    public static final int ACC_ENUM = 0x00004000;
-    public static final int ACC_MANDATED = 0x00008000;
-    public static final int ACC_MODULE = 0x00008000;
+    public static final int ACC_BRIDGE               = 0x00000040;
+    public static final int ACC_VARARGS              = 0x00000080;
+    public static final int ACC_SYNTHETIC            = 0x00001000;
+    public static final int ACC_ANNOTATION           = 0x00002000;
+    public static final int ACC_ENUM                 = 0x00004000;
+    public static final int ACC_MANDATED             = 0x00008000;
+    public static final int ACC_MODULE               = 0x00008000;
 
     // Not part of the spec, used internally by the VM.
-    public static final int ACC_FINALIZER = 0x00010000;
-    public static final int ACC_INNER_CLASS = 0x00020000;
+    public static final int ACC_FINALIZER            = 0x00010000;
+    public static final int ACC_FORCE_INLINE         = 0x00020000;
     public static final int ACC_LAMBDA_FORM_COMPILED = 0x00040000;
-    public static final int ACC_CALLER_SENSITIVE = 0x00080000;
-    public static final int ACC_LAMBDA_FORM_HIDDEN = 0x00100000;
+    public static final int ACC_CALLER_SENSITIVE     = 0x00080000;
+    public static final int ACC_HIDDEN               = 0x00100000;
+    public static final int ACC_IS_HIDDEN_CLASS      = 0x04000000;
 
-    public static final int JVM_ACC_WRITTEN_FLAGS = 0x00007FFF;
+    public static final int FIELD_ID_TYPE            = 0x01000000;
+    public static final int FIELD_ID_OBFUSCATE       = 0x02000000;
+
+    public static final int JVM_ACC_WRITTEN_FLAGS    = 0x00007FFF;
+    // @formatter:on
 
     // Table 4.1-A. Class access and property modifiers.
     public static final int JVM_RECOGNIZED_CLASS_MODIFIERS = ACC_PUBLIC |
@@ -565,23 +571,37 @@ public final class Constants {
     public static final int opc_priv = 255;
 
     /* ArrayType constants */
+
+    public static final int JVM_ArrayType_Boolean = 4;
+    public static final int JVM_ArrayType_Char = 5;
+    public static final int JVM_ArrayType_Float = 6;
+    public static final int JVM_ArrayType_Double = 7;
+    public static final int JVM_ArrayType_Byte = 8;
+    public static final int JVM_ArrayType_Short = 9;
+    public static final int JVM_ArrayType_Int = 10;
+    public static final int JVM_ArrayType_Long = 11;
+    public static final int JVM_ArrayType_Object = 12;
+    public static final int JVM_ArrayType_Void = 14;
+    public static final int JVM_ArrayType_ReturnAddress = 98;
+    public static final int JVM_ArrayType_Illegal = 99;
+
     public static byte atype(final Class<?> clazz) {
         if (clazz == boolean.class) {
-            return 4;
+            return JVM_ArrayType_Boolean;
         } else if (clazz == char.class) {
-            return 5;
+            return JVM_ArrayType_Char;
         } else if (clazz == float.class) {
-            return 6;
+            return JVM_ArrayType_Float;
         } else if (clazz == double.class) {
-            return 7;
+            return JVM_ArrayType_Double;
         } else if (clazz == byte.class) {
-            return 8;
+            return JVM_ArrayType_Byte;
         } else if (clazz == short.class) {
-            return 9;
+            return JVM_ArrayType_Short;
         } else if (clazz == int.class) {
-            return 10;
+            return JVM_ArrayType_Int;
         } else if (clazz == long.class) {
-            return 11;
+            return JVM_ArrayType_Long;
         }
 
         throw new IllegalArgumentException();
@@ -589,21 +609,21 @@ public final class Constants {
 
     public static Class<?> arrayType(byte atype) {
         switch (atype) {
-            case 4:
+            case JVM_ArrayType_Boolean:
                 return boolean.class;
-            case 5:
+            case JVM_ArrayType_Char:
                 return char.class;
-            case 6:
+            case JVM_ArrayType_Float:
                 return float.class;
-            case 7:
+            case JVM_ArrayType_Double:
                 return double.class;
-            case 8:
+            case JVM_ArrayType_Byte:
                 return byte.class;
-            case 9:
+            case JVM_ArrayType_Short:
                 return short.class;
-            case 10:
+            case JVM_ArrayType_Int:
                 return int.class;
-            case 11:
+            case JVM_ArrayType_Long:
                 return long.class;
             default:
                 throw new IllegalArgumentException();

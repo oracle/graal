@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,14 +43,13 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
-import org.graalvm.compiler.graph.LinkedNodeStack;
+import org.graalvm.compiler.graph.LinkedStack;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.NodeStack;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -87,6 +86,7 @@ import org.graalvm.compiler.nodes.spi.ArrayLengthProvider.FindLengthMode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -100,7 +100,6 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -219,9 +218,9 @@ public class GraphUtil {
                             loopExit.replaceFirstInput(loopBegin, null);
                         }
                     }
-                    merge.graph().reduceDegenerateLoopBegin(loopBegin);
+                    merge.graph().reduceDegenerateLoopBegin(loopBegin, true);
                 } else {
-                    merge.graph().reduceTrivialMerge(merge);
+                    merge.graph().reduceTrivialMerge(merge, true);
                 }
             } else {
                 assert merge.phiPredecessorCount() > 1 : merge;
@@ -271,18 +270,32 @@ public class GraphUtil {
             EconomicSet<Node> unsafeNodes = null;
             Graph.NodeEventScope nodeEventScope = null;
             OptionValues options = node.getOptions();
-            boolean verifyGraalGraphEdges = Graph.Options.VerifyGraalGraphEdges.getValue(options);
+            boolean verifyGraalGraphEdges = node.graph().verifyGraphEdges;
             boolean verifyKillCFGUnusedNodes = GraphUtil.Options.VerifyKillCFGUnusedNodes.getValue(options);
             if (verifyGraalGraphEdges) {
                 unsafeNodes = collectUnsafeNodes(node.graph());
             }
             if (verifyKillCFGUnusedNodes) {
+                EconomicSet<Node> deadControlFLow = EconomicSet.create(Equivalence.IDENTITY);
+                for (Node n : node.graph().getNodes()) {
+                    if (n instanceof FixedNode && !(n instanceof AbstractMergeNode) && n.predecessor() == null) {
+                        deadControlFLow.add(n);
+                    }
+                }
                 EconomicSet<Node> collectedUnusedNodes = unusedNodes = EconomicSet.create(Equivalence.IDENTITY);
                 nodeEventScope = node.graph().trackNodeEvents(new Graph.NodeEventListener() {
                     @Override
                     public void changed(Graph.NodeEvent e, Node n) {
                         if (e == Graph.NodeEvent.ZERO_USAGES && isFloatingNode(n) && !(n instanceof GuardNode)) {
                             collectedUnusedNodes.add(n);
+                        }
+                        if (e == Graph.NodeEvent.INPUT_CHANGED && n instanceof FixedNode && !(n instanceof AbstractMergeNode) && n.predecessor() == null) {
+                            if (!deadControlFLow.contains(n)) {
+                                collectedUnusedNodes.add(n);
+                            }
+                        }
+                        if (e == Graph.NodeEvent.NODE_REMOVED) {
+                            collectedUnusedNodes.remove(n);
                         }
                     }
                 });
@@ -301,10 +314,18 @@ public class GraphUtil {
                 while (iterator.hasNext()) {
                     Node curNode = iterator.next();
                     if (curNode.isDeleted()) {
-                        iterator.remove();
+                        GraalError.shouldNotReachHere();
+                    } else {
+                        if (curNode instanceof FixedNode && !(curNode instanceof AbstractMergeNode) && curNode.predecessor() != null) {
+                            iterator.remove();
+                        }
+                        if ((curNode instanceof PhiNode)) {
+                            // We seem to skip PhiNodes at the moment but that's mostly ok.
+                            iterator.remove();
+                        }
                     }
                 }
-                assert unusedNodes.isEmpty() : "New unused nodes: " + unusedNodes;
+                GraalError.guarantee(unusedNodes.isEmpty(), "New unused nodes: %s", unusedNodes);
             }
         } catch (Throwable t) {
             throw debug.handle(t);
@@ -346,7 +367,7 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuard) {
-        LinkedNodeStack stack = null;
+        LinkedStack<Node> stack = null;
         Node cur = node;
         do {
             assert checkKill(cur, mayKillGuard);
@@ -372,7 +393,7 @@ public class GraphUtil {
                             continue outer;
                         }
                         if (stack == null) {
-                            stack = new LinkedNodeStack();
+                            stack = new LinkedStack<>();
                         }
                         stack.push(in);
                     }
@@ -384,35 +405,6 @@ public class GraphUtil {
                 cur = stack.pop();
             }
         } while (true);
-    }
-
-    /**
-     * Removes all nodes created after the {@code mark}, assuming no "old" nodes point to "new"
-     * nodes.
-     */
-    public static void removeNewNodes(Graph graph, Graph.Mark mark) {
-        assert checkNoOldToNewEdges(graph, mark);
-        for (Node n : graph.getNewNodes(mark)) {
-            n.markDeleted();
-            for (Node in : n.inputs()) {
-                in.removeUsage(n);
-            }
-        }
-    }
-
-    private static boolean checkNoOldToNewEdges(Graph graph, Graph.Mark mark) {
-        for (Node old : graph.getNodes()) {
-            if (graph.isNew(mark, old)) {
-                break;
-            }
-            for (Node n : old.successors()) {
-                assert !graph.isNew(mark, n) : old + " -> " + n;
-            }
-            for (Node n : old.inputs()) {
-                assert !graph.isNew(mark, n) : old + " -> " + n;
-            }
-        }
-        return true;
     }
 
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {
@@ -536,7 +528,7 @@ public class GraphUtil {
         for (PhiNode phi : begin.phis().snapshot()) {
             GraphUtil.checkRedundantPhi(phi);
         }
-        for (LoopExitNode exit : begin.loopExits()) {
+        for (LoopExitNode exit : begin.loopExits().snapshot()) {
             for (ProxyNode vpn : exit.proxies().snapshot()) {
                 GraphUtil.checkRedundantProxy(vpn);
             }
@@ -963,10 +955,10 @@ public class GraphUtil {
      * @param start the node at which to start iterating
      */
     public static NodeIterable<FixedNode> predecessorIterable(final FixedNode start) {
-        return new NodeIterable<FixedNode>() {
+        return new NodeIterable<>() {
             @Override
             public Iterator<FixedNode> iterator() {
-                return new Iterator<FixedNode>() {
+                return new Iterator<>() {
                     public FixedNode current = start;
 
                     @Override
@@ -1030,6 +1022,11 @@ public class GraphUtil {
         }
 
         @Override
+        public boolean trySinkWriteFences() {
+            return false;
+        }
+
+        @Override
         public Assumptions getAssumptions() {
             return assumptions;
         }
@@ -1056,21 +1053,20 @@ public class GraphUtil {
                 return false;
             }
         }
+
+        @Override
+        public boolean divisionOverflowIsJVMSCompliant() {
+            if (getLowerer() != null) {
+                return getLowerer().divisionOverflowIsJVMSCompliant();
+            } else {
+                // prevent accidental floating of divs if we don't know the target arch
+                return false;
+            }
+        }
     }
 
     public static SimplifierTool getDefaultSimplifier(CoreProviders providers, boolean canonicalizeReads, Assumptions assumptions, OptionValues options) {
         return new DefaultSimplifierTool(providers, canonicalizeReads, assumptions, options);
-    }
-
-    public static Constant foldIfConstantAndRemove(ValueNode node, ValueNode constant) {
-        assert node.inputs().contains(constant);
-        if (constant.isConstant()) {
-            node.replaceFirstInput(constant, null);
-            Constant result = constant.asConstant();
-            tryKillUnused(constant);
-            return result;
-        }
-        return null;
     }
 
     /**
@@ -1159,7 +1155,7 @@ public class GraphUtil {
         }
         /* Perform the replacement. */
         VirtualArrayNode newVirtualArray = virtualArrayProvider.apply(newComponentType, newLengthInt);
-        tool.createVirtualObject(newVirtualArray, newEntryState, Collections.<MonitorIdNode> emptyList(), false);
+        tool.createVirtualObject(newVirtualArray, newEntryState, Collections.<MonitorIdNode> emptyList(), source.getNodeSourcePosition(), false);
         tool.replaceWithVirtual(newVirtualArray);
     }
 
@@ -1225,7 +1221,7 @@ public class GraphUtil {
      * {@code null} is returned.
      *
      * Note that the diamond representation is not canonical and will be undone by the next
-     * application of {@link LoopEndNode#simplify(SimplifierTool)}.
+     * application of {@link AbstractMergeNode#simplify(SimplifierTool)} to the merge.
      */
     public static LoopEndNode tryToTransformToEmptyLoopDiamond(IfNode ifNode, LoopBeginNode loopBegin) {
         if (ifNode.trueSuccessor().next() instanceof AbstractEndNode && ifNode.falseSuccessor().next() instanceof AbstractEndNode) {
@@ -1272,16 +1268,56 @@ public class GraphUtil {
                 merge.setNext(newEnd);
                 int i = 0;
                 for (PhiNode phi : loopBegin.phis()) {
-                    ValueNode replacementPhi = replacementPhis.get(phi);
+                    PhiNode replacementPhi = replacementPhis.get(phi);
                     assert (phi instanceof ValuePhiNode && replacementPhi instanceof ValuePhiNode) || (phi instanceof MemoryPhiNode && replacementPhi instanceof MemoryPhiNode);
-                    phi.addInput(replacementPhi);
+                    ValueNode replacementValue = replacementPhi.singleValueOrThis();
+                    phi.addInput(replacementValue);
                     i++;
                 }
                 assert i == replacementPhis.size() : "did not consume all values";
+                for (PhiNode maybeUnused : replacementPhis.getValues()) {
+                    if (maybeUnused.hasNoUsages() && !maybeUnused.isDeleted()) {
+                        maybeUnused.safeDelete();
+                    }
+                }
 
                 return newEnd;
             }
         }
         return null;
     }
+
+    /**
+     * Find the last, i.e. dominating, {@link StateSplit} node that returns {@code true} for
+     * {@link StateSplit#hasSideEffect()} and return its {@link StateSplit#stateAfter()}. That is
+     * the {@link FrameState} node describing the current frame since no {@linkplain StateSplit side
+     * effect} happened in between.
+     *
+     * This method will check Graal's invariant relations regarding side-effects and framestates.
+     */
+    public static FrameState findLastFrameState(FixedNode start) {
+        GraalError.guarantee(start.graph().getGuardsStage().areFrameStatesAtSideEffects(), "Framestates must be at side effects when looking for state split nodes");
+        assert start != null;
+        FixedNode lastFixedNode = null;
+        FixedNode currentStart = start;
+        while (true) {
+            for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
+                if (fixed instanceof StateSplit) {
+                    StateSplit stateSplit = (StateSplit) fixed;
+                    GraalError.guarantee(!stateSplit.hasSideEffect() || stateSplit.stateAfter() != null, "Found state split with side-effect without framestate=%s", stateSplit);
+                    if (stateSplit.stateAfter() != null) {
+                        return stateSplit.stateAfter();
+                    }
+                }
+                lastFixedNode = fixed;
+            }
+            if (lastFixedNode instanceof LoopBeginNode) {
+                currentStart = ((LoopBeginNode) lastFixedNode).forwardEnd();
+                continue;
+            }
+            break;
+        }
+        return null;
+    }
+
 }

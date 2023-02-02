@@ -24,123 +24,114 @@
  */
 package com.oracle.svm.util;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Path;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.NoSuchElementException;
-import java.util.ResourceBundle;
-import java.util.function.BiConsumer;
-import java.util.function.Predicate;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import jdk.internal.module.Modules;
 
 public final class ModuleSupport {
+
+    public static final String ENV_VAR_USE_MODULE_SYSTEM = "USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM";
+    public static final String PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES = "org.graalvm.nativeimage.module.addmods";
+    public static final boolean modulePathBuild = isModulePathBuild();
+
     private ModuleSupport() {
     }
 
-    public static ResourceBundle getResourceBundle(String bundleName, Locale locale, ClassLoader loader) {
-        return ResourceBundle.getBundle(bundleName, locale, loader);
+    private static boolean isModulePathBuild() {
+        return !"false".equalsIgnoreCase(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public enum Access {
+        OPEN {
+            @Override
+            void giveAccess(Module accessingModule, Module declaringModule, String packageName) {
+                if (accessingModule != null) {
+                    if (declaringModule.isOpen(packageName, accessingModule)) {
+                        return;
+                    }
+                    Modules.addOpens(declaringModule, packageName, accessingModule);
+                } else {
+                    if (declaringModule.isOpen(packageName)) {
+                        return;
+                    }
+                    Modules.addOpensToAllUnnamed(declaringModule, packageName);
+                }
+            }
+        },
+        EXPORT {
+            @Override
+            void giveAccess(Module accessingModule, Module declaringModule, String packageName) {
+                if (accessingModule != null) {
+                    if (declaringModule.isExported(packageName, accessingModule)) {
+                        return;
+                    }
+                    Modules.addExports(declaringModule, packageName, accessingModule);
+                } else {
+                    if (declaringModule.isExported(packageName)) {
+                        return;
+                    }
+                    Modules.addExportsToAllUnnamed(declaringModule, packageName);
+                }
+            }
+        };
+
+        abstract void giveAccess(Module accessingModule, Module declaringModule, String packageName);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void accessModuleByClass(Access access, Class<?> accessingClass, Class<?> declaringClass) {
+        accessModuleByClass(access, accessingClass, declaringClass.getModule(), declaringClass.getPackageName());
+    }
+
+    @SuppressWarnings("serial")
+    public static final class ModuleSupportError extends Error {
+        private ModuleSupportError(String message) {
+            super(message);
+        }
     }
 
     /**
-     * Checks if the Java run-time image contains a module with the given name.
+     * Open or export packages {@code packageNames} in the module named {@code moduleName} to module
+     * of given {@code accessingClass}. If {@code accessingClass} is null packages are opened or
+     * exported to ALL-UNNAMED. If no packages are given, all packages of the module are opened or
+     * exported.
      */
-    @SuppressWarnings("unused")
-    public static boolean hasSystemModule(String moduleName) {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-        return false;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void accessPackagesToClass(Access access, Class<?> accessingClass, boolean optional, String moduleName, String... packageNames) {
+        Objects.requireNonNull(moduleName);
+        Optional<Module> module = ModuleLayer.boot().findModule(moduleName);
+        if (module.isEmpty()) {
+            if (optional) {
+                return;
+            }
+            String accessor = accessingClass != null ? "class " + accessingClass.getTypeName() : "ALL-UNNAMED";
+            String message = access.name().toLowerCase() + " of packages from module " + moduleName + " to " +
+                            accessor + " failed. No module named " + moduleName + " in boot layer.";
+            throw new ModuleSupportError(message);
+        }
+        Module declaringModule = module.get();
+        Objects.requireNonNull(packageNames);
+        Set<String> packages = packageNames.length > 0 ? Set.of(packageNames) : declaringModule.getPackages();
+        for (String packageName : packages) {
+            accessModuleByClass(access, accessingClass, declaringModule, packageName);
+        }
     }
 
-    /**
-     * Gets all resources in the modules named by {@code modules} from the Java runtime image.
-     */
-    @SuppressWarnings("unused")
-    public static List<String> getModuleResources(Collection<Path> modulePath) {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-        return Collections.emptyList();
-    }
-
-    @SuppressWarnings("unused")
-    public static List<String> getSystemModuleResources(Collection<String> names) {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-        return Collections.emptyList();
-    }
-
-    /**
-     * Add the proper module opening to allow accesses from accessingClass to declaringClass.
-     */
-    @SuppressWarnings("unused")
-    public static void openModule(Class<?> declaringClass, Class<?> accessingClass) {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-    }
-
-    /**
-     * Register the PlatformClassLoader.
-     */
-    @SuppressWarnings("unused")
-    public static void registerPlatformClassLoader() {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-    }
-
-    public static ClassLoader getPlatformClassLoader() {
-        return ClassLoader.getSystemClassLoader();
-    }
-
-    /**
-     * Exports and opens all packages in the module named {@code name} to all unnamed modules.
-     *
-     * @param optional if {@code false} and there is no module named {@code name},
-     *            {@link NoSuchElementException} is thrown
-     */
-    @SuppressWarnings("unused")
-    public static void exportAndOpenAllPackagesToUnnamed(String name, boolean optional) {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-    }
-
-    /**
-     * Exports and opens {@code pkg} in the module named {@code name} to all unnamed modules.
-     *
-     * @param optional if {@code false} and there is no module named {@code name},
-     *            {@link NoSuchElementException} is thrown
-     */
-    @SuppressWarnings("unused")
-    public static void exportAndOpenPackageToUnnamed(String name, String pkg, boolean optional) {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-    }
-
-    /**
-     * Gets the name of the module containing {@code clazz}.
-     */
-    @SuppressWarnings("unused")
-    public static String getModuleName(Class<?> clazz) {
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-        return null;
-    }
-
-    /**
-     * In the modules of the boot module layer, filters all resources that match the given
-     * predicate, and calls the operation on the matched resources. This is a temporary solution
-     * until we fully support modules in native-image
-     *
-     * @param resourceNameFilter predicate applied to all resource names in the module
-     * @param operation a function to process matched resources, it receives the name of the
-     *            resources as the first argument and an open stream as the second argument
-     */
-    @SuppressWarnings("unused")
-    public static void findResourcesInModules(Predicate<String> resourceNameFilter, BiConsumer<String, InputStream> operation) throws IOException {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-        throw new IOException("find resources in modules can not be called in java 8 or less");
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void accessModuleByClass(Access access, Class<?> accessingClass, Module declaringModule, String packageName) {
+        Module namedAccessingModule = null;
+        if (accessingClass != null) {
+            Module accessingModule = accessingClass.getModule();
+            if (accessingModule.isNamed()) {
+                namedAccessingModule = accessingModule;
+            }
+        }
+        access.giveAccess(namedAccessingModule, declaringModule, packageName);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,37 @@ package org.graalvm.polybench;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Handler;
 
+import org.graalvm.polyglot.Value;
+
+/**
+ * Includes all the logic required to measure a particular value during an execution of a program.
+ */
 @SuppressWarnings("unused")
-interface Metric {
+public abstract class Metric {
+
+    public Metric() {
+        String className = this.getClass().getName();
+        if (!className.endsWith("Metric")) {
+            throw new IllegalStateException("Plugin metrics should have class names that end with 'Metric'.");
+        }
+    }
+
+    /**
+     * Name of the metric, should be unique among implementations.
+     */
+    public String name() {
+        String className = this.getClass().getSimpleName();
+        return MetricFactory.metricNameFor(className);
+    }
+
+    /**
+     * Unit associated with the measurement values.
+     */
+    public String unit() {
+        return "n/a";
+    }
 
     /**
      * Validates the mode and polyglot options parsed from the command line.
@@ -37,37 +65,72 @@ interface Metric {
      * @throws IllegalStateException when the mode or polyglot options cannot be used with the
      *             metric.
      */
-    default void validateConfig(Config config, Map<String, String> polyglotOptions) {
+    public void validateConfig(Config config, Map<String, String> polyglotOptions) {
     }
 
     /**
      * Returns engine options required by the {@link Metric}. The returned options are set on the
      * polyglot context.
      */
-    default Map<String, String> getEngineOptions(Config config) {
+    public Map<String, String> getEngineOptions(Config config) {
         return Collections.emptyMap();
     }
 
-    default void beforeIteration(boolean warmup, int iteration, Config config) {
+    /**
+     * Allows Metric to forward engine logging into supplied logger.
+     */
+    public Handler getLogHandler() {
+        return null;
     }
 
-    default void afterIteration(boolean warmup, int iteration, Config config) {
+    public void parseBenchSpecificOptions(Value runner) {
     }
 
-    default Optional<Double> reportAfterIteration(Config config) {
+    /**
+     * Invoked before the language context is initialized. This is guaranteed to happen before
+     * {@link #afterLoad(Config) loading}.
+     */
+    public void beforeInitialize(Config config) {
+    }
+
+    /**
+     * Invoked after the language context is initialized. This is guaranteed to happen before
+     * {@link #afterLoad(Config) loading}.
+     */
+    public void afterInitialize(Config config) {
+    }
+
+    /**
+     * Invoked before the benchmark is loaded. That means just before source code is parsed or
+     * classes are loaded. This is guaranteed to happen after initialization, but before the first
+     * iteration.
+     */
+    public void beforeLoad(Config config) {
+    }
+
+    /**
+     * Invoked after the benchmark is loaded. That means just after source code is parsed or classes
+     * are loaded. This is guaranteed to happen after initialization, but before the first
+     * iteration.
+     */
+    public void afterLoad(Config config) {
+    }
+
+    public void beforeIteration(boolean warmup, int iteration, Config config) {
+    }
+
+    public void afterIteration(boolean warmup, int iteration, Config config) {
+    }
+
+    public Optional<Double> reportAfterIteration(Config config) {
         return Optional.empty();
     }
 
-    default Optional<Double> reportAfterAll() {
+    public Optional<Double> reportAfterAll() {
         return Optional.empty();
     }
 
-    default void reset() {
+    public void reset() {
     }
 
-    default String unit() {
-        return "n/a";
-    }
-
-    String name();
 }

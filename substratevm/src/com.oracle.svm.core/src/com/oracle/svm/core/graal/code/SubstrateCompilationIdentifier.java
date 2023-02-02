@@ -29,14 +29,22 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.GraalError;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public class SubstrateCompilationIdentifier implements CompilationIdentifier {
 
     private static final AtomicLong uniqueIds = new AtomicLong();
 
     private final long id;
+    private final ResolvedJavaMethod method;
+
+    public SubstrateCompilationIdentifier(ResolvedJavaMethod method) {
+        this.id = uniqueIds.getAndIncrement();
+        this.method = method;
+    }
 
     public SubstrateCompilationIdentifier() {
-        this.id = uniqueIds.getAndIncrement();
+        this(null);
     }
 
     @Override
@@ -50,31 +58,25 @@ public class SubstrateCompilationIdentifier implements CompilationIdentifier {
     }
 
     protected StringBuilder buildString(StringBuilder sb, Verbosity verbosity) {
-        switch (verbosity) {
-            case ID:
-                buildID(sb);
-                break;
-            case NAME:
-                buildName(sb);
-                break;
-            case DETAILED:
-                buildID(sb);
-                sb.append('[');
-                buildName(sb);
-                sb.append(']');
-                break;
-            default:
-                throw new GraalError("unknown verbosity: " + verbosity);
+        if (method == null || verbosity == Verbosity.ID) {
+            buildID(sb);
+        } else if (verbosity == Verbosity.NAME) {
+            buildName(sb);
+        } else {
+            GraalError.guarantee(verbosity == Verbosity.DETAILED, "unknown verbosity: %s", verbosity);
+            buildID(sb);
+            sb.append('[');
+            buildName(sb);
+            sb.append(']');
         }
         return sb;
     }
 
-    protected StringBuilder buildID(StringBuilder sb) {
-        sb.append("SubstrateCompilation-");
-        return sb.append(id);
+    protected void buildName(StringBuilder sb) {
+        sb.append(method.format("%H.%n(%p)"));
     }
 
-    protected StringBuilder buildName(StringBuilder sb) {
-        return buildID(sb);
+    protected void buildID(StringBuilder sb) {
+        sb.append("SubstrateCompilation-").append(id);
     }
 }

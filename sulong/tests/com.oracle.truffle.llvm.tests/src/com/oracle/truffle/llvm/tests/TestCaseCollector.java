@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,6 +40,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.function.Predicate;
@@ -104,10 +105,14 @@ public final class TestCaseCollector {
             // collect excludes
             ExcludeMap excludedTests = getExcludedTests(testSuiteClass);
             // walk test cases
-            return Files.walk(suitesPath).filter(predicate).map(Path::getParent).map(testPath -> {
-                String testCaseName = getTestCaseName(suitesPath, testPath);
+            List<Object[]> list = Files.walk(suitesPath).filter(predicate).map(Path::getParent).map(testPath -> {
+                String testCaseName = getTestCaseName(suitesPath, testPath).replace("\\", "/");
                 return new Object[]{testPath, testCaseName, excludedTests.get(testCaseName)};
             }).collect(Collectors.toList());
+            if (!list.isEmpty()) {
+                return list;
+            }
+            throw new AssertionError("No test cases not found in: " + suitesPath);
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }
@@ -187,7 +192,7 @@ public final class TestCaseCollector {
             // walk <ROOT><testSuiteClass>/os_arch/
             walkOsArch(visitors, osArchDirectory);
 
-            Path configExcludeDirectory = configDirectory.resolve(TestEngineConfig.getInstance().getName());
+            Path configExcludeDirectory = configDirectory.resolve(TestEngineConfig.getInstance().getConfigFolderName());
             Path configOsArchDirectory = configExcludeDirectory.resolve("os_arch");
             // walk <ROOT><testSuiteClass>/"runtimeConfig"/<LLVMRuntimeConfig>/, skip "os_arch"
             walkFileTreeIfExists(configExcludeDirectory, visitors.skippingVisitor(configOsArchDirectory));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.library;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,8 +61,6 @@ import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 
 public class LibraryParser extends AbstractParser<LibraryData> {
-
-    public final List<DeclaredType> annotations = Arrays.asList(types.GenerateLibrary, types.GenerateLibrary_DefaultExport, types.GenerateLibrary_Abstract);
 
     @Override
     public boolean isDelegateToRootDeclaredType() {
@@ -91,6 +88,23 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         }
         if (element.getEnclosingElement().getKind() != ElementKind.PACKAGE && !element.getModifiers().contains(Modifier.STATIC)) {
             model.addError("Declared inner library classes must be static.");
+            return model;
+        }
+
+        AnnotationMirror generateAOT = ElementUtils.findAnnotationMirror(element, types.GenerateAOT);
+        if (generateAOT != null) {
+            model.setGenerateAOT(true);
+        }
+
+        AnnotationMirror invalidAnnotation = ElementUtils.findAnnotationMirror(element, types.GenerateCached);
+        if (invalidAnnotation == null) {
+            invalidAnnotation = ElementUtils.findAnnotationMirror(element, types.GenerateUncached);
+        }
+        if (invalidAnnotation == null) {
+            invalidAnnotation = ElementUtils.findAnnotationMirror(element, types.GenerateInline);
+        }
+        if (invalidAnnotation != null) {
+            model.addError(invalidAnnotation, null, "The annotation @%s cannot be used on a library.", ElementUtils.getSimpleName(invalidAnnotation.getAnnotationType()));
             return model;
         }
 

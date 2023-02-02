@@ -30,6 +30,7 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
@@ -40,6 +41,13 @@ public final class RawBuffer implements AutoCloseable {
     public RawBuffer(ByteBuffer buffer, TruffleObject pointer) {
         this.buffer = buffer;
         this.pointer = pointer;
+    }
+
+    public static RawBuffer getNativeString(ByteSequence seq) {
+        ByteBuffer bb = NativeUtils.allocateDirect(seq.length() + 1);
+        seq.writeTo(bb);
+        bb.put((byte) 0);
+        return new RawBuffer(bb, NativeUtils.byteBufferPointer(bb));
     }
 
     public static RawBuffer getNativeString(String name) {

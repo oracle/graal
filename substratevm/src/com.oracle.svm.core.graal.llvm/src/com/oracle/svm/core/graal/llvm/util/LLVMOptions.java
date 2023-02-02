@@ -49,8 +49,5 @@ public class LLVMOptions {
     @Option(help = "Enable LLVM bitcode optimizations")//
     public static final HostedOptionKey<Boolean> BitcodeOptimizations = new HostedOptionKey<>(false);
 
-    @Option(help = "Return special registers from functions in LLVM bitcode. This may decrease performance if the target doesn't support returning multiple values from a function.")//
-    public static final HostedOptionKey<Boolean> ReturnSpecialRegs = new HostedOptionKey<>(true);
-
-    public static final List<HostedOptionKey<?>> allOptions = Arrays.asList(IncludeLLVMDebugInfo, DumpLLVMStackMap, LLVMMaxFunctionsPerBatch, CustomLD, BitcodeOptimizations, ReturnSpecialRegs);
+    public static final List<HostedOptionKey<?>> allOptions = Arrays.asList(IncludeLLVMDebugInfo, DumpLLVMStackMap, LLVMMaxFunctionsPerBatch, CustomLD, BitcodeOptimizations);
 }

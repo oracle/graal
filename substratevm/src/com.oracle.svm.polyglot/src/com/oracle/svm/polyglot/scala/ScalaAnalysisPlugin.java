@@ -57,7 +57,7 @@ public final class ScalaAnalysisPlugin implements NodePlugin {
                 AnalysisType type = (AnalysisType) b.getConstantReflection().asJavaType(clazzConstant);
                 for (int i = 0; i < SUPPORTED_LEVEL_OF_NESTED_ARRAYS; i++) {
                     type = type.getArrayClass();
-                    type.registerAsInHeap();
+                    type.registerAsInHeap(b.getGraph().currentNodeSourcePosition());
                 }
             }
         }

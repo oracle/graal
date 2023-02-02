@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.nodes;
 
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
+import org.graalvm.compiler.core.common.type.CompressibleConstant;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
@@ -35,7 +36,6 @@ import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.meta.CompressibleConstant;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -60,11 +60,6 @@ public final class SubstrateNarrowOopStamp extends NarrowOopStamp {
     @Override
     public Constant readConstant(MemoryAccessProvider memoryAccessProvider, Constant base, long displacement) {
         JavaConstant constant = ((SubstrateMemoryAccessProvider) memoryAccessProvider).readNarrowObjectConstant(base, displacement, getEncoding());
-        /*
-         * Hosted memory provider does not handle the reading of stable array (i.e. base describes
-         * an array constant), thus we may see null here as the constant, which is fine according to
-         * the java doc
-         */
         assert constant == null || ((CompressibleConstant) constant).isCompressed();
         return constant;
     }

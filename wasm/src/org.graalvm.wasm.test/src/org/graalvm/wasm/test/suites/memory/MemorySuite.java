@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,15 +41,39 @@
 package org.graalvm.wasm.test.suites.memory;
 
 import java.io.IOException;
-
-import org.junit.Test;
+import java.util.Arrays;
+import java.util.Collection;
 
 import org.graalvm.wasm.test.WasmFileSuite;
+import org.graalvm.wasm.utils.cases.WasmCase;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public class MemorySuite extends WasmFileSuite {
+
+    @Parameter public boolean useUnsafeWasmMemory;
+
+    @Parameters
+    public static Iterable<? extends Object> data() {
+        return Arrays.asList(false, true);
+    }
+
     @Override
     protected String testResource() {
         return "memory";
+    }
+
+    @Override
+    protected Collection<? extends WasmCase> collectTestCases() throws IOException {
+        Collection<? extends WasmCase> testCases = super.collectTestCases();
+        for (WasmCase testCase : testCases) {
+            testCase.options().put("wasm.UseUnsafeMemory", Boolean.toString(useUnsafeWasmMemory));
+        }
+        return testCases;
     }
 
     @Override

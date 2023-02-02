@@ -60,10 +60,11 @@ public class Environment implements Feedback, CommandInput, Config {
     private ComponentRegistry localRegistry;
     private boolean stacktraces;
     private ComponentIterable fileIterable;
-    private Map<URL, Path> fileMap = new HashMap<>();
+    private final Map<URL, Path> fileMap = new HashMap<>();
     private boolean allOutputToErr;
     private boolean autoYesEnabled;
     private boolean nonInteractive;
+    private boolean silent;
     private Path graalHome;
     private FileOperations fileOperations;
     private CatalogFactory catalogFactory;
@@ -187,10 +188,16 @@ public class Environment implements Feedback, CommandInput, Config {
 
     @Override
     public void error(String bundleKey, Throwable error, Object... args) {
-        print(false, bundle, err, bundleKey, args);
+        error(bundleKey, bundle, error, args);
+    }
+
+    private void error(String bundleKey, ResourceBundle srcBundle, Throwable error, Object... args) {
+        boolean wasSilent = setSilent(false);
+        print(false, srcBundle, err, bundleKey, args);
         if (stacktraces && error != null) {
             error.printStackTrace(err);
         }
+        setSilent(wasSilent);
     }
 
     /**
@@ -314,10 +321,7 @@ public class Environment implements Feedback, CommandInput, Config {
 
             @Override
             public void error(String key, Throwable t, Object... params) {
-                print(false, localBundle, err, key, params);
-                if (stacktraces && t != null) {
-                    t.printStackTrace(err);
-                }
+                Environment.this.error(key, localBundle, t, params);
             }
 
             @Override
@@ -381,6 +385,16 @@ public class Environment implements Feedback, CommandInput, Config {
             public boolean isNonInteractive() {
                 return Environment.this.isNonInteractive();
             }
+
+            @Override
+            public boolean isSilent() {
+                return Environment.this.isSilent();
+            }
+
+            @Override
+            public boolean setSilent(boolean silent) {
+                return Environment.this.setSilent(silent);
+            }
         };
     }
 
@@ -417,7 +431,7 @@ public class Environment implements Feedback, CommandInput, Config {
     }
 
     private void print(boolean beVerbose, boolean addNewline, ResourceBundle msgBundle, PrintStream stm, String bundleKey, Object... args) {
-        if (beVerbose && !this.verbose) {
+        if (silent || (beVerbose && !this.verbose)) {
             return;
         }
         if (addNewline) {
@@ -589,4 +603,15 @@ public class Environment implements Feedback, CommandInput, Config {
         }
     }
 
+    @Override
+    public boolean isSilent() {
+        return silent;
+    }
+
+    @Override
+    public boolean setSilent(boolean silent) {
+        boolean wasSilent = this.silent;
+        this.silent = silent;
+        return wasSilent;
+    }
 }

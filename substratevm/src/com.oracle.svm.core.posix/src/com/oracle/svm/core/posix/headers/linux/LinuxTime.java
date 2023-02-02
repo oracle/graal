@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,9 @@ public class LinuxTime extends Time {
 
     @CConstant
     public static native int CLOCK_MONOTONIC();
+
+    @CConstant
+    public static native int CLOCK_THREAD_CPUTIME_ID();
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     @CLibrary("rt")

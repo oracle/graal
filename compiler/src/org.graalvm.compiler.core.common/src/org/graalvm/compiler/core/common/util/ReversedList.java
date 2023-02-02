@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,10 @@ public class ReversedList<T> extends AbstractList<T> implements RandomAccess {
     /**
      * Creates a list that is a view on {@code list} in reverse order.
      */
-    public static <T> ReversedList<T> reversed(List<T> list) {
+    public static <T> List<T> reversed(List<T> list) {
+        if (list instanceof ReversedList<?>) {
+            return ((ReversedList<T>) list).original;
+        }
         return new ReversedList<>(list);
     }
 }

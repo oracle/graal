@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,7 +118,7 @@ public final class ImageInfo {
      * @since 19.0
      */
     public static boolean inImageCode() {
-        return System.getProperty(PROPERTY_IMAGE_CODE_KEY) != null;
+        return inImageBuildtimeCode() || inImageRuntimeCode();
     }
 
     /**
@@ -143,7 +143,7 @@ public final class ImageInfo {
     }
 
     /**
-     * Returns true if the image is build as an executable.
+     * Returns true if the image is built as an executable.
      *
      * @since 19.0
      */

@@ -30,7 +30,8 @@ import java.lang.reflect.Method;
 /**
  * Operating System Metrics class
  *
- * @implNote Some of the APIs within this class return metrics for an
+ * Implementation note:
+ * Some of the APIs within this class return metrics for an
  * "Isolation Group" or "Container".  When the term "Isolation Group"
  * is used in the API description, this refers to either:
  *
@@ -71,7 +72,7 @@ public interface Metrics {
      * Returns the interface responsible for providing the
      * platform metrics.
      *
-     * @implNote
+     * Implementation note:
      * Metrics are currently only supported Linux.
      * The provider for Linux is cgroups (version 1 or 2).
      *
@@ -163,7 +164,7 @@ public interface Metrics {
      * Group used for prioritizing the scheduling of processes across
      * all Isolation Groups running on a host.
      *
-     * @implNote
+     * Implementation note:
      * Popular container orchestration systems have standardized shares
      * to be multiples of 1024, where 1024 is interpreted as 1 CPU share
      * of execution.  Users can distribute CPU resources to multiple
@@ -234,7 +235,7 @@ public interface Metrics {
      * to the total number of CPUs and the elements in the array are the
      * physical CPU numbers that are available.  Some of the CPUs returned
      * may be offline.  To get the current online CPUs, use
-     * {@link getEffectiveCpuSetCpus()}.
+     * {@link Metrics#getEffectiveCpuSetCpus()} }.
      *
      * @return An array of available CPUs. Returns null if the metric is not
      *         available or the metric is not supported.
@@ -260,7 +261,7 @@ public interface Metrics {
      * to the total number of nodes and the elements in the array are the
      * physical node numbers that are available.  Some of the nodes returned
      * may be offline.  To get the current online memory nodes, use
-     * {@link getEffectiveCpuSetMems()}.
+     * {@link Metrics#getEffectiveCpuSetMems()}.
      *
      * @return An array of available memory nodes or null
      *         if the metric is not available or is not supported.

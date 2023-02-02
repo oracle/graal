@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +57,7 @@ import com.oracle.truffle.tools.chromeinspector.events.Event;
 import com.oracle.truffle.tools.chromeinspector.events.EventHandler;
 import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
 import com.oracle.truffle.tools.chromeinspector.types.Location;
+import com.oracle.truffle.tools.utils.java_websocket.exceptions.WebsocketNotConnectedException;
 
 public final class InspectServerSession implements MessageEndpoint {
 
@@ -114,6 +115,12 @@ public final class InspectServerSession implements MessageEndpoint {
     // For tests only
     public DebuggerDomain getDebugger() {
         return debugger;
+    }
+
+    public void notifyClosing() {
+        runtime.notifyClosing();
+        debugger.notifyClosing();
+        profiler.notifyClosing();
     }
 
     public void dispose() {
@@ -571,6 +578,8 @@ public final class InspectServerSession implements MessageEndpoint {
                     listener.sendText(event.toJSONString());
                 } catch (IOException ex) {
                     context.logException(ex);
+                } catch (WebsocketNotConnectedException ex) {
+                    // disconnected
                 }
             }
             JSONMessageListener jsonListener = jsonMessageListener;
@@ -650,6 +659,8 @@ public final class InspectServerSession implements MessageEndpoint {
                             listener.sendText(result.toString());
                         } catch (IOException ex) {
                             context.logException(ex);
+                        } catch (WebsocketNotConnectedException ex) {
+                            // disconnected
                         }
                     }
                     JSONMessageListener jsonListener = jsonMessageListener;

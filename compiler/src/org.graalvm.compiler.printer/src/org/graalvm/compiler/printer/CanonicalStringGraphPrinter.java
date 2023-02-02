@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,10 @@ import static org.graalvm.compiler.debug.DebugOptions.CanonicalGraphStringsRemov
 import static org.graalvm.compiler.debug.DebugOptions.PrintCanonicalGraphStringFlavor;
 
 import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -60,7 +59,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -129,7 +128,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
             return;
         }
         try {
-            for (Block block : controlFlowGraph.getBlocks()) {
+            for (HIRBlock block : controlFlowGraph.getBlocks()) {
                 writer.print("Block ");
                 writer.print(block);
                 writer.print(" ");
@@ -137,7 +136,8 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
                     writer.print("* ");
                 }
                 writer.print("-> ");
-                for (Block successor : block.getSuccessors()) {
+                for (int i = 0; i < block.getSuccessorCount(); i++) {
+                    HIRBlock successor = block.getSuccessorAt(i);
                     writer.print(successor);
                     writer.print(" ");
                 }
@@ -183,7 +183,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
                 constantsLines = new ArrayList<>();
             }
 
-            for (Block block : scheduleResult.getCFG().getBlocks()) {
+            for (HIRBlock block : scheduleResult.getCFG().getBlocks()) {
                 writer.print("Block ");
                 writer.print(block);
                 writer.print(" ");
@@ -191,7 +191,8 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
                     writer.print("* ");
                 }
                 writer.print("-> ");
-                for (Block successor : block.getSuccessors()) {
+                for (int i = 0; i < block.getSuccessorCount(); i++) {
+                    HIRBlock successor = block.getSuccessorAt(i);
                     writer.print(successor);
                     writer.print(" ");
                 }
@@ -260,9 +261,9 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
     }
 
     private StructuredGraph currentGraph;
-    private Path currentDirectory;
+    private String currentDirectory;
 
-    private Path getDirectory(DebugContext debug, StructuredGraph graph) {
+    private String getDirectory(DebugContext debug, StructuredGraph graph) {
         if (graph == currentGraph) {
             return currentDirectory;
         }
@@ -276,10 +277,10 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
         if (graph instanceof StructuredGraph) {
             OptionValues options = graph.getOptions();
             StructuredGraph structuredGraph = (StructuredGraph) graph;
-            Path outDirectory = getDirectory(debug, structuredGraph);
+            String outDirectory = getDirectory(debug, structuredGraph);
             String title = String.format("%03d-%s.txt", id, String.format(format, simplifyClassArgs(args)));
-            Path filePath = outDirectory.resolve(PathUtilities.sanitizeFileName(title));
-            try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filePath.toFile())))) {
+            String filePath = PathUtilities.getPath(outDirectory, PathUtilities.sanitizeFileName(title));
+            try (PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(PathUtilities.openOutputStream(filePath))))) {
                 switch (PrintCanonicalGraphStringFlavor.getValue(options)) {
                     case 1:
                         writeCanonicalExpressionCFGString(structuredGraph, CanonicalGraphStringsCheckConstants.getValue(options), CanonicalGraphStringsRemoveIdentities.getValue(options), writer);

@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
-import java.lang.annotation.Annotation;
-import java.util.Arrays;
-
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -45,7 +40,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class HostedType implements SharedType, WrappedJavaType, Comparable<HostedType>, OriginalClassProvider {
+public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
 
     protected final HostedUniverse universe;
     protected final AnalysisType wrapped;
@@ -56,7 +51,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
     private final HostedClass superClass;
     private final HostedInterface[] interfaces;
 
-    private HostedType enclosingType;
     protected HostedArrayClass arrayType;
     protected HostedType[] subTypes;
     protected HostedField[] staticFields;
@@ -97,9 +91,7 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
      */
     protected HostedType strengthenStampType;
 
-    private final boolean isCloneable;
-
-    public HostedType(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces, boolean isCloneable) {
+    public HostedType(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces) {
         this.universe = universe;
         this.wrapped = wrapped;
         this.kind = kind;
@@ -107,7 +99,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
         this.superClass = superClass;
         this.interfaces = interfaces;
         this.typeID = -1;
-        this.isCloneable = isCloneable;
     }
 
     public HostedType getStrengthenStampType() {
@@ -310,49 +301,25 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
     }
 
     @Override
-    public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod m, ResolvedJavaType ct) {
+    public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod m, ResolvedJavaType callerType) {
         HostedMethod method = (HostedMethod) m;
-        HostedType callerType = (HostedType) ct;
 
-        if (isWordType()) {
+        AnalysisMethod aResult = wrapped.resolveConcreteMethod(method.wrapped);
+        HostedMethod hResult;
+        if (aResult == null) {
+            hResult = null;
+        } else if (!aResult.isImplementationInvoked() && !isWordType()) {
             /*
-             * We do not keep any method information on word types on our own, so ask the hosting VM
-             * for the answer.
+             * Filter out methods that are not seen as invoked by the static analysis, e.g., because
+             * the declaring type is not instantiated. Word types are an exception, because methods
+             * of word types are never marked as invoked (they are always intrinsified).
              */
-            return wrappedResolveMethod(method, callerType);
+            hResult = null;
+        } else {
+            hResult = universe.lookup(aResult);
         }
 
-        /* Use the same algorithm that is also used for SubstrateType during runtime compilation. */
-        ResolvedJavaMethod found = SharedType.super.resolveConcreteMethod(method, callerType);
-        /* Check that our algorithm returns the same result as the hosting VM. */
-
-        /*
-         * For abstract classes, our result can be different than the result from HotSpot. It is
-         * unclear what concrete method resolution on an abstract class means.
-         */
-        assert isAbstract() || (found == null || checkWrappedResolveMethod(method, found, callerType));
-
-        return found;
-    }
-
-    private boolean checkWrappedResolveMethod(HostedMethod method, ResolvedJavaMethod found, HostedType callerType) {
-        /*
-         * The static analysis can determine that the resolved wrapped method is not reachable, case
-         * in which wrappedResolveMethod returns null.
-         */
-        ResolvedJavaMethod wrappedMethod = wrappedResolveMethod(method, callerType);
-        return wrappedMethod == null || found.equals(wrappedMethod);
-    }
-
-    private ResolvedJavaMethod wrappedResolveMethod(HostedMethod method, HostedType callerType) {
-        AnalysisMethod orig = wrapped.resolveConcreteMethod(method.wrapped, callerType.wrapped);
-        ResolvedJavaMethod result = orig == null ? null : universe.lookup(orig);
-
-        if (result != null && !isWordType() && !Arrays.asList(method.getImplementations()).contains(result)) {
-            /* Our static analysis found out that this method is not reachable. */
-            result = null;
-        }
-        return result;
+        return hResult;
     }
 
     @Override
@@ -369,21 +336,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
     @Override
     public ResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
         return null;
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return wrapped.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return wrapped.getDeclaredAnnotations();
-    }
-
-    @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return wrapped.getAnnotation(annotationClass);
     }
 
     @Override
@@ -408,7 +360,7 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
 
     @Override
     public HostedType getEnclosingType() {
-        return enclosingType;
+        return universe.lookup(wrapped.getEnclosingType());
     }
 
     @Override
@@ -452,52 +404,17 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
 
     @Override
     public boolean isCloneableWithAllocation() {
-        return isCloneable;
+        return wrapped.isCloneableWithAllocation();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return universe.lookup(wrapped.getHostClass());
     }
 
-    public void setEnclosingType(HostedType enclosingType) {
-        this.enclosingType = enclosingType;
-    }
-
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(universe.getSnippetReflection(), wrapped);
-    }
-
-    @Override
-    public int compareTo(HostedType other) {
-        if (this.equals(other)) {
-            return 0;
-        }
-        if (this.getClass().equals(other.getClass())) {
-            return compareToEqualClass(other);
-        }
-        int result = this.ordinal() - other.ordinal();
-        assert result != 0 : "Types not distinguishable: " + this + ", " + other;
-        return result;
-    }
-
-    int compareToEqualClass(HostedType other) {
-        assert getClass().equals(other.getClass());
-        return getName().compareTo(other.getName());
-    }
-
-    private int ordinal() {
-        if (isInterface()) {
-            return 4;
-        } else if (isArray()) {
-            return 3;
-        } else if (isInstanceClass()) {
-            return 2;
-        } else if (getJavaKind() != JavaKind.Object) {
-            return 1;
-        } else {
-            throw shouldNotReachHere();
-        }
+        return wrapped.getJavaClass();
     }
 }

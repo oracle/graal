@@ -1,0 +1,8 @@
+{
+	"name": "GraalVM CE dev environment",
+	"dockerFile": "Dockerfile",
+
+	"extensions": [
+		"vscjava.vscode-java-pack"
+	]
+}

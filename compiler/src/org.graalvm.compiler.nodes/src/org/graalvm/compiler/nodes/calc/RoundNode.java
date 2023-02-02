@@ -31,7 +31,7 @@ import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
 import org.graalvm.compiler.nodeinfo.NodeInfo;

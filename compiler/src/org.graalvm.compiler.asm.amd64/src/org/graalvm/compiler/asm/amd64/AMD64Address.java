@@ -25,9 +25,8 @@
 package org.graalvm.compiler.asm.amd64;
 
 import org.graalvm.compiler.asm.AbstractAddress;
-import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.core.common.Stride;
 
-import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.Register;
 
 /**
@@ -39,14 +38,14 @@ public final class AMD64Address extends AbstractAddress {
 
     private final Register base;
     private final Register index;
-    private final Scale scale;
+    private final Stride stride;
     private final int displacement;
     private final Object displacementAnnotation;
 
     /**
      * The start of the instruction, i.e., the value that is used as the key for looking up
      * placeholder patching information. Only used for {@link AMD64Assembler#getPlaceholder
-     * placeholder addresses}.
+     * placeholder addresses}. This value is negative for non-placeholder addresses.
      */
     final int instructionStartPosition;
 
@@ -56,7 +55,7 @@ public final class AMD64Address extends AbstractAddress {
      * @param base the base register
      */
     public AMD64Address(Register base) {
-        this(base, Register.None, Scale.Times1, 0);
+        this(base, Register.None, Stride.S1, 0);
     }
 
     /**
@@ -67,7 +66,7 @@ public final class AMD64Address extends AbstractAddress {
      * @param displacement the displacement
      */
     public AMD64Address(Register base, int displacement) {
-        this(base, Register.None, Scale.Times1, displacement);
+        this(base, Register.None, Stride.S1, displacement);
     }
 
     /**
@@ -76,10 +75,10 @@ public final class AMD64Address extends AbstractAddress {
      *
      * @param base the base register
      * @param index the index register
-     * @param scale the scaling factor
+     * @param stride the scaling factor
      */
-    public AMD64Address(Register base, Register index, Scale scale) {
-        this(base, index, scale, 0, null, -1);
+    public AMD64Address(Register base, Register index, Stride stride) {
+        this(base, index, stride, 0, null, -1);
     }
 
     /**
@@ -88,105 +87,33 @@ public final class AMD64Address extends AbstractAddress {
      *
      * @param base the base register
      * @param index the index register
-     * @param scale the scaling factor
+     * @param stride the scaling factor
      * @param displacement the displacement
      */
-    public AMD64Address(Register base, Register index, Scale scale, int displacement) {
-        this(base, index, scale, displacement, null, -1);
+    public AMD64Address(Register base, Register index, Stride stride, int displacement) {
+        this(base, index, stride, displacement, null, -1);
     }
 
-    public AMD64Address(Register base, Register index, Scale scale, int displacement, Object displacementAnnotation) {
-        this(base, index, scale, displacement, displacementAnnotation, -1);
+    public AMD64Address(Register base, Register index, Stride stride, int displacement, Object displacementAnnotation) {
+        this(base, index, stride, displacement, displacementAnnotation, -1);
     }
 
-    AMD64Address(Register base, Register index, Scale scale, int displacement, Object displacementAnnotation, int instructionStartPosition) {
+    AMD64Address(Register base, Register index, Stride stride, int displacement, Object displacementAnnotation, int instructionStartPosition) {
         this.base = base;
         this.index = index;
-        this.scale = scale;
+        this.stride = stride;
         this.displacement = displacement;
         this.displacementAnnotation = displacementAnnotation;
         this.instructionStartPosition = instructionStartPosition;
 
-        assert scale != null;
+        assert stride != null;
     }
 
     /**
-     * A scaling factor used in the SIB addressing mode.
+     * Determines if the log2 scaling factor {@code shift} is supported.
      */
-    public enum Scale {
-        Times1(1, 0),
-        Times2(2, 1),
-        Times4(4, 2),
-        Times8(8, 3);
-
-        Scale(int value, int log2) {
-            this.value = value;
-            this.log2 = log2;
-        }
-
-        /**
-         * The value (or multiplier) of this scale.
-         */
-        public final int value;
-
-        /**
-         * The {@linkplain #value value} of this scale log 2.
-         */
-        public final int log2;
-
-        /**
-         * Creates a {@link Scale} for the scaling factor in {@code scale}.
-         *
-         * @throws IllegalArgumentException if {@code scale} is an unsupported scaling factor
-         */
-        public static Scale fromInt(int scale) {
-            switch (scale) {
-                case 1:
-                    return Times1;
-                case 2:
-                    return Times2;
-                case 4:
-                    return Times4;
-                case 8:
-                    return Times8;
-                default:
-                    throw new IllegalArgumentException("Unsupported SIB addressing mode scaling factor: " + scale);
-            }
-        }
-
-        /**
-         * Creates a {@link Scale} for the log2 scaling factor {@code shift}.
-         *
-         * @throws IllegalArgumentException if {@code shift} is an unsupported scaling factor
-         */
-        public static Scale fromShift(int shift) {
-            switch (shift) {
-                case 0:
-                    return Times1;
-                case 1:
-                    return Times2;
-                case 2:
-                    return Times4;
-                case 3:
-                    return Times8;
-                default:
-                    throw GraalError.shouldNotReachHere("Unsupported SIB addressing mode scaling factor: " + (1 << shift));
-            }
-        }
-
-        /**
-         * Determines if the scaling factor {@code scale} is supported.
-         */
-        public static boolean isScaleSupported(int scale) {
-            return CodeUtil.isPowerOf2(scale) && scale <= 8;
-        }
-
-        /**
-         * Determines if the log2 scaling factor {@code shift} is supported.
-         */
-        public static boolean isScaleShiftSupported(int shift) {
-            return shift >= 0 && shift <= 3;
-        }
+    public static boolean isScaleShiftSupported(int shift) {
+        return shift >= 0 && shift <= 3;
     }
 
     @Override
@@ -233,8 +160,8 @@ public final class AMD64Address extends AbstractAddress {
     /**
      * @return Scaling factor for indexing, dependent on target operand size.
      */
-    public Scale getScale() {
-        return scale;
+    public Stride getScale() {
+        return stride;
     }
 
     /**
@@ -246,5 +173,9 @@ public final class AMD64Address extends AbstractAddress {
 
     public Object getDisplacementAnnotation() {
         return displacementAnnotation;
+    }
+
+    boolean isPlaceholder() {
+        return instructionStartPosition >= 0;
     }
 }

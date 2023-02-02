@@ -26,13 +26,13 @@ package com.oracle.svm.core.util;
 
 import java.util.function.Supplier;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Keeps the last-n entries and allows to read the out on demand..
  */
 public final class RingBuffer<T> {
-    private static int defaultBufferSize = 30;
+    private static final int DEFAULT_BUFFER_SIZE = 30;
 
     private final T[] entries;
     private int pos;
@@ -43,7 +43,7 @@ public final class RingBuffer<T> {
     }
 
     public RingBuffer() {
-        this(defaultBufferSize);
+        this(DEFAULT_BUFFER_SIZE);
     }
 
     @SuppressWarnings("unchecked")

@@ -28,7 +28,9 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
 import org.graalvm.compiler.nodes.gc.G1BarrierSet;
@@ -73,6 +75,14 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
                     }
                     return !useDeferredInitBarriers || !isWriteToNewObject(node);
                 }
+
+                @Override
+                protected boolean arrayRangeWriteRequiresPostBarrier(ArrayRangeWrite write) {
+                    if (!super.arrayRangeWriteRequiresPostBarrier(write)) {
+                        return false;
+                    }
+                    return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
+                }
             };
         } else {
             return new CardTableBarrierSet(objectArrayType) {
@@ -84,6 +94,13 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
                     return !useDeferredInitBarriers || !isWriteToNewObject(node);
                 }
 
+                @Override
+                protected boolean arrayRangeWriteRequiresBarrier(ArrayRangeWrite write) {
+                    if (!super.arrayRangeWriteRequiresBarrier(write)) {
+                        return false;
+                    }
+                    return !useDeferredInitBarriers || !isWriteToNewObject(write.asFixedWithNextNode(), write.getAddress().getBase());
+                }
             };
         }
     }
@@ -97,21 +114,25 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
             return false;
         }
         // This is only allowed for the last allocation in sequence
-        ValueNode base = node.getAddress().getBase();
+        return isWriteToNewObject(node, node.getAddress().getBase());
+    }
+
+    protected boolean isWriteToNewObject(FixedWithNextNode node, ValueNode base) {
         if (base instanceof AbstractNewObjectNode) {
             Node pred = node.predecessor();
             while (pred != null) {
                 if (pred == base) {
+                    node.getDebug().log(DebugContext.INFO_LEVEL, "Deferred barrier for %s with base %s", node, base);
                     return true;
                 }
                 if (pred instanceof AbstractNewObjectNode) {
-                    node.getDebug().log(DebugContext.INFO_LEVEL, "Disallowed deferred init because %s was last allocation instead of %s", pred, base);
+                    node.getDebug().log(DebugContext.INFO_LEVEL, "Disallowed deferred barrier for %s because %s was last allocation instead of %s", node, pred, base);
                     return false;
                 }
                 pred = pred.predecessor();
             }
         }
-        node.getDebug().log(DebugContext.INFO_LEVEL, "Unable to find allocation for deferred init for %s with base %s", node, base);
+        node.getDebug().log(DebugContext.INFO_LEVEL, "Unable to find allocation for deferred barrier for %s with base %s", node, base);
         return false;
     }
 }

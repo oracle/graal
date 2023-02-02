@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.api.dsl.test.otherPackage;
 
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 
 @GenerateUncached
+@GenerateInline(false)
 public abstract class OtherPackageNode extends Node {
 
     public abstract Object execute(Object arg);
@@ -55,6 +57,7 @@ public abstract class OtherPackageNode extends Node {
     }
 
     @GenerateUncached
+    @GenerateInline(false)
     public abstract static class InnerNode extends Node {
 
         public abstract Object execute(Object arg);
@@ -74,6 +77,7 @@ public abstract class OtherPackageNode extends Node {
         public static class InnerGroup {
 
             @GenerateUncached
+            @GenerateInline(false)
             public abstract static class InnerNode extends Node {
 
                 public abstract Object execute(Object arg);
@@ -92,6 +96,7 @@ public abstract class OtherPackageNode extends Node {
         }
 
         @GenerateUncached
+        @GenerateInline(false)
         public abstract static class InnerNode extends Node {
 
             public abstract Object execute(Object arg);
@@ -102,6 +107,7 @@ public abstract class OtherPackageNode extends Node {
             }
 
             @GenerateUncached
+            @GenerateInline(false)
             public abstract static class InnerInnerNode extends Node {
 
                 public abstract Object execute(Object arg);
@@ -115,6 +121,7 @@ public abstract class OtherPackageNode extends Node {
 
             public static class InnerGroup {
                 @GenerateUncached
+                @GenerateInline(false)
                 public abstract static class InnerInnerNode extends Node {
 
                     public abstract Object execute(Object arg);

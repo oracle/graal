@@ -39,6 +39,7 @@ public abstract class RandomAccessors {
      * the SecureRandom code is only reachable and included in the image when requested by the
      * application.
      */
+    @SuppressWarnings("deprecation") // deprecated starting JDK 17 at least with ECJ
     private static final boolean SECURE_SEED = java.security.AccessController.doPrivileged(
                     new java.security.PrivilegedAction<Boolean>() {
                         @Override
@@ -57,14 +58,6 @@ public abstract class RandomAccessors {
         return result;
     }
 
-    // Checkstyle: allow synchronization
-    /**
-     * It is important that this synchronization is on an instance method and not on a static
-     * method. A static synchronized method will lock the java.lang.Class object and SVM currently
-     * uses a secondary storage map for locking on classes. Syncronizing on a class object can lead
-     * to recursive locking problems when this particular code is called from the constructor of
-     * JavaVMOperation.
-     */
     private synchronized AtomicLong initialize() {
         AtomicLong result = seeder;
         if (result != null) {
@@ -91,7 +84,6 @@ public abstract class RandomAccessors {
         return result;
 
     }
-    // Checkstyle: disallow synchronization
 
     abstract long mix64(long l);
 }

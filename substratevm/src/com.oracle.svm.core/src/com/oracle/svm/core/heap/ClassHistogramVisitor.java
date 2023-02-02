@@ -36,7 +36,7 @@ public class ClassHistogramVisitor implements ObjectVisitor {
 
     public ClassHistogramVisitor() {
         // NOTE: we cannot use a map because lookups in the visitor must be allocation-free
-        entries = Heap.getHeap().getClassList().stream().map(Class::getName).sorted()
+        entries = Heap.getHeap().getLoadedClasses().stream().map(Class::getName).sorted()
                         .map(HistogramEntry::new).toArray(HistogramEntry[]::new);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2016, Intel Corporation. All rights reserved.
  * Intel Math Library (LIBM) Source Code
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -48,7 +48,9 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
@@ -79,6 +81,13 @@ import jdk.vm.ci.amd64.AMD64;
  *  log(x) = NaN with invalid exception raised if x < -0, including -INF
  * </pre>
  */
+// @formatter:off
+@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp",
+          lineStart = 32,
+          lineEnd   = 363,
+          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
+          sha1      = "fd2dcad178f60306e830e0f7aeaeee376d47ea81")
+// @formatter:on
 public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
 
     public static final LIRInstructionClass<AMD64MathLogOp> TYPE = LIRInstructionClass.create(AMD64MathLogOp.class);
@@ -278,7 +287,7 @@ public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
         masm.subsd(xmm5, xmm2);
         masm.andl(rdx, 16711680);
         masm.shrl(rdx, 12);
-        masm.movdqu(xmm0, new AMD64Address(r11, rdx, AMD64Address.Scale.Times1));
+        masm.movdqu(xmm0, new AMD64Address(r11, rdx, Stride.S1));
         masm.movdqu(xmm4, recordExternalAddress(crb, coeff16));        // 0x3d6fb175, 0xbfc5555e,
                                                                        // 0x55555555, 0x3fd55555
         masm.addsd(xmm1, xmm5);

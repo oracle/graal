@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,12 @@ package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
@@ -58,21 +63,43 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                 return "";
             }
         };
-        final PartialEvaluator.Request request = partialEvaluator.new Request(callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
-                        new TruffleInlining(),
-                        compilationIdentifier, getSpeculationLog(), null);
-        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, request);
-        agnosticInliningPhase.apply(request.graph, getTruffleCompiler(callTarget).getPartialEvaluator().getProviders());
-        return request.graph;
+        final TruffleTierContext context = new TruffleTierContext(partialEvaluator, callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
+                        compilationIdentifier, getSpeculationLog(),
+                        new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
+                            private TruffleInliningData inlining = new TruffleInlining();
+
+                            @Override
+                            public boolean isCancelled() {
+                                return false;
+                            }
+
+                            @Override
+                            public boolean isLastTier() {
+                                return true;
+                            }
+
+                            @Override
+                            public TruffleInliningData inliningData() {
+                                return inlining;
+                            }
+
+                            @Override
+                            public boolean hasNextTier() {
+                                return false;
+                            }
+                        }), null);
+        final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, new PostPartialEvaluationSuite(false));
+        agnosticInliningPhase.apply(context.graph, context);
+        return context.graph;
     }
 
-    protected final OptimizedCallTarget createDummyNode() {
-        return (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+    protected static final OptimizedCallTarget createDummyNode() {
+        return (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return null;
             }
-        });
+        }.getCallTarget();
     }
 
     protected class CallsInnerNodeTwice extends RootNode {

@@ -5,8 +5,20 @@ Example:
 
     [
       {
+        "condition":{"typeReachable":"app.DataSerializer"},
         "name":"java.util.ArrayList"
       }
+    ]
+
+For deserializing lambda classes, the capturing class of the lambda needs to be specified in a separate section of the configuration file, for example:
+
+    [
+      "types": [
+        {"name":"java.lang.Object"}
+      ],
+      "lambdaCapturingTypes": [
+        {"name":"java.util.Comparator"}
+      ]
     ]
 
 This JSON file format is also used for the serialization deny list.
@@ -23,6 +35,7 @@ serialization-config.json:
 
     [
       {
+        "condition":{"typeReachable":"org.apache.spark.SparkContext"},
         "name":"org.apache.spark.SparkContext$$anonfun$hadoopFile$1",
         "customTargetConstructorClass":"java.lang.Object"
       }

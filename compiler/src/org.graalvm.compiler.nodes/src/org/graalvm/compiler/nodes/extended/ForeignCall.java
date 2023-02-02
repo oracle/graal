@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,7 +73,7 @@ public interface ForeignCall extends LIRLowerable, DeoptimizingNode.DeoptDuring,
                         (currentStateAfter.stackSize() > 1 && currentStateAfter.stackAt(currentStateAfter.stackSize() - 2) == this)) {
             // The result of this call is on the top of stack, so roll back to the previous bci.
             assert bci() != BytecodeFrame.UNKNOWN_BCI : this;
-            newStateDuring = currentStateAfter.duplicateModified(currentStateAfter.graph(), bci(), false, true, this.asNode().getStackKind(), null, null);
+            newStateDuring = currentStateAfter.duplicateModified(currentStateAfter.graph(), bci(), false, true, this.asNode().getStackKind(), null, null, null);
         } else {
             newStateDuring = currentStateAfter;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,10 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
@@ -44,7 +43,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * simply forwards calls to the original ResolvedJavaType. See
  * AnnotationSupport#constantAnnotationMarkerSubstitutionType for more details.
  */
-public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaType, OriginalClassProvider {
+public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
     private final ResolvedJavaType original;
     private final SubstitutionProcessor substitutionProcessor;
 
@@ -70,7 +69,7 @@ public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaTyp
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalClassProvider.getJavaClass(original);
     }
 
     @Override
@@ -123,6 +122,7 @@ public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaTyp
         return original.isLinked();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return original.getHostClass();
@@ -186,6 +186,11 @@ public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaTyp
     @Override
     public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         return original.resolveMethod(method, callerType);
+    }
+
+    @Override
+    public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+        return original.resolveConcreteMethod(method, callerType);
     }
 
     @Override
@@ -264,17 +269,7 @@ public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaTyp
     }
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return original.getAnnotation(annotationClass);
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return original.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return original.getDeclaredAnnotations();
+    public AnnotatedElement getAnnotationRoot() {
+        return original;
     }
 }

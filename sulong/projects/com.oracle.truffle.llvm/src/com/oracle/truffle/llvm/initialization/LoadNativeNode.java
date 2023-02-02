@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,8 @@
 package com.oracle.truffle.llvm.initialization;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.initialization.LoadModulesNode.LLVMLoadingPhase;
@@ -45,32 +41,35 @@ import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen;
 
+import java.util.ArrayList;
+
 public final class LoadNativeNode extends RootNode {
 
     private final String path;
-    @CompilationFinal private ContextReference<LLVMContext> ctxRef;
 
-    private LoadNativeNode(FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
-        super(language, rootFrame);
+    private LoadNativeNode(LLVMLanguage language, TruffleFile file) {
+        super(language);
         this.path = file.getPath();
     }
 
-    public static LoadNativeNode create(FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
-        return new LoadNativeNode(rootFrame, language, file);
+    public static LoadNativeNode create(LLVMLanguage language, TruffleFile file) {
+        return new LoadNativeNode(language, file);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        Object library = null;
-        if (ctxRef == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.ctxRef = lookupContextReference(LLVMLanguage.class);
-        }
+    public String getName() {
+        return String.format("<%s/%s>", getClass().getSimpleName(), path);
+    }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public Object execute(VirtualFrame frame) {
+        Object[] arguments = frame.getArguments();
+        Object library = null;
         LLVMLoadingPhase phase;
-        if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
-            phase = (LLVMLoadingPhase) frame.getArguments()[0];
-        } else if (frame.getArguments().length == 0 || (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMDLOpen.RTLDFlags))) {
+        if (arguments.length > 0 && (arguments[0] instanceof LLVMLoadingPhase)) {
+            phase = (LLVMLoadingPhase) arguments[0];
+        } else if (arguments.length == 0 || (arguments.length > 0 && (arguments[0] instanceof LLVMDLOpen.RTLDFlags))) {
             if (path == null) {
                 throw new LLVMParserException(this, "Toplevel executable %s does not contain bitcode", path);
             }
@@ -80,9 +79,15 @@ public final class LoadNativeNode extends RootNode {
         }
 
         if (LLVMLoadingPhase.INIT_SYMBOLS.isActive(phase)) {
-            LLVMContext context = ctxRef.get();
+            LLVMContext context = LLVMContext.get(this);
             library = parseAndInitialiseNativeLib(context);
         }
+
+        if (LLVMLoadingPhase.BUILD_DEPENDENCY.isActive(phase)) {
+            ArrayList<CallTarget> dependencies = (ArrayList<CallTarget>) frame.getArguments()[2];
+            dependencies.add(this.getCallTarget());
+        }
+
         return library;
     }
 

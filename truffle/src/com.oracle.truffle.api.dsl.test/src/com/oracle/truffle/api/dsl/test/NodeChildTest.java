@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,12 +91,11 @@ public class NodeChildTest {
 
     }
 
-    @ExpectError("Not enough child node declarations found. Please annotate the node class with addtional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. " +
+    @ExpectError("Not enough child node declarations found. Please annotate the node class with additional @NodeChild annotations or remove all execute methods that do not provide all evaluated values. " +
                     "The following execute methods do not provide all evaluated values for the expected signature size 3:%")
     @NodeChildren({@NodeChild(value = "child2", type = ValueNode.class)})
     abstract static class Child2Node extends Base1Node {
 
-        @ExpectError("Method signature (int, int, int) does not match to the expected signature:%")
         @Specialization
         int intField(int child0, int child1, int child2) {
             return child0 + child1 + child2;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,68 +26,67 @@ package com.oracle.svm.core.jdk;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.List;
+import java.util.Arrays;
+import java.util.Objects;
 
-import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
-@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
-public final class Target_java_lang_Module {
+@SuppressWarnings("unused")
+@TargetClass(value = java.lang.Module.class)
+final class Target_java_lang_Module {
+
+    @Alias //
+    private String name;
+
     @SuppressWarnings("static-method")
     @Substitute
-    @TargetElement(name = "getResourceAsStream")
-    public InputStream getResourceAsStream(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
+    private InputStream getResourceAsStream(String resourceName) {
+        String resName = resourceName;
+        if (resName.startsWith("/")) {
+            resName = resName.substring(1);
+        }
+        ResourceStorageEntry res = Resources.get(name, resName);
+        return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
     }
 
-    /*
-     * All implementations of these stubs are completely empty no-op. This seems appropriate as
-     * DynamicHub only references a singleton Module implementation anyhow, effectively neutering
-     * the module system within JDK11.
-     */
+    @Substitute //
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    private static void defineModule0(Module module, boolean isOpen, String version, String location, String[] pns) {
+        ModuleUtil.defineModule(module, isOpen, Arrays.asList(pns));
+    }
 
-    @SuppressWarnings({"unused", "static-method"})
     @Substitute
-    public boolean isReflectivelyExportedOrOpen(String pn, Target_java_lang_Module other, boolean open) {
-        return true;
+    private static void addReads0(Module from, Module to) {
+        if (Objects.isNull(from)) {
+            throw new NullPointerException("from_module is null");
+        }
     }
 
-    @SuppressWarnings({"unused", "static-method"})
     @Substitute
-    private void implAddReads(Target_java_lang_Module other, boolean syncVM) {
+    private static void addExports0(Module from, String pn, Module to) {
+        if (Objects.isNull(to)) {
+            throw new NullPointerException("to_module is null");
+        }
+
+        ModuleUtil.checkFromModuleAndPackageNullability(from, pn);
+        ModuleUtil.checkIsPackageContainedInModule(pn, from);
     }
 
-    @SuppressWarnings({"unused", "static-method"})
     @Substitute
-    private void implAddExportsOrOpens(String pn,
-                    Target_java_lang_Module other,
-                    boolean open,
-                    boolean syncVM) {
+    private static void addExportsToAll0(Module from, String pn) {
+        ModuleUtil.checkFromModuleAndPackageNullability(from, pn);
+        ModuleUtil.checkIsPackageContainedInModule(pn, from);
     }
 
-    @SuppressWarnings({"unused", "static-method"})
     @Substitute
-    void implAddUses(Class<?> service) {
+    private static void addExportsToAllUnnamed0(Module from, String pn) {
+        ModuleUtil.checkFromModuleAndPackageNullability(from, pn);
+        if (from.isNamed()) {
+            ModuleUtil.checkIsPackageContainedInModule(pn, from);
+        }
     }
-
-    @SuppressWarnings({"unused", "static-method"})
-    @Substitute
-    public boolean canUse(Class<?> service) {
-        return true;
-    }
-
-    @SuppressWarnings({"unused", "static-method"})
-    @Substitute
-    public boolean canRead(Target_java_lang_Module other) {
-        return true;
-    }
-
-    @Delete
-    @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
-    public static final class ReflectionData {
-    }
-
 }

@@ -38,7 +38,7 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.calc.NegateNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -72,13 +72,13 @@ public class UnschedulableGraphTest extends GraalCompilerTest {
         super.checkLowTierGraph(graph);
         ScheduleResult res = graph.getLastSchedule();
         BlockMap<List<Node>> blockToNode = res.getBlockToNodesMap();
-        NodeMap<Block> nodeToBlock = res.getNodeToBlockMap();
+        NodeMap<HIRBlock> nodeToBlock = res.getNodeToBlockMap();
         Assert.assertEquals(4, res.getCFG().getBlocks().length);
-        Block split = res.getCFG().getStartBlock();
+        HIRBlock split = res.getCFG().getStartBlock();
         Assert.assertEquals(2, split.getSuccessorCount());
-        Block trueSucc = split.getSuccessors()[0];
-        Block falseSucc = split.getSuccessors()[1];
-        Block merge = trueSucc.getFirstSuccessor();
+        HIRBlock trueSucc = split.getSuccessorAt(0);
+        HIRBlock falseSucc = split.getSuccessorAt(1);
+        HIRBlock merge = trueSucc.getFirstSuccessor();
         Assert.assertEquals(merge, falseSucc.getFirstSuccessor());
         for (OpaqueNode op : graph.getNodes().filter(OpaqueNode.class)) {
             Assert.assertEquals(merge, res.getNodeToBlockMap().get(op));
@@ -86,7 +86,7 @@ public class UnschedulableGraphTest extends GraalCompilerTest {
         int k = 0;
         // destroy dominance relation for NegateNode nodes, they no longer dominate the addition
         for (NegateNode op : graph.getNodes().filter(NegateNode.class)) {
-            final Block nonDominatingBlock = k++ % 2 == 0 ? trueSucc : falseSucc;
+            final HIRBlock nonDominatingBlock = k++ % 2 == 0 ? trueSucc : falseSucc;
             blockToNode.get(merge).remove(op);
             blockToNode.get(nonDominatingBlock).add(0, op);
             nodeToBlock.set(op, nonDominatingBlock);

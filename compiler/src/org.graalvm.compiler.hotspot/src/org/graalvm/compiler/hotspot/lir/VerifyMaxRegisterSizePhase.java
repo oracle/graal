@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,11 @@ package org.graalvm.compiler.hotspot.lir;
 
 import java.util.EnumSet;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase;
+import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase;
 
 import jdk.vm.ci.code.TargetDescription;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
@@ -41,7 +41,7 @@ import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 /**
  * Checks that no registers exceed the MaxVectorSize flag from the VM config.
  */
-public final class VerifyMaxRegisterSizePhase extends PostAllocationOptimizationPhase {
+public final class VerifyMaxRegisterSizePhase extends FinalCodeAnalysisPhase {
 
     private final int maxVectorSize;
 
@@ -50,14 +50,14 @@ public final class VerifyMaxRegisterSizePhase extends PostAllocationOptimization
     }
 
     @Override
-    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
+    protected void run(TargetDescription target, LIRGenerationResult lirGenRes, FinalCodeAnalysisContext context) {
         LIR lir = lirGenRes.getLIR();
-        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+        for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
             verifyBlock(lir, block);
         }
     }
 
-    protected void verifyBlock(LIR lir, AbstractBlockBase<?> block) {
+    protected void verifyBlock(LIR lir, BasicBlock<?> block) {
         for (LIRInstruction inst : lir.getLIRforBlock(block)) {
             verifyInstruction(inst);
         }
@@ -73,7 +73,7 @@ public final class VerifyMaxRegisterSizePhase extends PostAllocationOptimization
     @SuppressWarnings("unused")
     protected void verifyOperands(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
         if (isRegister(value)) {
-            assert value.getPlatformKind().getSizeInBytes() <= maxVectorSize : "value " + value + " exceeds MaxVectorSize " + maxVectorSize;
+            assert value.getPlatformKind().getSizeInBytes() <= maxVectorSize : "value " + value + " exceeds MaxVectorSize " + maxVectorSize + " at " + instruction;
         }
     }
 }

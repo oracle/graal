@@ -40,12 +40,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -67,21 +69,17 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.NativeMethodNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
+import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
-import com.oracle.truffle.espresso.substitutions.GuestCall;
-import com.oracle.truffle.espresso.substitutions.Host;
-import com.oracle.truffle.espresso.substitutions.InjectMeta;
-import com.oracle.truffle.espresso.substitutions.InjectProfile;
-import com.oracle.truffle.espresso.substitutions.IntrinsicSubstitutor;
-import com.oracle.truffle.espresso.substitutions.JniEnvCollector;
+import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @GenerateNativeEnv(target = JniImpl.class)
@@ -108,9 +106,8 @@ public final class JniEnv extends NativeEnv {
     // TODO(peterssen): Add user-configurable option.
     private static final int MAX_JNI_LOCAL_CAPACITY = 1 << 16;
 
-    private final EspressoContext context;
-
     private final JNIHandles handles;
+    @CompilationFinal private JniVersion jniVersion;
 
     private @Pointer TruffleObject jniEnvPtr;
 
@@ -132,9 +129,11 @@ public final class JniEnv extends NativeEnv {
 
     private final @Pointer TruffleObject getSizeMax;
 
+    private static final List<CallableFromNative.Factory> JNI_IMPL_FACTORIES = JniImplCollector.getInstances(CallableFromNative.Factory.class);
+
     @Override
-    protected List<IntrinsicSubstitutor.Factory> getCollector() {
-        return JniEnvCollector.getCollector();
+    protected List<CallableFromNative.Factory> getCollector() {
+        return JNI_IMPL_FACTORIES;
     }
 
     @Override
@@ -148,44 +147,29 @@ public final class JniEnv extends NativeEnv {
     // The maximum value supported by the native size_t e.g. SIZE_MAX.
     private long cachedSizeMax = 0;
 
-    Method getMethod(long handle) {
-        return methodIds.getObject(handle);
-    }
-
     // Prevent cleaner threads from collecting in-use native buffers.
     private final Map<Long, ByteBuffer> nativeBuffers = new ConcurrentHashMap<>();
 
-    private final JniThreadLocalPendingException threadLocalPendingException = new JniThreadLocalPendingException();
-
-    public JniThreadLocalPendingException getThreadLocalPendingException() {
-        return threadLocalPendingException;
-    }
-
-    @TruffleBoundary
     public StaticObject getPendingException() {
-        return threadLocalPendingException.get();
+        return getContext().getLanguage().getThreadLocalState().getPendingExceptionObject();
     }
 
-    @TruffleBoundary
     public EspressoException getPendingEspressoException() {
-        return threadLocalPendingException.getEspressoException();
+        return getContext().getLanguage().getThreadLocalState().getPendingException();
     }
 
-    @TruffleBoundary
     public void clearPendingException() {
-        threadLocalPendingException.clear();
+        getContext().getLanguage().getThreadLocalState().clearPendingException();
     }
 
-    @TruffleBoundary
     public void setPendingException(StaticObject ex) {
         Meta meta = getMeta();
         assert StaticObject.notNull(ex) && meta.java_lang_Throwable.isAssignableFrom(ex.getKlass());
         setPendingException(EspressoException.wrap(ex, meta));
     }
 
-    @TruffleBoundary
     public void setPendingException(EspressoException ex) {
-        threadLocalPendingException.set(ex);
+        getContext().getLanguage().getThreadLocalState().setPendingException(ex);
     }
 
     private class VarArgsImpl implements VarArgs {
@@ -201,6 +185,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (boolean) getUncached().execute(popBoolean, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -210,6 +195,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (byte) getUncached().execute(popByte, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -219,6 +205,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (char) getUncached().execute(popChar, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -228,6 +215,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (short) getUncached().execute(popShort, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -237,6 +225,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (int) getUncached().execute(popInt, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -246,6 +235,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (float) getUncached().execute(popFloat, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -255,6 +245,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (double) getUncached().execute(popDouble, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -264,6 +255,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (long) getUncached().execute(popLong, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -271,8 +263,15 @@ public final class JniEnv extends NativeEnv {
         @Override
         public Object popObject() {
             try {
+                Object ret = getUncached().execute(popObject, nativePointer);
                 @Handle(StaticObject.class)
-                long handle = (long) getUncached().execute(popObject, nativePointer);
+                long handle = 0;
+                if (getUncached().isPointer(ret)) {
+                    /* due to GR-37169 it can be any pointer type, not just a long in nfi-llvm */
+                    handle = getUncached().asPointer(ret);
+                } else {
+                    handle = (long) ret;
+                }
                 TruffleObject result = getHandles().get(Math.toIntExact(handle));
                 if (result instanceof StaticObject) {
                     return result;
@@ -284,10 +283,12 @@ public final class JniEnv extends NativeEnv {
                         // figure out just what is happening here.
                         return StaticObject.NULL;
                     } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.unimplemented("non null native pointer in JniEnv");
                     }
                 }
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | ClassCastException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -295,7 +296,7 @@ public final class JniEnv extends NativeEnv {
 
     public Object[] popVarArgs(@Pointer TruffleObject varargsPtr, final Symbol<Type>[] signature) {
         VarArgs varargs = new VarArgsImpl(varargsPtr);
-        int paramCount = Signatures.parameterCount(signature, false);
+        int paramCount = Signatures.parameterCount(signature);
         Object[] args = new Object[paramCount];
         for (int i = 0; i < paramCount; ++i) {
             JavaKind kind = Signatures.parameterKind(signature, i);
@@ -311,7 +312,7 @@ public final class JniEnv extends NativeEnv {
                 case Double  : args[i] = varargs.popDouble();  break;
                 case Object  : args[i] = varargs.popObject();  break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere("invalid parameter kind: " + kind);
             }
             // @formatter:on
@@ -320,8 +321,8 @@ public final class JniEnv extends NativeEnv {
     }
 
     private JniEnv(EspressoContext context) {
+        super(context);
         EspressoProperties props = context.getVmProperties();
-        this.context = context;
         Path espressoLibraryPath = props.espressoHome().resolve("lib");
         nespressoLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "nespresso", true);
         initializeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "initializeNativeContext",
@@ -353,6 +354,11 @@ public final class JniEnv extends NativeEnv {
     }
 
     @Override
+    protected String getName() {
+        return "JniEnv";
+    }
+
+    @Override
     public JNIHandles getHandles() {
         return handles;
     }
@@ -374,25 +380,22 @@ public final class JniEnv extends NativeEnv {
         return new JniEnv(context);
     }
 
-    @Override
-    public EspressoContext getContext() {
-        return context;
-    }
-
     public @Pointer TruffleObject getNativePointer() {
         return jniEnvPtr;
     }
 
     public void dispose() {
-        assert jniEnvPtr != null : "JNIEnv already disposed";
+        if (jniEnvPtr == null || getUncached().isNull(jniEnvPtr)) {
+            return; // JniEnv disposed or uninitialized.
+        }
         try {
             getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
-            threadLocalPendingException.dispose();
             this.jniEnvPtr = null;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Cannot dispose Espresso native interface");
         }
-        assert jniEnvPtr == null;
+        assert jniEnvPtr == null || getUncached().isNull(jniEnvPtr);
     }
 
     public long sizeMax() {
@@ -405,7 +408,7 @@ public final class JniEnv extends NativeEnv {
                 }
                 cachedSizeMax = result;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -434,11 +437,11 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError: if the system runs out of memory.
      */
     @JniImpl
-    public @Handle(Field.class) long GetFieldID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
+    public @Handle(Field.class) long GetFieldID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String type = NativeUtils.interopPointerToString(typePtr);
         assert name != null && type != null;
-        Klass klass = clazz.getMirrorKlass();
+        Klass klass = clazz.getMirrorKlass(getMeta());
 
         Field field = null;
         Symbol<Name> fieldName = getNames().lookup(name);
@@ -478,7 +481,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
-    public @Handle(Field.class) long GetStaticFieldID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
+    public @Handle(Field.class) long GetStaticFieldID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject typePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String type = NativeUtils.interopPointerToString(typePtr);
         assert name != null && type != null;
@@ -487,10 +490,10 @@ public final class JniEnv extends NativeEnv {
         if (fieldName != null) {
             Symbol<Type> fieldType = getTypes().lookup(type);
             if (fieldType != null) {
-                Klass klass = clazz.getMirrorKlass();
+                Klass klass = clazz.getMirrorKlass(getMeta());
                 klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
-                field = klass.lookupField(fieldName, fieldType, true);
+                field = klass.lookupField(fieldName, fieldType, Klass.LookupMode.STATIC_ONLY);
                 assert field == null || field.getType().equals(fieldType);
             }
         }
@@ -522,7 +525,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
-    public @Handle(Method.class) long GetMethodID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
+    public @Handle(Method.class) long GetMethodID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String signature = NativeUtils.interopPointerToString(signaturePtr);
         assert name != null && signature != null;
@@ -531,10 +534,10 @@ public final class JniEnv extends NativeEnv {
         if (methodName != null) {
             Symbol<Signature> methodSignature = getSignatures().lookupValidSignature(signature);
             if (methodSignature != null) {
-                Klass klass = clazz.getMirrorKlass();
+                Klass klass = clazz.getMirrorKlass(getMeta());
                 klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
-                method = klass.lookupMethod(methodName, methodSignature, klass);
+                method = klass.lookupMethod(methodName, methodSignature);
             }
         }
         if (method == null || method.isStatic()) {
@@ -562,7 +565,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
-    public @Handle(Method.class) long GetStaticMethodID(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
+    public @Handle(Method.class) long GetStaticMethodID(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject namePtr, @Pointer TruffleObject signaturePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         String signature = NativeUtils.interopPointerToString(signaturePtr);
         assert name != null && signature != null;
@@ -573,7 +576,7 @@ public final class JniEnv extends NativeEnv {
             if (methodSignature != null) {
                 // Throw a NoSuchMethodError exception if we have an instance of a
                 // primitive java.lang.Class
-                Klass klass = clazz.getMirrorKlass();
+                Klass klass = clazz.getMirrorKlass(getMeta());
                 if (klass.isPrimitive()) {
                     Meta meta = getMeta();
                     throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, name);
@@ -601,63 +604,63 @@ public final class JniEnv extends NativeEnv {
     // region GetStatic*Field
 
     @JniImpl
-    public @Host(Object.class) StaticObject GetStaticObjectField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
+    public @JavaType(Object.class) StaticObject GetStaticObjectField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         return field.getAsObject(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     @JniImpl
-    public boolean GetStaticBooleanField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
+    public boolean GetStaticBooleanField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         return field.getAsBoolean(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
-    public byte GetStaticByteField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
+    public byte GetStaticByteField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         return field.getAsByte(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
-    public char GetStaticCharField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
+    public char GetStaticCharField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         return field.getAsChar(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
-    public short GetStaticShortField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
+    public short GetStaticShortField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         return field.getAsShort(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
-    public int GetStaticIntField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
+    public int GetStaticIntField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         return field.getAsInt(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
-    public long GetStaticLongField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
+    public long GetStaticLongField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         return field.getAsLong(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
-    public float GetStaticFloatField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
+    public float GetStaticFloatField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         return field.getAsFloat(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
     }
 
     @JniImpl
-    public double GetStaticDoubleField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
+    public double GetStaticDoubleField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         return field.getAsDouble(getMeta(), field.getDeclaringKlass().tryInitializeAndGetStatics(), false);
@@ -668,55 +671,55 @@ public final class JniEnv extends NativeEnv {
     // region Get*Field
 
     @JniImpl
-    public @Host(Object.class) StaticObject GetObjectField(StaticObject object, @Handle(Field.class) long fieldId) {
+    public @JavaType(Object.class) StaticObject GetObjectField(@JavaType(Object.class) StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         return field.getAsObject(getMeta(), object);
     }
 
     @JniImpl
-    public boolean GetBooleanField(StaticObject object, @Handle(Field.class) long fieldId) {
+    public boolean GetBooleanField(@JavaType(Object.class) StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         return field.getAsBoolean(getMeta(), object, false);
     }
 
     @JniImpl
-    public byte GetByteField(StaticObject object, @Handle(Field.class) long fieldId) {
+    public byte GetByteField(@JavaType(Object.class) StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         return field.getAsByte(getMeta(), object, false);
     }
 
     @JniImpl
-    public char GetCharField(StaticObject object, @Handle(Field.class) long fieldId) {
+    public char GetCharField(@JavaType(Object.class) StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         return field.getAsChar(getMeta(), object, false);
     }
 
     @JniImpl
-    public short GetShortField(StaticObject object, @Handle(Field.class) long fieldId) {
+    public short GetShortField(@JavaType(Object.class) StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         return field.getAsShort(getMeta(), object, false);
     }
 
     @JniImpl
-    public int GetIntField(StaticObject object, @Handle(Field.class) long fieldId) {
+    public int GetIntField(@JavaType(Object.class) StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         return field.getAsInt(getMeta(), object, false);
     }
 
     @JniImpl
-    public long GetLongField(StaticObject object, @Handle(Field.class) long fieldId) {
+    public long GetLongField(@JavaType(Object.class) StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         return field.getAsLong(getMeta(), object, false);
     }
 
     @JniImpl
-    public float GetFloatField(StaticObject object, @Handle(Field.class) long fieldId) {
+    public float GetFloatField(@JavaType(Object.class) StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         return field.getAsFloat(getMeta(), object, false);
     }
 
     @JniImpl
-    public double GetDoubleField(StaticObject object, @Handle(Field.class) long fieldId) {
+    public double GetDoubleField(@JavaType(Object.class) StaticObject object, @Handle(Field.class) long fieldId) {
         Field field = fieldIds.getObject(fieldId);
         return field.getAsDouble(getMeta(), object, false);
     }
@@ -726,63 +729,63 @@ public final class JniEnv extends NativeEnv {
     // region SetStatic*Field
 
     @JniImpl
-    public void SetStaticObjectField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, @Host(Object.class) StaticObject val) {
+    public void SetStaticObjectField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, @JavaType(Object.class) StaticObject val) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticBooleanField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, boolean val) {
+    public void SetStaticBooleanField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, boolean val) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticByteField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, byte val) {
+    public void SetStaticByteField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, byte val) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticCharField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, char val) {
+    public void SetStaticCharField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, char val) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticShortField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, short val) {
+    public void SetStaticShortField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, short val) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticIntField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, int val) {
+    public void SetStaticIntField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, int val) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticLongField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, long val) {
+    public void SetStaticLongField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, long val) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticFloatField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, float val) {
+    public void SetStaticFloatField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, float val) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticDoubleField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, double val) {
+    public void SetStaticDoubleField(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, double val) {
         Field field = fieldIds.getObject(fieldId);
         assert field.isStatic();
         field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
@@ -793,55 +796,55 @@ public final class JniEnv extends NativeEnv {
     // region Set*Field
 
     @JniImpl
-    public void SetObjectField(StaticObject obj, @Handle(Field.class) long fieldId, @Host(Object.class) StaticObject val) {
+    public void SetObjectField(@JavaType(Object.class) StaticObject obj, @Handle(Field.class) long fieldId, @JavaType(Object.class) StaticObject val) {
         Field field = fieldIds.getObject(fieldId);
         field.set(obj, val);
     }
 
     @JniImpl
-    public void SetBooleanField(StaticObject obj, @Handle(Field.class) long fieldId, boolean val) {
+    public void SetBooleanField(@JavaType(Object.class) StaticObject obj, @Handle(Field.class) long fieldId, boolean val) {
         Field field = fieldIds.getObject(fieldId);
         field.set(obj, val);
     }
 
     @JniImpl
-    public void SetByteField(StaticObject obj, @Handle(Field.class) long fieldId, byte val) {
+    public void SetByteField(@JavaType(Object.class) StaticObject obj, @Handle(Field.class) long fieldId, byte val) {
         Field field = fieldIds.getObject(fieldId);
         field.set(obj, val);
     }
 
     @JniImpl
-    public void SetCharField(StaticObject obj, @Handle(Field.class) long fieldId, char val) {
+    public void SetCharField(@JavaType(Object.class) StaticObject obj, @Handle(Field.class) long fieldId, char val) {
         Field field = fieldIds.getObject(fieldId);
         field.set(obj, val);
     }
 
     @JniImpl
-    public void SetShortField(StaticObject obj, @Handle(Field.class) long fieldId, short val) {
+    public void SetShortField(@JavaType(Object.class) StaticObject obj, @Handle(Field.class) long fieldId, short val) {
         Field field = fieldIds.getObject(fieldId);
         field.set(obj, val);
     }
 
     @JniImpl
-    public void SetIntField(StaticObject obj, @Handle(Field.class) long fieldId, int val) {
+    public void SetIntField(@JavaType(Object.class) StaticObject obj, @Handle(Field.class) long fieldId, int val) {
         Field field = fieldIds.getObject(fieldId);
         field.set(obj, val);
     }
 
     @JniImpl
-    public void SetLongField(StaticObject obj, @Handle(Field.class) long fieldId, long val) {
+    public void SetLongField(@JavaType(Object.class) StaticObject obj, @Handle(Field.class) long fieldId, long val) {
         Field field = fieldIds.getObject(fieldId);
         field.set(obj, val);
     }
 
     @JniImpl
-    public void SetFloatField(StaticObject obj, @Handle(Field.class) long fieldId, float val) {
+    public void SetFloatField(@JavaType(Object.class) StaticObject obj, @Handle(Field.class) long fieldId, float val) {
         Field field = fieldIds.getObject(fieldId);
         field.set(obj, val);
     }
 
     @JniImpl
-    public void SetDoubleField(StaticObject obj, @Handle(Field.class) long fieldId, double val) {
+    public void SetDoubleField(@JavaType(Object.class) StaticObject obj, @Handle(Field.class) long fieldId, double val) {
         Field field = fieldIds.getObject(fieldId);
         field.set(obj, val);
     }
@@ -880,70 +883,70 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public @Host(Object.class) StaticObject CallObjectMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public @JavaType(Object.class) StaticObject CallObjectMethodVarargs(@JavaType(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
         return getMeta().asObject(result);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
-    public boolean CallBooleanMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public boolean CallBooleanMethodVarargs(@JavaType(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
         return getMeta().asBoolean(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
-    public char CallCharMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public char CallCharMethodVarargs(@JavaType(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
         return getMeta().asChar(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
-    public byte CallByteMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public byte CallByteMethodVarargs(@JavaType(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
         return getMeta().asByte(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
-    public short CallShortMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public short CallShortMethodVarargs(@JavaType(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
         return getMeta().asShort(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
-    public int CallIntMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public int CallIntMethodVarargs(@JavaType(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
         return getMeta().asInt(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
-    public float CallFloatMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public float CallFloatMethodVarargs(@JavaType(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
         return getMeta().asFloat(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
-    public double CallDoubleMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public double CallDoubleMethodVarargs(@JavaType(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
         return getMeta().asDouble(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
-    public long CallLongMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public long CallLongMethodVarargs(@JavaType(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
         return getMeta().asLong(result, true);
     }
 
     @SuppressWarnings("unused")
     @JniImpl
-    public void CallVoidMethodVarargs(@Host(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public void CallVoidMethodVarargs(@JavaType(Object.class) StaticObject receiver, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Object result = callVirtualMethodGeneric(receiver, methodId, varargsPtr);
         assert result instanceof StaticObject && StaticObject.isNull((StaticObject) result) : "void methods must return StaticObject.NULL";
     }
@@ -953,101 +956,102 @@ public final class JniEnv extends NativeEnv {
     // region CallNonvirtual*Method
 
     @JniImpl
-    public @Host(Object.class) StaticObject CallNonvirtualObjectMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
+    public @JavaType(Object.class) StaticObject CallNonvirtualObjectMethodVarargs(@JavaType(Object.class) StaticObject receiver, @JavaType(Class.class) StaticObject clazz,
+                    @Handle(Method.class) long methodId,
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asObject(result);
     }
 
     @JniImpl
-    public boolean CallNonvirtualBooleanMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
+    public boolean CallNonvirtualBooleanMethodVarargs(@JavaType(Object.class) StaticObject receiver, @JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asBoolean(result, true);
     }
 
     @JniImpl
-    public char CallNonvirtualCharMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
+    public char CallNonvirtualCharMethodVarargs(@JavaType(Object.class) StaticObject receiver, @JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asChar(result, true);
     }
 
     @JniImpl
-    public byte CallNonvirtualByteMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
+    public byte CallNonvirtualByteMethodVarargs(@JavaType(Object.class) StaticObject receiver, @JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asByte(result, true);
     }
 
     @JniImpl
-    public short CallNonvirtualShortMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
+    public short CallNonvirtualShortMethodVarargs(@JavaType(Object.class) StaticObject receiver, @JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asShort(result, true);
     }
 
     @JniImpl
-    public int CallNonvirtualIntMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
+    public int CallNonvirtualIntMethodVarargs(@JavaType(Object.class) StaticObject receiver, @JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asInt(result, true);
     }
 
     @JniImpl
-    public float CallNonvirtualFloatMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
+    public float CallNonvirtualFloatMethodVarargs(@JavaType(Object.class) StaticObject receiver, @JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asFloat(result, true);
     }
 
     @JniImpl
-    public double CallNonvirtualDoubleMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
+    public double CallNonvirtualDoubleMethodVarargs(@JavaType(Object.class) StaticObject receiver, @JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asDouble(result, true);
     }
 
     @JniImpl
-    public long CallNonvirtualLongMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
+    public long CallNonvirtualLongMethodVarargs(@JavaType(Object.class) StaticObject receiver, @JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asLong(result, true);
     }
 
     @JniImpl
-    public void CallNonvirtualVoidMethodVarargs(@Host(Object.class) StaticObject receiver, @Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
+    public void CallNonvirtualVoidMethodVarargs(@JavaType(Object.class) StaticObject receiver, @JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId,
                     @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
         assert result instanceof StaticObject && StaticObject.isNull((StaticObject) result) : "void methods must return StaticObject.NULL";
     }
@@ -1057,91 +1061,91 @@ public final class JniEnv extends NativeEnv {
     // region CallStatic*Method
 
     @JniImpl
-    public @Host(Object.class) StaticObject CallStaticObjectMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public @JavaType(Object.class) StaticObject CallStaticObjectMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asObject(result);
     }
 
     @JniImpl
-    public boolean CallStaticBooleanMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public boolean CallStaticBooleanMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asBoolean(result, true);
     }
 
     @JniImpl
-    public char CallStaticCharMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public char CallStaticCharMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asChar(result, true);
     }
 
     @JniImpl
-    public byte CallStaticByteMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public byte CallStaticByteMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asByte(result, true);
     }
 
     @JniImpl
-    public short CallStaticShortMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public short CallStaticShortMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asShort(result, true);
     }
 
     @JniImpl
-    public int CallStaticIntMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public int CallStaticIntMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asInt(result, true);
     }
 
     @JniImpl
-    public float CallStaticFloatMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public float CallStaticFloatMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asFloat(result, true);
     }
 
     @JniImpl
-    public double CallStaticDoubleMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public double CallStaticDoubleMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asDouble(result, true);
     }
 
     @JniImpl
-    public long CallStaticLongMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public long CallStaticLongMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asLong(result, true);
     }
 
     @JniImpl
-    public void CallStaticVoidMethodVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public void CallStaticVoidMethodVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
-        assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
+        assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
         Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
         assert result instanceof StaticObject && StaticObject.isNull((StaticObject) result) : "void methods must return StaticObject.NULL";
     }
@@ -1151,53 +1155,54 @@ public final class JniEnv extends NativeEnv {
     // region New*Array
 
     @JniImpl
-    public @Host(boolean[].class) StaticObject NewBooleanArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Boolean.getBasicType(), len, getMeta());
+    public @JavaType(boolean[].class) StaticObject NewBooleanArray(int len) {
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Boolean.getBasicType(), len);
     }
 
     @JniImpl
-    public @Host(byte[].class) StaticObject NewByteArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Byte.getBasicType(), len, getMeta());
+    public @JavaType(byte[].class) StaticObject NewByteArray(int len) {
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Byte.getBasicType(), len);
     }
 
     @JniImpl
-    public @Host(char[].class) StaticObject NewCharArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Char.getBasicType(), len, getMeta());
+    public @JavaType(char[].class) StaticObject NewCharArray(int len) {
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Char.getBasicType(), len);
     }
 
     @JniImpl
-    public @Host(short[].class) StaticObject NewShortArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Short.getBasicType(), len, getMeta());
+    public @JavaType(short[].class) StaticObject NewShortArray(int len) {
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Short.getBasicType(), len);
     }
 
     @JniImpl
-    public @Host(int[].class) StaticObject NewIntArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Int.getBasicType(), len, getMeta());
+    public @JavaType(int[].class) StaticObject NewIntArray(int len) {
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Int.getBasicType(), len);
     }
 
     @JniImpl
-    public @Host(long[].class) StaticObject NewLongArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), len, getMeta());
+    public @JavaType(long[].class) StaticObject NewLongArray(int len) {
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Long.getBasicType(), len);
     }
 
     @JniImpl
-    public @Host(float[].class) StaticObject NewFloatArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Float.getBasicType(), len, getMeta());
+    public @JavaType(float[].class) StaticObject NewFloatArray(int len) {
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Float.getBasicType(), len);
     }
 
     @JniImpl
-    public @Host(double[].class) StaticObject NewDoubleArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Double.getBasicType(), len, getMeta());
+    public @JavaType(double[].class) StaticObject NewDoubleArray(int len) {
+        return getAllocator().createNewPrimitiveArray(getMeta(), (byte) JavaKind.Double.getBasicType(), len);
     }
 
     @JniImpl
-    public @Host(Object[].class) StaticObject NewObjectArray(int length, @Host(Class.class) StaticObject elementClass, @Host(Object.class) StaticObject initialElement) {
-        assert !elementClass.getMirrorKlass().isPrimitive();
-        StaticObject arr = elementClass.getMirrorKlass().allocateReferenceArray(length);
+    public @JavaType(Object[].class) StaticObject NewObjectArray(int length, @JavaType(Class.class) StaticObject elementClass, @JavaType(Object.class) StaticObject initialElement,
+                    @Inject EspressoLanguage language) {
+        assert !elementClass.getMirrorKlass(getMeta()).isPrimitive();
+        StaticObject arr = elementClass.getMirrorKlass(getMeta()).allocateReferenceArray(length);
         if (length > 0) {
             // Single store check
-            getInterpreterToVM().setArrayObject(initialElement, 0, arr);
-            Arrays.fill(arr.unwrap(), initialElement);
+            getInterpreterToVM().setArrayObject(language, initialElement, 0, arr);
+            Arrays.fill(arr.unwrap(language), initialElement);
         }
         return arr;
     }
@@ -1208,8 +1213,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void GetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        byte[] contents = array.unwrap();
+    public void GetBooleanArrayRegion(@JavaType(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        byte[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         buf.put(contents, start, len);
@@ -1225,8 +1230,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void GetCharArrayRegion(@Host(char[].class /* or byte[].class */) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        char[] contents = array.unwrap();
+    public void GetCharArrayRegion(@JavaType(char[].class /* or byte[].class */) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        char[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         CharBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.put(contents, start, len);
@@ -1234,8 +1239,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void GetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        byte[] contents = array.unwrap();
+    public void GetByteArrayRegion(@JavaType(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        byte[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         buf.put(contents, start, len);
@@ -1243,8 +1248,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void GetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        short[] contents = array.unwrap();
+    public void GetShortArrayRegion(@JavaType(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        short[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         ShortBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
         buf.put(contents, start, len);
@@ -1252,8 +1257,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void GetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        int[] contents = array.unwrap();
+    public void GetIntArrayRegion(@JavaType(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        int[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         IntBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
         buf.put(contents, start, len);
@@ -1261,8 +1266,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void GetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        float[] contents = array.unwrap();
+    public void GetFloatArrayRegion(@JavaType(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        float[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         FloatBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
         buf.put(contents, start, len);
@@ -1270,8 +1275,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void GetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        double[] contents = array.unwrap();
+    public void GetDoubleArrayRegion(@JavaType(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        double[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         DoubleBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
         buf.put(contents, start, len);
@@ -1279,8 +1284,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void GetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        long[] contents = array.unwrap();
+    public void GetLongArrayRegion(@JavaType(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        long[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         LongBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
         buf.put(contents, start, len);
@@ -1292,8 +1297,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void SetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        byte[] contents = array.unwrap();
+    public void SetBooleanArrayRegion(@JavaType(boolean[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        byte[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         buf.get(contents, start, len);
@@ -1301,8 +1306,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void SetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        char[] contents = array.unwrap();
+    public void SetCharArrayRegion(@JavaType(char[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        char[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         CharBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.get(contents, start, len);
@@ -1310,8 +1315,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void SetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        byte[] contents = array.unwrap();
+    public void SetByteArrayRegion(@JavaType(byte[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        byte[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         buf.get(contents, start, len);
@@ -1319,8 +1324,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void SetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        short[] contents = array.unwrap();
+    public void SetShortArrayRegion(@JavaType(short[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        short[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         ShortBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
         buf.get(contents, start, len);
@@ -1328,8 +1333,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void SetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        int[] contents = array.unwrap();
+    public void SetIntArrayRegion(@JavaType(int[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        int[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         IntBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
         buf.get(contents, start, len);
@@ -1337,8 +1342,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void SetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        float[] contents = array.unwrap();
+    public void SetFloatArrayRegion(@JavaType(float[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        float[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         FloatBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
         buf.get(contents, start, len);
@@ -1346,8 +1351,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void SetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        double[] contents = array.unwrap();
+    public void SetDoubleArrayRegion(@JavaType(double[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        double[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         DoubleBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
         buf.get(contents, start, len);
@@ -1355,8 +1360,8 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public void SetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr) {
-        long[] contents = array.unwrap();
+    public void SetLongArrayRegion(@JavaType(long[].class) StaticObject array, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
+        long[] contents = array.unwrap(language);
         boundsCheck(start, len, contents.length);
         LongBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
         buf.get(contents, start, len);
@@ -1375,12 +1380,11 @@ public final class JniEnv extends NativeEnv {
      * @return the length of the Java string.
      */
     @JniImpl
-    public static int GetStringLength(@Host(String.class) StaticObject string,
-                    @GuestCall(target = "java_lang_String_length") DirectCallNode stringLength) {
+    public int GetStringLength(@JavaType(String.class) StaticObject string) {
         if (StaticObject.isNull(string)) {
             return 0;
         }
-        return (int) stringLength.call(string);
+        return (int) getMeta().java_lang_String_length.invokeDirect(string);
     }
 
     /**
@@ -1394,7 +1398,7 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
-    public @Host(String.class) StaticObject NewStringUTF(@Pointer TruffleObject bytesPtr) {
+    public @JavaType(String.class) StaticObject NewStringUTF(@Pointer TruffleObject bytesPtr) {
         String hostString = NativeUtils.fromUTF8Ptr(bytesPtr);
         return getMeta().toGuestString(hostString);
     }
@@ -1417,34 +1421,34 @@ public final class JniEnv extends NativeEnv {
      */
     @JniImpl
     @TruffleBoundary
-    public @Pointer TruffleObject GetStringCritical(@Host(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetStringCritical(@JavaType(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language, @Inject Meta meta) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
         StaticObject stringChars;
         if (getJavaVersion().compactStringsEnabled()) {
-            stringChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirect(str);
+            stringChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirect(str);
         } else {
-            stringChars = getMeta().java_lang_String_value.getObject(str);
+            stringChars = meta.java_lang_String_value.getObject(str);
         }
-        int len = stringChars.length();
+        int len = stringChars.length(language);
         ByteBuffer criticalRegion = allocateDirect(len, JavaKind.Char); // direct byte buffer
         // (non-relocatable)
         @Pointer
         TruffleObject address = NativeUtils.byteBufferPointer(criticalRegion);
-        GetCharArrayRegion(stringChars, 0, len, address);
+        GetCharArrayRegion(stringChars, 0, len, address, language);
         return address;
     }
 
     @JniImpl
     @TruffleBoundary
-    public @Pointer TruffleObject GetStringUTFChars(@Host(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetStringUTFChars(@JavaType(String.class) StaticObject str, @Pointer TruffleObject isCopyPtr) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
-        byte[] bytes = ModifiedUtf8.asUtf(getMeta().toHostString(str), true);
+        byte[] bytes = ModifiedUtf8.fromJavaString(getMeta().toHostString(str), true);
         ByteBuffer region = allocateDirect(bytes.length);
         region.put(bytes);
         return NativeUtils.byteBufferPointer(region);
@@ -1465,7 +1469,7 @@ public final class JniEnv extends NativeEnv {
      */
     @JniImpl
     @TruffleBoundary
-    public @Pointer TruffleObject GetStringChars(@Host(String.class) StaticObject string, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetStringChars(@JavaType(String.class) StaticObject string, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
@@ -1473,9 +1477,9 @@ public final class JniEnv extends NativeEnv {
         char[] chars;
         if (getJavaVersion().compactStringsEnabled()) {
             StaticObject wrappedChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirect(string);
-            chars = wrappedChars.unwrap();
+            chars = wrappedChars.unwrap(language);
         } else {
-            chars = getMeta().java_lang_String_value.getObject(string).unwrap();
+            chars = getMeta().java_lang_String_value.getObject(string).unwrap(language);
         }
         // Add one for zero termination.
         ByteBuffer bb = allocateDirect(chars.length + 1, JavaKind.Char);
@@ -1502,26 +1506,27 @@ public final class JniEnv extends NativeEnv {
      * @param charsPtr a pointer to a Unicode string.
      */
     @JniImpl
-    public void ReleaseStringChars(@SuppressWarnings("unused") @Host(String.class) StaticObject string, @Pointer TruffleObject charsPtr) {
+    public void ReleaseStringChars(@SuppressWarnings("unused") @JavaType(String.class) StaticObject string, @Pointer TruffleObject charsPtr) {
         releasePtr(charsPtr);
     }
 
     @JniImpl
-    public void ReleaseStringUTFChars(@SuppressWarnings("unused") @Host(String.class) StaticObject str, @Pointer TruffleObject charsPtr) {
+    public void ReleaseStringUTFChars(@SuppressWarnings("unused") @JavaType(String.class) StaticObject str, @Pointer TruffleObject charsPtr) {
         releasePtr(charsPtr);
     }
 
     @JniImpl
-    public void ReleaseStringCritical(@SuppressWarnings("unused") @Host(String.class) StaticObject str, @Pointer TruffleObject criticalRegionPtr) {
+    public void ReleaseStringCritical(@SuppressWarnings("unused") @JavaType(String.class) StaticObject str, @Pointer TruffleObject criticalRegionPtr) {
         releasePtr(criticalRegionPtr);
     }
 
     @JniImpl
-    public @Host(String.class) StaticObject NewString(@Pointer TruffleObject unicodePtr, int len) {
+    @TruffleBoundary
+    public @JavaType(String.class) StaticObject NewString(@Pointer TruffleObject unicodePtr, int len, @Inject EspressoLanguage language, @Inject Meta meta) {
         // TODO(garcia) : works only for UTF16 encoded strings.
         final char[] array = new char[len];
-        StaticObject value = StaticObject.wrap(array, getMeta());
-        SetCharArrayRegion(value, 0, len, unicodePtr);
+        StaticObject value = StaticObject.wrap(array, meta);
+        SetCharArrayRegion(value, 0, len, unicodePtr, language);
         return getMeta().toGuestString(new String(array));
     }
 
@@ -1534,12 +1539,12 @@ public final class JniEnv extends NativeEnv {
      */
     @JniImpl
     @TruffleBoundary
-    public void GetStringRegion(@Host(String.class) StaticObject str, int start, int len, @Pointer TruffleObject bufPtr) {
+    public void GetStringRegion(@JavaType(String.class) StaticObject str, int start, int len, @Pointer TruffleObject bufPtr, @Inject EspressoLanguage language) {
         char[] chars;
         if (getJavaVersion().compactStringsEnabled()) {
             chars = getMeta().toHostString(str).toCharArray();
         } else {
-            chars = getMeta().java_lang_String_value.getObject(str).unwrap();
+            chars = getMeta().java_lang_String_value.getObject(str).unwrap(language);
         }
         if (start < 0 || start + (long) len > chars.length) {
             Meta meta = getMeta();
@@ -1550,21 +1555,20 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public int GetStringUTFLength(@Host(String.class) StaticObject string) {
+    public int GetStringUTFLength(@JavaType(String.class) StaticObject string) {
         return ModifiedUtf8.utfLength(getMeta().toHostString(string));
     }
 
     @JniImpl
     @TruffleBoundary
-    public void GetStringUTFRegion(@Host(String.class) StaticObject str, int start, int len, @Pointer TruffleObject bufPtr) {
+    public void GetStringUTFRegion(@JavaType(String.class) StaticObject str, int start, int len, @Pointer TruffleObject bufPtr) {
         Meta meta = getMeta();
-        int length = ModifiedUtf8.utfLength(meta.toHostString(str));
-        if (start < 0 || start + (long) len > length) {
+        String hostString = meta.toHostString(str);
+        if (start < 0 || len < 0 || start > hostString.length() - len) {
             throw meta.throwException(meta.java_lang_StringIndexOutOfBoundsException);
         }
-        byte[] bytes = ModifiedUtf8.asUtf(meta.toHostString(str), start, len, true); // always
-        // 0
-        // terminated.
+        // always 0-terminated.
+        byte[] bytes = ModifiedUtf8.fromJavaString(hostString, start, len, true);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
         buf.put(bytes);
     }
@@ -1585,7 +1589,7 @@ public final class JniEnv extends NativeEnv {
     public boolean ExceptionCheck() {
         EspressoException ex = getPendingEspressoException();
         // ex != null => ex != NULL
-        assert ex == null || StaticObject.notNull(ex.getExceptionObject());
+        assert ex == null || StaticObject.notNull(ex.getGuestException());
         return ex != null;
     }
 
@@ -1609,7 +1613,7 @@ public final class JniEnv extends NativeEnv {
      * @return 0 on success; a negative value on failure.
      */
     @JniImpl
-    public static int Throw(@Host(Throwable.class) StaticObject obj, @InjectMeta Meta meta) {
+    public static int Throw(@JavaType(Throwable.class) StaticObject obj, @Inject Meta meta) {
         assert meta.java_lang_Throwable.isAssignableFrom(obj.getKlass());
         // The TLS exception slot will be set by the JNI wrapper.
         // Throwing methods always return the default value, in this case 0 (success).
@@ -1629,11 +1633,11 @@ public final class JniEnv extends NativeEnv {
      * @throws EspressoException the newly constructed {@link java.lang.Throwable} object.
      */
     @JniImpl
-    public static int ThrowNew(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject messagePtr, @InjectMeta Meta meta) {
+    public int ThrowNew(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject messagePtr, @Inject Meta meta) {
         String message = NativeUtils.interopPointerToString(messagePtr);
         // The TLS exception slot will be set by the JNI wrapper.
         // Throwing methods always return the default value, in this case 0 (success).
-        throw meta.throwExceptionWithMessage((ObjectKlass) clazz.getMirrorKlass(), message);
+        throw meta.throwExceptionWithMessage((ObjectKlass) clazz.getMirrorKlass(getMeta()), message);
     }
 
     /**
@@ -1646,7 +1650,7 @@ public final class JniEnv extends NativeEnv {
      *         exception is currently being thrown.
      */
     @JniImpl
-    public @Host(Throwable.class) StaticObject ExceptionOccurred() {
+    public @JavaType(Throwable.class) StaticObject ExceptionOccurred() {
         StaticObject ex = getPendingException();
         if (ex == null) {
             ex = StaticObject.NULL;
@@ -1664,7 +1668,7 @@ public final class JniEnv extends NativeEnv {
     public void ExceptionDescribe() {
         EspressoException ex = getPendingEspressoException();
         if (ex != null) {
-            StaticObject guestException = ex.getExceptionObject();
+            StaticObject guestException = ex.getGuestException();
             assert InterpreterToVM.instanceOf(guestException, getMeta().java_lang_Throwable);
             // Dynamic lookup.
             Method printStackTrace = guestException.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
@@ -1683,16 +1687,13 @@ public final class JniEnv extends NativeEnv {
      */
     @JniImpl
     @TruffleBoundary
-    public void FatalError(@Pointer TruffleObject msgPtr) {
+    public void FatalError(@Pointer TruffleObject msgPtr, @Inject SubstitutionProfiler profiler) {
         String msg = NativeUtils.interopPointerToString(msgPtr);
-        PrintWriter writer = new PrintWriter(context.getEnv().err(), true);
+        PrintWriter writer = new PrintWriter(getContext().err(), true);
         writer.println("FATAL ERROR in native method: " + msg);
         // TODO print stack trace
-        if (context.ExitHost) {
-            System.exit(1);
-            throw EspressoError.shouldNotReachHere();
-        }
-        throw new EspressoError(msg);
+        getContext().truffleExit(profiler, 1);
+        throw EspressoError.fatal(msg);
     }
 
     // endregion Exception handling
@@ -1700,17 +1701,17 @@ public final class JniEnv extends NativeEnv {
     // region Monitors
 
     @JniImpl
-    public static int MonitorEnter(@Host(Object.class) StaticObject object, @InjectMeta Meta meta) {
+    public static int MonitorEnter(@JavaType(Object.class) StaticObject object, @Inject Meta meta) {
         InterpreterToVM.monitorEnter(object, meta);
         return JNI_OK;
     }
 
     @JniImpl
-    public int MonitorExit(@Host(Object.class) StaticObject object, @InjectMeta Meta meta) {
+    public int MonitorExit(@JavaType(Object.class) StaticObject object, @Inject Meta meta) {
         try {
             InterpreterToVM.monitorExit(object, meta);
         } catch (EspressoException e) {
-            assert InterpreterToVM.instanceOf(e.getExceptionObject(), getMeta().java_lang_IllegalMonitorStateException);
+            assert InterpreterToVM.instanceOf(e.getGuestException(), getMeta().java_lang_IllegalMonitorStateException);
             setPendingException(e);
             return JNI_ERR;
         }
@@ -1732,8 +1733,8 @@ public final class JniEnv extends NativeEnv {
      * @throws ArrayIndexOutOfBoundsException if index does not specify a valid index in the array.
      */
     @JniImpl
-    public @Host(Object.class) StaticObject GetObjectArrayElement(StaticObject array, int index) {
-        return getInterpreterToVM().getArrayObject(index, array);
+    public @JavaType(Object.class) StaticObject GetObjectArrayElement(@JavaType(Object[].class) StaticObject array, int index, @Inject EspressoLanguage language) {
+        return getInterpreterToVM().getArrayObject(language, index, array);
     }
 
     /**
@@ -1750,8 +1751,8 @@ public final class JniEnv extends NativeEnv {
      *             the array.
      */
     @JniImpl
-    public void SetObjectArrayElement(StaticObject array, int index, @Host(Object.class) StaticObject value) {
-        getInterpreterToVM().setArrayObject(value, index, array);
+    public void SetObjectArrayElement(@JavaType(Object[].class) StaticObject array, int index, @JavaType(Object.class) StaticObject value, @Inject EspressoLanguage language) {
+        getInterpreterToVM().setArrayObject(language, value, index, array);
     }
 
     // endregion Get/SetObjectArrayElement
@@ -1760,12 +1761,12 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public @Pointer TruffleObject GetBooleanArrayElements(@Host(boolean[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetBooleanArrayElements(@JavaType(boolean[].class) StaticObject array, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
-        byte[] data = array.unwrap();
+        byte[] data = array.unwrap(language);
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Boolean);
         ByteBuffer elements = bytes;
         elements.put(data);
@@ -1774,12 +1775,12 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public @Pointer TruffleObject GetCharArrayElements(@Host(char[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetCharArrayElements(@JavaType(char[].class) StaticObject array, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
-        char[] data = array.unwrap();
+        char[] data = array.unwrap(language);
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Char);
         CharBuffer elements = bytes.asCharBuffer();
         elements.put(data);
@@ -1788,12 +1789,12 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public @Pointer TruffleObject GetByteArrayElements(@Host(byte[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetByteArrayElements(@JavaType(byte[].class) StaticObject array, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
-        byte[] data = array.unwrap();
+        byte[] data = array.unwrap(language);
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Byte);
         ByteBuffer elements = bytes;
         elements.put(data);
@@ -1802,12 +1803,12 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public @Pointer TruffleObject GetShortArrayElements(@Host(short[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetShortArrayElements(@JavaType(short[].class) StaticObject array, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
-        short[] data = array.unwrap();
+        short[] data = array.unwrap(language);
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Short);
         ShortBuffer elements = bytes.asShortBuffer();
         elements.put(data);
@@ -1816,12 +1817,12 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public @Pointer TruffleObject GetIntArrayElements(@Host(int[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetIntArrayElements(@JavaType(int[].class) StaticObject array, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
-        int[] data = array.unwrap();
+        int[] data = array.unwrap(language);
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Int);
         IntBuffer elements = bytes.asIntBuffer();
         elements.put(data);
@@ -1830,12 +1831,12 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public @Pointer TruffleObject GetFloatArrayElements(@Host(float[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetFloatArrayElements(@JavaType(float[].class) StaticObject array, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
-        float[] data = array.unwrap();
+        float[] data = array.unwrap(language);
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Float);
         FloatBuffer elements = bytes.asFloatBuffer();
         elements.put(data);
@@ -1844,12 +1845,12 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public @Pointer TruffleObject GetDoubleArrayElements(@Host(double[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetDoubleArrayElements(@JavaType(double[].class) StaticObject array, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
-        double[] data = array.unwrap();
+        double[] data = array.unwrap(language);
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Double);
         DoubleBuffer elements = bytes.asDoubleBuffer();
         elements.put(data);
@@ -1858,12 +1859,12 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public @Pointer TruffleObject GetLongArrayElements(@Host(long[].class) StaticObject array, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetLongArrayElements(@JavaType(long[].class) StaticObject array, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
-        long[] data = array.unwrap();
+        long[] data = array.unwrap(language);
         ByteBuffer bytes = allocateDirect(data.length, JavaKind.Long);
         LongBuffer elements = bytes.asLongBuffer();
         elements.put(data);
@@ -1874,24 +1875,25 @@ public final class JniEnv extends NativeEnv {
 
     // region Release*ArrayElements
 
-    private void ReleasePrimitiveArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode) {
+    private void ReleasePrimitiveArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode, EspressoLanguage language) {
         if (mode == 0 || mode == JNI_COMMIT) { // Update array contents.
             StaticObject array = object;
             StaticObject clazz = GetObjectClass(array);
-            JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass()).getComponentType().getJavaKind();
+            JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass(getMeta())).getComponentType().getJavaKind();
             assert componentKind.isPrimitive();
-            int length = GetArrayLength(array);
+            int length = GetArrayLength(array, language);
             // @formatter:off
             switch (componentKind) {
-                case Boolean : SetBooleanArrayRegion(array, 0, length, bufPtr); break;
-                case Byte    : SetByteArrayRegion(array, 0, length, bufPtr);    break;
-                case Short   : SetShortArrayRegion(array, 0, length, bufPtr);   break;
-                case Char    : SetCharArrayRegion(array, 0, length, bufPtr);    break;
-                case Int     : SetIntArrayRegion(array, 0, length, bufPtr);     break;
-                case Float   : SetFloatArrayRegion(array, 0, length, bufPtr);   break;
-                case Long    : SetLongArrayRegion(array, 0, length, bufPtr);    break;
-                case Double  : SetDoubleArrayRegion(array, 0, length, bufPtr);  break;
+                case Boolean : SetBooleanArrayRegion(array, 0, length, bufPtr, language); break;
+                case Byte    : SetByteArrayRegion(array, 0, length, bufPtr, language);    break;
+                case Short   : SetShortArrayRegion(array, 0, length, bufPtr, language);   break;
+                case Char    : SetCharArrayRegion(array, 0, length, bufPtr, language);    break;
+                case Int     : SetIntArrayRegion(array, 0, length, bufPtr, language);     break;
+                case Float   : SetFloatArrayRegion(array, 0, length, bufPtr, language);   break;
+                case Long    : SetLongArrayRegion(array, 0, length, bufPtr, language);    break;
+                case Double  : SetDoubleArrayRegion(array, 0, length, bufPtr, language);  break;
                 default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
@@ -1902,51 +1904,51 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public void ReleaseBooleanArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode) {
+    public void ReleaseBooleanArrayElements(@JavaType(boolean[].class) StaticObject object, @Pointer TruffleObject bufPtr, int mode, @Inject EspressoLanguage language) {
         assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Boolean;
-        ReleasePrimitiveArrayElements(object, bufPtr, mode);
+        ReleasePrimitiveArrayElements(object, bufPtr, mode, language);
     }
 
     @JniImpl
-    public void ReleaseByteArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode) {
+    public void ReleaseByteArrayElements(@JavaType(byte[].class) StaticObject object, @Pointer TruffleObject bufPtr, int mode, @Inject EspressoLanguage language) {
         assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Byte;
-        ReleasePrimitiveArrayElements(object, bufPtr, mode);
+        ReleasePrimitiveArrayElements(object, bufPtr, mode, language);
     }
 
     @JniImpl
-    public void ReleaseCharArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode) {
+    public void ReleaseCharArrayElements(@JavaType(char[].class) StaticObject object, @Pointer TruffleObject bufPtr, int mode, @Inject EspressoLanguage language) {
         assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Char;
-        ReleasePrimitiveArrayElements(object, bufPtr, mode);
+        ReleasePrimitiveArrayElements(object, bufPtr, mode, language);
     }
 
     @JniImpl
-    public void ReleaseShortArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode) {
+    public void ReleaseShortArrayElements(@JavaType(short[].class) StaticObject object, @Pointer TruffleObject bufPtr, int mode, @Inject EspressoLanguage language) {
         assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Short;
-        ReleasePrimitiveArrayElements(object, bufPtr, mode);
+        ReleasePrimitiveArrayElements(object, bufPtr, mode, language);
     }
 
     @JniImpl
-    public void ReleaseIntArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode) {
+    public void ReleaseIntArrayElements(@JavaType(int[].class) StaticObject object, @Pointer TruffleObject bufPtr, int mode, @Inject EspressoLanguage language) {
         assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Int;
-        ReleasePrimitiveArrayElements(object, bufPtr, mode);
+        ReleasePrimitiveArrayElements(object, bufPtr, mode, language);
     }
 
     @JniImpl
-    public void ReleaseLongArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode) {
+    public void ReleaseLongArrayElements(@JavaType(long[].class) StaticObject object, @Pointer TruffleObject bufPtr, int mode, @Inject EspressoLanguage language) {
         assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Long;
-        ReleasePrimitiveArrayElements(object, bufPtr, mode);
+        ReleasePrimitiveArrayElements(object, bufPtr, mode, language);
     }
 
     @JniImpl
-    public void ReleaseFloatArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode) {
+    public void ReleaseFloatArrayElements(@JavaType(float[].class) StaticObject object, @Pointer TruffleObject bufPtr, int mode, @Inject EspressoLanguage language) {
         assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Float;
-        ReleasePrimitiveArrayElements(object, bufPtr, mode);
+        ReleasePrimitiveArrayElements(object, bufPtr, mode, language);
     }
 
     @JniImpl
-    public void ReleaseDoubleArrayElements(StaticObject object, @Pointer TruffleObject bufPtr, int mode) {
+    public void ReleaseDoubleArrayElements(@JavaType(double[].class) StaticObject object, @Pointer TruffleObject bufPtr, int mode, @Inject EspressoLanguage language) {
         assert ((ArrayKlass) object.getKlass()).getComponentType().getJavaKind() == JavaKind.Double;
-        ReleasePrimitiveArrayElements(object, bufPtr, mode);
+        ReleasePrimitiveArrayElements(object, bufPtr, mode, language);
     }
 
     // endregion Release*ArrayElements
@@ -1973,9 +1975,9 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if allocation of the ByteBuffer object fails
      */
     @JniImpl
-    public @Host(typeName = "Ljava/nio/DirectByteBuffer;") StaticObject NewDirectByteBuffer(@Pointer TruffleObject addressPtr, long capacity) {
+    public @JavaType(internalName = "Ljava/nio/DirectByteBuffer;") StaticObject NewDirectByteBuffer(@Pointer TruffleObject addressPtr, long capacity) {
         Meta meta = getMeta();
-        StaticObject instance = meta.java_nio_DirectByteBuffer.allocateInstance();
+        StaticObject instance = meta.java_nio_DirectByteBuffer.allocateInstance(getContext());
         long address = NativeUtils.interopAsPointer(addressPtr);
         meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, (int) capacity);
         return instance;
@@ -1994,7 +1996,7 @@ public final class JniEnv extends NativeEnv {
      *         or if JNI access to direct buffers is not supported by this virtual machine.
      */
     @JniImpl
-    public @Pointer TruffleObject GetDirectBufferAddress(@Host(java.nio.Buffer.class) StaticObject buf) {
+    public @Pointer TruffleObject GetDirectBufferAddress(@JavaType(java.nio.Buffer.class) StaticObject buf) {
         assert StaticObject.notNull(buf);
         // TODO(peterssen): Returns NULL if the memory region is undefined.
         // HotSpot check.
@@ -2023,7 +2025,7 @@ public final class JniEnv extends NativeEnv {
      *         direct buffers is not supported by this virtual machine.
      */
     @JniImpl
-    public long GetDirectBufferCapacity(@Host(java.nio.Buffer.class) StaticObject buf) {
+    public long GetDirectBufferCapacity(@JavaType(java.nio.Buffer.class) StaticObject buf) {
         assert StaticObject.notNull(buf);
         // TODO(peterssen): Return -1 if the object is an unaligned view buffer and the processor
         // architecture does not support unaligned access.
@@ -2045,7 +2047,7 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     @TruffleBoundary
-    public int RegisterNative(@Host(Class.class) StaticObject clazz, @Pointer TruffleObject methodNamePtr, @Pointer TruffleObject methodSignaturePtr, @Pointer TruffleObject closure) {
+    public int RegisterNative(@JavaType(Class.class) StaticObject clazz, @Pointer TruffleObject methodNamePtr, @Pointer TruffleObject methodSignaturePtr, @Pointer TruffleObject closure) {
         String methodName = NativeUtils.interopPointerToString(methodNamePtr);
         String methodSignature = NativeUtils.interopPointerToString(methodSignaturePtr);
         assert methodName != null && methodSignature != null;
@@ -2059,7 +2061,7 @@ public final class JniEnv extends NativeEnv {
             return JNI_ERR;
         }
 
-        Method targetMethod = clazz.getMirrorKlass().lookupDeclaredMethod(name, signature);
+        Method targetMethod = clazz.getMirrorKlass(getMeta()).lookupDeclaredMethod(name, signature);
         if (targetMethod != null && targetMethod.isNative()) {
             targetMethod.unregisterNative();
             getSubstitutions().removeRuntimeSubstitution(targetMethod);
@@ -2068,14 +2070,49 @@ public final class JniEnv extends NativeEnv {
             return JNI_ERR;
         }
 
-        NativeSignature ns = Method.buildJniNativeSignature(targetMethod.getParsedSignature());
-        final TruffleObject boundNative = getNativeAccess().bindSymbol(closure, ns);
-        Substitutions.EspressoRootNodeFactory factory = new Substitutions.EspressoRootNodeFactory() {
+        Substitutions.EspressoRootNodeFactory factory = null;
+        // Lookup known VM methods to shortcut native boudaries.
+        factory = lookupKnownVmMethods(closure, targetMethod);
+
+        if (factory == null) {
+            NativeSignature ns = Method.buildJniNativeSignature(targetMethod.getParsedSignature());
+            final TruffleObject boundNative = getNativeAccess().bindSymbol(closure, ns);
+            factory = createJniRootNodeFactory(() -> EspressoRootNode.createNative(targetMethod.getMethodVersion(), boundNative), targetMethod);
+        }
+
+        Symbol<Type> classType = clazz.getMirrorKlass(getMeta()).getType();
+        getSubstitutions().registerRuntimeSubstitution(classType, name, signature, factory, true);
+        return JNI_OK;
+    }
+
+    private Substitutions.EspressoRootNodeFactory lookupKnownVmMethods(@Pointer TruffleObject closure, Method targetMethod) {
+        try {
+            long jvmMethodAddress = InteropLibrary.getUncached().asPointer(closure);
+            CallableFromNative.Factory knownVmMethod = getVM().lookupKnownVmMethod(jvmMethodAddress);
+            if (knownVmMethod != null) {
+                if (!CallableFromNative.validParameterCount(knownVmMethod, targetMethod.getMethodVersion())) {
+                    getLogger().warning("Implicit intrinsification of VM method does not have matching parameter counts:");
+                    getLogger().warning("VM method " + knownVmMethod.methodName() + " has " + knownVmMethod.parameterCount() + " parameters,");
+                    getLogger().warning(
+                                    "Bound to " + (targetMethod.isStatic() ? "static" : "instance") + " method " + targetMethod.getNameAsString() + " which has " + targetMethod.getParameterCount() +
+                                                    " parameters");
+                    return null;
+                }
+                return createJniRootNodeFactory(() -> EspressoRootNode.createIntrinsifiedNative(targetMethod.getMethodVersion(), knownVmMethod, getVM()), targetMethod);
+            }
+        } catch (UnsupportedMessageException e) {
+            // ignore
+        }
+        return null;
+    }
+
+    private static Substitutions.EspressoRootNodeFactory createJniRootNodeFactory(Supplier<EspressoRootNode> methodRootNodeSupplier, Method targetMethod) {
+        return new Substitutions.EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode createNodeIfValid(Method methodToSubstitute, boolean forceValid) {
                 if (forceValid || methodToSubstitute == targetMethod) {
                     // Runtime substitutions apply only to the given method.
-                    return EspressoRootNode.create(null, new NativeMethodNode(boundNative, methodToSubstitute.getMethodVersion()));
+                    return methodRootNodeSupplier.get();
                 }
 
                 Substitutions.getLogger().warning(new Supplier<String>() {
@@ -2084,16 +2121,13 @@ public final class JniEnv extends NativeEnv {
                         StaticObject expectedLoader = targetMethod.getDeclaringKlass().getDefiningClassLoader();
                         StaticObject givenLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
                         return "Runtime substitution for " + targetMethod + " does not apply.\n" +
-                                        "\tExpected class loader: " + expectedLoader.toDisplayString(false) + "\n" +
-                                        "\tGiven class loader: " + givenLoader.toDisplayString(false) + "\n";
+                                        "\tExpected class loader: " + EspressoInterop.toDisplayString(expectedLoader, false) + "\n" +
+                                        "\tGiven class loader: " + EspressoInterop.toDisplayString(givenLoader, false) + "\n";
                     }
                 });
                 return null;
             }
         };
-        Symbol<Type> classType = clazz.getMirrorKlass().getType();
-        getSubstitutions().registerRuntimeSubstitution(classType, name, signature, factory, true);
-        return JNI_OK;
     }
 
     /**
@@ -2111,8 +2145,8 @@ public final class JniEnv extends NativeEnv {
      */
     @JniImpl
     @TruffleBoundary
-    public int UnregisterNatives(@Host(Class.class) StaticObject clazz) {
-        Klass klass = clazz.getMirrorKlass();
+    public int UnregisterNatives(@JavaType(Class.class) StaticObject clazz) {
+        Klass klass = clazz.getMirrorKlass(getMeta());
         for (Method m : klass.getDeclaredMethods()) {
             if (m.isNative()) {
                 getSubstitutions().removeRuntimeSubstitution(m);
@@ -2137,19 +2171,19 @@ public final class JniEnv extends NativeEnv {
      * Throws OutOfMemoryError and returns 0 if fails.
      */
     @JniImpl
-    public @Host(java.lang.reflect.Executable.class) StaticObject ToReflectedMethod(@Host(Class.class) StaticObject unused, @Handle(Method.class) long methodId,
-                    @SuppressWarnings("unused") boolean isStatic) {
+    public @JavaType(java.lang.reflect.Executable.class) StaticObject ToReflectedMethod(@JavaType(Class.class) StaticObject unused, @Handle(Method.class) long methodId,
+                    @SuppressWarnings("unused") boolean isStatic, @Inject EspressoLanguage language) {
         Method method = methodIds.getObject(methodId);
-        assert method.getDeclaringKlass().isAssignableFrom(unused.getMirrorKlass());
+        assert method.getDeclaringKlass().isAssignableFrom(unused.getMirrorKlass(getMeta()));
 
         StaticObject methods = null;
         if (method.isConstructor()) {
-            methods = Target_java_lang_Class.getDeclaredConstructors0(method.getDeclaringKlass().mirror(), false, getMeta());
+            methods = getVM().JVM_GetClassDeclaredConstructors(method.getDeclaringKlass().mirror(), false);
         } else {
-            methods = Target_java_lang_Class.getDeclaredMethods0(method.getDeclaringKlass().mirror(), false, getMeta());
+            methods = getVM().JVM_GetClassDeclaredMethods(method.getDeclaringKlass().mirror(), false);
         }
 
-        for (StaticObject declMethod : methods.<StaticObject[]> unwrap()) {
+        for (StaticObject declMethod : methods.<StaticObject[]> unwrap(language)) {
             assert InterpreterToVM.instanceOf(declMethod, getMeta().java_lang_reflect_Executable);
             Method m = null;
             if (method.isConstructor()) {
@@ -2164,7 +2198,8 @@ public final class JniEnv extends NativeEnv {
             }
         }
 
-        throw EspressoError.shouldNotReachHere("Method/constructor not found ", method);
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Method/constructor not found " + method);
     }
 
     /**
@@ -2177,11 +2212,12 @@ public final class JniEnv extends NativeEnv {
      * Throws OutOfMemoryError and returns 0 if fails.
      */
     @JniImpl
-    public @Host(java.lang.reflect.Field.class) StaticObject ToReflectedField(@Host(Class.class) StaticObject unused, @Handle(Field.class) long fieldId, @SuppressWarnings("unused") boolean isStatic) {
+    public @JavaType(java.lang.reflect.Field.class) StaticObject ToReflectedField(@JavaType(Class.class) StaticObject unused, @Handle(Field.class) long fieldId,
+                    @SuppressWarnings("unused") boolean isStatic, @Inject EspressoLanguage language) {
         Field field = fieldIds.getObject(fieldId);
-        assert field.getDeclaringKlass().isAssignableFrom(unused.getMirrorKlass());
-        StaticObject fields = Target_java_lang_Class.getDeclaredFields0(field.getDeclaringKlass().mirror(), false, getMeta());
-        for (StaticObject declField : fields.<StaticObject[]> unwrap()) {
+        assert field.getDeclaringKlass().isAssignableFrom(unused.getMirrorKlass(getMeta()));
+        StaticObject fields = getVM().JVM_GetClassDeclaredFields(field.getDeclaringKlass().mirror(), false);
+        for (StaticObject declField : fields.<StaticObject[]> unwrap(language)) {
             assert InterpreterToVM.instanceOf(declField, getMeta().java_lang_reflect_Field);
             Field f = (Field) getMeta().HIDDEN_FIELD_KEY.getHiddenObject(declField);
             if (field == f) {
@@ -2189,7 +2225,8 @@ public final class JniEnv extends NativeEnv {
             }
         }
 
-        throw EspressoError.shouldNotReachHere("Field not found ", field);
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Field not found " + field);
     }
 
     /**
@@ -2198,7 +2235,7 @@ public final class JniEnv extends NativeEnv {
      * Converts a java.lang.reflect.Field to a field ID.
      */
     @JniImpl
-    public @Handle(Field.class) long FromReflectedField(@Host(java.lang.reflect.Field.class) StaticObject field) {
+    public @Handle(Field.class) long FromReflectedField(@JavaType(java.lang.reflect.Field.class) StaticObject field) {
         assert InterpreterToVM.instanceOf(field, getMeta().java_lang_reflect_Field);
         Field guestField = Field.getReflectiveFieldRoot(field, getMeta());
         guestField.getDeclaringKlass().initialize();
@@ -2211,7 +2248,7 @@ public final class JniEnv extends NativeEnv {
      * Converts a java.lang.reflect.Method or java.lang.reflect.Constructor object to a method ID.
      */
     @JniImpl
-    public @Handle(Method.class) long FromReflectedMethod(@Host(java.lang.reflect.Executable.class) StaticObject method) {
+    public @Handle(Method.class) long FromReflectedMethod(@JavaType(java.lang.reflect.Executable.class) StaticObject method) {
         assert InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Method) || InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Constructor);
         Method guestMethod;
         if (InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Method)) {
@@ -2219,6 +2256,7 @@ public final class JniEnv extends NativeEnv {
         } else if (InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Constructor)) {
             guestMethod = Method.getHostReflectiveConstructorRoot(method, getMeta());
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
         guestMethod.getDeclaringKlass().initialize();
@@ -2236,7 +2274,7 @@ public final class JniEnv extends NativeEnv {
      * global or local reference. Returns NULL if ref refers to null.
      */
     @JniImpl
-    public static @Host(Object.class) StaticObject NewLocalRef(@Host(Object.class) StaticObject ref) {
+    public static @JavaType(Object.class) StaticObject NewLocalRef(@JavaType(Object.class) StaticObject ref) {
         // Local ref is allocated on return.
         return ref;
     }
@@ -2336,7 +2374,7 @@ public final class JniEnv extends NativeEnv {
      * Pass NULL as result if you do not need to return a reference to the previous frame.
      */
     @JniImpl
-    public @Host(Object.class) StaticObject PopLocalFrame(@Host(Object.class) StaticObject object) {
+    public @JavaType(Object.class) StaticObject PopLocalFrame(@JavaType(Object.class) StaticObject object) {
         getHandles().popFrame();
         return object;
     }
@@ -2352,7 +2390,8 @@ public final class JniEnv extends NativeEnv {
      *         returns JNI_FALSE.
      */
     @JniImpl
-    public static boolean IsSameObject(@Host(Object.class) StaticObject ref1, @Host(Object.class) StaticObject ref2) {
+    @NoSafepoint
+    public static boolean IsSameObject(@JavaType(Object.class) StaticObject ref1, @JavaType(Object.class) StaticObject ref2) {
         return ref1 == ref2;
     }
 
@@ -2424,6 +2463,7 @@ public final class JniEnv extends NativeEnv {
      * beyond the ensured capacity.
      */
     @JniImpl
+    @NoSafepoint
     public static int EnsureLocalCapacity(int capacity) {
         if (capacity >= 0 &&
                         ((MAX_JNI_LOCAL_CAPACITY <= 0) || (capacity <= MAX_JNI_LOCAL_CAPACITY))) {
@@ -2451,12 +2491,12 @@ public final class JniEnv extends NativeEnv {
      *         </ul>
      */
     @JniImpl
+    @NoSafepoint
     public int GetVersion() {
-        if (getJavaVersion().java8OrEarlier()) {
-            return JniVersion.JNI_VERSION_ESPRESSO_8.version();
-        } else {
-            return JniVersion.JNI_VERSION_ESPRESSO_11.version();
+        if (jniVersion == null) {
+            jniVersion = JniVersion.getJniVersion(getJavaVersion());
         }
+        return jniVersion.version();
     }
 
     /**
@@ -2468,39 +2508,40 @@ public final class JniEnv extends NativeEnv {
      * @return the length of the array.
      */
     @JniImpl
-    public static int GetArrayLength(@Host(Object.class) StaticObject array) {
-        return InterpreterToVM.arrayLength(array);
+    public static int GetArrayLength(@JavaType(Object.class) StaticObject array, @Inject EspressoLanguage language) {
+        return InterpreterToVM.arrayLength(array, language);
     }
 
     @JniImpl
-    public @Pointer TruffleObject GetPrimitiveArrayCritical(StaticObject object, @Pointer TruffleObject isCopyPtr) {
+    public @Pointer TruffleObject GetPrimitiveArrayCritical(@JavaType(Object.class) StaticObject object, @Pointer TruffleObject isCopyPtr, @Inject EspressoLanguage language) {
         if (!getUncached().isNull(isCopyPtr)) {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
         }
         StaticObject array = object;
         StaticObject clazz = GetObjectClass(array);
-        JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass()).getComponentType().getJavaKind();
+        JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass(getMeta())).getComponentType().getJavaKind();
         assert componentKind.isPrimitive();
-        int length = GetArrayLength(array);
+        int length = GetArrayLength(array, language);
 
         ByteBuffer region = allocateDirect(length, componentKind);
         @Pointer
         TruffleObject addressPtr = NativeUtils.byteBufferPointer(region);
         // @formatter:off
         switch (componentKind) {
-            case Boolean : GetBooleanArrayRegion(array, 0, length, addressPtr); break;
-            case Byte    : GetByteArrayRegion(array, 0, length, addressPtr);    break;
-            case Short   : GetShortArrayRegion(array, 0, length, addressPtr);   break;
-            case Char    : GetCharArrayRegion(array, 0, length, addressPtr);    break;
-            case Int     : GetIntArrayRegion(array, 0, length, addressPtr);     break;
-            case Float   : GetFloatArrayRegion(array, 0, length, addressPtr);   break;
-            case Long    : GetLongArrayRegion(array, 0, length, addressPtr);    break;
-            case Double  : GetDoubleArrayRegion(array, 0, length, addressPtr);  break;
+            case Boolean : GetBooleanArrayRegion(array, 0, length, addressPtr, language); break;
+            case Byte    : GetByteArrayRegion(array, 0, length, addressPtr, language);    break;
+            case Short   : GetShortArrayRegion(array, 0, length, addressPtr, language);   break;
+            case Char    : GetCharArrayRegion(array, 0, length, addressPtr, language);    break;
+            case Int     : GetIntArrayRegion(array, 0, length, addressPtr, language);     break;
+            case Float   : GetFloatArrayRegion(array, 0, length, addressPtr, language);   break;
+            case Long    : GetLongArrayRegion(array, 0, length, addressPtr, language);    break;
+            case Double  : GetDoubleArrayRegion(array, 0, length, addressPtr, language);  break;
             case Object  : // fall through
             case Void    : // fall through
             case Illegal : // fall through
             default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
@@ -2509,24 +2550,25 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public void ReleasePrimitiveArrayCritical(@Host(Object.class) StaticObject object, @Pointer TruffleObject carrayPtr, int mode) {
+    public void ReleasePrimitiveArrayCritical(@JavaType(Object.class) StaticObject object, @Pointer TruffleObject carrayPtr, int mode, @Inject EspressoLanguage language) {
         if (mode == 0 || mode == JNI_COMMIT) { // Update array contents.
             StaticObject array = object;
             StaticObject clazz = GetObjectClass(array);
-            JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass()).getComponentType().getJavaKind();
+            JavaKind componentKind = ((ArrayKlass) clazz.getMirrorKlass(getMeta())).getComponentType().getJavaKind();
             assert componentKind.isPrimitive();
-            int length = GetArrayLength(array);
+            int length = GetArrayLength(array, language);
             // @formatter:off
             switch (componentKind) {
-                case Boolean : SetBooleanArrayRegion(array, 0, length, carrayPtr); break;
-                case Byte    : SetByteArrayRegion(array, 0, length, carrayPtr);    break;
-                case Short   : SetShortArrayRegion(array, 0, length, carrayPtr);   break;
-                case Char    : SetCharArrayRegion(array, 0, length, carrayPtr);    break;
-                case Int     : SetIntArrayRegion(array, 0, length, carrayPtr);     break;
-                case Float   : SetFloatArrayRegion(array, 0, length, carrayPtr);   break;
-                case Long    : SetLongArrayRegion(array, 0, length, carrayPtr);    break;
-                case Double  : SetDoubleArrayRegion(array, 0, length, carrayPtr);  break;
+                case Boolean : SetBooleanArrayRegion(array, 0, length, carrayPtr, language); break;
+                case Byte    : SetByteArrayRegion(array, 0, length, carrayPtr, language);    break;
+                case Short   : SetShortArrayRegion(array, 0, length, carrayPtr, language);   break;
+                case Char    : SetCharArrayRegion(array, 0, length, carrayPtr, language);    break;
+                case Int     : SetIntArrayRegion(array, 0, length, carrayPtr, language);     break;
+                case Float   : SetFloatArrayRegion(array, 0, length, carrayPtr, language);   break;
+                case Long    : SetLongArrayRegion(array, 0, length, carrayPtr, language);    break;
+                case Double  : SetDoubleArrayRegion(array, 0, length, carrayPtr, language);  break;
                 default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
@@ -2544,7 +2586,7 @@ public final class JniEnv extends NativeEnv {
      * @param self a Java object (must not be NULL).
      */
     @JniImpl
-    public static @Host(Class.class) StaticObject GetObjectClass(@Host(Object.class) StaticObject self) {
+    public static @JavaType(Class.class) StaticObject GetObjectClass(@JavaType(Object.class) StaticObject self) {
         return self.getKlass().mirror();
     }
 
@@ -2559,37 +2601,29 @@ public final class JniEnv extends NativeEnv {
      *            or NULL.
      */
     @JniImpl
-    public static @Host(Class.class) StaticObject GetSuperclass(@Host(Class.class) StaticObject clazz) {
-        Klass klass = clazz.getMirrorKlass();
-        if (klass.isInterface() || klass.isJavaLangObject()) {
+    public @JavaType(Class.class) StaticObject GetSuperclass(@JavaType(Class.class) StaticObject clazz) {
+        Klass klass = clazz.getMirrorKlass(getMeta());
+        if (klass.isInterface() || klass.getSuperClass() == null) {
+            /* also handles primitive classes */
             return StaticObject.NULL;
         }
         return klass.getSuperKlass().mirror();
     }
 
     @JniImpl
-    public @Host(Object.class) StaticObject NewObjectVarargs(@Host(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
+    public @JavaType(Object.class) StaticObject NewObjectVarargs(@JavaType(Class.class) StaticObject clazz, @Handle(Method.class) long methodId, @Pointer TruffleObject varargsPtr) {
         Method method = methodIds.getObject(methodId);
         assert method.isConstructor();
-        Klass klass = clazz.getMirrorKlass();
+        Klass klass = clazz.getMirrorKlass(getMeta());
         if (klass.isInterface() || klass.isAbstract()) {
             Meta meta = getMeta();
             throw meta.throwException(meta.java_lang_InstantiationException);
         }
         klass.initialize();
         StaticObject instance;
-        if (CompilerDirectives.isPartialEvaluationConstant(klass)) {
-            instance = klass.allocateInstance();
-        } else {
-            instance = allocateBoundary(klass);
-        }
+        instance = klass.allocateInstance(getContext());
         method.invokeDirect(instance, popVarArgs(varargsPtr, method.getParsedSignature()));
         return instance;
-    }
-
-    @TruffleBoundary
-    public static StaticObject allocateBoundary(Klass klass) {
-        return klass.allocateInstance();
     }
 
     /**
@@ -2633,11 +2667,7 @@ public final class JniEnv extends NativeEnv {
      */
     @TruffleBoundary
     @JniImpl
-    public @Host(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr,
-                    @GuestCall(target = "java_lang_ClassLoader_getSystemClassLoader") DirectCallNode getSystemClassLoader,
-                    @GuestCall(target = "java_lang_ClassLoader$NativeLibrary_getFromClass") DirectCallNode nativeLibraryGetFromClass,
-                    @GuestCall(target = "java_lang_Class_forName_String_boolean_ClassLoader") DirectCallNode classForName,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public @JavaType(Class.class) StaticObject FindClass(@Pointer TruffleObject namePtr, @Inject SubstitutionProfiler profiler) {
         String name = NativeUtils.interopPointerToString(namePtr);
         Meta meta = getMeta();
         if (name == null || (name.indexOf('.') > -1)) {
@@ -2660,25 +2690,25 @@ public final class JniEnv extends NativeEnv {
 
         StaticObject caller = getVM().JVM_GetCallerClass(0, profiler); // security stack walk
         if (StaticObject.notNull(caller)) {
-            Klass callerKlass = caller.getMirrorKlass();
+            Klass callerKlass = caller.getMirrorKlass(getMeta());
             loader = callerKlass.getDefiningClassLoader();
             if (StaticObject.isNull(loader) && Type.java_lang_ClassLoader$NativeLibrary.equals(callerKlass.getType())) {
-                StaticObject result = (StaticObject) nativeLibraryGetFromClass.call();
-                loader = result.getMirrorKlass().getDefiningClassLoader();
-                protectionDomain = Target_java_lang_Class.getProtectionDomain0(result, getMeta());
+                StaticObject result = (StaticObject) getMeta().java_lang_ClassLoader$NativeLibrary_getFromClass.invokeDirect(null);
+                loader = result.getMirrorKlass(getMeta()).getDefiningClassLoader();
+                protectionDomain = getVM().JVM_GetProtectionDomain(result);
             }
         } else {
-            loader = (StaticObject) getSystemClassLoader.call();
+            loader = (StaticObject) getMeta().java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
         }
 
         StaticObject guestClass = StaticObject.NULL;
         try {
             String dotName = name.replace('/', '.');
-            guestClass = (StaticObject) classForName.call(meta.toGuestString(dotName), false, loader);
-            EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null");
+            guestClass = (StaticObject) getMeta().java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null, meta.toGuestString(dotName), false, loader);
+            EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null", dotName);
         } catch (EspressoException e) {
             profiler.profile(5);
-            if (InterpreterToVM.instanceOf(e.getExceptionObject(), meta.java_lang_ClassNotFoundException)) {
+            if (InterpreterToVM.instanceOf(e.getGuestException(), meta.java_lang_ClassNotFoundException)) {
                 profiler.profile(4);
                 throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, name);
             }
@@ -2687,7 +2717,7 @@ public final class JniEnv extends NativeEnv {
 
         meta.HIDDEN_PROTECTION_DOMAIN.setHiddenObject(guestClass, protectionDomain);
         // FindClass should initialize the class.
-        guestClass.getMirrorKlass().safeInitialize();
+        guestClass.getMirrorKlass(getMeta()).safeInitialize();
 
         return guestClass;
     }
@@ -2705,26 +2735,14 @@ public final class JniEnv extends NativeEnv {
      * @return Returns a Java class object or NULL if an error occurs.
      */
     @JniImpl
-    public @Host(Class.class) StaticObject DefineClass(@Pointer TruffleObject namePtr,
-                    @Host(ClassLoader.class) StaticObject loader,
-                    @Pointer TruffleObject bufPtr, int bufLen,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    public @JavaType(Class.class) StaticObject DefineClass(@Pointer TruffleObject namePtr,
+                    @JavaType(ClassLoader.class) StaticObject loader,
+                    @Pointer TruffleObject bufPtr, int bufLen) {
         // TODO(peterssen): Propagate errors and verifications, e.g. no class in the java package.
-        return getVM().JVM_DefineClass(namePtr, loader, bufPtr, bufLen, StaticObject.NULL, meta, profiler);
+        return getVM().JVM_DefineClass(namePtr, loader, bufPtr, bufLen, StaticObject.NULL);
     }
 
     // JavaVM **vm);
-
-    @JniImpl
-    public int GetJavaVM(@Pointer TruffleObject vmPtr) {
-        if (getUncached().isNull(vmPtr)) {
-            // Pointer should have been pre-null-checked.
-            return JNI_ERR;
-        }
-        NativeUtils.writeToPointerPointer(getUncached(), vmPtr, getVM().getJavaVM());
-        return JNI_OK;
-    }
 
     /**
      * <h3>jobject AllocObject(JNIEnv *env, jclass clazz);</h3>
@@ -2742,12 +2760,12 @@ public final class JniEnv extends NativeEnv {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
-    public @Host(Object.class) StaticObject AllocObject(@Host(Class.class) StaticObject clazz, @InjectMeta Meta meta) {
+    public @JavaType(Object.class) StaticObject AllocObject(@JavaType(Class.class) StaticObject clazz, @Inject Meta meta) {
         if (StaticObject.isNull(clazz)) {
             throw meta.throwException(getMeta().java_lang_InstantiationException);
         }
-        Klass klass = clazz.getMirrorKlass();
-        return klass.allocateInstance();
+        Klass klass = clazz.getMirrorKlass(getMeta());
+        return klass.allocateInstance(getContext());
     }
 
     /**
@@ -2765,9 +2783,9 @@ public final class JniEnv extends NativeEnv {
      *         </ul>
      */
     @JniImpl
-    public static boolean IsAssignableFrom(@Host(Class.class) StaticObject clazz1, @Host(Class.class) StaticObject clazz2) {
-        Klass klass2 = clazz2.getMirrorKlass();
-        return klass2.isAssignableFrom(clazz1.getMirrorKlass());
+    public boolean IsAssignableFrom(@JavaType(Class.class) StaticObject clazz1, @JavaType(Class.class) StaticObject clazz2) {
+        Klass klass2 = clazz2.getMirrorKlass(getMeta());
+        return klass2.isAssignableFrom(clazz1.getMirrorKlass(getMeta()));
     }
 
     /**
@@ -2781,11 +2799,11 @@ public final class JniEnv extends NativeEnv {
      *         {@code JNI_FALSE}. <b>A NULL object can be cast to any class.</b>
      */
     @JniImpl
-    public static boolean IsInstanceOf(@Host(Object.class) StaticObject obj, @Host(Class.class) StaticObject clazz) {
+    public boolean IsInstanceOf(@JavaType(Object.class) StaticObject obj, @JavaType(Class.class) StaticObject clazz) {
         if (StaticObject.isNull(obj)) {
             return true;
         }
-        return InterpreterToVM.instanceOf(obj, clazz.getMirrorKlass());
+        return InterpreterToVM.instanceOf(obj, clazz.getMirrorKlass(getMeta()));
     }
 
     /**
@@ -2797,7 +2815,7 @@ public final class JniEnv extends NativeEnv {
      * @return the module object associated with the given class
      */
     @JniImpl
-    public @Host(typeName = "Ljava/lang/Module;") StaticObject GetModule(@Host(Class.class) StaticObject clazz) {
+    public @JavaType(internalName = "Ljava/lang/Module;") StaticObject GetModule(@JavaType(Class.class) StaticObject clazz) {
         Meta meta = getMeta();
         if (StaticObject.isNull(clazz)) {
             throw meta.throwNullPointerException();
@@ -2805,7 +2823,7 @@ public final class JniEnv extends NativeEnv {
         if (!meta.java_lang_Class.isAssignableFrom(clazz.getKlass())) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid Class");
         }
-        return clazz.getMirrorKlass().module().module();
+        return clazz.getMirrorKlass(getMeta()).module().module();
     }
 
     // Checkstyle: resume method name check

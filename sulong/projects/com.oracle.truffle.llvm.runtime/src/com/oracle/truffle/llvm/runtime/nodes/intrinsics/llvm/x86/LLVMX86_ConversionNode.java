@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,8 +48,7 @@ public abstract class LLVMX86_ConversionNode {
         @Specialization
         protected int doIntrinsic(LLVMFloatVector vector) {
             if (vector.getLength() != 4) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("cvtss2si requires a float[4] as parameter");
+                throw CompilerDirectives.shouldNotReachHere("cvtss2si requires a float[4] as parameter");
             }
 
             return Math.round(vector.getValue(0));
@@ -63,8 +62,7 @@ public abstract class LLVMX86_ConversionNode {
         @Specialization
         protected int doIntrinsic(LLVMDoubleVector vector) {
             if (vector.getLength() != 2) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("cvtsd2si requires a double[2] as parameter");
+                throw CompilerDirectives.shouldNotReachHere("cvtsd2si requires a double[2] as parameter");
             }
 
             // returns an int instead of a long,
@@ -80,15 +78,42 @@ public abstract class LLVMX86_ConversionNode {
 
         @Specialization
         @ExplodeLoop
-        protected int doIntrinsic(LLVMI8Vector vector) {
+        protected int doIntrinsic128(LLVMI8Vector vector) {
             if (vector.getLength() != VECTOR_LENGTH) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("expected a <16 x i8> vector");
+                throw CompilerDirectives.shouldNotReachHere("expected a <16 x i8> vector");
             }
             int result = 0;
             for (int i = 0; i < VECTOR_LENGTH; i++) {
                 int currentByte = vector.getValue(i);
                 int mostSignificantBit = (currentByte & 0xff) >> (Byte.SIZE - 1);
+                result |= mostSignificantBit << i;
+            }
+
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected int doIntrinsic32(float vector) {
+            int result = 0;
+            int v = Float.floatToRawIntBits(vector);
+            for (int i = 0; i < 4; i++) {
+                int currentByte = (v >> (i * Byte.SIZE)) & 0xff;
+                int mostSignificantBit = currentByte >> (Byte.SIZE - 1);
+                result |= mostSignificantBit << i;
+            }
+
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected int doIntrinsic64(double vector) {
+            int result = 0;
+            long v = Double.doubleToRawLongBits(vector);
+            for (int i = 0; i < 8; i++) {
+                int currentByte = (int) (v >> (i * Byte.SIZE)) & 0xff;
+                int mostSignificantBit = currentByte >> (Byte.SIZE - 1);
                 result |= mostSignificantBit << i;
             }
 
@@ -102,8 +127,7 @@ public abstract class LLVMX86_ConversionNode {
         @Specialization
         protected int doIntrinsic(LLVMDoubleVector vector) {
             if (vector.getLength() != 2) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError("expected a <2 x double> vector");
+                throw CompilerDirectives.shouldNotReachHere("expected a <2 x double> vector");
             }
             return ((vector.getValue(1) < 0 ? 1 : 0) << 1) | (vector.getValue(0) < 0 ? 1 : 0);
         }

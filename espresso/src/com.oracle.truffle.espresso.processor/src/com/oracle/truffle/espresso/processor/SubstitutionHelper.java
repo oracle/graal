@@ -24,38 +24,68 @@ package com.oracle.truffle.espresso.processor;
 
 import java.util.List;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
+
+import com.oracle.truffle.espresso.processor.EspressoProcessor.InjectableType;
 
 /**
- * passed around during espresso annotation processing. It is meant to be subclassed to serve as
+ * Passed around during espresso annotation processing. It is meant to be subclassed to serve as
  * storage for the data required during processing.
  * 
  * @see NativeEnvProcessor.IntrinsincsHelper
  * @see com.oracle.truffle.espresso.processor.SubstitutionProcessor.SubstitutorHelper
  */
 public class SubstitutionHelper {
-    List<GuestCall> guestCalls;
-    boolean hasMetaInjection;
-    boolean hasProfileInjection;
+    final List<InjectableType> injectedTypes;
+    final boolean hasLanguageInjection;
+    final boolean hasMetaInjection;
+    final boolean hasContextInjection;
+    final boolean hasProfileInjection;
+    final boolean skipSafepoint;
 
-    public SubstitutionHelper(EspressoProcessor processor, ExecutableElement method) {
-        guestCalls = processor.getGuestCalls(method);
-        hasMetaInjection = processor.hasMetaInjection(method);
-        hasProfileInjection = processor.hasProfileInjection(method);
+    // Target of the substitution, can be a public static method or a node.
+    private final Element target;
+
+    private final TypeElement implAnnotation;
+
+    public TypeElement getNodeTarget() {
+        return (TypeElement) target;
     }
 
-    public static final class GuestCall {
-        public final String target;
-        public final boolean original;
+    public ExecutableElement getMethodTarget() {
+        return (ExecutableElement) target;
+    }
 
-        public GuestCall(String target, boolean original) {
-            this.target = target;
-            this.original = original;
-        }
+    public SubstitutionHelper(EspressoProcessor processor, Element target, TypeElement implAnnotation) {
+        this.target = target;
+        this.implAnnotation = implAnnotation;
+        // If the target is a node, obtain the abstract execute* method.
+        ExecutableElement targetMethod = isNodeTarget()
+                        ? processor.findNodeExecute(getNodeTarget())
+                        : getMethodTarget();
+        this.injectedTypes = processor.getInjectedTypes(targetMethod);
+        this.hasLanguageInjection = injectedTypes.contains(InjectableType.LANGUAGE);
+        this.hasMetaInjection = injectedTypes.contains(InjectableType.META);
+        this.hasContextInjection = injectedTypes.contains(InjectableType.CONTEXT);
+        this.hasProfileInjection = injectedTypes.contains(InjectableType.PROFILE);
+        this.skipSafepoint = processor.skipsSafepoint(target);
+    }
 
-        @Override
-        public String toString() {
-            return target;
-        }
+    public boolean isNodeTarget() {
+        return target instanceof TypeElement;
+    }
+
+    public TypeElement getImplAnnotation() {
+        return implAnnotation;
+    }
+
+    public Element getTarget() {
+        return target;
+    }
+
+    public final boolean needsContextInjection() {
+        return hasContextInjection || hasMetaInjection;
     }
 }

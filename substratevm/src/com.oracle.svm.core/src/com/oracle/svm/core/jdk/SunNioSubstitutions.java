@@ -31,7 +31,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "java.nio.channels.spi.SelectorProvider", onlyWith = JDK14OrEarlier.class)
+@TargetClass(className = "java.nio.channels.spi.SelectorProvider", onlyWith = JDK11OrEarlier.class)
 final class Target_java_nio_channels_spi_SelectorProvider {
 
     @Alias//
@@ -57,7 +57,7 @@ final class Target_java_nio_channels_spi_SelectorProvider {
     }
 }
 
-@TargetClass(className = "java.nio.channels.spi.SelectorProvider", innerClass = "Holder", onlyWith = JDK15OrLater.class)
+@TargetClass(className = "java.nio.channels.spi.SelectorProvider", innerClass = "Holder", onlyWith = JDK17OrLater.class)
 final class Target_java_nio_channels_spi_SelectorProvider_Holder {
 
     @Alias//

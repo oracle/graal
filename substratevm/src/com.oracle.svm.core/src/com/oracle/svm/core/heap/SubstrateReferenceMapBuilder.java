@@ -61,7 +61,7 @@ public class SubstrateReferenceMapBuilder extends ReferenceMapBuilder {
         } else if (ValueUtil.isRegister(value)) {
             Register register = ValueUtil.asRegister(value);
             assert referenceMap.debugMarkRegister(ValueUtil.asRegister(value).number, value);
-            if (CalleeSavedRegisters.supportedByPlatform()) {
+            if (CalleeSavedRegisters.supportedByPlatform() && CalleeSavedRegisters.singleton().calleeSaveable(register)) {
                 offset = CalleeSavedRegisters.singleton().getOffsetInFrame(register);
                 offsetValid = true;
             }

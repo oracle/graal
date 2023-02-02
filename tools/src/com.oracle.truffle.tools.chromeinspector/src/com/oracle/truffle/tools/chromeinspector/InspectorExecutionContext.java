@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -149,16 +149,24 @@ public final class InspectorExecutionContext {
     }
 
     public ScriptsHandler acquireScriptsHandler() {
+        return acquireScriptsHandler(null);
+    }
+
+    // Acquire and associate with the debugger session.
+    ScriptsHandler acquireScriptsHandler(DebuggerSession debuggerSession) {
         ScriptsHandler sh;
         boolean attachListener = false;
         synchronized (this) {
             sh = scriptsHandler;
             if (sh == null) {
-                scriptsHandler = sh = new ScriptsHandler(inspectInternal);
+                scriptsHandler = sh = new ScriptsHandler(env, inspectInternal);
                 attachListener = true;
                 schCounter = 0;
             }
             schCounter++;
+        }
+        if (debuggerSession != null) {
+            sh.setDebuggerSession(debuggerSession);
         }
         if (attachListener) {
             schBinding = env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, sh, true);
@@ -170,6 +178,7 @@ public final class InspectorExecutionContext {
         if (--schCounter == 0) {
             schBinding.dispose();
             schBinding = null;
+            scriptsHandler.dispose();
             scriptsHandler = null;
         }
     }
@@ -215,12 +224,16 @@ public final class InspectorExecutionContext {
     }
 
     void setValue(DebugValue debugValue, CallArgument newValue) {
+        debugValue.set(getDebugValue(newValue, debugValue.getSession()));
+    }
+
+    DebugValue getDebugValue(CallArgument newValue, DebuggerSession session) {
         String objectId = newValue.getObjectId();
         if (objectId != null) {
             RemoteObject obj = getRemoteObjectsHandler().getRemote(objectId);
-            debugValue.set(obj.getDebugValue());
+            return obj.getDebugValue();
         } else {
-            debugValue.set(newValue.getPrimitiveValue());
+            return session.createPrimitiveValue(newValue.getPrimitiveValue(), null);
         }
     }
 
@@ -309,16 +322,6 @@ public final class InspectorExecutionContext {
 
     DebuggerSuspendedInfo getSuspendedInfo() {
         return suspendedInfo;
-    }
-
-    /**
-     * Returns the current debugger session if debugging is on.
-     *
-     * @return the current debugger session, or <code>null</code>.
-     */
-    public DebuggerSession getDebuggerSession() {
-        ScriptsHandler handler = this.scriptsHandler;
-        return (handler != null) ? handler.getDebuggerSession() : null;
     }
 
     /**

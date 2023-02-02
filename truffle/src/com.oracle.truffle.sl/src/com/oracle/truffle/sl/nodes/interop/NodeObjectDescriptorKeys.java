@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,23 @@
  */
 package com.oracle.truffle.sl.nodes.interop;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 
 @ExportLibrary(InteropLibrary.class)
 public final class NodeObjectDescriptorKeys implements TruffleObject {
 
-    private final String keyName;
+    private final TruffleString keyName;
 
-    NodeObjectDescriptorKeys(String keyName) {
+    NodeObjectDescriptorKeys(TruffleString keyName) {
         this.keyName = keyName;
     }
 
@@ -76,9 +79,9 @@ public final class NodeObjectDescriptorKeys implements TruffleObject {
     }
 
     @ExportMessage
-    Object readArrayElement(long index, @Cached BranchProfile exception) throws InvalidArrayIndexException {
+    Object readArrayElement(long index, @Bind("$node") Node node, @Cached InlinedBranchProfile exception) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index)) {
-            exception.enter();
+            exception.enter(node);
             throw InvalidArrayIndexException.create(index);
         }
         return keyName;

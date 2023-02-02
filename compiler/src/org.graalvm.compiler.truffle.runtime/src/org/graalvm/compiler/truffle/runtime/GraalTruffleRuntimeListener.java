@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.Map;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 
@@ -75,7 +76,7 @@ public interface GraalTruffleRuntimeListener {
     /**
      * @deprecated Use {@link #onCompilationQueued(OptimizedCallTarget, int)}
      */
-    @Deprecated
+    @Deprecated(since = "21.0")
     default void onCompilationQueued(OptimizedCallTarget target) {
         onCompilationQueued(target, 0);
     }
@@ -93,7 +94,7 @@ public interface GraalTruffleRuntimeListener {
      * @deprecated Use
      *             {@link #onCompilationDequeued(OptimizedCallTarget, Object, CharSequence, int)}
      */
-    @Deprecated
+    @Deprecated(since = "21.0")
     default void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
         onCompilationDequeued(target, source, reason, 0);
     }
@@ -112,20 +113,25 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
+     * @param target the call target about to be compiled
+     * @param tier Which compilation tier is in question.
+     *
      * @deprecated Use {@link #onCompilationStarted(OptimizedCallTarget, int)}
      */
-    @Deprecated
-    default void onCompilationStarted(OptimizedCallTarget target) {
-        onCompilationStarted(target, 0);
+    @Deprecated(since = "21.0")
+    @SuppressWarnings("unused")
+    default void onCompilationStarted(OptimizedCallTarget target, int tier) {
     }
 
     /**
      * Notifies this object when compilation of {@code target} is about to start.
      *
      * @param target the call target about to be compiled
-     * @param tier Which compilation tier is in question.
+     * @param task which compilation task is in question.
      */
-    default void onCompilationStarted(OptimizedCallTarget target, int tier) {
+    @SuppressWarnings({"unused", "deprecated"})
+    default void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
+        onCompilationStarted(target, task.tier());
     }
 
     /**
@@ -153,7 +159,7 @@ public interface GraalTruffleRuntimeListener {
      * @deprecated Use
      *             {@link #onCompilationSuccess(OptimizedCallTarget, TruffleInlining, GraphInfo, CompilationResultInfo)}
      */
-    @Deprecated
+    @Deprecated(since = "21.0")
     default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
         onCompilationSuccess(target, inliningDecision, graph, result, 0);
     }
@@ -174,7 +180,7 @@ public interface GraalTruffleRuntimeListener {
      * @deprecated Use
      *             {@link #onCompilationFailed(OptimizedCallTarget, String, boolean, boolean, int)}
      */
-    @Deprecated
+    @Deprecated(since = "21.0")
     default void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
         onCompilationFailed(target, reason, bailout, permanentBailout, 0);
     }

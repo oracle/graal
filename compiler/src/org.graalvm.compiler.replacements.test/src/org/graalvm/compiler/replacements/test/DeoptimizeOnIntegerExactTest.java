@@ -85,17 +85,25 @@ public class DeoptimizeOnIntegerExactTest extends GraalCompilerTest {
         }
     }
 
-    public void testAgainIfDeopt(String methodName, int x, int y) throws InvalidInstalledCodeException {
+    public static int testNegateExactSnippet(int v) {
+        if (highlyLikely) {
+            return highlyUnlikely ? Math.negateExact(v) : v;
+        } else {
+            return highlyUnlikely ? v : Math.negateExact(v);
+        }
+    }
+
+    public void testAgainIfDeopt(String methodName, Object... args) throws InvalidInstalledCodeException {
         ResolvedJavaMethod method = getResolvedJavaMethod(methodName);
         // We speculate on the first compilation. The global value numbering will merge the two
         // floating integer exact operation nodes.
         InstalledCode code = getCode(method);
-        code.executeVarargs(x, y);
+        code.executeVarargs(args);
         if (!code.isValid()) {
             // At the recompilation, we anchor the floating integer exact operation nodes at their
             // corresponding branches.
             code = getCode(method);
-            code.executeVarargs(x, y);
+            code.executeVarargs(args);
             // The recompiled code should not get deoptimized.
             assertTrue(code.isValid());
         }
@@ -124,6 +132,11 @@ public class DeoptimizeOnIntegerExactTest extends GraalCompilerTest {
     @Test
     public void testDecrementExact() throws InvalidInstalledCodeException {
         testAgainIfDeopt("testDecrementExactSnippet", Integer.MIN_VALUE, 1);
+    }
+
+    @Test
+    public void testNegateExact() throws InvalidInstalledCodeException {
+        testAgainIfDeopt("testNegateExactSnippet", Integer.MIN_VALUE);
     }
 
     @Override

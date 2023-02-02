@@ -24,56 +24,89 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.core.common.BootstrapMethodIntrospection;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 
+import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
-    public AnalysisGraphBuilderPhase(Providers providers,
-                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes) {
+    protected final SVMHost hostVM;
+
+    public AnalysisGraphBuilderPhase(CoreProviders providers,
+                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes, SVMHost hostVM) {
         super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
+        this.hostVM = hostVM;
     }
 
     @Override
     protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+        return new AnalysisBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, hostVM, true);
     }
 
     public static class AnalysisBytecodeParser extends SharedBytecodeParser {
+
+        private final SVMHost hostVM;
+
         protected AnalysisBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true);
+                        IntrinsicContext intrinsicContext, SVMHost hostVM, boolean explicitExceptionEdges) {
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges);
+            this.hostVM = hostVM;
         }
 
         @Override
         protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
             boolean result = super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType);
             if (result) {
-                ((AnalysisMethod) targetMethod).registerAsIntrinsicMethod();
+                ((AnalysisMethod) targetMethod).registerAsIntrinsicMethod(nonNullReason(graph.currentNodeSourcePosition()));
             }
             return result;
         }
 
+        private static Object nonNullReason(Object reason) {
+            return reason == null ? "Unknown invocation location." : reason;
+        }
+
+        @Override
+        protected boolean applyInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, InvocationPlugin plugin) {
+            Class<? extends InvocationPlugin> accessingClass = plugin.getClass();
+            /*
+             * The annotation-processor creates InvocationPlugins in classes in modules that e.g.
+             * use the @Fold annotation. This way InvocationPlugins can be in various classes in
+             * various modules. For these InvocationPlugins to do their work they need access to
+             * bits of graal. Thus the modules that contain such plugins need to be allowed such
+             * access.
+             */
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.nodes");
+            return super.applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin);
+        }
+
+        private final boolean parseOnce = SubstrateOptions.parseOnce();
+
         @Override
         protected BytecodeParser.ExceptionEdgeAction getActionForInvokeExceptionEdge(InlineInfo lastInlineInfo) {
-            if (!insideTryBlock()) {
+            if (!parseOnce && !insideTryBlock()) {
                 /*
                  * The static analysis does not track the flow of exceptions across method
                  * boundaries. Therefore, it is not necessary to have exception edges that go
@@ -84,9 +117,32 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             return super.getActionForInvokeExceptionEdge(lastInlineInfo);
         }
 
+        private boolean tryNodePluginForDynamicInvocation(BootstrapMethodIntrospection bootstrap) {
+            for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+                var result = plugin.convertInvokeDynamic(this, bootstrap);
+                if (result != null) {
+                    appendInvoke(InvokeKind.Static, result.getLeft(), result.getRight(), null);
+                    return true;
+                }
+            }
+            return false;
+        }
+
         @Override
-        public boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
-            return plugin.getSource().equals(Fold.class) || plugin.getSource().equals(Node.NodeIntrinsic.class);
+        protected void genInvokeDynamic(int cpi, int opcode) {
+            if (parseOnce) {
+                BootstrapMethodIntrospection bootstrap = ((AnalysisConstantPool) constantPool).lookupBootstrapMethodIntrospection(cpi, opcode);
+                if (bootstrap != null && tryNodePluginForDynamicInvocation(bootstrap)) {
+                    return;
+                }
+            }
+            super.genInvokeDynamic(cpi, opcode);
+        }
+
+        @Override
+        protected void genStoreField(ValueNode receiver, ResolvedJavaField field, ValueNode value) {
+            hostVM.recordFieldStore(field, method);
+            super.genStoreField(receiver, field, value);
         }
     }
 }

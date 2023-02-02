@@ -35,23 +35,22 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Semaphore;
-import java.util.function.Consumer;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.PolyglotException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
@@ -59,13 +58,29 @@ import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.profiler.CPUSampler;
-import com.oracle.truffle.tools.profiler.CPUSampler.Mode;
 import com.oracle.truffle.tools.profiler.StackTraceEntry;
 
 public class ManualSamplingTest extends AbstractPolyglotTest {
 
     protected static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().sourceIs(s -> !s.isInternal()).tagIs(RootTag.class, StatementTag.class).build();
-    private static final Class<?>[] ROOT_TAGS = new Class<?>[]{RootTag.class, RootBodyTag.class};
+    private Semaphore enteredSample = new Semaphore(0);
+    private Semaphore leaveSample = new Semaphore(0);
+    private CPUSampler sampler;
+
+    private static void assertEntry(Iterator<StackTraceEntry> iterator, String expectedName, int expectedCharIndex) {
+        StackTraceEntry entry = iterator.next();
+        assertEquals(expectedName, entry.getRootName());
+        assertEquals(expectedCharIndex, entry.getSourceSection().getCharIndex());
+        assertNotNull(entry.toStackTraceElement());
+        assertNotNull(entry.toString());
+        assertNotNull(entry.hashCode());
+        assertTrue(entry.equals(entry));
+    }
+
+    public ManualSamplingTest() {
+        needsInstrumentEnv = true;
+        ignoreCancelOnClose = true;
+    }
 
     @Test
     @SuppressWarnings("unchecked")
@@ -80,14 +95,11 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
         fail("engine not found");
     }
 
-    private final Semaphore awaitEnterSample = new Semaphore(0);
-    private final Semaphore awaitLeaveSample = new Semaphore(0);
-    private final Semaphore enteredSample = new Semaphore(0);
-    private final Semaphore leaveSample = new Semaphore(0);
-    private CPUSampler sampler;
-
     @Before
     public void setup() {
+        enterContext = false;
+        enteredSample = new Semaphore(0);
+        leaveSample = new Semaphore(0);
         setupEnv(Context.newBuilder().build(), new ProxyLanguage() {
             @Override
             protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
@@ -99,20 +111,10 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
                         new ExecutionEventListener() {
                             public void onEnter(EventContext c, VirtualFrame frame) {
                                 enteredSample.release(1);
-                                try {
-                                    awaitEnterSample.acquire(1);
-                                } catch (InterruptedException e) {
-                                    throw new AssertionError(e);
-                                }
+                                TruffleSafepoint.setBlockedThreadInterruptible(c.getInstrumentedNode(), Semaphore::acquire, leaveSample);
                             }
 
                             public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
-                                leaveSample.release(1);
-                                try {
-                                    awaitLeaveSample.acquire(1);
-                                } catch (InterruptedException e) {
-                                    throw new AssertionError(e);
-                                }
                             }
 
                             public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
@@ -121,47 +123,34 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
 
         sampler = CPUSampler.find(context.getEngine());
         sampler.setFilter(DEFAULT_FILTER);
-        sampler.setMode(Mode.ROOTS);
     }
 
-    @Test
-    public void testReconstructingRoots() {
-
+    @After
+    public void tearDown() throws Exception {
     }
 
     @Test
     public void testLazySingleThreadRoots1() throws InterruptedException {
         testSampling(new String[]{"ROOT(CALL(sample))"
-        }, (samples) -> {
+        }, (samples, i) -> {
             assertEquals(1, samples.size());
             Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-            assertEntry(iterator, "", 0, ROOT_TAGS);
+            assertEntry(iterator, "sample", 14);
+            assertEntry(iterator, "", 0);
             assertFalse(iterator.hasNext());
-        }, true);
-    }
-
-    @Test
-    public void testLazySingleThreadStatements() throws InterruptedException {
-        sampler.setMode(Mode.STATEMENTS);
-        testSampling(new String[]{"ROOT(STATEMENT(CALL(sample)))"
-        }, (samples) -> {
-            assertEquals(1, samples.size());
-            Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-            assertEntry(iterator, "", 5, StatementTag.class);
-            assertEntry(iterator, "", 0, ROOT_TAGS);
-            assertFalse(iterator.hasNext());
-        }, true);
+        }, 1, Long.MAX_VALUE);
     }
 
     @Test
     public void testSingleThreadRoots1() throws InterruptedException {
         testSampling(new String[]{"ROOT(CALL(sample))"
-        }, (samples) -> {
+        }, (samples, i) -> {
             assertEquals(1, samples.size());
             Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-            assertEntry(iterator, "", 0, ROOT_TAGS);
+            assertEntry(iterator, "sample", 14);
+            assertEntry(iterator, "", 0);
             assertFalse(iterator.hasNext());
-        }, false);
+        }, 1, Long.MAX_VALUE);
     }
 
     @Test
@@ -170,33 +159,15 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
                         "DEFINE(bar,ROOT(BLOCK(EXPRESSION(CALL(sample)))))," +
                         "DEFINE(baz,ROOT(BLOCK(STATEMENT(CALL(bar)))))," +
                         "CALL(baz))"
-        }, (samples) -> {
+        }, (samples, i) -> {
             assertEquals(1, samples.size());
             Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-            assertEntry(iterator, "bar", 16, ROOT_TAGS);
-            assertEntry(iterator, "baz", 66, ROOT_TAGS);
-            assertEntry(iterator, "", 0, ROOT_TAGS);
+            assertEntry(iterator, "sample", 14);
+            assertEntry(iterator, "bar", 16);
+            assertEntry(iterator, "baz", 66);
+            assertEntry(iterator, "", 0);
             assertFalse(iterator.hasNext());
-        }, false);
-    }
-
-    @Test
-    public void testSingleThreadStatements() throws InterruptedException {
-        sampler.setMode(Mode.STATEMENTS);
-        testSampling(new String[]{"ROOT(" +
-                        "DEFINE(bar,ROOT(STATEMENT(CALL(sample))))," +
-                        "DEFINE(baz,ROOT(STATEMENT(CALL(bar))))," +
-                        "CALL(baz))"
-        }, (samples) -> {
-            assertEquals(1, samples.size());
-            Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-            assertEntry(iterator, "bar", 21, StatementTag.class);
-            assertEntry(iterator, "bar", 16, ROOT_TAGS);
-            assertEntry(iterator, "baz", 63, StatementTag.class);
-            assertEntry(iterator, "baz", 58, ROOT_TAGS);
-            assertEntry(iterator, "", 0, ROOT_TAGS);
-            assertFalse(iterator.hasNext());
-        }, false);
+        }, 1, Long.MAX_VALUE);
     }
 
     @Test
@@ -215,117 +186,83 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
                                         "DEFINE(t2_baz,ROOT(BLOCK(STATEMENT(CALL(t2_bar)))))," +
                                         "CALL(t2_baz))"
 
-        }, (samples) -> {
+        }, (samples, i) -> {
             assertEquals(3, samples.size());
             for (Entry<Thread, List<StackTraceEntry>> entry : samples.entrySet()) {
                 String threadName = entry.getKey().getName();
                 Iterator<StackTraceEntry> iterator = entry.getValue().iterator();
-                assertEntry(iterator, threadName + "_bar", 19, ROOT_TAGS);
-                assertEntry(iterator, threadName + "_baz", 72, ROOT_TAGS);
-                assertEntry(iterator, "", 0, ROOT_TAGS);
+                assertEntry(iterator, "sample", 14);
+                assertEntry(iterator, threadName + "_bar", 19);
+                assertEntry(iterator, threadName + "_baz", 72);
+                assertEntry(iterator, "", 0);
                 assertFalse(iterator.hasNext());
             }
-        }, false);
+        }, 1, Long.MAX_VALUE);
     }
 
     @Test
-    public void testCombinedWithDebugger() {
-        sampler.setCollecting(false);
-        AtomicInteger numSamples = new AtomicInteger();
-        Debugger debugger = Debugger.find(context.getEngine());
-        DebuggerSession debuggerSession = debugger.startSession(event -> {
-            assertEquals("debugger", event.getSourceSection().getCharacters());
-            if (!sampler.isCollecting()) {
-                sampler.setCollecting(true);
-            } else {
-                Map<Thread, List<StackTraceEntry>> samples = sampler.takeSample();
-                assertEquals(1, samples.size());
-                for (Entry<Thread, List<StackTraceEntry>> entry : samples.entrySet()) {
-                    Iterator<StackTraceEntry> iterator = entry.getValue().iterator();
-                    assertEntry(iterator, "test", 9, ROOT_TAGS);
+    public void testTimeout() throws InterruptedException {
+        testSampling(new String[]{
+                        "ROOT(" +
+                                        "CALL(sample)," +
+                                        "SLEEP(100000)," +
+                                        "CALL(sample))",
+
+        }, (samples, i) -> {
+            if (samples.size() > 0) {
+                List<StackTraceEntry> entries = samples.values().iterator().next();
+                Iterator<StackTraceEntry> iterator = entries.iterator();
+                if (entries.size() == 2) {
+                    assertEntry(iterator, "sample", 14);
+                    assertEntry(iterator, "", 0);
+                    assertFalse(iterator.hasNext());
+                } else {
+                    assertEntry(iterator, "", 0);
                     assertFalse(iterator.hasNext());
                 }
-                numSamples.incrementAndGet();
             }
-        });
-        context.eval("sl", "function test() {\n" +
-                        "  x = 10;\n" +
-                        "  debugger;\n" +
-                        "}\n");
-        Value test = context.getBindings("sl").getMember("test");
-        for (int i = 0; i < 10; i++) {
-            test.execute();
-        }
-        debuggerSession.close();
-        assertEquals(9, numSamples.get());
-    }
-
-    private static void assertEntry(Iterator<StackTraceEntry> iterator, String expectedName, int expectedCharIndex, Class<?>... expectedTags) {
-        StackTraceEntry entry = iterator.next();
-        assertEquals(expectedName, entry.getRootName());
-        assertTrue(entry.isInlined() ^ entry.isCompiled() ^ entry.isInterpreted());
-        assertEquals(expectedTags.length, entry.getTags().size());
-        for (Class<?> tag : expectedTags) {
-            assertTrue(entry.getTags().toString(), entry.getTags().contains(tag));
-        }
-        assertEquals(expectedCharIndex, entry.getSourceSection().getCharIndex());
-        assertNotNull(entry.toStackTraceElement());
-        assertNotNull(entry.toString());
-        assertNotNull(entry.hashCode());
-        assertTrue(entry.equals(entry));
+        }, 2, 1);
     }
 
     /**
      * @param sources every source is executed on its on thread and sampled.
      * @param verifier verify the stack samples
-     * @param lazyAttach the instrument should be attached while executing, requiring the shadow
-     *            stack to be reconstructed.
+     * @param expectedSamples number of expected samples
      */
-    private void testSampling(String[] sources, Consumer<Map<Thread, List<StackTraceEntry>>> verifier, boolean lazyAttach) throws InterruptedException {
+    private void testSampling(String[] sources, BiConsumer<Map<Thread, List<StackTraceEntry>>, Integer> verifier, int expectedSamples, long timeout)
+                    throws InterruptedException {
         List<Thread> threads = new ArrayList<>(sources.length);
         int numThreads = sources.length;
         for (int i = 0; i < numThreads; i++) {
             String source = sources[i];
             Thread t = new Thread(() -> {
-                context.eval(InstrumentationTestLanguage.ID, source);
-                /*
-                 * run some code after to allow cleanup of the initial stack this is needed as we
-                 * currently don't support listening to leaving the context on a thread in
-                 * instrumentation.
-                 */
-                context.eval(InstrumentationTestLanguage.ID, "ROOT");
+                try {
+                    context.eval(InstrumentationTestLanguage.ID, source);
+                } catch (PolyglotException e) {
+                    if (!e.isInternalError()) {
+                        return; // all good
+                    }
+                    throw e;
+                }
             });
             t.setName("t" + i);
             threads.add(t);
         }
 
         try {
-            if (lazyAttach) {
-                threads.forEach((t) -> t.start());
-                enteredSample.acquire(numThreads);
-                assertEquals(0, sampler.takeSample().size()); // initializes the sampler
-                awaitEnterSample.release(numThreads);
-                leaveSample.acquire(numThreads);
-                try {
-                    verifier.accept(sampler.takeSample());
-                } finally {
-                    awaitLeaveSample.release(numThreads);
-                }
-            } else {
-                assertEquals(0, sampler.takeSample().size()); // initializes the sampler
-                threads.forEach((t) -> t.start());
-                enteredSample.acquire(numThreads);
-                try {
-                    verifier.accept(sampler.takeSample());
-                } finally {
-                    awaitEnterSample.release(numThreads);
-                    leaveSample.acquire(numThreads);
-                    awaitLeaveSample.release(numThreads);
+            threads.forEach((t) -> t.start());
+            enteredSample.acquire(numThreads);
 
-                }
+            for (int i = 0; i < expectedSamples; i++) {
+                verifier.accept(sampler.takeSample(timeout, TimeUnit.MILLISECONDS), i);
+                leaveSample.release(numThreads);
             }
+
         } finally {
+            context.close(true);
             for (Thread thread : threads) {
+                leaveSample.release(numThreads * expectedSamples);
+                thread.interrupt();
                 thread.join(10000);
             }
         }

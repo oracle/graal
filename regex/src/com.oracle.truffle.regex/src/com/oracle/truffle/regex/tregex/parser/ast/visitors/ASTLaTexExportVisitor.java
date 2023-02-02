@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -57,6 +58,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 import com.oracle.truffle.regex.tregex.util.LaTexExport;
 
 public final class ASTLaTexExportVisitor extends DepthFirstTraversalRegexASTVisitor {
@@ -153,7 +155,15 @@ public final class ASTLaTexExportVisitor extends DepthFirstTraversalRegexASTVisi
 
     @Override
     protected void visit(Group group) {
-        openNode((group.isCapturing() ? String.format("(%d)", group.getGroupNumber()) : "(:?)") + group.loopToString(), group);
+        String groupLabel;
+        if (group.isConditionalBackReferenceGroup()) {
+            groupLabel = String.format("(?(%d))", group.asConditionalBackReferenceGroup().getReferencedGroupNumber());
+        } else if (group.isCapturing()) {
+            groupLabel = String.format("(%d)", group.getGroupNumber());
+        } else {
+            groupLabel = "(:?)";
+        }
+        openNode(groupLabel + group.loopToString(), group);
     }
 
     @Override
@@ -197,10 +207,25 @@ public final class ASTLaTexExportVisitor extends DepthFirstTraversalRegexASTVisi
     }
 
     @Override
+    protected void visit(AtomicGroup atomicGroup) {
+        openNode(String.format("(%s)", atomicGroup.getPrefix()), atomicGroup);
+    }
+
+    @Override
+    protected void leave(AtomicGroup atomicGroup) {
+        closeNode();
+    }
+
+    @Override
     protected void visit(CharacterClass characterClass) {
         writeln(node(characterClass));
         if (characterClass.hasLookBehindEntries()) {
             lbEntries.add(characterClass);
         }
+    }
+
+    @Override
+    protected void visit(SubexpressionCall subexpressionCall) {
+        writeln(node(subexpressionCall));
     }
 }

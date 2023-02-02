@@ -25,6 +25,7 @@
 package com.oracle.svm.graal.isolated;
 
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -35,7 +36,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
@@ -59,8 +59,7 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
         return installInClientIsolate0(clientIsolate, methodRef, installInfo, installedCodeFactoryHandle);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static ClientHandle<SubstrateInstalledCode> installInClientIsolate0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext ClientIsolateThread isolate,
                     ImageHeapRef<SubstrateMethod> methodRef, CodeInstallInfo installInfo, ClientHandle<? extends SubstrateInstalledCode.Factory> installedCodeFactoryHandle) {
 
@@ -78,6 +77,7 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
         } else {
             installedCode = new SubstrateInstalledCodeImpl(method);
         }
+        installedCode.setCompilationId(IsolatedCompileClient.get().unhand(installInfo.getCompilationId()));
         installPrepared(method, installInfo, installedCode);
         return IsolatedCompileClient.get().hand(installedCode);
     }
@@ -90,8 +90,7 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
         return installInClientIsolate1(clientIsolate, clientMethodHandle, installInfo, installedCodeFactoryHandle);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static ClientHandle<SubstrateInstalledCode> installInClientIsolate1(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext ClientIsolateThread isolate,
                     ClientHandle<? extends SharedRuntimeMethod> methodHandle, CodeInstallInfo installInfo, ClientHandle<? extends SubstrateInstalledCode.Factory> installedCodeFactoryHandle) {
 
@@ -108,9 +107,17 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
         doPrepareInstall(adjuster, codeInfo);
         RuntimeCodeInfoAccess.guaranteeAllObjectsInImageHeap(codeInfo);
 
+        ClientHandle<CompilationIdentifier> id = IsolatedHandles.nullHandle();
+        if (compilationId instanceof IsolatedObjectProxy<?>) {
+            @SuppressWarnings("unchecked")
+            IsolatedObjectProxy<CompilationIdentifier> proxy = (IsolatedObjectProxy<CompilationIdentifier>) compilationId;
+            id = proxy.getHandle();
+        }
+
         CodeInstallInfo installInfo = UnmanagedMemory.malloc(SizeOf.get(CodeInstallInfo.class));
         installInfo.setCodeInfo(codeInfo);
         installInfo.setAdjusterData(adjuster.exportData());
+        installInfo.setCompilationId(id);
 
         IsolatedRuntimeMethodInfoAccess.untrackInCurrentIsolate(installInfo.getCodeInfo());
         return installInfo;
@@ -127,10 +134,12 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
     }
 
     private final IsolateThread targetIsolate;
+    private final CompilationIdentifier compilationId;
 
     private IsolatedRuntimeCodeInstaller(IsolateThread targetIsolate, SharedRuntimeMethod method, CompilationResult compilation) {
         super(method, compilation);
         this.targetIsolate = targetIsolate;
+        this.compilationId = compilation.getCompilationId();
     }
 
     @Override
@@ -142,31 +151,28 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
         return (Pointer) memory;
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static CodePointer allocateCodeMemory0(@SuppressWarnings("unused") IsolateThread targetIsolate, UnsignedWord size) {
         return RuntimeCodeInfoAccess.allocateCodeMemory(size);
     }
 
     @Override
-    protected void makeCodeMemoryReadOnly(Pointer start, long size) {
-        makeCodeMemoryReadOnly0(targetIsolate, start, size);
+    protected void makeCodeMemoryExecutableReadOnly(Pointer start, UnsignedWord size) {
+        makeCodeMemoryExecutableReadOnly0(targetIsolate, start, size);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
-    private static void makeCodeMemoryReadOnly0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, long size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, WordFactory.unsigned(size));
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static int makeCodeMemoryExecutableReadOnly0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, UnsignedWord size) {
+        return RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, size);
     }
 
     @Override
-    protected void makeCodeMemoryWriteableNonExecutable(Pointer start, long size) {
-        makeCodeMemoryWriteableNonExecutable0(targetIsolate, start, size);
+    protected void makeCodeMemoryExecutableWritable(Pointer start, UnsignedWord size) {
+        makeCodeMemoryExecutableWritable0(targetIsolate, start, size);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
-    private static void makeCodeMemoryWriteableNonExecutable0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, long size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryWriteableNonExecutable((CodePointer) start, WordFactory.unsigned(size));
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static int makeCodeMemoryExecutableWritable0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, UnsignedWord size) {
+        return RuntimeCodeInfoAccess.makeCodeMemoryExecutableWritable((CodePointer) start, size);
     }
 }

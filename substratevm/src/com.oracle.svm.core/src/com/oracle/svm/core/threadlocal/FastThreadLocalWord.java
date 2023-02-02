@@ -38,7 +38,8 @@ import org.graalvm.word.WordBase;
 public final class FastThreadLocalWord<T extends WordBase> extends FastThreadLocal {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    FastThreadLocalWord() {
+    FastThreadLocalWord(String name) {
+        super(name);
     }
 
     public T get() {

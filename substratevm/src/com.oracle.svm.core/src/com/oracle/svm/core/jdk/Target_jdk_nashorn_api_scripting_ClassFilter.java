@@ -25,7 +25,8 @@
 package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.NashornSupport.NashornAvailable;
 
-@TargetClass(className = "jdk.nashorn.api.scripting.ClassFilter", onlyWith = JDK14OrEarlier.class)
+@TargetClass(className = "jdk.nashorn.api.scripting.ClassFilter", onlyWith = {JDK11OrEarlier.class, NashornAvailable.class})
 public final class Target_jdk_nashorn_api_scripting_ClassFilter {
 }

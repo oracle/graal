@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,8 +30,14 @@
 
 #include <graalvm/llvm/polyglot.h>
 
+#if defined(_WIN32)
+#define EXPORT_FUNCTION __declspec(dllexport)
+#else
+#define EXPORT_FUNCTION
+#endif
+
 #define CALLBACK(str)                                                                                                                                \
     {                                                                                                                                                \
-        void (*callback)(const char *) = polyglot_import("callback");                                                                                \
+        void (*callback)(const polyglot_value) = (void *) polyglot_import("callback");                                                               \
         callback(polyglot_from_string(str, "ascii"));                                                                                                \
     }

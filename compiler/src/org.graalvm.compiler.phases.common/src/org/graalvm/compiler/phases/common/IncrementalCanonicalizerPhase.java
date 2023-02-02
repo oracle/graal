@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,40 +24,93 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.graph.Graph.NodeEventScope;
+import java.util.EnumSet;
+import java.util.Optional;
+
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeWorkList;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 /**
- * A phase suite that applies {@linkplain CanonicalizerPhase canonicalization} to a graph after all
- * phases in the suite have been applied if any of the phases changed the graph.
+ * The phase that does the work of {@link CanonicalizerPhase#applyIncremental}. This phase contains
+ * mutable state so it should only be created and used transiently.
  */
-public class IncrementalCanonicalizerPhase<C extends CoreProviders> extends PhaseSuite<C> {
+public class IncrementalCanonicalizerPhase extends CanonicalizerPhase {
 
-    private final CanonicalizerPhase canonicalizer;
+    private final StructuredGraph initialGraph;
+    private final Tool theTool;
 
-    public IncrementalCanonicalizerPhase(CanonicalizerPhase canonicalizer) {
-        this.canonicalizer = canonicalizer;
+    IncrementalCanonicalizerPhase(EnumSet<CanonicalizerFeature> features, StructuredGraph graph, CoreProviders context, Graph.Mark newNodesMark) {
+        this(features, graph, context, graph.getNewNodes(newNodesMark));
     }
 
-    public IncrementalCanonicalizerPhase(CanonicalizerPhase canonicalizer, BasePhase<? super C> phase) {
-        this.canonicalizer = canonicalizer;
-        appendPhase(phase);
+    IncrementalCanonicalizerPhase(EnumSet<CanonicalizerFeature> features, StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
+        super(features);
+        this.initialGraph = graph;
+        NodeWorkList workList = graph.createIterativeNodeWorkList(false, MAX_ITERATION_PER_NODE);
+        workList.addAll(workingSet);
+        theTool = new Tool(graph, context, workList);
     }
 
     @Override
-    @SuppressWarnings("try")
-    protected void run(StructuredGraph graph, C context) {
-        EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
-        try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
-            super.run(graph, context);
+    public boolean checkContract() {
+        return false;
+    }
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        GraalError.guarantee(!theTool.finalCanonicalization(), "Final canonicalization must not be incremental");
+        return super.notApplicableTo(graphState);
+    }
+
+    @Override
+    protected void run(StructuredGraph graph, CoreProviders context) {
+        GraalError.guarantee(graph == this.initialGraph, "Canonicalizer instances contain graph-specific state, they must be applied to the graph used during construction.");
+        processWorkSet(graph, theTool);
+    }
+
+    /**
+     * Helper class to apply incremental canonicalization using scopes.
+     */
+    public static class Apply implements ApplyScope {
+        private final EconomicSetNodeEventListener listener;
+        private final StructuredGraph graph;
+        private final CoreProviders context;
+        private final CanonicalizerPhase canonicalizer;
+        private final Graph.NodeEventScope scope;
+
+        public Apply(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer) {
+            assert canonicalizer != null;
+            this.graph = graph;
+            this.context = context;
+            this.canonicalizer = canonicalizer;
+            this.listener = new EconomicSetNodeEventListener();
+            scope = graph.trackNodeEvents(listener);
+
+            // The BasePhase dumping will emit an after dump at VERBOSE_LEVEL and a before dump at
+            // VERBOSE_LEVEL + 1. Emitting a before dump here at VERBOSE_LEVEL makes it easier to
+            // see the effects of the primary phase before the incremental canonicalization cleans
+            // up the graph.
+            if (graph.getDebug().isDumpEnabled(DebugContext.VERBOSE_LEVEL) && !graph.getDebug().isDumpEnabled(DebugContext.VERBOSE_LEVEL + 1)) {
+                graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "Before subphase %s", canonicalizer.getName());
+            }
         }
 
-        if (!listener.getNodes().isEmpty()) {
-            canonicalizer.applyIncremental(graph, context, listener.getNodes(), null, false);
+        @Override
+        public void close(Throwable throwable) {
+            scope.close();
+            if (throwable == null) {
+                // Perform the canonicalization if the main work completed without an exception.
+                if (!listener.getNodes().isEmpty()) {
+                    canonicalizer.applyIncremental(graph, context, listener.getNodes());
+                }
+            }
         }
     }
 }

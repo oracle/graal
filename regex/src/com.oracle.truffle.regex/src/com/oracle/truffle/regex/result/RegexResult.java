@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.regex.result;
 
+import java.util.Arrays;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -55,10 +59,14 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexObject;
+import com.oracle.truffle.regex.runtime.nodes.DispatchNode;
 import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
+import com.oracle.truffle.regex.util.EmptyArrays;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
@@ -76,21 +84,104 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
  * with the given number was found. If the result is no match, the returned value is undefined.
  * Capture group number {@code 0} denotes the boundaries of the entire expression. If no match was
  * found for a particular capture group, the returned value is {@code -1}.</li>
+ * <li>{@code int lastGroup}: The index of the last capture group that was matched. -1 if no capture
+ * group was matched. This property is only tracked for Python regular expressions. For other
+ * flavors of regular expressions, this always has the value -1.</li>
  * </ol>
  * </li>
  */
 @ExportLibrary(InteropLibrary.class)
-public abstract class RegexResult extends AbstractConstantKeysObject {
+public final class RegexResult extends AbstractConstantKeysObject {
 
     static final String PROP_IS_MATCH = "isMatch";
     static final String PROP_GET_START = "getStart";
     static final String PROP_GET_END = "getEnd";
+    static final String PROP_LAST_GROUP = "lastGroup";
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GET_START, PROP_GET_END);
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GET_START, PROP_GET_END, PROP_LAST_GROUP);
 
-    public abstract int getStart(int groupNumber);
+    private final Object input;
+    private final int fromIndex;
 
-    public abstract int getEnd(int groupNumber);
+    private final int start;
+    private final int end;
+    private int[] result;
+
+    private final CallTarget lazyCallTarget;
+
+    protected RegexResult(Object input, int fromIndex, int start, int end, int[] result, CallTarget lazyCallTarget) {
+        this.input = input;
+        this.fromIndex = fromIndex;
+        this.start = start;
+        this.end = end;
+        this.result = result;
+        this.lazyCallTarget = lazyCallTarget;
+    }
+
+    private static final RegexResult NO_MATCH_RESULT = new RegexResult(null, -1, -1, -1, EmptyArrays.INT, null);
+    private static final RegexResult BOOLEAN_MATCH_RESULT = new RegexResult(null, -1, -1, -1, EmptyArrays.INT, null);
+
+    public static RegexResult getNoMatchInstance() {
+        return NO_MATCH_RESULT;
+    }
+
+    public static RegexResult getBooleanMatchInstance() {
+        return BOOLEAN_MATCH_RESULT;
+    }
+
+    public static RegexResult create(int start, int end) {
+        return new RegexResult(null, -1, 0, 0, new int[]{start, end}, null);
+    }
+
+    public static RegexResult create(int[] result) {
+        assert result != null && result.length >= 2;
+        return new RegexResult(null, -1, 0, 0, result, null);
+    }
+
+    public static RegexResult createFromExecutorResult(Object executorResult) {
+        if (executorResult == null) {
+            return RegexResult.getNoMatchInstance();
+        }
+        return RegexResult.create((int[]) executorResult);
+    }
+
+    public static RegexResult createLazy(Object input, int fromIndex, int start, int end, CallTarget lazyCallTarget) {
+        return new RegexResult(input, fromIndex, start, end, null, lazyCallTarget);
+    }
+
+    public Object getInput() {
+        return input;
+    }
+
+    public int getFromIndex() {
+        return fromIndex;
+    }
+
+    public int getStart() {
+        return start;
+    }
+
+    public int getEnd() {
+        return end;
+    }
+
+    public void setResult(int[] result) {
+        this.result = result;
+    }
+
+    public int getStart(int groupNumber) {
+        int index = Group.groupNumberToBoundaryIndexStart(groupNumber);
+        return groupNumber >= result.length >> 1 ? -1 : result[index];
+    }
+
+    public int getEnd(int groupNumber) {
+        int index = Group.groupNumberToBoundaryIndexEnd(groupNumber);
+        return groupNumber >= result.length >> 1 ? -1 : result[index];
+    }
+
+    public int getLastGroup() {
+        return (result.length & 1) == 0 ? -1 : result[result.length - 1];
+    }
 
     @ExportMessage
     @Override
@@ -105,14 +196,14 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_IS_MATCH)"}, limit = "2")
         static boolean isMatchIdentity(RegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol) {
-            return receiver != NoMatchResult.getInstance();
+            return receiver != getNoMatchInstance();
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_IS_MATCH)"}, limit = "2", replaces = "isMatchIdentity")
         static boolean isMatchEquals(RegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol) {
-            return receiver != NoMatchResult.getInstance();
+            return receiver != getNoMatchInstance();
         }
 
         @SuppressWarnings("unused")
@@ -143,16 +234,32 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
             return new RegexResultGetEndMethod(receiver);
         }
 
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_LAST_GROUP)"}, limit = "2")
+        static int lastGroupIdentity(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return receiver.getLastGroup();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_LAST_GROUP)"}, limit = "2", replaces = "lastGroupIdentity")
+        static int lastGroupEquals(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return receiver.getLastGroup();
+        }
+
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"isMatchEquals", "getStartEquals", "getEndEquals"})
         static Object readGeneric(RegexResult receiver, String symbol) throws UnknownIdentifierException {
             switch (symbol) {
                 case PROP_IS_MATCH:
-                    return receiver != NoMatchResult.getInstance();
+                    return receiver != getNoMatchInstance();
                 case PROP_GET_START:
                     return new RegexResultGetStartMethod(receiver);
                 case PROP_GET_END:
                     return new RegexResultGetEndMethod(receiver);
+                case PROP_LAST_GROUP:
+                    return receiver.getLastGroup();
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw UnknownIdentifierException.create(symbol);
@@ -164,7 +271,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
     abstract static class IsMemberReadable {
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"symbol == cachedSymbol", "result"}, limit = "3")
+        @Specialization(guards = {"symbol == cachedSymbol", "result"}, limit = "4")
         static boolean cacheIdentity(RegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
@@ -172,7 +279,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"symbol.equals(cachedSymbol)", "result"}, limit = "3", replaces = "cacheIdentity")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "result"}, limit = "4", replaces = "cacheIdentity")
         static boolean cacheEquals(RegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
@@ -192,14 +299,29 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
     }
 
     @Override
-    public final Object readMemberImpl(String symbol) throws UnknownIdentifierException {
+    public boolean isMemberReadableImpl(String symbol) {
         switch (symbol) {
             case PROP_IS_MATCH:
-                return this != NoMatchResult.getInstance();
+            case PROP_GET_START:
+            case PROP_GET_END:
+            case PROP_LAST_GROUP:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
+    public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
+        switch (symbol) {
+            case PROP_IS_MATCH:
+                return this != getNoMatchInstance();
             case PROP_GET_START:
                 return new RegexResultGetStartMethod(this);
             case PROP_GET_END:
                 return new RegexResultGetEndMethod(this);
+            case PROP_LAST_GROUP:
+                return getLastGroup();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);
@@ -228,7 +350,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
                         @Cached RegexResultGetStartNode getStartNode) throws ArityException, UnsupportedTypeException {
             if (args.length != 1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw ArityException.create(1, args.length);
+                throw ArityException.create(1, 1, args.length);
             }
             return getStartNode.execute(result, toIntNode.execute(args[0]));
         }
@@ -262,9 +384,9 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
                         @Cached RegexResultGetEndNode getEndNode) throws ArityException, UnsupportedTypeException {
             if (args.length != 1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw ArityException.create(1, args.length);
+                throw ArityException.create(1, 1, args.length);
             }
-            return getEndNode.execute(result, toIntNode.execute(args[1]));
+            return getEndNode.execute(result, toIntNode.execute(args[0]));
         }
 
         @TruffleBoundary
@@ -306,7 +428,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
                     @Cached InvokeCacheNode invokeCache) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
         if (args.length != 1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw ArityException.create(1, args.length);
+            throw ArityException.create(1, 1, args.length);
         }
         return invokeCache.execute(this, member, toIntNode.execute(args[0]));
     }
@@ -364,5 +486,86 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
                     throw UnknownIdentifierException.create(symbol);
             }
         }
+    }
+
+    @TruffleBoundary
+    public void debugForceEvaluation() {
+        CompilerAsserts.neverPartOfCompilation();
+        assert this != getNoMatchInstance();
+        if (result == null) {
+            lazyCallTarget.call(this);
+        }
+        assert result != null;
+    }
+
+    private static final int INVALID_RESULT_INDEX = -1;
+
+    @GenerateUncached
+    abstract static class RegexResultGetEndNode extends Node {
+
+        abstract int execute(Object receiver, int groupNumber);
+
+        @Specialization
+        static int doResult(RegexResult receiver, int groupNumber,
+                        @Cached BranchProfile lazyProfile,
+                        @Cached DispatchNode getIndicesCall) {
+            if (receiver.result == null) {
+                assert receiver.lazyCallTarget != null;
+                lazyProfile.enter();
+                getIndicesCall.execute(receiver.lazyCallTarget, receiver);
+            }
+            int i = Group.groupNumberToBoundaryIndexEnd(groupNumber);
+            return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class RegexResultGetStartNode extends Node {
+
+        public static RegexResultGetStartNode create() {
+            return RegexResultFactory.RegexResultGetStartNodeGen.create();
+        }
+
+        public abstract int execute(Object receiver, int groupNumber);
+
+        @Specialization
+        static int doResult(RegexResult receiver, int groupNumber,
+                        @Cached BranchProfile lazyProfile,
+                        @Cached DispatchNode getIndicesCall) {
+            if (receiver.result == null) {
+                assert receiver.lazyCallTarget != null;
+                lazyProfile.enter();
+                getIndicesCall.execute(receiver.lazyCallTarget, receiver);
+            }
+            int i = Group.groupNumberToBoundaryIndexStart(groupNumber);
+            return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
+        }
+
+        public static RegexResultGetStartNode getUncached() {
+            return RegexResultFactory.RegexResultGetStartNodeGen.getUncached();
+        }
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        if (this == getNoMatchInstance()) {
+            return "NO_MATCH";
+        }
+        if (result == null) {
+            return "[ _lazy_ ]";
+        }
+        return Arrays.toString(result);
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    @Override
+    public Object toDisplayString(boolean allowSideEffects) {
+        if (allowSideEffects) {
+            debugForceEvaluation();
+            return "TRegexResult" + this;
+        }
+        return "TRegexResult";
     }
 }

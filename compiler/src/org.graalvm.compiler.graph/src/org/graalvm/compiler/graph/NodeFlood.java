@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,31 @@ import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.Queue;
 
+import org.graalvm.compiler.graph.NodeWorkList.SingletonNodeWorkList;
+
+/**
+ * A data structure for visiting nodes in a graph iteratively. Each node added to the flood will be
+ * visited exactly once. New nodes to visit can be added during the iteration.
+ * </p>
+ *
+ * A typical use of this class looks like:
+ *
+ * <pre>
+ * NodeFlood flood = graph.createNodeFlood();
+ * flood.add(initialNodeOfInterest);
+ * for (Node n : flood) {
+ *     processNode(n);
+ *     if (inputsAreOfInterest(n)) {
+ *         flood.addAll(n.inputs());
+ *     }
+ * }
+ * </pre>
+ *
+ * This class is equivalent to {@link SingletonNodeWorkList}, except that
+ * {@link SingletonNodeWorkList} ignores deleted nodes both when adding and enumerating nodes. In
+ * contrast, it is an error to try to add deleted nodes to a {@link NodeFlood}, but
+ * {@link NodeFlood} will enumerate nodes that are deleted while they are enqueued for enumeration.
+ */
 public final class NodeFlood implements Iterable<Node> {
 
     private final NodeBitMap visited;
@@ -96,57 +121,5 @@ public final class NodeFlood implements Iterable<Node> {
     @Override
     public Iterator<Node> iterator() {
         return new QueueConsumingIterator(worklist);
-    }
-
-    private static class UnmarkedNodeIterator implements Iterator<Node> {
-
-        private final NodeBitMap visited;
-        private Iterator<Node> nodes;
-        private Node nextNode;
-
-        UnmarkedNodeIterator(NodeBitMap visited, Iterator<Node> nodes) {
-            this.visited = visited;
-            this.nodes = nodes;
-            forward();
-        }
-
-        private void forward() {
-            do {
-                if (!nodes.hasNext()) {
-                    nextNode = null;
-                    return;
-                }
-                nextNode = nodes.next();
-            } while (visited.isMarked(nextNode));
-        }
-
-        @Override
-        public boolean hasNext() {
-            return nextNode != null;
-        }
-
-        @Override
-        public Node next() {
-            try {
-                return nextNode;
-            } finally {
-                forward();
-            }
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    public Iterable<Node> unmarkedNodes() {
-        return new Iterable<Node>() {
-
-            @Override
-            public Iterator<Node> iterator() {
-                return new UnmarkedNodeIterator(visited, visited.graph().getNodes().iterator());
-            }
-        };
     }
 }

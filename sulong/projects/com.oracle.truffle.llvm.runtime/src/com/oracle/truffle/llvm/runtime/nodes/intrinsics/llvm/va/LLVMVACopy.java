@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
@@ -56,11 +57,11 @@ public abstract class LLVMVACopy extends LLVMBuiltin {
     public abstract int getNumberExplicitArguments();
 
     @Specialization
-    protected Object copyVAList(LLVMPointer dest, LLVMPointer source,
+    protected Object copyVAList(VirtualFrame frame, LLVMPointer dest, LLVMPointer source,
                     @Cached VAListPointerWrapperFactoryDelegate sourceWrapperFactory,
                     @Cached VAListPointerWrapperFactoryDelegate destWrapperFactory,
                     @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
-        vaListLibrary.copy(sourceWrapperFactory.execute(source), destWrapperFactory.execute(dest));
+        vaListLibrary.copy(sourceWrapperFactory.execute(source), destWrapperFactory.execute(dest), frame);
         return null;
     }
 }

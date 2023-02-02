@@ -44,6 +44,8 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.MulHigh;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Rem;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Sub;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.UMax;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.UMin;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.UMulHigh;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Xor;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp.Narrow;
@@ -89,8 +91,12 @@ public final class ArithmeticOpTable {
     private final IntegerConvertOp<SignExtend> signExtend;
     private final IntegerConvertOp<Narrow> narrow;
 
+    // signed
     private final BinaryOp<Max> max;
     private final BinaryOp<Min> min;
+    // unsigned
+    private final BinaryOp<UMax> umax;
+    private final BinaryOp<UMin> umin;
 
     private final ReinterpretOp reinterpret;
 
@@ -106,7 +112,7 @@ public final class ArithmeticOpTable {
     }
 
     public BinaryOp<?>[] getBinaryOps() {
-        return new BinaryOp<?>[]{add, sub, mul, mulHigh, umulHigh, div, rem, and, or, xor, max, min};
+        return new BinaryOp<?>[]{add, sub, mul, mulHigh, umulHigh, div, rem, and, or, xor, max, min, umax, umin};
     }
 
     public UnaryOp<?>[] getUnaryOps() {
@@ -122,7 +128,7 @@ public final class ArithmeticOpTable {
     }
 
     public static final ArithmeticOpTable EMPTY = new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                    null, null);
+                    null, null, null, null);
 
     public interface ArithmeticOpWrapper {
 
@@ -176,18 +182,20 @@ public final class ArithmeticOpTable {
 
         BinaryOp<Max> max = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getMax());
         BinaryOp<Min> min = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getMin());
+        BinaryOp<UMax> umax = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getUMax());
+        BinaryOp<UMin> umin = wrapIfNonNull(wrapper::wrapBinaryOp, inner.getUMin());
 
         ReinterpretOp reinterpret = wrapIfNonNull(wrapper::wrapReinterpretOp, inner.getReinterpret());
 
         FloatConvertOp[] floatConvert = CollectionsUtil.filterAndMapToArray(inner.floatConvert, Objects::nonNull, wrapper::wrapFloatConvertOp, FloatConvertOp[]::new);
-        return new ArithmeticOpTable(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, reinterpret,
+        return new ArithmeticOpTable(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, reinterpret,
                         floatConvert);
     }
 
     protected ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<MulHigh> mulHigh, BinaryOp<UMulHigh> umulHigh, BinaryOp<Div> div, BinaryOp<Rem> rem,
                     UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or, BinaryOp<Xor> xor, ShiftOp<Shl> shl, ShiftOp<Shr> shr, ShiftOp<UShr> ushr, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt,
-                    IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, BinaryOp<Max> max, BinaryOp<Min> min, ReinterpretOp reinterpret,
-                    FloatConvertOp... floatConvert) {
+                    IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, BinaryOp<Max> max, BinaryOp<Min> min, BinaryOp<UMax> umax,
+                    BinaryOp<UMin> umin, ReinterpretOp reinterpret, FloatConvertOp... floatConvert) {
         this.neg = neg;
         this.add = add;
         this.sub = sub;
@@ -210,13 +218,15 @@ public final class ArithmeticOpTable {
         this.narrow = narrow;
         this.max = max;
         this.min = min;
+        this.umax = umax;
+        this.umin = umin;
         this.reinterpret = reinterpret;
         this.floatConvert = new FloatConvertOp[FloatConvert.values().length];
         for (FloatConvertOp op : floatConvert) {
             this.floatConvert[op.getFloatConvert().ordinal()] = op;
         }
 
-        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, reinterpret, floatConvert);
+        this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, reinterpret, floatConvert);
     }
 
     @Override
@@ -379,6 +389,20 @@ public final class ArithmeticOpTable {
     }
 
     /**
+     * Describes an unsigned integer max operation.
+     */
+    public BinaryOp<UMax> getUMax() {
+        return umax;
+    }
+
+    /**
+     * Describes an unsigned integer min operation.
+     */
+    public BinaryOp<UMin> getUMin() {
+        return umin;
+    }
+
+    /**
      * Describes a reinterpret operation.
      */
     public ReinterpretOp getReinterpret() {
@@ -420,6 +444,8 @@ public final class ArithmeticOpTable {
                Objects.equals(narrow, that.narrow) &&
                Objects.equals(max, that.max) &&
                Objects.equals(min, that.min) &&
+               Objects.equals(umax, that.umax) &&
+               Objects.equals(umin, that.umin) &&
                Objects.equals(reinterpret, that.reinterpret);
         // @formatter:on
     }
@@ -447,7 +473,7 @@ public final class ArithmeticOpTable {
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[" +
-                        toString(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, reinterpret) +
+                        toString(neg, add, sub, mul, mulHigh, umulHigh, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, reinterpret) +
                         ",floatConvert[" + toString(floatConvert) + "]]";
     }
 
@@ -626,6 +652,20 @@ public final class ArithmeticOpTable {
 
             protected Min(boolean associative, boolean commutative) {
                 super("MIN", associative, commutative);
+            }
+        }
+
+        public abstract static class UMax extends BinaryOp<UMax> {
+
+            protected UMax(boolean associative, boolean commutative) {
+                super("UMAX", associative, commutative);
+            }
+        }
+
+        public abstract static class UMin extends BinaryOp<UMin> {
+
+            protected UMin(boolean associative, boolean commutative) {
+                super("UMIN", associative, commutative);
             }
         }
 

@@ -29,16 +29,18 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.net.URL;
-import java.util.Enumeration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
@@ -49,33 +51,36 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Containers;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
-import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.internal.loader.ClassLoaderValue;
+import jdk.internal.module.ServicesCatalog;
 
 @TargetClass(java.lang.Object.class)
 @SuppressWarnings("static-method")
@@ -100,16 +105,21 @@ final class Target_java_lang_Object {
     }
 
     @Substitute
-    @TargetElement(name = "wait", onlyWith = NotLoomJDK.class)
+    @TargetElement(name = "wait")
     private void waitSubst(long timeoutMillis) throws InterruptedException {
+        /*
+         * JDK 19 and later: our monitor implementation does not pin virtual threads, so avoid
+         * jdk.internal.misc.Blocker which expects and asserts that a virtual thread is pinned.
+         * Also, we get interrupted on the virtual thread instead of the carrier thread, which
+         * clears the carrier thread's interrupt status too, so we don't have to intercept an
+         * InterruptedException from the carrier thread to clear the virtual thread interrupt.
+         */
         MonitorSupport.singleton().wait(this, timeoutMillis);
     }
 
-    @Substitute
-    @TargetElement(name = "wait0", onlyWith = LoomJDK.class)
-    private void waitSubstLoom(long timeoutMillis) throws InterruptedException {
-        MonitorSupport.singleton().wait(this, timeoutMillis);
-    }
+    @Delete
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    private native void wait0(long timeoutMillis);
 
     @Substitute
     @TargetElement(name = "notify")
@@ -154,6 +164,10 @@ final class Target_java_lang_Enum {
             throw new IllegalArgumentException("No enum constant " + enumType.getName() + "." + name);
         }
     }
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public native int ordinal();
 }
 
 @TargetClass(java.lang.String.class)
@@ -164,9 +178,124 @@ final class Target_java_lang_String {
         String thisStr = SubstrateUtil.cast(this, String.class);
         return ImageSingletons.lookup(StringInternSupport.class).intern(thisStr);
     }
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    native boolean isLatin1();
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public native boolean isEmpty();
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public native int length();
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    native byte coder();
+
+    @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = true) //
+    byte[] value;
+
+    @Alias //
+    int hash;
+
+    /**
+     * This is a copy of String.split from the JDK, but with the fastpath loop factored out into a
+     * separate method. This allows inlining and constant folding of the condition for call sites
+     * where the regex is a constant (which is a common usage pattern).
+     *
+     * JDK-8262994 should make that refactoring in OpenJDK, after which this substitution can be
+     * removed.
+     */
+    @Substitute
+    public String[] split(String regex, int limit) {
+        /*
+         * fastpath if the regex is a (1) one-char String and this character is not one of the
+         * RegEx's meta characters ".$|()[{^?*+\\", or (2) two-char String and the first char is the
+         * backslash and the second is not the ascii digit or ascii letter.
+         */
+        char ch = 0;
+        if (((regex.length() == 1 &&
+                        ".$|()[{^?*+\\".indexOf(ch = regex.charAt(0)) == -1) ||
+                        (regex.length() == 2 &&
+                                        regex.charAt(0) == '\\' &&
+                                        (((ch = regex.charAt(1)) - '0') | ('9' - ch)) < 0 &&
+                                        ((ch - 'a') | ('z' - ch)) < 0 &&
+                                        ((ch - 'A') | ('Z' - ch)) < 0)) &&
+                        (ch < Character.MIN_HIGH_SURROGATE ||
+                                        ch > Character.MAX_LOW_SURROGATE)) {
+            return StringHelper.simpleSplit(SubstrateUtil.cast(this, String.class), limit, ch);
+        }
+        return Pattern.compile(regex).split(SubstrateUtil.cast(this, String.class), limit);
+    }
+}
+
+final class StringHelper {
+    static String[] simpleSplit(String that, int limit, char ch) {
+        int off = 0;
+        int next = 0;
+        boolean limited = limit > 0;
+        ArrayList<String> list = new ArrayList<>();
+        while ((next = that.indexOf(ch, off)) != -1) {
+            if (!limited || list.size() < limit - 1) {
+                list.add(that.substring(off, next));
+                off = next + 1;
+            } else {    // last one
+                // assert (list.size() == limit - 1);
+                int last = that.length();
+                list.add(that.substring(off, last));
+                off = last;
+                break;
+            }
+        }
+        // If no match was found, return this
+        if (off == 0) {
+            return new String[]{that};
+        }
+        // Add remaining segment
+        if (!limited || list.size() < limit) {
+            list.add(that.substring(off, that.length()));
+        }
+        // Construct result
+        int resultSize = list.size();
+        if (limit == 0) {
+            while (resultSize > 0 && list.get(resultSize - 1).isEmpty()) {
+                resultSize--;
+            }
+        }
+        String[] result = new String[resultSize];
+        return list.subList(0, resultSize).toArray(result);
+    }
+}
+
+@TargetClass(className = "java.lang.StringLatin1")
+final class Target_java_lang_StringLatin1 {
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static native char getChar(byte[] val, int index);
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static native int hashCode(byte[] value);
+}
+
+@TargetClass(className = "java.lang.StringUTF16")
+final class Target_java_lang_StringUTF16 {
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static native char getChar(byte[] val, int index);
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static native int hashCode(byte[] value);
 }
 
 @TargetClass(java.lang.Throwable.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"unused"})
 final class Target_java_lang_Throwable {
 
@@ -181,7 +310,7 @@ final class Target_java_lang_Throwable {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private Object fillInStackTrace() {
-        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer());
+        stackTrace = JavaThreads.getStackTrace(true, Thread.currentThread());
         return this;
     }
 
@@ -192,24 +321,6 @@ final class Target_java_lang_Throwable {
         } else {
             return new StackTraceElement[0];
         }
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    int getStackTraceDepth() {
-        if (stackTrace != null) {
-            return stackTrace.length;
-        }
-        return 0;
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    StackTraceElement getStackTraceElement(int index) {
-        if (stackTrace == null) {
-            throw new IndexOutOfBoundsException();
-        }
-        return stackTrace[index];
     }
 }
 
@@ -271,30 +382,30 @@ final class Target_java_lang_System {
 
     @Substitute
     private static Properties getProperties() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).getProperties();
+        return SystemPropertiesSupport.singleton().getProperties();
     }
 
     @Substitute
     private static void setProperties(Properties props) {
-        ImageSingletons.lookup(SystemPropertiesSupport.class).setProperties(props);
+        SystemPropertiesSupport.singleton().setProperties(props);
     }
 
     @Substitute
     public static String setProperty(String key, String value) {
         checkKey(key);
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).setProperty(key, value);
+        return SystemPropertiesSupport.singleton().setProperty(key, value);
     }
 
     @Substitute
     private static String getProperty(String key) {
         checkKey(key);
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).getProperty(key);
+        return SystemPropertiesSupport.singleton().getProperty(key);
     }
 
     @Substitute
     public static String clearProperty(String key) {
         checkKey(key);
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).clearProperty(key);
+        return SystemPropertiesSupport.singleton().clearProperty(key);
     }
 
     @Substitute
@@ -390,6 +501,7 @@ final class Target_java_lang_Math {
 }
 
 @TargetClass(java.lang.StrictMath.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class Target_java_lang_StrictMath {
 
     @Substitute
@@ -423,12 +535,6 @@ final class Target_java_lang_StrictMath {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static double exp(double a) {
-        return StrictMathInvoker.exp(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
     private static double log(double a) {
         return StrictMathInvoker.log(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
     }
@@ -441,12 +547,6 @@ final class Target_java_lang_StrictMath {
     @Substitute
     private static double sqrt(double a) {
         return StrictMathInvoker.sqrt(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static double cbrt(double a) {
-        return StrictMathInvoker.cbrt(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
     }
 
     // Checkstyle: stop
@@ -462,12 +562,6 @@ final class Target_java_lang_StrictMath {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static double pow(double a, double b) {
-        return StrictMathInvoker.pow(WordFactory.nullPointer(), WordFactory.nullPointer(), a, b);
-    }
-
-    @Substitute
     private static double sinh(double x) {
         return StrictMathInvoker.sinh(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
     }
@@ -480,12 +574,6 @@ final class Target_java_lang_StrictMath {
     @Substitute
     private static double tanh(double x) {
         return StrictMathInvoker.tanh(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static double hypot(double x, double y) {
-        return StrictMathInvoker.hypot(WordFactory.nullPointer(), WordFactory.nullPointer(), x, y);
     }
 
     @Substitute
@@ -647,38 +735,27 @@ final class Target_java_lang_Compiler {
     }
 }
 
-@TargetClass(java.lang.Package.class)
-final class Target_java_lang_Package {
-
-    @Alias
-    @SuppressWarnings({"unused"})
-    Target_java_lang_Package(String name,
-                    String spectitle, String specversion, String specvendor,
-                    String impltitle, String implversion, String implvendor,
-                    URL sealbase, ClassLoader loader) {
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static Package getSystemPackage(String name) {
-        Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
-                        null, null, null, null, null);
-        return SubstrateUtil.cast(pkg, Package.class);
-    }
-}
-
 @TargetClass(java.lang.NullPointerException.class)
 final class Target_java_lang_NullPointerException {
 
     @Substitute
-    @TargetElement(onlyWith = JDK14OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("static-method")
     private String getExtendedNPEMessage() {
         return null;
     }
 }
 
-@TargetClass(className = "jdk.internal.loader.BootLoader", onlyWith = JDK11OrLater.class)
+@TargetClass(value = jdk.internal.loader.ClassLoaders.class)
+final class Target_jdk_internal_loader_ClassLoaders {
+    @Alias
+    static native Target_jdk_internal_loader_BuiltinClassLoader bootLoader();
+
+    @Alias
+    public static native ClassLoader platformClassLoader();
+}
+
+@TargetClass(value = jdk.internal.loader.BootLoader.class)
 final class Target_jdk_internal_loader_BootLoader {
 
     @Substitute
@@ -693,14 +770,25 @@ final class Target_jdk_internal_loader_BootLoader {
     }
 
     @Substitute
+    public static Stream<Package> packages() {
+        Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
+        Target_java_lang_ClassLoader systemClassLoader = SubstrateUtil.cast(bootClassLoader, Target_java_lang_ClassLoader.class);
+        return systemClassLoader.packages();
+    }
+
+    @Delete("only used by #packages()")
+    private static native String[] getSystemPackageNames();
+
+    @Substitute
     private static Class<?> loadClassOrNull(String name) {
-        return ClassForNameSupport.forNameOrNull(name, false);
+        return ClassForNameSupport.forNameOrNull(name, null);
     }
 
     @SuppressWarnings("unused")
     @Substitute
-    private static Class<?> loadClass(Target_java_lang_Module module, String name) {
-        return ClassForNameSupport.forNameOrNull(name, false);
+    private static Class<?> loadClass(Module module, String name) {
+        /* The module system is not supported for now, therefore the module parameter is ignored. */
+        return ClassForNameSupport.forNameOrNull(name, null);
     }
 
     @Substitute
@@ -708,41 +796,85 @@ final class Target_jdk_internal_loader_BootLoader {
         return true;
     }
 
-    @SuppressWarnings("unused")
-    @Substitute
-    private static URL findResource(String mn, String name) {
-        return ClassLoader.getSystemClassLoader().getResource(name);
-    }
-
-    @SuppressWarnings("unused")
-    @Substitute
-    private static InputStream findResourceAsStream(String mn, String name) {
-        return ClassLoader.getSystemClassLoader().getResourceAsStream(name);
-    }
-
-    @Substitute
-    private static URL findResource(String name) {
-        return ClassLoader.getSystemClassLoader().getResource(name);
-    }
-
-    @Substitute
-    private static Enumeration<URL> findResources(String name) throws IOException {
-        return ClassLoader.getSystemClassLoader().getResources(name);
-    }
-
     /**
-     * All ClassLoaderValue are reset at run time for now. See also
-     * {@link Target_java_lang_ClassLoader#classLoaderValueMap} for resetting of individual class
-     * loaders.
+     * Most {@link ClassLoaderValue}s are reset. For the list of preserved transformers see
+     * {@link ClassLoaderValueMapFieldValueTransformer}.
      */
     // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class, isFinal = true)//
     static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
     // Checkstyle: resume
 }
 
+final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        if (originalValue == null) {
+            return null;
+        }
+
+        ConcurrentHashMap<?, ?> original = (ConcurrentHashMap<?, ?>) originalValue;
+        List<ClassLoaderValue<?>> clvs = Arrays.asList(
+                        ReflectionUtil.readField(ServicesCatalog.class, "CLV", null),
+                        ReflectionUtil.readField(ModuleLayer.class, "CLV", null));
+
+        var res = new ConcurrentHashMap<>();
+        for (ClassLoaderValue<?> clv : clvs) {
+            if (clv == null) {
+                throw VMError.shouldNotReachHere("Field must not be null. Please check what changed in the JDK.");
+            }
+            var catalog = original.get(clv);
+            if (catalog != null) {
+                res.put(clv, catalog);
+            }
+        }
+
+        return res;
+    }
+}
+
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
+
+    public static final class StringUtil {
+        /**
+         * Returns a character from a string at {@code index} position based on the encoding format.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static char charAt(String string, int index) {
+            Target_java_lang_String str = SubstrateUtil.cast(string, Target_java_lang_String.class);
+            byte[] value = str.value;
+            if (str.isLatin1()) {
+                return Target_java_lang_StringLatin1.getChar(value, index);
+            } else {
+                return Target_java_lang_StringUTF16.getChar(value, index);
+            }
+        }
+
+        public static byte coder(String string) {
+            return SubstrateUtil.cast(string, Target_java_lang_String.class).coder();
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int hashCode(java.lang.String string) {
+            return string != null ? hashCode0(string) : 0;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        private static int hashCode0(java.lang.String string) {
+            Target_java_lang_String str = SubstrateUtil.cast(string, Target_java_lang_String.class);
+            byte[] value = str.value;
+            if (str.hash == 0 && value.length > 0) {
+                boolean isLatin1 = str.isLatin1();
+                if (isLatin1) {
+                    str.hash = Target_java_lang_StringLatin1.hashCode(value);
+                } else {
+                    str.hash = Target_java_lang_StringUTF16.hashCode(value);
+                }
+            }
+            return str.hash;
+        }
+    }
 
     public static final class ClassValueSupport {
 
@@ -759,9 +891,9 @@ public final class JavaLangSubstitutions {
         }
     }
 
-    static class ClassValueInitializer implements CustomFieldValueComputer {
+    static class ClassValueInitializer implements FieldValueTransformer {
         @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object transform(Object receiver, Object originalValue) {
             ClassValueSupport support = ImageSingletons.lookup(ClassValueSupport.class);
             ClassValue<?> v = (ClassValue<?>) receiver;
             Map<Class<?>, Object> map = support.values.get(v);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,12 +61,17 @@ import java.util.concurrent.TimeUnit;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
+import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -74,8 +79,14 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ContextLocalTest extends AbstractPolyglotTest {
 
@@ -86,6 +97,11 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     static final String VALID_INSTRUMENT = "ContextLocalTest_ValidInstrument";
     static final String INVALID_CONTEXT_LOCAL = "ContextLocalTest_InvalidLanguageContextLocal";
     static final String INVALID_CONTEXT_THREAD_LOCAL = "ContextLocalTest_InvalidLanguageContextThreadLocal";
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void customSubclassesDisallowed() {
@@ -157,9 +173,9 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             TruffleContext t0;
             ValidExclusiveLanguage language0;
             try {
-                env0 = ValidExclusiveLanguage.getCurrentContext();
+                env0 = ValidExclusiveLanguage.CONTEXT_REF.get(null);
                 t0 = env0.getContext();
-                language0 = ValidExclusiveLanguage.getCurrentLanguage();
+                language0 = ValidExclusiveLanguage.REFERENCE.get(null);
             } finally {
                 c0.leave();
             }
@@ -180,9 +196,9 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             runInParallel(() -> {
                 c1.enter();
                 try {
-                    Env env1 = ValidExclusiveLanguage.getCurrentContext();
+                    Env env1 = ValidExclusiveLanguage.CONTEXT_REF.get(null);
                     TruffleContext t1 = env1.getContext();
-                    ValidExclusiveLanguage language1 = ValidExclusiveLanguage.getCurrentLanguage();
+                    ValidExclusiveLanguage language1 = ValidExclusiveLanguage.REFERENCE.get(null);
                     assertSame(env1, language1.contextThreadLocal0.get().env);
                     assertSame(Thread.currentThread(), language1.contextThreadLocal0.get().thread);
                     assertSame(env1, language1.contextThreadLocal1.get().env);
@@ -194,7 +210,6 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                     assertFails(() -> language1.contextThreadLocal1.get(t0, Thread.currentThread()),
                                     AssertionError.class,
                                     (e) -> e.getMessage().startsWith("Detected invalid sharing of context locals"));
-                    assertFails(() -> language0.contextThreadLocal0.get(), AssertionError.class, (e) -> e.getMessage().startsWith("Detected invalid sharing of context locals"));
 
                     assertSame(env1, language1.contextThreadLocal0.get(t1, Thread.currentThread()).env);
                     assertSame(Thread.currentThread(), language1.contextThreadLocal0.get(t1,
@@ -224,9 +239,9 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             TruffleContext t0;
             ValidExclusiveLanguage language0;
             try {
-                env0 = ValidExclusiveLanguage.getCurrentContext();
+                env0 = ValidExclusiveLanguage.CONTEXT_REF.get(null);
                 t0 = env0.getContext();
-                language0 = ValidExclusiveLanguage.getCurrentLanguage();
+                language0 = ValidExclusiveLanguage.REFERENCE.get(null);
                 assertSame(env0, language0.contextLocal0.get());
                 assertSame(env0, language0.contextLocal1.get());
             } finally {
@@ -236,9 +251,9 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             c1.initialize(VALID_EXCLUSIVE_LANGUAGE);
             c1.enter();
             try {
-                Env env1 = ValidExclusiveLanguage.getCurrentContext();
+                Env env1 = ValidExclusiveLanguage.CONTEXT_REF.get(null);
                 TruffleContext t1 = env1.getContext();
-                ValidExclusiveLanguage language1 = ValidExclusiveLanguage.getCurrentLanguage();
+                ValidExclusiveLanguage language1 = ValidExclusiveLanguage.REFERENCE.get(null);
                 assertSame(env1, language1.contextLocal0.get());
                 assertSame(env1, language1.contextLocal1.get());
 
@@ -267,9 +282,9 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 TruffleContext t0;
                 ValidSharedLanguage language0;
                 try {
-                    env0 = ValidSharedLanguage.getCurrentContext();
+                    env0 = ValidSharedLanguage.CONTEXT_REF.get(null);
                     t0 = env0.getContext();
-                    language0 = ValidSharedLanguage.getCurrentLanguage();
+                    language0 = ValidSharedLanguage.REFERENCE.get(null);
                     assertSame(env0, language0.local0.get());
                     assertSame(env0, language0.local1.get());
                 } finally {
@@ -279,9 +294,9 @@ public class ContextLocalTest extends AbstractPolyglotTest {
 
                 c1.enter();
                 try {
-                    Env env1 = ValidSharedLanguage.getCurrentContext();
+                    Env env1 = ValidSharedLanguage.CONTEXT_REF.get(null);
                     TruffleContext t1 = env1.getContext();
-                    ValidSharedLanguage language1 = ValidSharedLanguage.getCurrentLanguage();
+                    ValidSharedLanguage language1 = ValidSharedLanguage.REFERENCE.get(null);
                     assertSame(env1, language1.local0.get());
                     assertSame(env1, language1.local1.get());
 
@@ -311,9 +326,9 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 TruffleContext t0;
                 ValidSharedLanguage language0;
                 try {
-                    env0 = ValidSharedLanguage.getCurrentContext();
+                    env0 = ValidSharedLanguage.CONTEXT_REF.get(null);
                     t0 = env0.getContext();
-                    language0 = ValidSharedLanguage.getCurrentLanguage();
+                    language0 = ValidSharedLanguage.REFERENCE.get(null);
                 } finally {
                     c0.leave();
                 }
@@ -334,9 +349,9 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 runInParallel(() -> {
                     c1.enter();
                     try {
-                        Env env1 = ValidSharedLanguage.getCurrentContext();
+                        Env env1 = ValidSharedLanguage.CONTEXT_REF.get(null);
                         TruffleContext t1 = env1.getContext();
-                        ValidSharedLanguage language1 = ValidSharedLanguage.getCurrentLanguage();
+                        ValidSharedLanguage language1 = ValidSharedLanguage.REFERENCE.get(null);
                         assertSame(env1, language1.contextThreadLocal0.get().env);
                         assertSame(env1, language1.contextThreadLocal1.get().env);
 
@@ -396,7 +411,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 c0.initialize(VALID_SHARED_LANGUAGE);
                 c0.enter();
                 try {
-                    assertEquals(tc0, ValidSharedLanguage.getCurrentLanguage().local0.get().getContext());
+                    assertEquals(tc0, ValidSharedLanguage.REFERENCE.get(null).local0.get().getContext());
                 } finally {
                     c0.leave();
                 }
@@ -404,7 +419,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 c1.initialize(VALID_SHARED_LANGUAGE);
                 c1.enter();
                 try {
-                    assertEquals(tc1, ValidSharedLanguage.getCurrentLanguage().local1.get().getContext());
+                    assertEquals(tc1, ValidSharedLanguage.REFERENCE.get(null).local1.get().getContext());
                 } finally {
                     c1.leave();
                 }
@@ -447,7 +462,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                     c0.initialize(VALID_SHARED_LANGUAGE);
                     c0.enter();
                     try {
-                        assertEquals(tc0.context, ValidSharedLanguage.getCurrentLanguage().contextThreadLocal0.get().env.getContext());
+                        assertEquals(tc0.context, ValidSharedLanguage.REFERENCE.get(null).contextThreadLocal0.get().env.getContext());
                     } finally {
                         c0.leave();
                     }
@@ -455,7 +470,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                     c1.initialize(VALID_SHARED_LANGUAGE);
                     c1.enter();
                     try {
-                        assertEquals(tc1.context, ValidSharedLanguage.getCurrentLanguage().contextThreadLocal1.get().env.getContext());
+                        assertEquals(tc1.context, ValidSharedLanguage.REFERENCE.get(null).contextThreadLocal1.get().env.getContext());
                     } finally {
                         c1.leave();
                     }
@@ -476,14 +491,14 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     @Test
     public void testInvalidContextLocalLanguage() {
         try (Engine engine = Engine.create()) {
-            try (Context c0 = Context.newBuilder().engine(engine).allowAllAccess(true).build();
-                            Context c1 = Context.newBuilder().engine(engine).allowAllAccess(true).build()) {
+            try (Context c0 = Context.newBuilder(INVALID_CONTEXT_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build();
+                            Context c1 = Context.newBuilder(INVALID_CONTEXT_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build()) {
                 c0.initialize(INVALID_CONTEXT_LOCAL);
                 c1.enter();
                 try {
                     c1.initialize(VALID_SHARED_LANGUAGE);
 
-                    Env env1 = ValidSharedLanguage.getCurrentContext();
+                    Env env1 = ValidSharedLanguage.CONTEXT_REF.get(null);
                     LanguageInfo invalid = env1.getInternalLanguages().get(INVALID_CONTEXT_LOCAL);
                     assertFails(() -> env1.initializeLanguage(invalid), IllegalStateException.class,
                                     (e) -> assertTrue(e.getCause().getMessage(), e.getCause().getMessage().contains("did not create the same number of context locals")));
@@ -497,14 +512,14 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     @Test
     public void testInvalidContextThreadLocalLanguage() {
         try (Engine engine = Engine.create()) {
-            try (Context c0 = Context.newBuilder().engine(engine).allowAllAccess(true).build();
-                            Context c1 = Context.newBuilder().engine(engine).allowAllAccess(true).build()) {
+            try (Context c0 = Context.newBuilder(INVALID_CONTEXT_THREAD_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build();
+                            Context c1 = Context.newBuilder(INVALID_CONTEXT_THREAD_LOCAL, VALID_SHARED_LANGUAGE).engine(engine).allowAllAccess(true).build()) {
                 c0.initialize(INVALID_CONTEXT_THREAD_LOCAL);
                 c1.enter();
                 try {
                     c1.initialize(VALID_SHARED_LANGUAGE);
 
-                    Env env1 = ValidSharedLanguage.getCurrentContext();
+                    Env env1 = ValidSharedLanguage.CONTEXT_REF.get(null);
                     LanguageInfo invalid = env1.getInternalLanguages().get(INVALID_CONTEXT_THREAD_LOCAL);
                     assertFails(() -> env1.initializeLanguage(invalid), IllegalStateException.class,
                                     (e) -> assertTrue(e.getCause().getMessage(), e.getCause().getMessage().contains("did not create the same number of context thread locals")));
@@ -522,7 +537,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             c0.enter();
 
             try {
-                ValidSharedLanguage lang = ValidSharedLanguage.getCurrentLanguage();
+                ValidSharedLanguage lang = ValidSharedLanguage.REFERENCE.get(null);
                 assertFails(() -> lang.createContextLocal0("testString"), IllegalStateException.class,
                                 (e) -> assertEquals(e.getMessage(), "The set of context locals is frozen. " +
                                                 "Context locals can only be created during construction of the TruffleLanguage subclass."));
@@ -539,7 +554,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             c0.enter();
 
             try {
-                ValidSharedLanguage lang = ValidSharedLanguage.getCurrentLanguage();
+                ValidSharedLanguage lang = ValidSharedLanguage.REFERENCE.get(null);
                 assertFails(() -> lang.createContextThreadLocal0("testString"), IllegalStateException.class,
                                 (e) -> assertEquals(e.getMessage(), "The set of context thread locals is frozen. " +
                                                 "Context thread locals can only be created during construction of the TruffleLanguage subclass."));
@@ -688,8 +703,11 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         }
     }
 
-    public void testInstrumentCreatedBeforeContextsInitialized() {
-
+    @Test
+    public void testInnerContextLocals() {
+        try (Context ctx = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            Assert.assertEquals(0, ctx.eval(VALID_SHARED_LANGUAGE, "").asInt());
+        }
     }
 
     @TruffleLanguage.Registration(id = VALID_EXCLUSIVE_LANGUAGE, name = VALID_EXCLUSIVE_LANGUAGE)
@@ -711,13 +729,19 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             return true;
         }
 
-        static ValidExclusiveLanguage getCurrentLanguage() {
-            return getCurrentLanguage(ValidExclusiveLanguage.class);
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            RootNode rootNode = new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return 0;
+                }
+            };
+            return rootNode.getCallTarget();
         }
 
-        static Env getCurrentContext() {
-            return getCurrentContext(ValidExclusiveLanguage.class);
-        }
+        static final ContextReference<Env> CONTEXT_REF = ContextReference.create(ValidExclusiveLanguage.class);
+        static final LanguageReference<ValidExclusiveLanguage> REFERENCE = LanguageReference.create(ValidExclusiveLanguage.class);
 
     }
 
@@ -780,20 +804,75 @@ public class ContextLocalTest extends AbstractPolyglotTest {
             return true;
         }
 
-        static ValidSharedLanguage getCurrentLanguage() {
-            return getCurrentLanguage(ValidSharedLanguage.class);
-        }
-
-        static Env getCurrentContext() {
-            return getCurrentContext(ValidSharedLanguage.class);
-        }
-
         public ContextLocal<String> createContextLocal0(String value) {
             return createContextLocal((e) -> value);
         }
 
         public ContextThreadLocal<String> createContextThreadLocal0(String value) {
             return createContextThreadLocal((e, t) -> value);
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return (new VSLRootNode(this)).getCallTarget();
+        }
+
+        static final ContextReference<Env> CONTEXT_REF = ContextReference.create(ValidSharedLanguage.class);
+        static final LanguageReference<ValidSharedLanguage> REFERENCE = LanguageReference.create(ValidSharedLanguage.class);
+
+    }
+
+    public static class VSLRootNode extends RootNode {
+
+        @Node.Child private VSLNode node = new VSLNode();
+
+        public VSLRootNode(ValidSharedLanguage language) {
+            super(language);
+        }
+
+        @Override
+        public Object execute(VirtualFrame virtualFrame) {
+            return node.execute(virtualFrame);
+        }
+
+    }
+
+    public static class VSLNode extends Node {
+
+        private final Source source = Source.newBuilder(VALID_EXCLUSIVE_LANGUAGE, "", "").build();
+
+        private final IndirectCallNode callNode = IndirectCallNode.create();
+
+        @SuppressWarnings("unused")
+        public Object execute(VirtualFrame virtualFrame) {
+            Env outerLanguageOuterEnv = ValidSharedLanguage.CONTEXT_REF.get(this);
+            TruffleContext innerTruffleContext = createInnerContext(outerLanguageOuterEnv);
+            Object outerTruffleContext = innerTruffleContext.enter(this);
+            try {
+                Env outerLanguageInnerEnv = ValidSharedLanguage.CONTEXT_REF.get(null);
+                createInstrument(outerLanguageInnerEnv);
+                CallTarget callTarget = parse(outerLanguageInnerEnv);
+                return callNode.call(callTarget);
+            } finally {
+                innerTruffleContext.leave(this, outerTruffleContext);
+                innerTruffleContext.close();
+            }
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private CallTarget parse(Env env) {
+            return env.parsePublic(source);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static TruffleContext createInnerContext(Env env) {
+            return env.newInnerContextBuilder().inheritAllAccess(true).initializeCreatorContext(true).build();
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private static void createInstrument(Env env) {
+            InstrumentInfo instrumentInfo = env.getInstruments().get(VALID_INSTRUMENT);
+            env.lookup(instrumentInfo, ValidInstrument.class);
         }
 
     }
@@ -815,6 +894,23 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         protected void onCreate(Env env) {
             this.environment = env;
             env.registerService(this);
+            env.getInstrumenter().attachThreadsActivationListener(new ThreadsActivationListener() {
+                @Override
+                public void onEnterThread(TruffleContext c) {
+                    if (threadLocalDynamicValue != null && contextLocalDynamicValue != null) {
+                        local0.get(c);
+                        threadLocal0.get(c);
+                    }
+                }
+
+                @Override
+                public void onLeaveThread(TruffleContext c) {
+                    if (threadLocalDynamicValue != null && contextLocalDynamicValue != null) {
+                        local0.get(c);
+                        threadLocal0.get(c);
+                    }
+                }
+            });
         }
 
         InstrumentThreadLocalValue newInstrumentThreadLocal(TruffleContext context, Thread t) {

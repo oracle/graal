@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,21 +26,22 @@ package com.oracle.truffle.espresso.nodes.interop;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 
-import java.util.BitSet;
+import java.util.ArrayList;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 
-public abstract class AbstractLookupNode extends Node {
+public abstract class AbstractLookupNode extends EspressoNode {
     public static final char METHOD_SELECTION_SEPARATOR = '/';
 
-    abstract Method[] getMethodArray(Klass k);
+    abstract Method.MethodVersion[] getMethodArray(Klass k);
 
     @TruffleBoundary
-    Method doLookup(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
+    Method[] doLookup(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
+        ArrayList<Method> result = new ArrayList<>();
         String methodName;
         String signature = null;
         int separatorIndex = key.indexOf(METHOD_SELECTION_SEPARATOR);
@@ -50,32 +51,33 @@ public abstract class AbstractLookupNode extends Node {
         } else {
             methodName = key;
         }
-        Method result = null;
+
         int minOverallArity = Integer.MAX_VALUE;
         int maxOverallArity = -1;
-        for (Method m : getMethodArray(klass)) {
-            if (matchMethod(m, methodName, signature, isStatic, publicOnly)) {
-                int matchArity = m.getParameterCount();
+        boolean skipArityCheck = arity == -1;
+        for (Method.MethodVersion m : getMethodArray(klass)) {
+            if (matchMethod(m.getMethod(), methodName, signature, isStatic, publicOnly)) {
+                int matchArity = m.getMethod().getParameterCount();
                 minOverallArity = min(minOverallArity, matchArity);
                 maxOverallArity = max(maxOverallArity, matchArity);
-                if (matchArity == arity) {
-                    /* Multiple methods with the same name and arity, cannot disambiguate */
-                    if (result != null) {
-                        return null;
-                    }
-                    result = m;
+                if (matchArity == arity || skipArityCheck || (m.getMethod().isVarargs() && arity >= matchArity - 1)) {
+                    result.add(m.getMethod());
                 }
             }
         }
-        if (result == null && maxOverallArity >= 0) {
-            throw ArityException.create(arity > maxOverallArity ? maxOverallArity : minOverallArity, arity);
+        if (!skipArityCheck && result.isEmpty() && maxOverallArity >= 0) {
+            throw ArityException.create(minOverallArity, maxOverallArity, arity);
         }
-        return result;
+        return result.isEmpty() ? null : result.toArray(new Method[0]);
     }
 
     private static boolean matchMethod(Method m, String methodName, String signature, boolean isStatic, boolean publicOnly) {
-        return (!publicOnly || m.isPublic()) && m.isStatic() == isStatic && !m.isSignaturePolymorphicDeclared() &&
-                        m.getName().toString().equals(methodName) && (signature == null || m.getSignatureAsString().equals(signature));
+        return (!publicOnly || m.isPublic()) &&
+                        m.isStatic() == isStatic &&
+                        !m.isSignaturePolymorphicDeclared() &&
+                        m.getName().toString().equals(methodName) &&
+                        // If signature is specified, do the check.
+                        (signature == null || m.getSignatureAsString().equals(signature));
     }
 
     @TruffleBoundary
@@ -89,17 +91,11 @@ public abstract class AbstractLookupNode extends Node {
         } else {
             methodName = key;
         }
-        BitSet seenArity = new BitSet();
-        // we will disambiguate overloads with arity
-        for (Method m : getMethodArray(klass)) {
-            if (matchMethod(m, methodName, signature, isStatic, publicOnly)) {
-                int arity = m.getParameterCount();
-                if (seenArity.get(arity)) {
-                    return false;
-                }
-                seenArity.set(arity);
+        for (Method.MethodVersion m : getMethodArray(klass)) {
+            if (matchMethod(m.getMethod(), methodName, signature, isStatic, publicOnly)) {
+                return true;
             }
         }
-        return !seenArity.isEmpty();
+        return false;
     }
 }

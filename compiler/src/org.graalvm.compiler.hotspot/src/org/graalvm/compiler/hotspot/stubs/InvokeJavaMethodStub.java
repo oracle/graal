@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,7 +68,11 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
      * @param descriptor the signature of the call to this stub
      * @param staticMethod the Java method to be invoked by HotSpot
      */
-    public InvokeJavaMethodStub(OptionValues options, HotSpotJVMCIRuntime runtime, HotSpotProviders providers, long address, HotSpotForeignCallDescriptor descriptor,
+    public InvokeJavaMethodStub(OptionValues options,
+                    HotSpotJVMCIRuntime runtime,
+                    HotSpotProviders providers,
+                    long address,
+                    HotSpotForeignCallDescriptor descriptor,
                     ResolvedJavaMethod staticMethod) {
         super(options, runtime, providers, address, descriptor, true);
         this.javaMethod = staticMethod;

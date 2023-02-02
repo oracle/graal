@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,11 +118,7 @@ public final class EventContext {
     }
 
     private static boolean languageDeclaresTag(RootNode root, Class<?> tag) {
-        Object polyglotEngine = InstrumentAccessor.nodesAccess().getPolyglotEngine(root);
-        if (polyglotEngine == null) {
-            return true;
-        }
-        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(polyglotEngine);
+        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(root);
         Set<Class<?>> providedTags = handler.getProvidedTags(root);
         if (!providedTags.contains(tag)) {
             TruffleLanguage<?> language = InstrumentAccessor.nodesAccess().getLanguage(root);
@@ -214,7 +210,6 @@ public final class EventContext {
      *
      * @since 0.12
      */
-    @SuppressWarnings("deprecation")
     public Node getInstrumentedNode() {
         WrapperNode wrapper = probeNode.findWrapper();
         return wrapper != null ? wrapper.getDelegateNode() : null;
@@ -348,13 +343,16 @@ public final class EventContext {
      * suppressed} exception. The notification order relates to the order the bindings were
      * installed.
      * <p>
-     * Example usage: {@link PropagateErrorSnippets#onCreate}
      *
      * @param e the exception to propagate.
+     * @deprecated No substitute. Runtime exceptions can now be thrown directly and will be
+     *             observable by the guest language application.
      * @since 20.0
      */
+    @Deprecated(since = "21.3")
+    @SuppressWarnings("static-method")
     public RuntimeException createError(RuntimeException e) {
-        return new InstrumentException(this, e);
+        return e;
     }
 
     /** @since 0.12 */
@@ -488,32 +486,6 @@ public final class EventContext {
 
 }
 
-class PropagateErrorSnippets extends TruffleInstrument {
-
-    // Checkstyle: stop
-    // @formatter:off
-    @Override
-    // BEGIN: PropagateErrorSnippets#onCreate
-    protected void onCreate(TruffleInstrument.Env env) {
-        env.getInstrumenter().attachExecutionEventListener(
-            SourceSectionFilter.newBuilder().
-                                tagIs(StandardTags.CallTag.class).build(),
-            new ExecutionEventListener() {
-                public void onEnter(EventContext context, VirtualFrame f) {
-                    throw context.createError(
-                          new RuntimeException("propagated to the guest"));
-                }
-                public void onReturnValue(EventContext context,
-                                          VirtualFrame f, Object result) {
-                }
-                public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
-            });
-    }
-    // END: PropagateErrorSnippets#onCreate
-    // @formatter:on
-}
-
 class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
 
     // @formatter:off
@@ -526,7 +498,7 @@ class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
             SourceSectionFilter.newBuilder().
                                 tagIs(StandardTags.CallTag.class).build(),
             new ExecutionEventListener() {
-                public void onEnter(EventContext context, VirtualFrame f) {}
+                public void onEnter(EventContext context, VirtualFrame f) { }
                 public void onReturnValue(EventContext context,
                                           VirtualFrame f, Object result) {
                     if (!Objects.equals(result, 42)) {
@@ -540,7 +512,7 @@ class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
                     return info;
                 }
                 public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
+                                                VirtualFrame f, Throwable ex) { }
             });
     }
     // END: UnwindInstrumentationReturnSnippets#onCreate
@@ -566,11 +538,11 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
                     // Reenters on unwind.
                     return ProbeNode.UNWIND_ACTION_REENTER;
                 }
-                public void onEnter(EventContext context, VirtualFrame f) {}
+                public void onEnter(EventContext context, VirtualFrame f) { }
                 public void onReturnValue(EventContext context,
-                                          VirtualFrame f, Object result) {}
+                                          VirtualFrame f, Object result) { }
                 public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
+                                                VirtualFrame f, Throwable ex) { }
             });
 
         // Listener that initiates unwind at line 20, attached to statements.
@@ -587,9 +559,9 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
                     }
                 }
                 public void onReturnValue(EventContext context,
-                                          VirtualFrame f, Object result) {}
+                                          VirtualFrame f, Object result) { }
                 public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
+                                                VirtualFrame f, Throwable ex) { }
             });
     }
     // END: UnwindInstrumentationReenterSnippets#onCreate

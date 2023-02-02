@@ -29,6 +29,7 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CDoublePointer;
 
 // Checkstyle: stop
 
@@ -43,4 +44,7 @@ public class Stdlib {
 
     @CFunction
     public static native CCharPointer realpath(CCharPointer name, CCharPointer resolved);
+
+    @CFunction
+    public static native int getloadavg(CDoublePointer loadavg, int nelem);
 }

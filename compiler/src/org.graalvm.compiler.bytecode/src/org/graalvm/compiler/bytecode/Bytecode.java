@@ -28,7 +28,6 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.LocalVariableTable;
-import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -60,8 +59,6 @@ public interface Bytecode {
     LocalVariableTable getLocalVariableTable();
 
     StackTraceElement asStackTraceElement(int bci);
-
-    ProfilingInfo getProfilingInfo();
 
     ExceptionHandler[] getExceptionHandlers();
 

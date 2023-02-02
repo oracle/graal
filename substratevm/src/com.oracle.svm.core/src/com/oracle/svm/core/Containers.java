@@ -25,17 +25,19 @@
 package com.oracle.svm.core;
 
 import static com.oracle.svm.core.Containers.Options.PreferContainerQuotaForCPUCount;
+import static com.oracle.svm.core.Containers.Options.UseContainerCpuShares;
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -44,7 +46,7 @@ import com.oracle.svm.core.util.VMError;
 /**
  * Provides container awareness to the rest of the VM.
  *
- * The implementation is based on the Container Metrics API from JDK 15.
+ * The implementation is based on the Container Metrics API from JDK 17.
  */
 public class Containers {
 
@@ -52,9 +54,12 @@ public class Containers {
         @Option(help = "Enable detection and runtime container configuration support.")//
         public static final HostedOptionKey<Boolean> UseContainerSupport = new HostedOptionKey<>(true);
 
+        @Option(help = "Include CPU shares in the CPU availability calculation.")//
+        public static final HostedOptionKey<Boolean> UseContainerCpuShares = new HostedOptionKey<>(false);
+
         @Option(help = "Calculate the container CPU availability based on the value of quotas (if set), when true. " +
                         "Otherwise, use the CPU shares value, provided it is less than quota.")//
-        public static final RuntimeOptionKey<Boolean> PreferContainerQuotaForCPUCount = new RuntimeOptionKey<>(true);
+        public static final RuntimeOptionKey<Boolean> PreferContainerQuotaForCPUCount = new RuntimeOptionKey<>(true, RelevantForCompilationIsolates);
     }
 
     /** Sentinel used when the value is unknown. */
@@ -82,8 +87,9 @@ public class Containers {
 
     /**
      * Calculates an appropriate number of active processors for the VM to use. The calculation is
-     * based on these two inputs:
+     * based on these three inputs:
      * <ul>
+     * <li>cpu affinity
      * <li>cpu quota & cpu period
      * <li>cpu shares
      * </ul>
@@ -93,6 +99,8 @@ public class Containers {
     public static int activeProcessorCount() {
         /*-
          * Algorithm (adapted from `src/hotspot/os/linux/cgroupSubsystem_linux.cpp`):
+         *
+         * Determine the number of available CPUs from sched_getaffinity.
          *
          * If user specified a quota (quota != -1), calculate the number of
          * required CPUs by dividing quota by period.
@@ -122,7 +130,12 @@ public class Containers {
             if (info.isContainerized()) {
                 long quota = info.getCpuQuota();
                 long period = info.getCpuPeriod();
-                long shares = info.getCpuShares();
+
+                /*-
+                 * It's not a good idea to use CPU shares to limit the number
+                 * of CPUs used by the VM. See JDK-8281181.
+                 */
+                long shares = UseContainerCpuShares.getValue() ? info.getCpuShares() : -1;
 
                 int quotaCount = 0;
                 if (quota > -1 && period > 0) {
@@ -150,6 +163,17 @@ public class Containers {
         }
 
         return Math.min(cpuCount, limitCount);
+    }
+
+    /**
+     * Returns {@code true} if containerized execution was detected.
+     */
+    public static boolean isContainerized() {
+        if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
+            ContainerInfo info = new ContainerInfo();
+            return info.isContainerized();
+        }
+        return false;
     }
 
     /**
@@ -197,9 +221,9 @@ final class ContainerInfo {
     }
 }
 
-@AutomaticFeature
+@AutomaticallyRegisteredFeature
 @Platforms(Platform.LINUX.class)
-class ContainersFeature implements Feature {
+class ContainersFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         RuntimeClassInitializationSupport classInitSupport = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);

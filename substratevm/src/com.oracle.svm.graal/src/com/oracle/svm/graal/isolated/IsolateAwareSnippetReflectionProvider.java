@@ -24,14 +24,18 @@
  */
 package com.oracle.svm.graal.isolated;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 final class IsolateAwareSnippetReflectionProvider implements SnippetReflectionProvider {
@@ -43,8 +47,7 @@ final class IsolateAwareSnippetReflectionProvider implements SnippetReflectionPr
 
     @Override
     public <T> T asObject(Class<T> type, JavaConstant constant) {
-        @SuppressWarnings("unchecked")
-        T object = (T) KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(type, constant), Object.class);
+        T object = SubstrateObjectConstant.asObject(type, constant);
         VMError.guarantee(!SubstrateOptions.shouldCompileInIsolates() || ImageHeapObjects.isInImageHeap(object));
         return object;
     }
@@ -56,6 +59,16 @@ final class IsolateAwareSnippetReflectionProvider implements SnippetReflectionPr
 
     @Override
     public Class<?> originalClass(ResolvedJavaType type) {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public Executable originalMethod(ResolvedJavaMethod method) {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public Field originalField(ResolvedJavaField field) {
         throw VMError.shouldNotReachHere();
     }
 }

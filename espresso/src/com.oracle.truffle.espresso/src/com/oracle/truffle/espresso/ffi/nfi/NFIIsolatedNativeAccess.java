@@ -22,14 +22,12 @@
  */
 package com.oracle.truffle.espresso.ffi.nfi;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.ffi.Buffer;
-import com.oracle.truffle.espresso.ffi.NativeAccess;
-import com.oracle.truffle.espresso.ffi.NativeType;
-import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
+import com.oracle.truffle.espresso.substitutions.Collect;
 import org.graalvm.home.HomeFinder;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -47,8 +45,12 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.ffi.Buffer;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
 import com.oracle.truffle.espresso.impl.EmptyKeysArray;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
@@ -69,7 +71,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  * workaround.
  * </ul>
  */
-final class NFIIsolatedNativeAccess extends NFINativeAccess {
+public final class NFIIsolatedNativeAccess extends NFINativeAccess {
 
     private final @Pointer TruffleObject edenLibrary;
     private final @Pointer TruffleObject malloc;
@@ -105,6 +107,7 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
             assert InteropLibrary.getUncached().isPointer(result);
             return result;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
     }
@@ -112,6 +115,9 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
     @Override
     public @Pointer TruffleObject loadLibrary(Path libraryPath) {
         CompilerAsserts.neverPartOfCompilation();
+        if (!Files.exists(libraryPath)) {
+            return null;
+        }
         String nfiSource = String.format("load(RTLD_LAZY|ISOLATED_NAMESPACE) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
     }
@@ -160,7 +166,7 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
                 }
                 return result;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -227,15 +233,19 @@ final class NFIIsolatedNativeAccess extends NFINativeAccess {
         try {
             uncachedInterop.execute(ctypeInit);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
     }
 
+    @Collect(NativeAccess.class)
     public static final class Provider implements NativeAccess.Provider {
+
+        public static final String ID = "nfi-dlmopen";
+
         @Override
         public String id() {
-            return "nfi-dlmopen";
+            return ID;
         }
 
         @Override

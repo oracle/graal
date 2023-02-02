@@ -28,7 +28,7 @@ import static com.oracle.truffle.api.test.ArrayUtilsTest.toByteArray;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.truffle.compiler.amd64.substitutions.TruffleAMD64InvocationPlugins;
+import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -41,7 +41,7 @@ public class ArrayUtilsRegionEqualsWithMaskTest extends GraalCompilerTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        new TruffleAMD64InvocationPlugins().registerInvocationPlugins(getProviders(), getBackend().getTarget().arch, invocationPlugins, true);
+        TruffleInvocationPlugins.register(getBackend().getTarget().arch, invocationPlugins, getReplacements());
         super.registerInvocationPlugins(invocationPlugins);
     }
 
@@ -57,7 +57,8 @@ public class ArrayUtilsRegionEqualsWithMaskTest extends GraalCompilerTest {
     private final int length;
     private final String mask;
 
-    public ArrayUtilsRegionEqualsWithMaskTest(String a1, int fromIndex1, String a2, int fromIndex2, String mask, int length, @SuppressWarnings("unused") boolean expected) {
+    public ArrayUtilsRegionEqualsWithMaskTest(String a1, int fromIndex1, String a2, int fromIndex2, String mask, int length, @SuppressWarnings("unused") boolean expectedByte,
+                    @SuppressWarnings("unused") boolean expectedChar) {
         this.a1 = a1;
         this.fromIndex1 = fromIndex1;
         this.a2 = a2;

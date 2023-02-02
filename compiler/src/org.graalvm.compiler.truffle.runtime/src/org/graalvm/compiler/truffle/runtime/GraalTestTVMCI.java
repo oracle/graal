@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,7 +109,7 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
 
     @Override
     public OptimizedCallTarget createTestCallTarget(GraalTestContext testContext, RootNode testNode) {
-        OptimizedCallTarget target = (OptimizedCallTarget) truffleRuntime.createCallTarget(testNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) testNode.getCallTarget();
         testContext.init(target);
         return target;
     }

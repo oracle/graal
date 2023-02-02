@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -65,5 +65,10 @@ public abstract class LLVMHandleMemoryBase extends LLVMMemory {
      */
     public static boolean isDerefHandleMemory(long address) {
         return ((address & HANDLE_HEADER_MASK) == DEREF_HANDLE_SPACE_START);
+    }
+
+    @Override
+    public boolean supportsHandles() {
+        return true;
     }
 }

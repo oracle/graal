@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +24,20 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import java.util.Objects;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotMetaData;
+import jdk.vm.ci.hotspot.HotSpotObjectConstantScope;
+import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.services.Services;
 
 /**
  * Interface to HotSpot specific functionality that abstracts over which JDK version Graal is
  * running on.
  */
 public class HotSpotGraalServices {
-
-    /**
-     * Get the implicit exceptions section of a {@code HotSpotMetaData} if it exists.
-     */
-    @SuppressWarnings("unused")
-    public static byte[] getImplicitExceptionBytes(HotSpotMetaData metaData) {
-        throw shouldNotReachHere();
-    }
 
     /**
      * Enters the global context. This is useful to escape a local context for execution that will
@@ -56,7 +50,8 @@ public class HotSpotGraalServices {
      *         this thread is currently in the global context
      */
     public static CompilationContext enterGlobalCompilationContext() {
-        throw shouldNotReachHere();
+        HotSpotObjectConstantScope impl = HotSpotObjectConstantScope.enterGlobalScope();
+        return impl == null ? null : new CompilationContext(impl);
     }
 
     /**
@@ -67,9 +62,9 @@ public class HotSpotGraalServices {
      *            context being opened
      * @return {@code null} if the current runtime does not support remote object references
      */
-    @SuppressWarnings("unused")
     public static CompilationContext openLocalCompilationContext(Object description) {
-        throw shouldNotReachHere();
+        HotSpotObjectConstantScope impl = HotSpotObjectConstantScope.openLocalScope(Objects.requireNonNull(description));
+        return impl == null ? null : new CompilationContext(impl);
     }
 
     /**
@@ -78,13 +73,15 @@ public class HotSpotGraalServices {
      *
      * This exists so that the HotSpot VM can be exited from within libgraal.
      */
-    @SuppressWarnings("unused")
     public static void exit(int status, HotSpotJVMCIRuntime runtime) {
-        throw shouldNotReachHere();
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            runtime.exitHotSpot(status);
+        } else {
+            System.exit(status);
+        }
     }
 
-    @SuppressWarnings("unused")
     public static SpeculationLog newHotSpotSpeculationLog(long cachedFailedSpeculationsAddress) {
-        throw shouldNotReachHere();
+        return new HotSpotSpeculationLog(cachedFailedSpeculationsAddress);
     }
 }

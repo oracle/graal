@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Represents the target of a call to a {@link RootNode}, i.e., to another tree of nodes. Instances
- * of this class can be created using {@link TruffleRuntime#createCallTarget(RootNode)}.
- * 
+ * of this class are created lazily and can be accessed via {@link RootNode#getCallTarget()}.
+ *
  * @since 0.8 or earlier
  */
 public interface RootCallTarget extends CallTarget {

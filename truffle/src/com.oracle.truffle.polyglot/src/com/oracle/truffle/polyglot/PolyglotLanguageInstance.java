@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,187 +40,121 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.util.List;
-import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Function;
 
-import org.graalvm.polyglot.Source;
+import org.graalvm.collections.Pair;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
-import com.oracle.truffle.polyglot.PolyglotValue.InteropCodeCache;
 
 final class PolyglotLanguageInstance implements VMObject {
 
     final PolyglotLanguage language;
     final TruffleLanguage<Object> spi;
-
-    private final PolyglotSourceCache sourceCache;
-    final Map<Class<?>, InteropCodeCache> valueCodeCache;
-    final Map<Object, Object> hostInteropCodeCache;
-
-    private volatile OptionValuesImpl firstOptionValues;
-    private volatile boolean multiContextInitialized;
-    private final Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per language instance.");
-
-    /**
-     * Direct language lookups in the current language.
+    /*
+     * The sharing layer might change for the host language only.
      */
-    private final LanguageReference<TruffleLanguage<Object>> directLanguageSupplier;
+    @CompilationFinal PolyglotSharingLayer sharing;
 
-    /**
-     * Direct context lookups in the current language.
-     */
-    private final ContextReference<Object> directContextSupplier;
+    private final Map<Class<?>, PolyglotValueDispatch> valueCache;
+    private final Map<Class<?>, CallTarget> callTargetCache;
 
+    final Map<Object, Object> hostToGuestCodeCache = new ConcurrentHashMap<>();
+    final Map<Class<?>, ClassLoader> staticObjectClassLoaders = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = new ConcurrentHashMap<>();
+
+    final WeakAssumedValue<PolyglotLanguageContext> singleLanguageContext = new WeakAssumedValue<>("single language context");
     // effectively final
     List<LanguageContextLocal<?>> contextLocals;
     List<LanguageContextThreadLocal<?>> contextThreadLocals;
     LocalLocation[] contextLocalLocations;
     LocalLocation[] contextThreadLocalLocations;
-    int claimedCount;
+
+    @CompilationFinal private volatile Object guestToHostCodeCache;
+
+    private static final AtomicReferenceFieldUpdater<PolyglotLanguageInstance, Object> GUEST_TO_HOST_CODE_CACHE_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(PolyglotLanguageInstance.class, Object.class, "guestToHostCodeCache");
 
     @SuppressWarnings("unchecked")
-    PolyglotLanguageInstance(PolyglotLanguage language) {
+    PolyglotLanguageInstance(PolyglotLanguage language, PolyglotSharingLayer layer) {
         this.language = language;
-        this.sourceCache = new PolyglotSourceCache();
-        this.valueCodeCache = new ConcurrentHashMap<>();
-        this.hostInteropCodeCache = new ConcurrentHashMap<>();
+        this.sharing = layer;
+
+        this.valueCache = new ConcurrentHashMap<>();
+        this.callTargetCache = new ConcurrentHashMap<>();
         try {
             this.spi = (TruffleLanguage<Object>) language.cache.loadLanguage();
-            LANGUAGE.initializeLanguage(spi, language.info, language, this);
+            LANGUAGE.initializeLanguage(spi, language.info, language, language.isHost() ? null : this);
         } catch (Exception e) {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }
+        PolyglotValueDispatch.createDefaultValues(getImpl(), this, this.valueCache);
+    }
 
-        boolean mayBeUsedInInnerContext = language.cache.getPolicy() != ContextPolicy.EXCLUSIVE;
-        boolean currentExclusive = language.getEffectiveContextPolicy(language) == ContextPolicy.EXCLUSIVE;
+    CallTarget lookupCallTarget(Class<? extends RootNode> rootNodeClass) {
+        return callTargetCache.get(rootNodeClass);
+    }
 
-        Assumption useDirectSingleContext = currentExclusive ? null : singleContext;
-        Assumption useInnerContext = mayBeUsedInInnerContext ? language.engine.noInnerContexts : null;
-
-        if (language.engine.conservativeContextReferences) {
-            this.directContextSupplier = language.getConservativeContextReference();
-        } else {
-            if (useDirectSingleContext == null && useInnerContext == null) {
-                // no checks can use direct reference
-                this.directContextSupplier = PolyglotReferences.createAlwaysSingleContext(language, currentExclusive);
-            } else {
-                this.directContextSupplier = PolyglotReferences.createAssumeSingleContext(language,
-                                useInnerContext,
-                                useDirectSingleContext,
-                                language.getContextReference(), currentExclusive);
-            }
-        }
-        this.directLanguageSupplier = PolyglotReferences.createAlwaysSingleLanguage(language, this);
+    CallTarget installCallTarget(RootNode rootNode) {
+        return callTargetCache.computeIfAbsent(rootNode.getClass(), (r) -> rootNode.getCallTarget());
     }
 
     public PolyglotEngineImpl getEngine() {
         return language.engine;
     }
 
-    boolean areOptionsCompatible(OptionValuesImpl newOptionValues) {
-        OptionValuesImpl firstOptions = this.firstOptionValues;
-        if (firstOptionValues == null) {
-            return true;
-        } else {
-            return EngineAccessor.LANGUAGE.areOptionsCompatible(spi, firstOptions, newOptionValues);
-        }
-    }
-
-    void claim(OptionValuesImpl optionValues) {
-        assert Thread.holdsLock(language.engine.lock);
-        if (this.firstOptionValues == null) {
-            this.firstOptionValues = optionValues;
-        }
-        claimedCount++;
-    }
-
-    void patchFirstOptions(OptionValuesImpl optionValues) {
-        this.firstOptionValues = optionValues;
-    }
-
-    void ensureMultiContextInitialized() {
-        assert Thread.holdsLock(language.engine.lock);
-        if (!language.engine.singleContext.isValid() && language.cache.getPolicy() != ContextPolicy.EXCLUSIVE) {
-            if (!multiContextInitialized) {
-                multiContextInitialized = true;
-                language.engine.initializeMultiContext(null);
-                this.singleContext.invalidate();
-                LANGUAGE.initializeMultiContext(spi);
+    PolyglotValueDispatch lookupValueCache(PolyglotContextImpl context, Object guestValue) {
+        PolyglotValueDispatch cache = valueCache.get(guestValue.getClass());
+        if (cache == null) {
+            Object prev = language.engine.enterIfNeeded(context, true);
+            try {
+                cache = lookupValueCacheImpl(guestValue);
+            } finally {
+                language.engine.leaveIfNeeded(prev, context);
             }
         }
+        assert Objects.equals(cache.languageInstance.sharing, this.sharing) : PolyglotSharingLayer.invalidSharingError(null, cache.languageInstance.sharing, this.sharing);
+        return cache;
     }
 
-    PolyglotSourceCache getSourceCache() {
-        return sourceCache;
+    private synchronized PolyglotValueDispatch lookupValueCacheImpl(Object guestValue) {
+        PolyglotValueDispatch cache = valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValueDispatch>() {
+            public PolyglotValueDispatch apply(Class<?> t) {
+                return PolyglotValueDispatch.createInteropValue(PolyglotLanguageInstance.this, (TruffleObject) guestValue, guestValue.getClass());
+            }
+        });
+        return cache;
     }
 
-    /**
-     * Direct context references can safely be shared within one AST of a language.
-     */
-    ContextReference<Object> getDirectContextSupplier() {
-        return directContextSupplier;
+    Object getGuestToHostCodeCache() {
+        return guestToHostCodeCache;
     }
 
-    /**
-     * Looks up the context reference to use for a foreign language AST.
-     */
-    ContextReference<Object> lookupContextSupplier(PolyglotLanguage sourceLanguage) {
-        assert language != sourceLanguage;
-        ContextReference<Object> ref;
-        switch (language.getEffectiveContextPolicy(sourceLanguage)) {
-            case EXCLUSIVE:
-                ref = PolyglotReferences.createAssumeSingleContext(language, language.engine.noInnerContexts, null,
-                                language.getContextReference(), true);
-                break;
-            case REUSE:
-            case SHARED:
-                ref = this.language.getContextReference();
-                break;
-            default:
-                throw shouldNotReachHere();
-        }
-        return ref;
-    }
-
-    /**
-     * Direct language references can safely be shared within one AST of a language.
-     */
-    LanguageReference<TruffleLanguage<Object>> getDirectLanguageReference() {
-        return directLanguageSupplier;
-    }
-
-    /**
-     * Looks up the language reference to use for a foreign language AST.
-     */
-    LanguageReference<TruffleLanguage<Object>> lookupLanguageSupplier(PolyglotLanguage sourceLanguage) {
-        assert language != sourceLanguage;
-        switch (language.getEffectiveContextPolicy(sourceLanguage)) {
-            case EXCLUSIVE:
-                return PolyglotReferences.createAssumeSingleLanguage(language, this, language.singleInstance, language.getLanguageReference());
-            case REUSE:
-            case SHARED:
-                return this.language.getLanguageReference();
-            default:
-                throw shouldNotReachHere();
+    Object installGuestToHostCodeCache(Object newCache) {
+        if (GUEST_TO_HOST_CODE_CACHE_UPDATER.compareAndSet(this, null, newCache)) {
+            return newCache;
+        } else {
+            return guestToHostCodeCache;
         }
     }
 
-    void listCachedSources(Collection<Source> sources) {
-        sourceCache.listCachedSources(this, sources);
+    @Override
+    public String toString() {
+        return "PolyglotLanguageInstance[" + spi + "]";
     }
 
 }

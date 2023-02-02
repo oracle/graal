@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -50,12 +50,23 @@ import com.oracle.svm.core.util.VMError;
  * with platform-specific implementations.
  */
 public class VMMutex {
-    private static final UnsignedWord UNSPECIFIED_OWNER = WordFactory.unsigned(-1);
+    static final UnsignedWord UNSPECIFIED_OWNER = WordFactory.unsigned(-1);
 
-    private IsolateThread owner;
+    private final String name;
+    IsolateThread owner;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMMutex() {
+        this.name = "unspecified";
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public VMMutex(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
     }
 
     /**

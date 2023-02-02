@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
+import com.oracle.truffle.llvm.runtime.inlineasm.InlineAssemblyParserBase;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -40,13 +41,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntry> extends PlatformCapability<S> {
-    public static final String LIBCXXABI_PREFIX = "libc++abi.";
-    public static final String LIBCXX_PREFIX = "libc++.";
     protected final boolean loadCxxLibraries;
+    private final InlineAssemblyParserBase inlineAssemblyParser;
 
-    public PlatformCapabilityBase(Class<S> cls, boolean loadCxxLibraries) {
+    public PlatformCapabilityBase(Class<S> cls, boolean loadCxxLibraries, InlineAssemblyParserBase inlineAssemblyParser) {
         super(cls);
         this.loadCxxLibraries = loadCxxLibraries;
+        this.inlineAssemblyParser = inlineAssemblyParser;
     }
 
     @Override
@@ -62,6 +63,21 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
 
     public abstract String getLibsulongFilename();
 
+    public abstract String getCxxFilename();
+
+    public abstract String getCxxAbiFilename();
+
+    private boolean isLibrary(String filename, String library) {
+        // Check if the filename starts with the library name without the
+        // suffix. This allows filenames such as libcxx.1.so to also be matched.
+        String startsWith = library.substring(0, library.length() - getLibrarySuffix().length());
+        return filename.startsWith(startsWith);
+    }
+
+    private boolean isCxxLibrary(String filename) {
+        return isLibrary(filename, getCxxFilename()) || isLibrary(filename, getCxxAbiFilename());
+    }
+
     @Override
     public List<String> preprocessDependencies(LLVMContext ctx, TruffleFile file, List<String> dependencies) {
         List<String> newDeps = null;
@@ -70,7 +86,7 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
         if (file != null && ctx.isInternalLibraryFile(file)) {
             Path path = Paths.get(file.getPath());
             String remainder = ctx.getInternalLibraryPath().relativize(path).toString();
-            if (remainder.startsWith(LIBCXXABI_PREFIX) || remainder.startsWith(LIBCXX_PREFIX)) {
+            if (isCxxLibrary(remainder)) {
                 newDeps = new ArrayList<>(dependencies);
                 newDeps.add(getLibsulongxxFilename());
                 libSulongXXAdded = true;
@@ -84,7 +100,7 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
                 Path namePath = Paths.get(dep).getFileName();
                 if (namePath != null) {
                     String filename = namePath.toString();
-                    if (filename.startsWith("libc++.") || filename.startsWith("libc++abi.")) {
+                    if (isCxxLibrary(filename)) {
                         if (newDeps == null) {
                             newDeps = new ArrayList<>(dependencies);
                         }
@@ -94,7 +110,7 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
                     }
                 }
             }
-            if (!libSulongXXAdded && (dep.startsWith(LIBCXXABI_PREFIX) || dep.startsWith(LIBCXX_PREFIX))) {
+            if (!libSulongXXAdded && isCxxLibrary(dep)) {
                 // inject libsulong++ dependency
                 if (newDeps == null) {
                     newDeps = new ArrayList<>(dependencies);
@@ -107,5 +123,10 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
             return newDeps;
         }
         return dependencies;
+    }
+
+    @Override
+    public InlineAssemblyParserBase getInlineAssemblyParser() {
+        return inlineAssemblyParser;
     }
 }

@@ -1,0 +1,3 @@
+com.oracle.truffle.espresso.redefinition.plugins.jdkcaches.JDKCacheRedefinitionPlugin
+com.oracle.truffle.espresso.redefinition.plugins.jdkproxy.JDKProxyRedefinitionPlugin
+com.oracle.truffle.espresso.redefinition.plugins.enums.EnumRedefinitionPlugin

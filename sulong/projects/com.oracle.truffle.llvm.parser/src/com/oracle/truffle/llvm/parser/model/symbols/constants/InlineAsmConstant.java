@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,6 +44,8 @@ public final class InlineAsmConstant extends AbstractConstant {
 
     private static final char DELIMITER = '\"';
 
+    private final Type fnType;
+
     private final String asmExpression;
 
     private final String asmFlags;
@@ -54,8 +56,9 @@ public final class InlineAsmConstant extends AbstractConstant {
 
     private final boolean stackAlign;
 
-    private InlineAsmConstant(Type type, String asmExpression, String asmFlags, boolean hasSideEffects, boolean stackAlign, AsmDialect dialect) {
+    private InlineAsmConstant(Type type, Type fnType, String asmExpression, String asmFlags, boolean hasSideEffects, boolean stackAlign, AsmDialect dialect) {
         super(type);
+        this.fnType = fnType;
         this.asmExpression = asmExpression;
         this.asmFlags = asmFlags;
         this.hasSideEffects = hasSideEffects;
@@ -66,6 +69,10 @@ public final class InlineAsmConstant extends AbstractConstant {
     @Override
     public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public Type getFnType() {
+        return fnType;
     }
 
     public String getAsmExpression() {
@@ -97,7 +104,7 @@ public final class InlineAsmConstant extends AbstractConstant {
     public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
     }
 
-    public static InlineAsmConstant createFromData(Type type, RecordBuffer buffer) {
+    public static InlineAsmConstant createFromData(Type type, Type fnType, RecordBuffer buffer) {
 
         final int flags = buffer.readInt();
         final boolean hasSideEffects = (flags & 0x1) == 0x1;
@@ -123,7 +130,7 @@ public final class InlineAsmConstant extends AbstractConstant {
         final String asmExpression = asmExpressionBuilder.toString();
         final String asmFlags = asmFlagsBuilder.toString();
 
-        return new InlineAsmConstant(type, asmExpression, asmFlags, hasSideEffects, stackAlign, AsmDialect.decode(asmDialect));
+        return new InlineAsmConstant(type, fnType, asmExpression, asmFlags, hasSideEffects, stackAlign, AsmDialect.decode(asmDialect));
     }
 
     @Override

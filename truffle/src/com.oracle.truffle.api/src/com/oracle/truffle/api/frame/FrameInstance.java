@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,15 +100,38 @@ public interface FrameInstance {
     boolean isVirtualFrame();
 
     /**
+     * Returns an integer for the optimized tier of this method. If <code>0</code> is returned then
+     * this means that the frame is currently being interpreted without any optimization. The number
+     * of tiers is unlimited, but is typically restricted to a small set. e.g. 0-2. Where 0 could
+     * indicate interpreted, 1 indicates first tier and 2 indicates last tier compilation. It is
+     * best to not interpret this number and just print it for the user.
+     *
+     * @since 21.3.0
+     */
+    default int getCompilationTier() {
+        return 0;
+    }
+
+    /**
+     * Returns whether or not the current frame is a compilation root. A compilation root is a
+     * compiled {@link CallTarget} which was itself compiled i.e. not inlined into another target.
+     *
+     * @since 21.3.0
+     */
+    default boolean isCompilationRoot() {
+        return true;
+    }
+
+    /**
      * Returns a node representing the callsite of the next new target on the stack.
      *
      * This picture indicates how {@link FrameInstance} groups the stack.
      *
      * <pre>
      *                      ===============
-     *  {@link TruffleRuntime#getCurrentFrame() Current}:         ,>|  CallTarget   | FrameInstance
+     *  Current:         ,>|  CallTarget   | FrameInstance
      *                   |  ===============
-     *  {@link TruffleRuntime#getCallerFrame() Caller}:          '-|  CallNode     | FrameInstance
+     *  Caller:          '-|  CallNode     | FrameInstance
      *                   ,>|  CallTarget   |
      *                   |  ===============
      *                   '-|  CallNode     | FrameInstance

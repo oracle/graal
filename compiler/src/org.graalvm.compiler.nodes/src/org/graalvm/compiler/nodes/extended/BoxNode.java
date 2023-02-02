@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,8 +36,6 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -48,6 +46,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
@@ -65,14 +65,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * This node represents the boxing of a primitive value. This corresponds to a call to the valueOf
  * methods in Integer, Long, etc.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_16, allowedUsageTypes = {InputType.Memory, InputType.Value})
+@NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_16, allowedUsageTypes = {InputType.Value})
 public abstract class BoxNode extends AbstractBoxingNode implements IterableNodeType, VirtualizableAllocation, Lowerable, Canonicalizable.Unary<ValueNode>, IndirectCanonicalization {
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
 
-    private BoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
-        this(TYPE, value, resultType, boxingKind);
-    }
+    private boolean hasIdentity;
 
     private BoxNode(NodeClass<? extends BoxNode> c, ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
         super(c, value, boxingKind, StampFactory.objectNonNull(TypeReference.createExactTrusted(resultType)), new FieldLocationIdentity(getValueField(resultType)));
@@ -89,6 +87,23 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
             return new PureBoxNode(value, resultType, boxingKind);
         }
         return new AllocatingBoxNode(value, resultType, boxingKind);
+    }
+
+    /**
+     * @see #setHasIdentity()
+     */
+    public boolean hasIdentity() {
+        return hasIdentity;
+    }
+
+    /**
+     * Mark this boxing node as "identity preserving" such that it will not be escape analyzed or
+     * commoned with another boxing node that shares the same {@linkplain #getValue() input value}.
+     */
+    public void setHasIdentity() {
+        // A trusted box should never have identity
+        assert !(getValue() instanceof TrustedBoxedValue) : this + ": " + getValue();
+        this.hasIdentity = true;
     }
 
     @Override
@@ -117,22 +132,25 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
 
     protected VirtualBoxingNode createVirtualBoxingNode() {
         VirtualBoxingNode node = new VirtualBoxingNode(StampTool.typeOrNull(stamp(NodeView.DEFAULT)), boxingKind);
-        node.setNodeSourcePosition(getNodeSourcePosition());
         return node;
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
+        if (hasIdentity) {
+            // Cannot virtualize a box node that preserves identity
+            return;
+        }
         ValueNode alias = tool.getAlias(getValue());
 
         VirtualBoxingNode newVirtual = createVirtualBoxingNode();
         assert newVirtual.getFields().length == 1;
 
-        tool.createVirtualObject(newVirtual, new ValueNode[]{alias}, Collections.<MonitorIdNode> emptyList(), false);
+        tool.createVirtualObject(newVirtual, new ValueNode[]{alias}, Collections.<MonitorIdNode> emptyList(), getNodeSourcePosition(), false);
         tool.replaceWithVirtual(newVirtual);
     }
 
-    @NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Memory, InputType.Value})
+    @NodeInfo(cycles = NodeCycles.CYCLES_8, size = SIZE_8, allowedUsageTypes = {InputType.Value})
     private static class PureBoxNode extends BoxNode {
         public static final NodeClass<PureBoxNode> TYPE = NodeClass.create(PureBoxNode.class);
 
@@ -147,10 +165,6 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
 
         protected AllocatingBoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
             super(TYPE, value, resultType, boxingKind);
-        }
-
-        protected AllocatingBoxNode(NodeClass<? extends AllocatingBoxNode> c, ValueNode value, JavaKind boxingKind, Stamp s, LocationIdentity location) {
-            super(c, value, boxingKind, s, location);
         }
 
         @Override
@@ -189,7 +203,7 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
         @Override
         public void lower(LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
-                replaceAtAllUsages(value, this);
+                replaceAtAllUsages(value, true);
             }
         }
 

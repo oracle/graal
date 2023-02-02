@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,48 +40,46 @@
  */
 package org.graalvm.wasm.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import static org.graalvm.wasm.nodes.WasmFrame.popLong;
+import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
+import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
+import static org.graalvm.wasm.nodes.WasmFrame.popInt;
+import static org.graalvm.wasm.nodes.WasmFrame.popReference;
+import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
+import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
+import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
+import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
+import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
+
+import org.graalvm.wasm.WasmConstant;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.wasm.WasmCodeEntry;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
+import com.oracle.truffle.api.source.SourceSection;
 
-@NodeInfo(language = "wasm", description = "The root node of all WebAssembly functions")
-public class WasmRootNode extends RootNode implements WasmNodeInterface {
+@NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
+public class WasmRootNode extends RootNode {
 
-    protected final WasmInstance instance;
-    private final WasmCodeEntry codeEntry;
-    @CompilationFinal private ContextReference<WasmContext> rawContextReference;
-    @Child private WasmNode body;
+    private SourceSection sourceSection;
+    @Child private WasmFunctionNode function;
 
-    public WasmRootNode(TruffleLanguage<?> language, WasmInstance instance, WasmCodeEntry codeEntry) {
-        super(language);
-        this.instance = instance;
-        this.codeEntry = codeEntry;
-        this.body = null;
+    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmFunctionNode function) {
+        super(language, frameDescriptor);
+        this.function = function;
     }
 
-    protected ContextReference<WasmContext> contextReference() {
-        if (rawContextReference == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            rawContextReference = lookupContextReference(WasmLanguage.class);
-        }
-        return rawContextReference;
-    }
-
-    public void setBody(WasmNode body) {
-        this.body = insert(body);
+    protected final WasmContext getContext() {
+        return WasmContext.get(this);
     }
 
     @Override
@@ -93,12 +91,12 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        context.linker().tryLink(instance);
+        context.linker().tryLink(function.instance());
     }
 
     @Override
     public final Object execute(VirtualFrame frame) {
-        final WasmContext context = contextReference().get();
+        final WasmContext context = getContext();
         tryInitialize(context);
         return executeWithContext(frame, context);
     }
@@ -115,121 +113,170 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         // The reason for this is that the operand stack cannot be passed
         // as an argument to the loop-node's execute method,
         // and must be restored at the beginning of the loop body.
-        final int maxStackSize = codeEntry.maxStackSize();
-        final int numLocals = body.codeEntry().numLocals();
-        long[] stacklocals = new long[numLocals + maxStackSize];
-        frame.setObject(codeEntry.stackLocalsSlot(), stacklocals);
-        moveArgumentsToLocals(frame, stacklocals);
+        final int localCount = function.localCount();
+        moveArgumentsToLocals(frame);
 
         // WebAssembly rules dictate that a function's locals must be initialized to zero before
         // function invocation. For more information, check the specification:
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
-        initializeLocals(stacklocals);
+        initializeLocals(frame);
+
+        final int resultCount = function.resultCount();
+        CompilerAsserts.partialEvaluationConstant(resultCount);
+        if (resultCount > 1) {
+            context.resizeMultiValueStack(resultCount);
+        }
 
         try {
-            body.execute(context, frame, stacklocals);
+            function.execute(context, frame);
         } catch (StackOverflowError e) {
+            function.enterErrorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
         }
-
-        switch (body.returnTypeId()) {
-            case 0x00:
-            case WasmType.VOID_TYPE: {
-                return WasmVoidResult.getInstance();
+        if (resultCount == 0) {
+            return WasmConstant.VOID;
+        } else if (resultCount == 1) {
+            final byte resultType = function.resultType(0);
+            CompilerAsserts.partialEvaluationConstant(resultType);
+            switch (resultType) {
+                case WasmType.VOID_TYPE:
+                    return WasmConstant.VOID;
+                case WasmType.I32_TYPE:
+                    return popInt(frame, localCount);
+                case WasmType.I64_TYPE:
+                    return popLong(frame, localCount);
+                case WasmType.F32_TYPE:
+                    return popFloat(frame, localCount);
+                case WasmType.F64_TYPE:
+                    return popDouble(frame, localCount);
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    return popReference(frame, localCount);
+                default:
+                    throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
             }
-            case WasmType.I32_TYPE: {
-                long returnValue = pop(stacklocals, numLocals);
-                assert returnValue >>> 32 == 0;
-                return (int) returnValue;
-            }
-            case WasmType.I64_TYPE: {
-                long returnValue = pop(stacklocals, numLocals);
-                return returnValue;
-            }
-            case WasmType.F32_TYPE: {
-                long returnValue = pop(stacklocals, numLocals);
-                assert returnValue >>> 32 == 0;
-                return Float.intBitsToFloat((int) returnValue);
-            }
-            case WasmType.F64_TYPE: {
-                long returnValue = pop(stacklocals, numLocals);
-                return Double.longBitsToDouble(returnValue);
-            }
-            default:
-                throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: %d", body.returnTypeId());
+        } else {
+            moveResultValuesToMultiValueStack(frame, context, resultCount, localCount);
+            return WasmConstant.MULTI_VALUE;
         }
     }
 
     @ExplodeLoop
-    private void moveArgumentsToLocals(VirtualFrame frame, long[] stacklocals) {
+    private void moveResultValuesToMultiValueStack(VirtualFrame frame, WasmContext context, int resultCount, int localCount) {
+        CompilerAsserts.partialEvaluationConstant(resultCount);
+        final long[] multiValueStack = context.primitiveMultiValueStack();
+        final Object[] referenceMultiValueStack = context.referenceMultiValueStack();
+        for (int i = 0; i < resultCount; i++) {
+            final int resultType = function.resultType(i);
+            CompilerAsserts.partialEvaluationConstant(resultType);
+            switch (resultType) {
+                case WasmType.I32_TYPE:
+                    multiValueStack[i] = popInt(frame, localCount + i);
+                    break;
+                case WasmType.I64_TYPE:
+                    multiValueStack[i] = popLong(frame, localCount + i);
+                    break;
+                case WasmType.F32_TYPE:
+                    multiValueStack[i] = Float.floatToRawIntBits(popFloat(frame, localCount + i));
+                    break;
+                case WasmType.F64_TYPE:
+                    multiValueStack[i] = Double.doubleToRawLongBits(popDouble(frame, localCount + i));
+                    break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    referenceMultiValueStack[i] = popReference(frame, localCount + i);
+                    break;
+                default:
+                    throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
+            }
+        }
+    }
+
+    @ExplodeLoop
+    private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
-        assert args.length == numArgs : "Expected number of arguments " + numArgs + ", actual " + args.length;
-        for (int i = 0; i != numArgs; ++i) {
+        int paramCount = function.paramCount();
+        assert args.length == paramCount : "Expected number of params " + paramCount + ", actual " + args.length;
+        for (int i = 0; i != paramCount; ++i) {
             final Object arg = args[i];
-            byte type = body.codeEntry().localType(i);
+            byte type = function.localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
-                    pushInt(stacklocals, i, (int) arg);
+                    pushInt(frame, i, (int) arg);
                     break;
                 case WasmType.I64_TYPE:
-                    push(stacklocals, i, (long) arg);
+                    pushLong(frame, i, (long) arg);
                     break;
                 case WasmType.F32_TYPE:
-                    pushFloat(stacklocals, i, (float) arg);
+                    pushFloat(frame, i, (float) arg);
                     break;
                 case WasmType.F64_TYPE:
-                    pushDouble(stacklocals, i, (double) arg);
+                    pushDouble(frame, i, (double) arg);
+                    break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    pushReference(frame, i, arg);
                     break;
             }
         }
     }
 
     @ExplodeLoop
-    private void initializeLocals(long[] stacklocals) {
-        int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
-        for (int i = numArgs; i != body.codeEntry().numLocals(); ++i) {
-            byte type = body.codeEntry().localType(i);
+    private void initializeLocals(VirtualFrame frame) {
+        int paramCount = function.paramCount();
+        for (int i = paramCount; i != function.localCount(); ++i) {
+            byte type = function.localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
-                    // Already set to 0 at allocation.
+                    pushInt(frame, i, 0);
                     break;
                 case WasmType.I64_TYPE:
-                    // Already set to 0 at allocation.
+                    pushLong(frame, i, 0L);
                     break;
                 case WasmType.F32_TYPE:
-                    stacklocals[i] = Float.floatToRawIntBits(0.0f);
+                    pushFloat(frame, i, 0F);
                     break;
                 case WasmType.F64_TYPE:
-                    stacklocals[i] = Double.doubleToRawLongBits(0.0);
+                    pushDouble(frame, i, 0D);
+                    break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    pushReference(frame, i, WasmConstant.NULL);
                     break;
             }
         }
     }
 
     @Override
-    public WasmCodeEntry codeEntry() {
-        return codeEntry;
-    }
-
-    @Override
-    public String toString() {
+    public final String toString() {
         return getName();
     }
 
     @Override
     public String getName() {
-        if (codeEntry == null) {
+        if (function == null) {
             return "function";
         }
-        return codeEntry.function().name();
+        return function.name();
     }
 
     @Override
-    public String getQualifiedName() {
-        if (codeEntry == null) {
+    public final String getQualifiedName() {
+        if (function == null) {
             return getName();
         }
-        return codeEntry.function().moduleName() + "." + getName();
+        return function.qualifiedName();
+    }
+
+    @Override
+    public final SourceSection getSourceSection() {
+        if (function == null) {
+            return null;
+        } else {
+            if (sourceSection == null) {
+                sourceSection = function.instance().module().source().createUnavailableSection();
+            }
+            return sourceSection;
+        }
     }
 }

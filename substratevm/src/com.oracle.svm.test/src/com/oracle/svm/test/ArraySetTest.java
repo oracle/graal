@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.test;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Array;
 
 import org.junit.Assert;

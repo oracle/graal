@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,8 +47,8 @@ import org.graalvm.graphio.GraphStructure;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public final class TruffleTreeDumper {
@@ -57,7 +57,6 @@ public final class TruffleTreeDumper {
     }
 
     private static final ASTDumpStructure AST_DUMP_STRUCTURE = new ASTDumpStructure();
-    private static final String AFTER_PROFILING = "After Profiling";
 
     public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget) {
         if (GraalTruffleRuntime.getRuntime().isPrintGraphEnabled()) {
@@ -72,7 +71,6 @@ public final class TruffleTreeDumper {
     public static void dump(TruffleDebugContext debug, OptimizedCallTarget root, TruffleInlining inlining) {
         if (GraalTruffleRuntime.getRuntime().isPrintGraphEnabled()) {
             try {
-
                 CompilableTruffleAST[] inlinedTargets = inlining.inlinedTargets();
                 Set<CompilableTruffleAST> uniqueTargets = new HashSet<>(Arrays.asList(inlinedTargets));
                 uniqueTargets.remove(root);
@@ -98,23 +96,14 @@ public final class TruffleTreeDumper {
         if (callTarget.getRootNode() != null) {
             AST ast = new AST(callTarget, nodeSources);
             final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE));
-            astOutput.beginGroup(ast, "AST", "AST", null, 0, debug.getVersionProperties());
-            astOutput.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
-            astOutput.endGroup(); // AST
+            astOutput.print(ast, Collections.emptyMap(), 0, callTarget.getName());
             astOutput.close();
         }
     }
 
-    @SuppressWarnings("deprecation")
     private static void readNodeProperties(ASTNode astNode, Node node) {
-        NodeClass nodeClass = NodeClass.get(node);
-        for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : findNodeFields(nodeClass)) {
-            if (isDataField(nodeClass, field)) {
-                String key = findFieldName(nodeClass, field);
-                Object value = findFieldValue(nodeClass, field, node);
-                astNode.properties.put(key, value);
-            }
-        }
+        astNode.properties.putAll(NodeUtil.collectNodeProperties(node));
+
     }
 
     private static void copyDebugProperties(ASTNode astNode, Node node) {
@@ -122,68 +111,6 @@ public final class TruffleTreeDumper {
         for (Map.Entry<String, Object> property : debugProperties.entrySet()) {
             astNode.properties.put(property.getKey(), property.getValue());
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    private static LinkedHashMap<String, Node> findNamedNodeChildren(Node node) {
-        LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
-        NodeClass nodeClass = NodeClass.get(node);
-
-        for (com.oracle.truffle.api.nodes.NodeFieldAccessor field : findNodeFields(nodeClass)) {
-            if (isChildField(nodeClass, field)) {
-                Object value = findFieldObject(nodeClass, field, node);
-                if (value != null) {
-                    nodes.put(findFieldName(nodeClass, field), (Node) value);
-                }
-            } else if (isChildrenField(nodeClass, field)) {
-                Object value = findFieldObject(nodeClass, field, node);
-                if (value != null) {
-                    Object[] children = (Object[]) value;
-                    for (int i = 0; i < children.length; i++) {
-                        if (children[i] != null) {
-                            nodes.put(findFieldName(nodeClass, field) + "[" + i + "]", (Node) children[i]);
-                        }
-                    }
-                }
-            }
-        }
-
-        return nodes;
-    }
-
-    @SuppressWarnings({"deprecation", "unused"})
-    private static Object findFieldValue(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Node node) {
-        return field.loadValue(node);
-    }
-
-    @SuppressWarnings("deprecation")
-    private static Iterable<com.oracle.truffle.api.nodes.NodeFieldAccessor> findNodeFields(NodeClass nodeClass) {
-        return Arrays.asList(nodeClass.getFields());
-    }
-
-    @SuppressWarnings({"deprecation", "unused"})
-    private static boolean isChildField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
-        return field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILD;
-    }
-
-    @SuppressWarnings({"deprecation", "unused"})
-    private static boolean isChildrenField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
-        return field.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILDREN;
-    }
-
-    @SuppressWarnings({"deprecation", "unused"})
-    private static Object findFieldObject(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field, Node node) {
-        return field.getObject(node);
-    }
-
-    @SuppressWarnings({"deprecation", "unused"})
-    private static String findFieldName(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
-        return field.getName();
-    }
-
-    @SuppressWarnings("deprecation")
-    private static boolean isDataField(NodeClass nodeClass, com.oracle.truffle.api.nodes.NodeFieldAccessor field) {
-        return !isChildField(nodeClass, field) && !isChildrenField(nodeClass, field);
     }
 
     static class AST {
@@ -220,7 +147,7 @@ public final class TruffleTreeDumper {
         }
 
         private static void traverseNodes(Node parent, ASTNode astParent, AST ast, TruffleInlining inliningDecisions, TruffleNodeSources nodeSources, ASTBlock currentBlock) {
-            for (Map.Entry<String, Node> entry : findNamedNodeChildren(parent).entrySet()) {
+            for (Map.Entry<String, Node> entry : NodeUtil.collectNodeChildren(parent).entrySet()) {
                 final String label = entry.getKey();
                 final Node node = entry.getValue();
                 final ASTNode astNode = ast.makeASTNode(node, nodeSources);

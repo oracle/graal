@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,9 +33,8 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.compiler.nodes.extended.MembarNode.FenceKind;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-
-import jdk.vm.ci.code.MemoryBarriers;
 
 /**
  * The {@code AbstractNewObjectNode} is the base class for the new instance and new array nodes.
@@ -48,7 +47,7 @@ public abstract class AbstractNewObjectNode extends DeoptimizingFixedWithNextNod
 
     /**
      * Controls whether this allocation emits a {@link MembarNode} with
-     * {@link MemoryBarriers#STORE_STORE} as part of the object initialization.
+     * {@link FenceKind#ALLOCATION_INIT} as part of the object initialization.
      */
     protected boolean emitMemoryBarrier = true;
 

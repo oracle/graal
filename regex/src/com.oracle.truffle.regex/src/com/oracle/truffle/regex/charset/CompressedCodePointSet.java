@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,7 @@ import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
-import com.oracle.truffle.regex.tregex.matchers.HybridBitSetMatcher;
+import com.oracle.truffle.regex.tregex.matchers.RangeTreeMatcher;
 import com.oracle.truffle.regex.tregex.nodes.dfa.AllTransitionsInOneTreeMatcher;
 import com.oracle.truffle.regex.util.BitSets;
 
@@ -71,7 +71,7 @@ import com.oracle.truffle.regex.util.BitSets;
  * - bit-sets: [[0x02, 0x04, 0x06], null,   null         ]
  * </pre>
  *
- * @see HybridBitSetMatcher
+ * @see RangeTreeMatcher
  * @see AllTransitionsInOneTreeMatcher
  */
 public final class CompressedCodePointSet {

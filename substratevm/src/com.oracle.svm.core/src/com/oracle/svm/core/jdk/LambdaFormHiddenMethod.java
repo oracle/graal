@@ -24,13 +24,12 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.graalvm.util.DirectAnnotationAccess;
+import org.graalvm.nativeimage.AnnotationAccess;
 
 /**
  * Annotation for types whose methods are synthetic methods for lambda invocations, and ignored for
@@ -46,12 +45,6 @@ public @interface LambdaFormHiddenMethod {
     class Holder {
 
         /** Instance of the annotation, useful when the annotation is manually injected. */
-        public static final LambdaFormHiddenMethod INSTANCE = DirectAnnotationAccess.getAnnotation(Holder.class, LambdaFormHiddenMethod.class);
-
-        /**
-         * Array that contains only the instance of the annotation, useful when the annotation is
-         * manually injected.
-         */
-        public static final Annotation[] ARRAY = new Annotation[]{INSTANCE};
+        public static final LambdaFormHiddenMethod INSTANCE = AnnotationAccess.getAnnotation(Holder.class, LambdaFormHiddenMethod.class);
     }
 }

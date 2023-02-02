@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+import java.util.BitSet;
 
 /**
  * Metadata required for processing of snippets.
@@ -149,5 +151,15 @@ public class SnippetParameterInfo {
 
     public void clearNames() {
         names = null;
+    }
+
+    public static BitSet getNonNullParameters(SnippetParameterInfo info) {
+        BitSet nonNullParameters = new BitSet(info.getParameterCount());
+        for (int i = 0; i < info.getParameterCount(); i++) {
+            if (info.isNonNullParameter(i)) {
+                nonNullParameters.set(i);
+            }
+        }
+        return nonNullParameters;
     }
 }

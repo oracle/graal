@@ -23,9 +23,6 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_HIDDEN;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,16 +32,17 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives;
 
-public class StackWalk {
+public final class StackWalk {
     // -1 and 0 are reserved values.
     private final AtomicLong walkerIds = new AtomicLong(1);
 
@@ -59,12 +57,6 @@ public class StackWalk {
     private static final long GET_CALLER_CLASS = 0x04;
     private static final long SHOW_HIDDEN_FRAMES = 0x20;
     private static final long FILL_LIVE_STACK_FRAMES = 0x100;
-
-    private static final String STRING_DEFAULT_MODE = "DEFAULT_MODE";
-    private static final String STRING_FILL_CLASS_REFS_ONLY = "FILL_CLASS_REFS_ONLY";
-    private static final String STRING_GET_CALLER_CLASS = "GET_CALLER_CLASS";
-    private static final String STRING_SHOW_HIDDEN_FRAMES = "SHOW_HIDDEN_FRAMES";
-    private static final String STRING_FILL_LIVE_STACK_FRAMES = "FILL_LIVE_STACK_FRAMES";
 
     static boolean getCallerClass(long mode) {
         return (mode & GET_CALLER_CLASS) != 0;
@@ -85,11 +77,11 @@ public class StackWalk {
     private static boolean synchronizedConstants(Meta meta) {
         Klass stackStreamFactory = meta.java_lang_StackStreamFactory;
         StaticObject statics = stackStreamFactory.tryInitializeAndGetStatics();
-        assert DEFAULT_MODE == getConstantField(stackStreamFactory, statics, STRING_DEFAULT_MODE, meta);
-        assert FILL_CLASS_REFS_ONLY == getConstantField(stackStreamFactory, statics, STRING_FILL_CLASS_REFS_ONLY, meta);
-        assert GET_CALLER_CLASS == getConstantField(stackStreamFactory, statics, STRING_GET_CALLER_CLASS, meta);
-        assert SHOW_HIDDEN_FRAMES == getConstantField(stackStreamFactory, statics, STRING_SHOW_HIDDEN_FRAMES, meta);
-        assert FILL_LIVE_STACK_FRAMES == getConstantField(stackStreamFactory, statics, STRING_FILL_LIVE_STACK_FRAMES, meta);
+        assert DEFAULT_MODE == getConstantField(stackStreamFactory, statics, "DEFAULT_MODE", meta);
+        assert FILL_CLASS_REFS_ONLY == getConstantField(stackStreamFactory, statics, "FILL_CLASS_REFS_ONLY", meta);
+        assert GET_CALLER_CLASS == getConstantField(stackStreamFactory, statics, "GET_CALLER_CLASS", meta);
+        assert SHOW_HIDDEN_FRAMES == getConstantField(stackStreamFactory, statics, "SHOW_HIDDEN_FRAMES", meta);
+        assert FILL_LIVE_STACK_FRAMES == getConstantField(stackStreamFactory, statics, "FILL_LIVE_STACK_FRAMES", meta);
         return true;
     }
 
@@ -111,9 +103,9 @@ public class StackWalk {
      *         {@code java.lang.StackStreamFactory.AbstractStackWalker#doStackWalk(long, int, int, int,
      *         int)} .
      */
-    public StaticObject fetchFirstBatch(@Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
+    public StaticObject fetchFirstBatch(@JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
                     int batchSize, int startIndex,
-                    @Host(Object[].class) StaticObject frames,
+                    @JavaType(Object[].class) StaticObject frames,
                     Meta meta) {
         assert synchronizedConstants(meta);
         FrameWalker fw = new FrameWalker(meta, mode);
@@ -124,7 +116,7 @@ public class StackWalk {
             throw meta.throwException(meta.java_lang_InternalError);
         }
         register(fw);
-        Object result = meta.java_lang_AbstractStackWalker_doStackWalk.invokeDirect(stackStream, fw.anchor, skipframes, batchSize, startIndex, startIndex + decoded);
+        Object result = meta.java_lang_StackStreamFactory_AbstractStackWalker_doStackWalk.invokeDirect(stackStream, fw.anchor, skipframes, batchSize, startIndex, startIndex + decoded);
         unAnchor(fw);
         return (StaticObject) result;
     }
@@ -136,10 +128,10 @@ public class StackWalk {
      * @return The position in the buffer at the end of fetching.
      */
     public int fetchNextBatch(
-                    @SuppressWarnings("unused") @Host(typeName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream,
+                    @SuppressWarnings("unused") @JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream,
                     long mode, long anchor,
                     int batchSize, int startIndex,
-                    @Host(Object[].class) StaticObject frames,
+                    @JavaType(Object[].class) StaticObject frames,
                     Meta meta) {
         assert synchronizedConstants(meta);
         FrameWalker fw = getAnchored(anchor);
@@ -184,7 +176,7 @@ public class StackWalk {
         private int depth = 0;
         private int decoded = 0;
 
-        private static final int LOCATE_CALLSTACKWALk = 0;
+        private static final int LOCATE_CALLSTACKWALK = 0;
         private static final int LOCATE_STACK_BEGIN = 1;
         private static final int LOCATE_FROM = 2;
         private static final int PROCESS = 3;
@@ -209,7 +201,7 @@ public class StackWalk {
         }
 
         public void clear() {
-            state = LOCATE_CALLSTACKWALk;
+            state = LOCATE_CALLSTACKWALK;
             depth = 0;
             decoded = 0;
         }
@@ -254,24 +246,28 @@ public class StackWalk {
         }
 
         private boolean isFromStackWalkingAPI(Method m) {
-            return m.getDeclaringKlass() == meta.java_lang_StackWalker || m.getDeclaringKlass() == meta.java_lang_AbstractStackWalker ||
-                            m.getDeclaringKlass().getSuperKlass() == meta.java_lang_AbstractStackWalker;
+            return m.getDeclaringKlass() == meta.java_lang_StackWalker || m.getDeclaringKlass() == meta.java_lang_StackStreamFactory_AbstractStackWalker ||
+                            m.getDeclaringKlass().getSuperKlass() == meta.java_lang_StackStreamFactory_AbstractStackWalker;
         }
 
         private boolean isCallStackWalk(Method m) {
-            return m.getDeclaringKlass() == meta.java_lang_AbstractStackWalker &&
+            return m.getDeclaringKlass() == meta.java_lang_StackStreamFactory_AbstractStackWalker &&
                             Name.callStackWalk.equals(m.getName()) &&
-                            Symbol.Signature.Object_long_int_int_int_Object_array.equals(m.getRawSignature());
+                            getCallStackWalkSignature().equals(m.getRawSignature());
+        }
+
+        private Symbol<Signature> getCallStackWalkSignature() {
+            return meta.getJavaVersion().java19OrLater() ? Signature.Object_long_int_ContinuationScope_Continuation_int_int_Object_array : Signature.Object_long_int_int_int_Object_array;
         }
 
         @SuppressWarnings("fallthrough")
         @Override
         public Integer visitFrame(FrameInstance frameInstance) {
-            EspressoRootNode root = VM.getEspressoRootFromFrame(frameInstance);
+            EspressoRootNode root = VM.getEspressoRootFromFrame(frameInstance, meta.getContext());
             Method m = root == null ? null : root.getMethod();
             if (m != null) {
                 switch (state) {
-                    case LOCATE_CALLSTACKWALk:
+                    case LOCATE_CALLSTACKWALK:
                         if (!isCallStackWalk(m)) {
                             break;
                         }
@@ -325,12 +321,13 @@ public class StackWalk {
 
         private void tryProcessFrame(FrameInstance frameInstance, Method m, int index) {
             if (getCallerClass(mode) || skipHiddenFrames(mode)) {
-                if ((m.getModifiers() & ACC_LAMBDA_FORM_HIDDEN) != 0) {
+                if (m.isHidden()) {
+                    // Skip hidden frames.
                     return;
                 }
             }
-            if (!needMethodInfo(mode) && getCallerClass(mode) && (index == startIndex) && ((m.getModifiers() & ACC_CALLER_SENSITIVE) != 0)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive method");
+            if (!needMethodInfo(mode) && getCallerClass(mode) && (index == startIndex) && m.isCallerSensitive()) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive " + m.getNameAsString() + " method");
             }
             processFrame(frameInstance, m, index);
             decoded++;
@@ -345,7 +342,8 @@ public class StackWalk {
                 fillFrame(frameInstance, m, index);
             } else {
                 // Only class info is needed.
-                frames.putObject(m.getDeclaringKlass().mirror(), index, meta);
+                Klass klass = m.getDeclaringKlass();
+                meta.getInterpreterToVM().setArrayObject(klass.getContext().getLanguage(), klass.mirror(), index, frames);
             }
         }
 
@@ -355,11 +353,12 @@ public class StackWalk {
          * , and injecting a BCI.
          */
         private void fillFrame(FrameInstance frameInstance, Method m, int index) {
-            StaticObject frame = frames.get(index);
+            StaticObject frame = frames.get(meta.getLanguage(), index);
             StaticObject memberName = meta.java_lang_StackFrameInfo_memberName.getObject(frame);
             Target_java_lang_invoke_MethodHandleNatives.plantResolvedMethod(memberName, m, m.getRefKind(), meta);
             meta.java_lang_invoke_MemberName_clazz.setObject(memberName, m.getDeclaringKlass().mirror());
-            meta.java_lang_StackFrameInfo_bci.setInt(frame, VM.getEspressoRootFromFrame(frameInstance).readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY)));
+            EspressoRootNode rootNode = VM.getEspressoRootFromFrame(frameInstance, meta.getContext());
+            meta.java_lang_StackFrameInfo_bci.setInt(frame, rootNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY)));
         }
     }
 }

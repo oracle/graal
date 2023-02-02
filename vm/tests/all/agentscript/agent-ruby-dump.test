@@ -1,4 +1,4 @@
-> export CP=${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-jfluid.jar:${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-profiler-oql.jar:.
+> export CP=${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-jfluid-heap.jar:${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-profiler-oql.jar:.
 >[0] javac -cp $CP HeapQuery.java
 #> export TMP_DIR=/tmp
 > rm -rf /tmp/ruby*hprof*

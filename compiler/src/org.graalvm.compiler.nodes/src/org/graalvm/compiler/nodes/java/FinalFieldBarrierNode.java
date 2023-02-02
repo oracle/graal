@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
@@ -35,14 +33,16 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.word.LocationIdentity;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
-public class FinalFieldBarrierNode extends FixedWithNextNode implements Virtualizable, Lowerable {
+public class FinalFieldBarrierNode extends FixedWithNextNode implements Virtualizable, Lowerable, SingleMemoryKill {
     public static final NodeClass<FinalFieldBarrierNode> TYPE = NodeClass.create(FinalFieldBarrierNode.class);
 
     @OptionalInput private ValueNode value;
@@ -64,7 +64,16 @@ public class FinalFieldBarrierNode extends FixedWithNextNode implements Virtuali
     }
 
     @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.ANY_LOCATION;
+    }
+
+    @Override
     public void lower(LoweringTool tool) {
-        graph().replaceFixedWithFixed(this, graph().add(new MembarNode(LOAD_STORE | STORE_STORE)));
+        /*
+         * Must ensure all stores are complete before a field value can "escape" (i.e., be read) by
+         * another thread.
+         */
+        graph().replaceFixedWithFixed(this, graph().add(new MembarNode(MembarNode.FenceKind.CONSTRUCTOR_FREEZE)));
     }
 }

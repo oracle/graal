@@ -57,6 +57,11 @@ public @interface APIOption {
     String[] name();
 
     /**
+     * This option should only be shown with --help-extra.
+     */
+    boolean extra() default false;
+
+    /**
      * Make a boolean option part of a group of boolean options.
      **/
     Class<? extends APIOptionGroup> group() default NullGroup.class;
@@ -68,11 +73,17 @@ public @interface APIOption {
 
     APIOptionKind kind() default APIOptionKind.Default;
 
+    char WHITESPACE_SEPARATOR = ' ';
+    char NO_SEPARATOR = 0;
+
     /**
      * Provide a custom separator that should be used to separate the option name from its option
-     * values. The default separator is {@code '='}.
+     * values. The default separator is {@code '='}. If {@code WHITESPACE_SEPARATOR} is used the
+     * option value has to be passed as the next argument (i.e., separated by whitespace on the
+     * command line). It is also allowed to provide more than one separator. See e.g. the options
+     * defined in {@code com.oracle.svm.hosted.NativeImageClassLoaderOptions}
      */
-    char valueSeparator() default '=';
+    char[] valueSeparator() default {'='};
 
     /**
      * The value that will be passed to a non-boolean option when no {@code =} is specified.
@@ -111,13 +122,7 @@ public @interface APIOption {
          * <code>-{H,R}:-&lt;OptionDescriptor#name&gt;</code>. For other options using
          * {@code Negated} is not allowed.
          */
-        Negated,
-        /**
-         * Denotes that the annotated {@code String} option represents a file system path. If the
-         * option value is not an absolute path, it will be resolved against the current working
-         * directory in which the native image tool is executed.
-         */
-        Paths
+        Negated
     }
 
     class Utils {

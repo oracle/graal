@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,11 +57,14 @@ public class CompilerInitializationTest {
     @Test
     public void testDefault() throws Exception {
         assertTruffleCompilerInitialized(false);
+        Truffle.getRuntime().createAssumption();
+
+        assertTruffleCompilerInitialized(false);
         Context context = Context.newBuilder().allowExperimentalOptions(true).//
                         option("engine.BackgroundCompilation", "false").build();
 
         // no compiler needed until the context is actually used
-        assertTruffleCompilerInitialized(false);
+        assertTruffleCompilerInitialized(true);
         context.eval(InstrumentationTestLanguage.ID, "EXPRESSION");
         // since background compilation is off we can assume the compiler is initialized
         // afterwards. With background compilation on this would be racy and hard to test.
@@ -76,12 +79,15 @@ public class CompilerInitializationTest {
          * truffle call boundary methods are installed.
          */
         assertTruffleCompilerInitialized(false);
+        Truffle.getRuntime().createAssumption();
+
+        assertTruffleCompilerInitialized(false);
         Context context = Context.newBuilder().allowExperimentalOptions(true).//
                         option("engine.BackgroundCompilation", "false").//
                         option("engine.Compilation", "false").//
                         build();
 
-        assertTruffleCompilerInitialized(false);
+        assertTruffleCompilerInitialized(true);
         context.eval(InstrumentationTestLanguage.ID, "EXPRESSION");
         assertTruffleCompilerInitialized(true);
         context.close();

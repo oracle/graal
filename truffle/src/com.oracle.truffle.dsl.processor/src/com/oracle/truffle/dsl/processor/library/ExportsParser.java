@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,6 +71,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -87,9 +88,9 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpressionResolver;
-import com.oracle.truffle.dsl.processor.expression.InvalidExpressionException;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
@@ -108,8 +109,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
     public static final String EXECUTE_PREFIX = "execute";
     public static final String EXECUTE_SUFFIX = "_";
 
-    public final List<DeclaredType> annotations = Arrays.asList(types.ExportMessage, types.ExportLibrary);
-
     @Override
     public boolean isDelegateToRootDeclaredType() {
         return false;
@@ -123,8 +122,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         if (model.hasErrors()) {
             return model;
         }
-
-        parsedNodeCache.clear();
 
         // set of types that contribute members
         Set<TypeElement> declaringTypes = new HashSet<>();
@@ -175,8 +172,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 List<AnnotationMirror> exportedMessageMirrors = getRepeatedAnnotation(member.getAnnotationMirrors(), types.ExportMessage);
                 if (!exportedMessageMirrors.isEmpty()) {
                     model.addError("Class declares @%s annotations but does not export any libraries. "//
-                                    + "Exported messages cannot be resoved without exported library. "//
-                                    + "Add @%s(MyLibrary.class) to the class ot resolve this.", getSimpleName(types.ExportMessage), getSimpleName(types.ExportLibrary));
+                                    + "Exported messages cannot be resolved without exported library. "//
+                                    + "Add @%s(MyLibrary.class) to the class to fix this.", getSimpleName(types.ExportMessage), getSimpleName(types.ExportLibrary));
                     return model;
                 }
             }
@@ -242,6 +239,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
          * Generate synthetic exports for export delegation.
          */
         for (ExportsLibrary exportsLibrary : model.getExportedLibraries().values()) {
+
             if (!exportsLibrary.hasExportDelegation()) {
                 continue;
             }
@@ -328,7 +326,14 @@ public class ExportsParser extends AbstractParser<ExportsData> {
          * filter elements that come from exports not relevant for this class. Remove all export
          * declarations not relevant for this type.
          */
-        Set<ExportsLibrary> declaredExports = model.getExportedLibraries().values().stream().filter(ExportsLibrary::isDeclaredInTemplate).collect(Collectors.toSet());
+        Predicate<? super ExportsLibrary> filterpredicate = (library -> {
+            if (library.isDynamicDispatchTarget()) {
+                // Implicitly export super's library if dynamic dispatched.
+                return true;
+            }
+            return library.isDeclaredInTemplate();
+        });
+        Set<ExportsLibrary> declaredExports = model.getExportedLibraries().values().stream().filter(filterpredicate).collect(Collectors.toSet());
         model.getExportedLibraries().values().removeIf((e) -> !declaredExports.contains(e));
         exportedElements = exportedElements.stream().filter((e) -> declaredExports.contains(e.getExportsLibrary())).collect(Collectors.toList());
 
@@ -336,20 +341,38 @@ public class ExportsParser extends AbstractParser<ExportsData> {
          * Third pass: initialize and further parsing that need both method and node to be
          * available.
          */
-        for (ExportMessageData exportedElement : exportedElements) {
-            if (exportedElement.isOverriden()) {
-                // must not initialize overridden elements because otherwise the parsedNodeCache
-                // gets
-                // confused.
-                continue;
+        for (ExportsLibrary exportsLibrary : declaredExports) {
+            // recreate cache for every exports library to not confuse exports configuration
+            Map<String, NodeData> parsedNodeCache = new HashMap<>();
+            int specializedNodeCount = 0;
+            for (ExportMessageData exportedElement : exportsLibrary.getExportedMessages().values()) {
+                if (exportedElement.isOverriden()) {
+                    // must not initialize overridden elements because otherwise the parsedNodeCache
+                    // gets confused.
+                    continue;
+                }
+                Element member = exportedElement.getMessageElement();
+                if (isMethodElement(member)) {
+                    initializeExportedMethod(parsedNodeCache, model, exportedElement);
+                } else if (isNodeElement(member)) {
+                    initializeExportedNode(parsedNodeCache, exportedElement);
+                } else {
+                    throw new AssertionError("should not be reachable");
+                }
+                if (exportedElement.getSpecializedNode() != null) {
+                    specializedNodeCount++;
+                }
             }
-            Element member = exportedElement.getMessageElement();
-            if (isMethodElement(member)) {
-                initializeExportedMethod(model, exportedElement);
-            } else if (isNodeElement(member)) {
-                initializeExportedNode(exportedElement);
-            } else {
-                throw new AssertionError("should not be reachable");
+            for (ExportMessageData exportedElement : exportsLibrary.getExportedMessages().values()) {
+                if (exportedElement.isOverriden()) {
+                    // must not initialize overridden elements because otherwise the parsedNodeCache
+                    // gets confused.
+                    continue;
+                }
+
+                if (exportedElement.getSpecializedNode() != null) {
+                    exportedElement.getSpecializedNode().setActivationProbability(1.0d / specializedNodeCount);
+                }
             }
         }
 
@@ -423,9 +446,11 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
             List<NodeData> cachedSharedNodes = new ArrayList<>();
             List<ExportMessageData> exportedMessages = new ArrayList<>();
+
             for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
-                if (export.getSpecializedNode() != null) {
-                    cachedSharedNodes.add(export.getSpecializedNode());
+                NodeData node = export.getSpecializedNode();
+                if (node != null) {
+                    cachedSharedNodes.add(node);
                     exportedMessages.add(export);
                 }
             }
@@ -454,7 +479,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
                 for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
                     if (export.isClass() && export.getSpecializedNode() != null) {
-                        NodeParser.removeFastPathSpecializations(export.getSpecializedNode());
+                        NodeParser.removeFastPathSpecializations(export.getSpecializedNode(), libraryExports.getSharedExpressions());
                     }
                 }
             }
@@ -547,8 +572,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 explicitReceiver = true;
             }
 
-            Map<TypeElement, LibraryData> libraryCache = ProcessorContext.getInstance().getCacheMap(LibraryParser.class);
-            LibraryData libraryData = libraryCache.computeIfAbsent(fromTypeMirror(libraryMirror), (t) -> new LibraryParser().parse(t));
+            LibraryData libraryData = context.parseIfAbsent(fromTypeMirror(libraryMirror), LibraryParser.class, (t) -> new LibraryParser().parse(t));
 
             ExportsLibrary lib = new ExportsLibrary(context, type, annotationMirror, model, libraryData, receiverClass, explicitReceiver);
             ExportsLibrary otherLib = model.getExportedLibraries().get(libraryId);
@@ -594,26 +618,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 continue;
             }
 
-            if (explicitReceiver) {
-                boolean foundInvalidExportsOnReceiver = false;
-                superType = ElementUtils.castTypeElement(receiverClass);
-                while ((superType = getSuperType(superType)) != null) {
-                    List<AnnotationMirror> exports = getRepeatedAnnotation(superType.getAnnotationMirrors(), types.ExportLibrary);
-                    for (AnnotationMirror export : exports) {
-                        TypeMirror exportedLibrary = getAnnotationValue(TypeMirror.class, export, "value");
-                        if (!ElementUtils.typeEquals(exportedLibrary, types.DynamicDispatchLibrary)) {
-                            foundInvalidExportsOnReceiver = true;
-                            break;
-                        }
-                    }
-                }
-                if (foundInvalidExportsOnReceiver) {
-                    lib.addError(annotationMirror, receiverClassValue, "An explicit receiver type must not export any libraries other than %s.",
-                                    types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
-                    continue;
-                }
-            }
-
             if (libraryData == null) {
                 lib.addError("Class '%s' is not a library annotated with @%s.", getSimpleName(libraryMirror), types.GenerateLibrary.asElement().getSimpleName().toString());
                 continue;
@@ -627,6 +631,61 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 otherLib.addError(message);
                 lib.addError(message);
                 continue;
+            }
+
+            lib.setUseForAOT(ElementUtils.getAnnotationValue(Boolean.class, annotationMirror, "useForAOT"));
+
+            if (libraryData.isGenerateAOT()) {
+                AnnotationValue useForAOT = getAnnotationValue(annotationMirror, "useForAOT", false);
+
+                if (useForAOT == null) {
+                    lib.addError(annotationMirror, useForAOT,
+                                    "The useForAOT property needs to be declared for exports of libraries annotated with @%s. " + //
+                                                    "Declare the useForAOT property to resolve this problem.",
+                                    getSimpleName(types.GenerateAOT));
+                }
+
+                Integer useForAOTPriority = getAnnotationValue(Integer.class, annotationMirror, "useForAOTPriority", false);
+
+                if (useForAOTPriority == null && lib.isUseForAOT()) {
+                    lib.addError("The useForAOTPriority property must also be set for libraries used for AOT. "//
+                                    + "See @%s(useForAOTPriority=...) for details.",
+                                    getSimpleName(types.ExportLibrary));
+                    continue;
+                } else if (useForAOTPriority != null) {
+                    lib.setUseForAOTPriority(useForAOTPriority);
+                }
+
+            }
+
+            if (lib.isUseForAOT() && !lib.isFinalReceiver()) {
+                AnnotationValue useForAOT = getAnnotationValue(annotationMirror, "useForAOT", false);
+
+                lib.addError(annotationMirror, useForAOT,
+                                "If useForAOT is set to true the receiver type must be a final. " + //
+                                                "The compiled code would otherwise cause performance warnings. " + //
+                                                "Add the final modifier to the receiver class or set useForAOT to false to resolve this.");
+            } else if (lib.isUseForAOT() && lib.isDynamicDispatchTarget()) {
+                AnnotationMirror dynamicDispatchExportMirror = lib.getReceiverDynamicDispatchExport();
+                if (dynamicDispatchExportMirror == null) {
+                    throw new AssertionError("Should not reach here. isDynamicDispatchTarget should not return true");
+                }
+
+                if (!ElementUtils.getAnnotationValue(Boolean.class, dynamicDispatchExportMirror, "useForAOT")) {
+                    AnnotationValue useForAOT = getAnnotationValue(annotationMirror, "useForAOT", false);
+                    lib.addError(annotationMirror, useForAOT,
+                                    "The dynamic dispatch target must set useForAOT to true also for the DynamicDispatch export of the receiver type %s. ",
+                                    getSimpleName(lib.getReceiverType()));
+                }
+            }
+
+            if (lib.isUseForAOT() && !libraryData.isGenerateAOT() && !libraryData.isDynamicDispatch()) {
+                AnnotationValue useForAOT = getAnnotationValue(annotationMirror, "useForAOT", false);
+
+                lib.addError(annotationMirror, useForAOT,
+                                "The exported library does not support AOT. Add the @%s annotation to the library class %s to resolve this.",
+                                getSimpleName(types.GenerateAOT),
+                                getQualifiedName(libraryData.getTemplateType()));
             }
 
             if (explicitReceiver) {
@@ -652,14 +711,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             if (transitionLimit != null) {
                 DSLExpressionResolver resolver = new DSLExpressionResolver(context, model.getTemplateType(),
                                 NodeParser.importVisibleStaticMembers(model.getTemplateType(), model.getTemplateType(), false));
-                try {
-                    DSLExpression expression = DSLExpression.parse(transitionLimit);
-                    expression.accept(resolver);
-                    lib.setTransitionLimit(expression);
-                } catch (InvalidExpressionException e) {
-                    AnnotationValue allowTransition = ElementUtils.getAnnotationValue(annotationMirror, "transitionLimit");
-                    model.addError(annotationMirror, allowTransition, "Error parsing expression '%s': %s", transitionLimit, e.getMessage());
-                }
+                lib.setTransitionLimit(DSLExpression.parseAndResolve(resolver, lib, "transitionLimit", transitionLimit));
             }
 
             String delegateTo = ElementUtils.getAnnotationValue(String.class, annotationMirror, "delegateTo", false);
@@ -767,7 +819,32 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                 ElementUtils.getSimpleName(types.GenerateLibrary),
                                 types.ExportLibrary.asElement().getSimpleName().toString(),
                                 types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
+            } else {
+                if (explicitReceiver && !exportedLibrary.isBuiltinDefaultExport()) {
+                    boolean foundInvalidExportsOnReceiver = false;
+                    superType = ElementUtils.castTypeElement(exportedLibrary.getExplicitReceiver());
+                    while (superType != null) {
+                        List<AnnotationMirror> exports = getRepeatedAnnotation(superType.getAnnotationMirrors(), types.ExportLibrary);
+                        for (AnnotationMirror export : exports) {
+                            TypeMirror exportedLibraryType = getAnnotationValue(TypeMirror.class, export, "value");
+                            if (!ElementUtils.typeEquals(exportedLibraryType, types.DynamicDispatchLibrary)) {
+                                foundInvalidExportsOnReceiver = true;
+                                break;
+                            }
+                        }
+                        superType = getSuperType(superType);
+                    }
+                    if (foundInvalidExportsOnReceiver) {
+                        AnnotationValue receiverClassValue = getAnnotationValue(exportedLibrary.getMessageAnnotation(), "receiverType");
+                        exportedLibrary.addError(exportedLibrary.getMessageAnnotation(), receiverClassValue,
+                                        "An export that is used for dynamic dispatch must not export any libraries other than %s with the receiver type.",
+                                        types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
+                        continue;
+                    }
+                }
+
             }
+
         }
         return model;
     }
@@ -911,7 +988,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         return exportMessages;
     }
 
-    private void initializeExportedNode(ExportMessageData exportElement) {
+    private void initializeExportedNode(Map<String, NodeData> parsedNodeCache, ExportMessageData exportElement) {
         TypeElement exportedTypeElement = (TypeElement) exportElement.getMessageElement();
         if (exportedTypeElement.getModifiers().contains(Modifier.PRIVATE)) {
             exportElement.addError("Exported message node class must not be private.");
@@ -987,7 +1064,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             return;
         }
 
-        NodeData parsedNodeData = parseNode(exportedTypeElement, exportElement, typeMembers);
+        NodeData parsedNodeData = parseNode(parsedNodeCache, exportedTypeElement, exportElement, typeMembers);
         if (parsedNodeData == null) {
             exportElement.addError("Could not parse invalid node.");
             return;
@@ -997,7 +1074,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         exportElement.setSpecializedNode(parsedNodeData);
     }
 
-    private void initializeExportedMethod(ExportsData model, ExportMessageData exportedElement) {
+    private void initializeExportedMethod(Map<String, NodeData> parsedNodeCache, ExportsData model, ExportMessageData exportedElement) {
         ExecutableElement exportedMethod = (ExecutableElement) exportedElement.getMessageElement();
         LibraryMessage message = exportedElement.getResolvedMessage();
         ExportsLibrary exportsLibrary = exportedElement.getExportsLibrary();
@@ -1046,6 +1123,14 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
         verifyMethodSignature(model.getTemplateType(), message, exportedElement, exportedMethod, exportsLibrary.getReceiverType(), realParameterCount, true);
+
+        boolean aotExcluded = ElementUtils.findAnnotationMirror(exportedMethod, types.GenerateAOT_Exclude) != null;
+        if (aotExcluded && message.getName().equals("accepts")) {
+            exportedElement.addError("Cannot use with @%s.%s with the accepts message. The accepts message must always be usable for AOT.",
+                            getSimpleName(types.GenerateAOT),
+                            getSimpleName(types.GenerateAOT_Exclude));
+        }
+
         if (exportedElement.hasErrors()) {
             return;
         }
@@ -1068,13 +1153,28 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             element.getAnnotationMirrors().clear();
             element.addAnnotationMirror(specialization);
 
+            if (aotExcluded) {
+                element.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateAOT_Exclude));
+            }
+
             boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
             if (!isStatic) {
                 element.getParameters().add(0, new CodeVariableElement(exportedElement.getReceiverType(), "this"));
                 element.getModifiers().add(Modifier.STATIC);
             }
+
+            if (message.getName().equals("accepts")) {
+                /*
+                 * We suppress never default messages in accepts because they will be eager
+                 * initialized. So it does not matter whether they are never default. Eager
+                 * initialization is computed later in the exports generated, so is not yet
+                 * available here.
+                 */
+                GeneratorUtils.mergeSuppressWarnings(element, TruffleSuppressedWarnings.NEVERDEFAULT);
+            }
+
             type.add(element);
-            NodeData parsedNodeData = parseNode(type, exportedElement, Collections.emptyList());
+            NodeData parsedNodeData = parseNode(parsedNodeCache, type, exportedElement, Collections.emptyList());
             if (parsedNodeData == null) {
                 exportedElement.addError("Error could not parse synthetic node: %s", element);
             }
@@ -1090,9 +1190,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
     // this cache is also needed for correctness
     // we only want to generate code for this once.
-    final Map<String, NodeData> parsedNodeCache = new HashMap<>();
-
-    private NodeData parseNode(TypeElement nodeType, ExportMessageData exportedMessage, List<? extends Element> members) {
+    private NodeData parseNode(Map<String, NodeData> parsedNodeCache, TypeElement nodeType, ExportMessageData exportedMessage, List<? extends Element> members) {
         String nodeTypeId = ElementUtils.getTypeId(nodeType.asType());
         // we skip the node cache for generated accepts messages
         if (!exportedMessage.isGenerated()) {
@@ -1148,6 +1246,11 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
         clonedType.getAnnotationMirrors().clear();
         clonedType.getAnnotationMirrors().add(newImports);
+
+        if (exportedMessage.getExportsLibrary().isUseForAOT()) {
+            clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateAOT));
+        }
+
         if (generateUncached != null) {
             clonedType.getAnnotationMirrors().add(generateUncached);
         } else {

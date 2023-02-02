@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,13 +34,28 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.SerializableConstant;
 import jdk.vm.ci.meta.VMConstant;
 
 public final class DataSection implements Iterable<Data> {
+
+    static class Options {
+        // @formatter:off
+        @Option(help = "Place N-byte constants in the data section such that they are misaligned with respect to N*2. " +
+                "For example, place 4 byte constants at offset 4, 12 or 20, etc. " +
+                "This layout is used to detect instructions that load constants with alignment smaller " +
+                "than the fetch size. For instance, an XORPS instruction that does a 16-byte fetch of a " +
+                "4-byte float not aligned to 16 bytes will cause a segfault.",
+                type = OptionType.Debug)
+        static final OptionKey<Boolean> ForceAdversarialLayout = new OptionKey<>(false);
+        // @formatter:on
+    }
 
     public interface Patches {
 
@@ -64,6 +79,12 @@ public final class DataSection implements Iterable<Data> {
 
         protected abstract void emit(ByteBuffer buffer, Patches patches);
 
+        /**
+         * Updates the alignment of the current data segment. This does not guarantee that the
+         * underlying runtime actually supports this alignment.
+         *
+         * @param newAlignment The new alignment
+         */
         public void updateAlignment(int newAlignment) {
             if (newAlignment == alignment) {
                 return;
@@ -125,10 +146,6 @@ public final class DataSection implements Iterable<Data> {
 
         private final SerializableConstant constant;
 
-        public SerializableData(SerializableConstant constant) {
-            this(constant, 1);
-        }
-
         public SerializableData(SerializableConstant constant, int alignment) {
             super(alignment, constant.getSerializedSize());
             this.constant = constant;
@@ -158,47 +175,8 @@ public final class DataSection implements Iterable<Data> {
 
     public static class ZeroData extends Data {
 
-        protected ZeroData(int alignment, int size) {
+        public ZeroData(int alignment, int size) {
             super(alignment, size);
-        }
-
-        public static ZeroData create(int alignment, int size) {
-            switch (size) {
-                case 1:
-                    return new ZeroData(alignment, size) {
-                        @Override
-                        protected void emit(ByteBuffer buffer, Patches patches) {
-                            buffer.put((byte) 0);
-                        }
-                    };
-
-                case 2:
-                    return new ZeroData(alignment, size) {
-                        @Override
-                        protected void emit(ByteBuffer buffer, Patches patches) {
-                            buffer.putShort((short) 0);
-                        }
-                    };
-
-                case 4:
-                    return new ZeroData(alignment, size) {
-                        @Override
-                        protected void emit(ByteBuffer buffer, Patches patches) {
-                            buffer.putInt(0);
-                        }
-                    };
-
-                case 8:
-                    return new ZeroData(alignment, size) {
-                        @Override
-                        protected void emit(ByteBuffer buffer, Patches patches) {
-                            buffer.putLong(0);
-                        }
-                    };
-
-                default:
-                    return new ZeroData(alignment, size);
-            }
         }
 
         @Override
@@ -219,20 +197,9 @@ public final class DataSection implements Iterable<Data> {
 
         private final Data[] nested;
 
-        private PackedData(int alignment, int size, Data[] nested) {
+        public PackedData(int alignment, int size, Data[] nested) {
             super(alignment, size);
             this.nested = nested;
-        }
-
-        public static PackedData create(Data[] nested) {
-            int size = 0;
-            int alignment = 1;
-            for (int i = 0; i < nested.length; i++) {
-                assert size % nested[i].getAlignment() == 0 : "invalid alignment in packed constants";
-                alignment = DataSection.lcm(alignment, nested[i].getAlignment());
-                size += nested[i].getSize();
-            }
-            return new PackedData(alignment, size, nested);
         }
 
         @Override
@@ -324,7 +291,7 @@ public final class DataSection implements Iterable<Data> {
     }
 
     /**
-     * Determines if this object has been {@link #close() closed}.
+     * Determines if this object has been {@link #close closed}.
      */
     public boolean closed() {
         return closed;
@@ -334,8 +301,10 @@ public final class DataSection implements Iterable<Data> {
      * Computes the layout of the data section and closes this object to further updates.
      *
      * This must be called exactly once.
+     *
+     * @param minDataAlignment minimum alignment for an item in the data section
      */
-    public void close() {
+    public void close(OptionValues option, int minDataAlignment) {
         checkOpen();
         closed = true;
 
@@ -345,9 +314,16 @@ public final class DataSection implements Iterable<Data> {
         int position = 0;
         int alignment = 1;
         for (Data d : dataItems) {
-            alignment = lcm(alignment, d.alignment);
-            position = align(position, d.alignment);
+            int itemAlignment = Math.max(minDataAlignment, d.alignment);
 
+            alignment = lcm(alignment, itemAlignment);
+            position = align(position, itemAlignment);
+            if (Options.ForceAdversarialLayout.getValue(option)) {
+                if (position % (itemAlignment * 2) == 0) {
+                    position = position + itemAlignment;
+                    assert position % itemAlignment == 0;
+                }
+            }
             d.ref.setOffset(position);
             position += d.size;
         }
@@ -408,20 +384,11 @@ public final class DataSection implements Iterable<Data> {
         assert buffer.remaining() >= sectionSize;
         int start = buffer.position();
         for (Data d : dataItems) {
-            BufferUtil.asBaseBuffer(buffer).position(start + d.ref.getOffset());
+            buffer.position(start + d.ref.getOffset());
             onEmit.accept(d.ref, d.getSize());
             d.emit(buffer, patch);
         }
-        BufferUtil.asBaseBuffer(buffer).position(start + sectionSize);
-    }
-
-    public Data findData(DataSectionReference ref) {
-        for (Data d : dataItems) {
-            if (d.ref == ref) {
-                return d;
-            }
-        }
-        return null;
+        buffer.position(start + sectionSize);
     }
 
     public static void emit(ByteBuffer buffer, Data data, Patches patch) {
@@ -433,7 +400,7 @@ public final class DataSection implements Iterable<Data> {
         return dataItems.iterator();
     }
 
-    private static int lcm(int x, int y) {
+    public static int lcm(int x, int y) {
         if (x == 0) {
             return y;
         } else if (y == 0) {

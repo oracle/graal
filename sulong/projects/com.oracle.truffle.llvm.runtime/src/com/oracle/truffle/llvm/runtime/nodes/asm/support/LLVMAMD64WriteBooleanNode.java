@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,19 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public class LLVMAMD64WriteBooleanNode extends LLVMNode {
-    private final FrameSlot slot;
+    private final int slot;
 
-    public LLVMAMD64WriteBooleanNode(FrameSlot slot) {
+    public LLVMAMD64WriteBooleanNode(int slot) {
         this.slot = slot;
-    }
-
-    protected FrameSlot getSlot() {
-        return slot;
     }
 
     public void execute(VirtualFrame frame, boolean value) {

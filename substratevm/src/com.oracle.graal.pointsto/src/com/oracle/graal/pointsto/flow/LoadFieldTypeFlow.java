@@ -24,10 +24,9 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -37,8 +36,8 @@ import jdk.vm.ci.code.BytecodePosition;
  */
 public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
-    protected LoadFieldTypeFlow(LoadFieldNode node) {
-        super(node);
+    protected LoadFieldTypeFlow(BytecodePosition loadLocation, AnalysisField field) {
+        super(loadLocation, field);
     }
 
     protected LoadFieldTypeFlow(MethodFlowsGraph methodFlows, LoadFieldTypeFlow original) {
@@ -49,8 +48,8 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
         private final FieldTypeFlow fieldFlow;
 
-        LoadStaticFieldTypeFlow(LoadFieldNode node, FieldTypeFlow fieldFlow) {
-            super(node);
+        LoadStaticFieldTypeFlow(BytecodePosition loadLocation, AnalysisField field, FieldTypeFlow fieldFlow) {
+            super(loadLocation, field);
             this.fieldFlow = fieldFlow;
 
             /*
@@ -66,12 +65,12 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
         }
 
         @Override
-        public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new LoadStaticFieldTypeFlow(methodFlows, this);
         }
 
         @Override
-        public void initClone(BigBang bb) {
+        public void initFlow(PointsToAnalysis bb) {
             fieldFlow.addUse(bb, this);
         }
 
@@ -94,18 +93,18 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
          */
         private TypeFlow<?> objectFlow;
 
-        LoadInstanceFieldTypeFlow(LoadFieldNode node, TypeFlow<?> objectFlow) {
-            super(node);
+        LoadInstanceFieldTypeFlow(BytecodePosition loadLocation, AnalysisField field, TypeFlow<?> objectFlow) {
+            super(loadLocation, field);
             this.objectFlow = objectFlow;
         }
 
-        LoadInstanceFieldTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, LoadInstanceFieldTypeFlow original) {
+        LoadInstanceFieldTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, LoadInstanceFieldTypeFlow original) {
             super(methodFlows, original);
             this.objectFlow = methodFlows.lookupCloneOf(bb, original.objectFlow);
         }
 
         @Override
-        public LoadFieldTypeFlow copy(BigBang bb, MethodFlowsGraph methodFlows) {
+        public LoadFieldTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new LoadInstanceFieldTypeFlow(bb, methodFlows, this);
         }
 
@@ -121,25 +120,19 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
         }
 
         @Override
-        public void onObservedUpdate(BigBang bb) {
-            /* Only a clone should be updated */
-            assert this.isClone();
-
+        public void onObservedUpdate(PointsToAnalysis bb) {
             /*
              * The state of the receiver object of the load operation has changed. Link the new heap
              * sensitive field flows.
              */
 
             TypeState objectState = objectFlow.getState();
-            if (objectState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Field loading from UnknownTypeState objects. Field: " + field);
-                return;
-            }
             objectState = filterObjectState(bb, objectState);
             /* Iterate over the receiver objects. */
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 /* Get the field flow corresponding to the receiver object. */
-                FieldTypeFlow fieldFlow = object.getInstanceFieldFlow(bb, this.method(), field, false);
+
+                FieldTypeFlow fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);
 
                 /* Add the load field flow as a use to the heap sensitive field flow. */
                 fieldFlow.addUse(bb, this);
@@ -147,10 +140,20 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
         }
 
         @Override
-        public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
-            assert this.isClone();
-            /* When receiver flow saturates start observing the flow of the field declaring type. */
-            replaceObservedWith(bb, field.getDeclaringClass());
+        public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+            if (!isSaturated()) {
+                /*
+                 * When the receiver flow saturates start observing the flow of the field declaring
+                 * type, unless the load is already saturated.
+                 */
+                replaceObservedWith(bb, field.getDeclaringClass());
+            }
+        }
+
+        @Override
+        protected void onSaturated() {
+            /* Deregister the load as an observer of the receiver. */
+            objectFlow.removeObserver(this);
         }
 
         @Override

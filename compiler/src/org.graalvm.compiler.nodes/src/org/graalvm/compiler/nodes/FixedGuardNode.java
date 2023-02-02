@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
@@ -212,4 +212,17 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     public double defaultProbability() {
         return 1.0d;
     }
+
+    /**
+     * Determine if the this guard will lead to an unconditional {@link DeoptimizeNode} because its
+     * condition is a constant.
+     */
+    public boolean willDeoptUnconditionally() {
+        if (getCondition() instanceof LogicConstantNode) {
+            LogicConstantNode c = (LogicConstantNode) getCondition();
+            return c.getValue() == negated;
+        }
+        return false;
+    }
+
 }

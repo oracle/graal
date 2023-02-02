@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -262,9 +262,13 @@ public @interface Specialization {
      * <b>Example usage:</b>
      *
      * <pre>
-     * static boolean acceptOperand(int operand) { assert operand <= 42; return operand & 1 ==
-     * 1; } &#064;Specialization(guards = {"operand <= 42", "acceptOperand(operand)"}) void
-     * doSpecialization(int operand) {...}
+     * static boolean acceptOperand(int operand) {
+     *     assert operand <= 42;
+     *     return (operand & 1) == 1;
+     * }
+     *
+     * &#64;Specialization(guards = {"operand <= 42", "acceptOperand(operand)"})
+     * void doSpecialization(int operand) {...}
      * </pre>
      *
      * </p>
@@ -305,11 +309,11 @@ public @interface Specialization {
      * <b>Example usage:</b>
      *
      * <pre>
-     * abstract static class DynamicObject() { abstract Shape getShape(); ... } static
-     * abstract class Shape() { abstract Assumption getUnmodifiedAssuption(); ... }
-     * &#064;Specialization(guards = "operand.getShape() == cachedShape", assumptions =
-     * "cachedShape.getUnmodifiedAssumption()") void doAssumeUnmodifiedShape(DynamicObject
-     * operand, @Cached("operand.getShape()") Shape cachedShape) {...}
+     * abstract static class DynamicObject() { abstract Shape getShape(); ... }
+     * abstract static class Shape() { abstract Assumption getUnmodifiedAssuption(); ... }
+     *
+     * &#64;Specialization(guards = "operand.getShape() == cachedShape", assumptions = "cachedShape.getUnmodifiedAssumption()")
+     * void doAssumeUnmodifiedShape(DynamicObject operand, @Cached("operand.getShape()") Shape cachedShape) {...}
      * </pre>
      *
      * </p>
@@ -350,10 +354,12 @@ public @interface Specialization {
      * <b>Example usage:</b>
      *
      * <pre>
-     * static int getCacheLimit() { return
-     * Integer.parseInt(System.getProperty("language.cacheLimit")); } &#064;Specialization(guards =
-     * "operand == cachedOperand", limit = "getCacheLimit()") void doCached(Object
-     * operand, @Cached("operand") Object cachedOperand) {...}
+     * static int getCacheLimit() {
+     *     return Integer.parseInt(System.getProperty("language.cacheLimit"));
+     * }
+     *
+     * &#64;Specialization(guards = "operand == cachedOperand", limit = "getCacheLimit()")
+     * void doCached(Object operand, @Cached("operand") Object cachedOperand) {...}
      * </pre>
      *
      * </p>
@@ -365,5 +371,68 @@ public @interface Specialization {
      * @since 0.8 or earlier
      */
     String limit() default "";
+
+    /**
+     * Instructs the specialization to unroll a specialization with multiple instances. Unrolling
+     * causes fields of the inline cache to be directly stored in the node instead of a chained
+     * inline cache. At most 8 instances of a specialization can be unrolled to avoid code explosion
+     * in the interpreter.
+     * <p>
+     * A common use-case for this feature is to unroll the first instance of an inline cache. It is
+     * often the case that specializations with multiple instances are instantiated only once. By
+     * unrolling the first instance we can optimize for this common situation which may lead to
+     * footprint and interpreter performance improvements.
+     * <p>
+     * This feature is prone to cause inefficiencies if used too aggressively. Extra care should be
+     * taken, e.g. the generated code should be inspected and profiled to verify that the new code
+     * is better than the previous version.
+     * <p>
+     * Consider the following example:
+     *
+     * <pre>
+     * class MyNode extends Node {
+     *
+     *     static int limit = 2;
+     *
+     *     abstract int execute(int value);
+     *
+     *     &#64;Specialization(guards = "value == cachedValue", limit = "limit", unroll = 1)
+     *     int doDefault(int value,
+     *                     &#64;Cached("value") int cachedValue) {
+     *         return value;
+     *     }
+     *
+     * }
+     * </pre>
+     *
+     * In this example we unroll the first instance of an inline cache on <code>int</code> values.
+     * This is equivalent to manually specifying the following specializations:
+     *
+     * <pre>
+     * class MyUnrollNode extends Node {
+     *
+     *     static int limit = 2;
+     *
+     *     abstract int execute(int value);
+     *
+     *     &#64;Specialization(guards = "value == cachedValue", limit = "1")
+     *     int doUnrolled0(int value,
+     *                     &#64;Cached("value") int cachedValue) {
+     *         return value;
+     *     }
+     *
+     *     &#64;Specialization(guards = "value == cachedValue", limit = "limit - 1")
+     *     int doDefault(int value,
+     *                     &#64;Cached("value") int cachedValue) {
+     *         return value;
+     *     }
+     * }
+     *
+     * </pre>
+     *
+     *
+     * @since 23.0
+     */
+    int unroll() default 0;
 
 }

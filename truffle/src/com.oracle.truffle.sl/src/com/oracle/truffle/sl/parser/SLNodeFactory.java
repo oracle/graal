@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,16 +46,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.sl.runtime.SLStrings;
 import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.Token;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -108,27 +108,36 @@ public class SLNodeFactory {
      */
     static class LexicalScope {
         protected final LexicalScope outer;
-        protected final Map<String, FrameSlot> locals;
+        protected final Map<TruffleString, Integer> locals;
 
         LexicalScope(LexicalScope outer) {
             this.outer = outer;
             this.locals = new HashMap<>();
-            if (outer != null) {
-                locals.putAll(outer.locals);
+        }
+
+        public Integer find(TruffleString name) {
+            Integer result = locals.get(name);
+            if (result != null) {
+                return result;
+            } else if (outer != null) {
+                return outer.find(name);
+            } else {
+                return null;
             }
         }
     }
 
     /* State while parsing a source unit. */
     private final Source source;
-    private final Map<String, RootCallTarget> allFunctions;
+    private final TruffleString sourceString;
+    private final Map<TruffleString, RootCallTarget> allFunctions;
 
     /* State while parsing a function. */
     private int functionStartPos;
-    private String functionName;
+    private TruffleString functionName;
     private int functionBodyStartPos; // includes parameter list
     private int parameterCount;
-    private FrameDescriptor frameDescriptor;
+    private FrameDescriptor.Builder frameDescriptorBuilder;
     private List<SLStatementNode> methodNodes;
 
     /* State while parsing a block. */
@@ -138,10 +147,11 @@ public class SLNodeFactory {
     public SLNodeFactory(SLLanguage language, Source source) {
         this.language = language;
         this.source = source;
+        this.sourceString = SLStrings.fromJavaString(source.getCharacters().toString());
         this.allFunctions = new HashMap<>();
     }
 
-    public Map<String, RootCallTarget> getAllFunctions() {
+    public Map<TruffleString, RootCallTarget> getAllFunctions() {
         return allFunctions;
     }
 
@@ -150,13 +160,13 @@ public class SLNodeFactory {
         assert functionName == null;
         assert functionBodyStartPos == 0;
         assert parameterCount == 0;
-        assert frameDescriptor == null;
+        assert frameDescriptorBuilder == null;
         assert lexicalScope == null;
 
         functionStartPos = nameToken.getStartIndex();
-        functionName = nameToken.getText();
+        functionName = asTruffleString(nameToken, false);
         functionBodyStartPos = bodyStartToken.getStartIndex();
-        frameDescriptor = new FrameDescriptor();
+        frameDescriptorBuilder = FrameDescriptor.newBuilder();
         methodNodes = new ArrayList<>();
         startBlock();
     }
@@ -188,15 +198,15 @@ public class SLNodeFactory {
             final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(methodBlock);
             functionBodyNode.setSourceSection(functionSrc.getCharIndex(), functionSrc.getCharLength());
 
-            final SLRootNode rootNode = new SLRootNode(language, frameDescriptor, functionBodyNode, functionSrc, functionName);
-            allFunctions.put(functionName, Truffle.getRuntime().createCallTarget(rootNode));
+            final SLRootNode rootNode = new SLRootNode(language, frameDescriptorBuilder.build(), functionBodyNode, functionSrc, functionName);
+            allFunctions.put(functionName, rootNode.getCallTarget());
         }
 
         functionStartPos = 0;
         functionName = null;
         functionBodyStartPos = 0;
         parameterCount = 0;
-        frameDescriptor = null;
+        frameDescriptorBuilder = null;
         lexicalScope = null;
     }
 
@@ -454,13 +464,15 @@ public class SLNodeFactory {
             return null;
         }
 
-        String name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
-        FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(
-                        name,
-                        argumentIndex,
-                        FrameSlotKind.Illegal);
-        FrameSlot existingSlot = lexicalScope.locals.put(name, frameSlot);
-        boolean newVariable = existingSlot == null;
+        TruffleString name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
+
+        Integer frameSlot = lexicalScope.find(name);
+        boolean newVariable = false;
+        if (frameSlot == null) {
+            frameSlot = frameDescriptorBuilder.addSlot(FrameSlotKind.Illegal, name, argumentIndex);
+            lexicalScope.locals.put(name, frameSlot);
+            newVariable = true;
+        }
         final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot, nameNode, newVariable);
 
         if (valueNode.hasSource()) {
@@ -493,9 +505,9 @@ public class SLNodeFactory {
             return null;
         }
 
-        String name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
+        TruffleString name = ((SLStringLiteralNode) nameNode).executeGeneric(null);
         final SLExpressionNode result;
-        final FrameSlot frameSlot = lexicalScope.locals.get(name);
+        final Integer frameSlot = lexicalScope.find(name);
         if (frameSlot != null) {
             /* Read of a local variable. */
             result = SLReadLocalVariableNodeGen.create(frameSlot);
@@ -509,17 +521,22 @@ public class SLNodeFactory {
     }
 
     public SLExpressionNode createStringLiteral(Token literalToken, boolean removeQuotes) {
-        /* Remove the trailing and ending " */
-        String literal = literalToken.getText();
-        if (removeQuotes) {
-            assert literal.length() >= 2 && literal.startsWith("\"") && literal.endsWith("\"");
-            literal = literal.substring(1, literal.length() - 1);
-        }
-
-        final SLStringLiteralNode result = new SLStringLiteralNode(literal.intern());
+        final SLStringLiteralNode result = new SLStringLiteralNode(asTruffleString(literalToken, removeQuotes));
         srcFromToken(result, literalToken);
         result.addExpressionTag();
         return result;
+    }
+
+    private TruffleString asTruffleString(Token literalToken, boolean removeQuotes) {
+        int fromIndex = literalToken.getStartIndex();
+        int length = literalToken.getStopIndex() - literalToken.getStartIndex() + 1;
+        if (removeQuotes) {
+            /* Remove the trailing and ending " */
+            assert literalToken.getText().length() >= 2 && literalToken.getText().startsWith("\"") && literalToken.getText().endsWith("\"");
+            fromIndex += 1;
+            length -= 2;
+        }
+        return sourceString.substringByteIndexUncached(fromIndex * 2, length * 2, SLLanguage.STRING_ENCODING, true);
     }
 
     public SLExpressionNode createNumericLiteral(Token literalToken) {

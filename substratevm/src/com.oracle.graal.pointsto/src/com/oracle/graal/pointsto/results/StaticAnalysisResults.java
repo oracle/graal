@@ -24,13 +24,13 @@
  */
 package com.oracle.graal.pointsto.results;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
+
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.TriState;
-
-import org.graalvm.compiler.nodes.StructuredGraph;
 
 public class StaticAnalysisResults implements ProfilingInfo {
     public static final StaticAnalysisResults NO_RESULTS = new StaticAnalysisResults(0, null, null, null);
@@ -54,11 +54,15 @@ public class StaticAnalysisResults implements ProfilingInfo {
          */
         private final JavaTypeProfile typeProfile;
 
-        public BytecodeEntry(int bci, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile invokeResultTypeProfile) {
+        /** The type profiles for this method - updated only with statically calculated profiles. */
+        private final JavaTypeProfile staticTypeProfile;
+
+        public BytecodeEntry(int bci, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile invokeResultTypeProfile, JavaTypeProfile staticTypeProfile) {
             this.bci = bci;
             this.methodProfile = methodProfile;
             this.invokeResultTypeProfile = invokeResultTypeProfile;
             this.typeProfile = typeProfile;
+            this.staticTypeProfile = staticTypeProfile;
         }
 
         @Override
@@ -80,16 +84,12 @@ public class StaticAnalysisResults implements ProfilingInfo {
     private final BytecodeEntry first;
     private BytecodeEntry cache;
 
-    /** The IR graph size of the compiled method. */
-    private int graphSize;
-
     public StaticAnalysisResults(int codeSize, JavaTypeProfile[] parameterTypeProfiles, JavaTypeProfile resultTypeProfile, BytecodeEntry first) {
         this.codeSize = codeSize;
         this.parameterTypeProfiles = parameterTypeProfiles;
         this.resultTypeProfile = resultTypeProfile;
         this.first = first;
         this.cache = first;
-        this.graphSize = -1;
     }
 
     /**
@@ -161,6 +161,11 @@ public class StaticAnalysisResults implements ProfilingInfo {
         return entry == null ? null : entry.typeProfile;
     }
 
+    public JavaTypeProfile getStaticTypeProfile(int bci) {
+        BytecodeEntry entry = lookup(bci);
+        return entry == null ? null : entry.staticTypeProfile;
+    }
+
     @Override
     public JavaMethodProfile getMethodProfile(int bci) {
         BytecodeEntry entry = lookup(bci);
@@ -196,19 +201,12 @@ public class StaticAnalysisResults implements ProfilingInfo {
 
     @Override
     public boolean setCompilerIRSize(Class<?> irType, int size) {
-        if (irType == StructuredGraph.class) {
-            graphSize = size;
-            return true;
-        }
-        return false;
+        throw AnalysisError.shouldNotReachHere("unreachable");
     }
 
     @Override
     public int getCompilerIRSize(Class<?> irType) {
-        if (irType == StructuredGraph.class) {
-            return graphSize;
-        }
-        return -1;
+        throw AnalysisError.shouldNotReachHere("unreachable");
     }
 
     @Override

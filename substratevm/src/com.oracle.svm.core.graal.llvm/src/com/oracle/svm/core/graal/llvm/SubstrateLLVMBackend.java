@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,8 +37,9 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
@@ -81,7 +82,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
         CompilationResult result = new CompilationResult(identifier);
         result.setMethods(method, Collections.emptySet());
 
-        LLVMGenerator generator = new LLVMGenerator(getProviders(), result, method, 0);
+        LLVMGenerator generator = new LLVMGenerator(getProviders(), result, null, method, 0);
         generator.createJNITrampoline(threadArg, threadIsolateOffset, methodIdArg, methodObjEntryPointOffset);
         byte[] bitcode = generator.getBitcode();
         result.setTargetCode(bitcode, bitcode.length);
@@ -113,10 +114,10 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
     private void emitLLVM(StructuredGraph graph, CompilationResult result) {
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope ds = debug.scope("EmitLLVM"); DebugCloseable a = EmitLLVM.start(debug)) {
-            assert !graph.hasValueProxies();
+            assert graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL);
 
             ResolvedJavaMethod method = graph.method();
-            LLVMGenerator generator = new LLVMGenerator(getProviders(), result, method, LLVMOptions.IncludeLLVMDebugInfo.getValue());
+            LLVMGenerator generator = new LLVMGenerator(getProviders(), result, graph, method, LLVMOptions.IncludeLLVMDebugInfo.getValue());
             NodeLLVMBuilder nodeBuilder = newNodeLLVMBuilder(graph, generator);
 
             /* LLVM generation */
@@ -138,12 +139,12 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
     }
 
     protected NodeLLVMBuilder newNodeLLVMBuilder(StructuredGraph graph, LLVMGenerator generator) {
-        return new NodeLLVMBuilder(graph, generator, getRuntimeConfiguration());
+        return new NodeLLVMBuilder(graph, generator);
     }
 
     private static void generate(NodeLLVMBuilder nodeBuilder, StructuredGraph graph) {
         StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
-        for (Block b : schedule.getCFG().getBlocks()) {
+        for (HIRBlock b : schedule.getCFG().getBlocks()) {
             nodeBuilder.doBlock(b, graph, schedule.getBlockToNodesMap());
         }
         nodeBuilder.finish();

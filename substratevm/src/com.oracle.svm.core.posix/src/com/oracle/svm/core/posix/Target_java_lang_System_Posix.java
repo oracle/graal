@@ -33,7 +33,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
@@ -49,7 +49,7 @@ final class Target_java_lang_System_Posix {
     public static long currentTimeMillis() {
         timeval timeval = StackValue.get(timeval.class);
         timezone timezone = WordFactory.nullPointer();
-        Time.gettimeofday(timeval, timezone);
+        Time.NoTransitions.gettimeofday(timeval, timezone);
         return timeval.tv_sec() * 1_000L + timeval.tv_usec() / 1_000L;
     }
 }

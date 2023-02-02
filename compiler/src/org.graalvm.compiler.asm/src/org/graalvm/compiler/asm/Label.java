@@ -34,7 +34,7 @@ import org.graalvm.compiler.debug.GraalError;
 public final class Label {
 
     private int position = -1;
-    private int blockId = -1;
+    private final int blockId;
 
     /**
      * Positions of instructions that jump to this unresolved label. These instructions are patched
@@ -58,6 +58,7 @@ public final class Label {
     }
 
     public Label() {
+        blockId = -1;
     }
 
     public Label(int id) {
@@ -72,7 +73,7 @@ public final class Label {
      * Binds the label to {@code pos} and patches all instructions added by
      * {@link #addPatchAt(int, Assembler)}.
      */
-    protected void bind(int pos, Assembler asm) {
+    protected void bind(int pos, Assembler<?> asm) {
         if (pos < 0) {
             throw new GraalError("Cannot bind label to negative position %d", pos);
         }
@@ -89,22 +90,23 @@ public final class Label {
         return position >= 0;
     }
 
-    public void addPatchAt(int branchLocation, Assembler asm) {
+    public void addPatchAt(int branchLocation, Assembler<?> asm) {
         assert !isBound() : "Label is already bound " + this + " " + branchLocation + " at position " + position;
         if (patchPositions == null) {
             patchPositions = new ArrayList<>(2);
             nextWithPatches = asm.labelsWithPatches;
             asm.labelsWithPatches = this;
         }
+        // Note this check is slow and should remain as an assert
+        assert !patchPositions.contains(branchLocation) : "same location added multiple times: " + branchLocation;
         patchPositions.add(branchLocation);
 
     }
 
     public void reset() {
-        if (this.patchPositions != null) {
-            this.patchPositions.clear();
-        }
-        this.position = -1;
+        patchPositions = null;
+        nextWithPatches = null;
+        position = -1;
     }
 
     @Override

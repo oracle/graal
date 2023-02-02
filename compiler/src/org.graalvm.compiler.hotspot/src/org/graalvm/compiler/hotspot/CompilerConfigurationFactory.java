@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,26 +27,23 @@ package org.graalvm.compiler.hotspot;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.Instrumentation;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.core.common.util.PhasePlan;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.lir.phases.LIRPhase;
-import org.graalvm.compiler.lir.phases.LIRPhaseSuite;
 import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
@@ -86,13 +83,28 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     private final String name;
 
     /**
+     * A description of this configuration used for {@link ShowConfigurationLevel#info}.
+     */
+    private final String info;
+
+    /**
      * The priority of this factory. This must be unique across all factory instances and is used
      * when selecting a factory when {@link Options#CompilerConfiguration} is omitted
      */
     private final int autoSelectionPriority;
 
-    protected CompilerConfigurationFactory(String name, int autoSelectionPriority) {
+    /**
+     * Creates a compiler configuration factory.
+     *
+     * @param name the name by which users can explicitly select the configuration via the
+     *            {@link Options#CompilerConfiguration} option
+     * @param info a higher level description of the configuration used for
+     *            {@link ShowConfigurationLevel#info}
+     * @param autoSelectionPriority
+     */
+    protected CompilerConfigurationFactory(String name, String info, int autoSelectionPriority) {
         this.name = name;
+        this.info = info;
         this.autoSelectionPriority = autoSelectionPriority;
     }
 
@@ -163,7 +175,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      */
     private static boolean checkUnique(CompilerConfigurationFactory factory, List<CompilerConfigurationFactory> factories) {
         for (CompilerConfigurationFactory other : factories) {
-            if (other != factory) {
+            if (other != factory && factory.autoSelectionPriority == other.autoSelectionPriority) {
                 assert !other.name.equals(factory.name) : factory.getClass().getName() + " cannot have the same selector as " + other.getClass().getName() + ": " + factory.name;
                 assert other.autoSelectionPriority != factory.autoSelectionPriority : factory.getClass().getName() + " cannot have the same auto-selection priority as " +
                                 other.getClass().getName() +
@@ -204,11 +216,11 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
             if ("help".equals(value)) {
                 System.out.println("The available compiler configurations are:");
                 for (CompilerConfigurationFactory candidate : getAllCandidates()) {
-                    System.out.println("    " + candidate.name);
+                    System.out.println("    " + candidate.name + " priority " + candidate.autoSelectionPriority);
                 }
                 HotSpotGraalServices.exit(0, runtime);
             } else if (value != null) {
-                for (CompilerConfigurationFactory candidate : GraalServices.load(CompilerConfigurationFactory.class)) {
+                for (CompilerConfigurationFactory candidate : getAllCandidates()) {
                     if (candidate.name.equals(value)) {
                         factory = candidate;
                         break;
@@ -236,15 +248,14 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                     break;
                 }
                 case verbose: {
-                    printConfigInfo(factory);
+                    printConfigVerbose(factory);
                     CompilerConfiguration config = factory.createCompilerConfiguration();
-                    TTY.println("High tier: " + phaseNames(config.createHighTier(options)));
-                    TTY.println("Mid tier: " + phaseNames(config.createMidTier(options)));
-                    TTY.println("Low tier: " + phaseNames(config.createLowTier(options)));
-                    TTY.println("Pre regalloc stage: " + phaseNames(config.createPreAllocationOptimizationStage(options)));
-                    TTY.println("Regalloc stage: " + phaseNames(config.createAllocationStage(options)));
-                    TTY.println("Post regalloc stage: " + phaseNames(config.createPostAllocationOptimizationStage(options)));
-                    config.createAllocationStage(options);
+                    printPlan("High tier:", () -> config.createHighTier(options));
+                    printPlan("Mid tier:", () -> config.createMidTier(options));
+                    printPlan("Low tier:", () -> config.createLowTier(options, runtime.getHostJVMCIBackend().getTarget().arch));
+                    printPlan("Pre regalloc stage:", () -> config.createPreAllocationOptimizationStage(options));
+                    printPlan("Regalloc stage:", () -> config.createAllocationStage(options));
+                    printPlan("Post regalloc stage:", () -> config.createPostAllocationOptimizationStage(options));
                     break;
                 }
             }
@@ -252,28 +263,45 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         return factory;
     }
 
+    /**
+     * Gets an object whose {@link #toString()} value describes where this configuration factory was
+     * loaded from.
+     */
+    private Object getLoadedFromLocation(boolean verbose) {
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            if (nativeImageLocationQualifier != null) {
+                return "a " + nativeImageLocationQualifier + " Native Image shared library";
+            }
+            return "a Native Image shared library";
+        }
+        return verbose ? getClass().getResource(getClass().getSimpleName() + ".class") : "class files";
+    }
+
+    private static String nativeImageLocationQualifier;
+
+    /**
+     * Records a qualifier for the libgraal library (e.g., "PGO optimized").
+     */
+    public static void setNativeImageLocationQualifier(String s) {
+        GraalError.guarantee(nativeImageLocationQualifier == null, "Native image location qualifier is already set to %s", nativeImageLocationQualifier);
+        nativeImageLocationQualifier = s;
+    }
+
     private static void printConfigInfo(CompilerConfigurationFactory factory) {
-        Object location = Services.IS_IN_NATIVE_IMAGE ? "JVMCI native library" : factory.getClass().getResource(factory.getClass().getSimpleName() + ".class");
-        TTY.printf("Using compiler configuration '%s' provided by %s loaded from %s%n", factory.name, factory.getClass().getName(), location);
+        Object location = factory.getLoadedFromLocation(false);
+        TTY.printf("Using \"%s\" loaded from %s%n", factory.info, location);
     }
 
-    private static <C> List<String> phaseNames(PhaseSuite<C> suite) {
-        Collection<BasePhase<? super C>> phases = suite.getPhases();
-        List<String> res = new ArrayList<>(phases.size());
-        for (BasePhase<?> phase : phases) {
-            res.add(phase.contractorName());
-        }
-        Collections.sort(res);
-        return res;
+    private static void printConfigVerbose(CompilerConfigurationFactory factory) {
+        Object location = factory.getLoadedFromLocation(true);
+        TTY.printf("Using compiler configuration '%s' (\"%s\") provided by %s loaded from %s%n", factory.name, factory.info, factory.getClass().getName(), location);
     }
 
-    private static <C> List<String> phaseNames(LIRPhaseSuite<C> suite) {
-        List<LIRPhase<C>> phases = suite.getPhases();
-        List<String> res = new ArrayList<>(phases.size());
-        for (LIRPhase<?> phase : phases) {
-            res.add(phase.getClass().getName());
+    private static <T> void printPlan(String label, Supplier<PhasePlan<T>> plan) {
+        try {
+            TTY.printf("%s%n%s", label, new PhasePlan.Printer().toString(plan.get()));
+        } catch (Throwable t) {
+            t.printStackTrace(TTY.out);
         }
-        Collections.sort(res);
-        return res;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -137,6 +137,59 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
         public String m0(Object receiver) {
             return "m0";
         }
+
+        public String m1(Object receiver) {
+            return "m1";
+        }
+    }
+
+    @GenerateLibrary
+    abstract static class DummyLibrary extends Library {
+        @GenerateLibrary.Abstract
+        public String dummy(Object receiver) {
+            return "dummy";
+        }
+    }
+
+    @ExportLibrary(value = TestDispatchLibrary.class, receiverType = DynamicDispatch.class)
+    static class DynamicDispatchBase {
+
+        @ExportMessage
+        static String m0(DynamicDispatch dispatch) {
+            return "m0_dynamic_dispatch_base";
+        }
+    }
+
+    @ExportLibrary(value = TestDispatchLibrary.class, receiverType = DynamicDispatch.class)
+    static class DynamicDispatchSub extends DynamicDispatchBase {
+
+        @ExportMessage
+        static String m1(DynamicDispatch dispatch) {
+            return "m1_dynamic_dispatch_sub";
+        }
+    }
+
+    @ExportLibrary(value = DummyLibrary.class, receiverType = DynamicDispatch.class)
+    static class DynamicDispatchDummy extends DynamicDispatchBase {
+        @ExportMessage
+        static String dummy(DynamicDispatch dispatch) {
+            return "dummy_dynamic";
+        }
+    }
+
+    @ExportLibrary(value = TestDispatchLibrary.class, receiverType = DynamicDispatch.class)
+    @ExportLibrary(value = DummyLibrary.class, receiverType = DynamicDispatch.class)
+    static class DynamicDispatchImplicit extends DynamicDispatchDummy {
+
+        @ExportMessage
+        static String m0(DynamicDispatch dispatch) {
+            return "m0_dynamic_dispatch_implicit";
+        }
+
+        @ExportMessage
+        static String dummy(DynamicDispatch dispatch) {
+            return "dummy_implicit";
+        }
     }
 
     @Test
@@ -229,6 +282,35 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
         assertEquals("m0_dynamic_dispatch_target1", lib.m0(dynamicDispatch));
     }
 
+    @Test
+    public void testDynamicDispatchInheritance() {
+        Object base = new DynamicDispatch(DynamicDispatchBase.class);
+        Object sub = new DynamicDispatch(DynamicDispatchSub.class);
+        Object implicit = new DynamicDispatch(DynamicDispatchImplicit.class);
+
+        TestDispatchLibrary libBase = createLibrary(TestDispatchLibrary.class, base);
+        TestDispatchLibrary libSub = createLibrary(TestDispatchLibrary.class, sub);
+        TestDispatchLibrary libImplicit = createLibrary(TestDispatchLibrary.class, implicit);
+        assertTrue(libBase.accepts(base));
+        assertTrue(libSub.accepts(sub));
+        assertTrue(libImplicit.accepts(implicit));
+
+        assertFalse(libBase.accepts(sub));
+        assertFalse(libSub.accepts(base));
+        assertFalse(libImplicit.accepts(base));
+        assertFalse(libImplicit.accepts(sub));
+
+        assertAssertionError(() -> libBase.m0(sub));
+        assertAssertionError(() -> libSub.m0(base));
+        assertAssertionError(() -> libImplicit.m0(base));
+        assertEquals("m0_dynamic_dispatch_base", libBase.m0(base));
+        assertEquals("m0_dynamic_dispatch_base", libSub.m0(sub));
+        assertEquals("m0_dynamic_dispatch_implicit", libImplicit.m0(implicit));
+        assertEquals("m1", libBase.m1(base));
+        assertEquals("m1_dynamic_dispatch_sub", libSub.m1(sub));
+        assertEquals("m1", libImplicit.m1(implicit));
+    }
+
     @GenerateLibrary(dynamicDispatchEnabled = false)
     abstract static class TestDisabledDispatchLibrary extends Library {
         public String m0(Object receiver) {
@@ -305,7 +387,6 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
     // test that cast cannot be override
     @ExportLibrary(DynamicDispatchLibrary.class)
     @SuppressWarnings("static-method")
-    @ExpectError("No message 'cast' found for library DynamicDispatchLibrary.")
     static final class ErrorOverrideCast1 {
 
         @ExportMessage
@@ -314,6 +395,7 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
         }
 
         @ExportMessage
+        @ExpectError("No message 'cast' found for library DynamicDispatchLibrary.")
         Object cast() {
             return null;
         }

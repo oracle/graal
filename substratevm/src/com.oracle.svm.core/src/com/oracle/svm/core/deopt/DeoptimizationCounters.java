@@ -51,7 +51,7 @@ public class DeoptimizationCounters {
      * Rewriting the stack pointer does not allow passing the start time properly through the call
      * stack.
      */
-    static final FastThreadLocalLong startTime = FastThreadLocalFactory.createLong();
+    static final FastThreadLocalLong startTime = FastThreadLocalFactory.createLong("DeoptimizationCounters.startTime");
 
     @Fold
     public static DeoptimizationCounters counters() {

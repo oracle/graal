@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -50,7 +52,19 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 
+/**
+ * Initializes all reachable nodes' {@link RegexASTNode#getId() id} and populates
+ * {@link RegexAST#getReachableCarets()}/{@link RegexAST#getReachableDollars()}, as well as
+ * {@link RegexAST#getSubtrees()}} and {@link RegexASTSubtreeRootNode#getSubtrees()}}.
+ *
+ * @see RegexASTNode#getId()
+ * @see RegexAST#getReachableCarets()
+ * @see RegexAST#getReachableDollars()
+ * @see RegexAST#getSubtrees()
+ * @see RegexASTSubtreeRootNode#getSubtrees()
+ */
 public final class InitIDVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     /**
@@ -58,10 +72,12 @@ public final class InitIDVisitor extends DepthFirstTraversalRegexASTVisitor {
      */
     public static final int REGEX_AST_ROOT_PARENT_ID = 0;
 
+    private final RegexAST ast;
     private final RegexASTNode[] index;
     private int nextID;
 
-    private InitIDVisitor(RegexASTNode[] index, int nextID) {
+    private InitIDVisitor(RegexAST ast, RegexASTNode[] index, int nextID) {
+        this.ast = ast;
         this.index = index;
         this.nextID = nextID;
     }
@@ -73,7 +89,7 @@ public final class InitIDVisitor extends DepthFirstTraversalRegexASTVisitor {
         // - prefix length + 1 unanchored initial NFA states
         // - 1 slot at the end for NFA loopBack matcher
         int initialID = 3 + (ast.getWrappedPrefixLength() * 2);
-        InitIDVisitor visitor = new InitIDVisitor(new RegexASTNode[initialID + ast.getNumberOfNodes() + 1], initialID);
+        InitIDVisitor visitor = new InitIDVisitor(ast, new RegexASTNode[initialID + ast.getNumberOfNodes() + 1], initialID);
         assert ast.getWrappedRoot().getSubTreeParent().getId() == REGEX_AST_ROOT_PARENT_ID;
         visitor.index[REGEX_AST_ROOT_PARENT_ID] = ast.getWrappedRoot().getSubTreeParent();
         visitor.run(ast.getWrappedRoot());
@@ -116,6 +132,16 @@ public final class InitIDVisitor extends DepthFirstTraversalRegexASTVisitor {
     @Override
     protected void visit(PositionAssertion assertion) {
         initID(assertion);
+        if (!assertion.isDead()) {
+            switch (assertion.type) {
+                case CARET:
+                    ast.getReachableCarets().add(assertion);
+                    break;
+                case DOLLAR:
+                    ast.getReachableDollars().add(assertion);
+                    break;
+            }
+        }
     }
 
     @Override
@@ -124,12 +150,44 @@ public final class InitIDVisitor extends DepthFirstTraversalRegexASTVisitor {
     }
 
     @Override
+    protected void leave(LookBehindAssertion assertion) {
+        leaveSubtreeRootNode(assertion);
+    }
+
+    @Override
     protected void visit(LookAheadAssertion assertion) {
         initID(assertion);
     }
 
     @Override
+    protected void leave(LookAheadAssertion assertion) {
+        leaveSubtreeRootNode(assertion);
+    }
+
+    @Override
+    protected void visit(AtomicGroup atomicGroup) {
+        initID(atomicGroup);
+    }
+
+    @Override
+    protected void leave(AtomicGroup atomicGroup) {
+        leaveSubtreeRootNode(atomicGroup);
+    }
+
+    private void leaveSubtreeRootNode(RegexASTSubtreeRootNode subtree) {
+        if (!subtree.isDead()) {
+            ast.getSubtrees().add(subtree);
+            subtree.getSubTreeParent().getSubtrees().add(subtree);
+        }
+    }
+
+    @Override
     protected void visit(CharacterClass characterClass) {
         initID(characterClass);
+    }
+
+    @Override
+    protected void visit(SubexpressionCall subexpressionCall) {
+        throw CompilerDirectives.shouldNotReachHere("subexpression calls should be expanded by the parser");
     }
 }

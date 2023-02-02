@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.test.ea;
 
 import java.util.List;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
@@ -89,10 +90,10 @@ public class EscapeAnalysisTest extends EATestBase {
         testEscapeAnalysis("testMonitorSnippet", JavaConstant.forInt(0), false);
     }
 
-    @SuppressWarnings({"deprecation", "synchronization"})
+    @SuppressWarnings({"synchronized", "deprecation"})
     public static int testMonitorSnippet() {
-        Integer x = new Integer(0);
-        Double y = new Double(0);
+        Object x = new Integer(0);
+        Object y = new Double(0);
         Object z = new Object();
         synchronized (x) {
             synchronized (y) {
@@ -101,7 +102,7 @@ public class EscapeAnalysisTest extends EATestBase {
                 }
             }
         }
-        return x.intValue();
+        return ((Integer) x).intValue();
     }
 
     @Test
@@ -113,16 +114,16 @@ public class EscapeAnalysisTest extends EATestBase {
      * This test case differs from the last one in that it requires inlining within a synchronized
      * region.
      */
-    @SuppressWarnings({"deprecation", "synchronization"})
+    @SuppressWarnings({"synchronized", "deprecation"})
     public static int testMonitor2Snippet() {
-        Integer x = new Integer(0);
-        Double y = new Double(0);
+        Object x = new Integer(0);
+        Object y = new Double(0);
         Object z = new Object();
         synchronized (x) {
             synchronized (y) {
                 synchronized (z) {
                     notInlineable();
-                    return x.intValue();
+                    return ((Integer) x).intValue();
                 }
             }
         }
@@ -325,6 +326,7 @@ public class EscapeAnalysisTest extends EATestBase {
         Assert.assertEquals(2, graph.getNodes().filter(CommitAllocationNode.class).count());
         Assert.assertEquals(1, graph.getNodes().filter(BoxNode.class).count());
         List<Node> nodes = graph.getNodes().snapshot();
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before running additional iteration of PEA");
         // verify that an additional run doesn't add or remove nodes
         new PartialEscapePhase(false, false, createCanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
         Assert.assertEquals(nodes.size(), graph.getNodeCount());
@@ -470,8 +472,8 @@ public class EscapeAnalysisTest extends EATestBase {
     @Test
     public void testPeeledLoop() {
         prepareGraph("testPeeledLoopSnippet", false);
-        new LoopPeelingPhase(new DefaultLoopPolicies()).apply(graph, getDefaultHighTierContext());
-        new SchedulePhase(graph.getOptions()).apply(graph);
+        new LoopPeelingPhase(new DefaultLoopPolicies(), createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
+        new SchedulePhase(graph.getOptions()).apply(graph, getDefaultHighTierContext());
     }
 
     public static void testDeoptMonitorSnippetInner(Object o2, Object t, int i) {

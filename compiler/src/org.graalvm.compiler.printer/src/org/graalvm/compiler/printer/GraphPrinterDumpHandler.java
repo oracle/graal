@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.printer;
 
 import static org.graalvm.compiler.debug.DebugConfig.asJavaMethod;
+import static org.graalvm.compiler.debug.DebugOptions.PrintUnmodifiedGraphs;
 
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
@@ -61,13 +62,15 @@ import jdk.vm.ci.services.Services;
  * Observes compilation events and uses {@link BinaryGraphPrinter} to generate a graph
  * representation that can be inspected with the Graph Visualizer.
  */
-public class GraphPrinterDumpHandler implements DebugDumpHandler {
+public final class GraphPrinterDumpHandler implements DebugDumpHandler {
 
     private static final int FAILURE_LIMIT = 8;
     private final GraphPrinterSupplier printerSupplier;
     protected GraphPrinter printer;
     private List<String> previousInlineContext;
     private CompilationIdentifier previousCompilationID = CompilationIdentifier.INVALID_COMPILATION_ID;
+    private Graph lastGraph;
+    private int lastModCount;
     private int[] dumpIds = {};
     private int failuresCount;
     private Map<Graph, List<String>> inlineContextMap;
@@ -117,7 +120,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private int nextDumpId() {
-        int depth = previousInlineContext.size();
+        int depth = previousInlineContext.size() - 1;
         if (dumpIds.length < depth + 1) {
             dumpIds = Arrays.copyOf(dumpIds, depth + 1);
         }
@@ -126,7 +129,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
 
     @Override
     @SuppressWarnings("try")
-    public void dump(DebugContext debug, Object object, final String format, Object... arguments) {
+    public void dump(Object object, DebugContext debug, boolean forced, final String format, Object... arguments) {
         OptionValues options = debug.getOptions();
         if (object instanceof Graph && DebugOptions.PrintGraph.getValue(options) != PrintGraphTarget.Disable) {
             final Graph graph = (Graph) object;
@@ -189,14 +192,21 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 properties.put("scope", currentScopeName);
                 graph.getDebugProperties(properties);
                 if (graph instanceof StructuredGraph) {
+                    StructuredGraph structuredGraph = (StructuredGraph) graph;
                     try {
-                        int size = NodeCostUtil.computeGraphSize((StructuredGraph) graph);
+                        int size = NodeCostUtil.computeGraphSize(structuredGraph);
                         properties.put("node-cost graph size", size);
                     } catch (Throwable t) {
                         properties.put("node-cost-exception", t.getMessage());
                     }
+                    properties.put("StageFlags", structuredGraph.getGraphState().getStageFlags());
+                    properties.put("speculationLog", structuredGraph.getSpeculationLog() != null ? structuredGraph.getSpeculationLog().toString() : "null");
                 }
-                printer.print(debug, graph, properties, nextDumpId(), format, arguments);
+                if (PrintUnmodifiedGraphs.getValue(options) || lastGraph != graph || lastModCount != graph.getEdgeModificationCount()) {
+                    printer.print(debug, graph, properties, nextDumpId(), format, arguments);
+                    lastGraph = graph;
+                    lastModCount = graph.getEdgeModificationCount();
+                }
             } catch (IOException e) {
                 handleException(debug, e);
             } catch (Throwable e) {
@@ -256,13 +266,28 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                     lastMethodOrGraph = o;
                 }
             }
+
+            for (int i = 0; i < result.size(); i++) {
+                /*
+                 * Truffle compilations don't have a standard inline context. Since
+                 * TruffleDebugJavaMethod specifies the declaring class for truffle compilations as
+                 * "LTruffleGraal" we identify truffle compilations as starting with "TruffleGraal"
+                 */
+                String name = result.get(i);
+                String search = "TruffleGraal.";
+                if (name.startsWith(search)) {
+                    result.set(i, "TruffleIR::" + name.substring(search.length(), name.length()));
+                    if (i > 0) {
+                        // we can drop previous entry which is just profiledPERoot
+                        result.remove(i - 1);
+                    }
+                    break;
+                }
+            }
+
             if (result.isEmpty()) {
                 result.add(graph.toString());
                 graphSeen = true;
-            }
-            // Truffle compilations don't have a standard inline context.
-            if (result.size() == 2 && result.get(1).startsWith("TruffleGraal")) {
-                result.clear();
             }
             // Reverse list such that inner method comes after outer method.
             Collections.reverse(result);

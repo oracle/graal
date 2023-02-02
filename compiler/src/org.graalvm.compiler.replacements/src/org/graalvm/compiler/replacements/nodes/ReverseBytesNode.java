@@ -31,7 +31,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -83,6 +83,9 @@ public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue instanceof ReverseBytesNode) {
+            return ((ReverseBytesNode) forValue).getValue();
+        }
         JavaConstant c = forValue.asJavaConstant();
         if (c != null) {
             switch (c.getJavaKind()) {

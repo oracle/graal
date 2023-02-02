@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.charset.ImmutableSortedListOfIntRanges;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.util.BitSets;
@@ -54,7 +53,7 @@ import com.oracle.truffle.regex.util.BitSets;
  * This matcher can take up to 8 kilobytes of space, so it should be used only when the set of
  * characters to match is very large and sparse.
  */
-public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
+public final class MultiBitSetMatcher extends InvertibleCharMatcher {
 
     private static final int BYTE_RANGE = 256;
     private static final int BYTE_MAX_VALUE = 255;
@@ -91,7 +90,7 @@ public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
             }
         }
         bitSets[curByte] = cur;
-        return MultiBitSetMatcherNodeGen.create(inverse, bitSets);
+        return new MultiBitSetMatcher(inverse, bitSets);
     }
 
     @CompilationFinal(dimensions = 2) private final long[][] bitSets;
@@ -101,9 +100,10 @@ public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
         this.bitSets = bitSets;
     }
 
-    @Specialization
-    protected boolean match(int c) {
-        return result(BitSets.get(bitSets[highByte(c)], lowByte(c)));
+    @Override
+    public boolean match(int c) {
+        int highByte = highByte(c);
+        return result(highByte < bitSets.length && BitSets.get(bitSets[highByte], lowByte(c)));
     }
 
     @Override

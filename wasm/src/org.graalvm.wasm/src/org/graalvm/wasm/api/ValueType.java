@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,19 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+
+import com.oracle.truffle.api.CompilerAsserts;
 
 public enum ValueType {
     i32(WasmType.I32_TYPE),
     i64(WasmType.I64_TYPE),
     f32(WasmType.F32_TYPE),
-    f64(WasmType.F64_TYPE);
+    f64(WasmType.F64_TYPE),
+    anyfunc(WasmType.FUNCREF_TYPE),
+    externref(WasmType.EXTERNREF_TYPE);
 
     private final byte byteValue;
 
@@ -57,12 +60,8 @@ public enum ValueType {
         this.byteValue = byteValue;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public static ValueType parse(String name) {
-        return valueOf(name);
-    }
-
     public static ValueType fromByteValue(byte value) {
+        CompilerAsserts.neverPartOfCompilation();
         switch (value) {
             case WasmType.I32_TYPE:
                 return i32;
@@ -72,6 +71,10 @@ public enum ValueType {
                 return f32;
             case WasmType.F64_TYPE:
                 return f64;
+            case WasmType.FUNCREF_TYPE:
+                return anyfunc;
+            case WasmType.EXTERNREF_TYPE:
+                return externref;
             default:
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(value));
         }
@@ -79,5 +82,13 @@ public enum ValueType {
 
     public byte byteValue() {
         return byteValue;
+    }
+
+    public static boolean isNumberType(ValueType valueType) {
+        return valueType == i32 || valueType == i64 || valueType == f32 || valueType == f64;
+    }
+
+    public static boolean isReferenceType(ValueType valueType) {
+        return valueType == anyfunc || valueType == externref;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.junit.Assert;
 
@@ -43,8 +43,7 @@ public class GraphScheduleTest extends GraalCompilerTest {
     }
 
     protected void assertOrderedAfterSchedule(StructuredGraph graph, SchedulePhase.SchedulingStrategy strategy, Node a, Node b) {
-        SchedulePhase ibp = new SchedulePhase(strategy);
-        ibp.apply(graph);
+        SchedulePhase.runWithoutContextOptimizations(graph, strategy);
         assertOrderedAfterLastSchedule(graph, a, b);
     }
 
@@ -53,22 +52,22 @@ public class GraphScheduleTest extends GraalCompilerTest {
     }
 
     protected void assertOrderedAfterSchedule(ScheduleResult ibp, Node a, Node b) {
-        NodeMap<Block> nodeToBlock = ibp.getCFG().getNodeToBlock();
-        Block bBlock = nodeToBlock.get(b);
-        Block aBlock = nodeToBlock.get(a);
+        NodeMap<HIRBlock> nodeToBlock = ibp.getCFG().getNodeToBlock();
+        HIRBlock bBlock = nodeToBlock.get(b);
+        HIRBlock aBlock = nodeToBlock.get(a);
 
         if (bBlock == aBlock) {
             List<Node> instructions = ibp.nodesFor(bBlock);
             Assert.assertTrue(a + " should be before " + b, instructions.indexOf(b) > instructions.indexOf(a));
         } else {
-            Block block = bBlock;
+            HIRBlock block = bBlock;
             while (block != null) {
                 if (block == aBlock) {
                     return;
                 }
                 block = block.getDominator();
             }
-            Assert.fail("block of A doesn't dominate the block of B");
+            Assert.fail("block of " + a + " doesn't dominate the block of " + b);
         }
     }
 

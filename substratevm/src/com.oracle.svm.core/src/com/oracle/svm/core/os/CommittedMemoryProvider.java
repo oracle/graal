@@ -34,7 +34,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.heap.Heap;
 
@@ -89,30 +89,26 @@ public interface CommittedMemoryProvider {
         return VirtualMemoryProvider.get().getGranularity();
     }
 
-    /**
-     * Allocate a block of committed memory.
-     *
-     * @param nbytes The number of bytes to allocate, which is rounded up to the next multiple of
-     *            the {@linkplain #getGranularity() granularity} if required.
-     * @param alignment The required alignment of the block start, or {@link #UNALIGNED}.
-     * @param executable Whether the block must be executable.
-     * @return The start of the allocated block, or {@link WordFactory#nullPointer()} in case of an
-     *         error.
-     */
-    Pointer allocate(UnsignedWord nbytes, UnsignedWord alignment, boolean executable);
+    Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment);
+
+    Pointer allocateUnalignedChunk(UnsignedWord nbytes);
+
+    Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment);
 
     /**
-     * Release a block of committed memory that was allocated with {@link #allocate}, requiring the
-     * exact same parameter values that were originally passed to {@link #allocate}.
-     *
-     * @param start The start of the memory block, as returned by {@link #allocate}.
-     * @param nbytes The originally requested size in bytes.
-     * @param alignment The originally requested alignment.
-     * @param executable Whether the block was requested to be executable.
-     * @return true on success, or false otherwise.
+     * This method returns {@code true} if the memory returned by {@link #allocateUnalignedChunk} is
+     * guaranteed to be zeroed.
      */
+    boolean areUnalignedChunksZeroed();
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable);
+    void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    void freeUnalignedChunk(PointerBase start, UnsignedWord nbytes);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    void freeExecutableMemory(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment);
 
     /**
      * Called by the garbage collector before a collection is started, as an opportunity to perform
@@ -124,10 +120,8 @@ public interface CommittedMemoryProvider {
     /**
      * Called by the garbage collector after a collection has ended, as an opportunity to perform
      * lazy operations, sanity checks or clean-ups.
-     *
-     * @param completeCollection Whether the garbage collector has performed a full collection.
      */
-    default void afterGarbageCollection(boolean completeCollection) {
+    default void afterGarbageCollection() {
     }
 
     enum Access {
@@ -137,15 +131,15 @@ public interface CommittedMemoryProvider {
     }
 
     /**
-     * Change access permissions for a block of committed memory that was allocated with
-     * {@link #allocate}.
+     * Change access permissions for a block of committed memory that was allocated with one of the
+     * allocation methods.
      *
      * @param start The start of the address range to be protected, which must be a multiple of the
      *            {@linkplain #getGranularity() granularity}.
      * @param nbytes The size in bytes of the address range to be protected, which will be rounded
      *            up to a multiple of the {@linkplain #getGranularity() granularity}.
      * @param access The modes in which the memory is permitted to be accessed, see {@link Access}.
-     * @return true on success, or false otherwise.
+     * @return 0 when successful, or a non-zero implementation-specific error code.
      */
-    boolean protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> access);
+    int protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> access);
 }

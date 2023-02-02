@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,7 @@ public class EconomicMapImplTest {
 
     @Test
     public void testInitFromHashSet() {
-        UnmodifiableEconomicSet<Integer> set = new UnmodifiableEconomicSet<Integer>() {
+        UnmodifiableEconomicSet<Integer> set = new UnmodifiableEconomicSet<>() {
 
             @Override
             public boolean contains(Integer element) {
@@ -79,7 +79,7 @@ public class EconomicMapImplTest {
 
             @Override
             public Iterator<Integer> iterator() {
-                return new Iterator<Integer>() {
+                return new Iterator<>() {
 
                     private boolean visited = false;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import java.util.ListIterator;
 import java.util.Objects;
 
 import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.core.test.TestPhase;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
@@ -53,13 +54,13 @@ import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -81,7 +82,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      * The set of GCs known at the time of writing of this test. The number of expected barrier
      * might need to be adjusted for new GCs implementations.
      */
-    private static EnumSet<HotSpotGC> knownSupport = EnumSet.of(HotSpotGC.G1, HotSpotGC.CMS, HotSpotGC.Parallel, HotSpotGC.Serial);
+    private static EnumSet<HotSpotGC> knownSupport = EnumSet.of(HotSpotGC.G1, HotSpotGC.Parallel, HotSpotGC.Serial);
 
     private final GraalHotSpotVMConfig config = runtime().getVMConfig();
 
@@ -227,6 +228,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      * is the same as {@link #referenceReferentFieldOffset} which does a barrier if requires it.
      */
     @Test
+    @Ignore("GR-31031")
     public void testReferenceReferent2() throws Exception {
         this.expectedBarriers = config.useG1GC ? 1 : 0;
         test("testReferenceReferent2Snippet", referenceReferentFieldOffset);
@@ -257,6 +259,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      * subclasses of {@link java.lang.ref.Reference} and does a barrier if requires it.
      */
     @Test
+    @Ignore("GR-31031")
     public void testReferenceReferent4() throws Exception {
         this.expectedBarriers = config.useG1GC ? 1 : 0;
         test("testReferenceReferent4Snippet");
@@ -339,7 +342,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
                         Assert.assertEquals(referentOffset(getMetaAccess()), constDisp.asLong());
                     }
                 }
-                Assert.assertTrue(BarrierType.WEAK_FIELD == read.getBarrierType() || BarrierType.MAYBE_WEAK_FIELD == read.getBarrierType());
+                Assert.assertTrue(BarrierType.WEAK_FIELD == read.getBarrierType() || BarrierType.PHANTOM_FIELD == read.getBarrierType());
                 if (config.useG1GC) {
                     Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrier);
                 }
@@ -361,10 +364,9 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
      */
     @Override
     protected Suites createSuites(OptionValues opts) {
-        Suites ret = getBackend().getSuites().getDefaultSuites(opts).copy();
+        Suites ret = super.createSuites(opts);
         ListIterator<BasePhase<? super MidTierContext>> iter = ret.getMidTier().findPhase(WriteBarrierAdditionPhase.class, true);
-        iter.add(new Phase() {
-
+        iter.add(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
                 verifyBarriers(graph);
@@ -376,7 +378,7 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "VerifyBarriersPhase";
             }
         });

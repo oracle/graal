@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 
@@ -66,98 +65,8 @@ class ReadOnlyFrame implements Frame {
         return delegate.getArguments().clone();
     }
 
-    @Override
-    @TruffleBoundary
-    public Object getObject(FrameSlot slot) throws FrameSlotTypeException {
-        return delegate.getObject(slot);
-    }
-
-    @Override
-    @TruffleBoundary
-    public void setObject(FrameSlot slot, Object value) {
-        throw newReadonlyAssertionError();
-    }
-
-    @Override
-    @TruffleBoundary
-    public byte getByte(FrameSlot slot) throws FrameSlotTypeException {
-        return delegate.getByte(slot);
-    }
-
-    @Override
-    @TruffleBoundary
-    public void setByte(FrameSlot slot, byte value) {
-        throw newReadonlyAssertionError();
-    }
-
-    @Override
-    @TruffleBoundary
-    public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
-        return delegate.getBoolean(slot);
-    }
-
-    @Override
-    @TruffleBoundary
-    public void setBoolean(FrameSlot slot, boolean value) {
-        throw newReadonlyAssertionError();
-    }
-
-    @Override
-    @TruffleBoundary
-    public int getInt(FrameSlot slot) throws FrameSlotTypeException {
-        return delegate.getInt(slot);
-    }
-
-    @Override
-    @TruffleBoundary
-    public void setInt(FrameSlot slot, int value) {
-        throw newReadonlyAssertionError();
-    }
-
     private static AssertionError newReadonlyAssertionError() {
         return new AssertionError("Unexpected write access.");
-    }
-
-    @Override
-    @TruffleBoundary
-    public long getLong(FrameSlot slot) throws FrameSlotTypeException {
-        return delegate.getLong(slot);
-    }
-
-    @Override
-    @TruffleBoundary
-    public void setLong(FrameSlot slot, long value) {
-        throw newReadonlyAssertionError();
-    }
-
-    @Override
-    @TruffleBoundary
-    public float getFloat(FrameSlot slot) throws FrameSlotTypeException {
-        return delegate.getFloat(slot);
-    }
-
-    @Override
-    @TruffleBoundary
-    public void setFloat(FrameSlot slot, float value) {
-        throw newReadonlyAssertionError();
-    }
-
-    @Override
-    @TruffleBoundary
-    public double getDouble(FrameSlot slot) throws FrameSlotTypeException {
-        return delegate.getDouble(slot);
-    }
-
-    @Override
-    @TruffleBoundary
-    public void setDouble(FrameSlot slot, double value) {
-        throw newReadonlyAssertionError();
-    }
-
-    @Override
-    @TruffleBoundary
-    public Object getValue(FrameSlot slot) {
-        return delegate.getValue(slot);
     }
 
     @Override
@@ -168,49 +77,307 @@ class ReadOnlyFrame implements Frame {
 
     @Override
     @TruffleBoundary
-    public boolean isObject(FrameSlot slot) {
+    public Object getObject(int slot) throws FrameSlotTypeException {
+        return delegate.getObject(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setObject(int slot, Object value) {
+        throw newReadonlyAssertionError();
+    }
+
+    @Override
+    @TruffleBoundary
+    public byte getByte(int slot) throws FrameSlotTypeException {
+        return delegate.getByte(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setByte(int slot, byte value) {
+        throw newReadonlyAssertionError();
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean getBoolean(int slot) throws FrameSlotTypeException {
+        return delegate.getBoolean(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setBoolean(int slot, boolean value) {
+        throw newReadonlyAssertionError();
+    }
+
+    @Override
+    @TruffleBoundary
+    public int getInt(int slot) throws FrameSlotTypeException {
+        return delegate.getInt(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setInt(int slot, int value) {
+        throw newReadonlyAssertionError();
+    }
+
+    @Override
+    @TruffleBoundary
+    public long getLong(int slot) throws FrameSlotTypeException {
+        return delegate.getLong(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setLong(int slot, long value) {
+        throw newReadonlyAssertionError();
+    }
+
+    @Override
+    @TruffleBoundary
+    public float getFloat(int slot) throws FrameSlotTypeException {
+        return delegate.getFloat(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setFloat(int slot, float value) {
+        throw newReadonlyAssertionError();
+    }
+
+    @Override
+    @TruffleBoundary
+    public double getDouble(int slot) throws FrameSlotTypeException {
+        return delegate.getDouble(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setDouble(int slot, double value) {
+        throw newReadonlyAssertionError();
+    }
+
+    @Override
+    @TruffleBoundary
+    public Object getValue(int slot) {
+        return delegate.getValue(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void copy(int srcSlot, int destSlot) {
+        throw newReadonlyAssertionError();
+    }
+
+    @Override
+    @TruffleBoundary
+    public byte getTag(int slot) {
+        return delegate.getTag(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean isObject(int slot) {
         return delegate.isObject(slot);
     }
 
     @Override
     @TruffleBoundary
-    public boolean isByte(FrameSlot slot) {
+    public boolean isByte(int slot) {
         return delegate.isByte(slot);
     }
 
     @Override
     @TruffleBoundary
-    public boolean isBoolean(FrameSlot slot) {
+    public boolean isBoolean(int slot) {
         return delegate.isBoolean(slot);
     }
 
     @Override
     @TruffleBoundary
-    public boolean isInt(FrameSlot slot) {
+    public boolean isInt(int slot) {
         return delegate.isInt(slot);
     }
 
     @Override
     @TruffleBoundary
-    public boolean isLong(FrameSlot slot) {
+    public boolean isLong(int slot) {
         return delegate.isLong(slot);
     }
 
     @Override
     @TruffleBoundary
-    public boolean isFloat(FrameSlot slot) {
+    public boolean isFloat(int slot) {
         return delegate.isFloat(slot);
     }
 
     @Override
     @TruffleBoundary
-    public boolean isDouble(FrameSlot slot) {
+    public boolean isDouble(int slot) {
         return delegate.isDouble(slot);
     }
 
     @Override
     @TruffleBoundary
-    public void clear(FrameSlot slot) {
+    public boolean isStatic(int slot) {
+        return delegate.isStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void clear(int slot) {
         throw newReadonlyAssertionError();
+    }
+
+    @Override
+    @TruffleBoundary
+    public Object getAuxiliarySlot(int slot) {
+        return delegate.getAuxiliarySlot(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setAuxiliarySlot(int slot, Object value) {
+        throw newReadonlyAssertionError();
+    }
+
+    @Override
+    @TruffleBoundary
+    public Object getObjectStatic(int slot) {
+        return delegate.getObjectStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setObjectStatic(int slot, Object value) {
+        delegate.setObjectStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public byte getByteStatic(int slot) {
+        return delegate.getByteStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setByteStatic(int slot, byte value) {
+        delegate.setByteStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean getBooleanStatic(int slot) {
+        return delegate.getBooleanStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setBooleanStatic(int slot, boolean value) {
+        delegate.setBooleanStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public int getIntStatic(int slot) {
+        return delegate.getIntStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setIntStatic(int slot, int value) {
+        delegate.setIntStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public long getLongStatic(int slot) {
+        return delegate.getLongStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setLongStatic(int slot, long value) {
+        delegate.setLongStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public float getFloatStatic(int slot) {
+        return delegate.getFloatStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setFloatStatic(int slot, float value) {
+        delegate.setFloatStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public double getDoubleStatic(int slot) {
+        return delegate.getDoubleStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void setDoubleStatic(int slot, double value) {
+        delegate.setDoubleStatic(slot, value);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void copyPrimitiveStatic(int srcSlot, int destSlot) {
+        delegate.copyPrimitiveStatic(srcSlot, destSlot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void copyObjectStatic(int srcSlot, int destSlot) {
+        delegate.copyObjectStatic(srcSlot, destSlot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void copyStatic(int srcSlot, int destSlot) {
+        delegate.copyStatic(srcSlot, destSlot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void swapPrimitiveStatic(int first, int second) {
+        delegate.swapPrimitiveStatic(first, second);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void swapObjectStatic(int first, int second) {
+        delegate.swapObjectStatic(first, second);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void swapStatic(int first, int second) {
+        delegate.swapStatic(first, second);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void clearPrimitiveStatic(int slot) {
+        delegate.clearPrimitiveStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void clearObjectStatic(int slot) {
+        delegate.clearObjectStatic(slot);
+    }
+
+    @Override
+    @TruffleBoundary
+    public void clearStatic(int slot) {
+        delegate.clearStatic(slot);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,23 +26,42 @@ package org.graalvm.compiler.truffle.runtime.hotspot;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
+import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * JDK versioned functionality used by the HotSpot Truffle runtime.
+ *
+ * This version is for JDK 17+.
  */
 class HotSpotTruffleRuntimeServices {
 
-    private static InternalError shouldNotReachHere() {
-        throw new InternalError("JDK specific overlay missing");
+    /**
+     * A wrapper that holds a strong reference to another speculation log that
+     * {@linkplain HotSpotSpeculationLog#managesFailedSpeculations() manages} the failed
+     * speculations list.
+     */
+    static class CompilationSpeculationLog extends HotSpotSpeculationLog {
+        private final HotSpotSpeculationLog wrappedLog;
+
+        CompilationSpeculationLog(HotSpotSpeculationLog wrappedLog) {
+            super(wrappedLog.getFailedSpeculationsAddress());
+            this.wrappedLog = wrappedLog;
+        }
+
+        @Override
+        public String toString() {
+            return wrappedLog.toString();
+        }
     }
 
     /**
      * Gets a speculation log to be used for compiling {@code callTarget}.
-     *
-     * @param callTarget
      */
     public static SpeculationLog getCompilationSpeculationLog(OptimizedCallTarget callTarget) {
-        throw shouldNotReachHere();
+        HotSpotSpeculationLog wrappedLog = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
+        CompilationSpeculationLog compilationSpeculationLog = new CompilationSpeculationLog(wrappedLog);
+        compilationSpeculationLog.collectFailedSpeculations();
+        return compilationSpeculationLog;
     }
 }

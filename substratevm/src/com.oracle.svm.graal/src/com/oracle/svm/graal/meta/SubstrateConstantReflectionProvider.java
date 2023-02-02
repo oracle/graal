@@ -41,7 +41,6 @@ import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -67,7 +66,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
     @Override
     public ResolvedJavaType asJavaType(Constant constant) {
         if (constant instanceof SubstrateObjectConstant) {
-            Object obj = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(constant), Object.class);
+            Object obj = SubstrateObjectConstant.asObject(constant);
             if (obj instanceof DynamicHub) {
                 return ((SubstrateMetaAccess) metaAccess).lookupJavaTypeFromHub(((DynamicHub) obj));
             }
@@ -129,29 +128,42 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         if (field.constantValue != null) {
             return field.constantValue;
         }
-        if (field.location < 0) {
+        int location = field.location;
+        if (location < 0) {
             return null;
         }
-
-        JavaConstant base;
-        if (receiver == null) {
-            assert field.isStatic();
-            if (field.type.getStorageKind() == JavaKind.Object) {
-                base = SubstrateObjectConstant.forObject(StaticFieldsSupport.getStaticObjectFields());
+        JavaKind kind = field.getStorageKind();
+        Object baseObject;
+        if (field.isStatic()) {
+            if (kind == JavaKind.Object) {
+                baseObject = StaticFieldsSupport.getStaticObjectFields();
             } else {
-                base = SubstrateObjectConstant.forObject(StaticFieldsSupport.getStaticPrimitiveFields());
+                baseObject = StaticFieldsSupport.getStaticPrimitiveFields();
             }
         } else {
-            assert !field.isStatic();
-            base = receiver;
+            if (receiver == null || !field.getDeclaringClass().isInstance(receiver)) {
+                return null;
+            }
+            baseObject = SubstrateObjectConstant.asObject(receiver);
+            if (baseObject == null) {
+                return null;
+            }
         }
 
-        assert SubstrateObjectConstant.asObject(base) != null;
-        try {
-            return SubstrateMemoryAccessProviderImpl.readUnsafeConstant(field.type.getStorageKind(), base, field.location, field.isVolatile());
-        } catch (IllegalArgumentException e) {
-            return null;
+        boolean isVolatile = field.isVolatile();
+        JavaConstant result;
+        /*
+         * We know that the memory offset we are reading from is a proper field location: we already
+         * checked that the receiver is an instance of an instance field's declaring class; and for
+         * static fields the offsets are into the known data arrays that hold the fields. So we can
+         * use read methods that do not perform further checks.
+         */
+        if (kind == JavaKind.Object) {
+            result = SubstrateMemoryAccessProviderImpl.readObjectUnchecked(baseObject, location, false, isVolatile);
+        } else {
+            result = SubstrateMemoryAccessProviderImpl.readPrimitiveUnchecked(kind, baseObject, location, kind.getByteCount() * 8, isVolatile);
         }
+        return result;
     }
 
     @Override
@@ -159,6 +171,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
         if (constant instanceof SubstrateObjectConstant) {
             return getImageHeapOffsetInternal((SubstrateObjectConstant) constant);
         }
+
         /* Primitive values, null values. */
         return 0;
     }
@@ -166,7 +179,12 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
     protected static int getImageHeapOffsetInternal(SubstrateObjectConstant constant) {
         Object object = SubstrateObjectConstant.asObject(constant);
         assert object != null;
-        if (Heap.getHeap().isInImageHeap(object)) {
+        /*
+         * Provide offsets only for objects in the primary image heap, any optimizations for
+         * auxiliary image heaps can lead to trouble when generated code and their objects are built
+         * into yet another auxiliary image and the object offsets change.
+         */
+        if (Heap.getHeap().isInPrimaryImageHeap(object)) {
             SignedWord base = (SignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());
             SignedWord offset = Word.objectToUntrackedPointer(object).subtract(base);
             return NumUtil.safeToInt(offset.rawValue());

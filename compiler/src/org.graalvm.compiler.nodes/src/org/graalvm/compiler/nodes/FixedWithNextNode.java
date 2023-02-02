@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
  * successor.
  */
 @NodeInfo
-public abstract class FixedWithNextNode extends FixedNode {
+public abstract class FixedWithNextNode extends FixedNode implements FixedWithNextNodeInterface {
     public static final NodeClass<FixedWithNextNode> TYPE = NodeClass.create(FixedWithNextNode.class);
 
     @Successor protected FixedNode next;
@@ -51,8 +51,9 @@ public abstract class FixedWithNextNode extends FixedNode {
         super(c, stamp);
     }
 
+    /* This method is final to ensure that it can be de-virtualized and inlined. */
     @Override
-    public FixedWithNextNode asNode() {
+    public final FixedWithNextNode asFixedWithNextNode() {
         return this;
     }
 }

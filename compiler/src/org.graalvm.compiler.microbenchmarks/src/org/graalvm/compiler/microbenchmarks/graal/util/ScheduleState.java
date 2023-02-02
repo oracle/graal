@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,13 +27,10 @@ package org.graalvm.compiler.microbenchmarks.graal.util;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 public class ScheduleState extends GraphState {
-
-    public SchedulePhase schedule;
 
     private final SchedulingStrategy selectedStrategy;
 
@@ -45,17 +42,15 @@ public class ScheduleState extends GraphState {
         this(SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
     }
 
-    @Override
-    public void beforeInvocation() {
-        schedule = new SchedulePhase(selectedStrategy);
-        super.beforeInvocation();
+    public SchedulingStrategy getSelectedStrategy() {
+        return selectedStrategy;
     }
 
     @Override
     protected StructuredGraph preprocessOriginal(StructuredGraph structuredGraph) {
         StructuredGraph g = super.preprocessOriginal(structuredGraph);
         GraalState graal = new GraalState();
-        PhaseSuite<HighTierContext> highTier = graal.backend.getSuites().getDefaultSuites(graal.options).getHighTier();
+        PhaseSuite<HighTierContext> highTier = graal.backend.getSuites().getDefaultSuites(graal.options, graal.backend.getTarget().arch).getHighTier();
         highTier.apply(g, new HighTierContext(graal.providers, graal.backend.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL));
         return g;
     }

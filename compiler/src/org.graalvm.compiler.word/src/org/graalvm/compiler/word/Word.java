@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,8 +23,6 @@
  * questions.
  */
 package org.graalvm.compiler.word;
-
-import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -50,6 +48,7 @@ import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -63,7 +62,7 @@ import sun.misc.Unsafe;
 
 public abstract class Word implements SignedWord, UnsignedWord, Pointer {
 
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     static {
         BoxFactoryImpl.initialize();
@@ -94,17 +93,20 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
      */
     public enum Opcode {
         NODE_CLASS,
-        NODE_CLASS_WITH_GUARD,
+        INTEGER_DIVISION_NODE_CLASS,
         COMPARISON,
         IS_NULL,
         IS_NON_NULL,
         NOT,
         READ_POINTER,
+        READ_POINTER_VOLATILE,
         READ_OBJECT,
         READ_BARRIERED,
+        READ_BARRIERED_VOLATILE,
         READ_HEAP,
         WRITE_POINTER,
         WRITE_POINTER_SIDE_EFFECT_FREE,
+        WRITE_POINTER_VOLATILE,
         WRITE_OBJECT,
         WRITE_BARRIERED,
         CAS_POINTER,
@@ -256,69 +258,69 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     }
 
     @Override
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = SignedDivNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = SignedDivNode.class)
     public Word signedDivide(SignedWord val) {
         return signedDivide((Word) val);
     }
 
     @Override
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = SignedDivNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = SignedDivNode.class)
     public Word signedDivide(int val) {
         return signedDivide(intParam(val));
     }
 
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = SignedDivNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = SignedDivNode.class)
     public Word signedDivide(Word val) {
         return box(unbox() / val.unbox());
     }
 
     @Override
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = UnsignedDivNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = UnsignedDivNode.class)
     public Word unsignedDivide(UnsignedWord val) {
         return unsignedDivide((Word) val);
     }
 
     @Override
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = UnsignedDivNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = UnsignedDivNode.class)
     public Word unsignedDivide(int val) {
         return signedDivide(intParam(val));
     }
 
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = UnsignedDivNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = UnsignedDivNode.class)
     public Word unsignedDivide(Word val) {
         return box(Long.divideUnsigned(unbox(), val.unbox()));
     }
 
     @Override
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = SignedRemNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = SignedRemNode.class)
     public Word signedRemainder(SignedWord val) {
         return signedRemainder((Word) val);
     }
 
     @Override
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = SignedRemNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = SignedRemNode.class)
     public Word signedRemainder(int val) {
         return signedRemainder(intParam(val));
     }
 
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = SignedRemNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = SignedRemNode.class)
     public Word signedRemainder(Word val) {
         return box(unbox() % val.unbox());
     }
 
     @Override
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = UnsignedRemNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = UnsignedRemNode.class)
     public Word unsignedRemainder(UnsignedWord val) {
         return unsignedRemainder((Word) val);
     }
 
     @Override
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = UnsignedRemNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = UnsignedRemNode.class)
     public Word unsignedRemainder(int val) {
         return signedRemainder(intParam(val));
     }
 
-    @Operation(opcode = Opcode.NODE_CLASS_WITH_GUARD, node = UnsignedRemNode.class)
+    @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = UnsignedRemNode.class)
     public Word unsignedRemainder(Word val) {
         return box(Long.remainderUnsigned(unbox(), val.unbox()));
     }
@@ -762,6 +764,10 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     }
 
     @Override
+    @Operation(opcode = Opcode.READ_POINTER_VOLATILE)
+    public native <T extends WordBase> T readWordVolatile(int offset, LocationIdentity locationIdentity);
+
+    @Override
     @Operation(opcode = Opcode.WRITE_POINTER)
     public void writeByte(WordBase offset, byte val, LocationIdentity locationIdentity) {
         UNSAFE.putByte(add((Word) offset).unbox(), val);
@@ -1144,6 +1150,10 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     public void writeObject(int offset, Object val) {
         writeObject(WordFactory.signed(offset), val);
     }
+
+    @Override
+    @Operation(opcode = Opcode.WRITE_POINTER_VOLATILE)
+    public native void writeWordVolatile(int offset, WordBase val);
 
     @Override
     @Operation(opcode = Opcode.CAS_POINTER)

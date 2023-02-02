@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,11 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
@@ -32,6 +36,15 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 
 public class WriteBarrierAdditionPhase extends BasePhase<CoreProviders> {
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        NotApplicable.ifApplied(this, StageFlag.BARRIER_ADDITION, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.MID_TIER_LOWERING, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.FSA, graphState));
+    }
+
     @SuppressWarnings("try")
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
@@ -41,6 +54,12 @@ public class WriteBarrierAdditionPhase extends BasePhase<CoreProviders> {
                 barrierSet.addBarriers(n);
             }
         }
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.BARRIER_ADDITION);
     }
 
     @Override

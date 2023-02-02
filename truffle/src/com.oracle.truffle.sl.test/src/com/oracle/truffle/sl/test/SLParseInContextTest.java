@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,10 +51,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -91,9 +88,7 @@ public class SLParseInContextTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
-
-                @CompilationFinal private ContextReference<Env> reference;
+            return new RootNode(this) {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -102,14 +97,13 @@ public class SLParseInContextTest {
 
                 @TruffleBoundary
                 private Object parseAndEval() {
-                    if (reference == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        this.reference = lookupContextReference(EvalLang.class);
-                    }
                     Source aPlusB = Source.newBuilder("sl", "a + b", "plus.sl").build();
-                    return reference.get().parsePublic(aPlusB, "a", "b").call(30, 12);
+                    return CONTEXT_REF.get(this).parsePublic(aPlusB, "a", "b").call(30, 12);
                 }
-            });
+            }.getCallTarget();
         }
+
+        private static final ContextReference<Env> CONTEXT_REF = ContextReference.create(EvalLang.class);
+
     }
 }

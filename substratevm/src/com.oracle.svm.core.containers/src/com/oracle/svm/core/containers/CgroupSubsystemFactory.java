@@ -116,9 +116,15 @@ public class CgroupSubsystemFactory {
         // seen 0 hierarchy IDs in /proc/cgroups, we are on a cgroups v1 system.
         // However, continuing in that case does not make sense as we'd need
         // information from mountinfo for the mounted controller paths anyway.
-        for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(mountInfo))) {
-            boolean anyCgroupMounted = line.contains("cgroup");
-            if (!anyCgroupMounted && isCgroupsV2) {
+        if (isCgroupsV2) {
+            boolean anyCgroupMounted = false;
+            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(mountInfo))) {
+                if (line.contains("cgroup")) {
+                    anyCgroupMounted = true;
+                    break;
+                }
+            }
+            if (!anyCgroupMounted) {
                 return Optional.empty();
             }
         }

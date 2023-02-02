@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,30 +31,24 @@ package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMAMD64SyscallRtSigprocmaskNode extends LLVMSyscallOperationNode {
 
     /**
      * @param how
-     * @param set
-     * @param oldset
+     * @param set Can be {@code long} or {@link LLVMPointer}.
+     * @param oldset Can be {@code long} or {@link LLVMPointer}.
      * @param sigsetsize
-     * @see #execute(Object, Object, Object, Object, Object, Object)
+     * @see #executeGeneric(Object, Object, Object, Object, Object, Object)
      */
     @Specialization
-    protected long doI64(long how, LLVMPointer set, LLVMPointer oldset, long sigsetsize) {
+    protected long doIt(long how, Object set, Object oldset, long sigsetsize) {
         return -LLVMAMD64Error.ENOSYS;
     }
 
     @Override
     public final String getName() {
         return "rt_sigprocmask";
-    }
-
-    @Specialization
-    protected long doI64(long how, long set, long oldset, long sigsetsize) {
-        return doI64(how, LLVMNativePointer.create(set), LLVMNativePointer.create(oldset), sigsetsize);
     }
 }

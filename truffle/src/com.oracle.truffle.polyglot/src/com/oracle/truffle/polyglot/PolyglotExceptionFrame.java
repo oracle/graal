@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,8 +68,8 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         this.rootName = rootName;
         this.host = isHost;
         this.stackTrace = stackTrace;
-        if (!isHostFrame()) {
-            this.formattedSource = formatSource(sourceLocation, source.getFileSystemContext(language));
+        if (!isHost) {
+            this.formattedSource = formatSource(sourceLocation, language != null ? source.getFileSystemContext(language) : null);
         } else {
             this.formattedSource = null;
         }
@@ -159,8 +159,8 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             if (callNode != null) {
                 com.oracle.truffle.api.source.SourceSection section = callNode.getEncapsulatingSourceSection();
                 if (section != null) {
-                    Source source = engine.getAPIAccess().newSource(section.getSource());
-                    location = engine.getAPIAccess().newSourceSection(source, section);
+                    Source source = engine.getAPIAccess().newSource(exception.polyglot.getSourceDispatch(), section.getSource());
+                    location = engine.getAPIAccess().newSourceSection(source, exception.polyglot.getSourceSectionDispatch(), section);
                 } else {
                     location = null;
                 }

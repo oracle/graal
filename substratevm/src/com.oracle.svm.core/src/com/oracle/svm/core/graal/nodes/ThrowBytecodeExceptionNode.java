@@ -25,8 +25,8 @@
 package com.oracle.svm.core.graal.nodes;
 
 import static org.graalvm.compiler.nodeinfo.InputType.State;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import java.util.List;
 
@@ -49,7 +49,7 @@ import org.graalvm.compiler.nodes.spi.NodeWithState;
  * It is used to simplify the graph structure when the result of a {@link BytecodeExceptionNode}
  * would directly feed into a {@link UnwindNode} anyway.
  */
-@NodeInfo(cycles = CYCLES_8, cyclesRationale = "Node will be lowered to a foreign call.", size = SIZE_8)
+@NodeInfo(cycles = CYCLES_2, cyclesRationale = "Node will be lowered to a foreign call.", size = SIZE_2)
 public final class ThrowBytecodeExceptionNode extends ControlSinkNode implements NodeWithState, Lowerable {
     public static final NodeClass<ThrowBytecodeExceptionNode> TYPE = NodeClass.create(ThrowBytecodeExceptionNode.class);
 

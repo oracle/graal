@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,6 +56,7 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.DistributionType;
 import org.graalvm.component.installer.model.StabilityLevel;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -234,14 +235,13 @@ public class DirectoryStorageTest extends CommandTestBase {
         ComponentInfo info = loadLastComponent("fastr-2");
         assertEquals("org.graalvm.fastr", info.getId());
 
-        assertTrue(info.isPolyglotRebuild());
         assertTrue(info.getWorkingDirectories().contains("jre/languages/test/scrap"));
         assertTrue(info.getWorkingDirectories().contains("jre/lib/test/scrapdir"));
     }
 
     /**
      * Should strip whitespaces around.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -256,7 +256,7 @@ public class DirectoryStorageTest extends CommandTestBase {
 
     /**
      * Should strip whitespaces around.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -421,6 +421,8 @@ public class DirectoryStorageTest extends CommandTestBase {
         List<String> golden = Files.readAllLines(dataFile("golden-save-component.properties")).stream()
                         .filter((l) -> !l.startsWith("#"))
                         .collect(Collectors.toList());
+        golden.sort(String.CASE_INSENSITIVE_ORDER);
+        lines.sort(String.CASE_INSENSITIVE_ORDER);
 
         assertEquals(golden, lines);
 
@@ -441,6 +443,8 @@ public class DirectoryStorageTest extends CommandTestBase {
         List<String> golden = Files.readAllLines(dataFile("golden-save-component2.properties")).stream()
                         .filter((l) -> !l.startsWith("#"))
                         .collect(Collectors.toList());
+        golden.sort(String.CASE_INSENSITIVE_ORDER);
+        lines.sort(String.CASE_INSENSITIVE_ORDER);
 
         assertEquals(golden, lines);
 
@@ -449,7 +453,6 @@ public class DirectoryStorageTest extends CommandTestBase {
     @Test
     public void saveComponentOptionalTags() throws Exception {
         ComponentInfo info = new ComponentInfo("x", "y", "2.0");
-        info.setPolyglotRebuild(true);
         info.addWorkingDirectories(Arrays.asList(
                         "jre/languages/test/scrap",
                         "jre/lib/test/scrapdir"));
@@ -465,6 +468,8 @@ public class DirectoryStorageTest extends CommandTestBase {
         List<String> golden = Files.readAllLines(dataFile("golden-save-optional.properties")).stream()
                         .filter((l) -> !l.startsWith("#"))
                         .collect(Collectors.toList());
+        golden.sort(String.CASE_INSENSITIVE_ORDER);
+        lines.sort(String.CASE_INSENSITIVE_ORDER);
 
         assertEquals(golden, lines);
 
@@ -486,6 +491,8 @@ public class DirectoryStorageTest extends CommandTestBase {
         List<String> golden = Files.readAllLines(dataFile("golden-save-filelist.properties")).stream()
                         .filter((l) -> !l.startsWith("#"))
                         .collect(Collectors.toList());
+        golden.sort(String.CASE_INSENSITIVE_ORDER);
+        lines.sort(String.CASE_INSENSITIVE_ORDER);
 
         assertEquals(golden, lines);
     }
@@ -505,7 +512,7 @@ public class DirectoryStorageTest extends CommandTestBase {
 
     /**
      * URLs contain characters not representable in filesystem, check they are transliterated.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -526,7 +533,7 @@ public class DirectoryStorageTest extends CommandTestBase {
 
     /**
      * Acceptance test must use transliteration, too.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -542,7 +549,7 @@ public class DirectoryStorageTest extends CommandTestBase {
 
     /**
      * When listing licenses, Ids cannot be transliterated back, so they are stored\ aside.
-     * 
+     *
      * @throws Exception
      */
     @Test
@@ -709,5 +716,37 @@ public class DirectoryStorageTest extends CommandTestBase {
         assertEquals(1, loaded.size());
         ComponentInfo compare = loaded.iterator().next();
         assertEquals(StabilityLevel.Experimental_Earlyadopter, compare.getStability());
+    }
+
+    /**
+     * Checks that the hardcoded core component declares stability level.
+     */
+    @Test
+    public void testDefaultCoreHasStability() throws Exception {
+        Files.copy(dataFile("release_simple.properties"), graalVMPath.resolve("release"));
+        copyDir("emptylist", registryPath);
+        Set<ComponentInfo> loaded = storage.loadComponentMetadata(BundleConstants.GRAAL_COMPONENT_ID);
+        assertEquals(1, loaded.size());
+        ComponentInfo ci = loaded.iterator().next();
+        assertNotNull(ci);
+        assertEquals(StabilityLevel.Supported, ci.getStability());
+        assertFalse(ci.isNativeComponent());
+        assertEquals(DistributionType.BUNDLED, ci.getDistributionType());
+    }
+
+    /**
+     * Checks that the core component registration is loaded, if present.
+     */
+    @Test
+    public void testExplicitCoreMetadata() throws Exception {
+        Files.copy(dataFile("release_simple.properties"), graalVMPath.resolve("release"));
+        Files.copy(dataFile("graalvmcore.properties"), registryPath.resolve(BundleConstants.GRAAL_COMPONENT_ID + ".component"));
+        Set<ComponentInfo> loaded = storage.loadComponentMetadata(BundleConstants.GRAAL_COMPONENT_ID);
+        assertEquals(1, loaded.size());
+        ComponentInfo ci = loaded.iterator().next();
+        assertNotNull(ci);
+        assertEquals(StabilityLevel.Experimental, ci.getStability());
+        assertFalse(ci.isNativeComponent());
+        assertEquals(DistributionType.BUNDLED, ci.getDistributionType());
     }
 }

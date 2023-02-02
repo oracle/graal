@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,8 +42,8 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -93,7 +93,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         assert keySuccessors.length == keys.length + 1;
         assert keySuccessors.length == profileData.getKeyProbabilities().length;
         this.keys = keys;
-        areKeysContiguous = keys.length < 2 || keys[keys.length - 1] - keys[0] + 1 == keys.length;
+        areKeysContiguous = keys.length > 0 && keys[keys.length - 1] - keys[0] + 1 == keys.length;
         assert value.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp && value.stamp(NodeView.DEFAULT).getStackKind().isNumericInteger();
         assert assertSorted();
         assert assertNoUntargettedSuccessor();
@@ -148,7 +148,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
     @Override
     public int keyCount() {
-        return keys.length;
+        return keys == null ? 0 : keys.length;
     }
 
     @Override

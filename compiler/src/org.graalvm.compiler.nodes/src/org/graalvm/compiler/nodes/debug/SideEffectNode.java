@@ -74,4 +74,7 @@ public class SideEffectNode extends AbstractMemoryCheckpoint implements LIRLower
         return LocationIdentity.any();
     }
 
+    public ValueNode getValue() {
+        return value;
+    }
 }

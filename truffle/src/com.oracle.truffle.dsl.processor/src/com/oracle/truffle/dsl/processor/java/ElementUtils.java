@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,16 +48,15 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
@@ -83,8 +82,8 @@ import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -102,6 +101,36 @@ public class ElementUtils {
         TypeElement typeElement = context.getTypeElement(type);
         for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
             if (method.getSimpleName().toString().equals(methodName)) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    public static List<Element> getEnumValues(TypeElement type) {
+        List<Element> values = new ArrayList<>();
+        for (Element element : type.getEnclosedElements()) {
+            if (element.getKind() == ElementKind.ENUM_CONSTANT) {
+                values.add(element);
+            }
+        }
+        return values;
+    }
+
+    public static ExecutableElement findMethod(DeclaredType type, String methodName, int parameterCount) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        TypeElement typeElement = context.getTypeElement(type);
+        for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
+            if (method.getParameters().size() == parameterCount && method.getSimpleName().toString().equals(methodName)) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    public static ExecutableElement findStaticMethod(TypeElement type, String methodName) {
+        for (ExecutableElement method : ElementFilter.methodsIn(type.getEnclosedElements())) {
+            if (method.getModifiers().contains(Modifier.STATIC) && method.getSimpleName().toString().equals(methodName)) {
                 return method;
             }
         }
@@ -138,47 +167,8 @@ public class ElementUtils {
         }
     }
 
-    public static TypeMirror getType(ProcessingEnvironment processingEnv, Class<?> element) {
-        if (element.isArray()) {
-            return processingEnv.getTypeUtils().getArrayType(getType(processingEnv, element.getComponentType()));
-        }
-        if (element.isPrimitive()) {
-            if (element == void.class) {
-                return processingEnv.getTypeUtils().getNoType(TypeKind.VOID);
-            }
-            TypeKind typeKind;
-            if (element == boolean.class) {
-                typeKind = TypeKind.BOOLEAN;
-            } else if (element == byte.class) {
-                typeKind = TypeKind.BYTE;
-            } else if (element == short.class) {
-                typeKind = TypeKind.SHORT;
-            } else if (element == char.class) {
-                typeKind = TypeKind.CHAR;
-            } else if (element == int.class) {
-                typeKind = TypeKind.INT;
-            } else if (element == long.class) {
-                typeKind = TypeKind.LONG;
-            } else if (element == float.class) {
-                typeKind = TypeKind.FLOAT;
-            } else if (element == double.class) {
-                typeKind = TypeKind.DOUBLE;
-            } else {
-                assert false;
-                return null;
-            }
-            return processingEnv.getTypeUtils().getPrimitiveType(typeKind);
-        } else {
-            TypeElement typeElement = getTypeElement(processingEnv, element.getCanonicalName());
-            if (typeElement == null) {
-                return null;
-            }
-            return processingEnv.getTypeUtils().erasure(typeElement.asType());
-        }
-    }
-
-    public static TypeElement getTypeElement(final ProcessingEnvironment processingEnv, final CharSequence typeName) {
-        return ModuleCache.getTypeElement(processingEnv, typeName);
+    public static TypeElement getTypeElement(final CharSequence typeName) {
+        return ProcessorContext.getInstance().getTypeElement(typeName);
     }
 
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
@@ -202,7 +192,11 @@ public class ElementUtils {
     }
 
     public static VariableElement findVariableElement(DeclaredType type, String name) {
-        List<? extends VariableElement> elements = ElementFilter.fieldsIn(type.asElement().getEnclosedElements());
+        return findVariableElement(type.asElement(), name);
+    }
+
+    public static VariableElement findVariableElement(Element element, String name) {
+        List<? extends VariableElement> elements = ElementFilter.fieldsIn(element.getEnclosedElements());
         for (VariableElement variableElement : elements) {
             if (variableElement.getSimpleName().toString().equals(name)) {
                 return variableElement;
@@ -335,6 +329,39 @@ public class ElementUtils {
             builder.append(sep);
             builder.append(getSimpleName(var.asType()));
             sep = ", ";
+        }
+        builder.append(")");
+        return builder.toString();
+    }
+
+    public static boolean hasOverloads(TypeElement enclosingType, ExecutableElement e) {
+        String name = e.getSimpleName().toString();
+        for (ExecutableElement otherExecutable : ElementFilter.methodsIn(enclosingType.getEnclosedElements())) {
+            if (otherExecutable.getSimpleName().toString().equals(name)) {
+                if (!ElementUtils.elementEquals(e, otherExecutable)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static String getReadableSignature(ExecutableElement method, int highlightParameter) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(method.getSimpleName().toString());
+        builder.append("(");
+        VariableElement var = method.getParameters().get(highlightParameter);
+        if (highlightParameter > 0) {
+            // not first parameter
+            builder.append("..., ");
+        }
+
+        builder.append(getSimpleName(var.asType())).append(" ");
+        builder.append(var.getSimpleName().toString());
+
+        if (highlightParameter < method.getParameters().size() - 1) {
+            // not last
+            builder.append(", ...");
         }
         builder.append(")");
         return builder.toString();
@@ -504,7 +531,7 @@ public class ElementUtils {
             }
         }
 
-        // TODO more spec
+        // TODO GR-38632 more spec
         return false;
     }
 
@@ -1232,6 +1259,29 @@ public class ElementUtils {
         return superMethods;
     }
 
+    /**
+     * Determines whether {@code declaringElement} or any of its direct super types override a
+     * default interface method.
+     * <p>
+     * Any declaration of the given method and signature in the direct super type hierarchy - even
+     * if it is abstract - is considered to override the default method.
+     *
+     * @param declaringElement the type to check
+     * @param name the name of the default interface method
+     * @param params the signature of the method
+     * @return true if any the default method is overridden
+     */
+    public static boolean isDefaultMethodOverridden(TypeElement declaringElement, String name, TypeMirror... params) {
+        TypeElement element = declaringElement;
+        while (element != null) {
+            if (getDeclaredMethod(element, name, params) != null) {
+                return true;
+            }
+            element = getSuperType(element);
+        }
+        return false;
+    }
+
     public static boolean typeEquals(TypeMirror type1, TypeMirror type2) {
         if (type1 == type2) {
             return true;
@@ -1550,20 +1600,21 @@ public class ElementUtils {
     }
 
     public static List<TypeMirror> uniqueSortedTypes(Collection<TypeMirror> types, boolean reverse) {
+        return sortTypes(new ArrayList<>(uniqueTypes(types)), reverse);
+    }
+
+    @SuppressWarnings("cast")
+    public static Collection<TypeMirror> uniqueTypes(Collection<TypeMirror> types) {
         if (types.isEmpty()) {
-            return new ArrayList<>(0);
+            return types;
         } else if (types.size() <= 1) {
-            if (types instanceof List) {
-                return (List<TypeMirror>) types;
-            } else {
-                return new ArrayList<>(types);
-            }
+            return types;
         }
-        Map<String, TypeMirror> sourceTypes = new HashMap<>();
+        Map<String, TypeMirror> uniqueTypeMap = new LinkedHashMap<>();
         for (TypeMirror type : types) {
-            sourceTypes.put(ElementUtils.getUniqueIdentifier(type), type);
+            uniqueTypeMap.put(ElementUtils.getUniqueIdentifier(type), type);
         }
-        return sortTypes(new ArrayList<>(sourceTypes.values()), reverse);
+        return uniqueTypeMap.values();
     }
 
     public static int compareMethod(ExecutableElement method1, ExecutableElement method2) {
@@ -1690,8 +1741,17 @@ public class ElementUtils {
                 parent = getReadableReference(relativeTo, element.getEnclosingElement());
                 return parent + "." + getReadableSignature((ExecutableElement) element);
             case PARAMETER:
-                parent = getReadableReference(relativeTo, element.getEnclosingElement());
-                return parent + " parameter " + element.getSimpleName().toString();
+                Element enclosing = element.getEnclosingElement();
+                if (enclosing instanceof ExecutableElement) {
+                    ExecutableElement method = (ExecutableElement) enclosing;
+                    int highlightIndex = method.getParameters().indexOf(element);
+                    if (highlightIndex != -1) {
+                        parent = getReadableReference(relativeTo, method.getEnclosingElement());
+                        return parent + "." + getReadableSignature(method, highlightIndex);
+                    }
+                }
+                parent = getReadableReference(relativeTo, enclosing);
+                return " parameter " + element.getSimpleName().toString() + " in " + parent;
             case FIELD:
                 parent = getReadableReference(relativeTo, element.getEnclosingElement());
                 return parent + "." + element.getSimpleName().toString();
@@ -1731,6 +1791,37 @@ public class ElementUtils {
             return b.toString();
         } else {
             return ProcessorContext.getInstance().getEnvironment().getElementUtils().getBinaryName(provider).toString();
+        }
+    }
+
+    public static final int COMPRESSED_POINTER_SIZE = 4;
+    public static final int COMPRESSED_HEADER_SIZE = 12;
+
+    public static int getCompressedReferenceSize(TypeMirror mirror) {
+        switch (mirror.getKind()) {
+            case BOOLEAN:
+            case BYTE:
+                return 1;
+            case SHORT:
+            case CHAR:
+                return 2;
+            case INT:
+            case FLOAT:
+                return 4;
+            case DOUBLE:
+            case LONG:
+                return 8;
+            case DECLARED:
+            case ARRAY:
+            case TYPEVAR:
+                return COMPRESSED_POINTER_SIZE;
+            case VOID:
+            case NULL:
+            case EXECUTABLE:
+                // unknown
+                return 0;
+            default:
+                throw new RuntimeException("Unknown type specified " + mirror.getKind());
         }
     }
 

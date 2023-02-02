@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,53 +35,52 @@
  */
 
 struct stat;
-
 struct stat64;
 
-int __xstat(int version, const char *path, struct stat *buf);
+int __sulong_stat(const char *path, struct stat *buf);
 
-int __fxstat(int version, int fd, struct stat *buf);
+int __sulong_fstat(int fd, struct stat *buf);
 
-int __lxstat(int version, const char *path, struct stat *buf);
+int __sulong_lstat(const char *path, struct stat *buf);
 
-int __fxstatat(int version, int fd, const char *path, struct stat *buf, int flag);
+int __sulong_fstatat(int fd, const char *path, struct stat *buf, int flag);
 
-int __xstat64(int version, const char *path, struct stat64 *buf);
+int __sulong_stat64(const char *path, struct stat64 *buf);
 
-int __fxstat64(int version, int fd, struct stat64 *buf);
+int __sulong_fstat64(int fd, struct stat64 *buf);
 
-int __lxstat64(int version, const char *path, struct stat64 *buf);
+int __sulong_lstat64(const char *path, struct stat64 *buf);
 
-int __fxstatat64(int version, int fd, const char *path, struct stat64 *buf, int flag);
+int __sulong_fstatat64(int fd, const char *path, struct stat64 *buf, int flag);
 
 int stat(const char *path, struct stat *buf) {
-    return __xstat(1, path, buf);
+    return __sulong_stat(path, buf);
 }
 
 int fstat(int fd, struct stat *buf) {
-    return __fxstat(1, fd, buf);
+    return __sulong_fstat(fd, buf);
 }
 
 int lstat(const char *path, struct stat *buf) {
-    return __lxstat(1, path, buf);
+    return __sulong_lstat(path, buf);
 }
 
 int fstatat(int fd, const char *path, struct stat *buf, int flag) {
-    return __fxstatat(1, fd, path, buf, flag);
+    return __sulong_fstatat(fd, path, buf, flag);
 }
 
 int stat64(const char *path, struct stat64 *buf) {
-    return __xstat64(1, path, buf);
+    return __sulong_stat64(path, buf);
 }
 
 int fstat64(int fd, struct stat64 *buf) {
-    return __fxstat64(1, fd, buf);
+    return __sulong_fstat64(fd, buf);
 }
 
 int lstat64(const char *path, struct stat64 *buf) {
-    return __lxstat64(1, path, buf);
+    return __sulong_lstat64(path, buf);
 }
 
 int fstatat64(int fd, const char *path, struct stat64 *buf, int flag) {
-    return __fxstatat64(1, fd, path, buf, flag);
+    return __sulong_fstatat64(fd, path, buf, flag);
 }

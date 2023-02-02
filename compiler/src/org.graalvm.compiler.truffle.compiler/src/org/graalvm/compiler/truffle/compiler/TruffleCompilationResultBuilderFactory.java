@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.Assumptions.Assumption;
 
 /**
  * A mechanism for Truffle to update a {@link CompilationResult} before it is
- * {@linkplain CompilationResult#close() closed} by the compiler.
+ * {@linkplain CompilationResult#close(OptionValues) closed} by the compiler.
  */
 class TruffleCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
 
@@ -66,7 +66,7 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
     }
 
     @Override
-    public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
+    public CompilationResultBuilder createBuilder(CodeGenProviders providers, FrameMap frameMap, Assembler<?> asm, DataBuilder dataBuilder, FrameContext frameContext,
                     OptionValues options, DebugContext debug, CompilationResult compilationResult, Register uncompressedNullRegister) {
         return new CompilationResultBuilder(providers, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister) {
             @Override

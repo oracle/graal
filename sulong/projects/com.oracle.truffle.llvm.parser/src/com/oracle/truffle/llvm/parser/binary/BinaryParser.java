@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,20 @@
  */
 package com.oracle.truffle.llvm.parser.binary;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.oracle.truffle.llvm.parser.coff.PEFile;
+import com.oracle.truffle.llvm.parser.coff.WindowsLibraryLocator;
+
+import org.graalvm.polyglot.io.ByteSequence;
+
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.coff.CoffFile;
+import com.oracle.truffle.llvm.parser.coff.PEExportSymbolsMapper;
+import com.oracle.truffle.llvm.parser.coff.CoffFile.ImageSectionHeader;
 import com.oracle.truffle.llvm.parser.elf.ElfDynamicSection;
 import com.oracle.truffle.llvm.parser.elf.ElfFile;
 import com.oracle.truffle.llvm.parser.elf.ElfLibraryLocator;
@@ -39,15 +52,10 @@ import com.oracle.truffle.llvm.parser.macho.MachOLibraryLocator;
 import com.oracle.truffle.llvm.parser.macho.Xar;
 import com.oracle.truffle.llvm.parser.scanner.BitStream;
 import com.oracle.truffle.llvm.runtime.DefaultLibraryLocator;
+import com.oracle.truffle.llvm.runtime.ExportSymbolsMapper;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.Magic;
-import org.graalvm.polyglot.io.ByteSequence;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Parses a binary {@linkplain ByteSequence file} and returns the embedded {@linkplain ByteSequence
@@ -56,8 +64,10 @@ import java.util.List;
 public final class BinaryParser {
 
     private ArrayList<String> libraries = new ArrayList<>();
+    private String libraryName = null;
     private ArrayList<String> paths = new ArrayList<>();
     private LibraryLocator locator = DefaultLibraryLocator.INSTANCE;
+    private ExportSymbolsMapper exportSymbolsMapper = ExportSymbolsMapper.DEFAULT;
 
     public static Magic getMagic(BitStream b) {
         try {
@@ -86,7 +96,7 @@ public final class BinaryParser {
         if (bcSource != null) {
             LibraryLocator.traceParseBitcode(context, bcSource.getPath());
         }
-        return new BinaryParserResult(libraries, paths, bitcode, locator, bcSource);
+        return new BinaryParserResult(libraries, paths, bitcode, locator, exportSymbolsMapper, bcSource, libraryName);
     }
 
     public static String getOrigin(Source source) {
@@ -107,6 +117,9 @@ public final class BinaryParser {
     private ByteSequence parseBitcode(ByteSequence bytes, Source source) {
         BitStream b = BitStream.create(bytes);
         Magic magicWord = getMagic(b);
+        if (source != null) {
+            libraryName = source.getName();
+        }
         switch (magicWord) {
             case BC_MAGIC_WORD:
                 return bytes;
@@ -129,6 +142,10 @@ public final class BinaryParser {
                 if (dynamicSection != null) {
                     List<String> elfLibraries = dynamicSection.getDTNeeded();
                     libraries.addAll(elfLibraries);
+                    String soName = dynamicSection.getDTSOName();
+                    if (soName != null) {
+                        libraryName = soName;
+                    }
                     locator = new ElfLibraryLocator(elfFile, source);
                 }
                 long elfOffset = llvmbc.getOffset();
@@ -157,6 +174,25 @@ public final class BinaryParser {
                     return null;
                 }
                 return parseBitcode(xarBitcode, source);
+            case COFF_INTEL_AMD64:
+                CoffFile coffFile = CoffFile.create(source, bytes);
+                ImageSectionHeader coffBcSection = coffFile.getSection(".llvmbc");
+                if (coffBcSection == null) {
+                    // COFF File does not contain an .llvmbc section
+                    return null;
+                }
+                return parseBitcode(coffBcSection.getData(), source);
+            case MS_DOS:
+                PEFile peFile = PEFile.create(source, bytes);
+                ImageSectionHeader peBcSection = peFile.getCoffFile().getSection(".llvmbc");
+                if (peBcSection == null) {
+                    // PE/COFF File does not contain an .llvmbc section
+                    return null;
+                }
+                libraries.addAll(peFile.getImportLibraries());
+                exportSymbolsMapper = new PEExportSymbolsMapper(peFile);
+                locator = new WindowsLibraryLocator(source);
+                return parseBitcode(peBcSection.getData(), source);
             default:
                 return null;
         }

@@ -123,7 +123,7 @@ public class SpecializationFallthroughTest {
                         });
     }
 
-    /* TODO assert falltrough do1 before do2 */
+    /* TODO GR-38632 assert falltrough do1 before do2 */
     @NodeChildren({@NodeChild("a")})
     static class FallthroughTest1 extends ValueNode {
 

@@ -26,6 +26,7 @@ package com.oracle.svm.core.allocationprofile;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,11 +36,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.MetricsLogUtils;
 
 public final class AllocationSite {
@@ -125,7 +128,7 @@ public final class AllocationSite {
         return className.hashCode() ^ siteName.hashCode();
     }
 
-    private static final Comparator<AllocationSite> sitesComparator = new Comparator<AllocationSite>() {
+    private static final Comparator<AllocationSite> sitesComparator = new Comparator<>() {
         @Override
         public int compare(AllocationSite o1, AllocationSite o2) {
             return Long.compare(o2.cachedSize, o1.cachedSize);
@@ -159,6 +162,12 @@ public final class AllocationSite {
         sortedSites.sort(sitesComparator);
 
         return sortedSites;
+    }
+
+    public static RuntimeSupport.Hook getShutdownHook() {
+        return isFirstIsolate -> {
+            dumpProfilingResults();
+        };
     }
 
     public static void dumpProfilingResults() {
@@ -204,12 +213,17 @@ public final class AllocationSite {
     }
 }
 
-@AutomaticFeature
-class AllocationProfilingFeature implements Feature {
+@AutomaticallyRegisteredFeature
+class AllocationProfilingFeature implements InternalFeature {
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(RuntimeSupportFeature.class);
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (AllocationSite.Options.AllocationProfiling.getValue()) {
-            RuntimeSupport.getRuntimeSupport().addShutdownHook(AllocationSite::dumpProfilingResults);
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(AllocationSite.getShutdownHook());
         }
     }
 }

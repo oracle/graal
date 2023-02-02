@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -38,7 +39,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider {
+public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
 
     private final ResolvedJavaType original;
     private final ResolvedJavaType annotated;
@@ -49,10 +50,13 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
      */
     private final boolean isUserSubstitution;
 
+    private final ResolvedJavaField[][] instanceFields;
+
     public SubstitutionType(ResolvedJavaType original, ResolvedJavaType annotated, boolean isUserSubstitution) {
         this.annotated = annotated;
         this.original = original;
         this.isUserSubstitution = isUserSubstitution;
+        this.instanceFields = new ResolvedJavaField[][]{annotated.getInstanceFields(false), annotated.getInstanceFields(true)};
     }
 
     public boolean isUserSubstitution() {
@@ -65,6 +69,19 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
 
     public ResolvedJavaType getAnnotated() {
         return annotated;
+    }
+
+    void addInstanceField(ResolvedJavaField field) {
+        for (int i = 0; i < instanceFields.length; i++) {
+            ResolvedJavaField[] newFields = Arrays.copyOf(instanceFields[i], instanceFields[i].length + 1, ResolvedJavaField[].class);
+            newFields[newFields.length - 1] = field;
+            instanceFields[i] = newFields;
+        }
+    }
+
+    @Override
+    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
+        return instanceFields[includeSuperclasses ? 1 : 0];
     }
 
     @Override
@@ -215,28 +232,13 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     }
 
     @Override
-    public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        return annotated.getInstanceFields(includeSuperclasses);
-    }
-
-    @Override
     public ResolvedJavaField[] getStaticFields() {
         return annotated.getStaticFields();
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return annotated.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return annotated.getDeclaredAnnotations();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return annotated.getAnnotation(annotationClass);
+    public AnnotatedElement getAnnotationRoot() {
+        return annotated;
     }
 
     @Override
@@ -305,6 +307,7 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
         throw JVMCIError.unimplemented();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return original.getHostClass();
@@ -312,7 +315,7 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalClassProvider.getJavaClass(original);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,8 @@
 package org.graalvm.compiler.java;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 
 /**
  * Options related to {@link BytecodeParser}.
@@ -52,9 +52,6 @@ public class BytecodeParserOptions {
                    "the intrinsic does not support.", type = OptionType.Expert)
     public static final OptionKey<Boolean> InlinePartialIntrinsicExitDuringParsing = new OptionKey<>(true);
 
-    @Option(help = "Inlines intrinsic methods during bytecode parsing.", type = OptionType.Expert)
-    public static final OptionKey<Boolean> InlineIntrinsicsDuringParsing = new OptionKey<>(true);
-
     @Option(help = "Traces inlining performed during bytecode parsing.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceInlineDuringParsing = new OptionKey<>(false);
 
@@ -63,5 +60,8 @@ public class BytecodeParserOptions {
 
     @Option(help = "Maximum depth when inlining during bytecode parsing.", type = OptionType.Debug)
     public static final OptionKey<Integer> InlineDuringParsingMaxDepth = new OptionKey<>(10);
+
+    @Option(help = "Dump the current graph after every bci to IGV.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> DumpAfterEveryBCI = new OptionKey<>(false);
     // @formatter:on
 }

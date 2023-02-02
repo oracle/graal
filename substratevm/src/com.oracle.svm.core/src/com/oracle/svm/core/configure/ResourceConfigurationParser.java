@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,96 +24,124 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.io.IOException;
-import java.io.Reader;
+import java.net.URI;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
+import java.util.Locale;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
-import com.oracle.svm.core.util.json.JSONParser;
-import com.oracle.svm.core.util.json.JSONParserException;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.util.json.JSONParserException;
+
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
 public class ResourceConfigurationParser extends ConfigurationParser {
     private final ResourcesRegistry registry;
 
-    public <T> ResourceConfigurationParser(ResourcesRegistry registry) {
+    public ResourceConfigurationParser(ResourcesRegistry registry, boolean strictConfiguration) {
+        super(strictConfiguration);
         this.registry = registry;
     }
 
     @Override
-    public void parseAndRegister(Reader reader) throws IOException {
-        JSONParser parser = new JSONParser(reader);
-        Object json = parser.parse();
+    public void parseAndRegister(Object json, URI origin) {
         parseTopLevelObject(asMap(json, "first level of document must be an object"));
     }
 
     @SuppressWarnings("unchecked")
-    private void parseTopLevelObject(Map<String, Object> obj) {
+    private void parseTopLevelObject(EconomicMap<String, Object> obj) {
         Object resourcesObject = null;
         Object bundlesObject = null;
-        for (Map.Entry<String, Object> pair : obj.entrySet()) {
-            if ("resources".equals(pair.getKey())) {
-                resourcesObject = pair.getValue();
-            } else if ("bundles".equals(pair.getKey())) {
-                bundlesObject = pair.getValue();
-            } else {
-                throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: name) in resource definition");
+        MapCursor<String, Object> cursor = obj.getEntries();
+        while (cursor.advance()) {
+            if ("resources".equals(cursor.getKey())) {
+                resourcesObject = cursor.getValue();
+            } else if ("bundles".equals(cursor.getKey())) {
+                bundlesObject = cursor.getValue();
             }
         }
         if (resourcesObject != null) {
-            if (resourcesObject instanceof Map) { // New format
-                Object includesObject = null;
-                Object excludesObject = null;
-                for (Map.Entry<String, Object> pair : ((Map<String, Object>) resourcesObject).entrySet()) {
-                    if ("includes".equals(pair.getKey())) {
-                        includesObject = pair.getValue();
-                    } else if ("excludes".equals(pair.getKey())) {
-                        excludesObject = pair.getValue();
-                    } else {
-                        throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: name) in resource definition");
-                    }
-                }
+            if (resourcesObject instanceof EconomicMap) { // New format
+                EconomicMap<String, Object> resourcesObjectMap = (EconomicMap<String, Object>) resourcesObject;
+                checkAttributes(resourcesObjectMap, "resource descriptor object", Collections.singleton("includes"), Collections.singleton("excludes"));
+                Object includesObject = resourcesObjectMap.get("includes");
+                Object excludesObject = resourcesObjectMap.get("excludes");
 
                 List<Object> includes = asList(includesObject, "Attribute 'includes' must be a list of resources");
                 for (Object object : includes) {
-                    parseEntry(object, "pattern", registry::addResources, "resource descriptor object", "'includes' list");
+                    parseStringEntry(object, "pattern", registry::addResources, "resource descriptor object", "'includes' list");
                 }
 
                 if (excludesObject != null) {
                     List<Object> excludes = asList(excludesObject, "Attribute 'excludes' must be a list of resources");
                     for (Object object : excludes) {
-                        parseEntry(object, "pattern", registry::ignoreResources, "resource descriptor object", "'excludes' list");
+                        parseStringEntry(object, "pattern", registry::ignoreResources, "resource descriptor object", "'excludes' list");
                     }
                 }
             } else { // Old format: may be deprecated in future versions
                 List<Object> resources = asList(resourcesObject, "Attribute 'resources' must be a list of resources");
                 for (Object object : resources) {
-                    parseEntry(object, "pattern", registry::addResources, "resource descriptor object", "'resources' list");
+                    parseStringEntry(object, "pattern", registry::addResources, "resource descriptor object", "'resources' list");
                 }
             }
         }
         if (bundlesObject != null) {
             List<Object> bundles = asList(bundlesObject, "Attribute 'bundles' must be a list of bundles");
-            for (Object object : bundles) {
-                parseEntry(object, "name", registry::addResourceBundles, "bundle descriptor object", "'bundles' list");
+            for (Object bundle : bundles) {
+                parseBundle(bundle);
             }
         }
     }
 
-    private static void parseEntry(Object data, String valueKey, Consumer<String> registry, String expectedType, String parentType) {
-        Map<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a " + expectedType);
-        Object valueObject = null;
-        for (Map.Entry<String, Object> pair : resource.entrySet()) {
-            if (valueKey.equals(pair.getKey())) {
-                valueObject = pair.getValue();
-            } else {
-                throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: '" + valueKey + "') in " + expectedType);
+    private void parseBundle(Object bundle) {
+        EconomicMap<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
+        checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames", "condition"));
+        String basename = asString(resource.get("name"));
+        ConfigurationCondition condition = parseCondition(resource);
+        Object locales = resource.get("locales");
+        if (locales != null) {
+            List<Locale> asList = asList(locales, "Attribute 'locales' must be a list of locales")
+                            .stream()
+                            .map(ResourceConfigurationParser::parseLocale)
+                            .collect(Collectors.toList());
+            if (!asList.isEmpty()) {
+                registry.addResourceBundles(condition, basename, asList);
+            }
+
+        }
+        Object classNames = resource.get("classNames");
+        if (classNames != null) {
+            List<Object> asList = asList(classNames, "Attribute 'classNames' must be a list of classes");
+            for (Object o : asList) {
+                String className = asString(o);
+                registry.addClassBasedResourceBundle(condition, basename, className);
             }
         }
-        if (valueObject == null) {
-            throw new JSONParserException("Missing attribute '" + valueKey + "' in " + expectedType);
+        if (locales == null && classNames == null) {
+            /* If nothing more precise is specified, register in every included locale */
+            registry.addResourceBundles(condition, basename);
         }
+    }
+
+    private static Locale parseLocale(Object input) {
+        String localeTag = asString(input);
+        Locale locale = LocalizationSupport.parseLocaleFromTag(localeTag);
+        if (locale == null) {
+            throw new JSONParserException(localeTag + " is not a valid locale tag");
+        }
+        return locale;
+    }
+
+    private void parseStringEntry(Object data, String valueKey, BiConsumer<ConfigurationCondition, String> resourceRegistry, String expectedType, String parentType) {
+        EconomicMap<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a " + expectedType);
+        checkAttributes(resource, "resource and resource bundle descriptor object", Collections.singletonList(valueKey), Collections.singletonList(CONDITIONAL_KEY));
+        ConfigurationCondition condition = parseCondition(resource);
+        Object valueObject = resource.get(valueKey);
         String value = asString(valueObject, valueKey);
-        registry.accept(value);
+        resourceRegistry.accept(condition, value);
     }
 }

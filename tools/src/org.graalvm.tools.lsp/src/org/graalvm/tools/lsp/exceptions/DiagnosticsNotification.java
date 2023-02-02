@@ -38,6 +38,7 @@ import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
  * This is a utility diagnostics exception. When caught, the associated
  * {@link PublishDiagnosticsParams} are sent to the client.
  */
+@SuppressWarnings("serial")
 public final class DiagnosticsNotification extends Exception {
 
     private static final long serialVersionUID = 8517876447166873194L;

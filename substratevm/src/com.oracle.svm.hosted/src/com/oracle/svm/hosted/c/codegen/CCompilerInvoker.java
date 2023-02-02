@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,18 +40,21 @@ import java.util.Scanner;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.c.util.FileUtils;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -147,7 +150,12 @@ public abstract class CCompilerInvoker {
                     scanner.next();
                     targetArch = scanner.next();
                 }
-                if (scanner.findInLine("Microsoft.*\\(R\\) C/C\\+\\+") == null) {
+                /*
+                 * Some cl.exe print "... Microsoft (R) C/C++ ... ##.##.#####" while others print
+                 * "...C/C++ ... Microsoft (R) ... ##.##.#####".
+                 */
+                if (scanner.findInLine("Microsoft.*\\(R\\) C/C\\+\\+") == null &&
+                                scanner.findInLine("C/C\\+\\+.*Microsoft.*\\(R\\)") == null) {
                     return null;
                 }
                 scanner.useDelimiter("\\D");
@@ -179,8 +187,9 @@ public abstract class CCompilerInvoker {
                                 JavaVersionUtil.JAVA_SPEC, compilerInfo);
             }
             if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
-                UserError.abort("Native-image building on Windows currently only supports target architecture: %s (%s unsupported)",
-                                AMD64.class.getSimpleName(), compilerInfo.targetArch);
+                String targetPrefix = compilerInfo.targetArch.matches("(.*x|i\\d)86$") ? "32-bit architecture " : "";
+                UserError.abort("Native-image building on Windows currently only supports target architecture: %s (%s%s unsupported)",
+                                AMD64.class.getSimpleName(), targetPrefix, compilerInfo.targetArch);
             }
         }
 
@@ -192,8 +201,9 @@ public abstract class CCompilerInvoker {
              * implicit unsigned/signed conversions to detect signedness of types. `/wd4800`,
              * `/wd4804` are needed to silence warnings when querying bool types. `/wd4214` is
              * needed to make older versions of cl.exe accept bitfields larger than int-size.
+             * `/wd4201` enables the use of nameless struct/union, which is used by libffi.
              */
-            return Arrays.asList("/WX", "/W4", "/wd4244", "/wd4245", "/wd4800", "/wd4804", "/wd4214");
+            return Arrays.asList("/WX", "/W4", "/wd4201", "/wd4244", "/wd4245", "/wd4800", "/wd4804", "/wd4214");
         }
     }
 
@@ -205,7 +215,10 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected String getDefaultCompiler() {
-            return LibCBase.singleton().getTargetCompiler();
+            if (Platform.includedIn(Platform.LINUX.class)) {
+                return HostedLibCBase.singleton().getTargetCompiler();
+            }
+            return "gcc";
         }
 
         @Override
@@ -220,7 +233,7 @@ public abstract class CCompilerInvoker {
                 }
 
                 if (scanner.findInLine("clang version ") != null) {
-                    scanner.useDelimiter("[. ]");
+                    scanner.useDelimiter("[. -]");
                     int major = scanner.nextInt();
                     int minor0 = scanner.nextInt();
                     int minor1 = scanner.nextInt();
@@ -247,10 +260,10 @@ public abstract class CCompilerInvoker {
             Class<? extends Architecture> substrateTargetArch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch.getClass();
             Class<? extends Architecture> guessed = guessArchitecture(compilerInfo.targetArch);
             if (guessed == null) {
-                UserError.abort("Native toolchain (%s) has no matching native-image target architecture.", compilerInfo.targetArch);
+                UserError.abort("Linux native toolchain (%s) has no matching native-image target architecture.", compilerInfo.targetArch);
             }
             if (guessed != substrateTargetArch) {
-                UserError.abort("Native toolchain (%s) implies native-image target architecture %s but configured native-image target architecture is %s.",
+                UserError.abort("Linux native toolchain (%s) implies native-image target architecture %s but configured native-image target architecture is %s.",
                                 compilerInfo.targetArch, guessed, substrateTargetArch);
             }
         }
@@ -291,12 +304,23 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected void verify() {
-            if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
-                UserError.abort("Native-image building on Darwin currently only supports target architecture: %s (%s unsupported)",
-                                AMD64.class.getSimpleName(), compilerInfo.targetArch);
+            Class<? extends Architecture> substrateTargetArch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch.getClass();
+            Class<? extends Architecture> guessed = guessArchitecture(compilerInfo.targetArch);
+            if (guessed == null) {
+                UserError.abort("Darwin native toolchain (%s) has no matching native-image target architecture.", compilerInfo.targetArch);
+            }
+            if (guessed != substrateTargetArch) {
+                UserError.abort("Darwin native toolchain (%s) implies native-image target architecture %s but configured native-image target architecture is %s.",
+                                compilerInfo.targetArch, guessed, substrateTargetArch);
             }
         }
 
+        @Override
+        protected List<String> compileStrictOptions() {
+            List<String> strictOptions = new ArrayList<>(super.compileStrictOptions());
+            strictOptions.add("-Wno-tautological-compare");
+            return strictOptions;
+        }
     }
 
     protected InputStream getCompilerErrorStream(Process compilingProcess) {
@@ -324,8 +348,11 @@ public abstract class CCompilerInvoker {
             this.targetArch = targetArch;
         }
 
-        @Override
-        public String toString() {
+        public String getShortDescription() {
+            return String.format("%s (%s, %s, %d.%d.%d)", compilerPath.toFile().getName(), vendor, targetArch, versionMajor, versionMinor0, versionMinor1);
+        }
+
+        public String toCGlobalDataString() {
             return String.join("|", Arrays.asList(shortName, vendor, targetArch,
                             String.format("%d.%d.%d", versionMajor, versionMinor0, versionMinor1)));
         }
@@ -344,7 +371,7 @@ public abstract class CCompilerInvoker {
     private CompilerInfo getCCompilerInfo() {
         Path compilerPath = getCCompilerPath().toAbsolutePath();
         if (!SubstrateOptions.CheckToolchain.getValue()) {
-            return new CompilerInfo(compilerPath, null, getClass().getSimpleName(), null, 0, 0, 0, null);
+            return new CompilerInfo(compilerPath, null, ClassUtil.getUnqualifiedName(getClass()), null, 0, 0, 0, null);
         }
         List<String> compilerCommand = createCompilerCommand(compilerPath, getVersionInfoOptions(), null);
         Process compilerProcess = null;
@@ -410,9 +437,13 @@ public abstract class CCompilerInvoker {
             case "x64": /* Windows notation */
                 return AMD64.class;
             case "aarch64":
+            case "arm64": /* Darwin notation */
                 return AArch64.class;
+            case "riscv64":
+                return (Class<? extends Architecture>) RISCV64ReflectionUtil.getArch(false);
             case "i686":
             case "80x86": /* Windows notation */
+            case "x86":
                 /* Graal does not support 32-bit architectures */
             default:
                 return null;

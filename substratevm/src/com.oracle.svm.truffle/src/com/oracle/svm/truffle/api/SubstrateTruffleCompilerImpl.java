@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.truffle.api;
 
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
+
 import java.io.PrintStream;
 import java.util.Map;
 
@@ -42,6 +44,8 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
+import org.graalvm.compiler.truffle.compiler.phases.InstrumentationSuite;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -51,7 +55,7 @@ import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.truffle.SubstrateTruffleCompilationIdentifier;
-import com.oracle.svm.truffle.TruffleFeature;
+import com.oracle.svm.truffle.TruffleSupport;
 
 import jdk.vm.ci.code.InstalledCode;
 
@@ -62,13 +66,13 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleCompilerImpl(TruffleCompilerConfiguration config) {
         super(config);
-        compilerConfigurationName = GraalConfiguration.instance().getCompilerConfigurationName();
+        compilerConfigurationName = GraalConfiguration.runtimeInstance().getCompilerConfigurationName();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     protected PartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration configuration) {
-        return TruffleFeature.getSupport().createPartialEvaluator(configuration, builderConfig);
+        return TruffleSupport.singleton().createPartialEvaluator(configuration, builderConfig);
     }
 
     @Override
@@ -77,6 +81,13 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
         for (Backend backend : getConfig().backends()) {
             SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures(backend);
         }
+    }
+
+    @Override
+    protected TruffleTier newTruffleTier(org.graalvm.options.OptionValues options) {
+        return new TruffleTier(options, partialEvaluator,
+                        new InstrumentationSuite(partialEvaluator.instrumentationCfg, config.snippetReflection(), partialEvaluator.getInstrumentation()),
+                        new SubstratePostPartialEvaluationSuite(options.get(IterativePartialEscape)));
     }
 
     @Override

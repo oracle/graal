@@ -31,6 +31,7 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotExceptionDispatchPlugin.O
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
@@ -102,7 +103,7 @@ public final class HotSpotExceptionDispatchPlugin implements NodePlugin {
                 CurrentJavaThreadNode thread = graph.unique(new CurrentJavaThreadNode(wordKind));
                 ValueNode offset = graph.unique(ConstantNode.forLong(config.javaThreadShouldPostOnExceptionsFlagOffset));
                 AddressNode address = graph.unique(new OffsetAddressNode(thread, offset));
-                ReadNode shouldPostException = graph.add(new ReadNode(address, JAVA_THREAD_SHOULD_POST_ON_EXCEPTIONS_FLAG_LOCATION, StampFactory.intValue(), BarrierType.NONE));
+                ReadNode shouldPostException = graph.add(new ReadNode(address, JAVA_THREAD_SHOULD_POST_ON_EXCEPTIONS_FLAG_LOCATION, StampFactory.intValue(), BarrierType.NONE, MemoryOrderMode.PLAIN));
                 afterExceptionLoaded.setNext(shouldPostException);
                 ValueNode zero = graph.unique(ConstantNode.forInt(0));
                 LogicNode cond = graph.unique(new IntegerEqualsNode(shouldPostException, zero));

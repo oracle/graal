@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.phases.common;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
 
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.graph.Node;
@@ -38,6 +39,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -56,14 +58,14 @@ import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.NotNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.AccessMonitorNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.Phase;
@@ -102,12 +104,15 @@ public class ProfileCompiledMethodsPhase extends Phase {
     private static final boolean WITH_INVOKES = Boolean.parseBoolean(getProperty("ProfileCompiledMethodsPhase.WITH_INVOKES", "true"));
 
     @Override
-    protected void run(StructuredGraph graph) {
-        SchedulePhase schedule = new SchedulePhase(graph.getOptions());
-        schedule.apply(graph, false);
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
 
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
-        for (Loop<Block> loop : cfg.getLoops()) {
+    @Override
+    protected void run(StructuredGraph graph) {
+        SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.getDefaultStrategy(graph.getOptions()), true);
+        ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
+        for (Loop<HIRBlock> loop : cfg.getLoops()) {
             double loopProbability = cfg.blockFor(loop.getHeader().getBeginNode()).getRelativeFrequency();
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
                 addSectionCounters(loop.getHeader().getBeginNode(), loop.getBlocks(), loop.getChildren(), graph.getLastSchedule(), cfg);
@@ -124,16 +129,16 @@ public class ProfileCompiledMethodsPhase extends Phase {
             for (Node node : graph.getNodes()) {
                 if (node instanceof Invoke) {
                     Invoke invoke = (Invoke) node;
-                    DynamicCounterNode.addCounterBefore(GROUP_NAME_INVOKES, invoke.callTarget().targetName(), 1, true, invoke.asNode());
+                    DynamicCounterNode.addCounterBefore(GROUP_NAME_INVOKES, invoke.callTarget().targetName(), 1, true, invoke.asFixedNode());
 
                 }
             }
         }
     }
 
-    private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, ScheduleResult schedule, ControlFlowGraph cfg) {
-        HashSet<Block> blocks = new HashSet<>(sectionBlocks);
-        for (Loop<Block> loop : childLoops) {
+    private static void addSectionCounters(FixedWithNextNode start, Collection<HIRBlock> sectionBlocks, Collection<Loop<HIRBlock>> childLoops, ScheduleResult schedule, ControlFlowGraph cfg) {
+        HashSet<HIRBlock> blocks = new HashSet<>(sectionBlocks);
+        for (Loop<HIRBlock> loop : childLoops) {
             blocks.removeAll(loop.getBlocks());
         }
         long increment = DynamicCounterNode.clampIncrement((long) (getSectionWeight(schedule, blocks) / cfg.blockFor(start).getRelativeFrequency()));
@@ -151,9 +156,9 @@ public class ProfileCompiledMethodsPhase extends Phase {
         }
     }
 
-    private static double getSectionWeight(ScheduleResult schedule, Collection<Block> blocks) {
+    private static double getSectionWeight(ScheduleResult schedule, Collection<HIRBlock> blocks) {
         double count = 0;
-        for (Block block : blocks) {
+        for (HIRBlock block : blocks) {
             double blockProbability = block.getRelativeFrequency();
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
                 count += blockProbability * getNodeWeight(node);
@@ -170,7 +175,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
             return 0;
         } else if (node instanceof AccessMonitorNode) {
             return 10;
-        } else if (node instanceof MemoryAccess) {
+        } else if (node instanceof FloatingReadNode) {
             return 2;
         } else if (node instanceof LogicNode || node instanceof ConvertNode || node instanceof NotNode) {
             return 1;
@@ -194,9 +199,9 @@ public class ProfileCompiledMethodsPhase extends Phase {
         return 2;
     }
 
-    private static boolean hasInvoke(Collection<Block> blocks) {
+    private static boolean hasInvoke(Collection<HIRBlock> blocks) {
         boolean hasInvoke = false;
-        for (Block block : blocks) {
+        for (HIRBlock block : blocks) {
             for (FixedNode fixed : block.getNodes()) {
                 if (fixed instanceof Invoke) {
                     hasInvoke = true;

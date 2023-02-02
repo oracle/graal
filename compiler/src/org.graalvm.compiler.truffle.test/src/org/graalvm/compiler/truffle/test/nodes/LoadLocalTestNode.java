@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,15 @@
  */
 package org.graalvm.compiler.truffle.test.nodes;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class LoadLocalTestNode extends AbstractTestNode {
 
-    private final FrameSlot slot;
+    private final int slot;
 
-    public LoadLocalTestNode(String name, FrameDescriptor frameDescriptor) {
-        slot = frameDescriptor.findOrAddFrameSlot(name);
+    public LoadLocalTestNode(int index) {
+        slot = index;
     }
 
     @Override

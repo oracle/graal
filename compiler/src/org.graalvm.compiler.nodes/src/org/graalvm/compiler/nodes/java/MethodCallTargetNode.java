@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,6 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -46,6 +44,8 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
 
@@ -62,16 +62,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @NodeInfo
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Simplifiable {
     public static final NodeClass<MethodCallTargetNode> TYPE = NodeClass.create(MethodCallTargetNode.class);
-    protected JavaTypeProfile profile;
+    protected JavaTypeProfile typeProfile;
 
-    public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile profile) {
-        this(TYPE, invokeKind, targetMethod, arguments, returnStamp, profile);
+    public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile typeProfile) {
+        this(TYPE, invokeKind, targetMethod, arguments, returnStamp, typeProfile);
     }
 
     protected MethodCallTargetNode(NodeClass<? extends MethodCallTargetNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp,
-                    JavaTypeProfile profile) {
+                    JavaTypeProfile typeProfile) {
         super(c, arguments, targetMethod, invokeKind, returnStamp);
-        this.profile = profile;
+        this.typeProfile = typeProfile;
     }
 
     /**
@@ -138,9 +138,43 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
 
     public static ResolvedJavaMethod devirtualizeCall(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ResolvedJavaType contextType, Assumptions assumptions, Stamp receiverStamp) {
         TypeReference type = StampTool.typeReferenceOrNull(receiverStamp);
-        if (type == null && invokeKind == InvokeKind.Virtual) {
+        if (invokeKind == InvokeKind.Virtual) {
             // For virtual calls, we are guaranteed to receive a correct receiver type.
-            type = TypeReference.createTrusted(assumptions, targetMethod.getDeclaringClass());
+            TypeReference declaringType = TypeReference.createTrusted(assumptions, targetMethod.getDeclaringClass());
+            if (type == null) {
+                // Probably a word type, non-compatible stamp.
+                type = declaringType;
+            } else {
+                // @formatter:off
+                /* Consider the following hierarchy:
+                 *
+                 * abstract class Base {
+                 *     public String bar() { return "Base"; }
+                 * }
+                 *
+                 * abstract class AbstractBaseImpl extends Base {
+                 *     @Override public String bar() { return "AbstractBaseImpl"; }
+                 * }
+                 *
+                 * final class ConcreteImpl extends AbstractBaseImpl { }
+                 *
+                 * To de-virtualize virtual calls to Base::bar, Base.findUniqueConcreteMethod(bar) -> null won't work
+                 * because there are two possible concrete methods available: Base::bar and AbstractBaseImpl::bar.
+                 * To overcome this limitation, the lookup can be done from a concrete leaf type, if it exists.
+                 * e.g.
+                 *   Base.findLeafConcreteSubtype() -> ConcreteImpl
+                 *   then ConcreteImpl.findUniqueConcreteMethod(bar) -> AbstractBaseImpl::bar
+                 *
+                 * By doing the lookup from a concrete leaf type, de-virtualization is more effective since we are 
+                 * looking up in the class hierarchy rather than down.
+                 */
+                // @formatter:on
+                // Narrow the receiver type to a unique concrete subtype, if it exists.
+                Stamp improvedStamp = receiverStamp.tryImproveWith(StampFactory.object(declaringType));
+                if (improvedStamp != null) {
+                    type = StampTool.typeReferenceOrNull(improvedStamp);
+                }
+            }
         }
 
         if (type != null) {
@@ -171,20 +205,28 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             return;
         }
         ResolvedJavaType contextType = (invoke().stateAfter() == null && invoke().stateDuring() == null) ? null : invoke().getContextType();
-        ResolvedJavaMethod specialCallTarget = findSpecialCallTarget(invokeKind, receiver(), targetMethod, contextType);
-        if (specialCallTarget != null) {
-            this.setTargetMethod(specialCallTarget);
-            setInvokeKind(InvokeKind.Special);
+        if (trySimplifyToSpecial(contextType)) {
             return;
         }
 
         if (invokeKind.isInterface()) {
-            MethodCallTargetNode result = tryDevirtualizeInterfaceCall(receiver(), targetMethod, profile, graph().getAssumptions(), contextType, this, invoke().asNode());
+            MethodCallTargetNode result = tryDevirtualizeInterfaceCall(receiver(), targetMethod, typeProfile, graph().getAssumptions(), contextType, this, invoke().asFixedNode());
             assert result == this;
         }
     }
 
-    public static MethodCallTargetNode tryDevirtualizeInterfaceCall(ValueNode receiver, ResolvedJavaMethod targetMethod, JavaTypeProfile profile, Assumptions assumptions, ResolvedJavaType contextType,
+    private boolean trySimplifyToSpecial(ResolvedJavaType contextType) {
+        ResolvedJavaMethod specialCallTarget = findSpecialCallTarget(invokeKind, receiver(), targetMethod, contextType);
+        if (specialCallTarget != null) {
+            this.setTargetMethod(specialCallTarget);
+            setInvokeKind(InvokeKind.Special);
+            return true;
+        }
+        return false;
+    }
+
+    public static MethodCallTargetNode tryDevirtualizeInterfaceCall(ValueNode receiver, ResolvedJavaMethod targetMethod, JavaTypeProfile profile,
+                    Assumptions assumptions, ResolvedJavaType contextType,
                     MethodCallTargetNode callTarget, FixedNode insertionPoint) {
         if (assumptions == null) {
             /*
@@ -233,6 +275,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 }
             }
         }
+
+        callTarget.trySimplifyToSpecial(contextType);
         return callTarget;
     }
 
@@ -255,7 +299,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                  * properties by checking of the receiver is an instance of the single implementor.
                  */
                 StructuredGraph graph = insertionPoint.graph();
-                AnchoringNode anchor = BeginNode.prevBegin(insertionPoint);
+                // only anchor the instanceof if the profile is not null
+                AnchoringNode anchor = profile != null ? BeginNode.prevBegin(insertionPoint) : null;
                 LogicNode condition = graph.addOrUniqueWithInputs(InstanceOfNode.create(speculatedType, receiver, profile, anchor));
                 FixedGuardNode guard = graph.add(new FixedGuardNode(condition, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false));
                 graph.addBeforeFixed(insertionPoint, guard);
@@ -276,14 +321,16 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                     arguments[0] = valueNode;
                     callTargetResult = new MethodCallTargetNode(invokeKind, singleImplementorMethod, arguments, callTarget.returnStamp, profile);
                 }
+                // Virtual calls can be further de-virtualized.
+                callTargetResult.trySimplifyToSpecial(contextType);
                 return callTargetResult;
             }
         }
         return null;
     }
 
-    public JavaTypeProfile getProfile() {
-        return profile;
+    public JavaTypeProfile getTypeProfile() {
+        return typeProfile;
     }
 
     @Override
@@ -304,6 +351,6 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     }
 
     public void setJavaTypeProfile(JavaTypeProfile profile) {
-        this.profile = profile;
+        this.typeProfile = profile;
     }
 }

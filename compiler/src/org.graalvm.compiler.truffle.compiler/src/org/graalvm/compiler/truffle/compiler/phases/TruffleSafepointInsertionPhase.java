@@ -66,9 +66,11 @@ public final class TruffleSafepointInsertionPhase extends Phase {
     private final Providers providers;
     private final ResolvedJavaType nodeType;
     private final ResolvedJavaType rootNodeType;
+    private final ResolvedJavaType osrRootNodeType;
     private final ResolvedJavaType callTargetClass;
     private final ResolvedJavaField rootNodeField;
     private final ResolvedJavaField parentField;
+    private final ResolvedJavaField loopNodeField;
     private final ResolvedJavaMethod executeRootMethod;
 
     public TruffleSafepointInsertionPhase(Providers providers) {
@@ -76,10 +78,12 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
         this.nodeType = rt.resolveType(providers.getMetaAccess(), com.oracle.truffle.api.nodes.Node.class.getName());
         this.rootNodeType = rt.resolveType(providers.getMetaAccess(), RootNode.class.getName());
+        this.osrRootNodeType = rt.resolveType(providers.getMetaAccess(), "org.graalvm.compiler.truffle.runtime.BaseOSRRootNode");
         this.callTargetClass = rt.resolveType(providers.getMetaAccess(), "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget");
         this.executeRootMethod = findMethod(callTargetClass, "executeRootNode");
         this.rootNodeField = findField(callTargetClass, "rootNode");
         this.parentField = findField(nodeType, "parent");
+        this.loopNodeField = findField(osrRootNodeType, "loopNode");
     }
 
     public static boolean allowsSafepoints(StructuredGraph graph) {
@@ -132,12 +136,12 @@ public final class TruffleSafepointInsertionPhase extends Phase {
             JavaConstant javaConstant = ((TruffleCompilationIdentifier) graph.compilationId()).getCompilable().asJavaConstant();
             JavaConstant rootNode = providers.getConstantReflection().readFieldValue(rootNodeField, javaConstant);
             ObjectStamp stamp = StampFactory.object(TypeReference.createExactTrusted(rootNodeField.getType().resolve(callTargetClass)));
-            node = new ConstantNode(rootNode, stamp);
+            node = new ConstantNode(skipOSRRoot(rootNode), stamp);
         }
 
         assert node.asJavaConstant() != null : "must be a java constant";
         assert nodeType.isAssignableFrom(node.stamp(NodeView.DEFAULT).javaType(providers.getMetaAccess())) : "must be a truffle node";
-        node = graph.maybeAddOrUnique(node);
+        node = graph.addOrUnique(node);
         graph.addBeforeFixed(returnNode, graph.add(new TruffleSafepointNode(node)));
     }
 
@@ -185,12 +189,12 @@ public final class TruffleSafepointInsertionPhase extends Phase {
             // not an interesting receiver type
             return null;
         }
-        if (state.values() == null || state.values().size() == 0) {
-            // not enough values
+        if (state.localsSize() == 0) {
+            // not enough locals
             return null;
         }
-        // receiver type is located at index 0
-        ValueNode value = state.values().get(0);
+        // receiver type is local 0
+        ValueNode value = state.localAt(0);
         if (value == null) {
             // no receiver value available
             return null;
@@ -224,7 +228,19 @@ public final class TruffleSafepointInsertionPhase extends Phase {
             rootNode = providers.getConstantReflection().readFieldValue(rootNodeField, javaConstant);
             stamp = StampFactory.object(TypeReference.createExactTrusted(rootNodeField.getType().resolve(callTargetClass)));
         }
-        return new ConstantNode(rootNode, stamp);
+        return new ConstantNode(skipOSRRoot(rootNode), stamp);
+    }
+
+    private JavaConstant skipOSRRoot(JavaConstant rootNode) {
+        ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(rootNode);
+        if (osrRootNodeType.isAssignableFrom(type)) {
+            JavaConstant loopNode = providers.getConstantReflection().readFieldValue(loopNodeField, rootNode);
+            if (loopNode.isNull()) {
+                throw GraalError.shouldNotReachHere(String.format("%s must never be null but is for node %s.", loopNodeField.toString(), rootNode));
+            }
+            return getRootNode(loopNode);
+        }
+        return rootNode;
     }
 
     private JavaConstant getRootNode(JavaConstant node) {

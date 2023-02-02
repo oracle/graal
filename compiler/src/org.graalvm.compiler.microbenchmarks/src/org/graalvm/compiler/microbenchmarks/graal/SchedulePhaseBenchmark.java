@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,12 @@
  */
 package org.graalvm.compiler.microbenchmarks.graal;
 
-import java.util.Arrays;
-
-import org.graalvm.compiler.phases.schedule.SchedulePhase;
-import org.openjdk.jmh.annotations.Benchmark;
-
 import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
 import org.graalvm.compiler.microbenchmarks.graal.util.ScheduleState;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
+import org.openjdk.jmh.annotations.Benchmark;
 
 public class SchedulePhaseBenchmark extends GraalBenchmark {
 
@@ -42,7 +39,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void stringEquals(StringEquals s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph);
     }
 
     @Benchmark
@@ -77,9 +74,15 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
             }
         }
         if (next < result.length) {
-            result = Arrays.copyOf(result, next);
+            result = copyOf(result, next);
         }
         return result;
+    }
+
+    private static int[] copyOf(int[] original, int newLength) {
+        int[] copy = new int[newLength];
+        System.arraycopy(original, 0, copy, 0, Math.min(original.length, newLength));
+        return copy;
     }
 
     // Checkstyle: stop method name check
@@ -92,7 +95,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void intersection_LATEST_OPTIMAL(IntersectionState_LATEST_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhaseBenchmark.class, name = "intersectionSnippet")
@@ -104,7 +107,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void intersection_LATEST_OUT_OF_LOOPS_OPTIMAL(IntersectionState_LATEST_OUT_OF_LOOPS_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhaseBenchmark.class, name = "intersectionSnippet")
@@ -116,7 +119,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void intersection_EARLIEST_OPTIMAL(IntersectionState_EARLIEST_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhaseBenchmark.class, name = "intersectionSnippet")
@@ -128,7 +131,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void intersection_EARLIEST_WITH_GUARD_ORDER_OPTIMAL(IntersectionState_EARLIEST_WITH_GUARD_ORDER_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
     // Checkstyle: resume method name check
 
@@ -142,7 +145,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void scheduleEarliestIterative_LATEST_OPTIMAL(ScheduleEarliestIterative_LATEST_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "scheduleEarliestIterative")
@@ -154,7 +157,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void scheduleEarliestIterative_LATEST_OUT_OF_LOOPS_OPTIMAL(ScheduleEarliestIterative_LATEST_OUT_OF_LOOPS_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "scheduleEarliestIterative")
@@ -166,7 +169,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void scheduleEarliestIterative_EARLIEST_OPTIMAL(ScheduleEarliestIterative_EARLIEST_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
 
     @MethodSpec(declaringClass = SchedulePhase.Instance.class, name = "scheduleEarliestIterative")
@@ -178,7 +181,7 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void scheduleEarliestIterative_EARLIEST_WITH_GUARD_ORDER_OPTIMAL(ScheduleEarliestIterative_EARLIEST_WITH_GUARD_ORDER_OPTIMAL s) {
-        s.schedule.apply(s.graph);
+        SchedulePhase.runWithoutContextOptimizations(s.graph, s.getSelectedStrategy());
     }
     // Checkstyle: resume method name check
 }

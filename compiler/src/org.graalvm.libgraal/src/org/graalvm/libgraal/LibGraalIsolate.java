@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,8 +133,9 @@ public final class LibGraalIsolate {
 
     /**
      * Notifies that the {@code JavaVM} associated with {@code isolate} has been destroyed. All
-     * subsequent accesses to objects in the isolate will throw an {@link IllegalArgumentException}.
-     * Called by {@code LibGraalFeature#shutdownLibGraal} using JNI.
+     * subsequent accesses to objects in the isolate will throw an
+     * {@link DestroyedIsolateException}. Called by {@code LibGraalFeature#shutdownLibGraal} using
+     * JNI.
      */
     static synchronized void unregister(long isolateId) {
         LibGraalIsolate isolate = isolates.remove(isolateId);

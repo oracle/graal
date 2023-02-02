@@ -25,10 +25,11 @@
 package org.graalvm.compiler.truffle.test;
 
 import static com.oracle.truffle.api.test.ArrayUtilsTest.toByteArray;
+import static com.oracle.truffle.api.test.ArrayUtilsTest.toCharArray;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.truffle.compiler.amd64.substitutions.TruffleAMD64InvocationPlugins;
+import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -41,7 +42,7 @@ public class ArrayUtilsIndexOfWithMaskTest extends GraalCompilerTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        new TruffleAMD64InvocationPlugins().registerInvocationPlugins(getProviders(), getBackend().getTarget().arch, invocationPlugins, true);
+        TruffleInvocationPlugins.register(getBackend().getTarget().arch, invocationPlugins, getReplacements());
         super.registerInvocationPlugins(invocationPlugins);
     }
 
@@ -84,7 +85,7 @@ public class ArrayUtilsIndexOfWithMaskTest extends GraalCompilerTest {
     }
 
     public static int indexOfWithORMaskCharArray(String haystack, int fromIndex, int maxIndex, String needle, String mask) {
-        return ArrayUtils.indexOfWithOrMask(haystack.toCharArray(), fromIndex, maxIndex, needle.toCharArray(), mask.toCharArray());
+        return ArrayUtils.indexOfWithOrMask(haystack.toCharArray(), fromIndex, maxIndex, needle.toCharArray(), toCharArray(mask));
     }
 
     public static int indexOfWithORMaskString(String haystack, int fromIndex, int maxIndex, String needle, String mask) {

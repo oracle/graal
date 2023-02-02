@@ -1,0 +1,2 @@
+#non const lvalue reference to type __builtin_va_list
+gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/921203-2.c

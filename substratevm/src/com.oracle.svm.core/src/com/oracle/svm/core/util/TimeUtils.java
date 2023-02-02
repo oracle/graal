@@ -27,7 +27,7 @@ package com.oracle.svm.core.util;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
 
@@ -82,15 +82,15 @@ public class TimeUtils {
     }
 
     /**
-     * Turn an absolute deadline in milliseconds, or a relative delay in nanoseconds, into a
-     * relative delay in nanoseconds.
+     * Turn an absolute deadline in milliseconds, or a relative duration in nanoseconds, into a
+     * relative duration in nanoseconds.
      */
-    public static long delayNanos(boolean isAbsolute, long time) {
+    public static long durationNanos(boolean isAbsolute, long time) {
         if (isAbsolute) {
             /* Absolute deadline, in milliseconds. */
             return millisToNanos(time - System.currentTimeMillis());
         } else {
-            /* Relative delay, in nanoseconds. */
+            /* Relative duration, in nanoseconds. */
             return time;
         }
     }
@@ -99,6 +99,10 @@ public class TimeUtils {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long divideNanosToSeconds(long nanos) {
         return (nanos / nanosPerSecond);
+    }
+
+    public static double nanosToSecondsDouble(long nanos) {
+        return (nanos / (double) nanosPerSecond);
     }
 
     /** Return the nanoseconds remaining after taking out all the seconds. */

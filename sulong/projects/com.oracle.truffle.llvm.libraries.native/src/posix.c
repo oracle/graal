@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -56,7 +56,7 @@
         int native_errno = errno;                                                                                                                    \
         type result = name(__VA_ARGS__);                                                                                                             \
         if (result == (type) -1) {                                                                                                                   \
-            result = (type)(long) -errno;                                                                                                            \
+            result = (type) (long) -errno;                                                                                                           \
         }                                                                                                                                            \
         errno = native_errno;                                                                                                                        \
         return result;                                                                                                                               \

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,9 @@
 package com.oracle.truffle.api.debug.test;
 
 import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FILENAME_EXTENSION;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -49,7 +52,12 @@ import java.io.Writer;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -64,10 +72,12 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 
 /**
  * Framework for testing the Truffle {@linkplain Debugger Debugging API}.
@@ -76,6 +86,7 @@ public abstract class AbstractDebugTest {
 
     protected DebuggerTester tester;
     private final ArrayDeque<DebuggerTester> sessionStack = new ArrayDeque<>();
+    private final AtomicReference<Value> functionWithArgument = new AtomicReference<>();
 
     AbstractDebugTest() {
     }
@@ -88,6 +99,7 @@ public abstract class AbstractDebugTest {
     @After
     public void dispose() {
         popContext();
+        functionWithArgument.set(null);
     }
 
     protected final void resetContext(DebuggerTester newTester) {
@@ -122,11 +134,15 @@ public abstract class AbstractDebugTest {
         tester.startEval(source);
     }
 
+    protected final void startExecute(Function<Context, Value> script) {
+        tester.startExecute(script);
+    }
+
     protected final void pushContext() {
         if (tester != null) {
             sessionStack.push(tester);
         }
-        tester = new DebuggerTester(Context.newBuilder().allowCreateThread(true).allowPolyglotAccess(PolyglotAccess.ALL).allowIO(true));
+        tester = new DebuggerTester(Context.newBuilder().allowCreateThread(true).allowPolyglotAccess(PolyglotAccess.ALL).allowIO(IOAccess.ALL));
     }
 
     protected final void popContext() {
@@ -134,6 +150,57 @@ public abstract class AbstractDebugTest {
         if (!sessionStack.isEmpty()) {
             tester = sessionStack.pop();
         }
+    }
+
+    protected final Value getFunctionValue(Source source, String functionName) {
+        AtomicReference<Value> functionValue = new AtomicReference<>();
+        tester.startExecute((Context c) -> {
+            Value v = c.eval(source);
+            functionValue.set(c.getBindings(InstrumentationTestLanguage.ID).getMember(functionName));
+            return v;
+        });
+        expectDone();
+        Value v = functionValue.get();
+        assertNotNull(v);
+        return v;
+    }
+
+    private Value getFunctionWithArgument() {
+        return functionWithArgument.updateAndGet(value -> {
+            if (value == null) {
+                Source source = testSource("DEFINE(function, ROOT(\n" +
+                                "  ARGUMENT(a), \n" +
+                                "  STATEMENT()\n" +
+                                "))\n");
+                return getFunctionValue(source, "function");
+            } else {
+                return value;
+            }
+        });
+    }
+
+    protected final void checkDebugValueOf(Object object, Consumer<DebugValue> checker) {
+        checkDebugValueOf(object, (event, value) -> checker.accept(value));
+    }
+
+    protected final void checkDebugValueOf(Object object, BiConsumer<SuspendedEvent, DebugValue> checker) {
+        Value functionValue = getFunctionWithArgument();
+
+        AtomicBoolean suspended = new AtomicBoolean(false);
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startExecute(c -> functionValue.execute(object));
+            expectSuspended((SuspendedEvent event) -> {
+                assertFalse(suspended.get());
+                DebugValue a = event.getTopStackFrame().getScope().getDeclaredValue("a");
+                assertNotNull(a);
+                checker.accept(event, a);
+                event.prepareContinue();
+                suspended.set(true);
+            });
+        }
+        expectDone();
+        assertTrue(suspended.get());
     }
 
     @SuppressWarnings("static-method")

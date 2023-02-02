@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
@@ -44,7 +43,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
@@ -63,7 +62,6 @@ import org.graalvm.compiler.lir.StandardOp.NullCheck;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -541,39 +539,44 @@ public class AMD64Move {
         move((AMD64Kind) result.getPlatformKind(), crb, masm, result, input);
     }
 
-    public static void move(AMD64Kind moveKind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
+    private static void move(AMD64Kind moveKind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
                 reg2reg(moveKind, masm, result, input);
+                return;
             } else if (isStackSlot(result)) {
                 reg2stack(moveKind, crb, masm, result, asRegister(input));
-            } else {
-                throw GraalError.shouldNotReachHere("result=" + result + " result.class=" + result.getClass().getName());
+                return;
             }
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
                 stack2reg(moveKind, crb, masm, asRegister(result), input);
-            } else {
-                throw GraalError.shouldNotReachHere("result=" + result + " result.class=" + result.getClass().getName());
+                return;
             }
         } else if (isJavaConstant(input)) {
             if (isRegister(result)) {
                 const2reg(crb, masm, asRegister(result), asJavaConstant(input), moveKind);
+                return;
             } else if (isStackSlot(result)) {
                 const2stack(crb, masm, result, asJavaConstant(input));
-            } else {
-                throw GraalError.shouldNotReachHere("result=" + result + " result.class=" + result.getClass().getName());
+                return;
             }
-        } else {
-            throw GraalError.shouldNotReachHere("input=" + input + " input.class=" + input.getClass().getName());
         }
+        throw GraalError.shouldNotReachHere("input=" + input + " input.class=" + input.getClass().getName() + " " + "result=" + result + " result.class=" + result.getClass().getName());
     }
 
     private static void reg2reg(AMD64Kind kind, AMD64MacroAssembler masm, Value result, Value input) {
         if (asRegister(input).equals(asRegister(result))) {
             return;
         }
-        assert asRegister(result).getRegisterCategory().equals(asRegister(input).getRegisterCategory());
+        if (!kind.isMask()) {
+            /*
+             * Non-mask moves are only allowed within a category. Mask moves are also allowed
+             * between a mask register and a CPU register (but not between two CPU registers). The
+             * definitions of the kmov[bwdq] instructions check all those constraints on mask moves.
+             */
+            assert asRegister(result).getRegisterCategory().equals(asRegister(input).getRegisterCategory());
+        }
         switch (kind) {
             case BYTE:
             case WORD:
@@ -588,6 +591,18 @@ public class AMD64Move {
                 break;
             case DOUBLE:
                 masm.movdbl(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE));
+                break;
+            case MASK8:
+                masm.kmovb(asRegister(result), asRegister(input));
+                break;
+            case MASK16:
+                masm.kmovw(asRegister(result), asRegister(input));
+                break;
+            case MASK32:
+                masm.kmovd(asRegister(result), asRegister(input));
+                break;
+            case MASK64:
+                masm.kmovq(asRegister(result), asRegister(input));
                 break;
             default:
                 throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
@@ -618,6 +633,24 @@ public class AMD64Move {
             case V128_QWORD:
                 masm.movdqu(dest, input);
                 break;
+            case V256_QWORD:
+                masm.vmovdqu(dest, input);
+                break;
+            case V512_QWORD:
+                masm.vmovdqu64(dest, input);
+                break;
+            case MASK8:
+                masm.kmovb(dest, input);
+                break;
+            case MASK16:
+                masm.kmovw(dest, input);
+                break;
+            case MASK32:
+                masm.kmovd(dest, input);
+                break;
+            case MASK64:
+                masm.kmovq(dest, input);
+                break;
             default:
                 throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
         }
@@ -625,6 +658,11 @@ public class AMD64Move {
 
     public static void stack2reg(AMD64Kind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, Value input) {
         AMD64Address src = (AMD64Address) crb.asAddress(input);
+        /*
+         * Mask moves from memory can't target CPU registers directly. If such a move is needed, use
+         * a general purpose move instead. Note that mask moves have zero extending semantics.
+         */
+        boolean isMaskToCPU = kind.isMask() && !result.getRegisterCategory().equals(AMD64.MASK);
         switch (kind) {
             case BYTE:
                 masm.movsbl(result, src);
@@ -647,6 +685,40 @@ public class AMD64Move {
             case V128_QWORD:
                 masm.movdqu(result, src);
                 break;
+            case V256_QWORD:
+                masm.vmovdqu(result, src);
+                break;
+            case V512_QWORD:
+                masm.vmovdqu64(result, src);
+                break;
+            case MASK8:
+                if (isMaskToCPU) {
+                    masm.movzbl(result, src);
+                } else {
+                    masm.kmovb(result, src);
+                }
+                break;
+            case MASK16:
+                if (isMaskToCPU) {
+                    masm.movzwl(result, src);
+                } else {
+                    masm.kmovw(result, src);
+                }
+                break;
+            case MASK32:
+                if (isMaskToCPU) {
+                    masm.movl(result, src);
+                } else {
+                    masm.kmovd(result, src);
+                }
+                break;
+            case MASK64:
+                if (isMaskToCPU) {
+                    masm.movq(result, src);
+                } else {
+                    masm.kmovq(result, src);
+                }
+                break;
             default:
                 throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
         }
@@ -659,6 +731,7 @@ public class AMD64Move {
          * long register when unsafe casts occurred (e.g., for a write barrier where arithmetic
          * operations are then performed on the pointer).
          */
+        assert !result.getRegisterCategory().equals(AMD64.MASK) : "no general const-to-mask moves supported";
         switch (input.getJavaKind().getStackKind()) {
             case Int:
                 // Do not optimize with an XOR as this instruction may be between
@@ -835,8 +908,8 @@ public class AMD64Move {
             this.lirKindTool = lirKindTool;
         }
 
-        public static boolean hasBase(OptionValues options, CompressEncoding encoding) {
-            return GeneratePIC.getValue(options) || encoding.hasBase();
+        public static boolean hasBase(CompressEncoding encoding) {
+            return encoding.hasBase();
         }
 
         public final Value getInput() {
@@ -851,8 +924,8 @@ public class AMD64Move {
             return asRegister(result);
         }
 
-        protected final Register getBaseRegister(CompilationResultBuilder crb) {
-            return hasBase(crb.getOptions(), encoding) ? asRegister(baseRegister) : Register.None;
+        protected final Register getBaseRegister() {
+            return hasBase(encoding) ? asRegister(baseRegister) : Register.None;
         }
 
         protected final int getShift() {
@@ -882,9 +955,9 @@ public class AMD64Move {
          */
         public static void emitUncompressWithBaseRegister(AMD64MacroAssembler masm, Register resultReg, Register baseReg, Register inputReg, int shift, boolean preserveFlagsRegister) {
             assert !baseReg.equals(Register.None) || shift != 0 : "compression not enabled";
-            if (Scale.isScaleShiftSupported(shift)) {
-                AMD64Address.Scale scale = AMD64Address.Scale.fromShift(shift);
-                masm.leaq(resultReg, new AMD64Address(baseReg, inputReg, scale));
+            if (AMD64Address.isScaleShiftSupported(shift)) {
+                Stride stride = Stride.fromLog2(shift);
+                masm.leaq(resultReg, new AMD64Address(baseReg, inputReg, stride));
             } else {
                 if (preserveFlagsRegister) {
                     throw GraalError.shouldNotReachHere("No valid flag-effect-free instruction available to uncompress oop");
@@ -916,7 +989,7 @@ public class AMD64Move {
             move(lirKindTool.getObjectKind(), crb, masm);
 
             final Register resReg = getResultRegister();
-            final Register baseReg = getBaseRegister(crb);
+            final Register baseReg = getBaseRegister();
             if (!baseReg.equals(Register.None)) {
                 if (!nonNull) {
                     masm.testq(resReg, resReg);
@@ -946,7 +1019,7 @@ public class AMD64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            Register baseReg = getBaseRegister(crb);
+            Register baseReg = getBaseRegister();
             int shift = getShift();
             Register resReg = getResultRegister();
             if (nonNull && !baseReg.equals(Register.None) && getInput() instanceof RegisterValue) {

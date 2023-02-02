@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -296,7 +296,7 @@ public class InputFilterTest extends InstrumentationEventTest {
         });
 
         // should use maximum four frame slots to save expression values
-        assertEquals(4, descriptor[0].getIdentifiers().size());
+        assertEquals(4, descriptor[0].getNumberOfAuxiliarySlots());
 
         binding.dispose();
         assertCleanedUp(code);
@@ -517,12 +517,15 @@ public class InputFilterTest extends InstrumentationEventTest {
         execute(code);
         binding.dispose();
 
+        // made the transient issue GR-32632 always occur before it was fixed.
+        System.gc();
+
         // we execute again to let the instrumentation wrappers be cleaned up
         execute(code);
 
         for (RootNode root : rootNodes) {
             // all frame slots got removed
-            assertEquals(new HashSet<>(), root.getFrameDescriptor().getIdentifiers());
+            assertEquals(0, root.getFrameDescriptor().getNumberOfAuxiliarySlots());
 
             // no wrappers left
             root.accept(new NodeVisitor() {

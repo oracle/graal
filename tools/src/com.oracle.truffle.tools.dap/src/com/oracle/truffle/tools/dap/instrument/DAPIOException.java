@@ -30,13 +30,15 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
+import java.util.Locale;
+
 @ExportLibrary(InteropLibrary.class)
 class DAPIOException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 3185713689380729847L;
 
     DAPIOException(String hostAndPort, Throwable e) {
-        super(String.format("Starting Debug Protocol Server on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e, UNLIMITED_STACK_TRACE, null);
+        super(String.format(Locale.ENGLISH, "Starting Debug Protocol Server on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e, UNLIMITED_STACK_TRACE, null);
     }
 
     @ExportMessage

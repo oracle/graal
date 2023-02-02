@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,9 @@ package org.graalvm.tools.lsp.server;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -159,7 +153,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     }
 
     protected CallTarget parseWithEnteredContext(final String text, final String langId, final URI uri) throws DiagnosticsNotification {
-        LanguageInfo languageInfo = findLanguageInfo(langId, envInternal.getTruffleFile(uri));
+        LanguageInfo languageInfo = findLanguageInfo(langId, envInternal.getTruffleFile(null, uri));
         TextDocumentSurrogate surrogate = getOrCreateSurrogate(uri, text, languageInfo);
         return parseWithEnteredContext(surrogate);
     }
@@ -232,40 +226,6 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
         return surrogate;
     }
 
-    public List<Future<?>> parseWorkspace(URI rootUri) {
-        if (rootUri == null) {
-            return new ArrayList<>();
-        }
-        Path rootPath = Paths.get(rootUri);
-        if (!Files.isDirectory(rootPath)) {
-            throw new IllegalArgumentException("Root URI is not referencing a directory. URI: " + rootUri);
-        }
-
-        Future<List<Future<?>>> futureTasks = contextAwareExecutor.executeWithDefaultContext(() -> {
-            Map<String, LanguageInfo> mimeType2LangInfo = new HashMap<>();
-            for (LanguageInfo langInfo : envInternal.getLanguages().values()) {
-                if (langInfo.isInternal()) {
-                    continue;
-                }
-                langInfo.getMimeTypes().stream().forEach(mimeType -> mimeType2LangInfo.put(mimeType, langInfo));
-            }
-            try {
-                WorkspaceWalker walker = new WorkspaceWalker(mimeType2LangInfo);
-                logger.log(Level.FINE, "Start walking file tree at: {0}", rootPath);
-                Files.walkFileTree(rootPath, walker);
-                return walker.parsingTasks;
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        try {
-            return futureTasks.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     String getLanguageId(URI uri) {
         TextDocumentSurrogate doc = surrogateMap.get(uri);
         if (doc != null) {
@@ -274,7 +234,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
 
         Future<String> future = contextAwareExecutor.executeWithDefaultContext(() -> {
             try {
-                return Source.findLanguage(envInternal.getTruffleFile(uri));
+                return Source.findLanguage(envInternal.getTruffleFile(null, uri));
             } catch (IOException ex) {
                 return null;
             }
@@ -302,48 +262,6 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
                 signatureTriggerCharacters.add(languageId, triggerCharacters);
             }
         }
-    }
-
-    final class WorkspaceWalker implements FileVisitor<Path> {
-
-        List<Future<?>> parsingTasks;
-        private final Map<String, LanguageInfo> mimeTypesAllLang;
-
-        WorkspaceWalker(Map<String, LanguageInfo> mimeTypesAllLang) {
-            this.mimeTypesAllLang = mimeTypesAllLang;
-            this.parsingTasks = new ArrayList<>();
-        }
-
-        @Override
-        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-            if (dir.endsWith(".git")) { // TODO(ds) where to define this?
-                return FileVisitResult.SKIP_SUBTREE;
-            }
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-            URI uri = file.toUri();
-            String mimeType = Source.findMimeType(envInternal.getTruffleFile(uri));
-            if (!mimeTypesAllLang.containsKey(mimeType)) {
-                return FileVisitResult.CONTINUE;
-            }
-            TextDocumentSurrogate surrogate = getOrCreateSurrogate(uri, null, mimeTypesAllLang.get(mimeType));
-            parsingTasks.add(contextAwareExecutor.executeWithDefaultContext(() -> parseWithEnteredContext(surrogate)));
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-            return FileVisitResult.CONTINUE;
-        }
-
-        @Override
-        public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-            return FileVisitResult.CONTINUE;
-        }
-
     }
 
     /**

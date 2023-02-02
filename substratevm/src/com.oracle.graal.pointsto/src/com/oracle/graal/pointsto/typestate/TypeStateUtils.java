@@ -30,10 +30,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
+import java.util.stream.StreamSupport;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -61,7 +64,7 @@ public class TypeStateUtils {
      * @return the array belonging to the bitSet. Please use this value responsibly: not modify or
      *         loose track of this value.
      */
-    static long[] extractBitSetField(BitSet bitSet) {
+    public static long[] extractBitSetField(BitSet bitSet) {
         try {
             return (long[]) bitSetArrayAccess.invokeExact(bitSet);
         } catch (Throwable t) {
@@ -69,7 +72,27 @@ public class TypeStateUtils {
         }
     }
 
-    static void trimBitSetToSize(BitSet bs) {
+    /** Return true if {@code first} is a superset of {@code second}. */
+    public static boolean isSuperset(BitSet first, BitSet second) {
+        if (first.length() >= second.length()) {
+            long[] bits1 = TypeStateUtils.extractBitSetField(first);
+            long[] bits2 = TypeStateUtils.extractBitSetField(second);
+
+            boolean isSuperset = true;
+            int numberOfWords = Math.min(bits1.length, bits2.length);
+            for (int i = 0; i < numberOfWords; i++) {
+                /* bits2 is a subset of bits1 */
+                if ((bits1[i] & bits2[i]) != bits2[i]) {
+                    isSuperset = false;
+                    break;
+                }
+            }
+            return isSuperset;
+        }
+        return false;
+    }
+
+    public static void trimBitSetToSize(BitSet bs) {
         try {
             trimToSizeAccess.invokeExact(bs);
         } catch (Throwable t) {
@@ -78,7 +101,7 @@ public class TypeStateUtils {
 
     }
 
-    protected static AnalysisObject[] concat(AnalysisObject[] oa1, AnalysisObject[] oa2) {
+    public static AnalysisObject[] concat(AnalysisObject[] oa1, AnalysisObject[] oa2) {
         int resultSize = oa1.length + oa2.length;
 
         AnalysisObject[] result = new AnalysisObject[resultSize];
@@ -90,7 +113,7 @@ public class TypeStateUtils {
     }
 
     /** Returns the union of the two analysis object arrays of the same type. */
-    protected static AnalysisObject[] union(BigBang bb, AnalysisObject[] a1, AnalysisObject[] a2) {
+    public static AnalysisObject[] union(PointsToAnalysis bb, AnalysisObject[] a1, AnalysisObject[] a2) {
         // assert this.type() == other.type();
 
         if (a1.length == 1 && bb.analysisPolicy().isSummaryObject(a1[0])) {
@@ -112,7 +135,7 @@ public class TypeStateUtils {
         }
     }
 
-    private static AnalysisObject[] arraysUnion(BigBang bb, AnalysisObject[] a1, AnalysisObject[] a2) {
+    private static AnalysisObject[] arraysUnion(PointsToAnalysis bb, AnalysisObject[] a1, AnalysisObject[] a2) {
         // assert bb.options().allocationSiteSensitiveHeap();
         assert a1.length >= a2.length : "Union is commutative, must call it with a1 being the bigger state";
         assert a1.length > 1 || !bb.analysisPolicy().isSummaryObject(a1[0]);
@@ -200,7 +223,7 @@ public class TypeStateUtils {
 
     }
 
-    private static AnalysisObject[] checkUnionSize(BigBang bb, AnalysisObject[] oa1, AnalysisObject[] oa2, AnalysisObject[] result) {
+    private static AnalysisObject[] checkUnionSize(PointsToAnalysis bb, AnalysisObject[] oa1, AnalysisObject[] oa2, AnalysisObject[] result) {
         assert result.length >= 2;
 
         if (PointstoOptions.LimitObjectArrayLength.getValue(bb.getOptions()) && (result.length > PointstoOptions.MaxObjectSetSize.getValue(bb.getOptions()))) {
@@ -220,7 +243,7 @@ public class TypeStateUtils {
      * Returns the intersection of the two analysis object arrays of the same type. If one of them
      * contains a single context insensitive object, the other array is returned.
      */
-    protected static AnalysisObject[] intersection(BigBang bb, AnalysisObject[] a1, AnalysisObject[] a2) {
+    protected static AnalysisObject[] intersection(PointsToAnalysis bb, AnalysisObject[] a1, AnalysisObject[] a2) {
         // assert this.type() == other.type();
 
         if (a1.length == 1 && a1[0].isContextInsensitiveObject()) {
@@ -237,7 +260,7 @@ public class TypeStateUtils {
     }
 
     /** Returns a list containing the intersection of the two object arrays. */
-    private static AnalysisObject[] arraysIntersection(BigBang bb, AnalysisObject[] a1, AnalysisObject[] a2) {
+    private static AnalysisObject[] arraysIntersection(PointsToAnalysis bb, AnalysisObject[] a1, AnalysisObject[] a2) {
         assert a1.length <= a2.length : "Intersection is commutative, must call it with a1 being the shorter array";
 
         if (a1 == a2) {
@@ -317,8 +340,8 @@ public class TypeStateUtils {
      * Check if a type state contains only context insensitive objects, i.e., the only information
      * it stores is the set of types.
      */
-    static boolean isContextInsensitiveTypeState(TypeState state) {
-        for (AnalysisObject object : state.objects()) {
+    public static boolean isContextInsensitiveTypeState(BigBang bb, TypeState state) {
+        for (AnalysisObject object : state.objects(bb)) {
             if (!object.isContextInsensitiveObject()) {
                 return false;
             }
@@ -326,12 +349,12 @@ public class TypeStateUtils {
         return true;
     }
 
-    static boolean holdsSingleTypeState(AnalysisObject[] objects) {
+    public static boolean holdsSingleTypeState(AnalysisObject[] objects) {
         return holdsSingleTypeState(objects, objects.length);
     }
 
     @SuppressWarnings("RedundantIfStatement")
-    static boolean holdsSingleTypeState(AnalysisObject[] objects, int size) {
+    public static boolean holdsSingleTypeState(AnalysisObject[] objects, int size) {
         assert size > 0;
         int firstType = objects[0].getTypeId();
         int lastType = objects[size - 1].getTypeId();
@@ -343,16 +366,30 @@ public class TypeStateUtils {
     }
 
     /** Logical OR two bit sets without modifying the source. */
-    protected static BitSet or(BitSet bs1, BitSet bs2) {
-        BitSet bsr = (BitSet) bs1.clone();
-        bsr.or(bs2);
+    public static BitSet or(BitSet bs1, BitSet bs2) {
+        /* The result is a clone of the larger set to avoid expanding it when executing the OR. */
+        BitSet bsr;
+        if (bs1.size() > bs2.size()) {
+            bsr = (BitSet) bs1.clone();
+            bsr.or(bs2);
+        } else {
+            bsr = (BitSet) bs2.clone();
+            bsr.or(bs1);
+        }
         return bsr;
     }
 
     /** Logical AND two bit sets without modifying the source. */
-    protected static BitSet and(BitSet bs1, BitSet bs2) {
-        BitSet bsr = (BitSet) bs1.clone();
-        bsr.and(bs2);
+    public static BitSet and(BitSet bs1, BitSet bs2) {
+        BitSet bsr;
+        /* For AND is more efficient to clone the smaller bit set as the tail bits are 0. */
+        if (bs1.size() < bs2.size()) {
+            bsr = (BitSet) bs1.clone();
+            bsr.and(bs2);
+        } else {
+            bsr = (BitSet) bs2.clone();
+            bsr.and(bs1);
+        }
         return bsr;
     }
 
@@ -360,7 +397,8 @@ public class TypeStateUtils {
      * Logical AND-NOT of the two bit sets, i.e., clearing all bits in first operand whose
      * corresponding bits are set in the second one, without modifying the source.
      */
-    static BitSet andNot(BitSet bs1, BitSet bs2) {
+    public static BitSet andNot(BitSet bs1, BitSet bs2) {
+        /* AND-NOT is not commutative, so we cannot optimize based on set size. */
         BitSet bsr = (BitSet) bs1.clone();
         bsr.andNot(bs2);
         return bsr;
@@ -369,7 +407,7 @@ public class TypeStateUtils {
     /**
      * Sets the bit specified by the index to {@code false} without modifying the source.
      */
-    protected static BitSet clear(BitSet bs1, int bitIndex) {
+    public static BitSet clear(BitSet bs1, int bitIndex) {
         BitSet bsr = (BitSet) bs1.clone();
         bsr.clear(bitIndex);
         return bsr;
@@ -378,10 +416,49 @@ public class TypeStateUtils {
     /**
      * Sets the bit specified by the index to {@code true} without modifying the source.
      */
-    protected static BitSet set(BitSet bs1, int bitIndex) {
-        BitSet bsr = (BitSet) bs1.clone();
-        bsr.set(bitIndex);
+    public static BitSet set(BitSet bs1, int bitIndex) {
+        BitSet bsr;
+        int highestSetIndex = bs1.length() - 1;
+        /* Check if the new bit index exceeds the capacity of bs1. */
+        if (bitIndex > highestSetIndex) {
+            /* Preallocate the bit set to represent bitIndex without expansion. */
+            bsr = new BitSet(bitIndex);
+            /* First add in the original bits, which will System.arraycopy() bs1 bits into bsr. */
+            bsr.or(bs1);
+            /* ... then set the new index. */
+            bsr.set(bitIndex);
+            /* Executing the OR first avoids element by element processing from 0 to bitIndex. */
+        } else {
+            /* The input set can represent bitIndex without expansion. */
+            bsr = (BitSet) bs1.clone();
+            bsr.set(bitIndex);
+        }
         return bsr;
+    }
+
+    /** Create a new bit set with the bits of the inputs IDs set. */
+    public static BitSet newBitSet(int index1, int index2) {
+        /* Preallocate the result bit set to represent index1 and index2 without any expansion. */
+        BitSet typesBitSet = new BitSet(Math.max(index1, index2));
+        typesBitSet.set(index1);
+        typesBitSet.set(index2);
+        return typesBitSet;
+    }
+
+    public static boolean closeToAllInstantiated(BigBang bb, TypeState state) {
+        return closeToAllInstantiated(bb, state.typesCount());
+    }
+
+    public static boolean closeToAllInstantiated(BigBang bb, List<AnalysisType> state) {
+        return closeToAllInstantiated(bb, state.size());
+    }
+
+    private static boolean closeToAllInstantiated(BigBang bb, int typeCount) {
+        if (typeCount > 200) {
+            int allInstCount = (int) StreamSupport.stream(bb.getAllInstantiatedTypes().spliterator(), false).count();
+            return typeCount * 100L / allInstCount > 75;
+        }
+        return false;
     }
 
 }

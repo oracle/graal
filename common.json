@@ -1,41 +1,61 @@
 {
   "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of multiple repositories.",
 
+  "mx_version" : "6.14.18",
+
   "jdks": {
-    "openjdk8":           {"name": "openjdk",   "version": "8u292+05-jvmci-21.1-b02", "platformspecific": true },
-    "oraclejdk8":         {"name": "oraclejdk", "version": "8u291+07-jvmci-21.1-b02", "platformspecific": true },
-    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u291+07-jvmci-21.1-b02-fastdebug", "platformspecific": true },
+    "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.11", "build_id": "9", "release": true, "platformspecific": true, "extrabundles": ["static-libs"] },
+    "oraclejdk17":        {"name": "jpg-jdk",   "version": "17.0.1",  "build_id": "12", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.6+9-jvmci-22.3-b11", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.6+9-jvmci-22.3-b11-debug", "platformspecific": true },
+    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.6+9-jvmci-22.3-b11-sulong", "platformspecific": true },
 
-    "openjdk11":          {"name": "openjdk",   "version": "11.0.3+7", "platformspecific": true },
-    "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.6+8", "platformspecific": true },
-    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.11+5-jvmci-21.1-b02", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.11+5-jvmci-21.1-b02", "platformspecific": true },
+    "oraclejdk19":        {"name": "jpg-jdk",   "version": "19",      "build_id": "26", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
+    "labsjdk-ce-19":      {"name": "labsjdk",   "version": "ce-19.0.1+10-jvmci-23.0-b04", "platformspecific": true },
+    "labsjdk-ce-19Debug": {"name": "labsjdk",   "version": "ce-19.0.1+10-jvmci-23.0-b04-debug", "platformspecific": true },
+    "labsjdk-ce-19-llvm": {"name": "labsjdk",   "version": "ce-19.0.1+10-jvmci-23.0-b04-sulong", "platformspecific": true },
+    "labsjdk-ee-19":      {"name": "labsjdk",   "version": "ee-19.0.2+7-jvmci-23.0-b05", "platformspecific": true },
+    "labsjdk-ee-19Debug": {"name": "labsjdk",   "version": "ee-19.0.2+7-jvmci-23.0-b05-debug", "platformspecific": true },
+    "labsjdk-ee-19-llvm": {"name": "labsjdk",   "version": "ee-19.0.2+7-jvmci-23.0-b05-sulong", "platformspecific": true },
 
-    "oraclejdk16":        {"name": "oraclejdk", "version": "16.0.1+4", "platformspecific": true },
-    "labsjdk-ce-16":      {"name": "labsjdk",   "version": "ce-16+36-jvmci-21.1-b02", "platformspecific": true },
-    "labsjdk-ce-16Debug": {"name": "labsjdk",   "version": "ce-16+36-jvmci-21.1-b02-debug", "platformspecific": true },
-    "labsjdk-ee-16":      {"name": "labsjdk",   "version": "ee-16+36-jvmci-21.1-b02", "platformspecific": true },
-    "labsjdk-ee-16Debug": {"name": "labsjdk",   "version": "ee-16+36-jvmci-21.1-b02-debug", "platformspecific": true }
+    "oraclejdk20":        {"name": "jpg-jdk",   "version": "20",      "build_id": "24", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
+    "labsjdk-ce-20":      {"name": "labsjdk",   "version": "ce-20+30-jvmci-23.0-b06", "platformspecific": true },
+    "labsjdk-ce-20Debug": {"name": "labsjdk",   "version": "ce-20+30-jvmci-23.0-b06-debug", "platformspecific": true },
+    "labsjdk-ce-20-llvm": {"name": "labsjdk",   "version": "ce-20+30-jvmci-23.0-b06-sulong", "platformspecific": true },
+    "labsjdk-ee-20":      {"name": "labsjdk",   "version": "ee-20.0.1+2-jvmci-23.0-b06", "platformspecific": true },
+    "labsjdk-ee-20Debug": {"name": "labsjdk",   "version": "ee-20.0.1+2-jvmci-23.0-b06-debug", "platformspecific": true },
+    "labsjdk-ee-20-llvm": {"name": "labsjdk",   "version": "ee-20.0.1+2-jvmci-23.0-b06-sulong", "platformspecific": true }
   },
 
-  "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
+  "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
   "devkits": {
-      "windows-oraclejdk8": { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
-      "windows-openjdk8":   { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
-      "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
-      "windows-jdk16":      { "packages" : { "devkit:VS2019-16.7.2+1"  : "==1" }}
+    "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }},
+    "windows-jdk19":      { "packages" : { "devkit:VS2022-17.1.0+1"  : "==0" }},
+    "windows-jdk20":      { "packages" : { "devkit:VS2022-17.1.0+1"  : "==0" }},
+    "linux-jdk17":      { "packages" : { "devkit:gcc10.3.0-OL6.4+1"  : "==0" }},
+    "linux-jdk19":      { "packages" : { "devkit:gcc11.2.0-OL6.4+1"  : "==0" }},
+    "linux-jdk20":      { "packages" : { "devkit:gcc11.2.0-OL6.4+1"  : "==0" }}
   },
+
+  "catch_files" : [
+    "Graal diagnostic output saved in '(?P<filename>[^']+)'",
+    "Dumping debug output to '(?P<filename>[^']+)'",
+    " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)"
+  ],
+
   "deps": {
     "common": {
       "timelimit": "30:00",
       "environment": {
-        "MX_PYTHON": "python3"
+        "MX_PYTHON": "python3.8"
       },
       "packages": {
-        "pip:logilab-common ": "==1.4.4",
-        "pip:pylint": "==1.9.3",
+        "python3": "==3.8.10",
+        "pip:pylint": "==2.4.4",
+        "pip:lazy-object-proxy": "==1.6.0",
         "pip:ninja_syntax": "==1.7.2"
-      }
+      },
+      "python_version": "3"
     },
 
     "linux": {
@@ -69,35 +89,101 @@
       },
       "environment": {
         "ECLIPSE_EXE": "$ECLIPSE/eclipse"
+      },
+
+      "COMMENT.eclipse_org": [
+        "Coordinates for downloading same version as above directly from eclipse.org (used by GitHub actions).",
+        "Template URL: https://archive.eclipse.org/eclipse/downloads/drops4/R-<eclipse_org.version>-<eclipse_org.timestamp>/eclipse-SDK-<eclipse_org.version>-linux-gtk-x86_64.tar.gz"
+      ],
+      "eclipse_org": {
+        "version": "4.14",
+        "timestamp": "201912100610"
       }
     },
     "jdt": {
-      "downloads": {
-        "JDT": {
-          "name": "ecj",
-          "version": "4.14.0",
-          "platformspecific": false
-        }
+      "environment": {
+        "JDT": "builtin"
       }
     }
   },
   "sulong": {
     "deps": {
-      "linux": {
+      "common": {
         "packages": {
-          "cmake": "==3.15.2"
+          "cmake": "==3.22.2"
         }
       },
-      "darwin": {
-        "packages": {
-          "cmake": "==3.15.2"
-        }
+      "linux": {
+      },
+      "darwin_amd64": {
+      },
+      "darwin_aarch64": {
       },
       "windows": {
         "packages": {
-          "msvc": "==10.0"
+          "msvc_source": "==14.0"
         }
       }
+    }
+  },
+  "truffleruby": {
+    "deps": {
+      "common": {},
+      "linux": {
+        "packages": {
+          "ruby": "==2.6.3"
+        }
+      },
+      "darwin": {}
+    }
+  },
+  "graalnodejs": {
+    "deps": {
+      "common": {},
+      "linux": {
+        "packages": {
+          "00:devtoolset": "==7",
+          "cmake": "==3.22.2"
+        }
+      },
+      "darwin": {}
+    }
+  },
+  "svm": {
+    "COMMENT.deps": "Please use svm_deps in common.jsonnet instead (the values below are without the repository-specific dependencies).",
+    "deps": {
+      "COMMENT.common": "graal/vm/ci_common/common.jsonnet hardcodes the properties of this object",
+      "common": {
+        "environment": {
+          "DEFAULT_VM": "server",
+          "LANG": "en_US.UTF-8"
+        },
+        "logs": [
+          "../.native-image/*/*/*/*.log",
+          "*/*.log",
+          "*/svmbuild/*.log",
+          "*/svmbuild/images/*.log",
+          "*/*/stripped/*.map",
+          "*/callgrind.*",
+          "*.log"
+        ]
+      },
+      "linux_amd64": {
+        "packages": {
+          "00:devtoolset": "==7",
+          "01:binutils": ">=2.34",
+          "ruby": ">=2.1.0"
+        }
+      },
+      "linux_aarch64": {
+        "packages": {
+          "00:devtoolset": "==7",
+          "ruby": ">=2.1.0"
+        }
+      },
+      "darwin_amd64": {},
+      "darwin_aarch64": {},
+      "windows": {}
     }
   }
 }

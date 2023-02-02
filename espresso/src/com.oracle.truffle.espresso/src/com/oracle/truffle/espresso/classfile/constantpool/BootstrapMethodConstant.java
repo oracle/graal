@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,10 +23,8 @@
 package com.oracle.truffle.espresso.classfile.constantpool;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 
 /**
  * Interface denoting a bootstrap method constant entry in a constant pool.
@@ -37,11 +35,11 @@ public interface BootstrapMethodConstant extends PoolConstant {
 
     Symbol<Name> getName(ConstantPool pool);
 
-    Symbol<Signature> getSignature(ConstantPool pool);
+    NameAndTypeConstant getNameAndType(ConstantPool pool);
 
     @Override
     default String toString(ConstantPool pool) {
-        return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getSignature(pool);
+        return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getNameAndType(pool);
     }
 
     abstract class Indexes implements BootstrapMethodConstant {
@@ -61,17 +59,12 @@ public interface BootstrapMethodConstant extends PoolConstant {
 
         @Override
         public final Symbol<Name> getName(ConstantPool pool) {
-            return pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
+            return getNameAndType(pool).getName(pool);
         }
 
         @Override
-        public final Symbol<Signature> getSignature(ConstantPool pool) {
-            return Signatures.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
-        }
-
-        @Override
-        public void validate(ConstantPool pool) {
-            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool);
+        public NameAndTypeConstant getNameAndType(ConstantPool pool) {
+            return pool.nameAndTypeAt(nameAndTypeIndex);
         }
     }
 }

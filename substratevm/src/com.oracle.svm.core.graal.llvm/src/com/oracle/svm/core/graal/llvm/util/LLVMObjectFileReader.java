@@ -43,10 +43,10 @@ import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.llvm.LLVMGenerator;
 import com.oracle.svm.core.graal.llvm.LLVMNativeImageCodeCache.StackMapDumper;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.BytePointer;
 import com.oracle.svm.shadowed.org.bytedeco.javacpp.Pointer;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMMemoryBufferRef;
@@ -72,7 +72,7 @@ public class LLVMObjectFileReader {
 
     @FunctionalInterface
     private interface SectionReader<Result> {
-        Result apply(LLVMSectionIteratorRef sectionIterator);
+        Result apply(LLVMSectionIteratorRef sectionIterator, LLVMSectionIteratorRef relocationsSectionIterator);
     }
 
     @FunctionalInterface
@@ -98,12 +98,13 @@ public class LLVMObjectFileReader {
         LLVMObjectFileRef objectFile = LLVM.LLVMCreateObjectFile(buffer);
 
         LLVMSectionIteratorRef sectionIterator;
+        LLVMSectionIteratorRef relocationsSectionIterator = LLVM.LLVMGetSections(objectFile);
         LLVMSectionInfo<SectionInfo, SymbolInfo> result = new LLVMSectionInfo<>();
         for (sectionIterator = LLVM.LLVMGetSections(objectFile); LLVM.LLVMIsSectionIteratorAtEnd(objectFile, sectionIterator) == FALSE; LLVM.LLVMMoveToNextSection(sectionIterator)) {
             BytePointer sectionNamePointer = LLVM.LLVMGetSectionName(sectionIterator);
             String currentSectionName = (sectionNamePointer != null) ? sectionNamePointer.getString() : "";
             if (currentSectionName.startsWith(sectionName.getFormatDependentName(ObjectFile.getNativeFormat()))) {
-                result.sectionInfo = sectionReader.apply(sectionIterator);
+                result.sectionInfo = sectionReader.apply(sectionIterator, relocationsSectionIterator);
 
                 if (symbolReader != null) {
                     LLVMSymbolIteratorRef symbolIterator;
@@ -116,9 +117,11 @@ public class LLVMObjectFileReader {
                 }
                 break;
             }
+            LLVM.LLVMMoveToNextSection(relocationsSectionIterator);
         }
 
         LLVM.LLVMDisposeSectionIterator(sectionIterator);
+        LLVM.LLVMDisposeSectionIterator(relocationsSectionIterator);
         LLVM.LLVMDisposeObjectFile(objectFile);
 
         return result;
@@ -139,7 +142,7 @@ public class LLVMObjectFileReader {
         return new LLVMTextSectionInfo(sectionInfo);
     }
 
-    private Long parseTextSection(LLVMSectionIteratorRef sectionIterator) {
+    private Long parseTextSection(LLVMSectionIteratorRef sectionIterator, @SuppressWarnings("unused") LLVMSectionIteratorRef relocationsSectionIterator) {
         return LLVM.LLVMGetSectionSize(sectionIterator);
     }
 
@@ -155,13 +158,14 @@ public class LLVMObjectFileReader {
         return sectionInfo.sectionInfo;
     }
 
-    private LLVMStackMapInfo readStackMapSection(LLVMSectionIteratorRef sectionIterator) {
+    private LLVMStackMapInfo readStackMapSection(LLVMSectionIteratorRef sectionIterator, LLVMSectionIteratorRef relocationsSectionIterator) {
         Pointer stackMap = LLVM.LLVMGetSectionContents(sectionIterator).limit(LLVM.LLVMGetSectionSize(sectionIterator));
-        return new LLVMStackMapInfo(stackMap.asByteBuffer());
+        LLVM.LLVMMoveToNextSection(relocationsSectionIterator);
+        return new LLVMStackMapInfo(stackMap.asByteBuffer(), relocationsSectionIterator);
     }
 
     public void readStackMap(LLVMStackMapInfo info, CompilationResult compilation, ResolvedJavaMethod method, int id) {
-        String methodSymbolName = SYMBOL_PREFIX + SubstrateUtil.uniqueShortName(method);
+        String methodSymbolName = SYMBOL_PREFIX + ((HostedMethod) method).getUniqueShortName();
 
         long startPatchpointID = compilation.getInfopoints().stream().filter(ip -> ip.reason == InfopointReason.METHOD_START).findFirst()
                         .orElseThrow(() -> new GraalError("no method start infopoint: " + methodSymbolName)).pcOffset;
@@ -209,8 +213,10 @@ public class LLVMObjectFileReader {
         private LLVMTextSectionInfo(LLVMSectionInfo<Long, SymbolOffset> sectionInfo) {
             this.codeSize = sectionInfo.sectionInfo;
             for (SymbolOffset symbolOffset : sectionInfo.symbolInfo) {
-                offsetToSymbol.put(symbolOffset.offset, symbolOffset.symbol);
-                symbolToOffset.put(symbolOffset.symbol, symbolOffset.offset);
+                if (LLVMTargetSpecific.get().isSymbolValid(symbolOffset.symbol)) {
+                    offsetToSymbol.put(symbolOffset.offset, symbolOffset.symbol);
+                    symbolToOffset.put(symbolOffset.symbol, symbolOffset.offset);
+                }
             }
             this.sortedMethodOffsets = computeSortedMethodOffsets();
         }
@@ -229,17 +235,6 @@ public class LLVMObjectFileReader {
 
         public int getNextOffset(int offset) {
             return sortedMethodOffsets.get(sortedMethodOffsets.indexOf(offset) + 1);
-        }
-
-        @FunctionalInterface
-        public interface OffsetRangeConsumer {
-            void apply(int start, int end);
-        }
-
-        public void forEachOffsetRange(OffsetRangeConsumer consumer) {
-            for (int i = 0; i < sortedMethodOffsets.size() - 1; ++i) {
-                consumer.apply(sortedMethodOffsets.get(i), sortedMethodOffsets.get(i + 1));
-            }
         }
 
         private List<Integer> computeSortedMethodOffsets() {

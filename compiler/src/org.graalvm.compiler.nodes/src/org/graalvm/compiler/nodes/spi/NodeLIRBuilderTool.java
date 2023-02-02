@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.spi;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
@@ -45,7 +46,7 @@ import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -84,7 +85,7 @@ public interface NodeLIRBuilderTool extends NodeValueMap {
 
     void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, Stamp compareStamp, double probability);
 
-    void doBlock(Block block, StructuredGraph graph, BlockMap<List<Node>> blockMap);
+    void doBlock(HIRBlock block, StructuredGraph graph, BlockMap<List<Node>> blockMap);
 
     default OptionValues getOptions() {
         return getLIRGeneratorTool().getResult().getLIR().getOptions();
@@ -93,7 +94,7 @@ public interface NodeLIRBuilderTool extends NodeValueMap {
     void emitReadExceptionObject(ValueNode node);
 
     @SuppressWarnings("unused")
-    default ForeignCallLinkage lookupGraalStub(ValueNode valueNode) {
+    default ForeignCallLinkage lookupGraalStub(ValueNode valueNode, ForeignCallDescriptor foreignCallDescriptor) {
         return null;
     }
 }

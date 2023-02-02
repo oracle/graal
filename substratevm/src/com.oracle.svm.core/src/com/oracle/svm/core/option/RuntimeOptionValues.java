@@ -34,6 +34,7 @@ import java.util.Optional;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.options.EnumMultiOptionKey;
 import org.graalvm.compiler.options.ModifiableOptionValues;
 import org.graalvm.compiler.options.NestedBooleanOptionKey;
 import org.graalvm.compiler.options.OptionDescriptor;
@@ -41,16 +42,16 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionType;
 
 import com.oracle.svm.core.annotate.AnnotateOriginal;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 
 /**
  * The singleton holder of runtime options.
@@ -58,7 +59,7 @@ import com.oracle.svm.core.util.VMError;
  * @see com.oracle.svm.core.option
  */
 public class RuntimeOptionValues extends ModifiableOptionValues {
-    private EconomicSet<String> allOptionNames;
+    private final EconomicSet<String> allOptionNames;
 
     public RuntimeOptionValues(UnmodifiableEconomicMap<OptionKey<?>, Object> values, EconomicSet<String> allOptionNames) {
         super(values);
@@ -76,11 +77,12 @@ public class RuntimeOptionValues extends ModifiableOptionValues {
     }
 }
 
+@AutomaticallyRegisteredImageSingleton(RuntimeOptionsSupport.class)
 class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
     @Override
     public void set(String optionName, Object value) {
-        if (setXOption(optionName)) {
+        if (XOptions.setOption(optionName)) {
             return;
         }
         if (!RuntimeOptionValues.singleton().getAllOptionNames().contains(optionName)) {
@@ -93,7 +95,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
             if (desc.getOptionValueType().isAssignableFrom(valueType)) {
                 RuntimeOptionValues.singleton().update(desc.getOptionKey(), value);
             } else {
-                throw new RuntimeException("Invalid type of option '" + optionName + "': required " + desc.getOptionValueType().getSimpleName() + ", provided " + valueType);
+                throw new RuntimeException("Invalid type of option '" + optionName + "': required " + ClassUtil.getUnqualifiedName(desc.getOptionValueType()) + ", provided " + valueType);
             }
         }
     }
@@ -111,6 +113,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         return optionKey.getValue(RuntimeOptionValues.singleton());
     }
 
+    @SuppressWarnings({"unchecked", "deprecation"})
     @Override
     public OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
         Iterable<OptionDescriptor> descriptors = RuntimeOptionParser.singleton().getDescriptors();
@@ -125,12 +128,14 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
                 }
                 builder.help(helpMsg);
                 builder.deprecated(descriptor.isDeprecated());
+                builder.deprecationMessage(descriptor.getDeprecationMessage());
                 graalvmDescriptors.add(builder.build());
             }
         }
         return OptionDescriptors.create(graalvmDescriptors);
     }
 
+    @SuppressWarnings("deprecation")
     private static OptionClass getOptionClass(OptionDescriptor descriptor) {
         if (descriptor.getOptionKey() instanceof RuntimeOptionKey) {
             return OptionClass.VM;
@@ -143,9 +148,13 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         Class<T> clazz = (Class<T>) descriptor.getOptionValueType();
         OptionType<T> type;
         if (clazz.isEnum()) {
-            type = (OptionType<T>) ENUM_TYPE_CACHE.computeIfAbsent(clazz, c -> new OptionType<>(c.getSimpleName(), s -> (T) Enum.valueOf((Class<? extends Enum>) c, s)));
+            type = (OptionType<T>) ENUM_TYPE_CACHE.computeIfAbsent(clazz, c -> new OptionType<>(ClassUtil.getUnqualifiedName(c), s -> (T) Enum.valueOf((Class<? extends Enum>) c, s)));
         } else if (clazz == Long.class) {
             type = (OptionType<T>) LONG_OPTION_TYPE;
+        } else if (clazz == EconomicSet.class) {
+            EnumMultiOptionKey<?> multiOptionKey = (EnumMultiOptionKey<?>) descriptor.getOptionKey();
+            type = (OptionType<T>) ENUM_MULTI_TYPE_CACHE.computeIfAbsent(multiOptionKey.getEnumClass(),
+                            c -> new OptionType<>("Multi" + ClassUtil.getUnqualifiedName(multiOptionKey.getEnumClass()), s -> (T) multiOptionKey.valueOf(s)));
         } else {
             type = OptionType.defaultType(clazz);
             if (type == null) {
@@ -154,13 +163,16 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         }
         OptionKey<T> optionKey = (OptionKey<T>) descriptor.getOptionKey();
         while (optionKey instanceof NestedBooleanOptionKey) {
-            optionKey = (OptionKey<T>) ((NestedBooleanOptionKey) optionKey).getMasterOption();
+            optionKey = (OptionKey<T>) ((NestedBooleanOptionKey) optionKey).getParentOption();
         }
         T defaultValue = optionKey.getDefaultValue();
         return new org.graalvm.options.OptionKey<>(defaultValue, type);
     }
 
     private static final Map<Class<?>, OptionType<?>> ENUM_TYPE_CACHE = new HashMap<>();
+
+    private static final Map<Class<?>, OptionType<?>> ENUM_MULTI_TYPE_CACHE = new HashMap<>();
+
     private static final OptionType<Long> LONG_OPTION_TYPE = new OptionType<>("long", RuntimeOptionsSupportImpl::parseLong);
 
     private static long parseLong(String v) {
@@ -181,40 +193,11 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
             valueString = valueString.substring(0, valueString.length() - 1);
         }
 
-        return Long.parseLong(valueString) * scale;
-    }
-
-    /*
-     * Parse from an `-X` option, from a name and a value (e.g., from "mx2g"). Returns true if
-     * successful, false otherwise. Throws an exception if the option was recognized, but the value
-     * was not a number.
-     */
-    private static boolean setXOption(String keyAndValue) {
-        /* A hack to parse `-X` options from a String value. */
-        for (XOptions.XFlag xFlag : XOptions.singleton().getXFlags()) {
-            if (keyAndValue.startsWith(xFlag.getName())) {
-                final String valueString = keyAndValue.substring(xFlag.getName().length());
-                try {
-                    XOptions.singleton().parseFromValueString(xFlag, valueString);
-                    return true;
-                } catch (NumberFormatException nfe) {
-                    throw new RuntimeException("Invalid option '" + xFlag.getPrefixAndName() + valueString + "' does not specify a valid number.");
-                }
-            }
+        try {
+            return Long.parseLong(valueString) * scale;
+        } catch (NumberFormatException nfe) {
+            throw new IllegalArgumentException(String.format("Invalid value \"%s\". Allowed values are [1, inf)(|<k>|<m>|<g>|<t>).", v));
         }
-        return false;
-    }
-}
-
-/**
- * Sets option access.
- */
-@AutomaticFeature
-class OptionAccessFeature implements Feature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeOptionsSupport.class, new RuntimeOptionsSupportImpl());
     }
 }
 
@@ -222,6 +205,6 @@ class OptionAccessFeature implements Feature {
 final class Target_org_graalvm_compiler_options_OptionKey {
 
     @AnnotateOriginal
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Static analysis imprecision makes all hashCode implementations reachable from this method")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Static analysis imprecision makes all hashCode implementations reachable from this method")
     native Object getValue(OptionValues values);
 }

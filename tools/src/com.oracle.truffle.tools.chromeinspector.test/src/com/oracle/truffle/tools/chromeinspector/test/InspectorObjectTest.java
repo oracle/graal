@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,20 @@
  */
 package com.oracle.truffle.tools.chromeinspector.test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
  * Test of the provided inspector TruffleObject.
@@ -137,7 +140,7 @@ public class InspectorObjectTest {
         Value urlsValue = testOpenCloseOpen.execute(inspector);
         String[] urls = urlsValue.toString().split(",");
         testURL(urls[0]);
-        Assert.assertEquals(urls[1], "null");
+        Assert.assertEquals("null", urls[1]);
         testURL(urls[2]);
     }
 
@@ -227,6 +230,48 @@ public class InspectorObjectTest {
                         "}\n");
         Value testSession = context.getBindings("sl").getMember("testSession");
         testSession.execute(inspector);
+        Assert.assertEquals("All: Debugger.scriptParsed" + NL +
+                        "All: Debugger.scriptParsed" + NL +
+                        "P: Debugger.paused" + NL +
+                        "All: Debugger.paused" + NL +
+                        "All: Debugger.resumed" + NL, out.toString());
+    }
+
+    @Test
+    public void testSessionSetAndRemoveBreakpoint() {
+        Source source = Source.create("sl", "" +
+                        "function testSession(inspector, url) {\n" +
+                        "    s = new(inspector.Session);\n" +
+                        "    s.on(\"Debugger.paused\", listenerP);\n" +
+                        "    s.on(\"inspectorNotification\", listenerAll);\n" +
+                        "    s.connect();\n" +
+                        "    s.post(\"Debugger.enable\");\n" +
+                        "    breakpoint = new();" +
+                        "    breakpoint.lineNumber = 16;" +
+                        "    breakpoint.columnNumber = 0;" +
+                        "    breakpoint.url = url;" +
+                        "    s.post(\"Debugger.setBreakpointByUrl\", breakpoint);\n" +
+                        "    breakpoint = new();" +
+                        "    breakpoint.breakpointId = \"1\";" +
+                        "    s.post(\"Debugger.removeBreakpoint\", breakpoint);\n" +
+                        "    debugger;\n" +
+                        "    s.disconnect();\n" +
+                        "    debugger;\n" +
+                        "}\n" +
+                        "function listenerP(arg) {\n" +
+                        "    println(\"P: \" + arg.method);\n" +
+                        "}\n" +
+                        "function listenerAll(arg) {\n" +
+                        "    if (\"Runtime.consoleAPICalled\" == arg.method) {\n" +
+                        "        // print callback\n" +
+                        "        return;\n" +
+                        "    } else {\n" +
+                        "        println(\"All: \" + arg.method);\n" +
+                        "    }\n" +
+                        "}\n");
+        context.eval(source);
+        Value testSession = context.getBindings("sl").getMember("testSession");
+        testSession.execute(inspector, InspectorTester.getStringURI(source.getURI()));
         Assert.assertEquals("All: Debugger.scriptParsed" + NL +
                         "All: Debugger.scriptParsed" + NL +
                         "P: Debugger.paused" + NL +

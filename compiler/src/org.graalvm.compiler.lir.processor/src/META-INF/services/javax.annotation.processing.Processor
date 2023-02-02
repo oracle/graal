@@ -1,0 +1,2 @@
+org.graalvm.compiler.lir.processor.IntrinsicStubProcessor
+org.graalvm.compiler.lir.processor.StubPortProcessor

@@ -24,18 +24,18 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 
 public class UnsafeWriteSinkTypeFlow extends TypeFlow<AnalysisField> {
 
-    public UnsafeWriteSinkTypeFlow(BigBang bb, AnalysisField field) {
+    public UnsafeWriteSinkTypeFlow(PointsToAnalysis bb, AnalysisField field) {
         /* Use the Object type as a conservative type for the values loaded. */
         super(field, bb.getObjectType());
     }
 
     @Override
-    public TypeFlow<AnalysisField> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<AnalysisField> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
         return this;
     }
 

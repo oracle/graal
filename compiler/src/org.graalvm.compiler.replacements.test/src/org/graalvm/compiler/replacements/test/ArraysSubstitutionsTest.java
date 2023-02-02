@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -180,6 +180,7 @@ public class ArraysSubstitutionsTest extends ArraysSubstitutionsTestBase {
         HighTierContext context = getDefaultHighTierContext();
         createInliningPhase().apply(graph, context);
         createCanonicalizerPhase().apply(graph, getProviders());
+        new PartialEscapePhase(false, this.createCanonicalizerPhase(), graph.getOptions()).apply(graph, context);
         new PartialEscapePhase(false, this.createCanonicalizerPhase(), graph.getOptions()).apply(graph, context);
         createCanonicalizerPhase().apply(graph, getProviders());
 

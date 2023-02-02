@@ -44,8 +44,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
-// Checkstyle: allow reflection
-
 /**
  * A stub for calling native code generated from a method annotated with
  * {@link InvokeCFunctionPointer}.

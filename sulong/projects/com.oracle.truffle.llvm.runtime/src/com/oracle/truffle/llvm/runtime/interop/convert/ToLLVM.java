@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -104,12 +105,14 @@ public abstract class ToLLVM extends LLVMNode {
         }
 
         @Specialization(limit = "3", guards = {"!isPointer(value)", "type != null", "!nativeTypes.hasNativeType(value)"})
+        @GenerateAOT.Exclude
         LLVMPointer doTyped(Object value, LLVMInteropType.Structured type,
                         @SuppressWarnings("unused") @CachedLibrary("value") NativeTypeLibrary nativeTypes) {
             return LLVMManagedPointer.create(LLVMTypedForeignObject.create(value, type));
         }
 
         @Specialization(limit = "3", guards = {"!isPointer(value)", "type == null || nativeTypes.hasNativeType(value)"})
+        @GenerateAOT.Exclude
         LLVMPointer doUntyped(Object value, LLVMInteropType.Structured type,
                         @CachedLibrary("value") NativeTypeLibrary nativeTypes) {
             assert type == null || nativeTypes.hasNativeType(value);
@@ -124,6 +127,7 @@ public abstract class ToLLVM extends LLVMNode {
         protected abstract Object execute(Object value, LLVMInteropType.Value incomingType) throws UnsupportedMessageException;
 
         @Specialization(limit = "3", guards = "incomingType.kind == I1")
+        @GenerateAOT.Exclude
         static boolean doI1(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.isBoolean(value)) {
@@ -133,6 +137,7 @@ public abstract class ToLLVM extends LLVMNode {
         }
 
         @Specialization(limit = "3", guards = "incomingType.kind == I8")
+        @GenerateAOT.Exclude
         static byte doI8(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInByte(value)) {
@@ -142,6 +147,7 @@ public abstract class ToLLVM extends LLVMNode {
         }
 
         @Specialization(limit = "3", guards = "incomingType.kind == I16")
+        @GenerateAOT.Exclude
         static short doI16(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInShort(value)) {
@@ -151,6 +157,7 @@ public abstract class ToLLVM extends LLVMNode {
         }
 
         @Specialization(limit = "3", guards = "incomingType.kind == I32")
+        @GenerateAOT.Exclude
         static int doI32(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInInt(value)) {
@@ -160,6 +167,7 @@ public abstract class ToLLVM extends LLVMNode {
         }
 
         @Specialization(limit = "3", guards = "incomingType.kind == I64")
+        @GenerateAOT.Exclude
         static long doI64(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInLong(value)) {
@@ -169,6 +177,7 @@ public abstract class ToLLVM extends LLVMNode {
         }
 
         @Specialization(limit = "3", guards = "incomingType.kind == FLOAT")
+        @GenerateAOT.Exclude
         static float doFloat(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInFloat(value)) {
@@ -178,6 +187,7 @@ public abstract class ToLLVM extends LLVMNode {
         }
 
         @Specialization(limit = "3", guards = "incomingType.kind == DOUBLE")
+        @GenerateAOT.Exclude
         static double doDouble(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
             if (!interop.fitsInDouble(value)) {

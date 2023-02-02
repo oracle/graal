@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package org.graalvm.wasm.utils.cases;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.SystemProperties;
 import org.graalvm.wasm.utils.WasmResource;
@@ -89,7 +90,8 @@ public abstract class WasmCase {
     public ArrayList<Source> getSources() throws IOException, InterruptedException {
         ArrayList<Source> sources = new ArrayList<>();
         for (Map.Entry<String, byte[]> entry : createBinaries().entrySet()) {
-            Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(entry.getValue()), entry.getKey());
+            Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(entry.getValue()), entry.getKey());
+            sourceBuilder.cached(false);
             Source source = sourceBuilder.build();
             sources.add(source);
         }
@@ -136,6 +138,14 @@ public abstract class WasmCase {
 
     public static WasmCaseData expectedThrows(String expectedErrorMessage, WasmCaseData.ErrorType phase) {
         return new WasmCaseData(expectedErrorMessage.trim(), phase);
+    }
+
+    public static WasmCaseData expectedMultiValue(Object[] expectedValues) {
+        return new WasmCaseData((Value result, String output) -> {
+            for (int i = 0; i < expectedValues.length; i++) {
+                Assert.assertEquals("Failure: result: ", expectedValues[i], result.getArrayElement(i).as(Object.class));
+            }
+        });
     }
 
     public static Collection<WasmCase> collectFileCases(String type, String resource) throws IOException {
@@ -204,6 +214,27 @@ public abstract class WasmCase {
                 break;
             case "double":
                 caseData = WasmCase.expected(Double.parseDouble(resultValue.trim()));
+                break;
+            case "multi-value":
+                String[] values = resultValue.split("\\s+");
+                Object[] expectedValues = new Object[values.length / 2];
+                for (int i = 0; i < values.length; i += 2) {
+                    switch (values[i]) {
+                        case "int":
+                            expectedValues[i / 2] = Integer.parseInt(values[i + 1]);
+                            break;
+                        case "long":
+                            expectedValues[i / 2] = Long.parseLong(values[i + 1]);
+                            break;
+                        case "float":
+                            expectedValues[i / 2] = Float.parseFloat(values[i + 1]);
+                            break;
+                        case "double":
+                            expectedValues[i / 2] = Double.parseDouble(values[i + 1]);
+                            break;
+                    }
+                }
+                caseData = WasmCase.expectedMultiValue(expectedValues);
                 break;
             case "validation":
                 caseData = WasmCase.expectedThrows(resultValue, WasmCaseData.ErrorType.Validation);

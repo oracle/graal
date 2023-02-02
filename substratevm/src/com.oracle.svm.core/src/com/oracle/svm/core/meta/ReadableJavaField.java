@@ -26,19 +26,30 @@ package com.oracle.svm.core.meta;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public interface ReadableJavaField extends ResolvedJavaField {
 
-    static JavaConstant readFieldValue(ConstantReflectionProvider originalConstantReflection, ResolvedJavaField javaField, JavaConstant javaConstant) {
+    static JavaConstant readFieldValue(MetaAccessProvider metaAccess, ConstantReflectionProvider originalConstantReflection, ResolvedJavaField javaField, JavaConstant javaConstant) {
         if (javaField instanceof ReadableJavaField) {
-            return ((ReadableJavaField) javaField).readValue(javaConstant);
+            ReadableJavaField readableField = (ReadableJavaField) javaField;
+            assert readableField.isValueAvailable() : "Field " + readableField.format("%H.%n") + " value not available for reading.";
+            return readableField.readValue(metaAccess, javaConstant);
         } else {
             return originalConstantReflection.readFieldValue(javaField, javaConstant);
         }
     }
 
-    JavaConstant readValue(JavaConstant receiver);
+    JavaConstant readValue(MetaAccessProvider metaAccess, JavaConstant receiver);
+
+    default boolean isValueAvailableBeforeAnalysis() {
+        return true;
+    }
+
+    default boolean isValueAvailable() {
+        return true;
+    }
 
     boolean allowConstantFolding();
 

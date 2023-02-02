@@ -604,7 +604,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
 
         // note: there's a typo in test data.
         assertTrue(componentShorts.contains("org.graavm.ruby"));
-        assertTrue(componentShorts.contains("llvm-toolchain"));
+        // llvm-toolchain requires graalvm 0.32, which is not compatible with 0.33
         assertTrue(componentShorts.contains("ruby"));
 
         assertFalse(Handler.isVisited(releaseURL));

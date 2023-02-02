@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,12 @@
 package com.oracle.truffle.object;
 
 import static com.oracle.truffle.object.LayoutImpl.ACCESS;
+import static com.oracle.truffle.object.UnsafeAccess.ARRAY_INT_BASE_OFFSET;
+import static com.oracle.truffle.object.UnsafeAccess.ARRAY_INT_INDEX_SCALE;
+import static com.oracle.truffle.object.UnsafeAccess.unsafeGetLong;
+import static com.oracle.truffle.object.UnsafeAccess.unsafeGetObject;
+import static com.oracle.truffle.object.UnsafeAccess.unsafePutLong;
+import static com.oracle.truffle.object.UnsafeAccess.unsafePutObject;
 
 import java.lang.reflect.Field;
 import java.util.Objects;
@@ -48,13 +54,9 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.FinalLocationException;
-import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-
-import sun.misc.Unsafe;
 
 /**
  * Property location.
@@ -70,7 +72,7 @@ abstract class CoreLocations {
     static final int OBJECT_SLOT_SIZE = 1;
     static final int MAX_DYNAMIC_FIELDS = 1000;
 
-    public interface TypedLocation extends com.oracle.truffle.api.object.TypedLocation {
+    public interface TypedLocation {
         Class<?> getType();
     }
 
@@ -84,9 +86,9 @@ abstract class CoreLocations {
     }
 
     public interface IntLocation extends TypedLocation, com.oracle.truffle.api.object.IntLocation {
-        int getInt(DynamicObject store, boolean condition);
+        int getInt(DynamicObject store, boolean guard);
 
-        void setInt(DynamicObject store, int value, boolean condition);
+        void setInt(DynamicObject store, int value, boolean guard, boolean init);
 
         default Class<Integer> getType() {
             return int.class;
@@ -100,26 +102,27 @@ abstract class CoreLocations {
         }
 
         @Override
-        default void setInt(DynamicObject store, int value, Shape shape) throws FinalLocationException {
-            setInt(store, value, store.getShape() == shape);
+        default void setInt(DynamicObject store, int value, Shape shape) {
+            setInt(store, value, store.getShape() == shape, false);
         }
 
         @Override
-        default void setInt(DynamicObject store, int value) throws FinalLocationException {
-            setInt(store, value, false);
+        default void setInt(DynamicObject store, int value) {
+            setInt(store, value, false, false);
         }
 
         @Override
         default void setInt(DynamicObject store, int value, Shape oldShape, Shape newShape) {
-            ACCESS.growAndSetShape(store, oldShape, newShape);
-            setInt(store, value, false);
+            ACCESS.grow(store, oldShape, newShape);
+            setInt(store, value, false, false);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
     public interface LongLocation extends TypedLocation, com.oracle.truffle.api.object.LongLocation {
-        long getLong(DynamicObject store, boolean condition);
+        long getLong(DynamicObject store, boolean guard);
 
-        void setLong(DynamicObject store, long value, boolean condition);
+        void setLong(DynamicObject store, long value, boolean guard, boolean init);
 
         default Class<Long> getType() {
             return long.class;
@@ -135,26 +138,27 @@ abstract class CoreLocations {
         }
 
         @Override
-        default void setLong(DynamicObject store, long value, Shape shape) throws FinalLocationException {
-            setLong(store, value, store.getShape() == shape);
+        default void setLong(DynamicObject store, long value, Shape shape) {
+            setLong(store, value, store.getShape() == shape, false);
         }
 
         @Override
-        default void setLong(DynamicObject store, long value) throws FinalLocationException {
-            setLong(store, value, false);
+        default void setLong(DynamicObject store, long value) {
+            setLong(store, value, false, false);
         }
 
         @Override
         default void setLong(DynamicObject store, long value, Shape oldShape, Shape newShape) {
-            ACCESS.growAndSetShape(store, oldShape, newShape);
-            setLong(store, value, false);
+            ACCESS.grow(store, oldShape, newShape);
+            setLong(store, value, false, false);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
     public interface DoubleLocation extends TypedLocation, com.oracle.truffle.api.object.DoubleLocation {
-        double getDouble(DynamicObject store, boolean condition);
+        double getDouble(DynamicObject store, boolean guard);
 
-        void setDouble(DynamicObject store, double value, boolean condition);
+        void setDouble(DynamicObject store, double value, boolean guard, boolean init);
 
         default Class<Double> getType() {
             return double.class;
@@ -170,26 +174,27 @@ abstract class CoreLocations {
         }
 
         @Override
-        default void setDouble(DynamicObject store, double value, Shape shape) throws FinalLocationException {
-            setDouble(store, value, store.getShape() == shape);
+        default void setDouble(DynamicObject store, double value, Shape shape) {
+            setDouble(store, value, store.getShape() == shape, false);
         }
 
         @Override
-        default void setDouble(DynamicObject store, double value) throws FinalLocationException {
-            setDouble(store, value, false);
+        default void setDouble(DynamicObject store, double value) {
+            setDouble(store, value, false, false);
         }
 
         @Override
         default void setDouble(DynamicObject store, double value, Shape oldShape, Shape newShape) {
-            ACCESS.growAndSetShape(store, oldShape, newShape);
-            setDouble(store, value, false);
+            ACCESS.grow(store, oldShape, newShape);
+            setDouble(store, value, false, false);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
     public interface BooleanLocation extends TypedLocation, com.oracle.truffle.api.object.BooleanLocation {
-        boolean getBoolean(DynamicObject store, boolean condition);
+        boolean getBoolean(DynamicObject store, boolean guard);
 
-        void setBoolean(DynamicObject store, boolean value, boolean condition);
+        void setBoolean(DynamicObject store, boolean value, boolean guard, boolean init);
 
         default Class<Boolean> getType() {
             return boolean.class;
@@ -203,19 +208,20 @@ abstract class CoreLocations {
         }
 
         @Override
-        default void setBoolean(DynamicObject store, boolean value, Shape shape) throws FinalLocationException {
-            setBoolean(store, value, store.getShape() == shape);
+        default void setBoolean(DynamicObject store, boolean value, Shape shape) {
+            setBoolean(store, value, store.getShape() == shape, false);
         }
 
         @Override
-        default void setBoolean(DynamicObject store, boolean value) throws FinalLocationException {
-            setBoolean(store, value, false);
+        default void setBoolean(DynamicObject store, boolean value) {
+            setBoolean(store, value, false, false);
         }
 
         @Override
         default void setBoolean(DynamicObject store, boolean value, Shape oldShape, Shape newShape) {
-            ACCESS.growAndSetShape(store, oldShape, newShape);
-            setBoolean(store, value, false);
+            ACCESS.grow(store, oldShape, newShape);
+            setBoolean(store, value, false, false);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
@@ -242,7 +248,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final Object get(DynamicObject store, boolean condition) {
+        public final Object get(DynamicObject store, boolean guard) {
             return value;
         }
 
@@ -252,17 +258,14 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException, FinalLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (!canStore(value)) {
-                throw finalLocation();
-            }
-        }
-
-        @Override
-        public final void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
-            if (!canStore(value)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new UnsupportedOperationException();
+                if (init) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new UnsupportedOperationException();
+                } else {
+                    throw incompatibleLocation();
+                }
             }
         }
 
@@ -305,18 +308,23 @@ abstract class CoreLocations {
         }
     }
 
-    public abstract static class ArrayLocation extends CoreLocation {
-        protected final int index;
-        protected final CoreLocation arrayLocation;
+    abstract static class InstanceLocation extends CoreLocation {
 
-        protected ArrayLocation(int index, CoreLocation arrayLocation) {
+        protected final int index;
+
+        protected InstanceLocation(int index) {
             this.index = index;
-            this.arrayLocation = arrayLocation;
         }
 
-        protected final Object getArray(DynamicObject store, boolean condition) {
-            // non-null cast
-            return arrayLocation.get(store, condition);
+        public final int getIndex() {
+            return index;
+        }
+    }
+
+    public abstract static class ArrayLocation extends InstanceLocation {
+
+        protected ArrayLocation(int index) {
+            super(index);
         }
 
         @Override
@@ -339,21 +347,16 @@ abstract class CoreLocations {
             return true;
         }
 
-        public final int getIndex() {
-            return index;
-        }
-
         @Override
         public String getWhereString() {
             return "[" + index + "]";
         }
     }
 
-    public abstract static class FieldLocation extends CoreLocation {
-        private final int index;
+    public abstract static class FieldLocation extends InstanceLocation {
 
         protected FieldLocation(int index) {
-            this.index = index;
+            super(index);
         }
 
         @Override
@@ -376,10 +379,6 @@ abstract class CoreLocations {
             return true;
         }
 
-        public final int getIndex() {
-            return index;
-        }
-
         @Override
         public String getWhereString() {
             return "@" + index;
@@ -387,32 +386,38 @@ abstract class CoreLocations {
 
         public abstract Class<? extends DynamicObject> getDeclaringClass();
 
-        protected final void receiverCheck(DynamicObject store) {
-            if (!getDeclaringClass().isInstance(store)) {
+        protected static DynamicObject receiverCast(DynamicObject store, Class<? extends DynamicObject> tclass) {
+            try {
+                return tclass.cast(Objects.requireNonNull(store));
+            } catch (ClassCastException | NullPointerException ex) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw illegalReceiver(store);
+                throw illegalReceiver(store, tclass);
             }
         }
 
-        private IllegalArgumentException illegalReceiver(DynamicObject store) {
+        protected static IllegalArgumentException illegalReceiver(DynamicObject store, Class<? extends DynamicObject> declaringClass) {
             CompilerAsserts.neverPartOfCompilation();
-            return new IllegalArgumentException(String.format("Invalid receiver type (expected %s, was %s)", getDeclaringClass(), store == null ? null : store.getClass()));
+            return new IllegalArgumentException("Invalid receiver type (expected " + declaringClass + ", was " + (store == null ? null : store.getClass()) + ")");
         }
     }
 
     static class ObjectArrayLocation extends ArrayLocation implements ObjectLocation {
-        protected ObjectArrayLocation(int index, CoreLocation arrayLocation) {
-            super(index, arrayLocation);
+        protected ObjectArrayLocation(int index) {
+            super(index);
+        }
+
+        protected static final Object[] getArray(DynamicObject store) {
+            return LayoutImpl.ACCESS.getObjectArray(store);
         }
 
         @Override
-        public Object get(DynamicObject store, boolean condition) {
-            return ((Object[]) getArray(store, condition))[index];
+        public Object get(DynamicObject store, boolean guard) {
+            return getArray(store)[index];
         }
 
         @Override
-        public final void setInternal(DynamicObject store, Object value, boolean condition) {
-            ((Object[]) getArray(store, condition))[index] = value;
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) {
+            getArray(store)[index] = value;
         }
 
         @Override
@@ -427,6 +432,11 @@ abstract class CoreLocations {
 
         public final boolean isNonNull() {
             return false;
+        }
+
+        @Override
+        protected void clear(DynamicObject store) {
+            set(store, null, false, true);
         }
 
         @Override
@@ -447,10 +457,10 @@ abstract class CoreLocations {
         }
 
         @Override
-        public abstract Object get(DynamicObject store, boolean condition);
+        public abstract Object get(DynamicObject store, boolean guard);
 
         @Override
-        public abstract void setInternal(DynamicObject store, Object value, boolean condition);
+        public abstract void set(DynamicObject store, Object value, boolean guard, boolean init);
 
         @Override
         public boolean canStore(Object value) {
@@ -467,6 +477,11 @@ abstract class CoreLocations {
         }
 
         @Override
+        protected void clear(DynamicObject store) {
+            set(store, null, false, true);
+        }
+
+        @Override
         public int objectFieldCount() {
             return OBJECT_SLOT_SIZE;
         }
@@ -478,31 +493,28 @@ abstract class CoreLocations {
     }
 
     static class LongArrayLocation extends ArrayLocation implements LongLocation {
-        private static final Unsafe UNSAFE = getUnsafe();
         private static final int ALIGN = LONG_ARRAY_SLOT_SIZE - 1;
-        private static final long ARRAY_INT_BASE_OFFSET = UNSAFE.arrayBaseOffset(int[].class);
-        private static final long ARRAY_INT_INDEX_SCALE = UNSAFE.arrayIndexScale(int[].class);
 
         protected final boolean allowInt;
 
-        protected LongArrayLocation(int index, CoreLocation arrayLocation, boolean allowInt) {
-            super(index, arrayLocation);
+        protected LongArrayLocation(int index, boolean allowInt) {
+            super(index);
             this.allowInt = allowInt;
         }
 
-        protected LongArrayLocation(int index, CoreLocation arrayLocation) {
-            this(index, arrayLocation, false);
+        protected LongArrayLocation(int index) {
+            this(index, false);
         }
 
         @Override
-        public final Object get(DynamicObject store, boolean condition) {
-            return getLong(store, condition);
+        public final Object get(DynamicObject store, boolean guard) {
+            return getLong(store, guard);
         }
 
         @Override
-        public final void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
-                setLongInternal(store, longValue(value));
+                setLong(store, longValue(value), guard, init);
             } else {
                 throw incompatibleLocation();
             }
@@ -516,20 +528,41 @@ abstract class CoreLocations {
             }
         }
 
+        protected static final int[] getArray(DynamicObject store) {
+            return LayoutImpl.ACCESS.getPrimitiveArray(store);
+        }
+
         @Override
-        public long getLong(DynamicObject store, boolean condition) {
-            int[] array = (int[]) getArray(store, condition);
-            return UNSAFE.getLong(array, getOffset(array));
+        public long getLong(DynamicObject store, boolean guard) {
+            int[] array = getArray(store);
+            int idx = index;
+            boolean boundsCheck = idx >= 0 && idx < array.length - ALIGN;
+            if (boundsCheck) {
+                long offset = ARRAY_INT_BASE_OFFSET + ARRAY_INT_INDEX_SCALE * idx;
+                return unsafeGetLong(array, offset, boundsCheck, null);
+            } else {
+                throw arrayIndexOutOfBounds(idx);
+            }
         }
 
         public final void setLongInternal(DynamicObject store, long value) {
-            int[] array = (int[]) getArray(store, false);
-            long offset = getOffset(array);
-            UNSAFE.putLong(array, offset, value);
+            int[] array = getArray(store);
+            int idx = index;
+            if (idx >= 0 && idx < array.length - ALIGN) {
+                long offset = ARRAY_INT_BASE_OFFSET + ARRAY_INT_INDEX_SCALE * idx;
+                unsafePutLong(array, offset, value, null);
+            } else {
+                throw arrayIndexOutOfBounds(idx);
+            }
+        }
+
+        private static ArrayIndexOutOfBoundsException arrayIndexOutOfBounds(int idx) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new ArrayIndexOutOfBoundsException(idx);
         }
 
         @Override
-        public void setLong(DynamicObject store, long value, boolean condition) {
+        public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
             setLongInternal(store, value);
         }
 
@@ -562,15 +595,6 @@ abstract class CoreLocations {
         public boolean isImplicitCastIntToLong() {
             return allowInt;
         }
-
-        protected final long getOffset(int[] array) {
-            int idx = index;
-            if (idx < 0 || idx >= array.length - ALIGN) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new ArrayIndexOutOfBoundsException(idx);
-            }
-            return ARRAY_INT_BASE_OFFSET + ARRAY_INT_INDEX_SCALE * idx;
-        }
     }
 
     public static LongLocation createLongLocation(LongLocation longLocation, boolean allowInt) {
@@ -590,27 +614,27 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final Object get(DynamicObject store, boolean condition) {
-            return getLong(store, condition);
+        public final Object get(DynamicObject store, boolean guard) {
+            return getLong(store, guard);
         }
 
         @Override
-        public long getLong(DynamicObject store, boolean condition) {
-            return super.getLongInternal(store, condition);
+        public long getLong(DynamicObject store, boolean guard) {
+            return super.getLongInternal(store, guard);
         }
 
         @Override
-        public final void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
-                setLong(store, longValue(value), condition);
+                setLong(store, longValue(value), guard, init);
             } else {
                 throw incompatibleLocation();
             }
         }
 
         @Override
-        public void setLong(DynamicObject store, long value, boolean condition) {
-            super.setLongInternal(store, value, condition);
+        public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
+            super.setLongInternal(store, value, guard);
         }
 
         private long longValue(Object value) {
@@ -649,14 +673,14 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final Object get(DynamicObject store, boolean condition) {
-            return getLong(store, condition);
+        public final Object get(DynamicObject store, boolean guard) {
+            return getLong(store, guard);
         }
 
         @Override
-        public final void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
-                setLong(store, ((Long) value).longValue(), condition);
+                setLong(store, ((Long) value).longValue(), guard, init);
             } else {
                 throw incompatibleLocation();
             }
@@ -668,7 +692,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public abstract long getLong(DynamicObject store, boolean condition);
+        public abstract long getLong(DynamicObject store, boolean guard);
 
         @Override
         public final long getLong(DynamicObject store, Shape shape) {
@@ -676,7 +700,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public abstract void setLong(DynamicObject store, long value, boolean condition);
+        public abstract void setLong(DynamicObject store, long value, boolean guard, boolean init);
 
         @Override
         public int primitiveFieldCount() {
@@ -706,12 +730,12 @@ abstract class CoreLocations {
             this.longLocation = longLocation;
         }
 
-        public final long getLongInternal(DynamicObject store, boolean condition) {
-            return longLocation.getLong(store, condition);
+        public final long getLongInternal(DynamicObject store, boolean guard) {
+            return longLocation.getLong(store, guard);
         }
 
-        public final void setLongInternal(DynamicObject store, long value, boolean condition) {
-            longLocation.setLong(store, value, condition);
+        public final void setLongInternal(DynamicObject store, long value, boolean guard) {
+            longLocation.setLong(store, value, guard, true);
         }
 
         public final LongLocation getInternalLongLocation() {
@@ -760,24 +784,24 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final Object get(DynamicObject store, boolean condition) {
-            return getInt(store, condition);
+        public final Object get(DynamicObject store, boolean guard) {
+            return getInt(store, guard);
         }
 
         @Override
-        public int getInt(DynamicObject store, boolean condition) {
-            return (int) getLongInternal(store, condition);
+        public int getInt(DynamicObject store, boolean guard) {
+            return (int) getLongInternal(store, guard);
         }
 
         @Override
-        public void setInt(DynamicObject store, int value, boolean condition) {
-            setLongInternal(store, value, condition);
+        public void setInt(DynamicObject store, int value, boolean guard, boolean init) {
+            setLongInternal(store, value, guard);
         }
 
         @Override
-        public final void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
-                setLongInternal(store, (int) value, condition);
+                setLongInternal(store, (int) value, guard);
             } else {
                 throw incompatibleLocation();
             }
@@ -808,24 +832,24 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final Object get(DynamicObject store, boolean condition) {
-            return getDouble(store, condition);
+        public final Object get(DynamicObject store, boolean guard) {
+            return getDouble(store, guard);
         }
 
         @Override
-        public double getDouble(DynamicObject store, boolean condition) {
-            return Double.longBitsToDouble(getLongInternal(store, condition));
+        public double getDouble(DynamicObject store, boolean guard) {
+            return Double.longBitsToDouble(getLongInternal(store, guard));
         }
 
         @Override
-        public void setDouble(DynamicObject store, double value, boolean condition) {
-            setLongInternal(store, Double.doubleToRawLongBits(value), condition);
+        public void setDouble(DynamicObject store, double value, boolean guard, boolean init) {
+            setLongInternal(store, Double.doubleToRawLongBits(value), guard);
         }
 
         @Override
-        public final void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
-                setDouble(store, doubleValue(value), condition);
+                setDouble(store, doubleValue(value), guard, init);
             } else {
                 throw incompatibleLocation();
             }
@@ -871,24 +895,24 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final Object get(DynamicObject store, boolean condition) {
-            return getBoolean(store, condition);
+        public final Object get(DynamicObject store, boolean guard) {
+            return getBoolean(store, guard);
         }
 
         @Override
-        public boolean getBoolean(DynamicObject store, boolean condition) {
-            return getLongInternal(store, condition) != 0;
+        public boolean getBoolean(DynamicObject store, boolean guard) {
+            return getLongInternal(store, guard) != 0;
         }
 
         @Override
-        public void setBoolean(DynamicObject store, boolean value, boolean condition) {
-            setLongInternal(store, value ? 1 : 0, condition);
+        public void setBoolean(DynamicObject store, boolean value, boolean guard, boolean init) {
+            setLongInternal(store, value ? 1 : 0, guard);
         }
 
         @Override
-        public final void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
-                setBoolean(store, (boolean) value, condition);
+                setBoolean(store, (boolean) value, guard, init);
             } else {
                 throw incompatibleLocation();
             }
@@ -910,9 +934,6 @@ abstract class CoreLocations {
         }
     }
 
-    static final SimpleObjectFieldLocation OBJECT_ARRAY_LOCATION;
-    static final SimpleObjectFieldLocation PRIMITIVE_ARRAY_LOCATION;
-
     static long decodeLong(int lower, int upper) {
         return (lower & 0xffff_ffffL) | ((long) upper << 32);
     }
@@ -928,7 +949,6 @@ abstract class CoreLocations {
     static final class DynamicObjectFieldLocation extends SimpleObjectFieldLocation {
         private final long offset;
         private final Class<? extends DynamicObject> tclass;
-        private static final Unsafe UNSAFE = getUnsafe();
 
         private DynamicObjectFieldLocation(int index, long offset, Class<? extends DynamicObject> declaringClass) {
             super(index);
@@ -937,22 +957,20 @@ abstract class CoreLocations {
         }
 
         DynamicObjectFieldLocation(int index, Field objectField) {
-            this(index, UNSAFE.objectFieldOffset(objectField), objectField.getDeclaringClass().asSubclass(DynamicObject.class));
+            this(index, UnsafeAccess.objectFieldOffset(objectField), objectField.getDeclaringClass().asSubclass(DynamicObject.class));
             if (objectField.getType() != Object.class) {
                 throw new IllegalArgumentException();
             }
         }
 
         @Override
-        public Object get(DynamicObject store, boolean condition) {
-            receiverCheck(store);
-            return UNSAFE.getObject(store, offset);
+        public Object get(DynamicObject store, boolean guard) {
+            return unsafeGetObject(receiverCast(store, tclass), offset);
         }
 
         @Override
-        public void setInternal(DynamicObject store, Object value, boolean condition) {
-            receiverCheck(store);
-            UNSAFE.putObject(store, offset, value);
+        public void set(DynamicObject store, Object value, boolean guard, boolean init) {
+            unsafePutObject(receiverCast(store, tclass), offset, value);
         }
 
         @Override
@@ -967,8 +985,6 @@ abstract class CoreLocations {
         /** {@link DynamicObject} subclass holding field. */
         private final Class<? extends DynamicObject> tclass;
 
-        private static final Unsafe UNSAFE = getUnsafe();
-
         DynamicLongFieldLocation(int index, long offset, Class<? extends DynamicObject> declaringClass) {
             super(index);
             this.offset = offset;
@@ -977,15 +993,13 @@ abstract class CoreLocations {
         }
 
         @Override
-        public long getLong(DynamicObject store, boolean condition) {
-            receiverCheck(store);
-            return UNSAFE.getLong(store, offset);
+        public long getLong(DynamicObject store, boolean guard) {
+            return unsafeGetLong(receiverCast(store, tclass), offset);
         }
 
         @Override
-        public void setLong(DynamicObject store, long value, boolean condition) {
-            receiverCheck(store);
-            UNSAFE.putLong(store, offset, value);
+        public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
+            unsafePutLong(receiverCast(store, tclass), offset, value);
         }
 
         @Override
@@ -998,62 +1012,11 @@ abstract class CoreLocations {
         LocationImpl internal = loc.getInternalLocation();
         boolean isPrimitive = internal instanceof CoreLocations.LongLocation;
         if (internal instanceof CoreLocations.FieldLocation) {
-            return (isPrimitive ? Integer.MIN_VALUE : 0) + ((CoreLocations.FieldLocation) internal).getIndex();
+            return (isPrimitive ? -Integer.MAX_VALUE : 0) + ((CoreLocations.FieldLocation) internal).getIndex();
         } else if (internal instanceof CoreLocations.ArrayLocation) {
-            return (isPrimitive ? Integer.MIN_VALUE : 0) + MAX_DYNAMIC_FIELDS + ((CoreLocations.ArrayLocation) internal).getIndex();
+            return (isPrimitive ? -Integer.MAX_VALUE : 0) + MAX_DYNAMIC_FIELDS + ((CoreLocations.ArrayLocation) internal).getIndex();
         } else {
             throw new IllegalArgumentException(internal.getClass().getName());
         }
-    }
-
-    static Unsafe getUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-        }
-        try {
-            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafeInstance.setAccessible(true);
-            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-        } catch (Exception e) {
-            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-        }
-    }
-
-    static {
-        int index = 0;
-        OBJECT_ARRAY_LOCATION = new SimpleObjectFieldLocation(index++) {
-            @Override
-            public Object[] get(DynamicObject store, boolean condition) {
-                return LayoutImpl.ACCESS.getObjectArray(store);
-            }
-
-            @Override
-            public void setInternal(DynamicObject store, Object value, boolean condition) {
-                LayoutImpl.ACCESS.setObjectArray(store, (Object[]) value);
-            }
-
-            @Override
-            public Class<? extends DynamicObject> getDeclaringClass() {
-                return DynamicObject.class;
-            }
-        };
-
-        PRIMITIVE_ARRAY_LOCATION = new SimpleObjectFieldLocation(index++) {
-            @Override
-            public int[] get(DynamicObject store, boolean condition) {
-                return LayoutImpl.ACCESS.getPrimitiveArray(store);
-            }
-
-            @Override
-            public void setInternal(DynamicObject store, Object value, boolean condition) {
-                LayoutImpl.ACCESS.setPrimitiveArray(store, (int[]) value);
-            }
-
-            @Override
-            public Class<? extends DynamicObject> getDeclaringClass() {
-                return DynamicObject.class;
-            }
-        };
     }
 }

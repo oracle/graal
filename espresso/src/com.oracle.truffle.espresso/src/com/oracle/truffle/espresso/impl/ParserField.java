@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.lang.reflect.Modifier;
 
@@ -48,6 +49,10 @@ public final class ParserField {
     private final Symbol<Type> type;
     @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
+
+    public ParserField withFlags(int newFlags) {
+        return new ParserField(flags | newFlags, name, type, attributes);
+    }
 
     public int getFlags() {
         return flags;
@@ -80,7 +85,38 @@ public final class ParserField {
         return Modifier.isStatic(flags);
     }
 
+    public boolean isFinal() {
+        return Modifier.isFinal(flags);
+    }
+
     public JavaKind getKind() {
         return Types.getJavaKind(type);
+    }
+
+    public Class<?> getPropertyType() {
+        if (type.length() == 1) {
+            char ch = (char) type.byteAt(0);
+            switch (ch) {
+                case 'Z':
+                    return boolean.class;
+                case 'C':
+                    return char.class;
+                case 'F':
+                    return float.class;
+                case 'D':
+                    return double.class;
+                case 'B':
+                    return byte.class;
+                case 'S':
+                    return short.class;
+                case 'I':
+                    return int.class;
+                case 'J':
+                    return long.class;
+                default:
+                    throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
+            }
+        }
+        return isHidden() ? Object.class : StaticObject.class;
     }
 }

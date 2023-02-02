@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,6 @@
 package org.graalvm.compiler.hotspot.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.rax;
-import static jdk.vm.ci.amd64.AMD64.rip;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
-import static org.graalvm.compiler.core.common.NumUtil.isInt;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -46,9 +42,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
 
 /**
  * Emits a safepoint poll.
@@ -68,12 +61,7 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
         this.state = state;
         this.config = config;
         this.thread = thread;
-        if (config.useThreadLocalPolling || isPollingPageFar(config) || ImmutableCode.getValue(tool.getOptions())) {
-            temp = tool.getLIRGeneratorTool().newVariable(LIRKind.value(tool.getLIRGeneratorTool().target().arch.getWordKind()));
-        } else {
-            // Don't waste a register if it's unneeded
-            temp = Value.ILLEGAL;
-        }
+        temp = tool.getLIRGeneratorTool().newVariable(LIRKind.value(tool.getLIRGeneratorTool().target().arch.getWordKind()));
     }
 
     @Override
@@ -82,63 +70,6 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     }
 
     public static void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm, GraalHotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register thread, Register scratch) {
-        if (config.useThreadLocalPolling) {
-            emitThreadLocalPoll(crb, asm, config, atReturn, state, thread, scratch);
-        } else {
-            emitGlobalPoll(crb, asm, config, atReturn, state, scratch);
-        }
-    }
-
-    /**
-     * Tests if the polling page address can be reached from the code cache with 32-bit
-     * displacements.
-     */
-    private static boolean isPollingPageFar(GraalHotSpotVMConfig config) {
-        final long pollingPageAddress = config.safepointPollingAddress;
-        return config.forceUnreachable || !isInt(pollingPageAddress - config.codeCacheLowBound) || !isInt(pollingPageAddress - config.codeCacheHighBound);
-    }
-
-    private static void emitGlobalPoll(CompilationResultBuilder crb, AMD64MacroAssembler asm, GraalHotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
-        assert !atReturn || state == null : "state is unneeded at return";
-        if (ImmutableCode.getValue(crb.getOptions())) {
-            JavaKind hostWordKind = JavaKind.Long;
-            int alignment = hostWordKind.getBitCount() / Byte.SIZE;
-            JavaConstant pollingPageAddress = JavaConstant.forIntegerKind(hostWordKind, config.safepointPollingAddress);
-            // This move will be patched to load the safepoint page from a data segment
-            // co-located with the immutable code.
-            if (GeneratePIC.getValue(crb.getOptions())) {
-                asm.movq(scratch, asm.getPlaceholder(-1));
-            } else {
-                asm.movq(scratch, (AMD64Address) crb.recordDataReferenceInCode(pollingPageAddress, alignment));
-            }
-            final int pos = asm.position();
-            crb.recordMark(atReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
-            if (state != null) {
-                crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
-            }
-            asm.testl(rax, new AMD64Address(scratch));
-        } else if (isPollingPageFar(config)) {
-            asm.movq(scratch, config.safepointPollingAddress);
-            crb.recordMark(atReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
-            final int pos = asm.position();
-            if (state != null) {
-                crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
-            }
-            asm.testl(rax, new AMD64Address(scratch));
-        } else {
-            crb.recordMark(atReturn ? HotSpotMarkId.POLL_RETURN_NEAR : HotSpotMarkId.POLL_NEAR);
-            final int pos = asm.position();
-            if (state != null) {
-                crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
-            }
-            // The C++ code transforms the polling page offset into an RIP displacement
-            // to the real address at that offset in the polling page.
-            asm.testl(rax, new AMD64Address(rip, 0));
-        }
-    }
-
-    private static void emitThreadLocalPoll(CompilationResultBuilder crb, AMD64MacroAssembler asm, GraalHotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register thread,
-                    Register scratch) {
         assert !atReturn || state == null : "state is unneeded at return";
 
         assert config.threadPollingPageOffset >= 0;

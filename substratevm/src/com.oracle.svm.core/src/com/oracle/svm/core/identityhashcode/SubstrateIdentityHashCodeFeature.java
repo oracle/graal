@@ -24,19 +24,15 @@
  */
 package com.oracle.svm.core.identityhashcode;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.phases.util.Providers;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-final class SubstrateIdentityHashCodeFeature implements GraalFeature {
+@AutomaticallyRegisteredFeature
+final class SubstrateIdentityHashCodeFeature implements InternalFeature {
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
-        foreignCalls.register(providers, SubstrateIdentityHashCodeSnippets.GENERATE_IDENTITY_HASH_CODE);
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(SubstrateIdentityHashCodeSnippets.GENERATE_IDENTITY_HASH_CODE);
     }
 }

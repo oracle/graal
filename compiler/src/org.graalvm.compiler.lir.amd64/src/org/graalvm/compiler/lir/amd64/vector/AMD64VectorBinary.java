@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@ package org.graalvm.compiler.lir.amd64.vector;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
@@ -121,10 +123,10 @@ public class AMD64VectorBinary {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (y.getPlatformKind() == AMD64Kind.SINGLE) {
-                opcode.emit(masm, size, asRegister(result), asRegister(x), (AMD64Address) crb.asFloatConstRef(y.getJavaConstant()));
+                opcode.emit(masm, size, asRegister(result), asRegister(x), (AMD64Address) crb.asFloatConstRef(y.getJavaConstant(), opcode.isPacked() ? PS.getBytes() : 4));
             } else {
                 assert y.getPlatformKind() == AMD64Kind.DOUBLE;
-                opcode.emit(masm, size, asRegister(result), asRegister(x), (AMD64Address) crb.asDoubleConstRef(y.getJavaConstant()));
+                opcode.emit(masm, size, asRegister(result), asRegister(x), (AMD64Address) crb.asDoubleConstRef(y.getJavaConstant(), opcode.isPacked() ? PD.getBytes() : 8));
             }
         }
     }

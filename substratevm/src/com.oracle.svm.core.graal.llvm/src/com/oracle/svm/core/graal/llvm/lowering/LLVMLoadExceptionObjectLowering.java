@@ -25,13 +25,13 @@
 package com.oracle.svm.core.graal.llvm.lowering;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
-import com.oracle.svm.core.graal.nodes.ExceptionStateNode;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
@@ -42,9 +42,10 @@ public class LLVMLoadExceptionObjectLowering implements NodeLoweringProvider<Loa
     @Override
     public void lower(LoadExceptionObjectNode node, LoweringTool tool) {
         FrameState exceptionState = node.stateAfter();
-        assert exceptionState != null;
+        GraalError.guarantee(exceptionState != null, "StateAfter must not be null for %s", node);
 
         StructuredGraph graph = node.graph();
+        GraalError.guarantee(graph.getGuardsStage().areFrameStatesAtDeopts(), "Should be after FSA %s", node);
         FixedWithNextNode readRegNode = graph.add(new ReadExceptionObjectNode(StampFactory.objectNonNull()));
         graph.replaceFixedWithFixed(node, readRegNode);
 
@@ -56,9 +57,10 @@ public class LLVMLoadExceptionObjectLowering implements NodeLoweringProvider<Loa
         CFunctionEpilogueNode cFunctionEpilogueNode = new CFunctionEpilogueNode(VMThreads.StatusSupport.STATUS_IN_NATIVE);
         graph.add(cFunctionEpilogueNode);
         graph.addAfterFixed(readRegNode, cFunctionEpilogueNode);
+        GraalError.guarantee(exceptionState.rethrowException() && exceptionState.stackSize() == 1 && exceptionState.stackAt(0) == readRegNode,
+                        "Unexpected state for node %s: %s", cFunctionEpilogueNode, exceptionState);
+        cFunctionEpilogueNode.setStateBefore(exceptionState);
         cFunctionEpilogueNode.setStateAfter(exceptionState);
         cFunctionEpilogueNode.lower(tool);
-
-        graph.addAfterFixed(readRegNode, graph.add(new ExceptionStateNode(exceptionState)));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,13 +36,15 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.UnaryArithmeticNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -74,6 +76,12 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isJavaConstant()) {
+            // This doesn't match the semantics of CVTTSS2SI but since this is only used by
+            // AMD64ConvertSnippets this will fold to still produce the right result.
+            UnaryOp<FloatConvertOp> floatConvertOp = getOp(getArithmeticOpTable(value));
+            return ConstantNode.forPrimitive(floatConvertOp.foldStamp(forValue.stamp(NodeView.DEFAULT)), floatConvertOp.foldConstant(forValue.asConstant()));
+        }
         // nothing to do
         return this;
     }
@@ -83,7 +91,11 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
         // The semantics of the x64 CVTTSS2SI instruction allow returning 0x8000000 in the special
         // cases.
         Stamp foldedStamp = super.foldStamp(newStamp);
-        return foldedStamp.meet(createInexactCaseStamp());
+        if (foldedStamp instanceof IntegerStamp) {
+            return foldedStamp.meet(createInexactCaseStamp());
+        } else {
+            return foldedStamp.unrestricted();
+        }
     }
 
     private Stamp createInexactCaseStamp() {

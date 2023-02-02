@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.ref.WeakReference;
+import java.util.List;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
@@ -38,15 +40,11 @@ import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
@@ -102,7 +100,7 @@ public class LanguageContextFreedTest {
         ContextLocalValue threadLocal;
         ctx.enter();
         try {
-            sourceContext = Base.getContext(sourceLanguage);
+            sourceContext = Base.getAccessContext(sourceLanguage);
             contextLocal = sourceContext.language.contextLocal.get();
             threadLocal = sourceContext.language.threadLocal.get();
         } finally {
@@ -123,11 +121,9 @@ public class LanguageContextFreedTest {
         contextLocal = null;
         threadLocal = null;
 
-        GCUtils.assertGc("Language context should be freed when polyglot Context is closed.", langContextRef);
-        GCUtils.assertGc("Context local should be freed when polyglot Context is closed.",
-                        contextLocalRef);
-        GCUtils.assertGc("Context thread local should be freed when polyglot Context is closed.",
-                        threadLocalRef);
+        GCUtils.assertGc(List.of(Pair.create("Language context should be freed when polyglot Context is closed.", langContextRef),
+                        Pair.create("Context local should be freed when polyglot Context is closed.", contextLocalRef),
+                        Pair.create("Context thread local should be freed when polyglot Context is closed.", threadLocalRef)));
     }
 
     static final class LanguageContext {
@@ -152,43 +148,34 @@ public class LanguageContextFreedTest {
             return new LanguageContext(this);
         }
 
+        protected abstract ContextReference<LanguageContext> getContextReference0();
+
         @Override
         protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-            String id = request.getSource().getCharacters().toString();
-            TruffleRuntime runtime = Truffle.getRuntime();
-            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(this) {
-                @CompilationFinal ContextReference<LanguageContext> ref;
+            OptimizedCallTarget target = (OptimizedCallTarget) new RootNode(this) {
 
                 @SuppressWarnings("unchecked")
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    if (ref == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        ref = lookupContextReference(getAccessLanguage(id));
-                    }
-                    ref.get().currentTarget = (OptimizedCallTarget) getCallTarget();
+                    getContextReference0().get(this).currentTarget = (OptimizedCallTarget) getCallTarget();
                     return true;
                 }
-            });
-            getContext(request.getSource().getLanguage()).currentTarget = target;
+            }.getCallTarget();
+            getContextReference0().get(null).currentTarget = target;
 
             assertEquals(COMPILATION_THRESHOLD, (int) target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold));
             return target;
         }
 
-        private static Class<? extends Base> getAccessLanguage(String id) {
+        private static LanguageContext getAccessContext(String id) {
             switch (id) {
                 case Shared.ID:
-                    return Shared.class;
+                    return Shared.REFERENCE.get(null);
                 case Exclusive.ID:
-                    return Exclusive.class;
+                    return Exclusive.REFERENCE.get(null);
                 default:
                     throw new IllegalArgumentException(id);
             }
-        }
-
-        static LanguageContext getContext(String id) {
-            return getCurrentContext(getAccessLanguage(id));
         }
 
     }
@@ -198,12 +185,26 @@ public class LanguageContextFreedTest {
 
         static final String ID = "LanguageContextFreedTestExclusive";
 
+        @Override
+        protected ContextReference<LanguageContext> getContextReference0() {
+            return REFERENCE;
+        }
+
+        private static final ContextReference<LanguageContext> REFERENCE = ContextReference.create(Exclusive.class);
+
     }
 
     @Registration(id = Shared.ID, name = Shared.ID, contextPolicy = ContextPolicy.SHARED)
     public static class Shared extends Base {
 
         static final String ID = "LanguageContextFreedTestShared";
+
+        @Override
+        protected ContextReference<LanguageContext> getContextReference0() {
+            return REFERENCE;
+        }
+
+        private static final ContextReference<LanguageContext> REFERENCE = ContextReference.create(Shared.class);
 
     }
 

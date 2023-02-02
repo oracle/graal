@@ -43,19 +43,18 @@ package com.oracle.truffle.api.impl;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.WeakHashMap;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -75,6 +74,13 @@ public abstract class ThreadLocalHandshake {
      */
     private static final Map<Thread, TruffleSafepointImpl> SAFEPOINTS = Collections.synchronizedMap(new WeakHashMap<>());
 
+    static void resetNativeImageState() {
+        for (TruffleSafepointImpl impl : SAFEPOINTS.values()) {
+            impl.verifyUnused();
+        }
+        SAFEPOINTS.clear();
+    }
+
     protected ThreadLocalHandshake() {
     }
 
@@ -93,14 +99,35 @@ public abstract class ThreadLocalHandshake {
         }
     }
 
+    public boolean setChangeAllowActions(TruffleSafepoint safepoint, boolean enabled) {
+        return ((TruffleSafepointImpl) safepoint).setChangeAllowActions(enabled);
+    }
+
+    public boolean isAllowActions(TruffleSafepoint safepoint) {
+        return ((TruffleSafepointImpl) safepoint).isAllowActions();
+    }
+
     /**
      * If this method is invoked the thread must be guaranteed to be polled. If the thread dies and
      * {@link #poll(Node)} was not invoked then an {@link IllegalStateException} is thrown;
      */
     @TruffleBoundary
-    public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread, Consumer<T> onDone, boolean sideEffecting, boolean sync) {
+    public final <T extends Consumer<Node>> Future<Void> runThreadLocal(Thread[] threads, T onThread,
+                    Consumer<T> onDone, boolean sideEffecting, boolean syncStartOfEvent, boolean syncEndOfEvent) {
         testSupport();
-        Handshake<T> handshake = new Handshake<>(threads, onThread, onDone, sideEffecting, threads.length, sync);
+        assert threads.length > 0;
+        Handshake<T> handshake = new Handshake<>(threads, onThread, onDone, sideEffecting, threads.length, syncStartOfEvent, syncEndOfEvent);
+        if (syncStartOfEvent || syncEndOfEvent) {
+            synchronized (ThreadLocalHandshake.class) {
+                addHandshakes(threads, handshake);
+            }
+        } else {
+            addHandshakes(threads, handshake);
+        }
+        return handshake;
+    }
+
+    private <T extends Consumer<Node>> void addHandshakes(Thread[] threads, Handshake<T> handshake) {
         for (int i = 0; i < threads.length; i++) {
             Thread t = threads[i];
             if (!t.isAlive()) {
@@ -108,17 +135,16 @@ public abstract class ThreadLocalHandshake {
             }
             getThreadState(t).addHandshake(t, handshake);
         }
-        return handshake;
     }
 
     @SuppressWarnings("static-method")
-    public final void activateThread(TruffleSafepoint s, Future<?> f) {
-        ((TruffleSafepointImpl) s).activateThread((Handshake<?>) f);
+    public final boolean activateThread(TruffleSafepoint s, Future<?> f) {
+        return ((TruffleSafepointImpl) s).activateThread((Handshake<?>) f);
     }
 
     @SuppressWarnings("static-method")
-    public final void deactivateThread(TruffleSafepoint s, Future<?> f) {
-        ((TruffleSafepointImpl) s).deactivateThread((Handshake<?>) f);
+    public final boolean deactivateThread(TruffleSafepoint s, Future<?> f) {
+        return ((TruffleSafepointImpl) s).deactivateThread((Handshake<?>) f);
     }
 
     public void ensureThreadInitialized() {
@@ -160,19 +186,23 @@ public abstract class ThreadLocalHandshake {
         private final Phaser phaser;
         private volatile boolean cancelled;
         private final T action;
-        private final boolean sync;
-        // avoid rescheduling on the same thread again
-        private final Set<Thread> threads;
+        private final boolean syncStartOfEvent;
+        private final boolean syncEndOfEvent;
+        // avoid rescheduling processed events on the same thread
+        private final Map<Thread, Boolean> threads;
         private final Consumer<T> onDone;
 
-        @SuppressWarnings("unchecked")
-        Handshake(Thread[] initialThreads, T action, Consumer<T> onDone, boolean sideEffecting, int numberOfThreads, boolean sync) {
+        Handshake(Thread[] initialThreads, T action, Consumer<T> onDone, boolean sideEffecting, int numberOfThreads, boolean syncStartOfEvent, boolean syncEndOfEvent) {
             this.action = action;
             this.onDone = onDone;
             this.sideEffecting = sideEffecting;
-            this.sync = sync;
+            this.syncStartOfEvent = syncStartOfEvent;
+            this.syncEndOfEvent = syncEndOfEvent;
             this.phaser = new Phaser(numberOfThreads);
-            this.threads = Collections.synchronizedSet(new HashSet<>(Arrays.asList(initialThreads)));
+            /*
+             * Mark the handshake for all initial threads as active (not deactivated).
+             */
+            this.threads = new ConcurrentHashMap<>(Arrays.stream(initialThreads).collect(Collectors.toMap(t -> t, t -> Boolean.FALSE)));
         }
 
         @Override
@@ -182,25 +212,22 @@ public abstract class ThreadLocalHandshake {
 
         void perform(Node node) {
             try {
-                if (sync) {
+                if (syncStartOfEvent) {
                     phaser.arriveAndAwaitAdvance();
                 }
                 if (!cancelled) {
                     action.accept(node);
                 }
             } finally {
-                if (sync) {
-                    phaser.arriveAndDeregister();
-                    phaser.awaitAdvance(1);
+                phaser.arriveAndDeregister();
 
+                if (syncEndOfEvent) {
+                    phaser.awaitAdvance(syncStartOfEvent ? 1 : 0);
                     assert phaser.isTerminated();
-                    onDone.accept(action);
-                } else {
-                    phaser.arriveAndDeregister();
+                }
 
-                    if (phaser.isTerminated()) {
-                        onDone.accept(action);
-                    }
+                if (phaser.isTerminated()) {
+                    onDone.accept(action);
                 }
             }
         }
@@ -224,7 +251,7 @@ public abstract class ThreadLocalHandshake {
 
         @Override
         public Void get() throws InterruptedException {
-            if (sync) {
+            if (syncStartOfEvent) {
                 phaser.awaitAdvanceInterruptibly(0);
                 phaser.awaitAdvanceInterruptibly(1);
             } else {
@@ -233,8 +260,8 @@ public abstract class ThreadLocalHandshake {
             return null;
         }
 
-        public Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-            if (sync) {
+        public Void get(long timeout, TimeUnit unit) throws InterruptedException, TimeoutException {
+            if (syncStartOfEvent) {
                 phaser.awaitAdvanceInterruptibly(0, timeout, unit);
                 phaser.awaitAdvanceInterruptibly(1, timeout, unit);
             } else {
@@ -248,7 +275,7 @@ public abstract class ThreadLocalHandshake {
         }
 
         public boolean cancel(boolean mayInterruptIfRunning) {
-            if (phaser.getUnarrivedParties() > 0) {
+            if (!phaser.isTerminated()) {
                 cancelled = true;
                 return true;
             } else {
@@ -258,7 +285,8 @@ public abstract class ThreadLocalHandshake {
 
         @Override
         public String toString() {
-            return "Handshake[action=" + action + ", phaser=" + phaser + ", cancelled=" + cancelled + ", sideEffecting=" + sideEffecting + ", sync=" + sync + "]";
+            return "Handshake[action=" + action + ", phaser=" + phaser + ", cancelled=" + cancelled + ", sideEffecting=" + sideEffecting + ", syncStartOfEvent=" + syncStartOfEvent +
+                            ", syncEndOfEvent=" + syncEndOfEvent + "]";
         }
 
     }
@@ -266,15 +294,16 @@ public abstract class ThreadLocalHandshake {
     static final class HandshakeEntry {
 
         final Handshake<?> handshake;
-        boolean active = true;
+        final boolean reactivated;
 
-        HandshakeEntry(Handshake<?> handshake) {
+        HandshakeEntry(Handshake<?> handshake, boolean reactivated) {
             this.handshake = handshake;
+            this.reactivated = reactivated;
         }
 
         @Override
         public String toString() {
-            return "HandshakeEntry[" + handshake + " active=" + active + "]";
+            return "HandshakeEntry[" + handshake + " reactivated=" + reactivated + "]";
         }
     }
 
@@ -288,20 +317,44 @@ public abstract class ThreadLocalHandshake {
         private final ThreadLocalHandshake impl;
         private volatile boolean fastPendingSet;
         private boolean sideEffectsEnabled = true;
+        private boolean enabled = true;
+        private volatile boolean changeAllowActionsAllowed;
         private Interrupter blockedAction;
-        /*
-         * This is read outside the lock because some Interrupter's need to have resetInterrupted()
-         * called concurrently to interrupt(). interrupt() is called under the lock (avoids
-         * concurrent calls for the same thread), so resetInterrupted() must be called outside the
-         * lock.
-         */
-        private volatile boolean interrupted;
+        private boolean interrupted;
 
         private final LinkedList<HandshakeEntry> handshakes = new LinkedList<>();
 
         TruffleSafepointImpl(ThreadLocalHandshake handshake) {
             super(DefaultRuntimeAccessor.ENGINE);
             this.impl = handshake;
+        }
+
+        void verifyUnused() throws AssertionError {
+            if (this.lock.isHeldByCurrentThread() || this.lock.isLocked()) {
+                throw new AssertionError("Invalid locked state for safepoint.");
+            }
+            this.lock.lock();
+            try {
+                if (this.blockedAction != null) {
+                    throw new AssertionError("Invalid pending blocked action.");
+                }
+                if (this.interrupted) {
+                    throw new AssertionError("Invalid pending interrupted state.");
+                }
+                if (this.isPending()) {
+                    throw new AssertionError("Invalid pending handshakes.");
+                }
+                // correct usage always needs to reset the side-effects enabled state
+                if (!this.sideEffectsEnabled) {
+                    throw new AssertionError("Invalid side-effects disabled state");
+                }
+
+                if (!this.enabled) {
+                    throw new AssertionError("Invalid allow actions disabled state");
+                }
+            } finally {
+                this.lock.unlock();
+            }
         }
 
         void processHandshakes(Node location, List<HandshakeEntry> toProcess) {
@@ -326,53 +379,73 @@ public abstract class ThreadLocalHandshake {
             }
         }
 
-        public void deactivateThread(Handshake<?> handshake) {
+        public boolean deactivateThread(Handshake<?> handshake) {
             lock.lock();
             try {
                 HandshakeEntry current = lookupEntry(handshake);
                 if (current != null) {
-                    if (!current.active) {
-                        // already inactive
-                        return;
-                    }
-                    // still active
-                    assert current.active;
-                    current.active = false;
+                    /*
+                     * We cannot guarantee that side-effecting events are processed as they can be
+                     * disabled.
+                     */
+                    assert !current.reactivated || current.handshake.sideEffecting : "Reactivated handshake was not processed!";
                     handshake.deactivateThread();
                     claimEntry(current);
+                    /*
+                     * Mark the handshake for the current thread as deactivated.
+                     */
+                    handshake.threads.put(Thread.currentThread(), Boolean.TRUE);
                     resetPending();
+                    return true;
                 }
 
             } finally {
                 lock.unlock();
             }
+            return false;
         }
 
-        public void activateThread(Handshake<?> handshake) {
+        public boolean activateThread(Handshake<?> handshake) {
             if (handshake.isDone()) {
-                return;
+                return false;
             }
             lock.lock();
             try {
                 HandshakeEntry current = lookupEntry(handshake);
                 if (current != null) {
                     /*
-                     * The handshake has already been put to this thread and it is active or it is
-                     * inactive and must not be re-activated.
+                     * The handshake has already been put to this thread and it is ready to be
+                     * processed.
                      */
-                    return;
+                    return false;
                 }
-                // not yet put or already processed
-                if (!handshake.threads.add(Thread.currentThread())) {
-                    // already processed on that thread, we don't want to process twice.
-                    return;
+                boolean reactivated = false;
+                if (handshake.threads.containsKey(Thread.currentThread())) {
+                    if (!handshake.threads.get(Thread.currentThread())) {
+                        /*
+                         * The handshake has already been processed.
+                         */
+                        return false;
+                    } else {
+                        /*
+                         * The handshake has been deactivated before it was processed and should be
+                         * reactivated.
+                         */
+                        reactivated = true;
+                    }
                 }
+                /*
+                 * Mark the handshake for the current thread as active (not deactivated).
+                 */
+                handshake.threads.put(Thread.currentThread(), Boolean.FALSE);
                 if (handshake.activateThread()) {
-                    addHandshakeImpl(Thread.currentThread(), handshake);
+                    addHandshakeImpl(Thread.currentThread(), handshake, reactivated);
+                    return true;
                 }
             } finally {
                 lock.unlock();
             }
+            return false;
         }
 
         private HandshakeEntry lookupEntry(Handshake<?> handshake) {
@@ -389,14 +462,14 @@ public abstract class ThreadLocalHandshake {
         void addHandshake(Thread t, Handshake<?> handshake) {
             lock.lock();
             try {
-                addHandshakeImpl(t, handshake);
+                addHandshakeImpl(t, handshake, false);
             } finally {
                 lock.unlock();
             }
         }
 
-        private void addHandshakeImpl(Thread t, Handshake<?> handshake) {
-            handshakes.add(new HandshakeEntry(handshake));
+        private void addHandshakeImpl(Thread t, Handshake<?> handshake, boolean reactivated) {
+            handshakes.add(new HandshakeEntry(handshake, reactivated));
             if (isPending()) {
                 setFastPendingAndInterrupt(t);
             }
@@ -455,6 +528,9 @@ public abstract class ThreadLocalHandshake {
         }
 
         private List<HandshakeEntry> takeHandshakeImpl() {
+            if (!enabled) {
+                return Collections.emptyList();
+            }
             List<HandshakeEntry> toProcess = new ArrayList<>(this.handshakes.size());
             for (HandshakeEntry entry : this.handshakes) {
                 if (isPending(entry)) {
@@ -465,9 +541,6 @@ public abstract class ThreadLocalHandshake {
         }
 
         private boolean isPending(HandshakeEntry entry) {
-            if (!entry.active) {
-                return false;
-            }
             if (sideEffectsEnabled || !entry.handshake.sideEffecting) {
                 return true;
             }
@@ -475,7 +548,7 @@ public abstract class ThreadLocalHandshake {
         }
 
         @Override
-        public <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        public <T> void setBlockedWithException(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             assert impl.getCurrent() == this : "Cannot be used from a different thread.";
 
             /*
@@ -495,7 +568,7 @@ public abstract class ThreadLocalHandshake {
             }
         }
 
-        private <T> void setBlockedCompiled(Node location, Interrupter interrupter, CompiledInterruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        private <T> void setBlockedCompiled(Node location, Interrupter interrupter, CompiledInterruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             Interrupter prev = this.blockedAction;
             try {
                 while (true) {
@@ -514,7 +587,7 @@ public abstract class ThreadLocalHandshake {
         }
 
         @TruffleBoundary
-        private <T> void setBlockedBoundary(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        private <T> void setBlockedBoundary(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             Interrupter prev = this.blockedAction;
             try {
                 while (true) {
@@ -533,15 +606,19 @@ public abstract class ThreadLocalHandshake {
         }
 
         @TruffleBoundary
-        private void setBlockedAfterInterrupt(final Node location, final Interrupter interrupter, Runnable beforeInterrupt, Runnable afterInterrupt) {
+        private void setBlockedAfterInterrupt(final Node location, final Interrupter interrupter, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             if (beforeInterrupt != null) {
                 beforeInterrupt.run();
             }
+            Throwable t = null;
             try {
                 setBlockedImpl(location, interrupter, true);
+            } catch (Throwable e) {
+                t = e;
+                throw e;
             } finally {
                 if (afterInterrupt != null) {
-                    afterInterrupt.run();
+                    afterInterrupt.accept(t);
                 }
             }
         }
@@ -577,18 +654,14 @@ public abstract class ThreadLocalHandshake {
         }
 
         private void interruptIfPending(final Interrupter interrupter) {
-            boolean doInterrupt = false;
             lock.lock();
             try {
                 if (interrupter != null && isPending()) {
-                    doInterrupt = true;
+                    interrupted = true;
+                    interrupter.interrupt(Thread.currentThread());
                 }
             } finally {
                 lock.unlock();
-            }
-            if (doInterrupt) {
-                interrupted = true;
-                interrupter.interrupt(Thread.currentThread());
             }
         }
 
@@ -597,13 +670,43 @@ public abstract class ThreadLocalHandshake {
          */
         private boolean isPending() {
             assert lock.isHeldByCurrentThread();
-
+            if (!enabled) {
+                return false;
+            }
             for (HandshakeEntry entry : this.handshakes) {
                 if (isPending(entry)) {
                     return true;
                 }
             }
             return false;
+        }
+
+        boolean setChangeAllowActions(boolean changeAllowActionsAllowed) {
+            boolean prevChangeAllowActionsAllowed = this.changeAllowActionsAllowed;
+            this.changeAllowActionsAllowed = changeAllowActionsAllowed;
+            return prevChangeAllowActionsAllowed;
+        }
+
+        boolean isAllowActions() {
+            return enabled;
+        }
+
+        @Override
+        @TruffleBoundary
+        public boolean setAllowActions(boolean enabled) {
+            assert impl.getCurrent() == this : "Cannot be used from a different thread.";
+            lock.lock();
+            try {
+                if (!changeAllowActionsAllowed) {
+                    throw new IllegalStateException("Using setAllowActions is only permitted during finalization of a language. See TruffleLanguage.finalizeContext(Object) for further details.");
+                }
+                boolean prev = this.enabled;
+                this.enabled = enabled;
+                updateFastPending();
+                return prev;
+            } finally {
+                lock.unlock();
+            }
         }
 
         @Override
@@ -637,7 +740,7 @@ public abstract class ThreadLocalHandshake {
             assert lock.isHeldByCurrentThread();
 
             for (HandshakeEntry entry : this.handshakes) {
-                if (entry.active && entry.handshake.sideEffecting) {
+                if (entry.handshake.sideEffecting) {
                     return true;
                 }
             }

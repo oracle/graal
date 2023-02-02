@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,13 @@ import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 abstract class LLVMStackBuiltin extends LLVMBuiltin {
 
     @CompilationFinal private LLVMStackAccess stackAccess;
+
+    /**
+     * Eager initialization of stackAccess during AOT preparation.
+     */
+    @Child private AOTInitHelper aotInitHelper = new AOTInitHelper((language, root) -> {
+        stackAccess = ((LLVMRootNode) root).getStackAccess();
+    });
 
     protected LLVMStackAccess ensureStackAccess() {
         if (stackAccess == null) {

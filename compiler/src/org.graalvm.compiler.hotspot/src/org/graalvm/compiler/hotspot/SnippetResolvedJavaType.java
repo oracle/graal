@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -163,6 +163,7 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
         throw new NoClassDefFoundError();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         throw new UnsupportedOperationException();
@@ -243,6 +244,11 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
 
     @Override
     public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         throw new UnsupportedOperationException();
     }
 

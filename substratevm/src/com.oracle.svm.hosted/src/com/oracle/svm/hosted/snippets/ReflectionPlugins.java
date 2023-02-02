@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.snippets;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -39,7 +40,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -49,26 +52,32 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -90,11 +99,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * JDK so that any code that would rely on object identity is error-prone on any JVM.
  */
 public final class ReflectionPlugins {
-
     public static class ReflectionPluginRegistry extends IntrinsificationPluginRegistry {
-        public static AutoCloseable startThreadLocalRegistry() {
-            return ImageSingletons.lookup(ReflectionPluginRegistry.class).startThreadLocalReflectionRegistry();
-        }
     }
 
     static class Options {
@@ -105,8 +110,7 @@ public final class ReflectionPlugins {
     /**
      * Marker value for parameters that are null, to distinguish from "not able to {@link #unbox}".
      */
-    private static final Object NULL_MARKER = new Object() {
-    };
+    private static final Object NULL_MARKER = new Object();
 
     private final ImageClassLoader imageClassLoader;
     private final SnippetReflectionProvider snippetReflection;
@@ -156,25 +160,15 @@ public final class ReflectionPlugins {
      * Adding an array type of a Java collection class to this list is always wrong, because those
      * are never immutable.
      */
-    private static final Set<Class<?>> ALLOWED_CONSTANT_CLASSES;
-
-    static {
-        ALLOWED_CONSTANT_CLASSES = new HashSet<>(Arrays.asList(
-                        Class.class, String.class, ClassLoader.class,
-                        Method.class, Constructor.class, Field.class,
-                        MethodHandle.class, MethodHandles.Lookup.class, MethodType.class,
-                        ByteOrder.class));
-
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            try {
-                ALLOWED_CONSTANT_CLASSES.add(Class.forName("java.lang.invoke.VarHandle"));
-            } catch (ClassNotFoundException ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
-        }
-    }
+    private static final Set<Class<?>> ALLOWED_CONSTANT_CLASSES = new HashSet<>(Arrays.asList(
+                    Class.class, String.class, ClassLoader.class,
+                    Method.class, Constructor.class, Field.class,
+                    MethodHandle.class, MethodHandles.Lookup.class, MethodType.class,
+                    VarHandle.class,
+                    ByteOrder.class));
 
     private void registerMethodHandlesPlugins(InvocationPlugins plugins) {
+
         registerFoldInvocationPlugins(plugins, MethodHandles.class,
                         "publicLookup", "privateLookupIn",
                         "arrayConstructor", "arrayLength", "arrayElementGetter", "arrayElementSetter", "arrayElementVarHandle",
@@ -184,9 +178,9 @@ public final class ReflectionPlugins {
                         "in",
                         "findStatic", "findVirtual", "findConstructor", "findClass", "accessClass", "findSpecial",
                         "findGetter", "findSetter", "findVarHandle",
-                        "findStaticGetter", "findStaticSetter", "findStaticVarHandle",
+                        "findStaticGetter", "findStaticSetter",
                         "unreflect", "unreflectSpecial", "unreflectConstructor",
-                        "unreflectGetter", "unreflectSetter", "unreflectVarHandle");
+                        "unreflectGetter", "unreflectSetter");
 
         registerFoldInvocationPlugins(plugins, MethodType.class,
                         "methodType", "genericMethodType",
@@ -194,8 +188,10 @@ public final class ReflectionPlugins {
                         "changeReturnType", "erase", "generic", "wrap", "unwrap",
                         "parameterType", "parameterCount", "returnType", "lastParameterType");
 
+        registerConditionalFoldInvocationPlugins(plugins);
+
         Registration r = new Registration(plugins, MethodHandles.class);
-        r.register0("lookup", new InvocationPlugin() {
+        r.register(new RequiredInlineOnlyInvocationPlugin("lookup") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return processMethodHandlesLookup(b, targetMethod);
@@ -203,20 +199,66 @@ public final class ReflectionPlugins {
         });
     }
 
+    /**
+     * For some methods check if folding an invocation using reflection, i.e., by executing the
+     * target method and capturing the result, has undesired side effects, such as triggering
+     * initialization of classes that should be initialized at run time. This is based on knowledge
+     * about the reflection API methods implementation.
+     */
+    private void registerConditionalFoldInvocationPlugins(InvocationPlugins plugins) {
+        Method methodHandlesLookupFindStaticVarHandle = ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "findStaticVarHandle", Class.class, String.class, Class.class);
+        registerFoldInvocationPlugin(plugins, methodHandlesLookupFindStaticVarHandle, (args) -> {
+            /* VarHandles.makeFieldHandle() triggers init of receiver class (JDK-8291065). */
+            Object classArg = args[0];
+            if (classArg instanceof Class<?>) {
+                if (shouldInitializeAtRuntime((Class<?>) classArg)) {
+                    /* Skip the folding and register the field for run time reflection. */
+                    if (reason.duringAnalysis()) {
+                        Field field = ReflectionUtil.lookupField(true, (Class<?>) args[0], (String) args[1]);
+                        if (field != null) {
+                            RuntimeReflection.register(field);
+                        }
+                    }
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        Method methodHandlesLookupUnreflectVarHandle = ReflectionUtil.lookupMethod(MethodHandles.Lookup.class, "unreflectVarHandle", Field.class);
+        registerFoldInvocationPlugin(plugins, methodHandlesLookupUnreflectVarHandle, (args) -> {
+            /*
+             * VarHandles.makeFieldHandle() triggers init of static field's declaring class
+             * (JDK-8291065).
+             */
+            Object fieldArg = args[0];
+            if (fieldArg instanceof Field) {
+                Field field = (Field) fieldArg;
+                if (isStatic(field) && shouldInitializeAtRuntime(field.getDeclaringClass())) {
+                    /* Skip the folding and register the field for run time reflection. */
+                    if (reason.duringAnalysis()) {
+                        RuntimeReflection.register(field);
+                    }
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
+
     private void registerClassPlugins(InvocationPlugins plugins) {
         registerFoldInvocationPlugins(plugins, Class.class,
-                        "getClassLoader",
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
         Registration r = new Registration(plugins, Class.class);
-        r.register1("forName", String.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("forName", String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode) {
                 return processClassForName(b, targetMethod, nameNode, ConstantNode.forBoolean(true));
             }
         });
-        r.register3("forName", String.class, boolean.class, ClassLoader.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("forName", String.class, boolean.class, ClassLoader.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode, ValueNode initializeNode, ValueNode classLoaderNode) {
                 /*
@@ -226,6 +268,12 @@ public final class ReflectionPlugins {
                  * application class loader.
                  */
                 return processClassForName(b, targetMethod, nameNode, initializeNode);
+            }
+        });
+        r.register(new RequiredInvocationPlugin("getClassLoader", Receiver.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return processClassGetClassLoader(b, targetMethod, receiver);
             }
         });
     }
@@ -242,7 +290,15 @@ public final class ReflectionPlugins {
     private boolean processMethodHandlesLookup(GraphBuilderContext b, ResolvedJavaMethod targetMethod) {
         Supplier<String> targetParameters = () -> "";
 
-        Class<?> callerClass = OriginalClassProvider.getJavaClass(snippetReflection, b.getMethod().getDeclaringClass());
+        if (StackTraceUtils.ignoredBySecurityStackWalk(b.getMetaAccess(), b.getMethod())) {
+            /*
+             * If our immediate caller (which is the only method available at the time the
+             * invocation plugin is running) is not the method returned by
+             * Reflection.getCallerClass(), we cannot intrinsify.
+             */
+            return false;
+        }
+        Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
         MethodHandles.Lookup lookup;
         try {
             /* The constructor of Lookup is not public, so we need to invoke it via reflection. */
@@ -250,7 +306,7 @@ public final class ReflectionPlugins {
         } catch (Throwable ex) {
             return throwException(b, targetMethod, targetParameters, ex.getClass(), ex.getMessage());
         }
-        return pushConstant(b, targetMethod, targetParameters, JavaKind.Object, lookup) != null;
+        return pushConstant(b, targetMethod, targetParameters, JavaKind.Object, lookup, false) != null;
     }
 
     /**
@@ -269,22 +325,43 @@ public final class ReflectionPlugins {
         boolean initialize = (Boolean) initializeValue;
         Supplier<String> targetParameters = () -> className + ", " + initialize;
 
-        TypeResult<Class<?>> typeResult = imageClassLoader.findClass(className);
+        TypeResult<Class<?>> typeResult = imageClassLoader.findClass(className, false);
         if (!typeResult.isPresent()) {
             Throwable e = typeResult.getException();
             return throwException(b, targetMethod, targetParameters, e.getClass(), e.getMessage());
         }
         Class<?> clazz = typeResult.get();
+        if (PredefinedClassesSupport.isPredefined(clazz)) {
+            return false;
+        }
 
-        JavaConstant classConstant = pushConstant(b, targetMethod, targetParameters, JavaKind.Object, clazz);
+        JavaConstant classConstant = pushConstant(b, targetMethod, targetParameters, JavaKind.Object, clazz, false);
         if (classConstant == null) {
             return false;
         }
 
         if (initialize) {
-            classInitializationPlugin.apply(b, b.getMetaAccess().lookupJavaType(clazz), null, null);
+            classInitializationPlugin.apply(b, b.getMetaAccess().lookupJavaType(clazz), () -> null, null);
         }
         return true;
+    }
+
+    /**
+     * For {@link PredefinedClassesSupport predefined classes}, the class loader is not known yet at
+     * image build time. So we must not constant fold Class.getClassLoader for such classes. But for
+     * "normal" classes, it is important to fold it because it unlocks further constant folding of,
+     * e.g., Class.forName calls.
+     */
+    private boolean processClassGetClassLoader(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+        Object classValue = unbox(b, receiver.get(false), JavaKind.Object);
+        if (!(classValue instanceof Class)) {
+            return false;
+        }
+        Class<?> clazz = (Class<?>) classValue;
+        if (PredefinedClassesSupport.isPredefined(clazz)) {
+            return false;
+        }
+        return pushConstant(b, targetMethod, clazz::getName, JavaKind.Object, clazz.getClassLoader(), true) != null;
     }
 
     /**
@@ -294,6 +371,7 @@ public final class ReflectionPlugins {
      */
     private void registerFoldInvocationPlugins(InvocationPlugins plugins, Class<?> declaringClass, String... methodNames) {
         Set<String> methodNamesSet = new HashSet<>(Arrays.asList(methodNames));
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionPlugins.class, declaringClass);
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (methodNamesSet.contains(method.getName()) && !method.isSynthetic()) {
                 registerFoldInvocationPlugin(plugins, method);
@@ -301,7 +379,13 @@ public final class ReflectionPlugins {
         }
     }
 
+    private static final Predicate<Object[]> alwaysAllowConstantFolding = args -> true;
+
     private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod) {
+        registerFoldInvocationPlugin(plugins, reflectionMethod, alwaysAllowConstantFolding);
+    }
+
+    private void registerFoldInvocationPlugin(InvocationPlugins plugins, Method reflectionMethod, Predicate<Object[]> allowConstantFolding) {
         if (!ALLOWED_CONSTANT_CLASSES.contains(reflectionMethod.getReturnType()) && !reflectionMethod.getReturnType().isPrimitive()) {
             throw VMError.shouldNotReachHere("Return type of method " + reflectionMethod + " is not on the allow-list for types that are immutable");
         }
@@ -313,24 +397,28 @@ public final class ReflectionPlugins {
         }
         parameterTypes.addAll(Arrays.asList(reflectionMethod.getParameterTypes()));
 
-        InvocationPlugin foldInvocationPlugin = new InvocationPlugin() {
+        plugins.register(reflectionMethod.getDeclaringClass(), new RequiredInvocationPlugin(reflectionMethod.getName(), parameterTypes.toArray(new Class<?>[0])) {
             @Override
             public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
-                return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args);
+                return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args, allowConstantFolding);
             }
-        };
-
-        plugins.register(foldInvocationPlugin, reflectionMethod.getDeclaringClass(), reflectionMethod.getName(), parameterTypes.toArray(new Class<?>[0]));
+        });
     }
 
-    private boolean foldInvocationUsingReflection(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Method reflectionMethod, Receiver receiver, ValueNode[] args) {
+    private boolean foldInvocationUsingReflection(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Method reflectionMethod, Receiver receiver, ValueNode[] args,
+                    Predicate<Object[]> allowConstantFolding) {
         assert b.getMetaAccess().lookupJavaMethod(reflectionMethod).equals(targetMethod) : "Fold method mismatch: " + reflectionMethod + " != " + targetMethod;
 
         Object receiverValue;
         if (targetMethod.isStatic()) {
             receiverValue = null;
         } else {
-            receiverValue = unbox(b, receiver.get(), JavaKind.Object);
+            /*
+             * Calling receiver.get(true) can add a null check guard, i.e., modifying the graph in
+             * the process. It is an error for invocation plugins that do not replace the call to
+             * modify the graph.
+             */
+            receiverValue = unbox(b, receiver.get(false), JavaKind.Object);
             if (receiverValue == null || receiverValue == NULL_MARKER) {
                 return false;
             }
@@ -348,9 +436,13 @@ public final class ReflectionPlugins {
             }
         }
 
+        if (!allowConstantFolding.test(argValues)) {
+            return false;
+        }
+
         /* String representation of the parameters for debug printing. */
-        Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue.toString() + "; ") +
-                        Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : arg.toString()).collect(Collectors.joining(", "));
+        Supplier<String> targetParameters = () -> (receiverValue == null ? "" : receiverValue + "; ") +
+                        Stream.of(argValues).map(arg -> arg instanceof Object[] ? Arrays.toString((Object[]) arg) : Objects.toString(arg)).collect(Collectors.joining(", "));
 
         Object returnValue;
         try {
@@ -370,7 +462,16 @@ public final class ReflectionPlugins {
             return true;
         }
 
-        return pushConstant(b, targetMethod, targetParameters, returnKind, returnValue) != null;
+        return pushConstant(b, targetMethod, targetParameters, returnKind, returnValue, false) != null;
+    }
+
+    private static boolean shouldInitializeAtRuntime(Class<?> classArg) {
+        ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        return classInitializationSupport.shouldInitializeAtRuntime(classArg);
+    }
+
+    private static boolean isStatic(Field field) {
+        return Modifier.isStatic(field.getModifiers());
     }
 
     private Object unbox(GraphBuilderContext b, ValueNode arg, JavaKind argKind) {
@@ -419,7 +520,7 @@ public final class ReflectionPlugins {
              * reflective call will yield the original member, which will be intrinsified, and
              * subsequent phases are responsible for getting the right substitution.
              */
-            return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), javaType);
+            return OriginalClassProvider.getJavaClass(javaType);
         }
 
         /* Any other object that is not a Class. */
@@ -429,6 +530,8 @@ public final class ReflectionPlugins {
         }
         return null;
     }
+
+    private final boolean parseOnce = SubstrateOptions.parseOnce();
 
     /**
      * This method checks if the element should be intrinsified and returns the cached intrinsic
@@ -440,6 +543,7 @@ public final class ReflectionPlugins {
      * initialized. Therefore, we want to intrinsify the same, eagerly initialized object during
      * compilation, not a lossy copy of it.
      */
+    @SuppressWarnings("unchecked")
     private <T> T getIntrinsic(GraphBuilderContext context, T element) {
         if (reason == ParsingReason.UnsafeSubstitutionAnalysis || reason == ParsingReason.EarlyClassInitializerAnalysis) {
             /* We are analyzing the static initializers and should always intrinsify. */
@@ -449,7 +553,7 @@ public final class ReflectionPlugins {
         if (context.bciCanBeDuplicated()) {
             return null;
         }
-        if (reason == ParsingReason.PointsToAnalysis) {
+        if (parseOnce || reason.duringAnalysis()) {
             if (isDeleted(element, context.getMetaAccess())) {
                 /*
                  * Should not intrinsify. Will fail during the reflective lookup at
@@ -461,11 +565,16 @@ public final class ReflectionPlugins {
 
             Object replaced = aUniverse.replaceObject(element);
 
+            if (parseOnce) {
+                /* No separate parsing for compilation, so no need to cache the result. */
+                return (T) replaced;
+            }
+
             /* During parsing for analysis we intrinsify and cache the result for compilation. */
-            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getCallingContext(), replaced);
+            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getMethod(), context.bci(), replaced);
         }
         /* During parsing for compilation we only intrinsify if intrinsified during analysis. */
-        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getCallingContext());
+        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getMethod(), context.bci());
     }
 
     private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {
@@ -487,14 +596,12 @@ public final class ReflectionPlugins {
          * If ReportUnsupportedElementsAtRuntime is set looking up a @Delete-ed element will return
          * a substitution method that has the @Delete annotation.
          */
-        if (annotated != null && annotated.isAnnotationPresent(Delete.class)) {
-            return true;
-        }
-        return false;
+        return annotated != null && annotated.isAnnotationPresent(Delete.class);
     }
 
-    private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, JavaKind returnKind, Object returnValue) {
-        Object intrinsicValue = getIntrinsic(b, returnValue);
+    private JavaConstant pushConstant(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Supplier<String> targetParameters, JavaKind returnKind, Object returnValue,
+                    boolean allowNullReturnValue) {
+        Object intrinsicValue = getIntrinsic(b, returnValue == null && allowNullReturnValue ? NULL_MARKER : returnValue);
         if (intrinsicValue == null) {
             return null;
         }
@@ -502,6 +609,8 @@ public final class ReflectionPlugins {
         JavaConstant intrinsicConstant;
         if (returnKind.isPrimitive()) {
             intrinsicConstant = JavaConstant.forBoxedPrimitive(intrinsicValue);
+        } else if (intrinsicValue == NULL_MARKER) {
+            intrinsicConstant = JavaConstant.NULL_POINTER;
         } else {
             intrinsicConstant = snippetReflection.forObject(intrinsicValue);
         }

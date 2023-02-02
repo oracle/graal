@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -81,6 +82,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class CachedLibraryTest extends AbstractLibraryTest {
 
     @GenerateLibrary
@@ -264,6 +266,7 @@ public class CachedLibraryTest extends AbstractLibraryTest {
 
     @GenerateUncached
     @SuppressWarnings("unused")
+    @GenerateInline(false)
     public abstract static class ConstantNode extends Node {
 
         abstract String execute(Object receiver);
@@ -293,7 +296,7 @@ public class CachedLibraryTest extends AbstractLibraryTest {
 
         abstract String execute(Object receiver);
 
-        @Specialization(guards = "receiver == cachedReceiver")
+        @Specialization(guards = "receiver == cachedReceiver", limit = "3")
         public static String s1(Object receiver,
                         @Cached("receiver") Object cachedReceiver,
                         @CachedLibrary("cachedReceiver") SomethingLibrary lib) {

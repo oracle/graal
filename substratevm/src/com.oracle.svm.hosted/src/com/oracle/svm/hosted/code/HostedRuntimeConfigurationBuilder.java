@@ -41,6 +41,8 @@ import org.graalvm.compiler.phases.util.Providers;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
+import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
+import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -61,8 +63,9 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     private final HostedProviders analysisProviders;
 
     public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess, HostedProviders analysisProviders,
-                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider) {
-        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, nativeLibraries, classInitializationSupport, originalLoopsDataProvider);
+                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
+                    SubstratePlatformConfigurationProvider platformConfig) {
+        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, nativeLibraries, classInitializationSupport, originalLoopsDataProvider, platformConfig);
         this.universe = universe;
         this.analysisProviders = analysisProviders;
     }
@@ -76,8 +79,13 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     }
 
     @Override
+    protected LoweringProvider createLoweringProvider(Providers p) {
+        return SubstrateLoweringProvider.createForHosted(p.getMetaAccess(), p.getForeignCalls(), p.getPlatformConfigurationProvider(), p.getMetaAccessExtensionProvider());
+    }
+
+    @Override
     protected ConstantReflectionProvider createConstantReflectionProvider(Providers p) {
-        return new HostedConstantReflectionProvider(hostVM, universe, new HostedMemoryAccessProvider((HostedMetaAccess) p.getMetaAccess()));
+        return new HostedConstantReflectionProvider(hostVM, universe, metaAccess, new HostedMemoryAccessProvider((HostedMetaAccess) p.getMetaAccess()));
     }
 
     @Override
@@ -98,7 +106,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected ConstantFieldProvider createConstantFieldProvider(Providers p) {
-        return new HostedConstantFieldProvider(p.getMetaAccess(), classInitializationSupport);
+        return new HostedConstantFieldProvider(p.getMetaAccess(), classInitializationSupport, universe.hostVM());
     }
 
 }

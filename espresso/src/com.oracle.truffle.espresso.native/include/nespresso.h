@@ -26,11 +26,13 @@
 #include <jni.h>
 #include <trufflenfi.h>
 
-JNIEXPORT void* JNICALL dupClosureRef(TruffleEnv *truffle_env, void* closure);
+struct Varargs {
+    const struct VarargsInterface* functions;
+};
 
-JNIEXPORT JNIEnv* JNICALL initializeNativeContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+JNIEXPORT JNIEnv* JNICALL initializeNativeContext(void* (*fetch_by_name)(const char *));
 
-JNIEXPORT void JNICALL disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env);
+JNIEXPORT void JNICALL disposeNativeContext(JNIEnv* env, void (*release_closure)(void *));
 
 // varargs support
 JNIEXPORT jboolean JNICALL pop_boolean(struct Varargs* varargs);
@@ -49,6 +51,144 @@ JNIEXPORT void JNICALL freeMemory(void *ptr);
 JNIEXPORT void * JNICALL reallocateMemory(void *ptr, size_t new_size);
 JNIEXPORT void JNICALL ctypeInit(void);
 JNIEXPORT jlong JNICALL get_SIZE_MAX();
+
+#define JNI_FUNCTION_LIST(V) \
+    V(GetVersion) \
+    V(DefineClass) \
+    V(FindClass) \
+    V(FromReflectedMethod) \
+    V(FromReflectedField) \
+    V(ToReflectedMethod) \
+    V(GetSuperclass) \
+    V(IsAssignableFrom) \
+    V(ToReflectedField) \
+    V(Throw) \
+    V(ThrowNew) \
+    V(ExceptionOccurred) \
+    V(ExceptionDescribe) \
+    V(ExceptionClear) \
+    V(FatalError) \
+    V(PushLocalFrame) \
+    V(PopLocalFrame) \
+    V(DeleteLocalRef) \
+    V(NewLocalRef) \
+    V(EnsureLocalCapacity) \
+    V(AllocObject) \
+    V(GetObjectClass) \
+    V(IsInstanceOf) \
+    V(GetMethodID) \
+    V(GetFieldID) \
+    V(GetObjectField) \
+    V(GetBooleanField) \
+    V(GetByteField) \
+    V(GetCharField) \
+    V(GetShortField) \
+    V(GetIntField) \
+    V(GetLongField) \
+    V(GetFloatField) \
+    V(GetDoubleField) \
+    V(SetObjectField) \
+    V(SetBooleanField) \
+    V(SetByteField) \
+    V(SetCharField) \
+    V(SetShortField) \
+    V(SetIntField) \
+    V(SetLongField) \
+    V(SetFloatField) \
+    V(SetDoubleField) \
+    V(GetStaticMethodID) \
+    V(GetStaticFieldID) \
+    V(GetStaticObjectField) \
+    V(GetStaticBooleanField) \
+    V(GetStaticByteField) \
+    V(GetStaticCharField) \
+    V(GetStaticShortField) \
+    V(GetStaticIntField) \
+    V(GetStaticLongField) \
+    V(GetStaticFloatField) \
+    V(GetStaticDoubleField) \
+    V(SetStaticObjectField) \
+    V(SetStaticBooleanField) \
+    V(SetStaticByteField) \
+    V(SetStaticCharField) \
+    V(SetStaticShortField) \
+    V(SetStaticIntField) \
+    V(SetStaticLongField) \
+    V(SetStaticFloatField) \
+    V(SetStaticDoubleField) \
+    V(NewString) \
+    V(GetStringLength) \
+    V(GetStringChars) \
+    V(ReleaseStringChars) \
+    V(NewStringUTF) \
+    V(GetStringUTFLength) \
+    V(GetStringUTFChars) \
+    V(ReleaseStringUTFChars) \
+    V(GetArrayLength) \
+    V(NewObjectArray) \
+    V(GetObjectArrayElement) \
+    V(SetObjectArrayElement) \
+    V(NewBooleanArray) \
+    V(NewByteArray) \
+    V(NewCharArray) \
+    V(NewShortArray) \
+    V(NewIntArray) \
+    V(NewLongArray) \
+    V(NewFloatArray) \
+    V(NewDoubleArray) \
+    V(GetBooleanArrayElements) \
+    V(GetByteArrayElements) \
+    V(GetCharArrayElements) \
+    V(GetShortArrayElements) \
+    V(GetIntArrayElements) \
+    V(GetLongArrayElements) \
+    V(GetFloatArrayElements) \
+    V(GetDoubleArrayElements) \
+    V(ReleaseBooleanArrayElements) \
+    V(ReleaseByteArrayElements) \
+    V(ReleaseCharArrayElements) \
+    V(ReleaseShortArrayElements) \
+    V(ReleaseIntArrayElements) \
+    V(ReleaseLongArrayElements) \
+    V(ReleaseFloatArrayElements) \
+    V(ReleaseDoubleArrayElements) \
+    V(GetBooleanArrayRegion) \
+    V(GetByteArrayRegion) \
+    V(GetCharArrayRegion) \
+    V(GetShortArrayRegion) \
+    V(GetIntArrayRegion) \
+    V(GetLongArrayRegion) \
+    V(GetFloatArrayRegion) \
+    V(GetDoubleArrayRegion) \
+    V(SetBooleanArrayRegion) \
+    V(SetByteArrayRegion) \
+    V(SetCharArrayRegion) \
+    V(SetShortArrayRegion) \
+    V(SetIntArrayRegion) \
+    V(SetLongArrayRegion) \
+    V(SetFloatArrayRegion) \
+    V(SetDoubleArrayRegion) \
+    V(UnregisterNatives) \
+    V(MonitorEnter) \
+    V(MonitorExit) \
+    V(GetStringRegion) \
+    V(GetStringUTFRegion) \
+    V(GetPrimitiveArrayCritical) \
+    V(ReleasePrimitiveArrayCritical) \
+    V(GetStringCritical) \
+    V(ReleaseStringCritical) \
+    V(ExceptionCheck) \
+    V(GetDirectBufferAddress) \
+    V(GetDirectBufferCapacity) \
+    V(GetObjectRefType) \
+    V(IsSameObject) \
+    V(NewGlobalRef) \
+    V(DeleteGlobalRef) \
+    V(NewWeakGlobalRef) \
+    V(DeleteWeakGlobalRef) \
+    V(NewDirectByteBuffer) \
+    V(GetModule)
+
 
 #endif // _NESPRESSO_H
 

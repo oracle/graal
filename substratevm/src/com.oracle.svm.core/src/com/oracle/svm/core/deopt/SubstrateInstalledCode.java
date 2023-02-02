@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.deopt;
 
+import com.oracle.svm.core.Uninterruptible;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache;
@@ -47,9 +50,11 @@ public interface SubstrateInstalledCode {
     String getName();
 
     /** The entry point address of this code if {@linkplain #isValid valid}, or 0 otherwise. */
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     long getEntryPoint();
 
     /** The address of this code if {@linkplain #isAlive alive}, or 0 otherwise. */
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     long getAddress();
 
     /**
@@ -88,6 +93,7 @@ public interface SubstrateInstalledCode {
     void invalidate();
 
     /** Whether the code represented by this object exists and could have live invocations. */
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     boolean isAlive();
 
     /**
@@ -98,6 +104,12 @@ public interface SubstrateInstalledCode {
     void invalidateWithoutDeoptimization();
 
     SubstrateSpeculationLog getSpeculationLog();
+
+    /**
+     * Sets the identifier of the compilation that resulted in this code, which can be used to
+     * provide additional information in {@link #getName()}.
+     */
+    void setCompilationId(CompilationIdentifier id);
 
     /**
      * Provides access to a {@link SubstrateInstalledCode}.

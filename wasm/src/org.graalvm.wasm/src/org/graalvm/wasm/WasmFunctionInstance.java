@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,34 +40,48 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import org.graalvm.wasm.api.InteropArray;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.nodes.WasmIndirectCallNode;
+
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 @ExportLibrary(InteropLibrary.class)
-public class WasmFunctionInstance implements TruffleObject {
+public final class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
+    private final WasmContext context;
     private final WasmFunction function;
     private final CallTarget target;
+    private final TruffleContext truffleContext;
 
     /**
      * Represents a call target that is a WebAssembly function or an imported function.
-     *
-     * If the function is imported, then function is set to {@code null}.
+     * <p>
+     * If the function is imported, then context UID and the function are set to {@code null}.
      */
-    public WasmFunctionInstance(WasmFunction function, CallTarget target) {
+    public WasmFunctionInstance(WasmContext context, WasmFunction function, CallTarget target) {
         Assert.assertNotNull(target, "Call target must be non-null", Failure.UNSPECIFIED_INTERNAL);
+        this.context = context;
         this.function = function;
         this.target = target;
+        this.truffleContext = context.environment().getContext();
     }
 
     @Override
     public String toString() {
         return name();
+    }
+
+    public WasmContext context() {
+        return context;
     }
 
     public String name() {
@@ -85,13 +99,65 @@ public class WasmFunctionInstance implements TruffleObject {
         return target;
     }
 
+    public TruffleContext getTruffleContext() {
+        return truffleContext;
+    }
+
+    @SuppressWarnings("static-method")
     @ExportMessage
     boolean isExecutable() {
         return true;
     }
 
     @ExportMessage
-    Object execute(Object[] arguments, @Cached WasmIndirectCallNode callNode) {
-        return callNode.execute(target, arguments);
+    Object execute(Object[] arguments,
+                    @CachedLibrary("this") InteropLibrary self,
+                    @Cached WasmIndirectCallNode callNode) {
+        TruffleContext c = getTruffleContext();
+        Object prev = c.enter(self);
+        try {
+            Object result = callNode.execute(target, arguments);
+
+            // For external calls of a WebAssembly function we have to materialize the multi-value
+            // stack.
+            // At this point the multi-value stack has already been populated, therefore, we don't
+            // have to check the size of the multi-value stack.
+            if (result == WasmConstant.MULTI_VALUE) {
+                final long[] multiValueStack = context.primitiveMultiValueStack();
+                final Object[] referenceMultiValueStack = context().referenceMultiValueStack();
+                final int resultCount = function.resultCount();
+                CompilerAsserts.partialEvaluationConstant(resultCount);
+                assert multiValueStack.length >= resultCount;
+                assert referenceMultiValueStack.length >= resultCount;
+                final Object[] values = new Object[resultCount];
+                for (int i = 0; i < resultCount; i++) {
+                    byte resultType = function.resultTypeAt(i);
+                    switch (resultType) {
+                        case WasmType.I32_TYPE:
+                            values[i] = (int) multiValueStack[i];
+                            break;
+                        case WasmType.I64_TYPE:
+                            values[i] = multiValueStack[i];
+                            break;
+                        case WasmType.F32_TYPE:
+                            values[i] = Float.intBitsToFloat((int) multiValueStack[i]);
+                            break;
+                        case WasmType.F64_TYPE:
+                            values[i] = Double.longBitsToDouble(multiValueStack[i]);
+                            break;
+                        case WasmType.FUNCREF_TYPE:
+                        case WasmType.EXTERNREF_TYPE:
+                            values[i] = referenceMultiValueStack[i];
+                            break;
+                        default:
+                            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
+                    }
+                }
+                return InteropArray.create(values);
+            }
+            return result;
+        } finally {
+            c.leave(self, prev);
+        }
     }
 }

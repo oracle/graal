@@ -179,6 +179,10 @@ public final class GraphBuilder {
             }
             last = bci;
             bci = bs.nextBCI(bci);
+            if (bci >= status.length && successors == null) {
+                // abrupt end of bytecodes
+                successors = EMPTY_SUCCESSORS;
+            }
         }
         temp[id] = createTempBlock(id, start, successors, isRet, status.length, last, traps);
 
@@ -205,7 +209,7 @@ public final class GraphBuilder {
             do {
                 temporaryBlocks[currentBlock].registerHandler(hPos, this);
                 currentBlock++;
-            } while (currentBlock < nBlocks && temporaryBlocks[currentBlock].end() <= handler.getEndBCI());
+            } while (currentBlock < nBlocks && temporaryBlocks[currentBlock].end() < handler.getEndBCI());
         }
     }
 
@@ -338,6 +342,10 @@ public final class GraphBuilder {
         }
         mark(defaultTarget, BLOCK_START);
         switchTable.add(Util.toIntArray(targets));
+        int next = bs.nextBCI(bci);
+        if (next < bs.endBCI()) {
+            mark(next, BLOCK_START);
+        }
     }
 
     private void markJsr(int bci) {
@@ -349,6 +357,10 @@ public final class GraphBuilder {
 
     private void markRet(int bci) {
         mark(bci, IS_RET);
+        int next = bs.nextBCI(bci);
+        if (next < bs.endBCI()) {
+            mark(next, BLOCK_START);
+        }
     }
 
     private void markGoto(int bci) {
@@ -357,7 +369,7 @@ public final class GraphBuilder {
 
     private void markHandler(ExceptionHandler handler) {
         mark(handler.getStartBCI(), BLOCK_START);
-        int afterEnd = bs.nextBCI(handler.getEndBCI());
+        int afterEnd = handler.getEndBCI();
         if (afterEnd < bs.endBCI()) {
             mark(afterEnd, BLOCK_START);
         }
@@ -370,7 +382,7 @@ public final class GraphBuilder {
         // Ideally, we should handle exception handlers separately from the actual successors.
         int bci = handler.getStartBCI();
         int nextBCI;
-        while (bci <= handler.getEndBCI()) {
+        while (bci < handler.getEndBCI()) {
             nextBCI = bs.nextBCI(bci);
             if (Bytecodes.canTrap(bs.currentBC(bci))) {
                 mark(bci, BLOCK_START);

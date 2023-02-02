@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import java.util.function.Consumer;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.impl.DebuggerInstrument;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -98,6 +99,12 @@ public final class Debugger {
     private final Set<DebuggerSession> sessions = new HashSet<>();
     private final List<Breakpoint> breakpoints = new ArrayList<>();
     final Breakpoint alwaysHaltBreakpoint;
+    private final ThreadLocal<Integer> disabledSteppingCount = new ThreadLocal<>() {
+        @Override
+        protected Integer initialValue() {
+            return 0;
+        }
+    };
 
     Debugger(Env env) {
         this.env = env;
@@ -295,6 +302,71 @@ public final class Debugger {
         breakpointRemovedListeners.remove(listener);
     }
 
+    /**
+     * Disable stepping on the current thread. The current thread must be in an entered context.
+     * Assure that the stepping is restored again by calling {@link #restoreStepping()} like:
+     * {@link DebuggerSnippets#disableStepping}
+     * <p>
+     * The typical usage is to disable stepping on a specific code path. E.g. when a guest code is
+     * executed as a safepoint action, which executes out of an apparent code flow. The calls to
+     * disable/restoreStepping can be nested. Every call to {@link #disableStepping()} increments a
+     * disabled count by one and every call to {@link #restoreStepping()} decrements the disabled
+     * count by one.
+     * <p>
+     * Disabling of stepping does not prevent breakpoints from being hit. After a breakpoint is hit,
+     * stepping is allowed automatically for the breakpoint's session, so that the user can continue
+     * stepping from the breakpoint location. The stepping is allowed only on the level of the
+     * disabled count where the breakpoint is hit. The stepping is still disabled on other disabled
+     * count levels.
+     *
+     * @throws IllegalStateException when not in an entered context
+     * @see #restoreStepping()
+     * @since 22.3
+     */
+    @TruffleBoundary
+    public void disableStepping() {
+        if (env.getEnteredContext() == null) {
+            throw new IllegalStateException("Need to be called on a context thread");
+        }
+        int count = disabledSteppingCount.get();
+        disabledSteppingCount.set(count + 1);
+    }
+
+    /**
+     * Restore the stepping on the current thread. The current thread must be in an entered context
+     * and after a call to {@link #disableStepping()}. The restore decrements the disabled count by
+     * one and allows stepping when zero is reached.
+     *
+     * @throws IllegalStateException when not in an entered context, or when called without the
+     *             preceding call to {@link #disableStepping()}
+     * @see #disableStepping()
+     * @since 22.3
+     */
+    @TruffleBoundary
+    public void restoreStepping() {
+        if (env.getEnteredContext() == null) {
+            throw new IllegalStateException("Need to be called on a context thread");
+        }
+        int count = disabledSteppingCount.get();
+        if (count == 0) {
+            throw new IllegalStateException("restoreStepping() called without a corresponding disabledStepping()");
+        }
+        // When stepping is restored, we need to clear the session-specific overrides
+        synchronized (this) {
+            for (DebuggerSession session : sessions) {
+                session.clearDisabledSteppingOnCurrentThread(count);
+            }
+        }
+        count--;
+        disabledSteppingCount.set(count);
+    }
+
+    // returns 0 when stepping is not disabled,
+    // positive value - the stepping disable count
+    int getSteppingDisabledCount() {
+        return disabledSteppingCount.get();
+    }
+
     Env getEnv() {
         return env;
     }
@@ -349,9 +421,9 @@ public final class Debugger {
     static final class AccessorDebug extends Accessor {
 
         /*
-         * TODO get rid of this access and replace it with an API in {@link TruffleInstrument.Env}.
-         * I don't think {@link CallTarget} is the right return type here as we want to make it
-         * embeddable into the current AST.
+         * TODO GR-38632 get rid of this access and replace it with an API in {@link
+         * TruffleInstrument.Env}. I don't think {@link CallTarget} is the right return type here as
+         * we want to make it embeddable into the current AST.
          */
         protected CallTarget parse(Source code, Node context, String... argumentNames) {
             RootNode rootNode = context.getRootNode();
@@ -359,8 +431,8 @@ public final class Debugger {
         }
 
         /*
-         * TODO I initially moved this to TruffleInstrument.Env but decided against as a new API for
-         * inline parsing might replace it.
+         * TODO GR-38632 I initially moved this to TruffleInstrument.Env but decided against as a
+         * new API for inline parsing might replace it.
          */
         protected Object evalInContext(Source source, Node node, MaterializedFrame frame) {
             return languageSupport().evalInContext(source, node, frame);
@@ -370,12 +442,29 @@ public final class Debugger {
 
     static final AccessorDebug ACCESSOR = new AccessorDebug();
 
-    static {
-        DebuggerInstrument.setFactory(new DebuggerInstrument.DebuggerFactory() {
+    static DebuggerInstrument.DebuggerFactory createFactory() {
+        return new DebuggerInstrument.DebuggerFactory() {
             public Debugger create(Env env) {
                 return new Debugger(env);
             }
-        });
+        };
+    }
+
+}
+
+class DebuggerSnippets {
+
+    public void disableStepping() {
+        Engine engine = Engine.create();
+        // BEGIN: DebuggerSnippets#disableStepping
+        Debugger debugger = Debugger.find(engine);
+        debugger.disableStepping();
+        try {
+            // run code which debugger should not step into
+        } finally {
+            debugger.restoreStepping();
+        }
+        // END: DebuggerSnippets#disableStepping
     }
 
 }

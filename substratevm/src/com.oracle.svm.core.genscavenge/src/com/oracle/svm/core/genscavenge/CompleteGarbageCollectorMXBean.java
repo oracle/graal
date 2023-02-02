@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-//Checkstyle: stop
 import java.lang.management.ManagementFactory;
 
 import javax.management.MBeanNotificationInfo;
@@ -40,7 +39,6 @@ import com.oracle.svm.core.util.TimeUtils;
 import com.sun.management.GcInfo;
 
 import sun.management.Util;
-//Checkstyle: resume
 
 public final class CompleteGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
 

@@ -43,10 +43,14 @@ public final class Mangle {
 
     // Mangling
 
+    private static String mangle(String name) {
+        return mangle(name, false);
+    }
+
     /**
      * Mangles a given string such that it can be represented as (part of) a valid C function name.
      */
-    private static String mangle(String name) {
+    private static String mangle(String name, boolean isTruffleMangle) {
         final StringBuilder mangledName = new StringBuilder(100);
         final int length = name.length();
         for (int i = 0; i < length; i++) {
@@ -61,6 +65,8 @@ public final class Mangle {
                 mangledName.append("_2");
             } else if (ch == '[') {
                 mangledName.append("_3");
+            } else if (isTruffleMangle && ch == '$') {
+                mangledName.append(ch);
             } else {
                 mangledName.append(mangleChar(ch));
             }
@@ -114,6 +120,28 @@ public final class Mangle {
             final String parametersSignature = sig.substring(1, sig.lastIndexOf(')')).replace('/', '.').replace('$', '.');
             result.append(mangle(parametersSignature));
         }
+        return result.toString();
+    }
+
+    /**
+     * Mangle a method name and signature to the symbols to be used for a Truffle jni-named method
+     * call. Signature must not be <code>null</code>. Truffle jni names are made up of the method
+     * name, the return type and the parameter types. Note that the declaring class and the 'Java_'
+     * marker is omitted from the result here.
+     * 
+     * @param methodName a Java method name (not checked here for validity)
+     * @param signature if non-null, a method signature to include in the mangled name
+     * @return a mangled jni-style string as described above
+     */
+    public static String truffleJniMethodName(String methodName, Symbol<Signature> signature) {
+        assert signature != null;
+        final StringBuilder result = new StringBuilder(100);
+        result.append(mangle(methodName)).append("__");
+        final String sig = signature.toString();
+        final String returnType = sig.substring(sig.lastIndexOf(')') + 1).replace('/', '.');
+        result.append(mangle(returnType, true));
+        final String parametersSignature = sig.substring(1, sig.lastIndexOf(')')).replace('/', '.');
+        result.append(mangle(parametersSignature, true));
         return result.toString();
     }
 

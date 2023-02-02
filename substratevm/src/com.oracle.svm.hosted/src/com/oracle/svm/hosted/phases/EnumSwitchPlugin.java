@@ -25,6 +25,8 @@
 package com.oracle.svm.hosted.phases;
 
 import java.lang.reflect.Method;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.GraalError;
@@ -40,9 +42,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
@@ -77,7 +79,7 @@ final class EnumSwitchPlugin implements NodePlugin {
             return false;
         }
 
-        if (reason == ParsingReason.PointsToAnalysis) {
+        if (reason.duringAnalysis()) {
             if (!method.getDeclaringClass().isInitialized()) {
                 /*
                  * Declaring class is initialized at run time. Even if the enum itself is
@@ -96,8 +98,11 @@ final class EnumSwitchPlugin implements NodePlugin {
              * emits calls that end up in the same class or in the JDK.
              */
             AnalysisMethod aMethod = (AnalysisMethod) method;
-            StructuredGraph graph = aMethod.ensureGraphParsed(ImageSingletons.lookup(EnumSwitchFeature.class).bb, false).getGraph();
-            if (graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isNotEmpty()) {
+            EnumSwitchFeature feature = ImageSingletons.lookup(EnumSwitchFeature.class);
+            aMethod.ensureGraphParsed(feature.bb);
+            Boolean methodSafeForExecution = feature.methodsSafeForExecution.get(aMethod);
+            assert methodSafeForExecution != null : "after-parsing hook not executed for method " + aMethod.format("%H.%n(%p)");
+            if (!methodSafeForExecution.booleanValue()) {
                 return false;
 
             }
@@ -105,14 +110,14 @@ final class EnumSwitchPlugin implements NodePlugin {
                 Method switchTableMethod = ReflectionUtil.lookupMethod(aMethod.getDeclaringClass().getJavaClass(), method.getName());
                 Object switchTable = switchTableMethod.invoke(null);
                 if (switchTable instanceof int[]) {
-                    ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).add(b.getCallingContext(), switchTable);
+                    ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).add(b.getMethod(), b.bci(), switchTable);
                 }
             } catch (ReflectiveOperationException ex) {
                 throw GraalError.shouldNotReachHere(ex);
             }
         }
 
-        Object switchTable = ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).get(b.getCallingContext());
+        Object switchTable = ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).get(b.getMethod(), b.bci());
         if (switchTable != null) {
             b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(switchTable), 1, true, b.getMetaAccess()));
             return true;
@@ -124,15 +129,26 @@ final class EnumSwitchPlugin implements NodePlugin {
 final class EnumSwitchPluginRegistry extends IntrinsificationPluginRegistry {
 }
 
-@AutomaticFeature
-final class EnumSwitchFeature implements GraalFeature {
+@AutomaticallyRegisteredFeature
+final class EnumSwitchFeature implements InternalFeature {
 
     BigBang bb;
 
+    final ConcurrentMap<AnalysisMethod, Boolean> methodsSafeForExecution = new ConcurrentHashMap<>();
+
     @Override
-    public void duringSetup(DuringSetupAccess access) {
+    public void duringSetup(DuringSetupAccess a) {
         ImageSingletons.add(EnumSwitchPluginRegistry.class, new EnumSwitchPluginRegistry());
-        bb = ((DuringSetupAccessImpl) access).getBigBang();
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        bb = access.getBigBang();
+        access.getHostVM().addMethodAfterParsingListener(this::onMethodParsed);
+    }
+
+    private void onMethodParsed(AnalysisMethod method, StructuredGraph graph) {
+        boolean methodSafeForExecution = graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isEmpty();
+
+        Boolean existingValue = methodsSafeForExecution.put(method, methodSafeForExecution);
+        assert existingValue == null || !method.isOriginalMethod() : "Method parsed twice: " + method.format("%H.%n(%p)");
     }
 
     @Override

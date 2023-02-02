@@ -29,7 +29,6 @@ import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -42,8 +41,6 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.word.Word;
-
-import jdk.vm.ci.code.TargetDescription;
 
 /**
  * Collection of snippets to lower {@link LogNode} with different input edge constellations.
@@ -65,24 +62,36 @@ public class LogSnippets implements Snippets {
         Log.printf(message, l1, l2);
     }
 
+    @Snippet
+    public static void printf3(@ConstantParameter Word message, long l1, long l2, long l3) {
+        Log.printf(message, l1, l2, l3);
+    }
+
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo print = snippet(LogSnippets.class, "print");
-        private final SnippetInfo printf1 = snippet(LogSnippets.class, "printf1");
-        private final SnippetInfo printf2 = snippet(LogSnippets.class, "printf2");
+        private final SnippetInfo print;
+        private final SnippetInfo printf1;
+        private final SnippetInfo printf2;
+        private final SnippetInfo printf3;
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, TargetDescription target) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, HotSpotProviders providers) {
+            super(options, providers);
+
+            this.print = snippet(providers, LogSnippets.class, "print");
+            this.printf1 = snippet(providers, LogSnippets.class, "printf1");
+            this.printf2 = snippet(providers, LogSnippets.class, "printf2");
+            this.printf3 = snippet(providers, LogSnippets.class, "printf3");
         }
 
         public void lower(LogNode logNode, LoweringTool tool) {
             StructuredGraph graph = logNode.graph();
             SnippetInfo info = print;
-            if (logNode.getL1() != null) {
-                info = printf1;
-            }
-            if (logNode.getL2() != null) {
+            if (logNode.getL3() != null) {
+                info = printf3;
+            } else if (logNode.getL2() != null) {
                 info = printf2;
+            } else if (logNode.getL1() != null) {
+                info = printf1;
             }
             Arguments args = new Arguments(info, graph.getGuardsStage(), tool.getLoweringStage());
             args.addConst("message", graph.unique(new ConstantNode(new CStringConstant(logNode.message()), StampFactory.pointer())));
@@ -92,7 +101,10 @@ public class LogSnippets implements Snippets {
             if (logNode.getL2() != null) {
                 args.add("l2", logNode.getL2());
             }
-            template(logNode, args).instantiate(providers.getMetaAccess(), logNode, DEFAULT_REPLACER, args);
+            if (logNode.getL3() != null) {
+                args.add("l3", logNode.getL3());
+            }
+            template(tool, logNode, args).instantiate(tool.getMetaAccess(), logNode, DEFAULT_REPLACER, args);
         }
     }
 }

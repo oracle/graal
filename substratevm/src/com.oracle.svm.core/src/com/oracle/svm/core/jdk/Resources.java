@@ -29,18 +29,22 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLStreamHandler;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -53,112 +57,240 @@ import com.oracle.svm.core.util.VMError;
  */
 public final class Resources {
 
-    static Resources singleton() {
+    public static final char RESOURCES_INTERNAL_PATH_SEPARATOR = '/';
+
+    public static Resources singleton() {
         return ImageSingletons.lookup(Resources.class);
     }
 
-    /** The hosted map used to collect registered resources. */
-    private final EconomicMap<String, List<byte[]>> resources = ImageHeapMap.create();
+    /**
+     * The hosted map used to collect registered resources. Using a {@link Pair} of (moduleName,
+     * resourceName) provides implementations for {@code hashCode()} and {@code equals()} needed for
+     * the map keys.
+     */
+    private final EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
 
     Resources() {
     }
 
-    public EconomicMap<String, List<byte[]>> resources() {
+    public EconomicMap<Pair<String, String>, ResourceStorageEntry> resources() {
         return resources;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String name, InputStream is) {
-
-        byte[] arr = new byte[4096];
-        int pos = 0;
+    public static byte[] inputStreamToByteArray(InputStream is) {
         try {
-            for (;;) {
-                if (pos == arr.length) {
-                    byte[] tmp = new byte[arr.length * 2];
-                    System.arraycopy(arr, 0, tmp, 0, arr.length);
-                    arr = tmp;
-                }
-                int len = is.read(arr, pos, arr.length - pos);
-                if (len == -1) {
-                    break;
-                }
-                pos += len;
-            }
+            return is.readAllBytes();
         } catch (IOException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
+    }
 
-        byte[] res = new byte[pos];
-        System.arraycopy(arr, 0, res, 0, pos);
-
-        Resources support = singleton();
-        List<byte[]> list = support.resources.get(name);
-        if (list == null) {
-            list = new ArrayList<>();
-            support.resources.put(name, list);
+    private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
+        var resources = singleton().resources;
+        synchronized (resources) {
+            Pair<String, String> key = Pair.create(moduleName, resourceName);
+            ResourceStorageEntry entry = resources.get(key);
+            if (entry == null) {
+                entry = new ResourceStorageEntry(isDirectory, fromJar);
+                resources.put(key, entry);
+            }
+            entry.getData().add(data);
         }
-        list.add(res);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerDirectoryResource(String dir, String content) {
+    public static void registerResource(String resourceName, InputStream is) {
+        registerResource(null, resourceName, is, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerResource(String resourceName, InputStream is, boolean fromJar) {
+        registerResource(null, resourceName, is, fromJar);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerResource(String moduleName, String resourceName, InputStream is) {
+        registerResource(moduleName, resourceName, is, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerResource(String moduleName, String resourceName, byte[] resourceContent) {
+        addEntry(moduleName, resourceName, false, resourceContent, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerResource(String moduleName, String resourceName, InputStream is, boolean fromJar) {
+        addEntry(moduleName, resourceName, false, inputStreamToByteArray(is), fromJar);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDirectoryResource(String resourceDirName, String content) {
+        registerDirectoryResource(null, resourceDirName, content, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDirectoryResource(String resourceDirName, String content, boolean fromJar) {
+        registerDirectoryResource(null, resourceDirName, content, fromJar);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDirectoryResource(String moduleName, String resourceDirName, String content) {
+        registerDirectoryResource(moduleName, resourceDirName, content, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDirectoryResource(String moduleName, String resourceDirName, String content, boolean fromJar) {
         /*
          * A directory content represents the names of all files and subdirectories located in the
          * specified directory, separated with new line delimiter and joined into one string which
          * is later converted into a byte array and placed into the resources map.
          */
-        Resources support = singleton();
-
-        byte[] arr = content.getBytes();
-        List<byte[]> list = support.resources.get(dir);
-        if (list == null) {
-            list = new ArrayList<>();
-            support.resources.put(dir, list);
-        }
-        list.add(arr);
+        addEntry(moduleName, resourceDirName, true, content.getBytes(), fromJar);
     }
 
-    public static List<byte[]> get(String name) {
-        return singleton().resources.get(name);
+    /**
+     * Avoid pulling native file system by using {@link NativeImageResourcePath} implementation to
+     * convert <code>resourceName</code> to canonical variant.
+     */
+    public static String toCanonicalForm(String resourceName) {
+        NativeImageResourcePath path = new NativeImageResourcePath(null, removeTrailingSlash(resourceName).getBytes(StandardCharsets.UTF_8), true);
+        return new String(NativeImageResourcePath.getResolved(path));
     }
 
-    public static URL createURL(String name, byte[] resourceBytes) {
-        class Conn extends URLConnection {
-            Conn(URL url) {
-                super(url);
-            }
+    private static boolean hasTrailingSlash(String resourceName) {
+        return resourceName.endsWith("/");
+    }
 
-            @Override
-            public void connect() throws IOException {
-            }
+    private static String removeTrailingSlash(String resourceName) {
+        return hasTrailingSlash(resourceName) ? resourceName.substring(0, resourceName.length() - 1) : resourceName;
+    }
 
-            @Override
-            public InputStream getInputStream() throws IOException {
-                return new ByteArrayInputStream(resourceBytes);
-            }
+    private static boolean wasAlreadyInCanonicalForm(String resourceName, String canonicalResourceName) {
+        return resourceName.equals(canonicalResourceName) || removeTrailingSlash(resourceName).equals(canonicalResourceName);
+    }
 
-            @Override
-            public long getContentLengthLong() {
-                return resourceBytes.length;
-            }
+    public static ResourceStorageEntry get(String name) {
+        return get(null, name);
+    }
+
+    public static ResourceStorageEntry get(String moduleName, String resourceName) {
+        String canonicalResourceName = toCanonicalForm(resourceName);
+        ResourceStorageEntry entry = singleton().resources.get(Pair.create(moduleName, canonicalResourceName));
+        if (entry == null) {
+            return null;
         }
+        if (entry.isFromJar() && !wasAlreadyInCanonicalForm(resourceName, canonicalResourceName)) {
+            /*
+             * The resource originally came from a jar file, thus behave like ZipFileSystem behaves
+             * for non-canonical paths.
+             */
+            return null;
+        }
+        if (!entry.isDirectory() && hasTrailingSlash(resourceName)) {
+            /*
+             * If this is an actual resource file (not a directory) we do not tolerate a trailing
+             * slash.
+             */
+            return null;
+        }
+        return entry;
+    }
 
+    @SuppressWarnings("deprecation")
+    private static URL createURL(String moduleName, String resourceName, int index) {
         try {
-            return new URL("resource", null, -1, name, new URLStreamHandler() {
-                @Override
-                protected URLConnection openConnection(URL u) throws IOException {
-                    return new Conn(u);
-                }
-            });
+            String refPart = index != 0 ? '#' + Integer.toString(index) : "";
+            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, '/' + resourceName + refPart);
         } catch (MalformedURLException ex) {
             throw new IllegalStateException(ex);
         }
     }
+
+    public static URL createURL(String resourceName) {
+        return createURL(null, resourceName);
+    }
+
+    public static URL createURL(String moduleName, String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
+
+        Enumeration<URL> urls = createURLs(moduleName, resourceName);
+        return urls.hasMoreElements() ? urls.nextElement() : null;
+    }
+
+    public static InputStream createInputStream(String resourceName) {
+        return createInputStream(null, resourceName);
+    }
+
+    /* Avoid pulling in the URL class when only an InputStream is needed. */
+    public static InputStream createInputStream(String moduleName, String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
+
+        ResourceStorageEntry entry = Resources.get(moduleName, resourceName);
+        if (moduleName == null && entry == null) {
+            /*
+             * If no moduleName is specified and entry was not found as classpath-resource we have
+             * to search for the resource in all modules in the image.
+             */
+            for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
+                entry = Resources.get(module.getName(), resourceName);
+                if (entry != null) {
+                    break;
+                }
+            }
+        }
+
+        if (entry == null) {
+            return null;
+        }
+        List<byte[]> data = entry.getData();
+        return data.isEmpty() ? null : new ByteArrayInputStream(data.get(0));
+    }
+
+    public static Enumeration<URL> createURLs(String resourceName) {
+        return createURLs(null, resourceName);
+    }
+
+    public static Enumeration<URL> createURLs(String moduleName, String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
+
+        List<URL> resourcesURLs = new ArrayList<>();
+        String canonicalResourceName = toCanonicalForm(resourceName);
+        boolean shouldAppendTrailingSlash = hasTrailingSlash(resourceName);
+        /* If moduleName was unspecified we have to consider all modules in the image */
+        if (moduleName == null) {
+            for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
+                ResourceStorageEntry entry = Resources.get(module.getName(), resourceName);
+                addURLEntries(resourcesURLs, entry, module.getName(), shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
+            }
+        }
+        ResourceStorageEntry explicitEntry = Resources.get(moduleName, resourceName);
+        addURLEntries(resourcesURLs, explicitEntry, moduleName, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
+
+        if (resourcesURLs.isEmpty()) {
+            return Collections.emptyEnumeration();
+        }
+        return Collections.enumeration(resourcesURLs);
+    }
+
+    private static void addURLEntries(List<URL> resourcesURLs, ResourceStorageEntry entry, String moduleName, String canonicalResourceName) {
+        if (entry == null) {
+            return;
+        }
+        int numberOfResources = entry.getData().size();
+        for (int index = 0; index < numberOfResources; index++) {
+            resourcesURLs.add(createURL(moduleName, canonicalResourceName, index));
+        }
+    }
 }
 
-@AutomaticFeature
-final class ResourcesFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class ResourcesFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(Resources.class, new Resources());
@@ -172,8 +304,8 @@ final class ResourcesFeature implements Feature {
          * of lazily initialized fields. Only the byte[] arrays themselves can be safely made
          * read-only.
          */
-        for (List<byte[]> resourceList : Resources.singleton().resources().getValues()) {
-            for (byte[] resource : resourceList) {
+        for (ResourceStorageEntry resourceList : Resources.singleton().resources().getValues()) {
+            for (byte[] resource : resourceList.getData()) {
                 access.registerAsImmutable(resource);
             }
         }

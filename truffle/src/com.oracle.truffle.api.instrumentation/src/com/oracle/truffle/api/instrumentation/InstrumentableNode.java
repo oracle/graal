@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -109,8 +108,8 @@ public interface InstrumentableNode extends NodeInterface {
      * <p>
      * The implementation of this method must ensure that its result is stable after the parent
      * {@link RootNode root node} was wrapped in a {@link CallTarget} using
-     * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
-     * calling this method remains always the same.
+     * {@link RootNode#getCallTarget()}. The result is stable if the result of calling this method
+     * remains always the same.
      * <p>
      * This method might be called in parallel from multiple threads even if the language is single
      * threaded. The method may be invoked without a language context currently being active.
@@ -183,8 +182,8 @@ public interface InstrumentableNode extends NodeInterface {
      * <p>
      * The implementation of hasTag method must ensure that its result is stable after the parent
      * {@link RootNode root node} was wrapped in a {@link CallTarget} using
-     * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
-     * calling this method for a particular tag remains always the same.
+     * {@link RootNode#getCallTarget()}. The result is stable if the result of calling this method
+     * for a particular tag remains always the same.
      * <p>
      * This method might be called in parallel from multiple threads even if the language is single
      * threaded. The method may be invoked without a language context currently being active.
@@ -267,7 +266,7 @@ public interface InstrumentableNode extends NodeInterface {
      * The AST lock is acquired while this method is invoked. Therefore it is not allowed to run
      * guest language code while this method is invoked. This method might be called in parallel
      * from multiple threads even if the language is single threaded. The method may be invoked
-     * without a language context currently being active.
+     * without a language context currently being active. Language reference is always available.
      * <p>
      * In the example below, we show how the <code>IncrementNode</code> with a
      * <code>ConstantNode</code> child is optimized into a <code>ConstantIncrementNode</code> and
@@ -356,10 +355,34 @@ public interface InstrumentableNode extends NodeInterface {
      *            this set
      * @return the nearest instrumentable node according to the execution flow and tagged with some
      *         of the tags, or <code>null</code> when none was found
+     * @see #findNearestNodeAt(int, int, Set)
      * @since 0.33
      */
     default Node findNearestNodeAt(int sourceCharIndex, Set<Class<? extends Tag>> tags) {
         return DefaultNearestNodeSearch.findNearestNodeAt(sourceCharIndex, (Node) this, tags);
+    }
+
+    /**
+     * Find the nearest {@link Node node} to the given source line and column position, according to
+     * the guest language control flow, that is tagged with some of the given tags.
+     * <p>
+     * Behaves in the same way as {@link #findNearestNodeAt(int, Set)} but uses line/column as the
+     * position specification instead of a character index.
+     *
+     * @param line 1-based line number
+     * @param column 1-based column number, or less than one when the column is unknown
+     * @param tags a set of tags, the nearest node needs to be tagged with at least one tag from
+     *            this set
+     * @return the nearest instrumentable node according to the execution flow and tagged with some
+     *         of the tags, or <code>null</code> when none was found
+     * @see #findNearestNodeAt(int, Set)
+     * @since 23.0
+     */
+    default Node findNearestNodeAt(int line, int column, Set<Class<? extends Tag>> tags) {
+        if (line < 1) {
+            throw new IllegalArgumentException("A 1-based line needs to be specified, was " + line);
+        }
+        return DefaultNearestNodeSearch.findNearestNodeAt(line, column, (Node) this, tags);
     }
 
     /**

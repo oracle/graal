@@ -24,74 +24,33 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import java.lang.annotation.Annotation;
-import java.lang.annotation.Repeatable;
-import java.lang.reflect.AnnotatedElement;
-import java.util.Objects;
-import java.util.stream.Stream;
-
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.hub.AnnotationTypeSupport;
-import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
-@AutomaticFeature
-public class AnnotationTypeFeature implements Feature {
-
-    private EconomicSet<Object> repeatableAnnotationClasses = EconomicSet.create();
-    private EconomicSet<AnnotatedElement> visitedElements = EconomicSet.create();
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(AnnotationTypeSupport.class, new AnnotationTypeSupport());
-        ((AfterRegistrationAccessImpl) access).getImageClassLoader().allAnnotations().stream()
-                        .map(a -> a.getAnnotation(Repeatable.class))
-                        .filter(Objects::nonNull)
-                        .map(Repeatable::value)
-                        .forEach(repeatableAnnotationClasses::add);
-    }
+@AutomaticallyRegisteredFeature
+public class AnnotationTypeFeature implements InternalFeature {
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         DuringAnalysisAccessImpl accessImpl = (DuringAnalysisAccessImpl) access;
         AnalysisUniverse universe = accessImpl.getUniverse();
 
-        /*
-         * JDK implementation of repeatable annotations always instantiates an array of a requested
-         * annotation. We need to mark arrays of all reachable annotations as in heap.
-         */
         universe.getTypes().stream()
                         .filter(AnalysisType::isAnnotation)
                         .filter(AnalysisType::isReachable)
                         .map(type -> universe.lookup(type.getWrapped()).getArrayClass())
                         .filter(annotationArray -> !annotationArray.isInstantiated())
                         .forEach(annotationArray -> {
-                            accessImpl.registerAsInHeap(annotationArray);
+                            /*
+                             * JDK implementation of repeatable annotations always instantiates an
+                             * array of a requested annotation. We need to mark arrays of all
+                             * reachable annotations as in heap.
+                             */
+                            accessImpl.registerAsInHeap(annotationArray, "Is the array type of a reachable annotation.");
                             access.requireAnalysisIteration();
                         });
-
-        Stream<AnnotatedElement> allElements = Stream.concat(Stream.concat(universe.getFields().stream(), universe.getMethods().stream()), universe.getTypes().stream());
-        Stream<AnnotatedElement> newElements = allElements.filter(visitedElements::add);
-        newElements.forEach(this::reportAnnotation);
-    }
-
-    private void reportAnnotation(AnnotatedElement element) {
-        for (Annotation annotation : element.getDeclaredAnnotations()) {
-            if (repeatableAnnotationClasses.contains(annotation.annotationType())) {
-                ImageSingletons.lookup(AnnotationTypeSupport.class).createInstance(annotation.annotationType());
-            }
-        }
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        repeatableAnnotationClasses.clear();
-        visitedElements.clear();
     }
 }

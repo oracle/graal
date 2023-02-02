@@ -27,10 +27,11 @@ package com.oracle.graal.pointsto.flow.context;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext.AnalysisContextKey;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import jdk.vm.ci.code.BytecodePosition;
 
 /** Provides logic for analysis context transitions. */
 public abstract class AnalysisContextPolicy<C extends AnalysisContext> {
@@ -56,13 +57,13 @@ public abstract class AnalysisContextPolicy<C extends AnalysisContext> {
      * Given the receiver object, caller context and callee this method returns the callee context
      * for a virtual or special invoke.
      */
-    public abstract C calleeContext(BigBang bb, AnalysisObject receiverObject, C callerContext, MethodTypeFlow callee);
+    public abstract C calleeContext(PointsToAnalysis bb, AnalysisObject receiverObject, C callerContext, MethodTypeFlow callee);
 
     /**
      * Given the invocation location, caller context and callee this method returns the callee
      * context for a static invoke.
      */
-    public abstract C staticCalleeContext(BigBang bb, BytecodeLocation invokeLocation, C callerContext, MethodTypeFlow callee);
+    public abstract C staticCalleeContext(PointsToAnalysis bb, BytecodePosition invokeLocation, C callerContext, MethodTypeFlow callee);
 
     /**
      * Given the allocator method context this method returns the allocation context for a heap
@@ -81,10 +82,10 @@ public abstract class AnalysisContextPolicy<C extends AnalysisContext> {
      * by {@code maxDepth}. Only the most recent context labels are kept in the chain, in the order
      * that they appeared in the call chain.
      */
-    public static BytecodeLocation[] extend(BytecodeLocation[] labelList, BytecodeLocation add, int maxDepth) {
+    public static BytecodePosition[] extend(BytecodePosition[] labelList, BytecodePosition add, int maxDepth) {
 
         int resultingContextDepth = labelList.length == maxDepth ? maxDepth : labelList.length + 1;
-        BytecodeLocation[] resultingLabelList = new BytecodeLocation[resultingContextDepth];
+        BytecodePosition[] resultingLabelList = new BytecodePosition[resultingContextDepth];
 
         for (int i = resultingContextDepth - 2, j = labelList.length - 1; i >= 0 && j >= 0; i--, j--) {
             // get only the last 'resultingContextDepth - 1' contexts from the initial chain
@@ -99,26 +100,26 @@ public abstract class AnalysisContextPolicy<C extends AnalysisContext> {
     }
 
     /** Extends the input label list with a context label. */
-    public static BytecodeLocation[] extend(BytecodeLocation[] labelList, BytecodeLocation add) {
-        BytecodeLocation[] result = Arrays.copyOf(labelList, labelList.length + 1);
+    public static BytecodePosition[] extend(BytecodePosition[] labelList, BytecodePosition add) {
+        BytecodePosition[] result = Arrays.copyOf(labelList, labelList.length + 1);
         result[result.length - 1] = add;
         return result;
     }
 
     /** Prepends the context label to the input label list. */
-    public static BytecodeLocation[] prepend(BytecodeLocation add, BytecodeLocation[] labelList) {
-        BytecodeLocation[] result = new BytecodeLocation[labelList.length + 1];
+    public static BytecodePosition[] prepend(BytecodePosition add, BytecodePosition[] labelList) {
+        BytecodePosition[] result = new BytecodePosition[labelList.length + 1];
         result[0] = add;
         System.arraycopy(labelList, 0, result, 1, labelList.length);
         return result;
     }
 
-    public static BytecodeLocation[] peel(BytecodeLocation[] labelList, int maxDepth) {
+    public static BytecodePosition[] peel(BytecodePosition[] labelList, int maxDepth) {
 
         assert maxDepth >= 0;
         assert labelList.length > maxDepth;
 
-        BytecodeLocation[] resultingLabelList = new BytecodeLocation[maxDepth];
+        BytecodePosition[] resultingLabelList = new BytecodePosition[maxDepth];
 
         for (int i = maxDepth - 1, j = labelList.length - 1; i >= 0 && j >= 0; i--, j--) {
             // get only the last 'maxDepth' contexts from the initial chain

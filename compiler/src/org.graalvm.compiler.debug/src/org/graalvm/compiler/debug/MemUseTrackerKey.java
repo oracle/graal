@@ -27,7 +27,7 @@ package org.graalvm.compiler.debug;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 /**
- * Tracks memory usage within a scope using {@link com.sun.management.ThreadMXBean}. This facility
+ * Tracks memory usage within a scope using {@code com.sun.management.ThreadMXBean}. This facility
  * should be employed using the try-with-resources pattern:
  *
  * <pre>
@@ -46,11 +46,6 @@ public interface MemUseTrackerKey extends MetricKey {
      *         since this call to the total for this tracker
      */
     DebugCloseable start(DebugContext debug);
-
-    /**
-     * Gets the current value of this tracker.
-     */
-    long getCurrentValue(DebugContext debug);
 
     @Override
     MemUseTrackerKey doc(String string);

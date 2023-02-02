@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Types;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.model.ImplicitCastData;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TypeCastData;
@@ -106,7 +107,7 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
 
         verifyExclusiveMethodAnnotation(typeSystem, types.TypeCast, types.TypeCheck);
 
-        List<Element> elements = newElementList(context.getEnvironment().getElementUtils().getAllMembers(templateType));
+        List<Element> elements = newElementList(CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(context.getEnvironment(), templateType));
         List<ImplicitCastData> implicitCasts = new ImplicitCastParser(context, typeSystem).parse(elements);
         List<TypeCastData> casts = new TypeCastParser(context, typeSystem).parse(elements);
         List<TypeCheckData> checks = new TypeCheckParser(context, typeSystem).parse(elements);

@@ -24,21 +24,28 @@
  */
 package com.oracle.svm.core.classinitialization;
 
-// Checkstyle: stop
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.VirtualThreads;
+import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
-// Checkstyle: resume
+import jdk.internal.misc.Unsafe;
+import jdk.internal.reflect.Reflection;
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
@@ -49,9 +56,8 @@ import sun.misc.Unsafe;
  * state is mutable while {@link DynamicHub} must be immutable, and 2) few classes require
  * initialization at runtime so factoring out the information reduces image size.
  */
+@InternalVMMethod
 public final class ClassInitializationInfo {
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /**
      * Singleton for classes that are already initialized during image building and do not need
@@ -88,36 +94,27 @@ public final class ClassInitializationInfo {
     }
 
     /**
-     * Isolates require that all function pointers to image methods are in immutable classes.
-     * {@link ClassInitializationInfo} is mutable, so we use this class as an immutable indirection.
-     */
-    public static class ClassInitializerFunctionPointerHolder {
-        /**
-         * We cannot declare the field to have type {@link ClassInitializerFunctionPointer} because
-         * during image building the field refers to a wrapper object that cannot implement custom
-         * interfaces.
-         */
-        final CFunctionPointer functionPointer;
-
-        ClassInitializerFunctionPointerHolder(CFunctionPointer functionPointer) {
-            this.functionPointer = functionPointer;
-        }
-    }
-
-    /**
      * Function pointer to the class initializer, or null if the class does not have a class
      * initializer.
      */
-    private final ClassInitializerFunctionPointerHolder classInitializer;
+    private final FunctionPointerHolder classInitializer;
 
     /**
      * The current initialization state.
      */
     private InitState initState;
     /**
-     * The thread that is currently initializing the class.
+     * The thread that is currently initializing the class. We use the platform thread instead of a
+     * potential virtual thread because initializers like that of {@code sun.nio.ch.Poller} can
+     * switch to the carrier thread and encounter the class that is being initialized again and
+     * would wait for its initialization in the virtual thread to complete and therefore deadlock.
+     *
+     * We also pin the virtual thread because it must not continue initialization on a different
+     * platform thread, and also because if the platform thread switches to a different virtual
+     * thread which encounters the class being initialized, it would wrongly be considered reentrant
+     * initialization and enable use of the incompletely initialized class.
      */
-    private Thread initThread;
+    private IsolateThread initThread;
 
     /**
      * The lock held during initialization of the class. Allocated during image building, otherwise
@@ -152,7 +149,7 @@ public final class ClassInitializationInfo {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public ClassInitializationInfo(CFunctionPointer classInitializer) {
-        this.classInitializer = classInitializer == null || classInitializer.isNull() ? null : new ClassInitializerFunctionPointerHolder(classInitializer);
+        this.classInitializer = classInitializer == null || classInitializer.isNull() ? null : new FunctionPointerHolder(classInitializer);
         this.initState = InitState.Linked;
         this.initLock = new ReentrantLock();
         this.hasInitializer = classInitializer != null;
@@ -174,8 +171,8 @@ public final class ClassInitializationInfo {
         return initState == InitState.InitializationError;
     }
 
-    private boolean isReentrantInitialization(Thread thread) {
-        return thread == initThread;
+    private boolean isReentrantInitialization(IsolateThread thread) {
+        return thread.equal(initThread);
     }
 
     /**
@@ -187,7 +184,22 @@ public final class ClassInitializationInfo {
      */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void initialize(ClassInitializationInfo info, DynamicHub hub) {
-        Thread self = Thread.currentThread();
+        IsolateThread self = CurrentIsolate.getCurrentThread();
+
+        /*
+         * GR-43118: If a predefined class is not loaded, and the caller class is loaded, set the
+         * classloader of the initialized class to the class loader of the caller class.
+         * 
+         * This does not work in general as class loading happens in more places than class
+         * initialization, e.g., on class literals. However, this workaround makes most of the cases
+         * work until we have a proper implementation of class loading.
+         */
+        if (!hub.isLoaded()) {
+            Class<?> callerClass = Reflection.getCallerClass();
+            if (DynamicHub.fromClass(callerClass).isLoaded()) {
+                PredefinedClassesSupport.loadClassIfNotLoaded(callerClass.getClassLoader(), null, DynamicHub.toClass(hub));
+            }
+        }
 
         /*
          * Step 1: Synchronize on the initialization lock, LC, for C. This involves waiting until
@@ -250,6 +262,22 @@ public final class ClassInitializationInfo {
             info.initLock.unlock();
         }
 
+        boolean pinned = false;
+        if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
+            // See comment on field `initThread`
+            VirtualThreads.singleton().pinCurrent();
+            pinned = true;
+        }
+        try {
+            doInitialize(info, hub);
+        } finally {
+            if (pinned) {
+                VirtualThreads.singleton().unpinCurrent();
+            }
+        }
+    }
+
+    private static void doInitialize(ClassInitializationInfo info, DynamicHub hub) {
         /*
          * Step 7: Next, if C is a class rather than an interface, initialize its super class and
          * super interfaces.
@@ -292,7 +320,7 @@ public final class ClassInitializationInfo {
         Throwable exception = null;
         try {
             /* Step 9: Next, execute the class or interface initialization method of C. */
-            info.invokeClassInitializer();
+            info.invokeClassInitializer(hub);
         } catch (Throwable ex) {
             exception = ex;
         }
@@ -357,9 +385,9 @@ public final class ClassInitializationInfo {
         initLock.lock();
         try {
             this.initState = state;
-            this.initThread = null;
+            this.initThread = WordFactory.nullPointer();
             /* Make sure previous stores are all done, notably the initState. */
-            UNSAFE.storeFence();
+            Unsafe.getUnsafe().storeFence();
 
             if (initCondition != null) {
                 initCondition.signalAll();
@@ -370,9 +398,17 @@ public final class ClassInitializationInfo {
         }
     }
 
-    private void invokeClassInitializer() {
+    private void invokeClassInitializer(DynamicHub hub) {
         if (classInitializer != null) {
-            ((ClassInitializerFunctionPointer) classInitializer.functionPointer).invoke();
+            ClassInitializerFunctionPointer functionPointer = (ClassInitializerFunctionPointer) classInitializer.functionPointer;
+            if (functionPointer.isNull()) {
+                throw invokeClassInitializerError(hub);
+            }
+            functionPointer.invoke();
         }
+    }
+
+    private static RuntimeException invokeClassInitializerError(DynamicHub hub) {
+        throw VMError.shouldNotReachHere("No classInitializer.functionPointer for class " + hub.getName());
     }
 }

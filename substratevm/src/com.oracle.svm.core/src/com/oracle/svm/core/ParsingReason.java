@@ -31,4 +31,12 @@ public enum ParsingReason {
     JITCompilation,
     EarlyClassInitializerAnalysis,
     UnsafeSubstitutionAnalysis;
+
+    public boolean isForHosted() {
+        return this != JITCompilation;
+    }
+
+    public boolean duringAnalysis() {
+        return this == PointsToAnalysis || (SubstrateOptions.parseOnce() && this == JITCompilation);
+    }
 }

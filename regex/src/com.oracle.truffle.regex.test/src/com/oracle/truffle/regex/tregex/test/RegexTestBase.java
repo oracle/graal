@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,8 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -51,13 +53,15 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 
+import com.oracle.truffle.regex.tregex.string.Encodings;
+
 public abstract class RegexTestBase {
 
     private static Context context;
 
     @BeforeClass
     public static void setUp() {
-        context = Context.newBuilder().build();
+        context = Context.newBuilder().allowAllAccess(true).build();
         context.enter();
     }
 
@@ -72,48 +76,137 @@ public abstract class RegexTestBase {
 
     abstract String getEngineOptions();
 
+    abstract Encodings.Encoding getTRegexEncoding();
+
     Value compileRegex(String pattern, String flags) {
-        return context.eval("regexDummyLang", "RegressionTestMode=true" + (getEngineOptions().isEmpty() ? "" : "," + getEngineOptions()) + '/' + pattern + '/' + flags);
+        return compileRegex(pattern, flags, "");
     }
 
-    Value execRegex(Value compiledRegex, Object input, int fromIndex) {
-        return compiledRegex.invokeMember("exec", input, fromIndex);
+    Value compileRegex(String pattern, String flags, Encodings.Encoding encoding) {
+        return compileRegex(pattern, flags, "Encoding=" + encoding.getName());
     }
 
-    void test(String pattern, String flags, Object input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
-        assert captureGroupBounds.length % 2 == 0;
-        Value compiledRegex = compileRegex(pattern, flags);
+    Value compileRegex(String pattern, String flags, String options) {
+        StringBuilder combinedOptions = new StringBuilder("RegressionTestMode=true");
+        if (getTRegexEncoding() != Encodings.UTF_16_RAW) {
+            combinedOptions.append(",Encoding=" + getTRegexEncoding().getName());
+        }
+        if (!getEngineOptions().isEmpty()) {
+            combinedOptions.append("," + getEngineOptions());
+        }
+        if (!options.isEmpty()) {
+            combinedOptions.append("," + options);
+        }
+        return context.eval("regexDummyLang", combinedOptions.toString() + '/' + pattern + '/' + flags);
+    }
+
+    Value execRegex(Value compiledRegex, String input, int fromIndex) {
+        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, getTRegexEncoding().getTStringEncoding());
+        return compiledRegex.invokeMember("exec", tsInput, fromIndex);
+    }
+
+    Value execRegex(Value compiledRegex, Encodings.Encoding encoding, String input, int fromIndex) {
+        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, encoding.getTStringEncoding());
+        return compiledRegex.invokeMember("exec", tsInput, fromIndex);
+    }
+
+    void test(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        test(pattern, flags, "", input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
+    }
+
+    void test(String pattern, String flags, String options, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        Value compiledRegex = compileRegex(pattern, flags, options);
         Value result = execRegex(compiledRegex, input, fromIndex);
+        validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
+    }
+
+    void test(String pattern, String flags, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        Value compiledRegex = compileRegex(pattern, flags, encoding);
+        Value result = execRegex(compiledRegex, encoding, input, fromIndex);
+        validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
+    }
+
+    private static void validateResult(Value result, int groupCount, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         assertEquals(isMatch, result.getMember("isMatch").asBoolean());
         if (isMatch) {
-            assertEquals(captureGroupBounds.length / 2, compiledRegex.getMember("groupCount").asInt());
-            for (int i = 0; i < captureGroupBounds.length / 2; i++) {
-                if (captureGroupBounds[i * 2] != result.invokeMember("getStart", i).asInt() || captureGroupBounds[i * 2 + 1] != result.invokeMember("getEnd", i).asInt()) {
-                    fail(result, captureGroupBounds);
+            assertEquals(captureGroupBoundsAndLastGroup.length / 2, groupCount);
+            for (int i = 0; i < groupCount; i++) {
+                if (captureGroupBoundsAndLastGroup[Group.groupNumberToBoundaryIndexStart(i)] != result.invokeMember("getStart", i).asInt() ||
+                                captureGroupBoundsAndLastGroup[Group.groupNumberToBoundaryIndexEnd(i)] != result.invokeMember("getEnd", i).asInt()) {
+                    fail(result, captureGroupBoundsAndLastGroup);
                 }
             }
         }
+        int lastGroup = captureGroupBoundsAndLastGroup.length % 2 == 1 ? captureGroupBoundsAndLastGroup[captureGroupBoundsAndLastGroup.length - 1] : -1;
+        if (lastGroup != result.getMember("lastGroup").asInt()) {
+            fail(result, captureGroupBoundsAndLastGroup);
+        }
+    }
+
+    void testUnsupported(String pattern, String flags) {
+        Assert.assertTrue(compileRegex(pattern, flags).isNull());
     }
 
     void expectSyntaxError(String pattern, String flags, String expectedMessage) {
-        try {
-            compileRegex(pattern, flags);
-        } catch (PolyglotException e) {
-            Assert.assertTrue(e.getMessage().contains(expectedMessage));
-            return;
-        }
-        Assert.fail();
+        expectSyntaxError(pattern, flags, "", expectedMessage);
     }
 
-    private static void fail(Value result, int... captureGroupBounds) {
-        StringBuilder sb = new StringBuilder("expected: ").append(Arrays.toString(captureGroupBounds)).append(", actual: [");
-        for (int i = 0; i < captureGroupBounds.length / 2; i++) {
+    void expectSyntaxError(String pattern, String flags, String options, String expectedMessage) {
+        try {
+            compileRegex(pattern, flags, options);
+        } catch (PolyglotException e) {
+            String msg = e.getMessage();
+            if (!msg.contains(expectedMessage)) {
+                Assert.fail(String.format("/%s/%s : expected syntax error message containing \"%s\", but was \"%s\"", pattern, flags, expectedMessage, msg));
+            }
+            return;
+        }
+        Assert.fail(String.format("/%s/%s : expected \"%s\", but no exception was thrown", pattern, flags, expectedMessage));
+    }
+
+    void expectSyntaxError(String pattern, String flags, String expectedMessage, int expectedPosition) {
+        expectSyntaxError(pattern, flags, "", expectedMessage, expectedPosition);
+    }
+
+    void expectSyntaxError(String pattern, String flags, String options, String expectedMessage, int expectedPosition) {
+        try {
+            compileRegex(pattern, flags, options);
+        } catch (PolyglotException e) {
+            String msg = e.getMessage();
+            int pos = e.getSourceLocation().getCharIndex();
+            if (!msg.contains(expectedMessage)) {
+                Assert.fail(String.format("/%s/%s : expected syntax error message containing \"%s\", but was \"%s\"", pattern, flags, expectedMessage, msg));
+            }
+            if (pos != expectedPosition) {
+                Assert.fail(String.format("/%s/%s : expected syntax error message \"%s\" position here:\n%s\n%s\nbut was here:\n%s\n%s", pattern, flags, expectedMessage, pattern,
+                                generateErrorPosArrow(expectedPosition), pattern, generateErrorPosArrow(pos)));
+            }
+            return;
+        }
+        Assert.fail(String.format("/%s/%s : expected \"%s\", but no exception was thrown", pattern, flags, expectedMessage));
+    }
+
+    private static String generateErrorPosArrow(int pos) {
+        StringBuilder sb = new StringBuilder(pos + 1);
+        for (int i = 0; i < pos; i++) {
+            sb.append(' ');
+        }
+        return sb.append('^').toString();
+    }
+
+    private static void fail(Value result, int... captureGroupBoundsAndLastGroup) {
+        StringBuilder sb = new StringBuilder("expected: ").append(Arrays.toString(captureGroupBoundsAndLastGroup)).append(", actual: [");
+        for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
             if (i > 0) {
                 sb.append(", ");
             }
             sb.append(result.invokeMember("getStart", i).asInt());
             sb.append(", ");
             sb.append(result.invokeMember("getEnd", i).asInt());
+        }
+        if (captureGroupBoundsAndLastGroup.length % 2 == 1) {
+            sb.append(", ");
+            sb.append(result.getMember("lastGroup").asInt());
         }
         Assert.fail(sb.append("]").toString());
     }

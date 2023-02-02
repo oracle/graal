@@ -32,7 +32,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.meta.SubstrateMemoryAccessProviderImpl;
 
@@ -94,7 +93,7 @@ final class ConstantDataConverter {
     static void fromClient(Constant constant, ConstantData data) {
         data.setRepresentsNull(false);
         if (constant instanceof DirectSubstrateObjectConstant) {
-            Object target = KnownIntrinsics.convertUnknownValue(((DirectSubstrateObjectConstant) constant).getObject(), Object.class);
+            Object target = ((DirectSubstrateObjectConstant) constant).getObject();
             data.setRawBits(IsolatedCompileClient.get().hand(target));
             data.setKind(OBJECT_HANDLE_KIND);
             data.setCompressed(((DirectSubstrateObjectConstant) constant).isCompressed());

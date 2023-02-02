@@ -101,11 +101,29 @@ public final class WasmMath {
         return compareUnsigned(a, b) < 0 ? a : b;
     }
 
+    public static long minUnsigned(long a, long b) {
+        return Long.compareUnsigned(a, b) < 0 ? a : b;
+    }
+
     /**
      * Returns the maximum of two unsigned ints.
      */
     public static int maxUnsigned(int a, int b) {
         return compareUnsigned(a, b) > 0 ? a : b;
+    }
+
+    /**
+     * Returns the value of the {@code long} argument as an {@code int}; throwing an exception if
+     * the value overflows an unsigned {@code int}.
+     *
+     * @throws ArithmeticException if the argument is outside of the unsigned int32 range
+     * @since 1.8
+     */
+    public static int toUnsignedIntExact(long value) {
+        if (value < 0 || value > 0xffff_ffffL) {
+            throw new ArithmeticException("unsigned int overflow");
+        }
+        return (int) value;
     }
 
     /**

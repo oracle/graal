@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,7 @@ public class WordTest extends SnippetsTest {
     protected StructuredGraph parse(Builder builder, PhaseSuite<HighTierContext> graphBuilderSuite) {
         // create a copy to assign a valid compilation id
         DebugContext debug = getDebugContext();
-        StructuredGraph originalGraph = installer.makeGraph(debug, bytecodeProvider, builder.getMethod(), null, null, false, null);
+        StructuredGraph originalGraph = installer.makeGraph(debug, bytecodeProvider, builder.getMethod(), null, null, null, false, null);
         return originalGraph.copyWithIdentifier(builder.getCompilationId(), debug);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.EnumSet;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
@@ -58,11 +58,11 @@ public final class LIRVerifier {
     private final BitSet[] blockLiveOut;
     private final Object[] variableDefinitions;
 
-    private BitSet liveOutFor(AbstractBlockBase<?> block) {
+    private BitSet liveOutFor(BasicBlock<?> block) {
         return blockLiveOut[block.getId()];
     }
 
-    private void setLiveOutFor(AbstractBlockBase<?> block, BitSet liveOut) {
+    private void setLiveOutFor(BasicBlock<?> block, BitSet liveOut) {
         blockLiveOut[block.getId()] = liveOut;
     }
 
@@ -103,7 +103,7 @@ public final class LIRVerifier {
     private BitSet curVariablesLive;
     private Value[] curRegistersLive;
 
-    private AbstractBlockBase<?> curBlock;
+    private BasicBlock<?> curBlock;
     private Object curInstruction;
     private BitSet curRegistersDefined;
 
@@ -125,7 +125,9 @@ public final class LIRVerifier {
 
         int maxRegisterNum = maxRegisterNum();
         curRegistersDefined = new BitSet();
-        for (AbstractBlockBase<?> block : lir.linearScanOrder()) {
+        for (int blockId : lir.linearScanOrder()) {
+            BasicBlock<?> block = lir.getBlockById(blockId);
+
             curBlock = block;
             curVariablesLive = new BitSet();
             curRegistersLive = new Value[maxRegisterNum];

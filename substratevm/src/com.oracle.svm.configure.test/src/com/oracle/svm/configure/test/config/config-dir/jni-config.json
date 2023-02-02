@@ -1,0 +1,61 @@
+[
+  {
+    "name": "FlagTestA",
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true,
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "FlagTestB",
+    "allPublicMethods": true,
+    "allPublicFields": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "FlagTestC",
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true,
+    "allDeclaredConstructors": true
+  },
+  {
+    "name": "FlagTestD",
+    "allPublicMethods": true,
+    "allPublicFields": true,
+    "allPublicConstructors": true
+  },
+  {
+    "name": "MethodAndFieldTest",
+    "fields": [
+      {
+        "name": "SimpleField"
+      },
+      {
+        "name": "AllowWriteField",
+        "allowWrite": true
+      },
+      {
+        "name": "NewField"
+      },
+      {
+        "name": "NewAllowWriteField",
+        "allowWrite": true
+      },
+      {
+        "name": "NewNowWritableField",
+        "allowWrite": true
+      }
+    ],
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "int"
+        ]
+      },
+      {
+        "name": "method",
+        "parameterTypes": []
+      }
+    ]
+  }
+]

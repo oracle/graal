@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,20 +38,20 @@ import org.graalvm.options.OptionDescriptor;
 
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.config.CommonLanguageOptions;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.ConfigurationFactory;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+
 import org.graalvm.options.OptionValues;
 
 public class NativeConfigurationFactory implements ConfigurationFactory<Key> {
 
-    public static final class Key {
+    public static final class Key extends CommonLanguageOptions {
 
-        final boolean loadCxxLibraries;
         final boolean enableNFI;
 
         public Key(OptionValues options) {
-            this.loadCxxLibraries = options.get(SulongEngineOption.LOAD_CXX_LIBRARIES);
+            super(options);
             this.enableNFI = options.get(SulongNativeOption.ENABLE_NFI);
         }
 
@@ -61,13 +61,12 @@ public class NativeConfigurationFactory implements ConfigurationFactory<Key> {
                 return false;
             }
             Key other = (Key) o;
-            return this.loadCxxLibraries == other.loadCxxLibraries && this.enableNFI == other.enableNFI;
+            return this.enableNFI == other.enableNFI && super.equals(other);
         }
 
         @Override
         public int hashCode() {
-            int hash = 7;
-            hash = 71 * hash + (this.loadCxxLibraries ? 1 : 0);
+            int hash = super.hashCode();
             hash = 71 * hash + (this.enableNFI ? 1 : 0);
             return hash;
         }

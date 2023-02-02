@@ -24,15 +24,19 @@
  */
 package com.oracle.svm.core.graal.meta;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateSnippetReflectionProvider implements SnippetReflectionProvider {
@@ -48,10 +52,9 @@ public class SubstrateSnippetReflectionProvider implements SnippetReflectionProv
         return SubstrateObjectConstant.forObject(object);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> T asObject(Class<T> type, JavaConstant constant) {
-        return (T) KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(type, constant), Object.class);
+        return SubstrateObjectConstant.asObject(type, constant);
     }
 
     @Override
@@ -70,6 +73,16 @@ public class SubstrateSnippetReflectionProvider implements SnippetReflectionProv
 
     @Override
     public Class<?> originalClass(ResolvedJavaType type) {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public Executable originalMethod(ResolvedJavaMethod method) {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public Field originalField(ResolvedJavaField field) {
         throw VMError.shouldNotReachHere();
     }
 }

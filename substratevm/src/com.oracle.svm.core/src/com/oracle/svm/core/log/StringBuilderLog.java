@@ -28,8 +28,7 @@ package com.oracle.svm.core.log;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 
 public class StringBuilderLog extends RealLog {
     private final StringBuilder stringBuilder = new StringBuilder();
@@ -37,8 +36,7 @@ public class StringBuilderLog extends RealLog {
     public StringBuilderLog() {
     }
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "This implementation allocates.")
-    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "This implementation allocates.")
     @Override
     protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
         for (int i = 0; length.aboveThan(i); i++) {

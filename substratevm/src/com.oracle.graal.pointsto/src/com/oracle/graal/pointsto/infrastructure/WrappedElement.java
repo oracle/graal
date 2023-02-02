@@ -24,8 +24,9 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
+import java.lang.reflect.AnnotatedElement;
+
 public interface WrappedElement {
 
-    Object getWrapped();
-
+    AnnotatedElement getWrapped();
 }

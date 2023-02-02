@@ -24,23 +24,24 @@
  */
 package com.oracle.svm.hosted.lambda;
 
-import org.graalvm.compiler.java.LambdaUtils;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.graalvm.compiler.java.LambdaUtils;
+
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 /**
  * @see LambdaProxyRenamingSubstitutionProcessor
  */
-@AutomaticFeature
-final class StableLambdaProxyNameFeature implements GraalFeature {
+@AutomaticallyRegisteredFeature
+final class StableLambdaProxyNameFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
@@ -67,7 +68,7 @@ final class StableLambdaProxyNameFeature implements GraalFeature {
         Set<String> lambdaNames = new HashSet<>();
         types.stream()
                         .map(AnalysisType::getName)
-                        .filter(x -> x.contains("$$Lambda$"))
+                        .filter(x -> x.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING))
                         .forEach(name -> {
                             if (lambdaNames.contains(name)) {
                                 throw new AssertionError("Duplicate lambda name: " + name);

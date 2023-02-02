@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.exception;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -48,9 +49,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.nodes.WasmBlockNode;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
@@ -90,8 +88,14 @@ public final class WasmException extends AbstractTruffleException {
         return create(failure, location, String.format(format, args));
     }
 
-    public static WasmException fromArithmeticException(WasmBlockNode location, ArithmeticException exception) {
-        return create(Failure.fromArithmeticException(exception), location, exception.getMessage());
+    @TruffleBoundary
+    public static WasmException format(Failure failure, Node location, String format, Object arg) {
+        return create(failure, location, String.format(format, arg));
+    }
+
+    @TruffleBoundary
+    public static WasmException format(Failure failure, Node location, String format, int arg) {
+        return create(failure, location, String.format(format, arg));
     }
 
     @ExportMessage

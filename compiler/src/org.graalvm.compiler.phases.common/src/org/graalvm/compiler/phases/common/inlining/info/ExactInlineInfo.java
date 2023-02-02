@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,6 @@ public class ExactInlineInfo extends AbstractInlineInfo {
 
     protected final ResolvedJavaMethod concrete;
     private Inlineable inlineableElement;
-    private boolean suppressNullCheck;
 
     public ExactInlineInfo(Invoke invoke, ResolvedJavaMethod concrete) {
         super(invoke);
@@ -49,13 +48,9 @@ public class ExactInlineInfo extends AbstractInlineInfo {
         assert concrete != null;
     }
 
-    public void suppressNullCheck() {
-        suppressNullCheck = true;
-    }
-
     @Override
     public EconomicSet<Node> inline(CoreProviders providers, String reason) {
-        return inline(invoke, concrete, inlineableElement, !suppressNullCheck, reason);
+        return inline(invoke, concrete, inlineableElement, true, reason);
     }
 
     @Override

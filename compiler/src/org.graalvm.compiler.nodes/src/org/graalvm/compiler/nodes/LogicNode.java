@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,13 +27,14 @@ package org.graalvm.compiler.nodes;
 import static org.graalvm.compiler.nodeinfo.InputType.Condition;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import jdk.vm.ci.meta.TriState;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+
+import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(allowedUsageTypes = {Condition}, size = SIZE_1)
 public abstract class LogicNode extends FloatingNode implements IndirectCanonicalization {
@@ -50,8 +51,8 @@ public abstract class LogicNode extends FloatingNode implements IndirectCanonica
 
     public static LogicNode and(LogicNode a, boolean negateA, LogicNode b, boolean negateB, BranchProbabilityData shortCircuitProbability) {
         StructuredGraph graph = a.graph();
-        ShortCircuitOrNode notAorNotB = graph.unique(new ShortCircuitOrNode(a, !negateA, b, !negateB, shortCircuitProbability));
-        return graph.unique(new LogicNegationNode(notAorNotB));
+        LogicNode notAorNotB = graph.addOrUniqueWithInputs(ShortCircuitOrNode.create(a, !negateA, b, !negateB, shortCircuitProbability));
+        return graph.addOrUniqueWithInputs(LogicNegationNode.create(notAorNotB));
     }
 
     public static LogicNode or(LogicNode a, LogicNode b, BranchProbabilityData shortCircuitProbability) {

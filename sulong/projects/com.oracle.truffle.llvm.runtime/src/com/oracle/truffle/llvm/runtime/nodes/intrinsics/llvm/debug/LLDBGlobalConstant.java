@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -56,7 +56,7 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
 
     private boolean canRead(long bitOffset, int bits, LLVMDebugValue currentValue) {
         try {
-            Object value = LLVMLanguage.getContext().getSymbol(global);
+            Object value = LLVMLanguage.getContext().getSymbolUncached(global);
             return value != null && currentValue != null && currentValue.canRead(bitOffset, bits);
         } catch (LLVMLinkerException e) {
             return false;
@@ -156,7 +156,7 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
 
     @Override
     public Object asInteropValue() {
-        if (LLVMNativePointer.isInstance(LLVMLanguage.getContext().getSymbol(global))) {
+        if (LLVMNativePointer.isInstance(LLVMLanguage.getContext().getSymbolUncached(global))) {
             return null;
         }
         final LLVMDebugValue value = getCurrentValue();
@@ -168,7 +168,7 @@ final class LLDBGlobalConstant implements LLVMDebugValue {
     }
 
     private LLVMDebugValue getCurrentValue() {
-        Object value = LLVMLanguage.getContext().getSymbol(global);
+        Object value = LLVMLanguage.getContext().getSymbolUncached(global);
         if (LLVMNativePointer.isInstance(value)) {
             return new LLDBMemoryValue(LLVMNativePointer.cast(value));
         } else {

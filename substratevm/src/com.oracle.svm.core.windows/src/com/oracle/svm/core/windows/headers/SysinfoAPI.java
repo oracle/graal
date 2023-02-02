@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
+import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 // Checkstyle: stop
 

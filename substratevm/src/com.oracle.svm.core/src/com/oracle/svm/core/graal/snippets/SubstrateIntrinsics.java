@@ -30,6 +30,7 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.hub.DynamicHub;
@@ -43,6 +44,9 @@ public class SubstrateIntrinsics {
 
     @NodeIntrinsic(LoadHubNode.class)
     public static native DynamicHub loadHub(Object object);
+
+    @NodeIntrinsic(LoadHubOrNullNode.class)
+    public static native DynamicHub loadHubOrNull(Object object);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native void runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor);

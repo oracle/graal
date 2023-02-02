@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,13 +48,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
-import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
-import com.oracle.truffle.sl.parser.SLParseError;
 
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
@@ -67,7 +66,7 @@ import java.util.ArrayList;
 
 @SuppressWarnings("all")
 public class SimpleLanguageParser extends Parser {
-	static { RuntimeMetaData.checkVersion("4.7.2", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.9.2", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
@@ -182,7 +181,7 @@ public class SimpleLanguageParser extends Parser {
 	    throw new SLParseError(source, line, col, length, String.format("Error(s) parsing script:%n" + location + message));
 	}
 
-	public static Map<String, RootCallTarget> parseSL(SLLanguage language, Source source) {
+	public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source) {
 	    SimpleLanguageLexer lexer = new SimpleLanguageLexer(CharStreams.fromString(source.getCharacters().toString()));
 	    SimpleLanguageParser parser = new SimpleLanguageParser(new CommonTokenStream(lexer));
 	    lexer.removeErrorListeners();

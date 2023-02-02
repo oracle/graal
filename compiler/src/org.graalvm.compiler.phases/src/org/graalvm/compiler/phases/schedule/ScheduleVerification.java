@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -47,7 +48,7 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
@@ -67,15 +68,15 @@ import org.graalvm.word.LocationIdentity;
 public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet<FloatingReadNode>> {
 
     private final BlockMap<List<Node>> blockToNodesMap;
-    private final NodeMap<Block> nodeMap;
+    private final NodeMap<HIRBlock> nodeMap;
     private final StructuredGraph graph;
 
-    public static boolean check(Block startBlock, BlockMap<List<Node>> blockToNodesMap, NodeMap<Block> nodeMap) {
+    public static boolean check(HIRBlock startBlock, BlockMap<List<Node>> blockToNodesMap, NodeMap<HIRBlock> nodeMap) {
         ReentrantBlockIterator.apply(new ScheduleVerification(blockToNodesMap, nodeMap, startBlock.getBeginNode().graph()), startBlock);
         return true;
     }
 
-    private ScheduleVerification(BlockMap<List<Node>> blockToNodesMap, NodeMap<Block> nodeMap, StructuredGraph graph) {
+    private ScheduleVerification(BlockMap<List<Node>> blockToNodesMap, NodeMap<HIRBlock> nodeMap, StructuredGraph graph) {
         this.blockToNodesMap = blockToNodesMap;
         this.nodeMap = nodeMap;
         this.graph = graph;
@@ -87,7 +88,7 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
     }
 
     @Override
-    protected EconomicSet<FloatingReadNode> processBlock(Block block, EconomicSet<FloatingReadNode> currentState) {
+    protected EconomicSet<FloatingReadNode> processBlock(HIRBlock block, EconomicSet<FloatingReadNode> currentState) {
         AbstractBeginNode beginNode = block.getBeginNode();
         if (beginNode instanceof AbstractMergeNode) {
             AbstractMergeNode abstractMergeNode = (AbstractMergeNode) beginNode;
@@ -108,11 +109,11 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
             }
         }
         for (Node n : blockToNodesMap.get(block)) {
-            if (n instanceof MemoryKill) {
-                if (n instanceof SingleMemoryKill) {
+            if (MemoryKill.isMemoryKill(n)) {
+                if (MemoryKill.isSingleMemoryKill(n)) {
                     SingleMemoryKill single = (SingleMemoryKill) n;
                     processLocation(n, single.getKilledLocationIdentity(), currentState);
-                } else if (n instanceof MultiMemoryKill) {
+                } else if (MemoryKill.isMultiMemoryKill(n)) {
                     MultiMemoryKill multi = (MultiMemoryKill) n;
                     for (LocationIdentity location : multi.getKilledLocationIdentities()) {
                         processLocation(n, location, currentState);
@@ -135,7 +136,7 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
                 }
             }
             assert nodeMap.get(n) == block;
-            if (graph.hasValueProxies() && block.getLoop() != null && !(n instanceof VirtualState)) {
+            if (graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) && block.getLoop() != null && !(n instanceof VirtualState)) {
                 for (Node usage : n.usages()) {
                     Node usageNode = usage;
 
@@ -150,7 +151,7 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
                             continue;
                         }
                     }
-                    Block usageBlock = nodeMap.get(usageNode);
+                    HIRBlock usageBlock = nodeMap.get(usageNode);
 
                     if (usageBlock == null) {
                         if (usage instanceof FloatingNode || usage instanceof VirtualState || usage instanceof CallTargetNode) {
@@ -170,7 +171,7 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
 
                     assert usageBlock != null || usage instanceof ProxyNode : "Usage " + usageNode + " of node " + n + " has no block";
 
-                    Loop<Block> usageLoop = null;
+                    Loop<HIRBlock> usageLoop = null;
                     if (usageNode instanceof ProxyNode) {
                         ProxyNode proxyNode = (ProxyNode) usageNode;
                         usageLoop = nodeMap.get(proxyNode.proxyPoint().loopBegin()).getLoop();
@@ -245,7 +246,7 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
     }
 
     @Override
-    protected EconomicSet<FloatingReadNode> merge(Block merge, List<EconomicSet<FloatingReadNode>> states) {
+    protected EconomicSet<FloatingReadNode> merge(HIRBlock merge, List<EconomicSet<FloatingReadNode>> states) {
         EconomicSet<FloatingReadNode> result = states.get(0);
         for (int i = 1; i < states.size(); ++i) {
             result.retainAll(states.get(i));
@@ -263,7 +264,7 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
     }
 
     @Override
-    protected List<EconomicSet<FloatingReadNode>> processLoop(Loop<Block> loop, EconomicSet<FloatingReadNode> initialState) {
+    protected List<EconomicSet<FloatingReadNode>> processLoop(Loop<HIRBlock> loop, EconomicSet<FloatingReadNode> initialState) {
         HIRLoop l = (HIRLoop) loop;
         for (MemoryPhiNode memoryPhi : ((LoopBeginNode) l.getHeader().getBeginNode()).memoryPhis()) {
             for (FloatingReadNode r : cloneState(initialState)) {

@@ -26,8 +26,6 @@ package com.oracle.svm.core.windows.headers;
 
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -36,16 +34,37 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
+import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
+import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
 /**
- * Definitions manually translated from the Windows header file fileapi.h.
+ * Definitions for Windows fileapi.h
  */
 @CContext(WindowsDirectives.class)
-@Platforms(Platform.WINDOWS.class)
 public class FileAPI {
+
+    /** Generic Access Rights */
+    @CConstant
+    public static native int GENERIC_READ();
+
+    /** Creates or opens a file or I/O device. */
+    @CFunction(transition = NO_TRANSITION)
+    public static native HANDLE CreateFileW(WCharPointer lpFileName, int dwDesiredAccess, int dwShareMode,
+                    PointerBase lpSecurityAttributes, int dwCreationDisposition, int dwFlagsAndAttributes,
+                    HANDLE hTemplateFile);
+
+    /** CreateFile - dwShareMode Constants */
+    @CConstant
+    public static native int FILE_SHARE_READ();
+
+    @CConstant
+    public static native int FILE_SHARE_DELETE();
+
+    /** CreateFile - dwCreationDisposition Constants */
+    @CConstant
+    public static native int OPEN_EXISTING();
 
     @CFunction
     public static native int WriteFile(int hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToWrite,

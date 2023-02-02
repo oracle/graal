@@ -27,6 +27,9 @@
 package com.oracle.objectfile.pecoff.cv;
 
 import com.oracle.objectfile.debugentry.DebugInfoBase;
+import com.oracle.objectfile.pecoff.PECoffMachine;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 
 import java.nio.ByteOrder;
 
@@ -36,13 +39,29 @@ import java.nio.ByteOrder;
  */
 public final class CVDebugInfo extends DebugInfoBase {
 
-    private CVSymbolSectionImpl cvSymbolSection;
-    private CVTypeSectionImpl cvTypeSection;
+    private final CVSymbolSectionImpl cvSymbolSection;
+    private final CVTypeSectionImpl cvTypeSection;
+    private DebugContext debugContext;
 
-    public CVDebugInfo(ByteOrder byteOrder) {
+    /* Register constants for Windows x86_64 */
+    /* See AMD64ReservedRegisters.java. */
+    public static final byte RHEAPBASE_X86 = (byte) 14;
+    public static final byte RTHREAD_X86 = (byte) 15;
+
+    private final byte heapbaseRegister;
+    private final byte threadRegister;
+
+    public CVDebugInfo(PECoffMachine machine, ByteOrder byteOrder) {
         super(byteOrder);
         cvSymbolSection = new CVSymbolSectionImpl(this);
-        cvTypeSection = new CVTypeSectionImpl();
+        cvTypeSection = new CVTypeSectionImpl(this);
+        if (machine == PECoffMachine.X86_64) {
+            this.heapbaseRegister = RHEAPBASE_X86;
+            this.threadRegister = RTHREAD_X86;
+        } else {
+            /* room for future aach64 port */
+            throw GraalError.shouldNotReachHere("Unsupported architecture on Windows");
+        }
     }
 
     public CVSymbolSectionImpl getCVSymbolSection() {
@@ -53,4 +72,20 @@ public final class CVDebugInfo extends DebugInfoBase {
         return cvTypeSection;
     }
 
+    public byte getHeapbaseRegister() {
+        return heapbaseRegister;
+    }
+
+    @SuppressWarnings("unused")
+    public byte getThreadRegister() {
+        return threadRegister;
+    }
+
+    public DebugContext getDebugContext() {
+        return debugContext;
+    }
+
+    void setDebugContext(DebugContext debugContext) {
+        this.debugContext = debugContext;
+    }
 }

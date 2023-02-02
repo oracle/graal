@@ -25,66 +25,47 @@
 package com.oracle.svm.configure.trace;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.Reader;
+import java.io.StringWriter;
 import java.util.List;
-import java.util.Map;
 
-import com.oracle.svm.configure.config.ProxyConfiguration;
-import com.oracle.svm.configure.config.ResourceConfiguration;
-import com.oracle.svm.configure.config.SerializationConfiguration;
-import com.oracle.svm.configure.config.TypeConfiguration;
-import com.oracle.svm.core.util.json.JSONParser;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.util.json.JSONParser;
+
+import com.oracle.svm.configure.config.ConfigurationSet;
 
 public class TraceProcessor extends AbstractProcessor {
     private final AccessAdvisor advisor;
     private final JniProcessor jniProcessor;
     private final ReflectionProcessor reflectionProcessor;
     private final SerializationProcessor serializationProcessor;
+    private final ClassLoadingProcessor classLoadingProcessor;
 
-    public TraceProcessor(AccessAdvisor accessAdvisor, TypeConfiguration jniConfiguration, TypeConfiguration reflectionConfiguration,
-                    ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration, SerializationConfiguration serializationConfiguration) {
+    public TraceProcessor(AccessAdvisor accessAdvisor) {
         advisor = accessAdvisor;
-        jniProcessor = new JniProcessor(this.advisor, jniConfiguration, reflectionConfiguration);
-        reflectionProcessor = new ReflectionProcessor(this.advisor, reflectionConfiguration, proxyConfiguration, resourceConfiguration);
-        serializationProcessor = new SerializationProcessor(this.advisor, serializationConfiguration);
-    }
-
-    public TypeConfiguration getJniConfiguration() {
-        return jniProcessor.getConfiguration();
-    }
-
-    public TypeConfiguration getReflectionConfiguration() {
-        return reflectionProcessor.getConfiguration();
-    }
-
-    public ProxyConfiguration getProxyConfiguration() {
-        return reflectionProcessor.getProxyConfiguration();
-    }
-
-    public ResourceConfiguration getResourceConfiguration() {
-        return reflectionProcessor.getResourceConfiguration();
-    }
-
-    public SerializationConfiguration getSerializationConfiguration() {
-        return serializationProcessor.getSerializationConfiguration();
+        jniProcessor = new JniProcessor(this.advisor);
+        reflectionProcessor = new ReflectionProcessor(this.advisor);
+        serializationProcessor = new SerializationProcessor(this.advisor);
+        classLoadingProcessor = new ClassLoadingProcessor();
     }
 
     @SuppressWarnings("unchecked")
-    public void process(Reader reader) throws IOException {
+    public void process(Reader reader, ConfigurationSet configurationSet) throws IOException {
         setInLivePhase(false);
         JSONParser parser = new JSONParser(reader);
-        List<Map<String, ?>> trace = (List<Map<String, ?>>) parser.parse();
-        processTrace(trace);
+        List<EconomicMap<String, ?>> trace = (List<EconomicMap<String, ?>>) parser.parse();
+        processTrace(trace, configurationSet);
     }
 
-    private void processTrace(List<Map<String, ?>> trace) {
-        for (Map<String, ?> entry : trace) {
-            processEntry(entry);
+    private void processTrace(List<EconomicMap<String, ?>> trace, ConfigurationSet configurationSet) {
+        for (EconomicMap<String, ?> entry : trace) {
+            processEntry(entry, configurationSet);
         }
     }
 
     @Override
-    public void processEntry(Map<String, ?> entry) {
+    public void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         try {
             String tracer = (String) entry.get("tracer");
             switch (tracer) {
@@ -100,22 +81,25 @@ public class TraceProcessor extends AbstractProcessor {
                     break;
                 }
                 case "jni":
-                    jniProcessor.processEntry(entry);
+                    jniProcessor.processEntry(entry, configurationSet);
                     break;
                 case "reflect":
-                    reflectionProcessor.processEntry(entry);
+                    reflectionProcessor.processEntry(entry, configurationSet);
                     break;
                 case "serialization":
-                    serializationProcessor.processEntry(entry);
+                    serializationProcessor.processEntry(entry, configurationSet);
+                    break;
+                case "classloading":
+                    classLoadingProcessor.processEntry(entry, configurationSet);
                     break;
                 default:
                     logWarning("Unknown tracer, ignoring: " + tracer);
                     break;
             }
         } catch (Exception e) {
-            StackTraceElement stackTraceElement = e.getStackTrace()[0];
-            logWarning("Error processing trace entry: " + e.toString() +
-                            " (at " + stackTraceElement.getClassName() + ":" + stackTraceElement.getLineNumber() + ") : " + entry.toString());
+            StringWriter stackTrace = new StringWriter();
+            e.printStackTrace(new PrintWriter(stackTrace));
+            logWarning("Error processing trace entry " + entry.toString() + ": " + stackTrace);
         }
     }
 

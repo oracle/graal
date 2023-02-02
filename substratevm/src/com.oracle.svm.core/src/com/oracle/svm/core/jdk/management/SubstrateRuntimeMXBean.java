@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk.management;
 
-//Checkstyle: stop
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.net.InetAddress;
@@ -48,7 +47,6 @@ import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 
 import sun.management.Util;
-//Checkstyle: resume
 
 final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
@@ -58,7 +56,7 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
     @Platforms(Platform.HOSTED_ONLY.class)
     SubstrateRuntimeMXBean() {
         managementSpecVersion = ManagementFactory.getRuntimeMXBean().getManagementSpecVersion();
-        RuntimeSupport.getRuntimeSupport().addInitializationHook(this::initialize);
+        RuntimeSupport.getRuntimeSupport().addInitializationHook(isFirstIsolate -> initialize());
     }
 
     void initialize() {

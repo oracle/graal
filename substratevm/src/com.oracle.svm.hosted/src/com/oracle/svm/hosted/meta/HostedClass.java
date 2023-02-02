@@ -30,8 +30,8 @@ import jdk.vm.ci.meta.JavaKind;
 
 public abstract class HostedClass extends HostedType {
 
-    public HostedClass(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces, boolean isCloneable) {
-        super(universe, wrapped, kind, storageKind, superClass, interfaces, isCloneable);
+    public HostedClass(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces) {
+        super(universe, wrapped, kind, storageKind, superClass, interfaces);
     }
 
     @Override

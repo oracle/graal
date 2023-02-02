@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,20 +41,16 @@
 package com.oracle.truffle.dsl.processor;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.function.Predicate;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -91,7 +87,6 @@ import com.oracle.truffle.dsl.processor.model.Template;
 abstract class AbstractRegistrationProcessor extends AbstractProcessor {
 
     private final Map<String, Element> registrations = new HashMap<>();
-    private final List<TypeElement> legacyRegistrations = new ArrayList<>();
 
     @Override
     public final SourceVersion getSupportedSourceVersion() {
@@ -101,15 +96,11 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
     @SuppressWarnings({"deprecation", "unchecked"})
     @Override
     public final boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        ProcessorContext.enter(processingEnv);
-        try {
-            ProcessorContext context = ProcessorContext.getInstance();
+        try (ProcessorContext context = ProcessorContext.enter(processingEnv)) {
             String providerServiceBinName = processingEnv.getElementUtils().getBinaryName(context.getTypeElement(getProviderClass())).toString();
             if (roundEnv.processingOver()) {
                 generateServicesRegistration(providerServiceBinName, registrations);
-                generateLegacyRegistration(legacyRegistrations);
                 registrations.clear();
-                legacyRegistrations.clear();
                 return true;
             }
             String[] supportedAnnotations = this.getClass().getAnnotation(SupportedAnnotationTypes.class).value();
@@ -124,22 +115,16 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                     if (mirror != null && e.getKind() == ElementKind.CLASS) {
                         if (validateRegistration(e, mirror)) {
                             TypeElement annotatedElement = (TypeElement) e;
-                            if (requiresLegacyRegistration(annotatedElement)) {
-                                legacyRegistrations.add(annotatedElement);
-                            } else {
-                                String providerImplBinName = generateProvider(annotatedElement);
-                                registrations.put(providerImplBinName, annotatedElement);
-                                if (shouldGenerateProviderFiles(annotatedElement)) {
-                                    generateProviderFile(processingEnv, providerImplBinName, providerServiceBinName, annotatedElement);
-                                }
+                            String providerImplBinName = generateProvider(annotatedElement);
+                            registrations.put(providerImplBinName, annotatedElement);
+                            if (shouldGenerateProviderFiles(annotatedElement)) {
+                                generateProviderFile(processingEnv, providerImplBinName, providerServiceBinName, annotatedElement);
                             }
                         }
                     }
                 }
             }
             return true;
-        } finally {
-            ProcessorContext.leave();
         }
     }
 
@@ -151,43 +136,39 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
 
     abstract void implementMethod(TypeElement annotatedElement, CodeExecutableElement methodToImplement);
 
-    abstract String getRegistrationFileName();
-
-    abstract void storeRegistrations(Properties into, Iterable<? extends TypeElement> annotatedElements);
-
-    final void assertNoErrorExpected(Element e) {
-        ExpectError.assertNoErrorExpected(processingEnv, e);
+    static void assertNoErrorExpected(Element e) {
+        ExpectError.assertNoErrorExpected(e);
     }
 
     final void emitError(String msg, Element e) {
-        if (ExpectError.isExpectedError(processingEnv, e, msg)) {
+        if (ExpectError.isExpectedError(e, msg)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.ERROR, msg, e);
     }
 
     final void emitError(String msg, Element e, AnnotationMirror mirror, AnnotationValue value) {
-        if (ExpectError.isExpectedError(processingEnv, e, msg)) {
+        if (ExpectError.isExpectedError(e, msg)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.ERROR, msg, e, mirror, value);
     }
 
     final void emitWarning(String msg, Element e) {
-        if (ExpectError.isExpectedError(processingEnv, e, msg)) {
+        if (ExpectError.isExpectedError(e, msg)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.WARNING, msg, e);
     }
 
     final void emitWarning(String msg, Element e, AnnotationMirror mirror, AnnotationValue value) {
-        if (ExpectError.isExpectedError(processingEnv, e, msg)) {
+        if (ExpectError.isExpectedError(e, msg)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.WARNING, msg, e, mirror, value);
     }
 
-    static AnnotationMirror copyAnnotations(AnnotationMirror mirror, Predicate<ExecutableElement> filter) {
+    static CodeAnnotationMirror copyAnnotations(AnnotationMirror mirror, Predicate<ExecutableElement> filter) {
         CodeAnnotationMirror res = new CodeAnnotationMirror(mirror.getAnnotationType());
         for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> e : mirror.getElementValues().entrySet()) {
             ExecutableElement executable = e.getKey();
@@ -197,16 +178,6 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
             }
         }
         return res;
-    }
-
-    private static boolean requiresLegacyRegistration(TypeElement annotatedElement) {
-        for (AnnotationMirror mirror : annotatedElement.getAnnotationMirrors()) {
-            Element annotationType = mirror.getAnnotationType().asElement();
-            if ("GenerateLegacyRegistration".contentEquals(annotationType.getSimpleName())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private String generateProvider(TypeElement annotatedElement) {
@@ -230,7 +201,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         }
         DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
         providerClass.accept(new GenerateOverrideVisitor(overrideType), null);
-        providerClass.accept(new FixWarningsVisitor(annotatedElement, overrideType), null);
+        providerClass.accept(new FixWarningsVisitor(overrideType), null);
         providerClass.accept(new CodeWriter(context.getEnvironment(), annotatedElement), null);
         return providerClass.getQualifiedName().toString();
     }
@@ -284,7 +255,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         String filename = "META-INF/services/" + providerBinName;
         List<String> providerClassNames = new ArrayList<>(providerRegistrations.size());
         for (String providerFqn : providerRegistrations.keySet()) {
-            TypeElement te = ElementUtils.getTypeElement(env, providerFqn);
+            TypeElement te = ElementUtils.getTypeElement(providerFqn);
             if (te == null) {
                 providerClassNames.add(providerFqn);
             } else {
@@ -316,32 +287,8 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         env.getMessager().printMessage(isBug367599(e) ? Kind.NOTE : Kind.ERROR, e.getMessage(), element);
     }
 
-    private void generateLegacyRegistration(List<TypeElement> annotatedElements) {
-        String filename = getRegistrationFileName();
-        // sorted properties
-        Properties p = new SortedProperties();
-        storeRegistrations(p, annotatedElements);
-        if (!p.isEmpty()) {
-            try {
-                FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, annotatedElements.toArray(new Element[0]));
-                try (OutputStream os = file.openOutputStream()) {
-                    p.store(os, "Generated by " + getClass().getName());
-                }
-            } catch (IOException e) {
-                handleIOError(e, processingEnv, annotatedElements.get(0));
-            }
-        }
-    }
-
     static boolean shouldGenerateProviderFiles(Element currentElement) {
         return CompilerFactory.getCompiler(currentElement) instanceof JDTCompiler;
     }
 
-    @SuppressWarnings("serial")
-    static class SortedProperties extends Properties {
-        @Override
-        public synchronized Enumeration<Object> keys() {
-            return Collections.enumeration(new TreeSet<>(super.keySet()));
-        }
-    }
 }

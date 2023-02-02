@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,4 +47,9 @@ public interface ToolchainConfig extends LLVMCapability {
      * Returns true if C++ support is enabled.
      */
     boolean enableCXX();
+
+    /**
+     * Returns true if the CL compatible compiler is enabled.
+     */
+    boolean enableCL();
 }

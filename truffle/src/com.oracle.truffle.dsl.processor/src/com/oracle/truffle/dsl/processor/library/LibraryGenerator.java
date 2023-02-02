@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,11 +52,11 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -72,6 +72,7 @@ import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
@@ -79,8 +80,10 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 
 public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
@@ -89,12 +92,11 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
     private ProcessorContext context;
     private LibraryData model;
 
-    private final Map<String, CodeVariableElement> libraryConstants = new LinkedHashMap<>();
+    private final StaticConstants constants = new StaticConstants();
 
     class MessageObjects {
         final LibraryMessage model;
         final int messageIndex;
-        int cacheIndex;
         CodeVariableElement messageField;
 
         MessageObjects(LibraryMessage message, int messageIndex) {
@@ -105,7 +107,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
     @Override
     public List<CodeTypeElement> create(ProcessorContext context1, AnnotationProcessor<?> processor, LibraryData model1) {
-        libraryConstants.clear();
+        constants.clear();
         this.context = context1;
         this.model = model1;
         CodeTreeBuilder builder;
@@ -124,7 +126,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         TypeMirror classLiteral = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(Class.class),
                         Arrays.asList(libraryTypeMirror));
         CodeExecutableElement loadLibraryClass = genClass.add(new CodeExecutableElement(modifiers(PRIVATE, STATIC), classLiteral, "lazyLibraryClass"));
-        GeneratorUtils.mergeSupressWarnings(loadLibraryClass, "unchecked");
+        GeneratorUtils.mergeSuppressWarnings(loadLibraryClass, "unchecked");
         builder = loadLibraryClass.createBuilder();
         builder.startTryBlock();
         builder.startStatement().string("return ");
@@ -145,12 +147,13 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         CodeTreeBuilder statics = staticsMethod.createBuilder();
 
         List<MessageObjects> methods = new ArrayList<>();
-        for (int messageIndex = 0; messageIndex < model.getMethods().size(); messageIndex++) {
-            LibraryMessage message = model.getMethods().get(messageIndex);
+        int messageIndex = 0;
+        for (LibraryMessage message : model.getMethods()) {
             if (message.hasErrors()) {
                 continue;
             }
-            MessageObjects objects = new MessageObjects(message, messageIndex);
+            int useIndex = message.getName().equals(ACCEPTS) ? -1 : messageIndex++;
+            MessageObjects objects = new MessageObjects(message, useIndex);
             methods.add(objects);
         }
 
@@ -197,7 +200,6 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         // class MessageImpl
         final CodeTypeElement messageClass = createClass(model, null, modifiers(PRIVATE, STATIC), "MessageImpl", types.Message);
-        messageClass.add(new CodeVariableElement(modifiers(FINAL), context.getType(int.class), "index"));
         CodeExecutableElement messageConstructor = new CodeExecutableElement(modifiers(), null, messageClass.getSimpleName().toString());
         messageConstructor.addParameter(new CodeVariableElement(context.getType(String.class), "name"));
         messageConstructor.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
@@ -205,8 +207,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         messageConstructor.addParameter(new CodeVariableElement(context.getType(Class[].class), "parameters"));
         messageConstructor.setVarArgs(true);
         builder = messageConstructor.createBuilder();
-        builder.startStatement().startSuperCall().staticReference(libraryClassLiteral).string("name").string("returnType").string("parameters").end().end();
-        builder.statement("this.index = index");
+        builder.startStatement().startSuperCall().staticReference(libraryClassLiteral).string("name").string("index").string("returnType").string("parameters").end().end();
         messageClass.add(messageConstructor);
         genClass.add(messageClass);
 
@@ -333,7 +334,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 }
             }
             if (uncheckedCast) {
-                GeneratorUtils.mergeSupressWarnings(executeImpl, "unchecked");
+                GeneratorUtils.mergeSuppressWarnings(executeImpl, "unchecked");
             }
         }
 
@@ -349,7 +350,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         builder.end().startBlock();
         builder.startStatement();
-        builder.string("bitSet.set(((").type(messageClass.asType()).string(") message).index)");
+        builder.string("bitSet.set(message.getId())");
         builder.end();
         builder.end(); // for
 
@@ -437,7 +438,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 builder.end(); // else block
             }
             if (uncheckedCast) {
-                GeneratorUtils.mergeSupressWarnings(executeImpl, "unchecked");
+                GeneratorUtils.mergeSuppressWarnings(executeImpl, "unchecked");
             }
         }
 
@@ -449,7 +450,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         delegateIsAdoptable.createBuilder().startReturn().string("this.delegateLibrary.isAdoptable()").end();
         delegateClass.add(delegateIsAdoptable);
 
-        genClass.add(createGenericDispatch(methods, messageClass));
+        genClass.add(createGenericDispatch(methods));
 
         // CachedToUncachedDispatchNode
         final CodeTypeElement cachedToUncached = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "CachedToUncachedDispatch", libraryTypeMirror);
@@ -468,7 +469,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 boolean pushEncapsulating = model.isPushEncapsulatingNode();
 
                 if (pushEncapsulating) {
-                    GeneratorUtils.pushEncapsulatingNode(builder, "getParent()");
+                    GeneratorUtils.pushEncapsulatingNode(builder, CodeTreeBuilder.singleString("getParent()"));
                     builder.startTryBlock();
                 }
                 builder.startReturn().startCall("INSTANCE.getUncached(receiver_)", execute.getSimpleName().toString());
@@ -490,6 +491,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         // UncachedDispatch
         final CodeTypeElement uncachedDispatch = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "UncachedDispatch", libraryTypeMirror);
+        uncachedDispatch.addAnnotationMirror(new CodeAnnotationMirror(types.DenyReplace));
         getCost = uncachedDispatch.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
         getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(types.NodeCost, "MEGAMORPHIC")).end();
 
@@ -524,6 +526,14 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         CodeVariableElement nextField = cachedDispatch.add(new CodeVariableElement(modifiers(), cachedDispatch.asType(), "next"));
         nextField.getAnnotationMirrors().add(new CodeAnnotationMirror(types.Node_Child));
         cachedDispatch.add(GeneratorUtils.createConstructorUsingFields(modifiers(), cachedDispatch));
+
+        CodeExecutableElement isAOT = null;
+        CodeExecutableElement setAOT = null;
+        if (model.isGenerateAOT()) {
+            isAOT = cachedDispatch.add(new CodeExecutableElement(modifiers(ABSTRACT), context.getType(boolean.class), "isAOT"));
+            setAOT = cachedDispatch.add(new CodeExecutableElement(modifiers(ABSTRACT), context.getType(void.class), "setAOT", new CodeVariableElement(context.getType(boolean.class), "value")));
+        }
+
         for (MessageObjects message : methods) {
             CodeExecutableElement execute = cachedDispatch.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
             execute.renameArguments("receiver_");
@@ -533,6 +543,17 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 builder.returnTrue();
             } else {
                 execute.getAnnotationMirrors().add(createExplodeLoop());
+
+                if (model.isGenerateAOT()) {
+                    builder.startIf();
+                    builder.startStaticCall(types.CompilerDirectives, "inInterpreter").end();
+                    builder.string(" && isAOT()");
+                    builder.end().startBlock();
+                    builder.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                    builder.statement("specialize(receiver_)");
+                    builder.end();
+                }
+
                 builder.startDoBlock();
                 builder.declaration(cachedDispatch.asType(), "current", "this");
                 builder.startDoBlock();
@@ -564,22 +585,46 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.tree(GeneratorUtils.createShouldNotReachHere());
         genClass.add(cachedDispatchNext);
 
+        if (model.isGenerateAOT()) {
+            CodeExecutableElement setAOTImpl = cachedDispatchNext.add(CodeExecutableElement.clone(setAOT));
+            removeAbstractModifiers(setAOTImpl);
+            builder = setAOTImpl.createBuilder();
+            builder.tree(GeneratorUtils.createShouldNotReachHere());
+
+            CodeExecutableElement isAOTImpl = cachedDispatchNext.add(CodeExecutableElement.clone(isAOT));
+            removeAbstractModifiers(isAOTImpl);
+            builder = isAOTImpl.createBuilder();
+            builder.tree(GeneratorUtils.createShouldNotReachHere());
+        }
+
         DeclaredType nodeCost = types.NodeCost;
         getCost = cachedDispatchNext.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
         getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(nodeCost, "NONE")).end();
 
         // specialize
+
         CodeExecutableElement execute = cachedDispatch.add(new CodeExecutableElement(modifiers(PRIVATE), context.getType(void.class), "specialize"));
         execute.addParameter(new CodeVariableElement(model.getSignatureReceiverType(), "receiver_"));
         builder = execute.createBuilder();
+
+        builder.declaration(context.getType(Lock.class), "lock", "getLock()");
+        builder.statement("lock.lock()");
+        builder.startTryBlock();
+
+        if (model.isGenerateAOT()) {
+            builder.startIf().string("isAOT()").end().startBlock();
+            builder.statement("this.library = null");
+            builder.statement("this.next = null");
+            builder.statement("setAOT(false)");
+            builder.end();
+        }
+
         builder.declaration(cachedDispatch.asType(), "current", "this");
         builder.declaration(libraryTypeMirror, "thisLibrary", "current.library");
         builder.startIf().string("thisLibrary == null").end().startBlock();
         builder.statement("this.library = insert(INSTANCE.create(receiver_))");
         builder.end().startElseBlock();
-        builder.declaration(context.getType(Lock.class), "lock", "getLock()");
-        builder.statement("lock.lock()");
-        builder.startTryBlock();
+
         builder.declaration("int", "count", "0");
         builder.startDoBlock();
         builder.declaration(libraryTypeMirror, "currentLibrary", "current.library");
@@ -599,20 +644,74 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.end(); // statement
         builder.end();
         builder.end();
-        builder.end().startFinallyBlock(); // try
-        builder.statement("lock.unlock()");
+
         builder.end();
+
+        builder.end().startFinallyBlock(); // try lock
+        builder.statement("lock.unlock()");
         builder.end();
 
         // CacheDispatchFirst
         final CodeTypeElement cachedDispatchFirst = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "CachedDispatchFirst", cachedDispatch.asType());
+
         CodeVariableElement limit = cachedDispatchFirst.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), context.getType(int.class), "limit_"));
         cachedDispatchFirst.add(GeneratorUtils.createConstructorUsingFields(modifiers(), cachedDispatchFirst));
+
+        if (model.isGenerateAOT()) {
+            // make type name top.level class qualified to avoid conflicts with Provider.
+            TypeMirror aotProviderType = new GeneratedTypeMirror(ElementUtils.getPackageName(types.GenerateAOT_Provider), "GenerateAOT.Provider");
+            cachedDispatchFirst.getImplements().add(aotProviderType);
+            cachedDispatchFirst.add(new CodeVariableElement(modifiers(PRIVATE, Modifier.VOLATILE), context.getType(boolean.class), "aot_"));
+
+            CodeExecutableElement setAOTImpl = cachedDispatchFirst.add(CodeExecutableElement.clone(setAOT));
+            removeAbstractModifiers(setAOTImpl);
+            builder = setAOTImpl.createBuilder();
+            builder.statement("this.aot_ = value");
+
+            CodeExecutableElement isAOTImpl = cachedDispatchFirst.add(CodeExecutableElement.clone(isAOT));
+            removeAbstractModifiers(isAOTImpl);
+            builder = isAOTImpl.createBuilder();
+            builder.statement("return this.aot_");
+        }
 
         CodeExecutableElement getLimitFirst = cachedDispatchFirst.add(CodeExecutableElement.clone(getLimit));
         removeAbstractModifiers(getLimitFirst);
         getLimitFirst.createBuilder().startReturn().string("this.", limit.getName()).end();
         genClass.add(cachedDispatchFirst);
+
+        if (model.isGenerateAOT()) {
+            CodeExecutableElement prepareForAOT = cachedDispatchFirst.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.GenerateAOT_Provider, "prepareForAOT")));
+            GeneratorUtils.addOverride(prepareForAOT);
+            removeAbstractModifiers(prepareForAOT);
+            builder = prepareForAOT.createBuilder();
+
+            builder.startAssert();
+            builder.string("(").cast(context.getType(ReentrantLock.class), CodeTreeBuilder.singleString("getLock()"));
+            builder.string(").isHeldByCurrentThread()");
+            builder.string(" : ").doubleQuote("During prepare AST lock must be held.");
+            builder.end();
+
+            builder.startIf().string("this.aot_").end().startBlock();
+            builder.returnStatement();
+            builder.end();
+
+            builder.startFor();
+            DeclaredCodeTypeMirror exportType = new DeclaredCodeTypeMirror(ElementUtils.fromTypeMirror(types.LibraryExport), Arrays.asList(libraryTypeMirror));
+            builder.type(exportType).string(" export : INSTANCE.getAOTExports()");
+            builder.end().startBlock();
+            builder.declaration(libraryTypeMirror, "exportLibrary", "INSTANCE.createAOT(export)");
+            builder.startIf().string("this.library == null").end().startBlock();
+            builder.statement("this.library = insert(exportLibrary)");
+            builder.end();
+            builder.startElseBlock();
+            builder.startStatement();
+            builder.string("this.next = insert(").startNew(cachedDispatchNext.asType()).string("exportLibrary").string("this.next").end().string(")");
+            builder.end(); // statement
+            builder.end(); // else block
+
+            builder.end(); // for
+            builder.statement("this.aot_ = true");
+        }
 
         getCost = cachedDispatchFirst.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.Node, "getCost")));
         builder = getCost.createBuilder();
@@ -661,7 +760,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.end(); // superCall
         builder.end(); // statement
 
-        genClass.addAll(libraryConstants.values());
+        constants.addElementsTo(genClass);
         return Arrays.asList(genClass);
     }
 
@@ -671,7 +770,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             return null;
         }
 
-        ExportsGenerator exportGenerator = new ExportsGenerator(libraryConstants);
+        ExportsGenerator exportGenerator = new ExportsGenerator(constants);
         Map<String, ExportMessageData> messages = defaultExportsLibrary.getExportedMessages();
         CodeTypeElement uncachedClass = exportGenerator.createUncached(defaultExportsLibrary, messages);
         CodeTypeElement cacheClass = exportGenerator.createCached(defaultExportsLibrary, messages);
@@ -769,7 +868,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         return new CodeAnnotationMirror(types.ExplodeLoop);
     }
 
-    private CodeExecutableElement createGenericDispatch(List<MessageObjects> methods, CodeTypeElement messageClass) {
+    private CodeExecutableElement createGenericDispatch(List<MessageObjects> methods) {
         CodeTreeBuilder builder;
         CodeExecutableElement reflectionGenericDispatch = GeneratorUtils.override(types.LibraryFactory, "genericDispatch");
         reflectionGenericDispatch.getParameters().set(0, new CodeVariableElement(types.Library, "library"));
@@ -777,13 +876,12 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         reflectionGenericDispatch.getModifiers().remove(ABSTRACT);
         builder = reflectionGenericDispatch.createBuilder();
         builder.declaration(model.getTemplateType().asType(), "lib", builder.create().cast(model.getTemplateType().asType()).string("originalLib"));
-        builder.declaration(messageClass.asType(), "messageImpl", builder.create().cast(messageClass.asType()).string("message").build());
-        builder.startIf().string("messageImpl.getParameterCount() - 1 != args.length - offset").end().startBlock();
+        builder.startIf().string("message.getParameterCount() - 1 != args.length - offset").end().startBlock();
         builder.startStatement().startStaticCall(types.CompilerDirectives, "transferToInterpreterAndInvalidate").end().end();
         builder.startThrow().startNew(context.getType(IllegalArgumentException.class)).doubleQuote("Invalid number of arguments.").end().end();
         builder.end();
         boolean uncheckedCast = false;
-        builder.startSwitch().string("messageImpl.index").end().startBlock();
+        builder.startSwitch().string("message.getId()").end().startBlock();
         for (MessageObjects message : methods) {
             if (message.model.getName().equals(ACCEPTS)) {
                 continue;
@@ -836,7 +934,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.startThrow().startNew(context.getType(AbstractMethodError.class)).string("message.toString()").end().end();
 
         if (uncheckedCast) {
-            GeneratorUtils.mergeSupressWarnings(reflectionGenericDispatch, "unchecked");
+            GeneratorUtils.mergeSuppressWarnings(reflectionGenericDispatch, "unchecked");
         }
 
         return reflectionGenericDispatch;

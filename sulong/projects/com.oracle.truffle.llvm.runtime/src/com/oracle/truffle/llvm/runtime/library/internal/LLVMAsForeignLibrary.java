@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.library.internal;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMException;
 
 @GenerateLibrary
+@GenerateAOT
 @DefaultExport(LLVMAsForeignLibraryDefaults.ArrayAsForeignLibrary.class)
 @DefaultExport(LLVMAsForeignLibraryDefaults.DefaultAsForeignLibrary.class)
 public abstract class LLVMAsForeignLibrary extends Library {

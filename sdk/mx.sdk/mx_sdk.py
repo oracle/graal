@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,14 @@
 #
 
 from __future__ import print_function
+import os
 
 import mx
 import mx_gate
 import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_sdk_benchmark # pylint: disable=unused-import
+import mx_sdk_clangformat # pylint: disable=unused-import
 import datetime
 from mx_bisect import define_bisect_default_build_steps
 from mx_bisect_strategy import BuildStepsGraalVMStrategy
@@ -65,7 +67,7 @@ def _sdk_gate_runner(args, tasks):
         if t: unittest(['--suite', 'sdk', '--enable-timing', '--verbose', '--fail-fast'])
     with Task('Check Copyrights', tasks) as t:
         if t:
-            if mx.checkcopyrights(['--primary', '--', '--projects', 'src']) != 0:
+            if mx.command_function('checkcopyrights')(['--primary', '--', '--projects', 'src']) != 0:
                 t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
 
 
@@ -94,6 +96,12 @@ def javadoc(args):
     extraArgs = build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'SDK')
     mx.javadoc(['--unified', '--exclude-packages', 'org.graalvm.polyglot.tck'] + extraArgs + args)
 
+def upx(args):
+    """compress binaries using the upx tool"""
+    upx_directory = mx.library("UPX", True).get_path(True)
+    upx_path = os.path.join(upx_directory, mx.exe_suffix("upx"))
+    upx_cmd = [upx_path] + args
+    mx.run(upx_cmd, mx.TeeOutputCapture(mx.OutputCapture()), mx.TeeOutputCapture(mx.OutputCapture()))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
@@ -134,6 +142,7 @@ def mx_post_parse_cmd_line(args):
 
 mx.update_commands(_suite, {
     'javadoc': [javadoc, '[SL args|@VM options]'],
+    'upx': [upx, ''],
 })
 
 
@@ -143,6 +152,7 @@ AbstractNativeImageConfig = mx_sdk_vm.AbstractNativeImageConfig
 LauncherConfig = mx_sdk_vm.LauncherConfig
 LanguageLauncherConfig = mx_sdk_vm.LanguageLauncherConfig
 LibraryConfig = mx_sdk_vm.LibraryConfig
+LanguageLibraryConfig = mx_sdk_vm.LanguageLibraryConfig
 GraalVmComponent = mx_sdk_vm.GraalVmComponent
 GraalVmTruffleComponent = mx_sdk_vm.GraalVmTruffleComponent
 GraalVmLanguage = mx_sdk_vm.GraalVmLanguage
@@ -157,8 +167,8 @@ def register_graalvm_component(component):
     return mx_sdk_vm.register_graalvm_component(component)
 
 
-def graalvm_component_by_name(name):
-    return mx_sdk_vm.graalvm_component_by_name(name)
+def graalvm_component_by_name(name, fatalIfMissing=True):
+    return mx_sdk_vm.graalvm_component_by_name(name, fatalIfMissing=fatalIfMissing)
 
 
 def graalvm_components(opt_limit_to_suite=False):
@@ -173,9 +183,15 @@ def jdk_enables_jvmci_by_default(jdk):
     return mx_sdk_vm.jdk_enables_jvmci_by_default(jdk)
 
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True, vendor_info=None):
-    return mx_sdk_vm.jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
+                  root_module_names=None,
+                  missing_export_target_action='create',
+                  with_source=lambda x: True,
+                  vendor_info=None,
+                  use_upgrade_module_path=False):
+    return mx_sdk_vm.jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    root_module_names=root_module_names,
                                    missing_export_target_action=missing_export_target_action,
                                    with_source=with_source,
-                                   vendor_info=vendor_info)
+                                   vendor_info=vendor_info,
+                                   use_upgrade_module_path=use_upgrade_module_path)

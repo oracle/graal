@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.CachedGraph;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.InputEdges;
@@ -58,12 +57,17 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.VirtualState;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.util.JavaConstantFormattable;
 import org.graalvm.graphio.GraphBlocks;
 import org.graalvm.graphio.GraphElements;
@@ -79,7 +83,7 @@ import jdk.vm.ci.meta.Signature;
 
 public class BinaryGraphPrinter implements
                 GraphStructure<BinaryGraphPrinter.GraphInfo, Node, NodeClass<?>, Edges>,
-                GraphBlocks<BinaryGraphPrinter.GraphInfo, Block, Node>,
+                GraphBlocks<BinaryGraphPrinter.GraphInfo, HIRBlock, Node>,
                 GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition>,
                 GraphLocations<ResolvedJavaMethod, NodeSourcePosition, SourceLanguagePosition>,
                 GraphTypes, GraphPrinter {
@@ -160,8 +164,6 @@ public class BinaryGraphPrinter implements
     public final GraphInfo graph(GraphInfo currrent, Object obj) {
         if (obj instanceof Graph) {
             return new GraphInfo(currrent.debug, (Graph) obj);
-        } else if (obj instanceof CachedGraph) {
-            return new GraphInfo(currrent.debug, ((CachedGraph<?>) obj).getReadonlyCopy());
         } else {
             return null;
         }
@@ -188,7 +190,7 @@ public class BinaryGraphPrinter implements
     }
 
     @Override
-    public List<Node> blockNodes(GraphInfo info, Block block) {
+    public List<Node> blockNodes(GraphInfo info, HIRBlock block) {
         List<Node> nodes = info.blockToNodes.get(block);
         if (nodes == null) {
             return null;
@@ -203,13 +205,17 @@ public class BinaryGraphPrinter implements
     }
 
     @Override
-    public int blockId(Block sux) {
+    public int blockId(HIRBlock sux) {
         return sux.getId();
     }
 
     @Override
-    public List<Block> blockSuccessors(Block block) {
-        return Arrays.asList(block.getSuccessors());
+    public List<HIRBlock> blockSuccessors(HIRBlock block) {
+        ArrayList<HIRBlock> succ = new ArrayList<>();
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            succ.add(block.getSuccessorAt(i));
+        }
+        return succ;
     }
 
     @Override
@@ -222,14 +228,26 @@ public class BinaryGraphPrinter implements
         return info.graph.getNodeCount();
     }
 
+    private static boolean checkNoChars(Node node, Map<String, ? super Object> props) {
+        for (Map.Entry<String, Object> e : props.entrySet()) {
+            Object value = e.getValue();
+            if (value instanceof Character) {
+                throw new AssertionError("value of " + node.getClass().getName() + " debug property \"" + e.getKey() +
+                                "\" should be an Integer or a String as a Character value may not be printable/viewable");
+            }
+        }
+        return true;
+    }
+
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public void nodeProperties(GraphInfo info, Node node, Map<String, Object> props) {
+    public void nodeProperties(GraphInfo info, Node node, Map<String, ? super Object> props) {
         node.getDebugProperties((Map) props);
-        NodeMap<Block> nodeToBlocks = info.nodeToBlocks;
+        assert checkNoChars(node, props);
+        NodeMap<HIRBlock> nodeToBlocks = info.nodeToBlocks;
 
         if (nodeToBlocks != null) {
-            Block block = getBlockForNode(node, nodeToBlocks);
+            HIRBlock block = getBlockForNode(node, nodeToBlocks);
             if (block != null) {
                 props.put("relativeFrequency", block.getRelativeFrequency());
                 props.put("nodeToBlock", block);
@@ -243,6 +261,16 @@ public class BinaryGraphPrinter implements
             Object block = getBlockForNode(node, nodeToBlocks);
             if (block != null) {
                 props.put("nodeToBlock", block);
+            }
+        }
+
+        if (info.cfg != null) {
+            if (node instanceof LoopBeginNode) {
+                // check if cfg is up to date
+                if (info.cfg.getLocalLoopFrequencyData().containsKey((LoopBeginNode) node)) {
+                    props.put("localLoopFrequency", info.cfg.localLoopFrequency((LoopBeginNode) node));
+                    props.put("localLoopFrequencySource", info.cfg.localLoopFrequencySource((LoopBeginNode) node));
+                }
             }
         }
 
@@ -271,6 +299,18 @@ public class BinaryGraphPrinter implements
             }
             props.put("category", "floating");
         }
+
+        if (MemoryKill.isSingleMemoryKill(node)) {
+            props.put("killedLocationIdentity", ((SingleMemoryKill) node).getKilledLocationIdentity());
+        }
+        if (MemoryKill.isMultiMemoryKill(node)) {
+            props.put("killedLocationIdentities", ((MultiMemoryKill) node).getKilledLocationIdentities());
+        }
+
+        if (node instanceof MemoryAccess) {
+            props.put("locationIdentity", ((MemoryAccess) node).getLocationIdentity());
+        }
+
         if (getSnippetReflectionProvider() != null) {
             for (Map.Entry<String, Object> prop : props.entrySet()) {
                 if (prop.getValue() instanceof JavaConstantFormattable) {
@@ -280,11 +320,11 @@ public class BinaryGraphPrinter implements
         }
     }
 
-    private Block getBlockForNode(Node node, NodeMap<Block> nodeToBlocks) {
+    private HIRBlock getBlockForNode(Node node, NodeMap<HIRBlock> nodeToBlocks) {
         if (nodeToBlocks.isNew(node)) {
             return null;
         } else {
-            Block block = nodeToBlocks.get(node);
+            HIRBlock block = nodeToBlocks.get(node);
             if (block != null) {
                 return block;
             } else if (node instanceof PhiNode) {
@@ -309,7 +349,7 @@ public class BinaryGraphPrinter implements
     }
 
     @Override
-    public List<Block> blocks(GraphInfo graph) {
+    public List<HIRBlock> blocks(GraphInfo graph) {
         return graph.blocks;
     }
 
@@ -591,8 +631,8 @@ public class BinaryGraphPrinter implements
         final Graph graph;
         final ControlFlowGraph cfg;
         final BlockMap<List<Node>> blockToNodes;
-        final NodeMap<Block> nodeToBlocks;
-        final List<Block> blocks;
+        final NodeMap<HIRBlock> nodeToBlocks;
+        final List<HIRBlock> blocks;
 
         private GraphInfo(DebugContext debug, Graph graph) {
             this.debug = debug;

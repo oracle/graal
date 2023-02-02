@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.NeverDefault;
 
 /**
  * <p>
@@ -62,13 +64,94 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * @see ValueProfile
  * @since 0.10
  */
-public abstract class ByteValueProfile extends Profile {
+public final class ByteValueProfile extends Profile {
+
+    private static final ByteValueProfile DISABLED;
+    static {
+        ByteValueProfile profile = new ByteValueProfile();
+        profile.disable();
+        DISABLED = profile;
+    }
+
+    private static final byte UNINITIALIZED = 0;
+    private static final byte SPECIALIZED = 1;
+    private static final byte GENERIC = 2;
+
+    @CompilationFinal private byte cachedValue;
+    @CompilationFinal private byte state = UNINITIALIZED;
 
     ByteValueProfile() {
     }
 
     /** @since 0.10 */
-    public abstract byte profile(byte value);
+    public byte profile(byte value) {
+        byte localState = this.state;
+        if (localState != GENERIC) {
+            if (localState == SPECIALIZED) {
+                byte v = cachedValue;
+                if (v == value) {
+                    return v;
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (localState == UNINITIALIZED) {
+                this.cachedValue = value;
+                this.state = SPECIALIZED;
+            } else {
+                this.state = GENERIC;
+            }
+        }
+        return value;
+    }
+
+    boolean isGeneric() {
+        return state == GENERIC;
+    }
+
+    boolean isUninitialized() {
+        return state == UNINITIALIZED;
+    }
+
+    byte getCachedValue() {
+        return cachedValue;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void disable() {
+        this.state = GENERIC;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void reset() {
+        if (this != DISABLED) {
+            this.state = UNINITIALIZED;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public String toString() {
+        if (this == DISABLED) {
+            return toStringDisabled();
+        } else {
+            return toString(ByteValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
+                            String.format("value == (byte)%s", cachedValue));
+        }
+    }
 
     /**
      * Returns a value profile that profiles the exact value of a <code>byte</code>.
@@ -76,11 +159,23 @@ public abstract class ByteValueProfile extends Profile {
      * @see ByteValueProfile
      * @since 0.10
      */
+    @NeverDefault
     public static ByteValueProfile createIdentityProfile() {
-        if (Profile.isProfilingEnabled()) {
-            return Enabled.create();
+        return create();
+    }
+
+    /**
+     * Returns a value profile that profiles the exact value of a <code>byte</code>.
+     *
+     * @see ByteValueProfile
+     * @since 22.1
+     */
+    @NeverDefault
+    public static ByteValueProfile create() {
+        if (isProfilingEnabled()) {
+            return new ByteValueProfile();
         } else {
-            return Disabled.INSTANCE;
+            return DISABLED;
         }
     }
 
@@ -90,92 +185,17 @@ public abstract class ByteValueProfile extends Profile {
      * @since 19.0
      */
     public static ByteValueProfile getUncached() {
-        return Disabled.INSTANCE;
+        return DISABLED;
     }
 
-    static final class Enabled extends ByteValueProfile {
-
-        private static final byte UNINITIALIZED = 0;
-        private static final byte SPECIALIZED = 1;
-        private static final byte GENERIC = 2;
-
-        @CompilationFinal private byte cachedValue;
-        @CompilationFinal private byte state = UNINITIALIZED;
-
-        @Override
-        public byte profile(byte value) {
-            byte localState = this.state;
-            if (localState != GENERIC) {
-                if (localState == SPECIALIZED) {
-                    byte v = cachedValue;
-                    if (v == value) {
-                        return v;
-                    }
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (localState == UNINITIALIZED) {
-                    this.cachedValue = value;
-                    this.state = SPECIALIZED;
-                } else {
-                    this.state = GENERIC;
-                }
-            }
-            return value;
-        }
-
-        boolean isGeneric() {
-            return state == GENERIC;
-        }
-
-        boolean isUninitialized() {
-            return state == UNINITIALIZED;
-        }
-
-        byte getCachedValue() {
-            return cachedValue;
-        }
-
-        @Override
-        public void disable() {
-            this.state = GENERIC;
-        }
-
-        @Override
-        public void reset() {
-            this.state = UNINITIALIZED;
-        }
-
-        @Override
-        public String toString() {
-            return toString(ByteValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
-                            String.format("value == (byte)%s", cachedValue));
-        }
-
-        /* Needed for lazy class loading. */
-        static ByteValueProfile create() {
-            return new Enabled();
-        }
-    }
-
-    static final class Disabled extends ByteValueProfile {
-
-        static final ByteValueProfile INSTANCE = new Disabled();
-
-        @Override
-        protected Object clone() {
-            return INSTANCE;
-        }
-
-        @Override
-        public byte profile(byte value) {
-            return value;
-        }
-
-        @Override
-        public String toString() {
-            return toStringDisabled(ByteValueProfile.class);
-        }
-
+    /**
+     * Returns an inlined version of the profile. This version is automatically used by Truffle DSL
+     * node inlining.
+     *
+     * @since 23.0
+     */
+    public static InlinedByteValueProfile inline(InlineTarget target) {
+        return InlinedByteValueProfile.inline(target);
     }
 
 }
@@ -187,7 +207,7 @@ class ByteProfileSnippets {
     // BEGIN: com.oracle.truffle.api.profiles.ByteProfileSnippets.ByteProfileNode#profile
     class ByteProfileNode extends Node {
 
-        final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
+        final ByteValueProfile profile = ByteValueProfile.create();
 
         byte execute(byte input) {
             byte profiledValue = profile.profile(input);

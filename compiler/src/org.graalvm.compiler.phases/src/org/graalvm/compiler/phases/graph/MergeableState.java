@@ -39,7 +39,7 @@ public abstract class MergeableState<T> {
 
     /**
      * This method is called on merge on the state of the first branch. The {@code withStates} list
-     * contains the states of the of the other branches in the order of the merge's end nodes.
+     * contains the states of the other branches in the order of the merge's end nodes.
      *
      * @param merge the merge node
      * @param withStates the state at the merge's end node except the first one.

@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.util.Objects;
-import java.util.logging.Level;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -179,17 +178,12 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             Symbol<Name> name = getName(pool);
             Symbol<Signature> signature = getSignature(pool);
 
-            Method method = holderKlass.lookupMethod(name, signature, accessingKlass);
+            Method method = holderKlass.lookupMethod(name, signature);
             if (method == null) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(holderKlass.getNameAsString() + "." + getName(pool) + signature));
             }
 
-            if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, method)) {
-                context.getLogger().log(Level.WARNING,
-                                "Method access check of: " + method.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
-                                                " throws IllegalAccessError");
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(getName(pool)));
-            }
+            MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, method, meta);
 
             if (!method.isPolySignatureIntrinsic()) {
                 method.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());
@@ -204,7 +198,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             // If the name of the method of a CONSTANT_Methodref_info structure begins with a '<'
             // ('\u003c'), then the name must be the special name <init>, representing an instance
             // initialization method (&sect;2.9). The return type of such a method must be void.
-            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false);
+            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false, true);
             Symbol<Name> name = pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
             if (Name._init_.equals(name)) {
                 Symbol<? extends Descriptor> descriptor = pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);

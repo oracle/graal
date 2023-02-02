@@ -25,27 +25,13 @@
 package com.oracle.svm.core.windows;
 
 import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.windows.headers.FileAPI;
-import com.oracle.svm.core.windows.headers.LibC;
-import com.oracle.svm.core.windows.headers.SynchAPI;
-
-@AutomaticFeature
-@Platforms(Platform.WINDOWS.class)
-class WindowsLogHandlerFeature implements Feature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        Log.finalizeDefaultLogHandler(new WindowsLogHandler());
-    }
-}
 
 public class WindowsLogHandler implements LogHandler {
 
@@ -67,9 +53,9 @@ public class WindowsLogHandler implements LogHandler {
 
     @Override
     public void fatalError() {
-        if (SubstrateUtil.isPrintDiagnosticsInProgress()) {
+        if (SubstrateDiagnostics.isFatalErrorHandlingInProgress()) {
             // Delay the shutdown a bit if another thread has something important to report.
-            SynchAPI.Sleep(3000);
+            VMThreads.singleton().nativeSleep(3000);
         }
         LibC.abort();
     }

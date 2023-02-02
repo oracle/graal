@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,8 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Or;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -49,18 +49,6 @@ public final class OrNode extends BinaryArithmeticNode<Or> implements BinaryComm
 
     public OrNode(ValueNode x, ValueNode y) {
         super(TYPE, getArithmeticOpTable(x).getOr(), x, y);
-    }
-
-    private OrNode(ValueNode x, ValueNode y, Stamp forcedStamp) {
-        super(TYPE, forcedStamp, x, y);
-    }
-
-    /**
-     * Create a new XorNode with a forced stamp, without eager folding. This should only be used in
-     * snippet code, where native-image may assign wrong stamps during graph generation.
-     */
-    public static ValueNode createForSnippet(ValueNode x, ValueNode y, Stamp forcedStamp) {
-        return new OrNode(x, y, forcedStamp);
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {

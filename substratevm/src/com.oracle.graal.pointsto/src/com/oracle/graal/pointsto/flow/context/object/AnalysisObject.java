@@ -30,19 +30,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.UnsafeWriteSinkTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -59,6 +60,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     protected enum AnalysisObjectKind {
         /** The types of runtime objects that the analysis models. */
         ContextInsensitive("!S"),
+        ConstantObject("C"),
         AllocationContextSensitive("AS"),
         ConstantContextSensitive("CS");
 
@@ -81,8 +83,19 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     protected final AnalysisObjectKind kind;
 
     /**
-     * Is this a context sensitive object that was merged with a context insensitive object, or a
-     * context insensitive object that has merged some context sensitive objects?
+     * The merging of analysis objects is used to erase the identity of more concrete analysis
+     * objects (i.e., objects that wrap a constant, or retain information about their allocation
+     * location) and to replace them with the per-type context-insensitive analysis object.
+     * 
+     * This distinction between merged and un-merged objects is essential to correctly track field
+     * and array flows reads and writes. For example when a concrete analysis object is the receiver
+     * of a write operation then only the field flow associated with that receiver will get the
+     * state of the stored value, such that any read from the same receiver and field will return
+     * the written values, but no others. However, if there is a union between the concrete receiver
+     * and a context-insensitive object of the same type then the receiver needs to be marked as
+     * `merged` to signal that all reads from a field of this object must include all the state
+     * written to the corresponding field flow of the context-insensitive object and all writes must
+     * also flow in the corresponding field flow of the context-insensitive object.
      */
     protected volatile boolean merged;
 
@@ -150,7 +163,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
      * merged with some context sensitive objects, i.e., it now represents those objects too and
      * their corresponding data, like field and array elements flows.
      */
-    public void noteMerge(@SuppressWarnings("unused") BigBang bb) {
+    public void noteMerge(@SuppressWarnings("unused") PointsToAnalysis bb) {
         this.merged = true;
     }
 
@@ -166,12 +179,8 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return this.kind == AnalysisObjectKind.AllocationContextSensitive;
     }
 
-    public final boolean isConstantContextSensitiveObject() {
-        return this.kind == AnalysisObjectKind.ConstantContextSensitive;
-    }
-
-    public final boolean isContextSensitiveObject() {
-        return this.isAllocationContextSensitiveObject() || this.isConstantContextSensitiveObject();
+    public JavaConstant asConstant() {
+        return null;
     }
 
     public ArrayElementsTypeStore getArrayElementsTypeStore() {
@@ -179,7 +188,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     }
 
     /** Returns the array elements type flow corresponding to an analysis object of array type. */
-    public ArrayElementsTypeFlow getArrayElementsFlow(BigBang bb, boolean isStore) {
+    public ArrayElementsTypeFlow getArrayElementsFlow(PointsToAnalysis bb, boolean isStore) {
         assert this.isObjectArray();
 
         // ensure initialization
@@ -189,55 +198,56 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     }
 
     /** Returns the filter field flow corresponding to an unsafe accessed filed. */
-    public FieldFilterTypeFlow getInstanceFieldFilterFlow(BigBang bb, AnalysisMethod context, AnalysisField field) {
+    public FieldFilterTypeFlow getInstanceFieldFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed();
 
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
+        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
         return fieldTypeStore.writeFlow().filterFlow(bb);
     }
 
-    public UnsafeWriteSinkTypeFlow getUnsafeWriteSinkFrozenFilterFlow(BigBang bb, AnalysisMethod context, AnalysisField field) {
+    public UnsafeWriteSinkTypeFlow getUnsafeWriteSinkFrozenFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) && field.hasUnsafeFrozenTypeState();
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
+        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
         return fieldTypeStore.unsafeWriteSinkFlow(bb);
     }
 
-    /** Returns the instance field flow corresponding to a filed of the object's type. */
-    public FieldTypeFlow getInstanceFieldFlow(BigBang bb, AnalysisField field, boolean isStore) {
-        return getInstanceFieldFlow(bb, null, field, isStore);
+    public FieldTypeStore getInstanceFieldTypeStore(PointsToAnalysis bb, AnalysisField field) {
+        return getInstanceFieldTypeStore(bb, null, null, field);
     }
 
-    public FieldTypeFlow getInstanceFieldFlow(BigBang bb, AnalysisMethod context, AnalysisField field, boolean isStore) {
+    /** Returns the instance field flow corresponding to a filed of the object's type. */
+    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, AnalysisField field, boolean isStore) {
+        return getInstanceFieldFlow(bb, null, null, field, isStore);
+    }
+
+    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field, boolean isStore) {
         assert !Modifier.isStatic(field.getModifiers());
 
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
+        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
 
         return isStore ? fieldTypeStore.writeFlow() : fieldTypeStore.readFlow();
     }
 
-    final FieldTypeStore getInstanceFieldTypeStore(BigBang bb, AnalysisMethod context, AnalysisField field) {
+    final FieldTypeStore getInstanceFieldTypeStore(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers());
         assert bb != null && !bb.getUniverse().sealed();
+
+        checkField(bb, objectFlow, context, field);
 
         if (instanceFieldsTypeStore == null) {
             AnalysisField[] fields = type.getInstanceFields(true);
             INSTANCE_FIELD_TYPE_STORE_UPDATER.compareAndSet(this, null, new AtomicReferenceArray<>(fields.length));
         }
 
-        if (field.getPosition() < 0 || field.getPosition() >= instanceFieldsTypeStore.length()) {
-            throw AnalysisError.fieldNotPresentError(context, field, type);
-        }
+        AnalysisError.guarantee(field.getPosition() >= 0 && field.getPosition() < instanceFieldsTypeStore.length());
 
         FieldTypeStore fieldStore = instanceFieldsTypeStore.get(field.getPosition());
         if (fieldStore == null) {
-            fieldStore = bb.analysisPolicy().createFieldTypeStore(this, field, bb.getUniverse());
+            fieldStore = bb.analysisPolicy().createFieldTypeStore(bb, this, field, bb.getUniverse());
             boolean result = instanceFieldsTypeStore.compareAndSet(field.getPosition(), null, fieldStore);
             if (result) {
                 fieldStore.init(bb);
-                // link the initial instance field flow to the field write flow
-                field.getInitialInstanceFieldFlow().addUse(bb, fieldStore.writeFlow());
-                // link the field read flow to the context insensitive instance field flow
-                fieldStore.readFlow().addUse(bb, field.getInstanceFieldFlow());
+                linkFieldFlows(bb, field, fieldStore);
             } else {
                 fieldStore = instanceFieldsTypeStore.get(field.getPosition());
             }
@@ -246,11 +256,32 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return fieldStore;
     }
 
+    private void checkField(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
+        /*
+         * Assignable types are assigned on AnalysisType creation, before the type is published, so
+         * if other is assignable to this then other would have been added to
+         * this.assignableTypesState and there is no risk of calling this.isAssignableFrom(other)
+         * too early. Using the type state based check is cheaper than getting the assignable
+         * information from the host vm every time.
+         */
+        if (!field.getDeclaringClass().getAssignableTypes(false).containsType(type)) {
+            throw AnalysisError.fieldNotPresentError(bb, objectFlow, context, field, type);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    protected void linkFieldFlows(PointsToAnalysis bb, AnalysisField field, FieldTypeStore fieldStore) {
+        // link the initial instance field flow to the field write flow
+        field.getInitialInstanceFieldFlow().addUse(bb, fieldStore.writeFlow());
+        // link the field read flow to the context insensitive instance field flow
+        fieldStore.readFlow().addUse(bb, field.getInstanceFieldFlow());
+    }
+
     /**
      * Check if a constant object wraps the empty array constant, e.g. <code> static final Object[]
      * EMPTY_ELEMENTDATA = {}</code> for ArrayList;
      */
-    public boolean isEmptyObjectArrayConstant(@SuppressWarnings("unused") BigBang bb) {
+    public boolean isEmptyObjectArrayConstant(@SuppressWarnings("unused") PointsToAnalysis bb) {
         return false;
     }
 
@@ -268,21 +299,15 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
      * Check if a constant object wraps the empty array constant, i.e. <code> static final Object[]
      * EMPTY_ELEMENTDATA = {}</code>;
      */
-    public static boolean isEmptyObjectArrayConstant(BigBang bb, JavaConstant constant) {
+    public static boolean isEmptyObjectArrayConstant(PointsToAnalysis bb, JavaConstant constant) {
         assert constant.getJavaKind() == JavaKind.Object;
-        Object valueObj = bb.getProviders().getSnippetReflection().asObject(Object.class, constant);
-        if (valueObj instanceof Object[]) {
-            Object[] arrayValueObj = (Object[]) valueObj;
-            if (arrayValueObj.length == 0) {
-                return true;
-            }
-        }
-        return false;
+        Integer length = bb.getConstantReflectionProvider().readArrayLength(constant);
+        return length != null && length == 0;
     }
 
     @Override
     public String toString() {
-        return String.format("0x%016X", id) + ":" + kind.prefix + ":" + (type != null ? type.toJavaName(false) : "");
+        return String.format("0x%016X", id) + ":" + kind.prefix + ":" + (merged ? "M" : "") + ":" + (type != null ? type.toJavaName(false) : "");
     }
 
     @Override

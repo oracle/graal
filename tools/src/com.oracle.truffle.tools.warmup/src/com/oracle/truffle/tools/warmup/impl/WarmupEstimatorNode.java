@@ -26,19 +26,17 @@ package com.oracle.truffle.tools.warmup.impl;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 
 class WarmupEstimatorNode extends ExecutionEventNode {
 
     private final List<Long> times;
-    @CompilerDirectives.CompilationFinal private volatile FrameSlot startSlot;
+    @CompilationFinal private int startSlot = -1;
 
     WarmupEstimatorNode(List<Long> times) {
         this.times = times;
@@ -46,28 +44,21 @@ class WarmupEstimatorNode extends ExecutionEventNode {
 
     @Override
     protected void onEnter(VirtualFrame frame) {
-        if (this.startSlot == null) {
+        if (this.startSlot == -1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            Lock lock = getLock();
-            lock.lock();
-            try {
-                startSlot = frame.getFrameDescriptor().findOrAddFrameSlot(this, FrameSlotKind.Long);
-            } finally {
-                lock.unlock();
-            }
+            startSlot = frame.getFrameDescriptor().findOrAddAuxiliarySlot(this);
         }
         frame.setLong(startSlot, System.nanoTime());
     }
 
     @Override
     protected void onReturnValue(VirtualFrame frame, Object result) {
-        if (startSlot != null) {
-            final long end = System.nanoTime();
-            record(end - FrameUtil.getLongSafe(frame, startSlot));
+        if (startSlot != -1) {
+            record(System.nanoTime() - (Long) frame.getAuxiliarySlot(startSlot));
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private synchronized void record(long duration) {
         times.add(duration);
     }

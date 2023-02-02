@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package org.graalvm.compiler.graph;
 
 import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 
-import java.util.Collection;
 import java.util.List;
 
 import org.graalvm.compiler.graph.Edges.Type;
@@ -47,11 +46,6 @@ public final class NodeInputList<T extends Node> extends NodeList<T> {
     }
 
     public NodeInputList(Node self, List<? extends T> elements) {
-        super(self, elements);
-        assert self.hasNoUsages();
-    }
-
-    public NodeInputList(Node self, Collection<? extends NodeInterface> elements) {
         super(self, elements);
         assert self.hasNoUsages();
     }

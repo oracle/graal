@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,12 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -44,15 +44,13 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
-import jdk.vm.ci.code.TargetDescription;
-
 public class AMD64X87MathSnippets implements Snippets {
 
     private static final double PI_4 = Math.PI / 4;
 
     @Snippet
     public static double sin(double input) {
-        if (Math.abs(input) < PI_4) {
+        if (probability(LIKELY_PROBABILITY, Math.abs(input) < PI_4)) {
             return AMD64X87MathIntrinsicNode.compute(input, UnaryOperation.SIN);
         }
         return callDouble1(UnaryOperation.SIN.foreignCallSignature, input);
@@ -60,7 +58,7 @@ public class AMD64X87MathSnippets implements Snippets {
 
     @Snippet
     public static double cos(double input) {
-        if (Math.abs(input) < PI_4) {
+        if (probability(LIKELY_PROBABILITY, Math.abs(input) < PI_4)) {
             return AMD64X87MathIntrinsicNode.compute(input, UnaryOperation.COS);
         }
         return callDouble1(UnaryOperation.COS.foreignCallSignature, input);
@@ -68,7 +66,7 @@ public class AMD64X87MathSnippets implements Snippets {
 
     @Snippet
     public static double tan(double input) {
-        if (Math.abs(input) < PI_4) {
+        if (probability(LIKELY_PROBABILITY, Math.abs(input) < PI_4)) {
             return AMD64X87MathIntrinsicNode.compute(input, UnaryOperation.TAN);
         }
         return callDouble1(UnaryOperation.TAN.foreignCallSignature, input);
@@ -83,12 +81,12 @@ public class AMD64X87MathSnippets implements Snippets {
         private final SnippetInfo cos;
         private final SnippetInfo tan;
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
-            super(options, factories, providers, snippetReflection, target);
+        public Templates(OptionValues options, Providers providers) {
+            super(options, providers);
 
-            sin = snippet(AMD64X87MathSnippets.class, "sin");
-            cos = snippet(AMD64X87MathSnippets.class, "cos");
-            tan = snippet(AMD64X87MathSnippets.class, "tan");
+            sin = snippet(providers, AMD64X87MathSnippets.class, "sin");
+            cos = snippet(providers, AMD64X87MathSnippets.class, "cos");
+            tan = snippet(providers, AMD64X87MathSnippets.class, "tan");
         }
 
         public void lower(UnaryMathIntrinsicNode mathIntrinsicNode, LoweringTool tool) {
@@ -110,7 +108,7 @@ public class AMD64X87MathSnippets implements Snippets {
 
             Arguments args = new Arguments(info, mathIntrinsicNode.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("input", mathIntrinsicNode.getValue());
-            template(mathIntrinsicNode, args).instantiate(providers.getMetaAccess(), mathIntrinsicNode, DEFAULT_REPLACER, tool, args);
+            template(tool, mathIntrinsicNode, args).instantiate(tool.getMetaAccess(), mathIntrinsicNode, DEFAULT_REPLACER, tool, args);
             mathIntrinsicNode.safeDelete();
         }
     }

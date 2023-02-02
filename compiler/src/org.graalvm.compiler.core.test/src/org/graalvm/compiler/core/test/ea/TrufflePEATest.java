@@ -68,12 +68,12 @@ public class TrufflePEATest extends GraalCompilerTest {
     static {
         try {
             Field primitiveField0 = DynamicObject.class.getDeclaredField("primitiveField0");
-            long offset = UNSAFE.objectFieldOffset(primitiveField0);
+            long offset = getObjectFieldOffset(primitiveField0);
             if (offset % 8 == 0) {
                 primitiveField0Offset = offset;
             } else {
                 Field primitiveField1 = DynamicObject.class.getDeclaredField("primitiveField1");
-                offset = UNSAFE.objectFieldOffset(primitiveField1);
+                offset = getObjectFieldOffset(primitiveField1);
                 assert offset % 8 == 0;
                 primitiveField0Offset = offset;
             }

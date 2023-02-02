@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,7 +71,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * the priority of the alternatives: if matching with an earlier alternative is possible, that match
  * result is preferred to those from later alternatives.
  */
-public final class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
+public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
 
     private ArrayList<Sequence> alternatives = new ArrayList<>();
     private short visitorIterationIndex = 0;
@@ -94,7 +94,7 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
         setGroupNumber(groupNumber);
     }
 
-    private Group(Group copy) {
+    protected Group(Group copy) {
         super(copy);
         groupNumber = copy.groupNumber;
         enclosedCaptureGroupsLow = copy.enclosedCaptureGroupsLow;
@@ -116,16 +116,16 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
     }
 
     /**
-     * Returns whether or not this group loops. A looping group differs from a non-looping one in
-     * that when you match one of the group's non-empty alternatives, instead of continuing to the
-     * next node after the group, the same group is attempted again.
+     * Returns whether this group loops. A looping group differs from a non-looping one in that when
+     * you match one of the group's non-empty alternatives, instead of continuing to the next node
+     * after the group, the same group is attempted again.
      */
     public boolean isLoop() {
         return isFlagSet(FLAG_GROUP_LOOP);
     }
 
     /**
-     * Sets whether or this group should loop. If the group is set to be looping, this updates the
+     * Sets whether this group should loop. If the group is set to be looping, this updates the
      * 'next' and 'prev' pointers on the non-empty alternatives to point to the group itself.
      *
      * @param loop true if this group should loop
@@ -133,6 +133,22 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
      */
     public void setLoop(boolean loop) {
         setFlag(FLAG_GROUP_LOOP, loop);
+    }
+
+    /**
+     * Returns whether this group declares local flags, e.g. "(?i:...)".
+     */
+    public boolean isLocalFlags() {
+        return isFlagSet(FLAG_GROUP_LOCAL_FLAGS);
+    }
+
+    /**
+     * Sets whether this group declares local flags, e.g. "(?i:...)".
+     *
+     * @see #isLocalFlags()
+     */
+    public void setLocalFlags(boolean loop) {
+        setFlag(FLAG_GROUP_LOCAL_FLAGS, loop);
     }
 
     /**
@@ -198,6 +214,13 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
     }
 
     /**
+     * Marks this {@link Group} as non-capturing and clears its group number.
+     */
+    public void clearGroupNumber() {
+        this.groupNumber = -1;
+    }
+
+    /**
      * Gets the (inclusive) lower bound of the range of capture groups contained within this group.
      */
     public int getEnclosedCaptureGroupsLow() {
@@ -237,7 +260,8 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
     public boolean isAlwaysZeroWidth() {
         for (Sequence s : alternatives) {
             for (Term t : s.getTerms()) {
-                if (!(t instanceof PositionAssertion || t instanceof LookAroundAssertion || (t instanceof Group && ((Group) t).isAlwaysZeroWidth()))) {
+                if (!(t.isPositionAssertion() || t.isLookAroundAssertion() || (t.isGroup() && t.asGroup().isAlwaysZeroWidth()) ||
+                                (t.isAtomicGroup() && t.asAtomicGroup().getGroup().isAlwaysZeroWidth()))) {
                     return false;
                 }
             }
@@ -363,7 +387,7 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
         if (obj == this) {
             return true;
         }
-        if (!(obj instanceof Group)) {
+        if (obj.getClass() != Group.class) {
             return false;
         }
         Group o = (Group) obj;

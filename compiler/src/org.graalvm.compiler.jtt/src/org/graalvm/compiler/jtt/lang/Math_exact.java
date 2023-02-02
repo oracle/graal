@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,8 @@
  */
 package org.graalvm.compiler.jtt.lang;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.jtt.JTTTest;
+import org.junit.Test;
 
 /*
  */
@@ -37,7 +36,7 @@ public class Math_exact extends JTTTest {
     }
 
     @Test
-    public void runTestIntAddExact() throws Throwable {
+    public void runTestIntAddExact() {
         runTest("testIntAddExact", 1, 2);
         runTest("testIntAddExact", 1, Integer.MAX_VALUE);
         runTest("testIntAddExact", -1, Integer.MIN_VALUE);
@@ -48,7 +47,7 @@ public class Math_exact extends JTTTest {
     }
 
     @Test
-    public void runTestLongAddExact() throws Throwable {
+    public void runTestLongAddExact() {
         runTest("testLongAddExact", 1L, 2L);
         runTest("testLongAddExact", 1L, Long.MAX_VALUE);
         runTest("testLongAddExact", -1L, Long.MIN_VALUE);
@@ -59,7 +58,7 @@ public class Math_exact extends JTTTest {
     }
 
     @Test
-    public void runTestIntSubExact() throws Throwable {
+    public void runTestIntSubExact() {
         runTest("testIntSubExact", 1, 2);
         runTest("testIntSubExact", -2, Integer.MAX_VALUE);
         runTest("testIntSubExact", 2, Integer.MIN_VALUE);
@@ -70,7 +69,7 @@ public class Math_exact extends JTTTest {
     }
 
     @Test
-    public void runTestLongSubExact() throws Throwable {
+    public void runTestLongSubExact() {
         runTest("testLongSubExact", 1L, 2L);
         runTest("testLongSubExact", -2L, Long.MAX_VALUE);
         runTest("testLongSubExact", 2L, Long.MIN_VALUE);
@@ -81,7 +80,7 @@ public class Math_exact extends JTTTest {
     }
 
     @Test
-    public void runTestIntMulExact() throws Throwable {
+    public void runTestIntMulExact() {
         runTest("testIntMulExact", 1, 2);
         runTest("testIntMulExact", -2, Integer.MAX_VALUE);
         runTest("testIntMulExact", 2, Integer.MIN_VALUE);
@@ -92,9 +91,31 @@ public class Math_exact extends JTTTest {
     }
 
     @Test
-    public void runTestLongMulExact() throws Throwable {
+    public void runTestLongMulExact() {
         runTest("testLongMulExact", 1L, 2L);
         runTest("testLongMulExact", 2L, Long.MAX_VALUE);
         runTest("testLongMulExact", -2L, Long.MIN_VALUE);
+    }
+
+    public static int testIntNegExact(int a) {
+        return Math.negateExact(a);
+    }
+
+    @Test
+    public void runTestIntNegExact() {
+        runTest("testIntNegExact", 0);
+        runTest("testIntNegExact", Integer.MAX_VALUE);
+        runTest("testIntNegExact", Integer.MIN_VALUE);
+    }
+
+    public static long testLongNegExact(long a) {
+        return Math.negateExact(a);
+    }
+
+    @Test
+    public void runTestLongNegExact() {
+        runTest("testLongNegExact", 0L);
+        runTest("testLongNegExact", Long.MAX_VALUE);
+        runTest("testLongNegExact", Long.MIN_VALUE);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,17 +112,6 @@ public class LogStream {
      */
     public LogStream(Consumer<? super String> sink) {
         this.consumer = new ForwardingConsumer(this, sink);
-        lineBuffer = new StringBuilder(100);
-    }
-
-    /**
-     * Creates a new log stream that shares the same {@linkplain #consumer output stream} as a given
-     * {@link LogStream}.
-     *
-     * @param log a LogStream whose output stream is shared with this one
-     */
-    public LogStream(LogStream log) {
-        consumer = log.consumer;
         lineBuffer = new StringBuilder(100);
     }
 

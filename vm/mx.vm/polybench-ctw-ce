@@ -1,0 +1,4 @@
+DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/truffle
+COMPONENTS=cmp,icu4j,lg,ni,nil,pbm,pmh,pbi,sdk,svm,svmnfi,svmsl,tfl,tflm
+NATIVE_IMAGES=lib:jvmcicompiler
+DISABLE_INSTALLABLES=False

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import java.util.function.IntBinaryOperator;
-import java.util.function.LongBinaryOperator;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.nodes.Node;
@@ -40,6 +37,9 @@ import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+
+import java.util.function.IntBinaryOperator;
+import java.util.function.LongBinaryOperator;
 
 public abstract class LLVMMemory implements LLVMCapability {
 
@@ -64,6 +64,8 @@ public abstract class LLVMMemory implements LLVMCapability {
      */
     @Deprecated
     public abstract LLVMNativePointer reallocateMemory(Node location, LLVMNativePointer addr, long size);
+
+    public abstract int getPageSize();
 
     public final boolean getI1(Node location, LLVMNativePointer addr) {
         return getI1(location, addr.asNative());
@@ -239,8 +241,6 @@ public abstract class LLVMMemory implements LLVMCapability {
 
     public abstract boolean getAndOpI1(Node location, LLVMNativePointer address, boolean value, BooleanBinaryOperator f);
 
-    public abstract void fullFence();
-
     public abstract static class HandleContainer {
 
         public abstract LLVMNativePointer allocate(Node location, Object value);
@@ -252,6 +252,8 @@ public abstract class LLVMMemory implements LLVMCapability {
         public abstract boolean isHandle(long address);
 
     }
+
+    public abstract boolean supportsHandles();
 
     public abstract HandleContainer createHandleContainer(boolean deref, Assumption noHandleAssumption);
 

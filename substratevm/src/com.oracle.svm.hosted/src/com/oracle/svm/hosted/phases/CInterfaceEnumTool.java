@@ -87,13 +87,19 @@ public class CInterfaceEnumTool {
     }
 
     public ValueNode createEnumValueInvoke(HostedGraphKit kit, EnumInfo enumInfo, JavaKind resultKind, ValueNode arg) {
-        ResolvedJavaMethod valueMethod = getValueMethodForKind(resultKind);
         int invokeBci = kit.bci();
-        MethodCallTargetNode callTarget = invokeEnumValue(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, valueMethod, arg);
+        MethodCallTargetNode callTarget = invokeEnumValue(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, resultKind, arg);
         return kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci);
     }
 
-    private MethodCallTargetNode invokeEnumValue(GraphBuilderTool b, CallTargetFactory callTargetFactory, int bci, EnumInfo enumInfo, ResolvedJavaMethod valueMethod, ValueNode arg) {
+    public ValueNode startEnumValueInvokeWithException(HostedGraphKit kit, EnumInfo enumInfo, JavaKind resultKind, ValueNode arg) {
+        int invokeBci = kit.bci();
+        MethodCallTargetNode callTarget = invokeEnumValue(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, resultKind, arg);
+        return kit.startInvokeWithException(callTarget, kit.getFrameState(), invokeBci);
+    }
+
+    private MethodCallTargetNode invokeEnumValue(GraphBuilderTool b, CallTargetFactory callTargetFactory, int bci, EnumInfo enumInfo, JavaKind resultKind, ValueNode arg) {
+        ResolvedJavaMethod valueMethod = getValueMethodForKind(resultKind);
         ResolvedJavaType returnType = (ResolvedJavaType) valueMethod.getSignature().getReturnType(null);
         ValueNode[] args = new ValueNode[2];
         args[0] = ConstantNode.forConstant(snippetReflection.forObject(enumInfo.getRuntimeData()), b.getMetaAccess(), b.getGraph());

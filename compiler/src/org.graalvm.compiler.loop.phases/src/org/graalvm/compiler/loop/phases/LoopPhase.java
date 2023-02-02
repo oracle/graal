@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,16 @@ package org.graalvm.compiler.loop.phases;
 
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
 
-public abstract class LoopPhase<P extends LoopPolicies> extends BasePhase<CoreProviders> {
-    private P policies;
+public abstract class LoopPhase<P extends LoopPolicies> extends PostRunCanonicalizationPhase<CoreProviders> {
+    private final P policies;
 
-    public LoopPhase(P policies) {
+    public LoopPhase(P policies, CanonicalizerPhase canonicalizer) {
+        super(canonicalizer);
         this.policies = policies;
+        assert canonicalizer != null : "incremental canonicalization must always be enabled for loop phases";
     }
 
     protected P getPolicies() {

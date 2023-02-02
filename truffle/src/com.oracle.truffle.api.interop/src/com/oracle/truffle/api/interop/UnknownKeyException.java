@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * @see InteropLibrary
  * @since 21.1.0
  */
+@SuppressWarnings("serial")
 public final class UnknownKeyException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;
@@ -117,7 +118,7 @@ public final class UnknownKeyException extends InteropException {
      * if the {@link InteropException} is translated to a source language error. If the
      * {@link InteropException} is discarded, then the cause will most likely get discarded by the
      * source language as well. Note that the cause must be of type
-     * {@link com.oracle.truffle.api.TruffleException} in addition to {@link Throwable} otherwise an
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException} otherwise an
      * {@link IllegalArgumentException} is thrown.
      * <p>
      * This method is designed to be used in {@link CompilerDirectives#inCompiledCode() compiled}
@@ -127,7 +128,6 @@ public final class UnknownKeyException extends InteropException {
      * @param cause the guest language exception that caused the error
      * @since 21.1.0
      */
-    @SuppressWarnings("deprecation")
     public static UnknownKeyException create(Object unknownKey, Throwable cause) {
         return new UnknownKeyException(unknownKey, cause);
     }

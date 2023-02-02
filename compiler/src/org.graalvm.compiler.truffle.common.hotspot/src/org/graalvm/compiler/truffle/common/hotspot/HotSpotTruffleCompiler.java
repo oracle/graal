@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,22 +27,26 @@ package org.graalvm.compiler.truffle.common.hotspot;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public interface HotSpotTruffleCompiler extends TruffleCompiler {
 
     /**
-     * Compiles and installs special code for
-     * {@link HotSpotTruffleCompilerRuntime#getTruffleCallBoundaryMethods()}. See also
-     * AbstractHotSpotTruffleRuntime.setDontInlineCallBoundaryMethod() for disabling compilation and
-     * inlining for truffle call boundary methods.
+     * Compiles and installs special code for truffle call boundary methods. The passed method must
+     * have compilation and inlining disabled in HotSpot.
      */
-    void installTruffleCallBoundaryMethods(CompilableTruffleAST compilable);
+    void installTruffleCallBoundaryMethod(ResolvedJavaMethod method);
+
+    /**
+     * Compiles and installs special code fast thread local object access. The passed method must
+     * have compilation and inlining disabled in HotSpot.
+     */
+    void installTruffleReservedOopMethod(ResolvedJavaMethod method);
 
     int pendingTransferToInterpreterOffset(CompilableTruffleAST compilable);
 
     /**
      * Releases caches used for PE/compilation.
      */
-    default void purgeCaches() {
-        // nop
-    }
+    void purgePartialEvaluationCaches();
 }

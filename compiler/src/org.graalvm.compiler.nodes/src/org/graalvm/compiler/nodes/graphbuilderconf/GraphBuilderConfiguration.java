@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,23 +42,19 @@ public final class GraphBuilderConfiguration {
         private TypePlugin[] typePlugins;
         private InlineInvokePlugin[] inlineInvokePlugins;
         private ClassInitializationPlugin classInitializationPlugin;
-        private InvokeDynamicPlugin invokeDynamicPlugin;
-        private ProfilingPlugin profilingPlugin;
 
         /**
          * Creates a copy of a given set of plugins. The {@link InvocationPlugins} in
-         * {@code copyFrom} become the {@linkplain InvocationPlugins#getParent() default}
-         * {@linkplain #getInvocationPlugins() invocation plugins} in this object.
+         * {@code copyFrom} become the default {@linkplain #getInvocationPlugins() invocation
+         * plugins} in this object.
          */
         public Plugins(Plugins copyFrom, InvocationPlugins invocationPlugins) {
-            this.invocationPlugins = invocationPlugins != null ? invocationPlugins : new InvocationPlugins(copyFrom.invocationPlugins);
+            this.invocationPlugins = invocationPlugins != null ? invocationPlugins : new InvocationPlugins(null, copyFrom.invocationPlugins);
             this.nodePlugins = copyFrom.nodePlugins;
             this.parameterPlugins = copyFrom.parameterPlugins;
             this.typePlugins = copyFrom.typePlugins;
             this.inlineInvokePlugins = copyFrom.inlineInvokePlugins;
             this.classInitializationPlugin = copyFrom.classInitializationPlugin;
-            this.invokeDynamicPlugin = copyFrom.invokeDynamicPlugin;
-            this.profilingPlugin = copyFrom.profilingPlugin;
         }
 
         public Plugins(Plugins copyFrom) {
@@ -99,10 +95,6 @@ public final class GraphBuilderConfiguration {
             nodePlugins = newPlugins;
         }
 
-        public void clearNodePlugin() {
-            nodePlugins = new NodePlugin[0];
-        }
-
         public ParameterPlugin[] getParameterPlugins() {
             return parameterPlugins;
         }
@@ -126,17 +118,6 @@ public final class GraphBuilderConfiguration {
         public void appendTypePlugin(TypePlugin plugin) {
             typePlugins = Arrays.copyOf(typePlugins, typePlugins.length + 1);
             typePlugins[typePlugins.length - 1] = plugin;
-        }
-
-        public void prependTypePlugin(TypePlugin plugin) {
-            TypePlugin[] newPlugins = new TypePlugin[typePlugins.length + 1];
-            System.arraycopy(typePlugins, 0, newPlugins, 1, typePlugins.length);
-            newPlugins[0] = plugin;
-            typePlugins = newPlugins;
-        }
-
-        public void clearParameterPlugin() {
-            parameterPlugins = new ParameterPlugin[0];
         }
 
         public InlineInvokePlugin[] getInlineInvokePlugins() {
@@ -165,22 +146,6 @@ public final class GraphBuilderConfiguration {
 
         public void setClassInitializationPlugin(ClassInitializationPlugin plugin) {
             this.classInitializationPlugin = plugin;
-        }
-
-        public InvokeDynamicPlugin getInvokeDynamicPlugin() {
-            return invokeDynamicPlugin;
-        }
-
-        public void setInvokeDynamicPlugin(InvokeDynamicPlugin plugin) {
-            this.invokeDynamicPlugin = plugin;
-        }
-
-        public ProfilingPlugin getProfilingPlugin() {
-            return profilingPlugin;
-        }
-
-        public void setProfilingPlugin(ProfilingPlugin plugin) {
-            this.profilingPlugin = plugin;
         }
 
         public StampPair getOverridingStamp(GraphBuilderTool b, JavaType type, boolean nonNull) {
@@ -249,8 +214,7 @@ public final class GraphBuilderConfiguration {
 
     /**
      * Creates a copy of this configuration with all its plugins. The {@link InvocationPlugins} in
-     * this configuration become the {@linkplain InvocationPlugins#getParent() parent} of the
-     * {@link InvocationPlugins} in the copy.
+     * this configuration become the parent of the {@link InvocationPlugins} in the copy.
      */
     public GraphBuilderConfiguration copy() {
         Plugins newPlugins = new Plugins(plugins);
@@ -381,20 +345,6 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         newRetainLocalVariables,
                         replaceLocalsWithConstants,
-                        skippedExceptionTypes,
-                        plugins);
-    }
-
-    public GraphBuilderConfiguration withReplaceLocalsWithConstants(boolean newReplaceLocalsWithConstants) {
-        return new GraphBuilderConfiguration(
-                        eagerResolving,
-                        unresolvedIsError,
-                        bytecodeExceptionMode,
-                        omitAssertions,
-                        insertFullInfopoints,
-                        trackNodeSourcePosition,
-                        retainLocalVariables,
-                        newReplaceLocalsWithConstants,
                         skippedExceptionTypes,
                         plugins);
     }

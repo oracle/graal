@@ -15,6 +15,7 @@
 *.obj
 *.orig
 *.pdf
+*.phaseplan
 *.pyc
 *.rej
 *.swn
@@ -53,3 +54,7 @@ jmh_result.json
 /vm/src/installer/dist/
 /tools/generators/node_modules/
 /tools/generators/out/
+visualizer/IdealGraphVisualizer/*/build/
+visualizer/IdealGraphVisualizer/build/
+visualizer/IdealGraphVisualizer/dist/
+visualizer/IdealGraphVisualizer/nbplatform/

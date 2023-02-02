@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,6 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
-import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
 import org.graalvm.compiler.processor.AbstractProcessor;
@@ -73,11 +72,6 @@ public class OptionProcessor extends AbstractProcessor {
     private static final String OPTION_TYPE_CLASS_NAME = "org.graalvm.compiler.options.OptionType";
     private static final String OPTION_DESCRIPTOR_CLASS_NAME = "org.graalvm.compiler.options.OptionDescriptor";
     private static final String OPTION_DESCRIPTORS_CLASS_NAME = "org.graalvm.compiler.options.OptionDescriptors";
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-        return SourceVersion.latest();
-    }
 
     private final Set<Element> processed = new HashSet<>();
 
@@ -147,6 +141,9 @@ public class OptionProcessor extends AbstractProcessor {
         String optionType = declaredOptionKeyType.getTypeArguments().get(0).toString();
         if (optionType.startsWith("java.lang.")) {
             optionType = optionType.substring("java.lang.".length());
+        }
+        if (optionType.contains("<")) {
+            optionType = optionType.substring(0, optionType.indexOf("<"));
         }
 
         Element enclosing = element.getEnclosingElement();
@@ -234,7 +231,8 @@ public class OptionProcessor extends AbstractProcessor {
 
         String optionTypeName = getAnnotationValue(annotation, "type", VariableElement.class).getSimpleName().toString();
         boolean deprecated = getAnnotationValue(annotation, "deprecated", Boolean.class);
-        info.options.add(new OptionInfo(optionName, optionTypeName, help, extraHelp, optionType, declaringClass, field.getSimpleName().toString(), deprecated));
+        String deprecationMessage = getAnnotationValue(annotation, "deprecationMessage", String.class);
+        info.options.add(new OptionInfo(optionName, optionTypeName, help, extraHelp, optionType, declaringClass, field.getSimpleName().toString(), deprecated, deprecationMessage));
     }
 
     public static void createOptionsDescriptorsFile(ProcessingEnvironment processingEnv, OptionsInfo info) {
@@ -275,6 +273,7 @@ public class OptionProcessor extends AbstractProcessor {
                 String declaringClass = option.declaringClass;
                 String fieldName = option.field;
                 boolean deprecated = option.deprecated;
+                String deprecationMessage = option.deprecationMessage;
                 out.printf("            return " + desc + ".create(\n");
                 out.printf("                /*name*/ \"%s\",\n", name);
                 out.printf("                /*optionType*/ %s.%s,\n", getSimpleName(OPTION_TYPE_CLASS_NAME), optionType);
@@ -290,7 +289,8 @@ public class OptionProcessor extends AbstractProcessor {
                 out.printf("                /*declaringClass*/ %s.class,\n", declaringClass);
                 out.printf("                /*fieldName*/ \"%s\",\n", fieldName);
                 out.printf("                /*option*/ %s,\n", optionField);
-                out.printf("                /*deprecated*/ %b);\n", deprecated);
+                out.printf("                /*deprecated*/ %b,\n", deprecated);
+                out.printf("                /*deprecationMessage*/ \"%s\");\n", deprecationMessage);
                 out.println("        }");
             }
             out.println("        // CheckStyle: resume line length check");
@@ -300,7 +300,7 @@ public class OptionProcessor extends AbstractProcessor {
             out.println();
             out.println("    @Override");
             out.println("    public Iterator<" + desc + "> iterator() {");
-            out.println("        return new Iterator<OptionDescriptor>() {");
+            out.println("        return new Iterator<" + (processingEnv.getSourceVersion().compareTo(SourceVersion.RELEASE_8) <= 0 ? desc : "") + ">() {");
             out.println("            int i = 0;");
             out.println("            @Override");
             out.println("            public boolean hasNext() {");
@@ -322,23 +322,6 @@ public class OptionProcessor extends AbstractProcessor {
         }
     }
 
-    public static PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
-        try {
-            // Ensure Unix line endings to comply with code style guide checked by Checkstyle
-            String className = pkg + "." + relativeName;
-            JavaFileObject sourceFile = filer.createSourceFile(className, originatingElements);
-            return new PrintWriter(sourceFile.openWriter()) {
-
-                @Override
-                public void println() {
-                    print("\n");
-                }
-            };
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public static class OptionInfo implements Comparable<OptionInfo> {
 
         public final String name;
@@ -349,8 +332,9 @@ public class OptionProcessor extends AbstractProcessor {
         public final String declaringClass;
         public final String field;
         public final boolean deprecated;
+        public final String deprecationMessage;
 
-        public OptionInfo(String name, String optionType, String help, List<String> extraHelp, String type, String declaringClass, String field, boolean deprecated) {
+        public OptionInfo(String name, String optionType, String help, List<String> extraHelp, String type, String declaringClass, String field, boolean deprecated, String deprecationMessage) {
             this.name = name;
             this.optionType = optionType;
             this.help = help;
@@ -359,6 +343,7 @@ public class OptionProcessor extends AbstractProcessor {
             this.declaringClass = declaringClass;
             this.field = field;
             this.deprecated = deprecated;
+            this.deprecationMessage = deprecationMessage;
         }
 
         @Override

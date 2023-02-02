@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,15 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 class PolyglotLauncherFeature implements Feature {
+
+    public String getURL() {
+        return "https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.launcher/src/org/graalvm/launcher/PolyglotLauncherFeature.java";
+    }
+
+    public String getDescription() {
+        return "Registers launchers for AOT compilation";
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         PolyglotLauncher.AOT_LAUNCHER_CLASSES.values().forEach(RuntimeReflection::registerForReflectiveInstantiation);

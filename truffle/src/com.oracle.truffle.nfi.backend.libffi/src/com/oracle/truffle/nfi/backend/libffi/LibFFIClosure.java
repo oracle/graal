@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,9 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-import java.nio.ByteBuffer;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -94,11 +91,6 @@ final class LibFFIClosure implements TruffleObject {
         return nativePointer.getCodePointer();
     }
 
-    @ExportMessage
-    LibFFIClosure toNative() {
-        return this;
-    }
-
     static final class RetPatches {
 
         final int count;
@@ -117,7 +109,7 @@ final class LibFFIClosure implements TruffleObject {
         final CallTarget closureCallTarget;
 
         CachedClosureInfo(RootNode rootNode) {
-            this.closureCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
+            this.closureCallTarget = rootNode.getCallTarget();
         }
     }
 
@@ -129,8 +121,9 @@ final class LibFFIClosure implements TruffleObject {
 
         abstract ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature);
 
-        static MonomorphicClosureInfo create(LibFFILanguage lang, CachedSignatureInfo signatureInfo, Object executable) {
+        static MonomorphicClosureInfo create(CachedSignatureInfo signatureInfo, Object executable) {
             CompilerAsserts.neverPartOfCompilation();
+            LibFFILanguage lang = LibFFILanguage.get(null);
             CachedTypeInfo retType = signatureInfo.getRetType();
             if (retType instanceof LibFFIType.ObjectType) {
                 // special handling simple object return values
@@ -160,8 +153,9 @@ final class LibFFIClosure implements TruffleObject {
 
         abstract ClosureNativePointer allocateClosure(LibFFIContext ctx, LibFFISignature signature, Object receiver);
 
-        static PolymorphicClosureInfo create(LibFFILanguage lang, CachedSignatureInfo signatureInfo) {
+        static PolymorphicClosureInfo create(CachedSignatureInfo signatureInfo) {
             CompilerAsserts.neverPartOfCompilation();
+            LibFFILanguage lang = LibFFILanguage.get(null);
             CachedTypeInfo retType = signatureInfo.getRetType();
             if (retType instanceof LibFFIType.ObjectType) {
                 // special handling simple object return values
@@ -211,8 +205,7 @@ final class LibFFIClosure implements TruffleObject {
             try {
                 return interop.execute(receiver, args);
             } catch (InteropException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(ex);
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
     }
@@ -220,17 +213,17 @@ final class LibFFIClosure implements TruffleObject {
     private static final class EncodeRetNode extends Node {
 
         private final CachedTypeInfo retType;
-        @Child NativeArgumentLibrary nativeArguments;
+        @Child SerializeArgumentNode serialize;
 
         private EncodeRetNode(CachedTypeInfo retType) {
-            this.retType = retType.overrideClosureRetType();
-            this.nativeArguments = NativeArgumentLibrary.getFactory().create(this.retType);
+            this.retType = retType;
+            this.serialize = retType.createSerializeArgumentNode();
         }
 
-        RetPatches execute(Object ret, ByteBuffer retBuffer) {
+        RetPatches execute(Object ret, NativeArgumentBuffer.Pointer retBuffer) {
             NativeArgumentBuffer nativeRetBuffer = new NativeArgumentBuffer.Direct(retBuffer, retType.objectCount);
             try {
-                nativeArguments.serialize(retType, nativeRetBuffer, ret);
+                serialize.serialize(ret, nativeRetBuffer);
                 if (nativeRetBuffer.getPatchCount() > 0) {
                     if (nativeRetBuffer.getPatchCount() == 1 && TypeTag.getTag(nativeRetBuffer.patches[0]) == TypeTag.KEEPALIVE) {
                         // special case for closure ret: we need to increment the refcount
@@ -291,7 +284,7 @@ final class LibFFIClosure implements TruffleObject {
         }
 
         @Specialization
-        public Object doBufferRet(VirtualFrame frame, ByteBuffer retBuffer) {
+        public Object doBufferRet(VirtualFrame frame, NativeArgumentBuffer.Pointer retBuffer) {
             Object ret = callClosure.execute(frame);
             return encodeRet.execute(ret, retBuffer);
         }
@@ -443,25 +436,34 @@ final class LibFFIClosure implements TruffleObject {
 
         @Override
         public int position() {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalStateException("should not reach here");
+            return 0;
         }
 
         @Override
         public void position(int newPosition) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalStateException("should not reach here");
+            assert newPosition == 0;
         }
 
         @Override
         public void putPointer(long ptr, int size) {
+            assert ret == null;
             ret = new NativeString(ptr);
         }
 
         @Override
         public void putObject(TypeTag tag, Object o, int size) {
-            assert tag == TypeTag.STRING;
-            ret = o;
+            assert ret == null;
+            switch (tag) {
+                case STRING:
+                    ret = o;
+                    break;
+                case KEEPALIVE:
+                    // nothing to do
+                    // putPointer will be called with the real value later
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere(tag.name());
+            }
         }
 
         @Override
@@ -535,18 +537,30 @@ final class LibFFIClosure implements TruffleObject {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalStateException("should not reach here");
         }
+
+        @Override
+        public NativeBuffer get(int size) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
     }
 
     abstract static class UnboxStringNode extends Node {
 
+        @Child SerializeArgumentNode serialize;
+
+        UnboxStringNode(CachedTypeInfo strType) {
+            this.serialize = strType.createSerializeArgumentNode();
+            assert strType instanceof LibFFIType.StringType;
+        }
+
         protected abstract Object execute(Object obj) throws UnsupportedTypeException;
 
-        @Specialization(limit = "3")
-        protected Object nativeString(Object str,
-                        @CachedLibrary("str") SerializeArgumentLibrary serialize) throws UnsupportedTypeException {
+        @Specialization
+        protected Object nativeString(Object str) throws UnsupportedTypeException {
             RetStringBuffer retBuffer = new RetStringBuffer();
             CompilerDirectives.ensureVirtualized(retBuffer);
-            serialize.putString(str, retBuffer, 0);
+            serialize.serialize(str, retBuffer);
             return retBuffer.ret;
         }
     }
@@ -587,7 +601,7 @@ final class LibFFIClosure implements TruffleObject {
         private StringRetClosureRootNode(LibFFILanguage lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
             super(lang);
             callClosure = CallClosureNodeGen.create(signature, receiver);
-            unboxString = UnboxStringNodeGen.create();
+            unboxString = UnboxStringNodeGen.create(signature.getRetType());
         }
 
         @Override

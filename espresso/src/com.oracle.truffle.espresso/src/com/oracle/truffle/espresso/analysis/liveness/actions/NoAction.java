@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.analysis.liveness.actions;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 
 public final class NoAction extends LocalVariableAction {
@@ -32,7 +33,7 @@ public final class NoAction extends LocalVariableAction {
     }
 
     @Override
-    public void execute(long[] primitives, Object[] refs) {
+    public void execute(VirtualFrame frame) {
         /* nop */
     }
 

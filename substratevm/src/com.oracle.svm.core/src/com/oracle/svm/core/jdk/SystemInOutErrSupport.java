@@ -37,9 +37,6 @@ import java.util.Objects;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-
 /**
  * This class provides replacement values for the {@link System#in}, {@link System#out}, and
  * {@link System#err} streams at run time. We want a fresh set of objects, so that any buffers
@@ -66,45 +63,32 @@ public final class SystemInOutErrSupport {
         return new PrintStream(new BufferedOutputStream(fos, 128), true);
     }
 
+    public InputStream in() {
+        return in;
+    }
+
     public static void setIn(InputStream in) {
         ImageSingletons.lookup(SystemInOutErrSupport.class).in = Objects.requireNonNull(in);
+    }
+
+    public PrintStream out() {
+        return out;
     }
 
     public static void setOut(PrintStream out) {
         ImageSingletons.lookup(SystemInOutErrSupport.class).out = Objects.requireNonNull(out);
     }
 
+    public PrintStream err() {
+        return err;
+    }
+
     public static void setErr(PrintStream err) {
         ImageSingletons.lookup(SystemInOutErrSupport.class).err = Objects.requireNonNull(err);
     }
-
-    // Checkstyle: stop
-    Object replaceStreams(Object object) {
-        if (object == System.in) {
-            return in;
-        } else if (object == System.out) {
-            return out;
-        } else if (object == System.err) {
-            return err;
-        } else {
-            return object;
-        }
-    }
-    // Checkstyle: resume
 }
 
-/**
- * We use an {@link Feature.DuringSetupAccess#registerObjectReplacer object replacer} because the
- * streams can be cached in other instance and static fields in addition to the fields in
- * {@link System}. We do not know all these places, so we do now know where to place
- * {@link RecomputeFieldValue} annotations.
- */
-@AutomaticFeature
+@SuppressWarnings("unused")
 class SystemInOutErrFeature implements Feature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        SystemInOutErrSupport support = new SystemInOutErrSupport();
-        ImageSingletons.add(SystemInOutErrSupport.class, support);
-        access.registerObjectReplacer(support::replaceStreams);
-    }
+    /* Dummy for backward compatibility. */
 }

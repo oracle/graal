@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,6 +42,8 @@ final class StopRequest implements Iterable<StopRequest.Scope> {
     private final String functionName;
     private final int expectLine;
     private final boolean needsBreakPoint;
+
+    private Scope topScope = null;
 
     StopRequest(ContinueStrategy nextAction, String functionName, int expectLine, boolean needsBreakPoint) {
         this.nextAction = nextAction;
@@ -86,6 +88,14 @@ final class StopRequest implements Iterable<StopRequest.Scope> {
     @Override
     public Iterator<Scope> iterator() {
         return scopes.iterator();
+    }
+
+    public Scope getTopScope() {
+        return topScope;
+    }
+
+    public void setTopScope(Scope topScope) {
+        this.topScope = topScope;
     }
 
     static final class Scope {

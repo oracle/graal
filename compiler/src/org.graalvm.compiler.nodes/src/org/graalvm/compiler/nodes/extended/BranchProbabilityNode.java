@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package org.graalvm.compiler.nodes.extended;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -35,24 +34,32 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodePredicates;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.util.GraphUtil;
+
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Instances of this node class will look for a preceding if node and put the given probability into
@@ -109,14 +116,22 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
         super(TYPE, StampFactory.forKind(JavaKind.Boolean));
         this.probability = probability;
         this.condition = condition;
+
+        GraalError.guarantee(!(condition instanceof ShortCircuitOrNode),
+                        "Branch probabilities must be injected on simple conditions, not short-circuiting && or ||: %s", condition);
+    }
+
+    public BranchProbabilityNode(ValueNode condition) {
+        this(ConstantNode.forDouble(0.5D), condition);
     }
 
     public ValueNode getProbability() {
         return probability;
     }
 
-    public ValueNode getCondition() {
-        return condition;
+    public void setProbability(ValueNode probability) {
+        updateUsages(this.probability, probability);
+        this.probability = probability;
     }
 
     @Override
@@ -167,20 +182,61 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                     }
                 }
             }
+            if (!usageFound) {
+                usageFound = hasValidPhiUsage();
+            }
             if (usageFound) {
                 ValueNode currentCondition = condition;
                 IntegerStamp currentStamp = (IntegerStamp) currentCondition.stamp(NodeView.DEFAULT);
                 if (currentStamp.lowerBound() < 0 || 1 < currentStamp.upperBound()) {
-                    ValueNode narrow = graph().maybeAddOrUnique(NarrowNode.create(currentCondition, 1, NodeView.DEFAULT));
-                    currentCondition = graph().maybeAddOrUnique(ZeroExtendNode.create(narrow, 32, NodeView.DEFAULT));
+                    ValueNode narrow = graph().addOrUnique(NarrowNode.create(currentCondition, 1, NodeView.DEFAULT));
+                    currentCondition = graph().addOrUnique(ZeroExtendNode.create(narrow, 32, NodeView.DEFAULT));
                 }
                 replaceAndDelete(currentCondition);
                 if (tool != null) {
-                    tool.addToWorkList(currentCondition.usages());
+                    // @formatter:off
+                    // Try to eliminate useless Conditional == Constant eagerly, e.g.:
+                    //
+                    // <condition>
+                    //    |  C(1) C(0)
+                    //    |   |   /
+                    // Conditional
+                    //    |
+                    // BranchProbability
+                    //    |     C(0|1)
+                    //    |       /
+                    // IntegerEquals
+                    //    |
+                    //   If
+                    //
+                    // Should be directly simplified to:
+                    //
+                    // <condition>
+                    //    |
+                    //   If
+                    //
+                    // This allows the If to be simplified immediately after injecting the profile.
+                    // @formatter:on
+                    if (currentCondition instanceof ConditionalNode &&
+                                    ((ConditionalNode) currentCondition).trueValue().isConstant() && ((ConditionalNode) currentCondition).falseValue().isConstant()) {
+                        for (IntegerEqualsNode eq : currentCondition.usages().filter(IntegerEqualsNode.class).snapshot()) {
+                            if (eq.getY().isConstant() || eq.getX().isConstant()) {
+                                ValueNode canonical = eq.canonical(tool);
+                                if (canonical != eq && canonical != null) {
+                                    tool.addToWorkList(eq.usages());
+                                    eq.replaceAtUsages(graph().addOrUnique(canonical));
+                                    GraphUtil.killWithUnusedFloatingInputs(eq);
+                                }
+                            }
+                        }
+                    }
+                    if (currentCondition.hasUsages()) {
+                        tool.addToWorkList(currentCondition.usages());
+                    }
                 }
             } else {
                 if (!isSubstitutionGraph()) {
-                    throw new GraalError("Wrong usage of branch probability injection!");
+                    throw new GraalError("Wrong usage of branch probability injection " + this);
                 }
             }
         }
@@ -188,6 +244,53 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
 
     private boolean isSubstitutionGraph() {
         return hasExactlyOneUsage() && usages().first() instanceof ReturnNode;
+    }
+
+    /**
+     * Normally a branch probability should be consumed directly as a condition, but in some cases
+     * it can be used as a value itself. For example:
+     *
+     * <pre>
+     * boolean helper() {
+     *     if (probability(a, ...) || probability(b, ...) || probability(c, condition)) {
+     *         return true;
+     *     } else {
+     *         return false;
+     *     }
+     * }
+     *
+     * ...
+     * if (probability(d, helper()) {
+     *     ...
+     * }
+     * </pre>
+     *
+     * After inlining the helper, {@code probability(c, condition)} can be represented as a branch
+     * probability node that feeds into a phi which is then used in an {@code if} condition. This is
+     * benign if that {@code if} has an injected branch probability itself.
+     */
+    private boolean hasValidPhiUsage() {
+        for (Node usage : this.usages()) {
+            if (usage instanceof ValuePhiNode && !((ValuePhiNode) usage).isLoopPhi()) {
+                Node phi = usage;
+                // We want exactly one non-state usage, and it must be a branch probability node.
+                Node uniquePhiUsage = null;
+                for (Node phiUsage : phi.usages()) {
+                    if (phiUsage instanceof FrameState) {
+                        continue;
+                    } else if (uniquePhiUsage == null) {
+                        uniquePhiUsage = phiUsage;
+                    } else if (phiUsage != uniquePhiUsage) {
+                        uniquePhiUsage = null;
+                        break;
+                    }
+                }
+                if (uniquePhiUsage instanceof BranchProbabilityNode) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -203,6 +306,18 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
      */
     @NodeIntrinsic
     public static native boolean probability(double probability, boolean condition);
+
+    /**
+     * This intrinsic can be used to inject a truly unknown probability (0.5 for both true and false
+     * successor) for an {@link IfNode}. While the probability will be 0.5 for both successors this
+     * method ensures the {@link ProfileSource} is {@link ProfileSource#isTrusted(ProfileSource)},
+     * i.e., the compiler can trust it.
+     *
+     * This intrinsic should be used with great caution only for cases, e.g. inside snippets, for
+     * which absolutely now probability guess can be made.
+     */
+    @NodeIntrinsic
+    public static native boolean unknownProbability(boolean condition);
 
     @Override
     public void lower(LoweringTool tool) {

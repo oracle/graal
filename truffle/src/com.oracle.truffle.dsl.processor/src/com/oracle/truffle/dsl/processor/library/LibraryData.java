@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,8 +56,6 @@ public final class LibraryData extends Template {
 
     private final List<LibraryMessage> methods = new ArrayList<>();
     private final List<LibraryData> superTypes = new ArrayList<>();
-    private List<TypeMirror> cachedSignature;
-    private List<String> cachedSignatureNames;
 
     private final List<LibraryDefaultExportData> defaultExports = new ArrayList<>();
     private TypeMirror signatureReceiverType;
@@ -68,9 +66,18 @@ public final class LibraryData extends Template {
     private boolean defaultExportLookupEnabled;
     private boolean dynamicDispatchEnabled = true;
     private boolean pushEncapsulatingNode = true;
+    private boolean generateAOT;
 
     public LibraryData(TypeElement type, AnnotationMirror annotationMirror) {
         super(ProcessorContext.getInstance(), type, annotationMirror);
+    }
+
+    public void setGenerateAOT(boolean generateAOT) {
+        this.generateAOT = generateAOT;
+    }
+
+    public boolean isGenerateAOT() {
+        return generateAOT;
     }
 
     public void setPushEncapsulatingNode(boolean pushEncapsulatingNode) {
@@ -125,22 +132,6 @@ public final class LibraryData extends Template {
     @Override
     protected List<MessageContainer> findChildContainers() {
         return (List<MessageContainer>) (List<?>) methods;
-    }
-
-    void setCachedSignatureNames(List<String> cachedSignatureNames) {
-        this.cachedSignatureNames = cachedSignatureNames;
-    }
-
-    public List<String> getCachedSignatureNames() {
-        return cachedSignatureNames;
-    }
-
-    void setCachedSignature(List<TypeMirror> cachedSignature) {
-        this.cachedSignature = cachedSignature;
-    }
-
-    public List<TypeMirror> getCachedSignature() {
-        return cachedSignature;
     }
 
     public List<LibraryDefaultExportData> getDefaultExports() {

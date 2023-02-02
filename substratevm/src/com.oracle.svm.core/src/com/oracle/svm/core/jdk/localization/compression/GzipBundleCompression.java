@@ -44,11 +44,11 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.debug.GraalError;
-
-import com.oracle.svm.core.jdk.localization.bundles.CompressedBundle;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.jdk.localization.bundles.CompressedBundle;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Class responsible for serialization and compression of resource bundles. Only bundles whose
@@ -90,7 +90,7 @@ public class GzipBundleCompression {
             out.finish();
             return new CompressedBundle(byteStream.toByteArray(), GzipBundleCompression::decompressBundle);
         } catch (IOException ex) {
-            throw GraalError.shouldNotReachHere(ex, "Compression of a bundle " + bundle.getClass() + " failed. This is an internal error. Please open an issue and submit a reproducer.");
+            throw VMError.shouldNotReachHere("Compression of a bundle " + bundle.getClass() + " failed. This is an internal error. Please open an issue and submit a reproducer.", ex);
         }
     }
 
@@ -100,7 +100,7 @@ public class GzipBundleCompression {
             String decompressed = readText(input);
             return deserializeContent(indices, decompressed);
         } catch (IOException e) {
-            throw GraalError.shouldNotReachHere(e, "Decompressing a resource bundle failed.");
+            throw VMError.shouldNotReachHere("Decompressing a resource bundle failed.", e);
         }
     }
 

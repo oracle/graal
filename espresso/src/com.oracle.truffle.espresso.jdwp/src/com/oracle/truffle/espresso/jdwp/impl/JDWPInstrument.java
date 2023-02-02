@@ -28,13 +28,18 @@ import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Semaphore;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
-@TruffleInstrument.Registration(id = JDWPInstrument.ID, name = "Java debug wire protocol", services = DebuggerController.class)
+@Registration(id = JDWPInstrument.ID, name = "Java debug wire protocol", services = DebuggerController.class)
 public final class JDWPInstrument extends TruffleInstrument implements Runnable {
 
     public static final String ID = "jdwp";
@@ -45,6 +50,8 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     private DebuggerConnection connection;
     private Collection<Thread> activeThreads = new ArrayList<>();
     private PrintStream err;
+    private volatile HandshakeController hsController = null;
+    private final Semaphore resetting = new Semaphore(1);
 
     @Override
     protected void onCreate(TruffleInstrument.Env instrumentEnv) {
@@ -57,14 +64,21 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     public void reset(boolean prepareForReconnect) {
-        // close the connection to the debugger
-        if (connection != null) {
-            connection.close();
+        if (!resetting.tryAcquire()) {
+            return;
         }
-
         // stop all running jdwp threads in an orderly fashion
         for (Thread activeThread : activeThreads) {
             activeThread.interrupt();
+        }
+        // close the server socket used to listen for transport dt_socket
+        HandshakeController hsc = hsController;
+        if (hsc != null) {
+            hsc.close();
+        }
+        // close the connection to the debugger
+        if (connection != null) {
+            connection.close();
         }
         // wait for threads to fully stop
         boolean stillRunning = true;
@@ -95,7 +109,12 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         if (prepareForReconnect) {
             // replace the controller instance
             controller.reInitialize();
+            resetting.release();
         }
+    }
+
+    public boolean isResetting() {
+        return resetting.availablePermits() == 0;
     }
 
     public void printStackTrace(Throwable e) {
@@ -128,7 +147,6 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         }
     }
 
-    @SuppressWarnings("deprecation")
     private void handleConnectException(ConnectException ex, boolean swallowExitException) {
         System.err.println("ERROR: transport error 202: connect failed: " + ex.getMessage());
         System.err.println("ERROR: JDWP Transport dt_socket failed to initialize, TRANSPORT_INIT(510)");
@@ -139,11 +157,11 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
             if (swallowExitException) {
                 // swallow exit exception if thread will exit anyway
                 if (t instanceof AbstractTruffleException) {
-                    if (!((AbstractTruffleException) t).isExit()) {
-                        throw t;
-                    }
-                } else if (t instanceof com.oracle.truffle.api.TruffleException) {
-                    if (!((com.oracle.truffle.api.TruffleException) t).isExit()) {
+                    try {
+                        if ((InteropLibrary.getUncached().getExceptionType(t)) != ExceptionType.EXIT) {
+                            throw t;
+                        }
+                    } catch (UnsupportedMessageException e) {
                         throw t;
                     }
                 }
@@ -154,14 +172,20 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     void doConnect(boolean suspend, boolean server) throws IOException {
-        SocketConnection socketConnection = HandshakeController.createSocketConnection(server, controller.getHost(), controller.getListeningPort(), activeThreads);
+        SocketConnection socketConnection;
+
+        hsController = new HandshakeController();
+        socketConnection = hsController.createSocketConnection(server, controller.getHost(), controller.getListeningPort(), activeThreads);
+        hsController.close();
+        hsController = null;
+
         // connection established with handshake. Prepare to process commands from debugger
         connection = new DebuggerConnection(socketConnection, controller);
         controller.getEventListener().setConnection(socketConnection);
         // The VM started event must be sent when we're ready to process commands
         // doProcessCommands method will control when events can be fired without
         // causing races, so pass on a Callable
-        Callable<Void> vmStartedJob = new Callable<Void>() {
+        Callable<Void> vmStartedJob = new Callable<>() {
             @Override
             public Void call() {
                 controller.getEventListener().vmStarted(suspend);
@@ -178,8 +202,10 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         } catch (ConnectException ex) {
             handleConnectException(ex, true);
         } catch (IOException e) {
-            printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
-            printStackTrace(e);
+            if (!isResetting()) {
+                printError("Critical failure in establishing jdwp connection: " + e.getLocalizedMessage());
+                printStackTrace(e);
+            }
         }
     }
 

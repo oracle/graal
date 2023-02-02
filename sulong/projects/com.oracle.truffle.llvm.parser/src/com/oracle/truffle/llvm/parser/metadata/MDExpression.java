@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,10 @@ public final class MDExpression implements MDBaseNode {
 
     public int getElementCount() {
         return operands.length;
+    }
+
+    public boolean isOperandEmpty() {
+        return operands.length == 0;
     }
 
     @Override

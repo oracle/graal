@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import static org.graalvm.compiler.debug.StandardPathUtilitiesProvider.DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_FORMAT;
+import static org.graalvm.compiler.debug.StandardPathUtilitiesProvider.DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP;
 import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
@@ -35,6 +37,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -58,6 +62,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:JVMCIThreads=1",
                         "-Dgraal.CompilationFailureAction=ExitVM",
                         "-Dgraal.CrashAt=TestProgram.*",
                         "-Xcomp",
@@ -74,6 +79,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:JVMCIThreads=1",
                         "-Dgraal.ExitVMOnException=true",
                         "-Dgraal.CrashAt=TestProgram.*",
                         "-Xcomp",
@@ -144,6 +150,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         };
         testHelper(Arrays.asList(probes), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
+                        "-XX:JVMCIThreads=1",
                         "-Dgraal.CompilationFailureAction=Diagnose",
                         "-Dgraal.MaxCompilationProblemsPerAction=" + maxProblems,
                         "-Dgraal.CrashAt=TestProgram.*",
@@ -163,7 +170,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
-                                        "-Dpolyhlot.engine.TreatPerformanceWarningsAsErrors=all",
+                                        "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
                                         "-Dgraal.CrashAt=root test1"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
@@ -199,7 +206,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=Silent",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
-                                        "-Dpolyhlot.engine.TreatPerformanceWarningsAsErrors=all",
+                                        "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
                                         "-Dgraal.CrashAt=root test1:PermanentBailout"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
@@ -224,7 +231,10 @@ public class CompilationWrapperTest extends GraalCompilerTest {
 
         try {
             List<Probe> probes = new ArrayList<>(initialProbes);
-            Probe diagnosticProbe = new Probe("Graal diagnostic output saved in ", 1);
+            String format = DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_FORMAT;
+            assert format.endsWith("'%s'") : format;
+            String prefix = format.substring(0, format.length() - "'%s'".length());
+            Probe diagnosticProbe = new Probe(prefix, 1);
             probes.add(diagnosticProbe);
             probes.add(new Probe("Forced crash after compiling", Integer.MAX_VALUE) {
                 @Override
@@ -246,10 +256,12 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                     Assert.fail(String.format("Did not find expected occurrences of '%s' in output of command: %s%n%s", probe.substring, error, proc));
                 }
             }
+
+            Pattern diagnosticOutputFileRE = Pattern.compile(DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP);
             String line = diagnosticProbe.lastMatchingLine;
-            int substringStart = line.indexOf(diagnosticProbe.substring);
-            int substringLength = diagnosticProbe.substring.length();
-            String diagnosticOutputZip = line.substring(substringStart + substringLength).trim();
+            Matcher m = diagnosticOutputFileRE.matcher(line);
+            Assert.assertTrue(line, m.find());
+            String diagnosticOutputZip = m.group(1);
 
             List<String> dumpPathEntries = Arrays.asList(dumpPath.list());
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -60,8 +61,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <ul>
  * <li>Dynamic parameters bound in cached initializers. At AOT preparation time no dynamic
  * parameters are available, therefore the the caches not be initialized. Values read from the node
- * instance or from a {@link CachedLanguage} of the {@link RootNode#getLanguage(Class) root
- * language} are supported.
+ * instance are supported.
  * <li>If a Truffle library is used that is automatically dispatched or where the expression
  * initializer is bound to a dynamic parameter value.
  * <li>If a cached node is created that does not itself support {@link GenerateAOT}.
@@ -78,6 +78,11 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <p>
  * After a node generates code for AOT preparation {@link AOTSupport#prepareForAOT(RootNode)} may be
  * used to prepare a root node in {@link RootNode#prepareForAOT}.
+ * <p>
+ * This annotation can also be used for classes annotated with Truffle library declarations and
+ * exports. The same rules, as described here, for specializations declared in exported libraries
+ * apply. Multiple AOT exports may be specified for each library, but there must be at least one,
+ * otherwise an {@link IllegalStateException} is thrown at runtime when AOT is prepared.
  *
  * <p>
  * See also the <a href= "https://github.com/oracle/graal/blob/master/truffle/docs/AOT.md">usage
@@ -112,7 +117,20 @@ public @interface GenerateAOT {
          *
          * @since 21.1
          */
-        void prepareForAOT(TruffleLanguage<?> language, RootNode root);
+        @SuppressWarnings("unused")
+        default void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+            throw new UnsupportedOperationException();
+        }
+
+        /**
+         * Called and implemented by framework code. Do not use directly.
+         *
+         * @since 23.0
+         */
+        @SuppressWarnings("unused")
+        default void prepareForAOT(TruffleLanguage<?> language, RootNode root, Node inlinedNode) {
+            throw new UnsupportedOperationException();
+        }
 
     }
 

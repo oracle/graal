@@ -56,7 +56,7 @@ public final class Event {
     }
 
     /** Size of this structure, in bytes. */
-    public static int BYTES = 32;
+    public static final int BYTES = 32;
 
     /** Reads user-provided value that got attached to {@code subscription::userdata}. */
     public static long readUserdata(Node node, WasmMemory memory, int address) {

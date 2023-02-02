@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,13 +52,15 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public class LLVMGlobalRootNode extends RootNode {
 
+    private static final FrameDescriptor EMPTY_FRAME_DESCRIPTOR = FrameDescriptor.newBuilder().build();
+
     private final DirectCallNode startFunction;
     private final int mainFunctionType;
     private final String applicationPath;
     private final LLVMFunction mainFunction;
 
-    public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, LLVMFunction mainFunction, CallTarget startFunction, String applicationPath) {
-        super(language, descriptor);
+    public LLVMGlobalRootNode(LLVMLanguage language, LLVMFunction mainFunction, CallTarget startFunction, String applicationPath) {
+        super(language, EMPTY_FRAME_DESCRIPTOR);
         this.mainFunction = mainFunction;
         this.startFunction = Truffle.getRuntime().createDirectCallNode(startFunction);
         this.mainFunctionType = getMainFunctionType(mainFunction);
@@ -78,11 +80,11 @@ public class LLVMGlobalRootNode extends RootNode {
     @SuppressWarnings("try")
     @TruffleBoundary
     private Object executeWithoutFrame() {
-        LLVMStack stack = getContext().getThreadingStack().getStack();
+        LLVMStack stack = getContext().getThreadingStack().getStack(this);
         try {
             Object appPath = new LLVMArgumentBuffer(applicationPath);
             LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(appPath);
-            Object[] realArgs = new Object[]{stack, mainFunctionType, applicationPathObj, getContext().getSymbol(mainFunction)};
+            Object[] realArgs = new Object[]{stack, mainFunctionType, applicationPathObj, getContext().getSymbolUncached(mainFunction)};
             Object result = startFunction.call(realArgs);
             getContext().awaitThreadTermination();
             return (int) result;
@@ -133,6 +135,6 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     public final LLVMContext getContext() {
-        return lookupContextReference(LLVMLanguage.class).get();
+        return LLVMContext.get(this);
     }
 }

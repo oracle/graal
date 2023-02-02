@@ -29,8 +29,6 @@ import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.runtimeCall
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -50,21 +48,20 @@ public final class DeoptTestSnippets extends SubstrateTemplates implements Snipp
     }
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        new DeoptTestSnippets(options, factories, providers, snippetReflection, lowerings);
+    public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        new DeoptTestSnippets(options, providers, lowerings);
     }
 
-    private DeoptTestSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(options, factories, providers, snippetReflection);
+    private final SnippetInfo deoptTest;
 
+    private DeoptTestSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
+
+        this.deoptTest = snippet(providers, DeoptTestSnippets.class, "deoptTestSnippet");
         lowerings.put(DeoptTestNode.class, new DeoptTestLowering());
     }
 
     protected class DeoptTestLowering implements NodeLoweringProvider<DeoptTestNode> {
-
-        private final SnippetInfo deoptTest = snippet(DeoptTestSnippets.class, "deoptTestSnippet");
 
         @Override
         public void lower(DeoptTestNode node, LoweringTool tool) {
@@ -73,7 +70,7 @@ public final class DeoptTestSnippets extends SubstrateTemplates implements Snipp
             }
 
             Arguments args = new Arguments(deoptTest, node.graph().getGuardsStage(), tool.getLoweringStage());
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

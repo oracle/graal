@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Matcher that matches two characters. Used for things like dot (.) or ignore-case.
  */
-public abstract class TwoCharMatcher extends InvertibleCharMatcher {
+public final class TwoCharMatcher extends InvertibleCharMatcher {
 
     private final int c1;
     private final int c2;
@@ -67,10 +67,10 @@ public abstract class TwoCharMatcher extends InvertibleCharMatcher {
     }
 
     public static TwoCharMatcher create(boolean invert, int c1, int c2) {
-        return TwoCharMatcherNodeGen.create(invert, c1, c2);
+        return new TwoCharMatcher(invert, c1, c2);
     }
 
-    @Specialization
+    @Override
     public boolean match(int m) {
         return result(m == c1 || m == c2);
     }
@@ -81,7 +81,7 @@ public abstract class TwoCharMatcher extends InvertibleCharMatcher {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
         return modifiersToString() + DebugUtil.charToString(c1) + "||" + DebugUtil.charToString(c2);
     }

@@ -31,7 +31,6 @@ import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -39,10 +38,12 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -52,7 +53,6 @@ public class RealLog extends Log {
     private int indent = 0;
 
     protected RealLog() {
-        super();
     }
 
     @Override
@@ -61,16 +61,15 @@ public class RealLog extends Log {
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log string(String value) {
-        if (value != null) {
-            rawString(value);
-        } else {
-            rawString("null");
-        }
+        rawString(value == null ? "null" : value);
         return this;
     }
 
     @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log string(String str, int fill, int align) {
 
         int spaces = fill - str.length();
@@ -88,17 +87,18 @@ public class RealLog extends Log {
         return this;
     }
 
+    private static final char[] NULL_CHARS = "null".toCharArray();
+
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log string(char[] value) {
-        if (value != null) {
-            rawString(value);
-        } else {
-            rawString("null");
-        }
+        rawString(value == null ? NULL_CHARS : value);
         return this;
     }
 
     @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log string(byte[] value, int offset, int length) {
         if (value == null) {
             rawString("null");
@@ -112,17 +112,26 @@ public class RealLog extends Log {
         return this;
     }
 
+    @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log string(byte[] value) {
+        string(value, 0, value.length);
+        return this;
+    }
+
     /**
      * Write a raw java array by copying it first to a stack allocated temporary buffer. Caller must
      * ensure that the offset and length are within bounds.
      */
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     private void rawBytes(Object value, int offset, int length) {
         /*
          * Stack allocation needs an allocation size that is a compile time constant, so we split
          * the byte array up in multiple chunks and write them separately.
          */
         final int chunkSize = 256;
-        final CCharPointer bytes = StackValue.get(chunkSize);
+        final CCharPointer bytes = UnsafeStackValue.get(chunkSize);
 
         int chunkOffset = offset;
         int inputLength = length;
@@ -148,12 +157,14 @@ public class RealLog extends Log {
         }
     }
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "String.charAt can allocate exception, but we know that our access is in bounds")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "String.charAt can allocate exception, but we know that our access is in bounds")
     private static char charAt(String s, int index) {
         return s.charAt(index);
     }
 
     @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log string(CCharPointer value) {
         if (value.notEqual(WordFactory.nullPointer())) {
             rawBytes(value, SubstrateUtil.strlen(value));
@@ -164,8 +175,10 @@ public class RealLog extends Log {
     }
 
     @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log character(char value) {
-        CCharPointer bytes = StackValue.get(CCharPointer.class);
+        CCharPointer bytes = UnsafeStackValue.get(CCharPointer.class);
         bytes.write((byte) value);
         rawBytes(bytes, WordFactory.unsigned(1));
         return this;
@@ -174,6 +187,8 @@ public class RealLog extends Log {
     private static final byte[] NEWLINE = System.lineSeparator().getBytes(StandardCharsets.US_ASCII);
 
     @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log newline() {
         string(NEWLINE);
         if (autoflush) {
@@ -194,10 +209,14 @@ public class RealLog extends Log {
      */
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log number(long value, int radix, boolean signed) {
-        return number(value, radix, signed, 0, NO_ALIGN);
+        number(value, radix, signed, 0, NO_ALIGN);
+        return this;
     }
 
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     private Log number(long value, int radix, boolean signed, int fill, int align) {
         if (radix < 2 || radix > 36) {
             /* Ignore bogus parameter value. */
@@ -206,7 +225,7 @@ public class RealLog extends Log {
 
         /* Enough space for 64 digits in binary format, and the '-' for a negative value. */
         final int chunkSize = Long.SIZE + 1;
-        CCharPointer bytes = StackValue.get(chunkSize, CCharPointer.class);
+        CCharPointer bytes = UnsafeStackValue.get(chunkSize, CCharPointer.class);
         int charPos = chunkSize;
 
         boolean negative = signed && value < 0;
@@ -252,44 +271,60 @@ public class RealLog extends Log {
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log signed(WordBase value) {
-        return number(value.rawValue(), 10, true);
+        number(value.rawValue(), 10, true);
+        return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log signed(int value) {
-        return number(value, 10, true);
+        number(value, 10, true);
+        return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log signed(long value) {
-        return number(value, 10, true);
+        number(value, 10, true);
+        return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log unsigned(WordBase value) {
-        return number(value.rawValue(), 10, false);
+        number(value.rawValue(), 10, false);
+        return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log unsigned(WordBase value, int fill, int align) {
-        return number(value.rawValue(), 10, false, fill, align);
+        number(value.rawValue(), 10, false, fill, align);
+        return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log unsigned(int value) {
         // unsigned expansion from int to long
-        return number(value & 0xffffffffL, 10, false);
+        number(value & 0xffffffffL, 10, false);
+        return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log unsigned(long value) {
-        return number(value, 10, false);
+        number(value, 10, false);
+        return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log unsigned(long value, int fill, int align) {
-        return number(value, 10, false, fill, align);
+        number(value, 10, false, fill, align);
+        return this;
     }
 
     /**
@@ -310,6 +345,8 @@ public class RealLog extends Log {
      */
 
     @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log rational(long numerator, long denominator, long decimals) {
         if (denominator == 0) {
             throw VMError.shouldNotReachHere("Division by zero");
@@ -337,36 +374,55 @@ public class RealLog extends Log {
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log hex(WordBase value) {
-        return string("0x").number(value.rawValue(), 16, false);
+        string("0x").number(value.rawValue(), 16, false);
+        return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log hex(int value) {
-        return string("0x").number(value & 0xffffffffL, 16, false);
+        string("0x").number(value & 0xffffffffL, 16, false);
+        return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log hex(long value) {
-        return string("0x").number(value, 16, false);
+        string("0x").number(value, 16, false);
+        return this;
     }
 
     private static final byte[] trueString = Boolean.TRUE.toString().getBytes();
     private static final byte[] falseString = Boolean.FALSE.toString().getBytes();
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log bool(boolean value) {
-        return string(value ? trueString : falseString);
+        string(value ? trueString : falseString);
+        return this;
     }
 
     @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log object(Object value) {
-        return (value == null ? string("null") : string(value.getClass().getName()).string("@").hex(Word.objectToUntrackedPointer(value)));
+        if (value == null) {
+            string("null");
+        } else {
+            string(value.getClass().getName());
+            string("@");
+            zhex(Word.objectToUntrackedPointer(value));
+        }
+        return this;
     }
 
     private static final char spaceChar = ' ';
 
     @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log spaces(int value) {
         for (int i = 0; i < value; i += 1) {
             character(spaceChar);
@@ -375,18 +431,22 @@ public class RealLog extends Log {
     }
 
     @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log flush() {
         ImageSingletons.lookup(LogHandler.class).flush();
         return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log autoflush(boolean onOrOff) {
         autoflush = onOrOff;
         return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log redent(boolean addOrRemove) {
         int delta = addOrRemove ? 2 : -2;
         indent = Math.max(0, indent + delta);
@@ -394,30 +454,62 @@ public class RealLog extends Log {
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public final Log indent(boolean addOrRemove) {
+        redent(addOrRemove).newline();
+        return this;
+    }
+
+    @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log resetIndentation() {
         indent = 0;
         return this;
     }
 
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     private static byte digit(long d) {
         return (byte) (d + (d < 10 ? '0' : 'a' - 10));
     }
 
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
         ImageSingletons.lookup(LogHandler.class).log(bytes, length);
         return this;
     }
 
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     private void rawString(String value) {
         rawBytes(value, 0, value.length());
     }
 
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    private void rawString(String value, int maxLength) {
+        int length = Math.min(value.length(), maxLength);
+        rawBytes(value, 0, length);
+        if (value.length() > length) {
+            rawString("...");
+        }
+    }
+
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     private void rawString(char[] value) {
         rawBytes(value, 0, value.length);
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log zhex(WordBase value) {
+        zhex(value.rawValue());
+        return this;
+    }
+
+    @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log zhex(long value) {
+        string("0x");
         int zeros = Long.numberOfLeadingZeros(value);
         int hexZeros = zeros / 4;
         for (int i = 0; i < hexZeros; i += 1) {
@@ -429,7 +521,10 @@ public class RealLog extends Log {
         return this;
     }
 
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     private Log zhex(int value, int wordSizeInBytes) {
+        string("0x");
         int zeros = Integer.numberOfLeadingZeros(value) - 32 + (wordSizeInBytes * 8);
         int hexZeros = zeros / 4;
         for (int i = 0; i < hexZeros; i += 1) {
@@ -442,29 +537,37 @@ public class RealLog extends Log {
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log zhex(int value) {
-        return zhex(value, 4);
+        zhex(value, 4);
+        return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log zhex(short value) {
         int intValue = value;
-        return zhex(intValue & 0xffff, 2);
+        zhex(intValue & 0xffff, 2);
+        return this;
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log zhex(byte value) {
         int intValue = value;
-        return zhex(intValue & 0xff, 1);
+        zhex(intValue & 0xff, 1);
+        return this;
     }
 
     @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log hexdump(PointerBase from, int wordSize, int numWords) {
         Pointer base = WordFactory.pointer(from.rawValue());
         int sanitizedWordsize = wordSize > 0 ? Integer.highestOneBit(Math.min(wordSize, 8)) : 2;
         for (int offset = 0; offset < sanitizedWordsize * numWords; offset += sanitizedWordsize) {
             if (offset % 16 == 0) {
-                zhex(base.add(offset).rawValue());
+                zhex(base.add(offset));
                 string(":");
             }
             string(" ");
@@ -482,7 +585,7 @@ public class RealLog extends Log {
                     zhex(base.readLong(offset));
                     break;
             }
-            if ((offset + sanitizedWordsize) % 16 == 0) {
+            if ((offset + sanitizedWordsize) % 16 == 0 && (offset + sanitizedWordsize) < sanitizedWordsize * numWords) {
                 newline();
             }
         }
@@ -490,9 +593,19 @@ public class RealLog extends Log {
     }
 
     @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log exception(Throwable t) {
+        exception(t, Integer.MAX_VALUE);
+        return this;
+    }
+
+    @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log exception(Throwable t, int maxFrames) {
         if (t == null) {
-            return object(t);
+            object(t);
+            return this;
         }
 
         /*
@@ -519,6 +632,7 @@ public class RealLog extends Log {
                 newline().string("    ... ").unsigned(remaining).string(" more");
             }
         }
-        return newline();
+        newline();
+        return this;
     }
 }

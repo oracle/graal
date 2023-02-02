@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -162,6 +162,21 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
             throw new GraalError("INVOKEDYNAMIC not supported by" + ClassfileBytecodeProvider.class.getSimpleName());
         }
         return get(ExecutableRef.class, index).resolve(this, opcode);
+    }
+
+    @Override
+    public JavaMethod lookupMethod(int index, int opcode, ResolvedJavaMethod caller) {
+        if (opcode == Bytecodes.INVOKEDYNAMIC) {
+            throw new GraalError("INVOKEDYNAMIC not supported by" + ClassfileBytecodeProvider.class.getSimpleName());
+        }
+        ResolvedJavaMethod result = get(ExecutableRef.class, index).resolve(this, opcode);
+        if (result != null && result.getName().equals("getEventWriter") && result.getDeclaringClass().getName().equals("Ljdk/jfr/internal/event/EventWriterFactory;")) {
+            // Only JFR transformed methods can call
+            // jdk.jfr.internal.event.EventWriterFactory.getEventWriter(long)
+            // and this ClassfileBytecode will never be used to load such a class.
+            throw new IllegalAccessError("illegal access linking method 'jdk.jfr.internal.event.EventWriterFactory.getEventWriter(long)'");
+        }
+        return result;
     }
 
     @Override

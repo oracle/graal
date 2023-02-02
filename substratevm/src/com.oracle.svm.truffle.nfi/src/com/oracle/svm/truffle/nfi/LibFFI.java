@@ -55,6 +55,12 @@ public class LibFFI {
 
         @CField("isolate")
         void setIsolate(Isolate isolate);
+
+        @CField
+        int envArgIdx();
+
+        @CField("envArgIdx")
+        void setEnvArgIdx(int envArgIdx);
     }
 
     interface NativeClosureHandle extends ComparableWord {

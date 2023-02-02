@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,10 @@ import java.util.ArrayList;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.alloc.DefaultCodeEmissionOrder;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
+import org.graalvm.compiler.core.common.cfg.CodeEmissionOrder;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
@@ -114,6 +117,13 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      *            registers whose names appear in this array
      */
     public abstract RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo);
+
+    /**
+     * Creates a new instance of a code emission ordering computation.
+     */
+    public <T extends BasicBlock<T>> CodeEmissionOrder<T> newBlockOrder(int originalBlockCount, T startBlock) {
+        return new DefaultCodeEmissionOrder<>(originalBlockCount, startBlock);
+    }
 
     /**
      * Turns a Graal {@link CompilationResult} into a {@link CompiledCode} object that can be passed

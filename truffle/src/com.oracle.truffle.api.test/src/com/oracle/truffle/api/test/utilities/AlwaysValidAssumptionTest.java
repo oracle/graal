@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,29 +42,33 @@ package com.oracle.truffle.api.test.utilities;
 
 import static org.junit.Assert.assertTrue;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class AlwaysValidAssumptionTest {
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void testCheck() throws InvalidAssumptionException {
-        final AlwaysValidAssumption assumption = AlwaysValidAssumption.INSTANCE;
-        assumption.check();
+        Assumption.ALWAYS_VALID.check();
     }
 
     @Test
     public void testIsValid() {
-        final AlwaysValidAssumption assumption = AlwaysValidAssumption.INSTANCE;
-        assertTrue(assumption.isValid());
+        assertTrue(Assumption.ALWAYS_VALID.isValid());
     }
 
     @Test(expected = UnsupportedOperationException.class)
     public void testCannotInvalidate() {
-        final AlwaysValidAssumption assumption = AlwaysValidAssumption.INSTANCE;
-        assumption.invalidate();
+        Assumption.ALWAYS_VALID.invalidate();
     }
 
 }

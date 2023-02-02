@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ import org.graalvm.word.PointerBase;
  * with the appropriate memory or address arithmetic operations. Here is an example to define a
  * complex number structure:
  *
- * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.ComplexValue}
+ * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="ComplexValue"}
  *
  * The annotated interface, or an outer class that contains the interface, must be annotated with
  * {@link CContext}. Allocate an instances of the {@code struct} either by
@@ -67,13 +67,13 @@ import org.graalvm.word.PointerBase;
  * To access an array of structs one can define a special {@code addressOf} method:
  * <p>
  *
- * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.IntOrDouble}
+ * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="IntOrDouble"}
  *
  * Implementation of such method then allows one to do <em>array arithmetics</em> - e.g. obtain
  * pointer to the first element of the array and then access the others:
  * <p>
  *
- * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.acceptIntIntDouble}
+ * {@snippet file="org/graalvm/nativeimage/StackValue.java" region="acceptIntIntDouble"}
  *
  * @since 19.0
  * @see org.graalvm.nativeimage.StackValue

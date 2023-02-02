@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.util.List;
 
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -87,17 +87,7 @@ public class CEntryPointJavaCallStubMethod extends CCallStubMethod {
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return getDeclaredAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return new Annotation[0];
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+    public AnnotatedElement getAnnotationRoot() {
         return null;
     }
 }

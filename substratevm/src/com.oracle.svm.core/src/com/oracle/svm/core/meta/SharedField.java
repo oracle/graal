@@ -35,7 +35,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public interface SharedField extends ResolvedJavaField {
 
     int LOC_UNINITIALIZED = -1;
-    int LOC_UNUSED = -2;
 
     /**
      * The offset or index of the field. The value depends on the kind of field:
@@ -52,6 +51,8 @@ public interface SharedField extends ResolvedJavaField {
     int getLocation();
 
     boolean isAccessed();
+
+    boolean isReachable();
 
     boolean isWritten();
 

@@ -23,8 +23,9 @@
 package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.util.Objects;
-import java.util.logging.Level;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -38,6 +39,8 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
 public interface FieldRefConstant extends MemberRefConstant {
 
@@ -45,6 +48,10 @@ public interface FieldRefConstant extends MemberRefConstant {
 
     static FieldRefConstant create(int classIndex, int nameAndTypeIndex) {
         return new Indexes(classIndex, nameAndTypeIndex);
+    }
+
+    static Resolvable.ResolvedConstant fromPreResolved(Field field) {
+        return new Resolved(field);
     }
 
     @Override
@@ -123,17 +130,26 @@ public interface FieldRefConstant extends MemberRefConstant {
 
             Field field = lookupField(holderKlass, name, type);
             if (field == null) {
-                Meta meta = pool.getContext().getMeta();
-                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, meta.toGuestString(name));
+                ClassRedefinition classRedefinition = pool.getContext().getClassRedefinition();
+                if (classRedefinition != null) {
+                    // could be due to ongoing redefinition
+                    classRedefinition.check();
+                    field = lookupField(holderKlass, name, type);
+                }
+                if (field == null) {
+                    Meta meta = pool.getContext().getMeta();
+                    EspressoException failure = EspressoException.wrap(Meta.initExceptionWithMessage(meta.java_lang_NoSuchFieldError, name.toString()), meta);
+                    Assumption missingFieldAssumption;
+                    if (classRedefinition != null) {
+                        missingFieldAssumption = classRedefinition.getMissingFieldAssumption();
+                    } else {
+                        missingFieldAssumption = Assumption.ALWAYS_VALID;
+                    }
+                    return new Missing(failure, missingFieldAssumption);
+                }
             }
 
-            if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, field)) {
-                Meta meta = pool.getContext().getMeta();
-                meta.getContext().getLogger().log(Level.WARNING,
-                                "Field access check of: " + field.getName() + " in " + holderKlass.getType() + " from " + accessingKlass.getType() +
-                                                " throws IllegalAccessError");
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(name));
-            }
+            MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, field, pool.getContext().getMeta());
 
             field.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), field.getDeclaringKlass().getDefiningClassLoader());
 
@@ -150,8 +166,9 @@ public interface FieldRefConstant extends MemberRefConstant {
     final class Resolved implements FieldRefConstant, Resolvable.ResolvedConstant {
         private final Field resolved;
 
-        Resolved(Field resolved) {
-            this.resolved = Objects.requireNonNull(resolved);
+        Resolved(Field resolvedField) {
+            Objects.requireNonNull(resolvedField);
+            this.resolved = resolvedField;
         }
 
         @Override
@@ -176,7 +193,52 @@ public interface FieldRefConstant extends MemberRefConstant {
 
         @Override
         public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
-            return resolved.getType();
+            return getType(pool);
+        }
+    }
+
+    final class Missing implements FieldRefConstant, Resolvable.ResolvedConstant {
+        private final EspressoException failure;
+        private final Assumption assumption;
+
+        public Missing(EspressoException failure, Assumption missingFieldAssumption) {
+            this.failure = failure;
+            this.assumption = missingFieldAssumption;
+        }
+
+        @Override
+        public Symbol<Type> getType(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere();
+        }
+
+        @Override
+        public Field value() {
+            if (assumption.isValid()) {
+                throw failure;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new NeedsFreshResolutionException();
+            }
+        }
+
+        @Override
+        public Symbol<Name> getHolderKlassName(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere();
+        }
+
+        @Override
+        public Symbol<Name> getName(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere();
+        }
+
+        @Override
+        public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere();
+        }
+
+        @Override
+        public boolean isSuccess() {
+            return false;
         }
     }
 }

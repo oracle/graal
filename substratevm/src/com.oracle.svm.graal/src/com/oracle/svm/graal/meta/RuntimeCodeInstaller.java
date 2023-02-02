@@ -26,6 +26,7 @@ package com.oracle.svm.graal.meta;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.graalvm.compiler.code.CompilationResult;
@@ -37,10 +38,11 @@ import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.AbstractRuntimeCodeInstaller;
 import com.oracle.svm.core.code.CodeInfo;
@@ -77,6 +79,7 @@ import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Handles the installation of runtime-compiled code, allocating memory for code, data, and metadata
@@ -126,11 +129,15 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
                 dataOffset = UnsignedUtils.safeToInt(UnsignedUtils.roundUp(WordFactory.unsigned(dataOffset), CommittedMemoryProvider.get().getGranularity()));
             }
             codeAndDataMemorySize = UnsignedUtils.safeToInt(UnsignedUtils.roundUp(WordFactory.unsigned(dataOffset + dataSize), CommittedMemoryProvider.get().getGranularity()));
+
             code = allocateCodeMemory(codeAndDataMemorySize);
             compiledBytes = compilation.getTargetCode();
 
-            if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
-                makeCodeMemoryWriteableNonExecutable(code.add(dataOffset), codeAndDataMemorySize - dataOffset);
+            if (RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
+                UnsignedWord alignedAfterCodeOffset = UnsignedUtils.roundUp(WordFactory.unsigned(codeSize), CommittedMemoryProvider.get().getGranularity());
+                assert alignedAfterCodeOffset.belowOrEqual(codeAndDataMemorySize);
+
+                makeCodeMemoryExecutableWritable(code, alignedAfterCodeOffset);
             }
 
             codeObservers = ImageSingletons.lookup(InstalledCodeObserverSupport.class).createObservers(debug, method, compilation, code, codeSize);
@@ -192,10 +199,12 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         Map<Integer, NativeImagePatcher> patches = new HashMap<>();
         for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
             if (codeAnnotation instanceof NativeImagePatcher) {
-                patches.put(codeAnnotation.getPosition(), (NativeImagePatcher) codeAnnotation);
+                NativeImagePatcher priorValue = patches.put(codeAnnotation.getPosition(), (NativeImagePatcher) codeAnnotation);
+                VMError.guarantee(priorValue == null, "Registering two patchers for same position.");
             }
         }
-        patchData(patches, objectConstants);
+        int numPatchesHandled = patchData(patches, objectConstants);
+        VMError.guarantee(numPatchesHandled == patches.size(), "Not all patches applied.");
 
         // Store the compiled code
         for (int index = 0; index < codeSize; index++) {
@@ -204,7 +213,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
 
         // remove write access from code
         if (!RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
-            makeCodeMemoryReadOnly(code, codeSize);
+            makeCodeMemoryExecutableReadOnly(code, WordFactory.unsigned(codeSize));
         }
 
         /* Write primitive constants to the buffer, record object constants with offsets */
@@ -221,9 +230,11 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
         encoder.add(objectConstants.referenceMap);
         RuntimeCodeInfoAccess.setCodeObjectConstantsInfo(codeInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
+        ImageSingletons.lookup(CodeInfoEncoder.Counters.class).addToReferenceMapSize(encoder.getEncodingSize());
         patchDirectObjectConstants(objectConstants, codeInfo, adjuster);
 
         createCodeChunkInfos(codeInfo, adjuster);
+
         compilation = null;
     }
 
@@ -241,29 +252,54 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
     }
 
     private void createCodeChunkInfos(CodeInfo runtimeMethodInfo, ReferenceAdjuster adjuster) {
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new FrameInfoEncoder.NamesFromImage());
-        codeInfoEncoder.addMethod(method, compilation, 0);
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(new RuntimeFrameInfoCustomization(), new CodeInfoEncoder.Encoders());
+        codeInfoEncoder.addMethod(method, compilation, 0, compilation.getTargetCodeSize());
         codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster);
 
-        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, runtimeMethodInfo);
+        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, compilation.getTargetCodeSize(), runtimeMethodInfo);
         assert !adjuster.isFinished() || codeInfoEncoder.verifyFrameInfo(runtimeMethodInfo);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder();
         sourcePositionEncoder.encodeAndInstall(compilation.getDeoptimizationSourcePositions(), runtimeMethodInfo, adjuster);
     }
 
-    private void patchData(Map<Integer, NativeImagePatcher> patcher, @SuppressWarnings("unused") ObjectConstantsHolder objectConstants) {
+    private int patchData(Map<Integer, NativeImagePatcher> patcher, ObjectConstantsHolder objectConstants) {
+        int patchesHandled = 0;
+        HashSet<Integer> patchedOffsets = new HashSet<>();
         for (DataPatch dataPatch : compilation.getDataPatches()) {
             NativeImagePatcher patch = patcher.get(dataPatch.pcOffset);
+            boolean noPriorMatch = patchedOffsets.add(dataPatch.pcOffset);
+            VMError.guarantee(noPriorMatch, "Patching same offset twice.");
+            patchesHandled++;
             if (dataPatch.reference instanceof DataSectionReference) {
                 DataSectionReference ref = (DataSectionReference) dataPatch.reference;
                 int pcDisplacement = dataOffset + ref.getOffset() - dataPatch.pcOffset;
-                patch.patchCode(pcDisplacement, compiledBytes);
+                patch.patchCode(code.rawValue(), pcDisplacement, compiledBytes);
             } else if (dataPatch.reference instanceof ConstantReference) {
                 ConstantReference ref = (ConstantReference) dataPatch.reference;
                 SubstrateObjectConstant refConst = (SubstrateObjectConstant) ref.getConstant();
                 objectConstants.add(patch.getOffset(), patch.getLength(), refConst);
+            } else {
+                throw VMError.shouldNotReachHere("Unhandled data patch.");
             }
+        }
+        return patchesHandled;
+    }
+
+    private static class RuntimeFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromImage {
+        @Override
+        protected boolean storeDeoptTargetMethod() {
+            return true;
+        }
+
+        @Override
+        protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint, boolean isDeoptEntry) {
+            return true;
+        }
+
+        @Override
+        protected boolean isDeoptEntry(ResolvedJavaMethod method, CompilationResult compilation, Infopoint infopoint) {
+            return false;
         }
     }
 }

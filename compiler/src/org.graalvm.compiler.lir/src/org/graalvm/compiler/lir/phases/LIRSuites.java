@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,9 +30,11 @@ import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
+import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase.FinalCodeAnalysisContext;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 
+import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.StackSlot;
 
 public class LIRSuites {
@@ -40,16 +42,18 @@ public class LIRSuites {
     private final LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage;
     private final LIRPhaseSuite<AllocationContext> allocStage;
     private final LIRPhaseSuite<PostAllocationOptimizationContext> postAllocStage;
-    private boolean immutable;
+    private final LIRPhaseSuite<FinalCodeAnalysisContext> finalCodeAnalysisStage;
 
-    public LIRSuites(LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage, LIRPhaseSuite<AllocationContext> allocStage, LIRPhaseSuite<PostAllocationOptimizationContext> postAllocStage) {
+    public LIRSuites(LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage, LIRPhaseSuite<AllocationContext> allocStage, LIRPhaseSuite<PostAllocationOptimizationContext> postAllocStage,
+                    LIRPhaseSuite<FinalCodeAnalysisContext> finalCodeAnalysisStage) {
         this.preAllocOptStage = preAllocOptStage;
         this.allocStage = allocStage;
         this.postAllocStage = postAllocStage;
+        this.finalCodeAnalysisStage = finalCodeAnalysisStage;
     }
 
     public LIRSuites(LIRSuites other) {
-        this(other.getPreAllocationOptimizationStage().copy(), other.getAllocationStage().copy(), other.getPostAllocationOptimizationStage().copy());
+        this(other.getPreAllocationOptimizationStage().copy(), other.getAllocationStage().copy(), other.getPostAllocationOptimizationStage().copy(), other.getFinalCodeAnalysisStage().copy());
     }
 
     /**
@@ -77,7 +81,8 @@ public class LIRSuites {
 
     /**
      * {@link PostAllocationOptimizationPhase}s are executed after register allocation and before
-     * machine code generation.
+     * the {@link #getFinalCodeAnalysisStage() final analysis stage} that precedes machine code
+     * generation.
      * <p>
      * A {@link PostAllocationOptimizationPhase} must not introduce new {@link Variable}s,
      * {@link VirtualStackSlot}s or {@link StackSlot}s. Blocks might be removed from
@@ -87,20 +92,19 @@ public class LIRSuites {
         return postAllocStage;
     }
 
-    public boolean isImmutable() {
-        return immutable;
-    }
-
-    public synchronized void setImmutable() {
-        if (!immutable) {
-            preAllocOptStage.setImmutable();
-            allocStage.setImmutable();
-            postAllocStage.setImmutable();
-            immutable = true;
-        }
+    /**
+     * {@link FinalCodeAnalysisPhase}s are executed after
+     * {@linkplain #getPostAllocationOptimizationStage() post-allocation optimizations} and before
+     * machine code generation.
+     * <p>
+     * A {@link FinalCodeAnalysisPhase} must not modify the code in any way but may verify
+     * properties of the code or compute metadata like {@link ReferenceMap}s.
+     */
+    public LIRPhaseSuite<FinalCodeAnalysisContext> getFinalCodeAnalysisStage() {
+        return finalCodeAnalysisStage;
     }
 
     public LIRSuites copy() {
-        return new LIRSuites(preAllocOptStage.copy(), allocStage.copy(), postAllocStage.copy());
+        return new LIRSuites(preAllocOptStage.copy(), allocStage.copy(), postAllocStage.copy(), finalCodeAnalysisStage.copy());
     }
 }

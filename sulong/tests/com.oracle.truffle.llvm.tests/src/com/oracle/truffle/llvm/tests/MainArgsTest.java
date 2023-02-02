@@ -62,7 +62,7 @@ public final class MainArgsTest extends BaseSulongOnlyHarness {
         configs.add(new RunConfiguration(96, null, new String[]{"hello", "world!"}));
         configs.add(new RunConfiguration(154, null, new String[]{"1", "2", "3"}));
         configs.add(new RunConfiguration(193, null, new String[]{"a", "b", "cd", "efg"}));
-        return configs.stream().map(c -> new Object[]{new File(TEST_DIR + "/main-args.c.dir/O1.bc").toPath(), c, String.join(", ", c.getArgs())}).collect(Collectors.toList());
+        return configs.stream().map(c -> new Object[]{new File(TEST_DIR + "/main-args.c.dir/bitcode-O1.bc").toPath(), c, String.join(", ", c.getArgs())}).collect(Collectors.toList());
     }
 
     @Override

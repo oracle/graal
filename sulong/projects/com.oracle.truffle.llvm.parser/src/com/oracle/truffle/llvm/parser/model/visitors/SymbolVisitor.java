@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.SelectConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.StringConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.UnaryOperationConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
@@ -61,15 +62,22 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperation
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CatchPadInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CatchRetInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CatchSwitchInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CleanupPadInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.CleanupRetInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgNoaliasScopeDeclInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DebugTrapInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.FreezeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.GetElementPointerInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.IndirectBranchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.InsertElementInstruction;
@@ -107,6 +115,10 @@ public interface SymbolVisitor extends ValueList.ValueVisitor<SymbolImpl> {
     }
 
     default void visit(BigIntegerConstant constant) {
+        defaultAction(constant);
+    }
+
+    default void visit(UnaryOperationConstant constant) {
         defaultAction(constant);
     }
 
@@ -191,6 +203,26 @@ public interface SymbolVisitor extends ValueList.ValueVisitor<SymbolImpl> {
     }
 
     default void visit(CallInstruction inst) {
+        defaultAction(inst);
+    }
+
+    default void visit(CleanupPadInstruction inst) {
+        defaultAction(inst);
+    }
+
+    default void visit(CleanupRetInstruction inst) {
+        defaultAction(inst);
+    }
+
+    default void visit(CatchSwitchInstruction inst) {
+        defaultAction(inst);
+    }
+
+    default void visit(CatchPadInstruction inst) {
+        defaultAction(inst);
+    }
+
+    default void visit(CatchRetInstruction inst) {
         defaultAction(inst);
     }
 
@@ -295,6 +327,14 @@ public interface SymbolVisitor extends ValueList.ValueVisitor<SymbolImpl> {
     }
 
     default void visit(FenceInstruction inst) {
+        defaultAction(inst);
+    }
+
+    default void visit(FreezeInstruction inst) {
+        defaultAction(inst);
+    }
+
+    default void visit(DbgNoaliasScopeDeclInstruction inst) {
         defaultAction(inst);
     }
 

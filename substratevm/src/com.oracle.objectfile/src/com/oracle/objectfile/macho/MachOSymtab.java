@@ -474,8 +474,8 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
     }
 
     private Entry addEntry(Entry entry) {
+        entriesByName.compute(entry.getName(), (k, v) -> SymbolTable.tryReplace(v, entry));
         getModifiableEntries().add(entry);
-        entriesByName.put(entry.getName(), entry);
         return entry;
     }
 

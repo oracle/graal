@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,22 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
-import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-
 import java.util.Arrays;
 
-public class MethodBreakpointInfo extends AbstractBreakpointInfo implements MethodBreakpoint {
+import com.oracle.truffle.espresso.jdwp.api.MethodHook;
+import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
+
+public final class MethodBreakpointInfo extends AbstractBreakpointInfo implements MethodHook {
 
     private MethodRef[] methods = new MethodRef[0];
+    private final boolean isMethodEntry;
+    private final boolean isMethodExit;
 
     public MethodBreakpointInfo(RequestFilter filter) {
         super(filter);
-    }
-
-    @Override
-    public boolean isLineBreakpoint() {
-        return true;
+        this.isMethodEntry = filter.getEventKind() == RequestedJDWPEvents.METHOD_ENTRY;
+        this.isMethodExit = filter.getEventKind() == RequestedJDWPEvents.METHOD_EXIT || filter.getEventKind() == RequestedJDWPEvents.METHOD_EXIT_WITH_RETURN_VALUE;
     }
 
     public void addMethod(MethodRef method) {
@@ -47,5 +47,20 @@ public class MethodBreakpointInfo extends AbstractBreakpointInfo implements Meth
 
     public MethodRef[] getMethods() {
         return methods;
+    }
+
+    @Override
+    public Kind getKind() {
+        return Kind.INDEFINITE;
+    }
+
+    @Override
+    public boolean onMethodEnter(@SuppressWarnings("unused") MethodRef method, @SuppressWarnings("unused") MethodVariable[] variables) {
+        return isMethodEntry;
+    }
+
+    @Override
+    public boolean onMethodExit(@SuppressWarnings("unused") MethodRef method, @SuppressWarnings("unused") Object returnValue) {
+        return isMethodExit;
     }
 }

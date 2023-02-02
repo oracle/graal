@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes.methodhandle;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -50,7 +51,7 @@ public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
         this.appendix = appendix;
         Method target = (Method) method.getMeta().HIDDEN_VMTARGET.getHiddenObject(memberName);
         // Call the invoker java code spun for us.
-        if (getContext().SplitMethodHandles) {
+        if (getContext().getEspressoEnv().SplitMethodHandles) {
             this.callNode = DirectCallNode.create(target.forceSplit().getCallTarget());
         } else {
             this.callNode = DirectCallNode.create(target.getCallTarget());
@@ -66,16 +67,16 @@ public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
         return callNode.call(args);
     }
 
-    public static MHInvokeGenericNode create(Klass accessingKlass, Method method, Symbol<Symbol.Name> methodName, Symbol<Symbol.Signature> signature, Meta meta) {
+    public static MHInvokeGenericNode create(EspressoLanguage language, Meta meta, Klass accessingKlass, Method method, Symbol<Symbol.Name> methodName, Symbol<Symbol.Signature> signature) {
         Klass callerKlass = accessingKlass == null ? meta.java_lang_Object : accessingKlass;
-        StaticObject appendixBox = StaticObject.createArray(meta.java_lang_Object_array, new Object[1]);
+        StaticObject appendixBox = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1], meta.getContext());
         // Ask java code to spin an invoker for us.
         StaticObject memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethod.invokeDirect(
                         null,
                         callerKlass.mirror(), (int) REF_invokeVirtual,
                         method.getDeclaringKlass().mirror(), meta.toGuestString(methodName), meta.toGuestString(signature),
                         appendixBox);
-        StaticObject appendix = appendixBox.get(0);
+        StaticObject appendix = appendixBox.get(language, 0);
         return new MHInvokeGenericNode(method, memberName, appendix);
     }
 

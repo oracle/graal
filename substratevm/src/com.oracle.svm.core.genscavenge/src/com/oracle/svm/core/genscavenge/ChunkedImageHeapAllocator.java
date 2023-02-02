@@ -97,7 +97,7 @@ class ChunkedImageHeapAllocator {
 
         public long allocate(ImageHeapObject obj, boolean writable) {
             long size = obj.getSize();
-            VMError.guarantee(size <= getUnallocatedBytes(), "Object of size " + size + " does not fit in the chunk's remaining bytes");
+            VMError.guarantee(size <= getUnallocatedBytes(), "Object of size %s does not fit in the chunk's remaining bytes", size);
             long objStart = getTop();
             topOffset += size;
             objects.add(obj);
@@ -171,8 +171,8 @@ class ChunkedImageHeapAllocator {
 
     ChunkedImageHeapAllocator(ImageHeap imageHeap, long position) {
         this.imageHeap = imageHeap;
-        this.alignedChunkSize = UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkSize());
-        this.alignedChunkAlignment = UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment());
+        this.alignedChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
+        this.alignedChunkAlignment = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkAlignment());
         this.alignedChunkObjectsOffset = UnsignedUtils.safeToInt(AlignedHeapChunk.getObjectsStartOffset());
         this.unalignedChunkObjectsOffset = UnsignedUtils.safeToInt(UnalignedHeapChunk.getObjectStartOffset());
 
@@ -226,7 +226,7 @@ class ChunkedImageHeapAllocator {
         if (!currentAlignedChunk.tryAlignTop(multiple)) {
             startNewAlignedChunk();
             boolean aligned = currentAlignedChunk.tryAlignTop(multiple);
-            VMError.guarantee(aligned, "Cannot align to " + multiple + " bytes within an aligned chunk's object area");
+            VMError.guarantee(aligned, "Cannot align to %s  bytes within an aligned chunk's object area", multiple);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@ typedef struct liststruct {
 } List;
 
 List *createNode(int a) {
-    List *l = (List *) malloc(sizeof(List *));
+    List *l = (List *) malloc(sizeof(List));
     l->a = a;
     l->next = NULL;
     return l;

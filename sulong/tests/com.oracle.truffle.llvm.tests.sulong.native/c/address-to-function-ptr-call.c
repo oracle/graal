@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,6 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdint.h>
+
 void abort();
 
 int add(int a, int b) {
@@ -46,7 +48,7 @@ int rem(int a, int b) {
     return a % b;
 }
 
-long *arr[5] = { (long *) &add, (long *) &sub, (long *) &mul, (long *) &div, (long *) &rem };
+int64_t *arr[5] = { (int64_t *) &add, (int64_t *) &sub, (int64_t *) &mul, (int64_t *) &div, (int64_t *) &rem };
 
 int main() {
     int i;

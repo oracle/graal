@@ -1,3 +1,4 @@
 com.oracle.truffle.espresso.processor.SubstitutionProcessor
 com.oracle.truffle.espresso.processor.NativeEnvProcessor
 com.oracle.truffle.espresso.processor.StructsProcessor
+com.oracle.truffle.espresso.processor.CollectProcessor

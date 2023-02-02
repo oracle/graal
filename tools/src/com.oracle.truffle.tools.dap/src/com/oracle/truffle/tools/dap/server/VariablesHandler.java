@@ -28,6 +28,7 @@ import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.dap.types.SetVariableArguments;
 import com.oracle.truffle.tools.dap.types.Variable;
 import com.oracle.truffle.tools.dap.types.VariablesArguments;
@@ -88,13 +89,14 @@ public final class VariablesHandler {
         return vars;
     }
 
-    public static Variable setVariable(ThreadsHandler.SuspendedThreadInfo info, SetVariableArguments args) {
+    public static Variable setVariable(ThreadsHandler.SuspendedThreadInfo info, SetVariableArguments args) throws DebugException {
         DebugValue value = null;
         int id = args.getVariablesReference();
         String name = args.getName();
         StackFramesHandler.ScopeWrapper scopeWrapper = info.getById(StackFramesHandler.ScopeWrapper.class, id);
         DebugStackFrame frame;
         boolean updateReturnValue = false;
+        LanguageInfo language = null;
         if (scopeWrapper != null) {
             frame = scopeWrapper.getFrame();
             value = scopeWrapper.getScope().getDeclaredValue(name);
@@ -102,6 +104,7 @@ public final class VariablesHandler {
                 if ("Return value".equals(name)) {
                     value = scopeWrapper.getReturnValue();
                     updateReturnValue = true;
+                    language = frame.getLanguage();
                 }
             }
         } else {
@@ -122,22 +125,31 @@ public final class VariablesHandler {
                 }
             }
         }
-        if (value != null && value.isWritable()) {
-            DebugValue newValue = getDebugValue(frame, args.getValue());
-            if (newValue != null && newValue.isReadable()) {
-                value.set(newValue);
-                if (updateReturnValue) {
-                    info.getSuspendedEvent().setReturnValue(value);
-                }
-                return createVariable(info, value, "");
+        if (value != null && (updateReturnValue || value.isWritable())) {
+            DebugValue newValue;
+            DebugException dex = null;
+            try {
+                newValue = getDebugValue(frame, args.getValue());
+            } catch (DebugException ex) {
+                newValue = null;
+                dex = ex;
             }
-            Object newValueObject = getValue(args.getValue());
-            if (newValueObject != null) {
-                value.set(newValueObject);
-                if (updateReturnValue) {
-                    info.getSuspendedEvent().setReturnValue(value);
+            if (newValue == null || !newValue.isReadable()) {
+                Object newValueObject = getValue(args.getValue());
+                if (newValueObject != null) {
+                    newValue = value.getSession().createPrimitiveValue(newValueObject, language);
                 }
-                return createVariable(info, value, "");
+            }
+            if (newValue != null && newValue.isReadable()) {
+                if (updateReturnValue) {
+                    info.getSuspendedEvent().setReturnValue(newValue);
+                } else {
+                    value.set(newValue);
+                    newValue = value;
+                }
+                return createVariable(info, newValue, "");
+            } else {
+                throw dex;
             }
         }
         return null;
@@ -147,7 +159,7 @@ public final class VariablesHandler {
         Collection<DebugValue> properties = val.getProperties();
         int valId = (val.isArray() && !val.getArray().isEmpty()) || (properties != null && !properties.isEmpty()) ? info.getId(val) : 0;
         Variable var = Variable.create(val.getName() != null ? val.getName() : defaultName,
-                        val.isReadable() ? val.isString() ? '"' + val.toDisplayString() + '"' : val.toDisplayString() : "",
+                        val.isReadable() ? val.toDisplayString() : "<not readable>",
                         valId);
         DebugValue metaObject = val.getMetaObject();
         if (metaObject != null) {
@@ -162,10 +174,12 @@ public final class VariablesHandler {
         return var;
     }
 
-    static DebugValue getDebugValue(DebugStackFrame frame, String value) {
+    static DebugValue getDebugValue(DebugStackFrame frame, String value) throws DebugException {
+        DebugException dex;
         try {
             return frame.eval(value);
         } catch (DebugException de) {
+            dex = de;
         }
         DebugValue receiver = frame.getScope().getReceiver();
         if (receiver != null && value.equals(receiver.getName())) {
@@ -179,7 +193,7 @@ public final class VariablesHandler {
             }
             scope = scope.getParent();
         }
-        return null;
+        throw dex;
     }
 
     private static Object getValue(String value) {

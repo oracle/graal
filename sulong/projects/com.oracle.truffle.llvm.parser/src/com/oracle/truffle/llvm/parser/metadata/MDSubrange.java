@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,17 +32,21 @@ package com.oracle.truffle.llvm.parser.metadata;
 import com.oracle.truffle.llvm.parser.listeners.Metadata;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public final class MDSubrange implements MDBaseNode {
 
-    private final long lowerBound;
-
     private MDBaseNode count;
+    private MDBaseNode lowerBound;
+    private MDBaseNode upperBound;
+    private MDBaseNode stride;
 
-    private MDSubrange(long lowerBound) {
-        this.lowerBound = lowerBound;
+    private MDSubrange() {
         this.count = MDVoidNode.INSTANCE;
+        this.lowerBound = MDVoidNode.INSTANCE;
+        this.upperBound = MDVoidNode.INSTANCE;
+        this.stride = MDVoidNode.INSTANCE;
     }
 
     @Override
@@ -50,12 +54,20 @@ public final class MDSubrange implements MDBaseNode {
         visitor.visit(this);
     }
 
-    public long getLowerBound() {
+    public MDBaseNode getCount() {
+        return count;
+    }
+
+    public MDBaseNode getLowerBound() {
         return lowerBound;
     }
 
-    public MDBaseNode getCount() {
-        return count;
+    public MDBaseNode getUpperBound() {
+        return upperBound;
+    }
+
+    public MDBaseNode getStride() {
+        return stride;
     }
 
     @Override
@@ -67,22 +79,29 @@ public final class MDSubrange implements MDBaseNode {
 
     // private static final int ARGINDEX_VERSION = 0;
     private static final int VERSION_SHIFT = 1;
-    private static final long VERSION_MASK = 0b1;
     // private static final int ARGINDEX_COUNT = 1;
     // private static final int ARGINDEX_STARTFROM = 2;
 
     public static MDSubrange createNewFormat(RecordBuffer buffer, MetadataValueList md) {
-        long version = (buffer.read() >> VERSION_SHIFT) & VERSION_MASK;
-        long count = buffer.read();
-        long startFrom = ParseUtil.unrotateSign(buffer.read());
-        MDSubrange subrange = new MDSubrange(startFrom);
-        if (version == 1) {
-            // in LLVM 7+ the "count" argument is a metadata node index
-            subrange.count = md.getNullable(count, subrange);
-
-        } else {
-            // prior to LLVM 7, the "count argument is a primitive value
-            subrange.count = MDValue.create(new IntegerConstant(PrimitiveType.I64, count));
+        int version = (int) (buffer.read() >> VERSION_SHIFT);
+        MDSubrange subrange = new MDSubrange();
+        switch (version) {
+            case 0:
+                subrange.count = MDValue.create(new IntegerConstant(PrimitiveType.I64, buffer.read()));
+                subrange.lowerBound = MDValue.create(new IntegerConstant(PrimitiveType.I64, ParseUtil.unrotateSign(buffer.read())));
+                break;
+            case 1:
+                subrange.count = md.getNullable(buffer.read(), subrange);
+                subrange.lowerBound = MDValue.create(new IntegerConstant(PrimitiveType.I64, ParseUtil.unrotateSign(buffer.read())));
+                break;
+            case 2:
+                subrange.count = md.getNullable(buffer.read(), subrange);
+                subrange.lowerBound = md.getNullable(buffer.read(), subrange);
+                subrange.upperBound = md.getNullable(buffer.read(), subrange);
+                subrange.stride = md.getNullable(buffer.read(), subrange);
+                break;
+            default:
+                throw new LLVMParserException("Invalid record: Unsupported version of DISubrange");
         }
 
         return subrange;
@@ -95,8 +114,9 @@ public final class MDSubrange implements MDBaseNode {
         final long lowerBound = ParseUtil.asLong(args, ARGINDEX_32_LOWERBOUND, md);
         final long upperBound = ParseUtil.asLong(args, ARGINDEX_32_UPPERBOUND, md);
         final long size = upperBound - lowerBound + 1;
-        final MDSubrange subrange = new MDSubrange(lowerBound);
+        final MDSubrange subrange = new MDSubrange();
         subrange.count = MDValue.create(new IntegerConstant(PrimitiveType.I64, size));
+        subrange.lowerBound = MDValue.create(new IntegerConstant(PrimitiveType.I64, lowerBound));
         return subrange;
     }
 }

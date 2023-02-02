@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,19 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -56,20 +62,23 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
 
 /**
  * We test that instrument exceptions do not affect application execution.
  */
 public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest {
 
+    public InstrumentationNoExceptionsTest() {
+        needsLanguageEnv = true;
+        needsInstrumentEnv = true;
+    }
+
     @Before
     @Override
     public void setup() {
-        Context.Builder builder = Context.newBuilder().allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "false").out(out).err(err);
+        Context.Builder builder = Context.newBuilder().allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "false").out(out).err(err).logHandler(err);
         setupEnv(builder.build(), new TestDecentInstrument());
         engine = context.getEngine();
     }
@@ -290,8 +299,43 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
         SourceSectionFilter buggySourceSectionFilter = SourceSectionFilter.newBuilder().rootNameIs((s) -> {
             throw new MyInstrumentException();
         }).build();
+
         testExceptionInInstrument((ins) -> ins.attachLoadSourceSectionListener(buggySourceSectionFilter, (s) -> {
         }, true));
+    }
+
+    /*
+     * Test for bug GR-32764.
+     */
+    @Test
+    public void testExceptionInLoadSourceSectionFilterPredicateNotEntered() throws Exception {
+        Context.Builder builder = Context.newBuilder().allowAllAccess(true).out(out).err(err).logHandler(err);
+        setupEnv(builder.build(), new TestDecentInstrument());
+
+        // Make sure there is at least one loaded root node
+        RootCallTarget target = (RootCallTarget) languageEnv.parsePublic(Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(EXPRESSION)", "LoadedRoot").build());
+        assertNotNull(target.getRootNode());
+
+        SourceSectionFilter buggySourceSectionFilter = SourceSectionFilter.newBuilder().rootNameIs((s) -> {
+            throw new MyInstrumentException();
+        }).build();
+
+        context.leave();
+        try {
+            try {
+                instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(buggySourceSectionFilter, (s) -> {
+                }, true);
+
+                // maybe was logged instead?
+                fail();
+            } catch (MyInstrumentException e) {
+                // expected
+            }
+        } finally {
+            context.enter();
+        }
+        // Make sure the node is not collected prematurely
+        assertNotNull(target.getRootNode());
     }
 
     @Test

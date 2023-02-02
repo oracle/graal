@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.graal.isolated;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
@@ -44,4 +45,11 @@ interface CodeInstallInfo extends PointerBase {
 
     @RawField
     void setAdjusterData(ForeignIsolateReferenceAdjusterData value);
+
+    @RawField
+    ClientHandle<CompilationIdentifier> getCompilationId();
+
+    @RawField
+    void setCompilationId(ClientHandle<CompilationIdentifier> value);
+
 }

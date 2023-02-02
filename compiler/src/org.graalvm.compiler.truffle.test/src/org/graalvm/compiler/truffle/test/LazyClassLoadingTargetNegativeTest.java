@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,12 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Test lazy initialization of Graal in the context of Truffle. When simply executing Truffle code,
@@ -39,10 +41,19 @@ import com.oracle.truffle.api.Truffle;
 public class LazyClassLoadingTargetNegativeTest {
 
     @Test
+    @SuppressWarnings("unused")
     public void testInit() {
-        Context c = Context.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "false").build();
-        Truffle.getRuntime();
-        c.close();
+        RootNode root = new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return null;
+            }
+        };
+        Truffle.getRuntime().createAssumption();
+        Truffle.getRuntime().createIndirectCallNode();
+        // we can no longer test the creation of a context here as a context now always initializes
+        // the runtime
+        Engine.create().close();
     }
 
 }

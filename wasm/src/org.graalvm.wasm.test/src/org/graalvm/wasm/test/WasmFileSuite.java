@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,22 +40,8 @@
  */
 package org.graalvm.wasm.test;
 
-import com.oracle.truffle.api.Truffle;
-import junit.framework.AssertionFailedError;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.wasm.GlobalRegistry;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.test.options.WasmTestOptions;
-import org.graalvm.wasm.utils.cases.WasmCase;
-import org.graalvm.wasm.utils.cases.WasmCaseData;
-import org.junit.Assert;
+import static junit.framework.TestCase.fail;
+import static org.graalvm.wasm.WasmUtil.prepend;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -75,8 +61,26 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static junit.framework.TestCase.fail;
-import static org.graalvm.wasm.WasmUtil.prepend;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.EnvironmentAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.IOAccess;
+import org.graalvm.wasm.GlobalRegistry;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.test.options.WasmTestOptions;
+import org.graalvm.wasm.utils.cases.WasmCase;
+import org.graalvm.wasm.utils.cases.WasmCaseData;
+import org.junit.Assert;
+
+import com.oracle.truffle.api.Truffle;
+
+import junit.framework.AssertionFailedError;
 
 public abstract class WasmFileSuite extends AbstractWasmSuite {
 
@@ -170,7 +174,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 return;
             }
 
-            final WasmContext wasmContext = WasmContext.getCurrent();
+            final WasmContext wasmContext = WasmContext.get(null);
             final Value mainFunction = findMain(wasmContext);
 
             resetStatus(System.out, phaseIcon, phaseLabel);
@@ -273,11 +277,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     private WasmTestStatus runTestCase(WasmCase testCase) {
         Path tempWorkingDirectory = null;
         try {
-            Context.Builder contextBuilder = Context.newBuilder("wasm");
+            Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
             contextBuilder.allowEnvironmentAccess(EnvironmentAccess.NONE);
             contextBuilder.out(TEST_OUT);
             contextBuilder.allowExperimentalOptions(true);
-            contextBuilder.option("engine.EncodedGraphCacheCapacity", "-1");
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
@@ -287,13 +290,22 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 contextBuilder.option("wasm.StoreConstantsPolicy", WasmTestOptions.STORE_CONSTANTS_POLICY);
                 System.out.println("wasm.StoreConstantsPolicy: " + WasmTestOptions.STORE_CONSTANTS_POLICY);
             }
-
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             final String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {
                 // The first argument is the program name. We set it to the empty string in tests.
-                contextBuilder.arguments("wasm", prepend(commandLineArgs.split(" "), ""));
+                contextBuilder.arguments(WasmLanguage.ID, prepend(commandLineArgs.split(" "), ""));
             }
+
+            testCase.options().forEach((key, value) -> {
+                if (key instanceof String && value instanceof String) {
+                    String optionName = (String) key;
+                    String optionValue = (String) value;
+                    if (optionName.startsWith("wasm.")) {
+                        contextBuilder.option(optionName, optionValue);
+                    }
+                }
+            });
 
             final String envString = testCase.options().getProperty("env");
             if (envString != null) {
@@ -305,7 +317,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
             final boolean enableIO = Boolean.parseBoolean(testCase.options().getProperty("enable-io"));
             if (enableIO) {
-                contextBuilder.allowIO(true);
+                contextBuilder.allowIO(IOAccess.ALL);
                 tempWorkingDirectory = Files.createTempDirectory("graalwasm-io-test");
                 contextBuilder.currentWorkingDirectory(tempWorkingDirectory);
                 contextBuilder.option("wasm.WasiMapDirs", "test::" + tempWorkingDirectory);
@@ -499,7 +511,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     private static ContextState saveContext(WasmContext context) {
         Assert.assertTrue("Currently, only 0 or 1 memories can be saved.", context.memories().count() <= 1);
         final WasmMemory currentMemory = context.memories().count() == 1 ? context.memories().memory(0).duplicate() : null;
-        final GlobalRegistry globals = context.globals().duplicate();
+        final GlobalRegistry globals = context.globals().duplicate(context.getContextOptions().supportBulkMemoryAndRefTypes());
         return new ContextState(currentMemory, globals, context.fdManager().size());
     }
 

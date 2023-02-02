@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Arm Limited and affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -83,14 +83,14 @@ public class AArch64UncompressPointerTest extends GraalCompilerTest {
     @Test
     public void testUncompressPointerWithZeroBase() {
         int shift = 3;
-        masm1.shl(64, result, input, shift);
+        masm1.lsl(64, result, input, shift);
         emitUncompressPointer(null, shift);
         compareAssembly();
     }
 
     @Test
     public void testUncompressPointerWithZeroBaseAndShift() {
-        masm1.or(64, result, AArch64.zr, input);
+        masm1.orr(64, result, AArch64.zr, input);
         emitUncompressPointer(null, 0);
         compareAssembly();
     }

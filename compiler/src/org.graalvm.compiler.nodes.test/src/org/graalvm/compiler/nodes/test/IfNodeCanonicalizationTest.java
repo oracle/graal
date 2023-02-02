@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.junit.Assert;
@@ -41,8 +42,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 /**
- * A few tests of expected simplifications by
- * {@link IfNode#simplify(org.graalvm.compiler.graph.spi.SimplifierTool)}.
+ * A few tests of expected simplifications by {@link IfNode#simplify(SimplifierTool)}.
  */
 public class IfNodeCanonicalizationTest extends GraalCompilerTest {
 
@@ -157,9 +157,9 @@ public class IfNodeCanonicalizationTest extends GraalCompilerTest {
 
         CoreProviders context = getProviders();
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
-        new ConvertDeoptimizeToGuardPhase().apply(graph, context);
-        graph.clearAllStateAfter();
-        graph.setGuardsStage(StructuredGraph.GuardsStage.AFTER_FSA);
+        new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, context);
+        graph.clearAllStateAfterForTestingOnly();
+        graph.getGraphState().setAfterFSA();
         canonicalizer.apply(graph, context);
 
         new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, context);

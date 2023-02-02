@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,8 @@ public final class ExportsLibrary extends Template {
     private VariableElement delegationVariable;
     private DSLExpression transitionLimit;
     private final List<TypeElement> declaringTypes = new ArrayList<>();
+    private boolean useForAOT;
+    private int useForAOTPriority;
 
     public ExportsLibrary(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, ExportsData exports, LibraryData library, TypeMirror receiverType,
                     boolean explicitReceiver) {
@@ -84,6 +86,22 @@ public final class ExportsLibrary extends Template {
         this.receiverType = receiverType;
         this.library = library;
         this.explicitReceiver = explicitReceiver;
+    }
+
+    public boolean isUseForAOT() {
+        return useForAOT;
+    }
+
+    public void setUseForAOT(boolean useForAOT) {
+        this.useForAOT = useForAOT;
+    }
+
+    public int getUseForAOTPriority() {
+        return useForAOTPriority;
+    }
+
+    public void setUseForAOTPriority(int useForAOTPriority) {
+        this.useForAOTPriority = useForAOTPriority;
     }
 
     public ExportsData getExports() {
@@ -106,6 +124,10 @@ public final class ExportsLibrary extends Template {
         return isExplicitReceiver()//
                         && getLibrary().isDefaultExportLookupEnabled()//
                         && !isBuiltinDefaultExport();
+    }
+
+    public boolean needsEagerExportProvider() {
+        return isUseForAOT() && getLibrary().isGenerateAOT();
     }
 
     public boolean isFinalReceiver() {
@@ -158,23 +180,25 @@ public final class ExportsLibrary extends Template {
     }
 
     private boolean isReceiverDynamicDispatched() {
+        if (getReceiverDynamicDispatchExport() != null) {
+            return true;
+        }
+        return false;
+    }
+
+    public AnnotationMirror getReceiverDynamicDispatchExport() {
         TypeElement receiverTypeElement = ElementUtils.castTypeElement(receiverType);
         while (receiverTypeElement != null) {
             List<AnnotationMirror> exportLibrary = getRepeatedAnnotation(receiverTypeElement.getAnnotationMirrors(), types.ExportLibrary);
             for (AnnotationMirror export : exportLibrary) {
                 TypeMirror exportedLibrary = getAnnotationValue(TypeMirror.class, export, "value");
                 if (ElementUtils.typeEquals(exportedLibrary, types.DynamicDispatchLibrary)) {
-                    return true;
+                    return export;
                 }
             }
             receiverTypeElement = getSuperType(receiverTypeElement);
         }
-        if (ElementUtils.typeEquals(receiverType, types.DynamicObject)) {
-            // GR-24700: DynamicObject may be dispatched via DynamicObjectImpl
-            // which we cannot use as @ExportLibrary receiverType.
-            return true;
-        }
-        return false;
+        return null;
     }
 
     public boolean needsRewrites() {

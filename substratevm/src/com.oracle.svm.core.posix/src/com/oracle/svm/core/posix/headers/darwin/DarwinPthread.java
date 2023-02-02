@@ -49,4 +49,7 @@ public class DarwinPthread {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native Pointer pthread_get_stackaddr_np(Pthread.pthread_t thread);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int pthread_mach_thread_np(Pthread.pthread_t pthread);
 }

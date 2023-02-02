@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,7 @@ import com.oracle.truffle.regex.tregex.parser.Counter;
  */
 public final class RegexProfile {
 
-    private static final int EVALUATION_TRIP_POINT = 800;
+    private static final int EVALUATION_TRIP_POINT = 512;
 
     private final Counter.ThreadSafeCounter calls = new Counter.ThreadSafeCounter();
     private final Counter.ThreadSafeCounter matches = new Counter.ThreadSafeCounter();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -28,15 +28,16 @@ package org.graalvm.compiler.replacements.aarch64;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
@@ -45,8 +46,8 @@ import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
@@ -54,14 +55,13 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.Snippets;
 
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Division in AArch64 ISA does not generate a trap when dividing by zero, but instead sets the
- * result to 0. These snippets throw an ArithmethicException if the denominator is 0 and otherwise
+ * result to 0. These snippets throw an ArithmeticException if the denominator is 0 and otherwise
  * forward to the LIRGenerator.
  */
 public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implements Snippets {
@@ -76,21 +76,24 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     private final SnippetTemplate.SnippetInfo uirem;
     private final SnippetTemplate.SnippetInfo ulrem;
 
-    public AArch64IntegerArithmeticSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    TargetDescription target) {
-        super(options, factories, providers, snippetReflection, target);
-        idiv = snippet(AArch64IntegerArithmeticSnippets.class, "idivSnippet");
-        ldiv = snippet(AArch64IntegerArithmeticSnippets.class, "ldivSnippet");
-        irem = snippet(AArch64IntegerArithmeticSnippets.class, "iremSnippet");
-        lrem = snippet(AArch64IntegerArithmeticSnippets.class, "lremSnippet");
+    public AArch64IntegerArithmeticSnippets(OptionValues options, Providers providers) {
+        super(options, providers);
+        idiv = snippet(providers, AArch64IntegerArithmeticSnippets.class, "idivSnippet");
+        ldiv = snippet(providers, AArch64IntegerArithmeticSnippets.class, "ldivSnippet");
+        irem = snippet(providers, AArch64IntegerArithmeticSnippets.class, "iremSnippet");
+        lrem = snippet(providers, AArch64IntegerArithmeticSnippets.class, "lremSnippet");
 
-        uidiv = snippet(AArch64IntegerArithmeticSnippets.class, "uidivSnippet");
-        uldiv = snippet(AArch64IntegerArithmeticSnippets.class, "uldivSnippet");
-        uirem = snippet(AArch64IntegerArithmeticSnippets.class, "uiremSnippet");
-        ulrem = snippet(AArch64IntegerArithmeticSnippets.class, "ulremSnippet");
+        uidiv = snippet(providers, AArch64IntegerArithmeticSnippets.class, "uidivSnippet");
+        uldiv = snippet(providers, AArch64IntegerArithmeticSnippets.class, "uldivSnippet");
+        uirem = snippet(providers, AArch64IntegerArithmeticSnippets.class, "uiremSnippet");
+        ulrem = snippet(providers, AArch64IntegerArithmeticSnippets.class, "ulremSnippet");
     }
 
     public void lower(IntegerDivRemNode node, LoweringTool tool) {
+        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+            // wait for more precise stamp information
+            return;
+        }
         JavaKind kind = node.stamp(NodeView.DEFAULT).getStackKind();
         assert kind == JavaKind.Int || kind == JavaKind.Long;
         SnippetTemplate.SnippetInfo snippet;
@@ -114,41 +117,50 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         args.add("y", node.getY());
 
         IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
-        args.addConst("needsZeroCheck", node.getZeroCheck() == null && yStamp.contains(0));
+        boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroGuard() == null && yStamp.contains(0));
+        args.addConst("needsZeroCheck", needsZeroCheck);
 
-        template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+        template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
     }
 
     @Snippet
     public static int idivSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeDiv(x, y);
+        } else {
+            return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeDiv(x, y);
     }
 
     @Snippet
     public static long ldivSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeDiv(x, y);
+        } else {
+            return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeDiv(x, y);
     }
 
     @Snippet
     public static int iremSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeRem(x, y);
+        } else {
+            return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeRem(x, y);
     }
 
     @Snippet
     public static long lremSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeRem(x, y);
+        } else {
+            return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeRem(x, y);
     }
 
     @Snippet
@@ -237,10 +249,25 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         }
 
         @Override
-        public void generate(NodeLIRBuilderTool gen) {
-            // override to ensure we always pass a null frame state
-            // the parent method expects to create one from a non null before state
-            gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitDiv(gen.operand(getX()), gen.operand(getY()), null));
+        protected SignedDivNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck, FrameState forStateBefore) {
+            assert forZeroCheck == null;
+            // note that stateBefore is irrelevant, as this "safe" variant will not deoptimize
+            SafeSignedDivNode div = new SafeSignedDivNode(forX, forY);
+            return div;
+        }
+
+        @Override
+        public boolean canDeoptimize() {
+            /*
+             * All checks have been done. Returning false is the indicator that no FrameState is
+             * necessary anymore for the node.
+             */
+            return false;
+        }
+
+        @Override
+        public boolean canFloat() {
+            return false;
         }
     }
 
@@ -253,10 +280,24 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         }
 
         @Override
-        public void generate(NodeLIRBuilderTool gen) {
-            // override to ensure we always pass a null frame state
-            // the parent method expects to create one from a non null before state
-            gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitRem(gen.operand(getX()), gen.operand(getY()), null));
+        protected SignedRemNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck) {
+            assert forZeroCheck == null;
+            SafeSignedRemNode rem = new SafeSignedRemNode(forX, forY);
+            return rem;
+        }
+
+        @Override
+        public boolean canDeoptimize() {
+            /*
+             * All checks have been done. Returning false is the indicator that no FrameState is
+             * necessary anymore for the node.
+             */
+            return false;
+        }
+
+        @Override
+        public boolean canFloat() {
+            return false;
         }
     }
 
@@ -269,10 +310,12 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         }
 
         @Override
-        public void generate(NodeLIRBuilderTool gen) {
-            // override to ensure we always pass a null frame state
-            // the parent method expects to create one from a non null before state
-            gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitUDiv(gen.operand(getX()), gen.operand(getY()), null));
+        public boolean canDeoptimize() {
+            /*
+             * All checks have been done. Returning false is the indicator that no FrameState is
+             * necessary anymore for the node.
+             */
+            return false;
         }
     }
 
@@ -285,10 +328,12 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         }
 
         @Override
-        public void generate(NodeLIRBuilderTool gen) {
-            // override to ensure we always pass a null frame state
-            // the parent method expects to create one from a non null before state
-            gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitURem(gen.operand(getX()), gen.operand(getY()), null));
+        public boolean canDeoptimize() {
+            /*
+             * All checks have been done. Returning false is the indicator that no FrameState is
+             * necessary anymore for the node.
+             */
+            return false;
         }
     }
 

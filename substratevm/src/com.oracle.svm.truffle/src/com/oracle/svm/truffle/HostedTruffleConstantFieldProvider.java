@@ -59,11 +59,16 @@ public final class HostedTruffleConstantFieldProvider implements ConstantFieldPr
                  * during static analysis. So the runtime graph can be the only place where a read
                  * occurs, therefore we explicitly mark the field as read.
                  */
-                ((AnalysisField) field).registerAsRead(null);
+                ((AnalysisField) field).registerAsRead("it is annotated with " + CompilationFinal.class.getName());
             }
             return null;
         }
 
         return wrappedConstantFieldProvider.readConstantField(field, tool);
+    }
+
+    @Override
+    public boolean maybeFinal(ResolvedJavaField field) {
+        return wrappedConstantFieldProvider.maybeFinal(field);
     }
 }

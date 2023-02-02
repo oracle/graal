@@ -24,11 +24,13 @@
  */
 #include <ffi.h>
 #include <trufflenfi.h>
+#include <stdint.h>
 
 typedef struct {
     ffi_closure ffiClosure;
     void *nativeClosureHandle;
     void *isolate;
+    int32_t envArgIdx;
 } svm_closure_data;
 
 typedef struct {

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.hub;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.Arrays;

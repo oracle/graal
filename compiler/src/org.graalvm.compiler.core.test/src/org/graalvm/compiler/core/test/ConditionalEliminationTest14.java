@@ -36,11 +36,10 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -74,9 +73,9 @@ public class ConditionalEliminationTest14 extends ConditionalEliminationTestBase
         CoreProviders context = getProviders();
 
         /* Convert the LoadIndexNode to ReadNode with floating guards. */
-        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+        new HighTierLoweringPhase(canonicalizer).apply(graph, context);
         /* Convert the ReadNode to FloatingReadNode. */
-        new FloatingReadPhase().apply(graph);
+        new FloatingReadPhase(canonicalizer).apply(graph, context);
         /* Apply the phase that we want to test. */
         new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
 

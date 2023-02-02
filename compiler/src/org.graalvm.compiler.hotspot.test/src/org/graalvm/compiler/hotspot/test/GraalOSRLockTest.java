@@ -87,7 +87,7 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
         ThreadInfo[] tinfos = tmxbean.dumpAllThreads(true, false);
 
         for (ThreadInfo ti : tinfos) {
-            if (!(t != null && t.getId() != ti.getThreadId())) {
+            if (!(t != null && GraalServices.getThreadId(t) != ti.getThreadId())) {
                 for (MonitorInfo mi : ti.getLockedMonitors()) {
                     if (mi.getIdentityHashCode() == oihc) {
                         return true;

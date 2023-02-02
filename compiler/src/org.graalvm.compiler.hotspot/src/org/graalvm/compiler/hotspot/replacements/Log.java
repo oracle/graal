@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,6 +112,10 @@ public final class Log {
 
     public static void printf(Word format, long v1, long v2) {
         printf(LOG_PRINTF, format, v1, v2, 0L);
+    }
+
+    public static void printf(Word format, long v1, long v2, long v3) {
+        printf(LOG_PRINTF, format, v1, v2, v3);
     }
 
     public static void print(float value) {

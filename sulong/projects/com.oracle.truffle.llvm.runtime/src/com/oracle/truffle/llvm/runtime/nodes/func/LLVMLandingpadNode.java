@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -40,8 +39,6 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -62,10 +59,10 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
     @Child private LLVMI32OffsetStoreNode writeI32 = LLVMI32OffsetStoreNode.create();
     @Children private final LandingpadEntryNode[] entries;
 
-    private final FrameSlot exceptionSlot;
+    private final int exceptionSlot;
     private final boolean cleanup;
 
-    public LLVMLandingpadNode(LLVMExpressionNode getStack, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot, boolean cleanup,
+    public LLVMLandingpadNode(LLVMExpressionNode getStack, LLVMExpressionNode allocateLandingPadValue, int exceptionSlot, boolean cleanup,
                     LandingpadEntryNode[] entries) {
         this.getStack = getStack;
         this.allocateLandingPadValue = allocateLandingPadValue;
@@ -91,8 +88,7 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
                 return landingPadValue;
             }
         } catch (FrameSlotTypeException | UnexpectedResultException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
     }
 
@@ -137,8 +133,7 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
         public LLVMBitcodeLibraryFunctions.SulongCanCatchNode getCanCatch() {
             if (canCatch == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-                this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(context));
+                this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(getContext()));
             }
             return canCatch;
         }
@@ -153,7 +148,9 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
                 return 1;
             }
             if (getCanCatch().canCatch(stack, unwindHeader, catchType) != 0) {
-                return (int) toComparableValue.executeWithTarget(catchType);
+                // The type id is equivalent to the catch selector, which must always be positive.
+                // See https://llvm.org/docs/ExceptionHandling.html#try-catch.
+                return Math.abs((int) toComparableValue.executeWithTarget(catchType));
             }
             return 0;
         }
@@ -175,8 +172,7 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
         LLVMBitcodeLibraryFunctions.SulongCanCatchNode getCanCatch() {
             if (canCatch == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-                this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(context));
+                this.canCatch = insert(new LLVMBitcodeLibraryFunctions.SulongCanCatchNode(getContext()));
             }
             return canCatch;
         }
@@ -212,8 +208,7 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
                 }
                 return false;
             } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }

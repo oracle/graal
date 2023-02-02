@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,13 @@
 package org.graalvm.compiler.nodes;
 
 import java.util.List;
+import java.util.Objects;
 
-import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -40,6 +41,46 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class EncodedGraph {
 
+    /**
+     * A marker for a node in an encoded graph. The reason to encode graphs is usually to reduce the
+     * memory footprint, because encoded graphs are much smaller than non-encoded graphs. But the
+     * encoding/decoding cycle does not preserve the identity of node objects: all nodes are newly
+     * allocated during decoding, and keeping a single node of a graph alive would keep the whole
+     * graph alive. So it is not possible to keep a direct reference to a node in an encoded graph.
+     * This class serves as a marker instead: All markers passed into
+     * {@link GraphEncoder#encode(StructuredGraph, Iterable)} and
+     * {@link GraphDecoder#decode(EncodedGraph, Iterable)} are properly updated, so that after
+     * decoding the {@link #getNode()} method returns the new node of the just decoded graph.
+     */
+    public static class EncodedNodeReference {
+        static final int DECODED = -1;
+        static final int CLEARED = -2;
+
+        Node node;
+        int orderId;
+
+        public EncodedNodeReference(Node node) {
+            this.node = Objects.requireNonNull(node);
+            this.orderId = DECODED;
+        }
+
+        public Node getNode() {
+            if (orderId != DECODED) {
+                throw GraalError.shouldNotReachHere("Cannot access node while graph is encoded");
+            }
+            return node;
+        }
+
+        /**
+         * Clears the reference, all future encode, decode, or access operations will throw an
+         * exception.
+         */
+        public void clear() {
+            node = null;
+            orderId = CLEARED;
+        }
+    }
+
     private final byte[] encoding;
     private final int startOffset;
     protected final Object[] objects;
@@ -47,7 +88,6 @@ public class EncodedGraph {
     private final Assumptions assumptions;
     private final List<ResolvedJavaMethod> inlinedMethods;
     private final boolean trackNodeSourcePosition;
-    private final EconomicSet<ResolvedJavaField> fields;
     private final boolean hasUnsafeAccess;
 
     /**
@@ -57,12 +97,11 @@ public class EncodedGraph {
     protected int[] nodeStartOffsets;
 
     public EncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, StructuredGraph sourceGraph) {
-        this(encoding, startOffset, objects, types, sourceGraph.getAssumptions(), sourceGraph.getMethods(), sourceGraph.getFields(), sourceGraph.hasUnsafeAccess(),
-                        sourceGraph.trackNodeSourcePosition());
+        this(encoding, startOffset, objects, types, sourceGraph.getAssumptions(), sourceGraph.getMethods(), sourceGraph.hasUnsafeAccess(), sourceGraph.trackNodeSourcePosition());
     }
 
     public EncodedGraph(byte[] encoding, int startOffset, Object[] objects, NodeClass<?>[] types, Assumptions assumptions, List<ResolvedJavaMethod> inlinedMethods,
-                    EconomicSet<ResolvedJavaField> fields, boolean hasUnsafeAccess, boolean trackNodeSourcePosition) {
+                    boolean hasUnsafeAccess, boolean trackNodeSourcePosition) {
         this.encoding = encoding;
         this.startOffset = startOffset;
         this.objects = objects;
@@ -70,7 +109,6 @@ public class EncodedGraph {
         this.assumptions = assumptions;
         this.inlinedMethods = inlinedMethods;
         this.trackNodeSourcePosition = trackNodeSourcePosition;
-        this.fields = fields;
         this.hasUnsafeAccess = hasUnsafeAccess;
     }
 
@@ -108,10 +146,6 @@ public class EncodedGraph {
 
     public boolean trackNodeSourcePosition() {
         return trackNodeSourcePosition;
-    }
-
-    public EconomicSet<ResolvedJavaField> getFields() {
-        return fields;
     }
 
     public boolean hasUnsafeAccess() {

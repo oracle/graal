@@ -26,8 +26,8 @@ package com.oracle.svm.core;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
@@ -40,14 +40,19 @@ public interface RegisterDumper {
         return ImageSingletons.lookup(RegisterDumper.class);
     }
 
-    static void dumpReg(Log log, String label, long value) {
-        log.string(label).zhex(value).newline();
+    static void dumpReg(Log log, String label, long value, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
+        log.string(label).zhex(value);
+        if (printLocationInfo) {
+            log.spaces(1);
+            SubstrateDiagnostics.printLocationInfo(log, WordFactory.unsigned(value), allowJavaHeapAccess, allowUnsafeOperations);
+        }
+        log.newline();
     }
 
     interface Context extends PointerBase {
     }
 
-    void dumpRegisters(Log log, Context context);
+    void dumpRegisters(Log log, Context context, boolean printLocationInfo, boolean allowJavaHeapAccess, boolean allowUnsafeOperations);
 
     PointerBase getHeapBase(Context context);
 

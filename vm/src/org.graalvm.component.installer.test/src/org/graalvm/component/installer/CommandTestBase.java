@@ -139,7 +139,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
 
         @Override
         public Iterator<ComponentParam> iterator() {
-            return new Iterator<ComponentParam>() {
+            return new Iterator<>() {
                 private Iterator<ComponentParam> pit = components.iterator();
                 private Iterator<ComponentParam> fit;
                 {

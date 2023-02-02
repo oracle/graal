@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.posix.headers.linux;
 
-import com.oracle.svm.core.c.libc.LibC;
-import com.oracle.svm.core.posix.linux.libc.BionicLibC;
-import com.oracle.svm.core.posix.linux.libc.GLibC;
-import com.oracle.svm.core.posix.linux.libc.MuslLibC;
+import com.oracle.svm.core.c.libc.LibCSpecific;
+import com.oracle.svm.core.c.libc.BionicLibC;
+import com.oracle.svm.core.c.libc.GLibC;
+import com.oracle.svm.core.c.libc.MuslLibC;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
@@ -35,11 +35,11 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 
 public class LinuxErrno {
 
-    @LibC({GLibC.class, MuslLibC.class})
+    @LibCSpecific({GLibC.class, MuslLibC.class})
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native CIntPointer __errno_location();
 
-    @LibC(BionicLibC.class)
+    @LibCSpecific(BionicLibC.class)
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native CIntPointer __errno();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,6 +42,7 @@ import java.util.stream.IntStream;
 final class Trace implements Iterable<StopRequest> {
 
     static final String KEYWORD_OPEN_SCOPE = "OPEN_SCOPE";
+    static final String KEYWORD_TOP_SCOPE = "TOP_SCOPE";
     static final String KEYWORD_SUSPEND = "SUSPEND";
     static final String KEYWORD_PARTIAL_SCOPE = "partial";
     static final String KEYWORD_STOP = "STOP";
@@ -151,21 +152,15 @@ final class Trace implements Iterable<StopRequest> {
                     parseStop(true);
                     break;
 
-                case KEYWORD_OPEN_SCOPE: {
-                    String scopeName = buffer.pollFirst(); // may be null
-                    String partialScope = buffer.pollFirst(); // often null
-                    if (structured != null || !parents.isEmpty() || request == null) {
-                        error();
-                    }
-                    if (KEYWORD_PARTIAL_SCOPE.equals(scopeName) && partialScope == null) {
-                        scopeName = null;
-                        partialScope = KEYWORD_PARTIAL_SCOPE;
-                    }
-                    boolean isPartialScope = KEYWORD_PARTIAL_SCOPE.equals(partialScope);
-                    scope = new StopRequest.Scope(scopeName, isPartialScope);
+                case KEYWORD_OPEN_SCOPE:
+                    parseScope();
                     request.addScope(scope);
                     break;
-                }
+
+                case KEYWORD_TOP_SCOPE:
+                    parseScope();
+                    request.setTopScope(scope);
+                    break;
 
                 case KEYWORD_MEMBER:
                     parseMember();
@@ -194,6 +189,20 @@ final class Trace implements Iterable<StopRequest> {
             if (!buffer.isEmpty()) {
                 error();
             }
+        }
+
+        private void parseScope() {
+            String scopeName = buffer.pollFirst(); // may be null
+            String partialScope = buffer.pollFirst(); // often null
+            if (structured != null || !parents.isEmpty() || request == null) {
+                error();
+            }
+            if (KEYWORD_PARTIAL_SCOPE.equals(scopeName) && partialScope == null) {
+                scopeName = null;
+                partialScope = KEYWORD_PARTIAL_SCOPE;
+            }
+            boolean isPartialScope = KEYWORD_PARTIAL_SCOPE.equals(partialScope);
+            scope = new StopRequest.Scope(scopeName, isPartialScope);
         }
 
         private void parseStop(boolean needsBreakPoint) {
@@ -253,9 +262,14 @@ final class Trace implements Iterable<StopRequest> {
         }
 
         private void parseMember() {
-            final String kind = nextToken();
-            final String type = nextToken();
-            final String name = nextToken();
+            String kind = nextToken();
+            String type = nextToken();
+            String name = nextToken();
+
+            switch (type) {
+                case Trace.KEYWORD_KIND_ANY:
+                    type = null;
+            }
 
             LLVMDebugValue dbgValue = null;
             switch (kind) {

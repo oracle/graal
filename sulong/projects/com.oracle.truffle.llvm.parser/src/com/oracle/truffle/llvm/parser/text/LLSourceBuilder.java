@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -62,7 +62,7 @@ public final class LLSourceBuilder {
             assert cached != null;
         }
         if (cached != LLScanner.NOT_FOUND) {
-            LLInstructionMapper.setSourceLocations(cached, function, runtime, context);
+            LLInstructionMapper.setSourceLocations(cached, function, runtime);
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,7 @@ public class LLVMSyscallExitNode extends LLVMSyscallOperationNode {
     }
 
     @Override
-    public long execute(Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+    public long executeLong(Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
         int code = (int) ((long) arg1);
         throw LLVMExitException.exit(code, this);
     }

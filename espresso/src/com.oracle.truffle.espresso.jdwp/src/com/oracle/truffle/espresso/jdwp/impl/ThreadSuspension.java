@@ -36,7 +36,7 @@ public final class ThreadSuspension {
 
     private final Set<Object> hardSuspendedThreads = new HashSet<>();
 
-    public void suspendThread(Object thread) {
+    public synchronized void suspendThread(Object thread) {
         for (int i = 0; i < threads.length; i++) {
             if (thread == threads[i]) {
                 // increase the suspension count
@@ -61,7 +61,7 @@ public final class ThreadSuspension {
         suspensionCount = temp;
     }
 
-    public void resumeThread(Object thread) {
+    public synchronized void resumeThread(Object thread) {
         removeHardSuspendedThread(thread);
         for (int i = 0; i < threads.length; i++) {
             if (thread == threads[i]) {
@@ -73,7 +73,7 @@ public final class ThreadSuspension {
         }
     }
 
-    public int getSuspensionCount(Object thread) {
+    public synchronized int getSuspensionCount(Object thread) {
         // check if thread has been hard suspended
         if (hardSuspendedThreads.contains(thread)) {
             // suspended through a hard suspension, which means that thread is
@@ -100,7 +100,7 @@ public final class ThreadSuspension {
         return 0;
     }
 
-    public void addHardSuspendedThread(Object thread) {
+    public synchronized void addHardSuspendedThread(Object thread) {
         // register the thread by calling suspend, but leave the suspension
         // count untouched by calling resume afterwards.
         suspendThread(thread);
@@ -108,7 +108,7 @@ public final class ThreadSuspension {
         hardSuspendedThreads.add(thread);
     }
 
-    public void removeHardSuspendedThread(Object thread) {
+    public synchronized void removeHardSuspendedThread(Object thread) {
         hardSuspendedThreads.remove(thread);
     }
 }

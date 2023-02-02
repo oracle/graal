@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,15 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.Type;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -49,17 +56,13 @@ import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.polyglot.PolyglotIteratorFactory.CacheFactory.HasNextNodeGen;
 import com.oracle.truffle.polyglot.PolyglotIteratorFactory.CacheFactory.NextNodeGen;
 
-import java.lang.reflect.Type;
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-
-class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
+class PolyglotIterator<T> implements Iterator<T>, PolyglotWrapper {
 
     final Object guestObject;
     final PolyglotLanguageContext languageContext;
@@ -137,18 +140,18 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
 
     @Override
     public String toString() {
-        return HostWrapper.toString(this);
+        return PolyglotWrapper.toString(this);
     }
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(languageContext, guestObject);
+        return PolyglotWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
         if (o instanceof PolyglotIterator) {
-            return HostWrapper.equals(languageContext, guestObject, ((PolyglotIterator<?>) o).guestObject);
+            return PolyglotWrapper.equals(languageContext, guestObject, ((PolyglotIterator<?>) o).guestObject);
         } else {
             return false;
         }
@@ -156,6 +159,7 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
 
     static final class Cache {
 
+        final PolyglotLanguageInstance languageInstance;
         final Class<?> receiverClass;
         final Class<?> valueClass;
         final Type valueType;
@@ -163,20 +167,21 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
         final CallTarget next;
         final CallTarget apply;
 
-        private Cache(Class<?> receiverClass, Class<?> valueClass, Type valueType) {
+        private Cache(PolyglotLanguageInstance languageInstance, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
+            this.languageInstance = languageInstance;
             this.receiverClass = receiverClass;
             this.valueClass = valueClass;
             this.valueType = valueType;
-            this.hasNext = HostToGuestRootNode.createTarget(HasNextNodeGen.create(this));
-            this.next = HostToGuestRootNode.createTarget(NextNodeGen.create(this));
-            this.apply = HostToGuestRootNode.createTarget(new Apply(this));
+            this.hasNext = HasNextNodeGen.create(this).getCallTarget();
+            this.next = NextNodeGen.create(this).getCallTarget();
+            this.apply = new Apply(this).getCallTarget();
         }
 
         static Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
             Key cacheKey = new Key(receiverClass, valueClass, valueType);
             Cache cache = HostToGuestRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, valueClass, valueType), Cache.class);
+                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(languageContext.getLanguageInstance(), receiverClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.valueClass == valueClass;
@@ -191,10 +196,8 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
             private final Type valueType;
 
             Key(Class<?> receiverClass, Class<?> valueClass, Type valueType) {
-                assert receiverClass != null;
-                assert valueClass != null;
-                this.receiverClass = receiverClass;
-                this.valueClass = valueClass;
+                this.receiverClass = Objects.requireNonNull(receiverClass);
+                this.valueClass = Objects.requireNonNull(valueClass);
                 this.valueType = valueType;
             }
 
@@ -214,7 +217,7 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
                     return false;
                 }
                 Key other = (Key) obj;
-                return valueType == other.valueType && valueClass == other.valueClass && receiverClass == other.receiverClass;
+                return receiverClass == other.receiverClass && valueClass == other.valueClass && Objects.equals(valueType, other.valueType);
             }
         }
 
@@ -225,6 +228,7 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
             final Cache cache;
 
             PolyglotIteratorNode(Cache cache) {
+                super(cache.languageInstance);
                 this.cache = cache;
             }
 
@@ -255,15 +259,16 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
             }
 
             @Specialization(limit = "LIMIT")
-            @SuppressWarnings("unused")
+            @SuppressWarnings({"unused", "truffle-static-method"})
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @Bind("this") Node node,
                             @CachedLibrary("receiver") InteropLibrary iterators,
-                            @Cached BranchProfile error) {
+                            @Cached InlinedBranchProfile error) {
                 try {
                     return iterators.hasIteratorNextElement(receiver);
                 } catch (UnsupportedMessageException e) {
-                    error.enter();
-                    throw HostInteropErrors.iteratorUnsupported(languageContext, receiver, cache.valueType, "hasNext");
+                    error.enter(node);
+                    throw PolyglotInteropErrors.iteratorUnsupported(languageContext, receiver, cache.valueType, "hasNext");
                 }
             }
         }
@@ -280,30 +285,31 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
             }
 
             @Specialization(limit = "LIMIT")
-            @SuppressWarnings("unused")
+            @SuppressWarnings({"unused", "truffle-static-method"})
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @Bind("this") Node node,
                             @CachedLibrary("receiver") InteropLibrary iterators,
-                            @Cached ToHostNode toHost,
-                            @Cached BranchProfile error,
-                            @Cached BranchProfile stop) {
+                            @Cached PolyglotToHostNode toHost,
+                            @Cached InlinedBranchProfile error,
+                            @Cached InlinedBranchProfile stop) {
                 TriState lastHasNext = (TriState) args[ARGUMENT_OFFSET];
                 try {
                     Object next = iterators.getIteratorNextElement(receiver);
                     if (lastHasNext == TriState.FALSE) {
-                        error.enter();
-                        throw HostInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
+                        error.enter(node);
+                        throw PolyglotInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
                     }
-                    return toHost.execute(next, cache.valueClass, cache.valueType, languageContext, true);
+                    return toHost.execute(node, languageContext, next, cache.valueClass, cache.valueType);
                 } catch (StopIterationException e) {
-                    stop.enter();
+                    stop.enter(node);
                     if (lastHasNext == TriState.TRUE) {
-                        throw HostInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
+                        throw PolyglotInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
                     } else {
-                        throw HostInteropErrors.stopIteration(languageContext, receiver, cache.valueType);
+                        throw PolyglotInteropErrors.stopIteration(languageContext, receiver, cache.valueType);
                     }
                 } catch (UnsupportedMessageException e) {
-                    error.enter();
-                    throw HostInteropErrors.iteratorElementUnreadable(languageContext, receiver, cache.valueType);
+                    error.enter(node);
+                    throw PolyglotInteropErrors.iteratorElementUnreadable(languageContext, receiver, cache.valueType);
                 }
             }
         }
@@ -323,7 +329,7 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
-                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET], Object.class, Object.class);
+                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET]);
             }
         }
     }

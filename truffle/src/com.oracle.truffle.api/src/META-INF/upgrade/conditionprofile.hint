@@ -1,6 +1,0 @@
-'ConditionProfile fields have to be final to be useful':
-$mods$ $type $name = $init$; :: $name instanceof com.oracle.truffle.api.utilities.ConditionProfile && !hasModifier($name, javax.lang.model.element.Modifier.FINAL) && elementKindMatches($name, javax.lang.model.element.ElementKind.FIELD)
-=>
-'Add final':
-$mods$ final $type $name = $init$;
-;;

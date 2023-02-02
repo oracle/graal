@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,8 @@
 package org.graalvm.compiler.hotspot.replacements.arraycopy;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -37,20 +35,14 @@ import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
-import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.extended.RawStoreNode;
-import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
-import org.graalvm.compiler.replacements.arraycopy.CheckcastArrayCopyCallNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class HotSpotArraycopySnippets extends ArrayCopySnippets {
 
@@ -92,34 +84,11 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
     }
 
     @Override
-    protected void doExactArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters,
-                    MetaAccessProvider metaAccess) {
-        int scale = ReplacementsUtil.arrayIndexScale(metaAccess, elementKind);
-        int arrayBaseOffset = ReplacementsUtil.getArrayBaseOffset(metaAccess, elementKind);
-        long sourceOffset = arrayBaseOffset + (long) srcPos * scale;
-        long destOffset = arrayBaseOffset + (long) destPos * scale;
-
-        GuardingNode anchor = SnippetAnchorNode.anchor();
-        if (probability(NOT_FREQUENT_PROBABILITY, src == dest && srcPos < destPos)) {
-            // bad aliased case so we need to copy the array from back to front
-            for (int position = length - 1; probability(FAST_PATH_PROBABILITY, position >= 0); position--) {
-                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
-                RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
-            }
-        } else {
-            for (int position = 0; probability(FAST_PATH_PROBABILITY, position < length); position++) {
-                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
-                RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
-            }
-        }
-    }
-
-    @Override
     @SuppressWarnings("unused")
-    protected void doCheckcastArraycopyWithSlowPathWork(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
+    protected void doCheckcastArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
         if (probability(FREQUENT_PROBABILITY, length > 0)) {
-            Object nonNullSrc = PiNode.asNonNullObject(src);
-            Object nonNullDest = PiNode.asNonNullObject(dest);
+            Object nonNullSrc = PiNode.piCastNonNull(src, SnippetAnchorNode.anchor());
+            Object nonNullDest = PiNode.piCastNonNull(dest, SnippetAnchorNode.anchor());
             Pointer srcKlass = loadHub(nonNullSrc);
             Pointer destKlass = loadHub(nonNullDest);
             if (probability(LIKELY_PROBABILITY, srcKlass == destKlass) || probability(LIKELY_PROBABILITY, nonNullDest.getClass() == Object[].class)) {
@@ -144,6 +113,21 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
                     System.arraycopy(nonNullSrc, srcPos + copiedElements, nonNullDest, destPos + copiedElements, length - copiedElements);
                 }
             }
+        }
+    }
+
+    @Override
+    protected void doGenericArraycopySnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
+        counters.genericArraycopyDifferentTypeCounter.inc();
+        counters.genericArraycopyDifferentTypeCopiedCounter.add(length);
+        int copiedElements = GenericArrayCopyCallNode.genericArraycopy(src, srcPos, dest, destPos, length);
+        if (probability(SLOW_PATH_PROBABILITY, copiedElements != 0)) {
+            /*
+             * the stub doesn't throw the ArrayStoreException, but returns the number of copied
+             * elements (xor'd with -1).
+             */
+            copiedElements ^= -1;
+            System.arraycopy(src, srcPos + copiedElements, dest, destPos + copiedElements, length - copiedElements);
         }
     }
 }

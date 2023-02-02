@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,15 @@ public final class GraalOptions {
 
     @Option(help = "Use compiler intrinsifications.", type = OptionType.Debug)
     public static final OptionKey<Boolean> Intrinsify = new OptionKey<>(true);
+
+    @Option(help = "Rewrite signed comparisons to unsigned ones if the result is equal.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> PreferUnsignedComparison = new OptionKey<>(true);
+
+    @Option(help = "Perform early global value numbering.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> EarlyGVN = new OptionKey<>(true);
+
+    @Option(help = "Perform early loop invariant code motion.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> EarlyLICM = new OptionKey<>(true);
 
     @Option(help = "Inline calls with monomorphic type profile.", type = OptionType.Expert)
     public static final OptionKey<Boolean> InlineMonomorphicCalls = new OptionKey<>(true);
@@ -84,6 +93,9 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<String> EscapeAnalyzeOnly = new OptionKey<>(null);
 
+    @Option(help = "Try to float non-constant division operations to expose global value numbering of divisions.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> FloatingDivNodes = new OptionKey<>(true);
+
     @Option(help = "The maximum length of an array that will be escape analyzed.", type = OptionType.Expert)
     public static final OptionKey<Integer> MaximumEscapeAnalysisArrayLength = new OptionKey<>(128);
 
@@ -114,10 +126,12 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseLoopLimitChecks = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Hoists array bounds checks out of simple loops. This is ignored if " +
+                   "SpeculativeGuardMovement is enabled.", type = OptionType.Debug)
     public static final OptionKey<Boolean> LoopPredication = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Restricts LoopPredication to only focus on array bounds checks that " +
+                   "dominate the back edge of a loop.", type = OptionType.Debug)
     public static final OptionKey<Boolean> LoopPredicationMainPath = new OptionKey<>(true);
 
     // debugging settings
@@ -197,16 +211,6 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> CanOmitFrame = new OptionKey<>(true);
 
-    // Ahead of time compilation
-    @Option(help = "Try to avoid emitting code where patching is required", type = OptionType.Expert)
-    public static final OptionKey<Boolean> ImmutableCode = new OptionKey<>(false);
-
-    @Option(help = "Generate position independent code", type = OptionType.Expert)
-    public static final OptionKey<Boolean> GeneratePIC = new OptionKey<>(false);
-
-    @Option(help = "Generate verify oop checks in AOT code", type = OptionType.Expert)
-    public static final OptionKey<Boolean> AOTVerifyOops = new OptionKey<>(false);
-
     // Runtime settings
     @Option(help = "", type = OptionType.Expert)
     public static final OptionKey<Boolean> SupportJsrBytecodes = new OptionKey<>(true);
@@ -244,6 +248,9 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptDevirtualizeInvokesOptimistically = new OptionKey<>(true);
 
+    @Option(help = "Move loop invariant guards (e.g., array bounds checks) out of loops.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> SpeculativeGuardMovement = new OptionKey<>(true);
+
     @Option(help = "Track the NodeSourcePosition.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TrackNodeSourcePosition = new OptionKey<>(false);
 
@@ -268,11 +275,8 @@ public final class GraalOptions {
     @Option(help = "Enable inlining decision tracing in stubs and snippets.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceInliningForStubsAndSnippets = new OptionKey<>(false);
 
-    @Option(help = "Use Graal-generated stubs for complicated LIR operations instead of embedding all the emitted code.", type = OptionType.Expert)
-    public static final OptionKey<Boolean> UseGraalStubs = new OptionKey<>(true);
-
-    @Option(help = "Encode and decode snippets and substitutions before parsing to test libgraal code path. This option is ignored in the context of libgraal.")
-    public static final OptionKey<Boolean> UseEncodedGraphs = new OptionKey<>(false);
+    @Option(help = "Embed all the emitted code for Graal-generated stubs.", type = OptionType.Expert)
+    public static final OptionKey<Boolean> InlineGraalStubs = new OptionKey<>(false);
 
     @Option(help = "If applicable, use bulk zeroing instructions when the zeroing size in bytes exceeds this threshold.", type = OptionType.Expert)
     public static final OptionKey<Integer> MinimalBulkZeroingSize = new OptionKey<>(2048);
@@ -280,9 +284,18 @@ public final class GraalOptions {
     @Option(help = "Alignment in bytes for loop header blocks.", type = OptionType.Expert)
     public static final OptionKey<Integer> LoopHeaderAlignment = new OptionKey<>(16);
 
-    @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is lower than this value.", type = OptionType.Expert)
-    public static final OptionKey<Integer> StringIndexOfLimit = new OptionKey<>(4096);
-    
-    @Option(help = "Emit substitutions for String methods", type = OptionType.Debug)//
+    @Option(help = "Alignment in bytes for loop header blocks that have no fall through paths.", type = OptionType.Expert)
+    public static final OptionKey<Integer> IsolatedLoopHeaderAlignment = new OptionKey<>(32);
+
+    @Option(help = "Array region equality checks will be evaluated at compile time if the receiver is a constant and its length is smaller than this value.", type = OptionType.Expert)
+    public static final OptionKey<Integer> ArrayRegionEqualsConstantLimit = new OptionKey<>(4096);
+
+    @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is smaller than this value.", type = OptionType.Expert)
+    public static final OptionKey<Integer> StringIndexOfConstantLimit = new OptionKey<>(4096);
+
+    @Option(help = "Emit substitutions for String methods", type = OptionType.Debug)
     public static final OptionKey<Boolean> EmitStringSubstitutions = new OptionKey<>(true);
+
+    @Option(help = "Perform checks that guards and deopts aren't introduced in graphs that should handle exceptions explicitly", type = OptionType.Debug)
+    public static final OptionKey<Boolean> StrictDeoptInsertionChecks = new OptionKey<>(false);
 }

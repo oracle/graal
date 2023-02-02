@@ -25,6 +25,7 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -317,15 +318,20 @@ public class LicensePresenter {
         } else {
             label = feedback.l10n("INSTALL_DownloadLicenseFile");
         }
+        c = String.join("\n", Files.readAllLines(
+                        downloadLicenseText(label, ldr.getLicensePath()).toPath())); // NOI18N
+        remoteLicenseContents.put(id, c);
+        return c;
+    }
+
+    File downloadLicenseText(String label, String url) throws IOException {
         FileDownloader dn = new FileDownloader(
                         label,
-                        new URL(ldr.getLicensePath()),
+                        new URL(url),
                         feedback);
 
         dn.download();
-        c = String.join("\n", Files.readAllLines(dn.getLocalFile().toPath())); // NOI18N
-        remoteLicenseContents.put(id, c);
-        return c;
+        return dn.getLocalFile();
     }
 
     String loadFileLicenseText(MetadataLoader ldr) throws IOException {

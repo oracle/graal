@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,16 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.util.BitSets;
 
 /**
  * Specialized {@link BitSetMatcher} that exists simply because ascii bit set matchers occur often
  * and we can save one comparison when the high byte is {@code 0x00}.
  */
-public abstract class NullHighByteBitSetMatcher extends InvertibleCharMatcher {
+public final class NullHighByteBitSetMatcher extends InvertibleCharMatcher {
 
     @CompilationFinal(dimensions = 1) private final long[] bitSet;
 
@@ -59,11 +59,11 @@ public abstract class NullHighByteBitSetMatcher extends InvertibleCharMatcher {
     }
 
     public static NullHighByteBitSetMatcher create(boolean inverse, long[] bitSet) {
-        return NullHighByteBitSetMatcherNodeGen.create(inverse, bitSet);
+        return new NullHighByteBitSetMatcher(inverse, bitSet);
     }
 
-    @Specialization
-    protected boolean match(int c) {
+    @Override
+    public boolean match(int c) {
         return result(BitSets.get(bitSet, c));
     }
 
@@ -73,7 +73,7 @@ public abstract class NullHighByteBitSetMatcher extends InvertibleCharMatcher {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
         return modifiersToString() + "{ascii " + BitSets.toString(bitSet) + "}";
     }

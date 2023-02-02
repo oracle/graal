@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -136,8 +136,7 @@ public final class StructureType extends AggregateType {
                 throw e.getCause();
             }
         } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new UnsupportedOperationException("TargetDataLayout is necessary to compute Padding information!");
+            throw CompilerDirectives.shouldNotReachHere("TargetDataLayout is necessary to compute Padding information!");
         }
     }
 

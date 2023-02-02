@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,15 +46,18 @@ import static org.junit.Assert.assertSame;
 
 import java.util.Iterator;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * <h3>Creating a Child Node</h3>
@@ -78,13 +81,17 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public class ChildNodeTest {
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void test() {
-        TruffleRuntime runtime = Truffle.getRuntime();
         TestChildNode leftChild = new TestChildNode();
         TestChildNode rightChild = new TestChildNode();
         TestRootNode rootNode = new TestRootNode(leftChild, rightChild);
-        CallTarget target = runtime.createCallTarget(rootNode);
+        CallTarget target = rootNode.getCallTarget();
         assertEquals(rootNode, leftChild.getParent());
         assertEquals(rootNode, rightChild.getParent());
         Iterator<Node> iterator = rootNode.getChildren().iterator();
@@ -178,6 +185,33 @@ public class ChildNodeTest {
             return super.getChild(index);
         }
 
+    }
+
+    @DenyReplace
+    final class DenyReplaceNode extends Node {
+
+    }
+
+    class DenyReplaceTest extends Node {
+
+        @Child private DenyReplaceNode child = new DenyReplaceNode();
+        @Children private final DenyReplaceNode[] children = new DenyReplaceNode[]{new DenyReplaceNode()};
+
+    }
+
+    @Test
+    public void testNotReplacable() {
+        DenyReplaceTest node = new DenyReplaceTest();
+        node.adoptChildren();
+
+        assertFalse(NodeUtil.isReplacementSafe(node, node.child, node.child));
+        assertFalse(NodeUtil.isReplacementSafe(node, node.children[0], node.children[0]));
+
+        AbstractPolyglotTest.assertFails(() -> node.child.replace(new TestChildNode(3)), IllegalArgumentException.class,
+                        (e) -> assertEquals("Replaced node type 'com.oracle.truffle.api.test.ChildNodeTest$DenyReplaceNode' does not allow replacement.", e.getMessage()));
+
+        AbstractPolyglotTest.assertFails(() -> node.children[0].replace(new TestChildNode(3)), IllegalArgumentException.class,
+                        (e) -> assertEquals("Replaced node type 'com.oracle.truffle.api.test.ChildNodeTest$DenyReplaceNode' does not allow replacement.", e.getMessage()));
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
@@ -44,14 +41,13 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 public abstract class GraalVMCreateHandle extends LLVMIntrinsic {
 
     @Specialization(guards = "value.getOffset() == 0")
-    protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMNativePointer handle = context.getHandleContainer().allocate(this, value.getObject());
+    protected LLVMNativePointer doZero(LLVMManagedPointer value) {
+        LLVMNativePointer handle = getContext().getHandleContainer().allocate(this, value.getObject());
         return handle;
     }
 
     @Specialization(guards = "value.getOffset() != 0")
-    protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value) {
+    protected LLVMNativePointer doNonZero(LLVMManagedPointer value) {
         throw new LLVMMemoryException(this, "Cannot get a handle to pointer into the middle of foreign object (offset = %d).", value.getOffset());
     }
 

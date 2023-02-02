@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes.loop;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 
 public class LoopsDataProviderImpl implements LoopsDataProvider {
@@ -32,6 +33,11 @@ public class LoopsDataProviderImpl implements LoopsDataProvider {
     @Override
     public LoopsData getLoopsData(StructuredGraph graph) {
         return LoopsData.compute(graph);
+    }
+
+    @Override
+    public LoopsData getLoopsData(ControlFlowGraph cfg) {
+        return LoopsData.compute(cfg);
     }
 
 }

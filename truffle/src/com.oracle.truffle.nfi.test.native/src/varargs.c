@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,6 +73,7 @@ static char *add_int(char *dest, char *end, int64_t value, int base) {
 
 static char *add_double(char *dest, char *end, double value) {
     int i;
+    int digit;
 
     dest = add_int(dest, end, (int64_t) value, 10);
     value -= (int64_t) value;
@@ -83,7 +84,9 @@ static char *add_double(char *dest, char *end, double value) {
 
     for (i = 0; dest < end && i < 2; i++) {
         value *= 10;
-        *(dest++) = '0' + (int) value;
+        digit = (int) value;
+        *(dest++) = '0' + digit;
+        value -= digit;
     }
 
     return dest;
@@ -106,7 +109,7 @@ static char *add_pointer(char *dest, char *end, void *value) {
         return add_string(dest, end, "(nil)");
     } else {
         dest = add_string(dest, end, "0x");
-        return add_int(dest, end, (int64_t) value, 16);
+        return add_int(dest, end, (int64_t) (intptr_t) value, 16);
     }
 }
 
@@ -114,7 +117,7 @@ static char *add_pointer(char *dest, char *end, void *value) {
  * Simple reimplementation of snprintf, to get rid of platform and locale dependent behavior
  * differences.
  */
-EXPORT int format_string(char *buffer, uint64_t size, const char *format, ...) {
+EXPORT int format_string(char *buffer, uint16_t size, const char *format, ...) {
     char *dest = buffer;
     char *end = buffer + size;
 
@@ -131,7 +134,15 @@ EXPORT int format_string(char *buffer, uint64_t size, const char *format, ...) {
         if (ch == '%') {
             ch = *(format++);
             switch (ch) {
+                case 'u':
+                    d = va_arg(args, uint32_t);
+                    dest = add_int(dest, end, d, 10);
+                    continue;
                 case 'd':
+                    d = va_arg(args, int32_t);
+                    dest = add_int(dest, end, d, 10);
+                    continue;
+                case 'l':
                     d = va_arg(args, int64_t);
                     dest = add_int(dest, end, d, 10);
                     continue;

@@ -24,31 +24,34 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.LibCHelper;
-import com.oracle.svm.core.OS;
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.util.VMError;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.option.HostedOptionKey;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.word.WordFactory;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.ZoneId;
 import java.util.TimeZone;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.PinnedObject;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.LibCHelper;
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * The following classes aim to provide full support for time zones for native-image. This
@@ -75,6 +78,7 @@ import java.util.TimeZone;
  * from a buffer as opposed to a file.
  */
 @TargetClass(java.util.TimeZone.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings("unused")
 final class Target_java_util_TimeZone {
 
@@ -120,11 +124,11 @@ final class TimeZoneSupport {
 /**
  * Reads time zone mappings data and stores in the image heap, if necessary.
  */
-@AutomaticFeature
-final class TimeZoneFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class TimeZoneFeature implements InternalFeature {
     static class Options {
         @Option(help = "When true, all time zones will be pre-initialized in the image.")//
-        public static final HostedOptionKey<Boolean> IncludeAllTimeZones = new HostedOptionKey<Boolean>(false) {
+        public static final HostedOptionKey<Boolean> IncludeAllTimeZones = new HostedOptionKey<>(false) {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 super.onValueUpdate(values, oldValue, newValue);
@@ -133,7 +137,7 @@ final class TimeZoneFeature implements Feature {
         };
 
         @Option(help = "The time zones, in addition to the default zone of the host, that will be pre-initialized in the image.")//
-        public static final HostedOptionKey<String> IncludeTimeZones = new HostedOptionKey<String>("") {
+        public static final HostedOptionKey<String> IncludeTimeZones = new HostedOptionKey<>("") {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
                 super.onValueUpdate(values, oldValue, newValue);
@@ -142,10 +146,8 @@ final class TimeZoneFeature implements Feature {
         };
 
         private static void printWarning() {
-            // Checkstyle: stop
             System.err.println("-H:IncludeAllTimeZones and -H:IncludeTimeZones are now deprecated. Native-image includes all timezones" +
                             " by default.");
-            // Checkstyle: resume
         }
     }
 
@@ -181,6 +183,29 @@ final class TimeZoneFeature implements Feature {
             VMError.shouldNotReachHere("Failed to read time zone mappings. The time zone mappings should be part" +
                             "of your JDK usually found: " + tzMappingsPath.toAbsolutePath(), e);
         }
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        ensureStableTzdbZoneRulesProviderProvideRules();
+    }
+
+    private static void ensureStableTzdbZoneRulesProviderProvideRules() {
+        /**
+         * Workaround to ensure stable configuration in TzdbZoneRulesProvider.provideRules
+         * ConcurrentHashMap prior to analysis. Calling {@link ZoneId#systemDefault()} causes
+         * {@link java.time.zone.TzdbZoneRulesProvider#provideRules(String, boolean)} to be called
+         * for the default time-zone. This will modify the map entry for the default time-zone to
+         * contain a ZoneRules instance instead of the binary data form of that ZoneRules instance
+         * (see {@code Ser.read(dis)} in {@code provideRules}). Without forcing this entry to exist
+         * in the map prior to analysis it is very likely that the map will see this update later
+         * during the image build (e.g. as a side effect of using ZipFileSystem somewhere along
+         * image building, see {@link jdk.nio.zipfs.ZipUtils#dosToJavaTime(long)}) causing the
+         * intermittently created ZoneRule instance to be reported via
+         * {@link com.oracle.svm.hosted.image.NativeImageHeap#reportIllegalType} whenever the
+         * TzdbZoneRulesProvider ends up being in the image (true for most non-trivial images).
+         */
+        ZoneId.systemDefault();
     }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,8 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static org.graalvm.compiler.nodes.Invoke.CYCLES_UNKNOWN_RATIONALE;
+import static org.graalvm.compiler.nodes.Invoke.SIZE_UNKNOWN_RATIONALE;
 
 import java.util.Map;
 
@@ -64,12 +66,8 @@ import jdk.vm.ci.meta.JavaKind;
 // @formatter:off
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}",
           allowedUsageTypes = {Memory},
-          cycles = CYCLES_UNKNOWN,
-          cyclesRationale = "We cannot estimate the runtime cost of a call, it is a blackhole." +
-                            "However, we can estimate, dynamically, the cost of the call operation itself based on the type of the call.",
-          size = SIZE_UNKNOWN,
-          sizeRationale = "We can only dynamically, based on the type of the call (special, static, virtual, interface) decide" +
-                          "how much code is generated for the call.")
+          cycles = CYCLES_UNKNOWN, cyclesRationale = CYCLES_UNKNOWN_RATIONALE,
+          size   = SIZE_UNKNOWN,   sizeRationale   = SIZE_UNKNOWN_RATIONALE)
 // @formatter:on
 public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke, LIRLowerable, SingleMemoryKill, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeNode> TYPE = NodeClass.create(InvokeNode.class);
@@ -103,23 +101,9 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this.identity = identity;
     }
 
-    public InvokeNode(InvokeWithExceptionNode invoke) {
-        super(TYPE, invoke.stamp);
-        this.callTarget = invoke.callTarget;
-        this.bci = invoke.bci;
-        this.polymorphic = invoke.polymorphic;
-        this.inlineControl = invoke.inlineControl;
-        this.identity = invoke.getKilledLocationIdentity();
-    }
-
     @Override
     protected void afterClone(Node other) {
         updateInliningLogAfterClone(other);
-    }
-
-    @Override
-    public FixedNode asFixedNode() {
-        return this;
     }
 
     @Override
@@ -242,6 +226,15 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     @Override
     public NodeCycles estimatedNodeCycles() {
+        return estimatedNodeCycles(callTarget);
+    }
+
+    @Override
+    protected NodeSize dynamicNodeSizeEstimate() {
+        return estimatedNodeSize(callTarget);
+    }
+
+    static NodeCycles estimatedNodeCycles(CallTargetNode callTarget) {
         if (callTarget == null) {
             return CYCLES_UNKNOWN;
         }
@@ -254,12 +247,12 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
             case Virtual:
                 return CYCLES_8;
             default:
+                assert false : "Should not reach here";
                 return CYCLES_UNKNOWN;
         }
     }
 
-    @Override
-    public NodeSize estimatedNodeSize() {
+    static NodeSize estimatedNodeSize(CallTargetNode callTarget) {
         if (callTarget == null) {
             return SIZE_UNKNOWN;
         }
@@ -272,7 +265,9 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
             case Virtual:
                 return SIZE_8;
             default:
+                assert false : "Should not reach here";
                 return SIZE_UNKNOWN;
         }
     }
+
 }

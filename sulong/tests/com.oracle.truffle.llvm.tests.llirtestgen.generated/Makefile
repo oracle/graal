@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2019, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,34 +28,33 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+.PHONY: default
+
 ifndef LLIRTESTGEN_CMD
   $(error LLIRTESTGEN_CMD not set)
 endif
 OUTPUT_DIR=gen
-GENERATED=$(TESTS:.dir=)
 TIMESTAMP=timestamp
+SCRIPTS_DIR=scripts
+SCRIPTS=$(SCRIPTS_DIR)/gep-vector.sh $(SCRIPTS_DIR)/gep-vector-header.sh $(SCRIPTS_DIR)/gep-vector-footer.sh $(SCRIPTS_DIR)/gep-vector-test.sh
 
-GENERATED_REFS=$(GENERATED:.ll=.ll.dir/ref.out)
-GENERATED_BCS=$(GENERATED:.ll=.ll.dir/O0.bc)
+default: $(TIMESTAMP)
 
-default: $(GENERATED_REFS) $(GENERATED_BCS)
-
-include $(VPATH)/../Makefile.common
-
-prelude.ll: prelude.bc
-	$(QUIETLY) $(LLVM_DIS) $<
-
-prelude.bc: prelude.c
-	$(QUIETLY) $(CLANG) -Wall -Wextra -Wno-unused-command-line-argument $(CFLAGS) -c -emit-llvm $<
-
-$(TIMESTAMP): prelude.ll $(LLIR_TEST_GEN_JAR)
+$(TIMESTAMP): $(LLIR_TEST_GEN_JAR) $(SCRIPTS_DIR) $(SCRIPTS)
 	@mkdir -p $(OUTPUT_DIR)
 	$(QUIETLY) touch $@
 	$(QUIETLY) $(LLIRTESTGEN_CMD) $(OUTPUT_DIR)
+	cd $(SCRIPTS_DIR); ./gep-vector.sh > ../$(OUTPUT_DIR)/gep-vector.ll
 
-$(GENERATED): $(TIMESTAMP)
-	@/bin/echo -n ""
 
-.PHONY:
-clean:
-	$(QUIETLY) $(RM) prelude.bc prelude.ll
+$(SCRIPTS_DIR):
+	@mkdir -p $(SCRIPTS_DIR)
+
+$(SCRIPTS_DIR)/gep-vector.sh: gep-vector.sh
+$(SCRIPTS_DIR)/gep-vector-header.sh: gep-vector-header.sh
+$(SCRIPTS_DIR)/gep-vector-footer.sh: gep-vector-footer.sh
+$(SCRIPTS_DIR)/gep-vector-test.sh: gep-vector-test.sh
+
+$(SCRIPTS_DIR)/%:
+	@mkdir -p scripts
+	cp -f $< $@

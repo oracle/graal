@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,17 +38,18 @@ import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
+import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -114,6 +115,11 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             return getLowerer().supportsRounding();
         }
 
+        @Override
+        public boolean divisionOverflowIsJVMSCompliant() {
+            return getLowerer().divisionOverflowIsJVMSCompliant();
+        }
+
     }
 
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED, allowedUsageTypes = {Guard, InputType.Anchor})
@@ -148,7 +154,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
                 if (mergeNode.forwardEndCount() == 1) {
                     graph.reduceTrivialMerge(mergeNode);
                 }
-            } else if (node instanceof BeginNode || node instanceof KillingBeginNode || node instanceof MultiKillingBeginNode) {
+            } else if (node instanceof BeginNode) {
                 if (!(node.predecessor() instanceof ControlSplitNode) && node.hasNoUsages()) {
                     GraphUtil.unlinkFixedNode((AbstractBeginNode) node);
                     node.safeDelete();
@@ -181,7 +187,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
     }
 
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     @Override
     protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         try (DebugCloseable a = CanonicalizeFixedNode.start(debug)) {
@@ -197,9 +203,18 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
      * canonicalized (and therefore be a non-fixed node).
      *
      * @param methodScope The current method.
-     * @param node The node to be canonicalized.
+     * @param originalNode The node to be canonicalized.
      */
-    protected Node canonicalizeFixedNode(MethodScope methodScope, Node node) {
+    protected Node canonicalizeFixedNode(MethodScope methodScope, Node originalNode) {
+        Node node = originalNode;
+        if (originalNode instanceof UnsafeAccessNode) {
+            /*
+             * Ensure that raw stores and loads are eventually transformed to fields to make node
+             * plugins trigger for them reliably during PE.
+             */
+            node = ((UnsafeAccessNode) node).canonical(canonicalizerTool);
+        }
+
         /*
          * Duplicate cases for frequent classes (LoadFieldNode, LoadIndexedNode and ArrayLengthNode)
          * to improve performance (Haeubl, 2017).
@@ -265,8 +280,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             int survivingOrderId = readOrderId(methodScope);
             methodScope.reader.setByteIndex(successorsByteIndex + 2 * methodScope.orderIdWidth);
 
-            AbstractBeginNode survivingSuccessor = (AbstractBeginNode) makeStubNode(methodScope, loopScope, survivingOrderId);
-            graph.removeSplit(ifNode, survivingSuccessor);
+            removeSplit(methodScope, loopScope, ifNode, survivingOrderId);
             return true;
         } else if (node instanceof IntegerSwitchNode && ((IntegerSwitchNode) node).value().isConstant()) {
             /*
@@ -293,11 +307,26 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
             int survivingOrderId = readOrderId(methodScope);
             methodScope.reader.setByteIndex(successorsByteIndex + size * methodScope.orderIdWidth);
 
-            AbstractBeginNode survivingSuccessor = (AbstractBeginNode) makeStubNode(methodScope, loopScope, survivingOrderId);
-            graph.removeSplit(switchNode, survivingSuccessor);
+            removeSplit(methodScope, loopScope, switchNode, survivingOrderId);
             return true;
         } else {
             return false;
+        }
+    }
+
+    private void removeSplit(MethodScope methodScope, LoopScope loopScope, ControlSplitNode controlSplit, int survivingOrderId) {
+        if (controlSplit.predecessor() instanceof BeginNode && getNodeClass(methodScope, loopScope, survivingOrderId) == controlSplit.predecessor().getNodeClass()) {
+            // Reuse the previous BeginNode but mark it in nodesToProcess so that the decoding loop
+            // continues decoding.
+            loopScope.nodesToProcess.set(survivingOrderId);
+            registerNode(loopScope, survivingOrderId, controlSplit.predecessor(), false, false);
+            assert controlSplit.hasNoUsages();
+            controlSplit.clearSuccessors();
+            controlSplit.replaceAtPredecessor(null);
+            controlSplit.safeDelete();
+        } else {
+            AbstractBeginNode survivingSuccessor = (AbstractBeginNode) makeStubNode(methodScope, loopScope, survivingOrderId);
+            graph.removeSplit(controlSplit, survivingSuccessor);
         }
     }
 
@@ -333,7 +362,11 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
                 }
             }
             if (!node.isDeleted()) {
-                GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+                if (node instanceof WithExceptionNode) {
+                    GraphUtil.unlinkAndKillExceptionEdge((WithExceptionNode) node);
+                } else {
+                    GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+                }
                 node.replaceAtUsagesAndDelete(canonical);
             }
             assert lookupNode(loopScope, nodeOrderId) == node;

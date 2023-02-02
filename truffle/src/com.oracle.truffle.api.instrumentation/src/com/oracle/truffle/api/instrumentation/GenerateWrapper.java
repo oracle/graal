@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,7 +93,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * </pre>
  *
  * <p>
- * <b>Example that converts incoming byte values to int.</b>
+ * <b>Example that converts incoming byte values to int:</b>
  *
  * <pre>
  * &#64;GenerateWrapper
@@ -113,6 +113,25 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  *         }
  *         return incomingValue;
  *     }
+ * }
+ * </pre>
+ *
+ * <p>
+ * <b>Example that prevents instrumentation from being added to a method:</b>
+ *
+ * <pre>
+ * &#64;GenerateWrapper
+ * abstract class ExpressionNode extends Node implements InstrumentableNode {
+ *
+ *     abstract Object execute(VirtualFrame frame);
+ *
+ *     &#64;Override
+ *     public WrapperNode createWrapper(ProbeNode probeNode) {
+ *         return new ExpressionNodeWrapper(this, probeNode);
+ *     }
+ *
+ *     &#64;GenerateWrapper.Ignore
+ *     abstract Object executeWithoutInstrumentation(VirtualFrame frame);
  * }
  * </pre>
  *
@@ -166,6 +185,18 @@ public @interface GenerateWrapper {
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.METHOD})
     public @interface OutgoingConverter {
+    }
+
+    /**
+     * Annotates a method which should not be instrumented in the generated wrapper subclass. The
+     * generated wrapper can still delegate to this method if it is abstract and can be overridden.
+     *
+     * @see GenerateWrapper for usage examples
+     * @since 21.3
+     */
+    @Retention(RetentionPolicy.CLASS)
+    @Target({ElementType.METHOD})
+    public @interface Ignore {
     }
 
 }

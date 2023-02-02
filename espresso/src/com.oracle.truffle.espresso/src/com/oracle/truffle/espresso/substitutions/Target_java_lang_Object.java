@@ -23,50 +23,100 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.nodes.DirectCallNode;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
+import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Object {
-    @Substitution(hasReceiver = true)
-    public static int hashCode(@Host(Object.class) StaticObject self) {
-        return VM.JVM_IHashCode(self);
+    @Substitution(hasReceiver = true, isTrivial = true)
+    public static int hashCode(@JavaType(Object.class) StaticObject self, @Inject EspressoLanguage lang) {
+        return VM.JVM_IHashCode(self, lang);
     }
 
-    @Substitution(hasReceiver = true)
-    public static @Host(Class.class) StaticObject getClass(@Host(Object.class) StaticObject self) {
+    @Substitution(hasReceiver = true, isTrivial = true)
+    public static @JavaType(Class.class) StaticObject getClass(@JavaType(Object.class) StaticObject self) {
         return self.getKlass().mirror();
     }
 
-    @Substitution(hasReceiver = true, methodName = "<init>")
-    public static void init(@Host(Object.class) StaticObject self,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
-        assert self.getKlass() instanceof ObjectKlass;
-        if (((ObjectKlass) self.getKlass()).hasFinalizer()) {
-            profiler.profile(0);
-            // TODO: inject guest call.
-            /*
-             * Injecting the guest call is difficult here, as this method is called upon spawning
-             * the VM. Creation of the substitutor triggers the creation of the calltarget, which
-             * triggers initialization of j.l.ref.Finalizer too early in the boot process.
-             * 
-             * One simple solution is to lazily initialize the call node, which would be best.
-             */
-            meta.java_lang_ref_Finalizer_register.invokeDirect(null, self);
+    public static final class InitGuard implements InlinedMethodPredicate {
+        public static final InlinedMethodPredicate INSTANCE = new InitGuard();
+
+        @Override
+        public boolean isValid(EspressoContext context, Method.MethodVersion version, VirtualFrame frame, InlinedMethodNode node) {
+            StaticObject receiver = node.peekReceiver(frame);
+            return !Init.hasFinalizer(receiver, context);
         }
     }
 
-    // TODO(peterssen): Substitution required, instead of calling native JVM_Clone, to avoid leaking
-    // cloned objects. Remove once GR-19247 is resolved.
+    // TODO: Allow inlining this in bytecode (see GR-42697)
+    // @InlineInBytecode(guard = InitGuard.class)
+    @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true)
+    abstract static class Init extends SubstitutionNode {
+
+        abstract void execute(@JavaType(Object.class) StaticObject self);
+
+        static boolean hasFinalizer(StaticObject self, EspressoContext context) {
+            return ((ObjectKlass) self.getKlass()).hasFinalizer(context);
+        }
+
+        @Specialization(guards = "!hasFinalizer(self, getContext())")
+        void noFinalizer(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject self) {
+            // nop
+        }
+
+        @TruffleBoundary
+        @Fallback
+        void registerFinalizer(@JavaType(Object.class) StaticObject self,
+                        @Cached("getMeta().java_lang_ref_Finalizer_register.getCallTarget()") CallTarget register,
+                        @Cached IndirectCallNode indirectCallNode) {
+            indirectCallNode.call(register, self);
+        }
+    }
+
     @Substitution(hasReceiver = true)
     @Throws(CloneNotSupportedException.class)
-    public static @Host(Object.class) StaticObject clone(@Host(Object.class) StaticObject self,
-                    @GuestCall(target = "java_lang_ref_Finalizer_register") DirectCallNode finalizerRegister,
-                    @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
-        return VM.JVM_Clone(self, finalizerRegister, meta, profiler);
+    public static @JavaType(Object.class) StaticObject clone(@JavaType(Object.class) StaticObject self,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
+        return VM.JVM_Clone(self, language, meta, profiler);
+    }
+
+    /* As of JDK 14+, these are no longer linked in libjava. */
+
+    @Substitution(hasReceiver = true)
+    public static void wait(@JavaType(Object.class) StaticObject self, long time,
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
+        meta.getVM().JVM_MonitorWait(self, time, meta, profiler);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void notify(@JavaType(Object.class) StaticObject self,
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
+        meta.getVM().JVM_MonitorNotify(self, profiler);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void notifyAll(@JavaType(Object.class) StaticObject self,
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
+        meta.getVM().JVM_MonitorNotifyAll(self, profiler);
     }
 }

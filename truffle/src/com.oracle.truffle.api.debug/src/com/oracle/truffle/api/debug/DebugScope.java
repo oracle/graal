@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -226,7 +226,7 @@ public final class DebugScope {
      * @since 0.26
      * @deprecated since 20.3 Use {@link #getDeclaredValues()} on the {@link SourceElement#ROOT}.
      */
-    @Deprecated
+    @Deprecated(since = "20.3")
     public Iterable<DebugValue> getArguments() throws DebugException {
         verifyValidState();
         if (node == null) {
@@ -291,11 +291,10 @@ public final class DebugScope {
                 return null;
             }
             String name = INTEROP.asString(NODE.getReceiverMember(node, frame));
-            if (!INTEROP.isMemberReadable(scope, name)) {
+            if (!INTEROP.isMemberReadable(scope, name) || !isDeclaredInScope(name)) {
                 return null;
             }
-            Object receiver = INTEROP.readMember(scope, name);
-            receiverValue = new DebugValue.HeapValue(session, getLanguage(), name, receiver);
+            receiverValue = new DebugValue.ObjectMemberValue(session, getLanguage(), this, scope, name);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
@@ -402,6 +401,21 @@ public final class DebugScope {
         return variables;
     }
 
+    private boolean isDeclaredInScope(String name) {
+        Object scopeParent = null;
+        if (INTEROP.hasScopeParent(scope)) {
+            try {
+                scopeParent = INTEROP.getScopeParent(scope);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+        if (scopeParent == null) {
+            return true;
+        }
+        return new SubtractedVariables(scope, scopeParent).isMemberReadable(name);
+    }
+
     /**
      * Converts the value to a DebugValue, or returns <code>null</code> if the requesting language
      * class does not match the root node guest language.
@@ -429,7 +443,7 @@ public final class DebugScope {
             return null;
         }
         // make sure rawValue is a valid Interop value
-        if (!Debugger.ACCESSOR.interopSupport().isInteropType(rawValue)) {
+        if (!InteropLibrary.isValidValue(rawValue)) {
             throw new IllegalArgumentException("raw value is not an Interop value");
         }
         // check if language class of the root node corresponds to the input language

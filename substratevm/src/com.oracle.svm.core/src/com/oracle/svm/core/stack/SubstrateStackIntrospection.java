@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -219,7 +219,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
         if (result.getJavaKind() != JavaKind.Object) {
             throw new IllegalArgumentException("can only access Object local variables for now: " + result.getJavaKind());
         }
-        return KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(Object.class, result), Object.class);
+        return SubstrateObjectConstant.asObject(Object.class, result);
     }
 
     private JavaConstant getLocalConstant(int index) {
@@ -362,10 +362,6 @@ class SubstrateInspectedFrame implements InspectedFrame {
             JavaConstant con = getLocalConstant(i);
             if (con.getJavaKind() != JavaKind.Illegal) {
                 result.append("\n    local ").append(i);
-                String name = frameInfo.getLocalVariableName(i);
-                if (name != null) {
-                    result.append(" ").append(name);
-                }
                 if (con.getJavaKind() == JavaKind.Object) {
                     if (isVirtual(i)) {
                         result.append("  [virtual object]");

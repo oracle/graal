@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,11 +41,19 @@
 
 package org.graalvm.wasm.test.suites.validation;
 
+import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.test.WasmFileSuite;
 import org.junit.Assert;
@@ -53,13 +61,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-
-import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
-import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
-
+/**
+ * Checks validation behavior of
+ * <a href="https://webassembly.github.io/JS-BigInt-integration/core/index.html">Webassembly
+ * MVP</a>.
+ */
 @RunWith(Parameterized.class)
 public class ValidationSuite extends WasmFileSuite {
     @Parameterized.Parameters(name = "{0}")
@@ -89,7 +95,7 @@ public class ValidationSuite extends WasmFileSuite {
 
                         binaryCase(
                                         "Duplicated sections",
-                                        "Duplicated section 6",
+                                        "unexpected content after last section",
                                         // (global (export "g1") i32 (i32.const 1))
                                         // (global (export "g2") i64 (i64.const 0)) but with each
                                         // export/global using its own export/global section
@@ -122,18 +128,13 @@ public class ValidationSuite extends WasmFileSuite {
                         // # Validation
 
                         // ## Types
-                        // https://webassembly.github.io/spec/core/valid/types.html
+                        // types are universally valid.
 
                         // ### Limits
-                        // https://webassembly.github.io/spec/core/valid/types.html#limits
-
-                        // See 3.2.3 and 3.2.4
+                        // checked individually on memories and tables
 
                         // ### Function Types
-                        // https://webassembly.github.io/spec/core/valid/types.html#function-types
-
-                        // The arity `m` must not be larger than 1 (limitiation of MVP).
-                        // Validated in: SymbolTable#allocateFunctionType
+                        // Return arity
                         binaryCase(
                                         "Function - cannot return more than one value",
                                         "A function can return at most one result.",
@@ -142,31 +143,35 @@ public class ValidationSuite extends WasmFileSuite {
                                         Failure.Type.INVALID),
 
                         // ### Table types
-                        // https://webassembly.github.io/spec/core/valid/types.html#table-types
-
-                        // The limits `limits` must be valid within range `2^32`.
-                        // Validated in: BinaryParser#readTableLimits
-                        // Note: values are silently clamped if bigger than GraalWasm's `2^31 - 1`
-                        // limit.
-                        /*
-                         * stringCase( "Table - initial size out of bounds",
-                         * "size minimum must not be greater than maximum: 2147483648 should be <= 2147483647."
-                         * , "(table $table1 2147483648888 funcref)", Failure.Type.INVALID),
-                         * stringCase( "Table - initial size out of bounds",
-                         * "size minimum must not be greater than maximum: 2147483648 should be <= 2147483647."
-                         * , "(table $table1 1 2147483648 funcref)", Failure.Type.INVALID),
-                         */
+                        // Limits
+                        // Limitation only applies to GraalWasm (max array length)
+                        stringCase(
+                                        "Table - initial size out of bounds",
+                                        "table instance size exceeds limit: 2147483648 should be <= 2147483647",
+                                        "(table $table1 2147483648 funcref)",
+                                        Failure.Type.TRAP),
                         stringCase(
                                         "Table - max size lower than initial size",
                                         "size minimum must not be greater than maximum: 2 should be <= 1",
                                         "(table $table1 2 1 funcref)",
                                         Failure.Type.INVALID),
+                        // Only allowed elemtype is funcref
+                        binaryCase(
+                                        "Table - initialize with invalid elemtype",
+                                        "Unexpected reference type",
+                                        // (table 1 1 externref)
+                                        "00 61 73 6D 01 00 00 00 04 04 01 67 01 01",
+                                        Failure.Type.MALFORMED),
+                        binaryCase(
+                                        "Table - import with invalid elemtype",
+                                        "Invalid element type for table import: 0x6F should = 0x70",
+                                        // (import "a" "b" (table 0 1 externref))
+                                        "00 61 73 6D 01 00 00 00 02 09 01 01 61 01 62 01 6F 00 01",
+                                        Failure.Type.MALFORMED),
 
                         // ### Memory types
-                        // https://webassembly.github.io/spec/core/valid/types.html#memory-types
 
                         // The limits `limits` must be valid within range `2^16`.
-                        // Validated in: BinaryParser#readMemoryLimits
                         stringCase(
                                         "Memory - initial size out of bounds",
                                         "memory size must be at most 65536 pages (4GiB): 2147483648 should be <= 65536",
@@ -184,18 +189,32 @@ public class ValidationSuite extends WasmFileSuite {
                                         Failure.Type.INVALID),
 
                         // ### Global types
-                        // https://webassembly.github.io/spec/core/valFid/types.html#global-types
-
-                        // (No constraints)
-
+                        // Invalid value type
+                        binaryCase(
+                                        "Global - invalid value type funcref",
+                                        "malformed value type",
+                                        "00 61 73 6D 01 00 00 00 06 06 01 70 00 41 00 0B",
+                                        Failure.Type.MALFORMED),
+                        binaryCase(
+                                        "Global - invalid value type externref",
+                                        "malformed value type",
+                                        "00 61 73 6D 01 00 00 00 06 06 01 6F 00 41 00 0B",
+                                        Failure.Type.MALFORMED),
+                        binaryCase(
+                                        "Global - invalid modified",
+                                        "Invalid mutability flag: 2",
+                                        "00 61 73 6D 01 00 00 00 06 06 01 7F 02 41 00 0B",
+                                        Failure.Type.MALFORMED),
+                        binaryCase(
+                                        "Global - type mismatch",
+                                        "type mismatch: 0x7F should = 0x7E",
+                                        "00 61 73 6D 01 00 00 00 06 06 01 7F 00 42 00 0B",
+                                        Failure.Type.INVALID),
                         // ## Modules
-                        // https://webassembly.github.io/spec/core/valid/modules.html
 
                         // ### Functions
-                        // https://webassembly.github.io/spec/core/valid/modules.html#functions
 
                         // The type `C.types[x]` must be defined in the context.
-                        // Validated in: SymbolTable#allocateFunction
                         stringCase(
                                         "Function - invalid type index",
                                         "unknown type: 1 should be < 1",
@@ -245,7 +264,7 @@ public class ValidationSuite extends WasmFileSuite {
                         // Validated in: BinaryParser#readElementSection
                         binaryCase(
                                         "Element segment - invalid table index",
-                                        "unknown table: 2 should = 0",
+                                        "unknown table",
                                         // (table 1 funcref) (elem 5 (i32.const 0) $f1) (func $f1
                                         // (result i32) i32.const 42)
                                         "00 61 73 6d 01 00 00 00 01 05 01 60 00 01 7f 03" +
@@ -257,7 +276,7 @@ public class ValidationSuite extends WasmFileSuite {
                         // The element type `elemtype` must be `funcref`.
                         // Validated in: BinaryParser#readTableSection and
                         // BinaryParser#readImportSection
-                        // TODO(mbovel)
+                        // see "Table types" above.
 
                         // The expression `expr` must be valid with result type `[i32]`.
                         // Checked in OfficialTestSuite:
@@ -313,8 +332,8 @@ public class ValidationSuite extends WasmFileSuite {
                                         "(start 0) (func (result i32) i32.const 42)",
                                         Failure.Type.INVALID),
                         stringCase(
-                                        "Start function - takes arguments",
-                                        "Start function cannot take arguments.",
+                                        "Start function - takes parameters",
+                                        "Start function cannot take parameters.",
                                         "(start 0) (func (param i32))",
                                         Failure.Type.INVALID),
 
@@ -366,7 +385,612 @@ public class ValidationSuite extends WasmFileSuite {
                                         "Module - duplicate export (function and memory)",
                                         "All export names must be different, but 'a' is exported twice.",
                                         "(func (export \"a\") (result i32) i32.const 42) (memory (export \"a\") 1)",
-                                        Failure.Type.INVALID));
+                                        Failure.Type.INVALID),
+
+                        // Function with too many return values
+                        binaryCase("Function - too many return values (1)",
+                                        "Expected result types [], but got [i32].",
+                                        // (module
+                                        // (func
+                                        // i32.const 1
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 06 01 04 00 41 01 0B",
+                                        Failure.Type.INVALID),
+
+                        binaryCase("Function - too many return values (2)",
+                                        "Expected result types [], but got [f32,i32].",
+                                        // (module
+                                        // (func
+                                        // i32.const 1
+                                        // f32.const 1
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 0B 01 09 00 41 01 43 00 00 80 3F 0B",
+                                        Failure.Type.INVALID),
+
+                        // Function with too few return values
+                        binaryCase("Function - too few return values",
+                                        "Expected result types [i32], but got [].",
+                                        // (module
+                                        // (func (result i32)
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7F 03 02 01 00 0A 04 01 02 00 0B",
+                                        Failure.Type.INVALID),
+                        // Function with unexpected return type
+                        binaryCase("Function - unexpected return type (i32 -> i64)",
+                                        "Expected result types [i32], but got [i64].",
+                                        // (module
+                                        // (func (result i32)
+                                        // i64.const 1
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7F 03 02 01 00 0A 06 01 04 00 42 01 0B",
+                                        Failure.Type.INVALID),
+
+                        binaryCase("Function - unexpected return type (f32 -> f64)",
+                                        "Expected result types [f32], but got [f64].",
+                                        // (module
+                                        // (func (result f32)
+                                        // f64.const 1
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7D 03 02 01 00 0A 0D 01 0B 00 44 00 00 00 00 00 00 F0 3F 0B",
+                                        Failure.Type.INVALID),
+                        binaryCase("Function - correct return type",
+                                        "",
+                                        // (module
+                                        // (func (export "_main") (result i32)
+                                        // i32.const 1
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7F 03 02 01 00 07 09 01 05 5F 6D 61 69 6E 00 00 0A 06 01 04 00 41 01 0B",
+                                        null),
+
+                        // If with missing condition
+                        binaryCase("If - missing condition",
+                                        "Expected type [i32], but got [].",
+                                        // (module
+                                        // (func
+                                        // if ;; label = @1
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 07 01 05 00 04 40 0B 0B",
+                                        Failure.Type.INVALID),
+
+                        // If with incorrect condition type
+                        binaryCase("If - incorrect condition type (i64)",
+                                        "Expected type [i32], but got [i64].",
+                                        // (module
+                                        // (func
+                                        // i64.const 1
+                                        // if ;; label = @1
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 09 01 07 00 42 01 04 40 0B 0B",
+                                        Failure.Type.INVALID),
+
+                        binaryCase("If - incorrect condition type (f32)",
+                                        "Expected type [i32], but got [f32].",
+                                        // (module
+                                        // (func
+                                        // f32.const 1
+                                        // if ;; label = @1
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 0C 01 0A 00 43 00 00 80 3F 04 40 0B 0B",
+                                        Failure.Type.INVALID),
+                        binaryCase("If - incorrect condition type (f64)",
+                                        "Expected type [i32], but got [f64].",
+                                        // (module
+                                        // (func
+                                        // f64.const 1
+                                        // if ;; label = @1
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 10 01 0E 00 44 00 00 00 00 00 00 F0 3F 04 40 0B 0B",
+                                        Failure.Type.INVALID),
+
+                        // If with missing end
+                        binaryCase("If - missing end",
+                                        "The binary is truncated at: 28",
+                                        // (module
+                                        // (func
+                                        // i32.const 1
+                                        // if ;; label = @1
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 09 01 07 00 41 01 04 40 0B",
+                                        Failure.Type.MALFORMED),
+
+                        // End without start block
+                        binaryCase("End - missing start block",
+                                        "The binary is truncated at: 25",
+                                        // (module
+                                        // (func
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 04 01 02 00 0B 0B",
+                                        Failure.Type.MALFORMED),
+
+                        // If with correct condition
+                        binaryCase("If - correct condition",
+                                        "",
+                                        // (module
+                                        // (func (export "_main")
+                                        // i32.const 1
+                                        // if ;; label = @1
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 07 09 01 05 5F 6D 61 69 6E 00 00 0A 09 01 07 00 41 01 04 40 0B 0B",
+                                        null),
+
+                        // If - no result value in true branch
+                        binaryCase("If - true branch missing result value",
+                                        "Expected result types [i32], but got [].",
+                                        // (module
+                                        // (func
+                                        // i32.const 1
+                                        // if (result i32)
+                                        // else
+                                        // i32.const 0
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 0D 01 0B 00 41 01 04 7F 05 41 00 0B 1A 0B",
+                                        Failure.Type.INVALID),
+
+                        // If - result type with missing else
+                        binaryCase("If - result type without else branch",
+                                        "Expected else branch. If with incompatible param and result types requires else branch.",
+                                        // (module
+                                        // (func
+                                        // i32.const 1
+                                        // if (result i32)
+                                        // i32.const 1
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 0B 01 09 00 41 01 04 7F 41 01 0B 0B",
+                                        Failure.Type.INVALID),
+
+                        // If - else without if
+                        binaryCase("If - else without if",
+                                        "Expected then branch. Else branch requires preceding then branch.",
+                                        // (module
+                                        // (func
+                                        // else
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 04 01 02 00 05 0B 0B",
+                                        Failure.Type.INVALID),
+
+                        // Correct if else
+                        binaryCase("If - correct if else",
+                                        "",
+                                        // (module
+                                        // (func (export "_main")
+                                        // i32.const 1
+                                        // if
+                                        // else
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 07 09 01 05 5F 6D 61 69 6E 00 00 0A 09 01 07 00 41 01 04 40 0B 0B",
+                                        null),
+                        // Correct if else with return
+                        binaryCase("If - correct if else with return",
+                                        "",
+                                        // (module
+                                        // (func (export "_main")
+                                        // i32.const 1
+                                        // if (result i32)
+                                        // i32.const 1
+                                        // else
+                                        // i32.const 2
+                                        // end
+                                        // drop
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 07 09 01 05 5F 6D 61 69 6E 00 00 0A 0F 01 0D 00 41 01 04 7F 41 01 05 41 02 0B 1A 0B",
+                                        null),
+                        // Branch to unknown label
+                        binaryCase("Br - unknown label",
+                                        "Unknown branch label 1 (max 0).",
+                                        // (module
+                                        // (func
+                                        // br 1
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 06 01 04 00 0C 01 0B",
+                                        Failure.Type.INVALID),
+                        // Branch to existing label
+                        binaryCase("Br - correct branch",
+                                        "",
+                                        // (module
+                                        // (func (export "_main")
+                                        // br 1
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 07 09 01 05 5F 6D 61 69 6E 00 00 0A 0F 01 0D 00 41 01 04 7F 41 01 05 41 02 0B 1A 0B",
+                                        null),
+
+                        // Branch if to unknown label
+                        binaryCase("Br_if - unknown label",
+                                        "Unknown branch label 1 (max 0).",
+                                        // (module
+                                        // (func
+                                        // i32.const 0
+                                        // br_if 1
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 08 01 06 00 41 00 0D 01 0B",
+                                        Failure.Type.INVALID),
+
+                        // Branch if - condition missing
+                        binaryCase("Br_if - missing condition",
+                                        "Expected type [i32], but got [].",
+                                        // (module
+                                        // (func
+                                        // block
+                                        // br_if 0
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 09 01 07 00 02 40 0D 00 0B 0B",
+                                        Failure.Type.INVALID),
+
+                        // Branch if - incorrect condition type
+                        binaryCase("Br_if - incorrect condition type (i64)",
+                                        "Expected type [i32], but got [i64].",
+                                        // (module
+                                        // (func
+                                        // block
+                                        // i64.const 0
+                                        // br_if 0
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 0B 01 09 00 02 40 42 00 0D 00 0B 0B",
+                                        Failure.Type.INVALID),
+                        binaryCase("Br_if - incorrect condition type (f32)",
+                                        "Expected type [i32], but got [f32].",
+                                        // (module
+                                        // (func
+                                        // block
+                                        // f32.const 0
+                                        // br_if 0
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 0E 01 0C 00 02 40 43 00 00 00 00 0D 00 0B 0B",
+                                        Failure.Type.INVALID),
+                        binaryCase("Br_if - incorrect condition type (f64)",
+                                        "Expected type [i32], but got [f64].",
+                                        // (module
+                                        // (func
+                                        // block
+                                        // f64.const 0
+                                        // br_if 0
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 12 01 10 00 02 40 44 00 00 00 00 00 00 00 00 0D 00 0B 0B",
+                                        Failure.Type.INVALID),
+
+                        // Correct branch if
+                        binaryCase("Br_if - correct",
+                                        "",
+                                        // (module
+                                        // (func (export "_main")
+                                        // block
+                                        // i32.const 0
+                                        // br_if 0
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 07 09 01 05 5F 6D 61 69 6E 00 00 0A 0B 01 09 00 02 40 41 00 0D 00 0B 0B",
+                                        null),
+
+                        // Branch table missing index
+                        binaryCase("Br_table - missing index",
+                                        "Expected type [i32], but got [].",
+                                        // (module
+                                        // (func
+                                        // block
+                                        // br_table 0 1
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 0B 01 09 00 02 40 0E 01 00 01 0B 0B",
+                                        Failure.Type.INVALID),
+
+                        // Branch table incorrect index type
+                        binaryCase("Br_table - incorrect index type (i64)",
+                                        "Expected type [i32], but got [i64].",
+                                        // (module
+                                        // (func
+                                        // block
+                                        // i64.const 0
+                                        // br_table 0 1
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 0D 01 0B 00 02 40 42 00 0E 01 00 01 0B 0B",
+                                        Failure.Type.INVALID),
+
+                        binaryCase("Br_table - incorrect index type (f32)",
+                                        "Expected type [i32], but got [f32].",
+                                        // (module
+                                        // (func
+                                        // block
+                                        // f32.const 0
+                                        // br_table 0 1
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 10 01 0E 00 02 40 43 00 00 00 00 0E 01 00 01 0B 0B",
+                                        Failure.Type.INVALID),
+                        binaryCase("Br_table - incorrect index type (f64)",
+                                        "Expected type [i32], but got [f64].",
+                                        // (module
+                                        // (func
+                                        // block
+                                        // f64.const 0
+                                        // br_table 0 1
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 14 01 12 00 02 40 44 00 00 00 00 00 00 00 00 0E 01 00 01 0B 0B",
+                                        Failure.Type.INVALID),
+
+                        // Branch table to unknown label
+                        binaryCase("Br_table - unknown label (last)",
+                                        "Unknown branch label 2 (max 1).",
+                                        // (module
+                                        // (func
+                                        // block
+                                        // i32.const 0
+                                        // br_table 0 1 2
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 0E 01 0C 00 02 40 41 00 0E 02 00 01 02 0B 0B",
+                                        Failure.Type.INVALID),
+                        binaryCase("Br_table - unknown label (first)",
+                                        "Unknown branch label 2 (max 1).",
+                                        // (module
+                                        // (func
+                                        // block
+                                        // i32.const 0
+                                        // br_table 2 1 0
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 0E 01 0C 00 02 40 41 00 0E 02 02 01 00 0B 0B",
+                                        Failure.Type.INVALID),
+
+                        // Branch table with different target function signature
+                        binaryCase("Br_table - different target result types (i32 - void)",
+                                        "Inconsistent label types. Expected [], but got [i32].",
+                                        // (module
+                                        // (func (result i32)
+                                        // block
+                                        // i32.const 0
+                                        // br_table 1 0
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7F 03 02 01 00 0A 0D 01 0B 00 02 40 41 00 0E 01 01 00 0B 0B",
+                                        Failure.Type.INVALID),
+                        binaryCase("Br_table - different target result types (i32 - f32)",
+                                        "Inconsistent label types. Expected [f32], but got [i32].",
+                                        // (module
+                                        // (func (result i32)
+                                        // block (result f32)
+                                        // i32.const 0
+                                        // br_table 1 0
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7F 03 02 01 00 0A 0D 01 0B 00 02 7D 41 00 0E 01 01 00 0B 0B",
+                                        Failure.Type.INVALID),
+                        // Correct branch table
+                        binaryCase("Br_table - correct",
+                                        "",
+                                        // (module
+                                        // (func (export "_main") (result f32)
+                                        // block (result f32)
+                                        // f32.const 1
+                                        // i32.const 0
+                                        // br_table 1 0
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7D 03 02 01 00 07 09 01 05 5F 6D 61 69 6E 00 00 0A 12 01 10 00 02 7D 43 00 00 80 3F 41 00 0E 01 01 00 0B 0B",
+                                        null),
+
+                        // Return with missing value
+                        binaryCase("Return - missing value",
+                                        "Expected result types [f32], but got [].",
+                                        // (module
+                                        // (func (result f32)
+                                        // return
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7D 03 02 01 00 0A 05 01 03 00 0F 0B",
+                                        Failure.Type.INVALID),
+
+                        // Return with incorrect type
+                        binaryCase("Return - incorrect result type",
+                                        "Expected result types [f32], but got [i32].",
+                                        // (module
+                                        // (func (result f32)
+                                        // i32.const 0
+                                        // return
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7D 03 02 01 00 0A 07 01 05 00 41 00 0F 0B",
+                                        Failure.Type.INVALID),
+
+                        // Return with reference type
+                        binaryCase(
+                                        "Return - invalid reference type",
+                                        "malformed value type",
+                                        // (module
+                                        // (func (result funcref)
+                                        // return)
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 6F 03 02 01 00 0A 03 01 00 0B",
+                                        Failure.Type.MALFORMED),
+
+                        // Correct return
+                        binaryCase("Return - correct",
+                                        "",
+                                        // (module
+                                        // (func (export "_main") (result f32)
+                                        // f32.const 0
+                                        // return
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 7D 03 02 01 00 07 09 01 05 5F 6D 61 69 6E 00 00 0A 0A 01 08 00 43 00 00 00 00 0F 0B",
+                                        null),
+
+                        // Call with missing parameter
+                        binaryCase("Call - missing parameter",
+                                        "Expected param types [i32], but got [].",
+                                        // (module
+                                        // (func (param i32))
+                                        // (func
+                                        // call 0
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 08 02 60 01 7F 00 60 00 00 03 03 02 00 01 0A 09 02 02 00 0B 04 00 10 00 0B",
+                                        Failure.Type.INVALID),
+                        // Call with incorrect parameter
+                        binaryCase("Call - incorrect parameter",
+                                        "Expected param types [i32], but got [f32].",
+                                        // (module
+                                        // (func (param i32))
+                                        // (func
+                                        // f32.const 0
+                                        // call 0
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 08 02 60 01 7F 00 60 00 00 03 03 02 00 01 0A 0E 02 02 00 0B 09 00 43 00 00 00 00 10 00 0B",
+                                        Failure.Type.INVALID),
+
+                        // Correct call
+                        binaryCase("Call - correct",
+                                        "",
+                                        // (module
+                                        // (func (param f32) (result i32)
+                                        // local.get 0
+                                        // i32.trunc_f32_s
+                                        // )
+                                        // (func (export "_main")
+                                        // f32.const 1.5
+                                        // call 0
+                                        // drop
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 09 02 60 01 7D 01 7F 60 00 00 03 03 02 00 01 07 09 01 05 5F 6D 61 69 6E 00 01 0A 12 02 05 00 20 00 A8 0B 0A 00 43 00 00 C0 3F 10 00 1A 0B",
+                                        null),
+
+                        // Indirect call with missing index
+                        binaryCase("Call_indirect - missing index",
+                                        "Expected type [i32], but got [].",
+                                        // (module
+                                        // (table 1 funcref)
+                                        // (type (func))
+                                        // (func
+                                        // call_indirect 0
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 04 04 01 70 00 01 0A 07 01 05 00 11 00 00 0B",
+                                        Failure.Type.INVALID),
+
+                        // Indirect call with missing table
+                        binaryCase("Call_indirect - missing table",
+                                        "unknown table",
+                                        // (module
+                                        // (type (func))
+                                        // (func
+                                        // i32.const 0
+                                        // call_indirect (type 0)
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 09 01 07 00 41 00 11 00 00 0B",
+                                        Failure.Type.INVALID),
+
+                        // Indirect call with missing type
+                        binaryCase("Call_indirect - missing type",
+                                        "Function type variable 1 out of range. (max 0)",
+                                        // (module
+                                        // (type (func))
+                                        // (table 1 funcref)
+                                        // (func
+                                        // i32.const 0
+                                        // call_indirect (type 1)
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 04 04 01 70 00 01 0A 09 01 07 00 41 00 11 01 00 0B",
+                                        Failure.Type.INVALID),
+
+                        binaryCase("Call_indirect - correct",
+                                        "",
+                                        // (module
+                                        // (type (func))
+                                        // (type (func (result i32)))
+                                        // (table 1 funcref)
+                                        // (func $f0 (type 1)
+                                        // i32.const 0
+                                        // )
+                                        // (elem (i32.const 0) $f0)
+                                        // (func (export "_main")
+                                        // i32.const 0
+                                        // call_indirect (type 1)
+                                        // drop
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 08 02 60 00 00 60 00 01 7F 03 03 02 01 00 04 04 01 70 00 01 07 09 01 05 5F 6D 61 69 6E 00 01 09 07 01 00 41 00 0B 01 00 0A 0F 02 04 00 41 00 0B 08 00 41 00 11 01 00 1A 0B",
+                                        null),
+
+                        binaryCase("Invalid instruction",
+                                        "Unknown opcode: 0x06",
+
+                                        // (module
+                                        // (func
+                                        // 0x06
+                                        // drop
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 07 01 05 00 06 00 1A 0B",
+                                        Failure.Type.MALFORMED),
+
+                        binaryCase("Invalid result type",
+                                        "Invalid value type: 0x20",
+                                        // (module
+                                        // (func (result 0x20)
+                                        // i32.const 0
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 05 01 60 00 01 20 03 02 01 00 0A 06 01 04 00 41 00 0B",
+                                        Failure.Type.MALFORMED),
+                        // Data count section not supported
+                        binaryCase(
+                                        "Data Count Section - not supported",
+                                        "invalid section ID: 12",
+                                        "00 61 73 6D 01 00 00 00 0C 00",
+                                        Failure.Type.MALFORMED));
     }
 
     private final String expectedErrorMessage;
@@ -380,11 +1004,19 @@ public class ValidationSuite extends WasmFileSuite {
         this.expectedFailureType = failureType;
     }
 
+    protected void addContextOptions(Context.Builder contextBuilder) {
+        contextBuilder.option("wasm.MultiValue", "false");
+        contextBuilder.option("wasm.BulkMemoryAndRefTypes", "false");
+        contextBuilder.option("wasm.Memory64", "false");
+    }
+
     @Override
     @Test
     public void test() throws IOException {
-        final Context context = Context.newBuilder("wasm").build();
-        final Source source = Source.newBuilder("wasm", ByteSequence.create(bytecode), "dummy_main").build();
+        final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        addContextOptions(contextBuilder);
+        final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(bytecode), "dummy_main").build();
+        final Context context = contextBuilder.build();
         try {
             context.eval(source).getMember("_main").execute();
         } catch (final PolyglotException e) {
@@ -401,11 +1033,15 @@ public class ValidationSuite extends WasmFileSuite {
             final String failureType = actualFailureObject.getMember("failureType").asString();
             Assert.assertEquals("unexpected failure type", expectedFailureType.name, failureType);
             return;
+        } finally {
+            context.close();
         }
-        throw new AssertionError("expected to be invalid");
+        if (expectedFailureType != null) {
+            throw new AssertionError("expected to be invalid");
+        }
     }
 
-    private static Object[] stringCase(String name, String errorMessage, String textString, Failure.Type failureType) {
+    protected static Object[] stringCase(String name, String errorMessage, String textString, Failure.Type failureType) {
         try {
             return new Object[]{name, errorMessage, compileWat(name, textString + "(func (export \"_main\") (result i32) i32.const 42)"), failureType};
         } catch (final IOException | InterruptedException e) {
@@ -413,7 +1049,7 @@ public class ValidationSuite extends WasmFileSuite {
         }
     }
 
-    private static Object[] binaryCase(String name, String errorMessage, String hexString, Failure.Type failureType) {
+    protected static Object[] binaryCase(String name, String errorMessage, String hexString, Failure.Type failureType) {
         return new Object[]{name, errorMessage, hexStringToByteArray(hexString), failureType};
     }
 }

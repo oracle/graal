@@ -98,9 +98,10 @@ define i1 @alloca_varwidth_min_int_bits() {
 
 define i64 @alloca_varwidth_max_int_bits() {
   %1 = alloca i64, align 16
-  %2 = alloca i16777215, align 16          ; (1<<24)-1 (VariableBitWidthType.MAX_INT_BITS)
-  store i16777215 1, i16777215* %2         ; check whether we can store to it
-  %3 = bitcast i16777215* %2 to i64*
+  %2 = alloca i8388608, align 16          ; 1<<23 (IntegerType::MAX_INT_BITS)
+
+  store i8388608 1, i8388608* %2         ; check whether we can store to it
+  %3 = bitcast i8388608* %2 to i64*
   %4 = bitcast i64* %1 to i64*
   %5 = ptrtoint i64* %3 to i64
   %6 = ptrtoint i64* %4 to i64
@@ -108,8 +109,8 @@ define i64 @alloca_varwidth_max_int_bits() {
   ret i64 %7
 }
 
-define i1 @varwidth_max_int_bits_ptr(i16777215*) { ; (1<<24)-1 (VariableBitWidthType.MAX_INT_BITS)
- %2 = icmp eq i16777215* %0, null
+define i1 @varwidth_max_int_bits_ptr(i8388608*) { ; 1<<23 (IntegerType::MAX_INT_BITS)
+ %2 = icmp eq i8388608* %0, null
  ret i1 %2
 }
 

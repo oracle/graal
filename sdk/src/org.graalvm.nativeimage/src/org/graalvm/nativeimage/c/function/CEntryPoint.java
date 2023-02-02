@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
@@ -110,7 +111,7 @@ public @interface CEntryPoint {
      *
      * @since 19.0
      */
-    Class<?> exceptionHandler() default FatalExceptionHandler.class;
+    Class<? extends ExceptionHandler> exceptionHandler() default FatalExceptionHandler.class;
 
     /**
      * Special placeholder value for {@link #exceptionHandler()} to print the caught exception and
@@ -118,7 +119,7 @@ public @interface CEntryPoint {
      *
      * @since 19.0
      */
-    final class FatalExceptionHandler {
+    final class FatalExceptionHandler implements ExceptionHandler {
         private FatalExceptionHandler() {
         }
     }
@@ -134,6 +135,86 @@ public @interface CEntryPoint {
      * @since 19.0
      */
     Builtin builtin() default Builtin.NO_BUILTIN;
+
+    /**
+     * If the supplier returns {@code true}, this entry point is added automatically when building a
+     * shared library. This means the method is a root method for compilation, and everything
+     * reachable from it is compiled too.
+     *
+     * The provided class must have a nullary constructor, which is used to instantiate the class.
+     * Then the supplier function is called on the newly instantiated instance.
+     *
+     * @since 22.0
+     */
+    Class<? extends BooleanSupplier> include() default AlwaysIncluded.class;
+
+    /**
+     * A {@link BooleanSupplier} that always returns {@code true}.
+     *
+     * @since 22.0
+     */
+    final class AlwaysIncluded implements BooleanSupplier {
+
+        private AlwaysIncluded() {
+        }
+
+        /**
+         * Returns {@code true}.
+         *
+         * @since 22.0
+         */
+        @Override
+        public boolean getAsBoolean() {
+            return true;
+        }
+    }
+
+    /**
+     * A {@link BooleanSupplier} that always returns {@code false}.
+     *
+     * @since 22.0
+     */
+    final class NotIncludedAutomatically implements BooleanSupplier {
+
+        private NotIncludedAutomatically() {
+        }
+
+        /**
+         * Returns {@code false}.
+         *
+         * @since 22.0
+         */
+        @Override
+        public boolean getAsBoolean() {
+            return false;
+        }
+    }
+
+    /**
+     * @since 22.0
+     */
+    enum Publish {
+        /**
+         * Do not publish the entry point method.
+         */
+        NotPublished,
+        /**
+         * Create a symbol for the entry point method in the native image.
+         */
+        SymbolOnly,
+        /**
+         * Create a symbol for the entry point method in the native image, and if building a shared
+         * library image, also include a C declaration in the generated C header file.
+         */
+        SymbolAndHeader,
+    }
+
+    /**
+     * Whether the entry point is part of the symbols and header files produced by Native Image.
+     *
+     * @since 22.0
+     */
+    Publish publishAs() default Publish.SymbolAndHeader;
 
     /**
      * The built-in methods which can be {@linkplain #builtin() aliased}.
@@ -228,5 +309,13 @@ public @interface CEntryPoint {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     @interface IsolateContext {
+    }
+
+    /**
+     * Marker interface for all {@link CEntryPoint#exceptionHandler() exception handler} classes.
+     *
+     * @since 22.0
+     */
+    interface ExceptionHandler {
     }
 }

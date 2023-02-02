@@ -24,16 +24,15 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.TargetClass;
-// Checkstyle: stop
-import sun.util.locale.provider.LocaleResources;
-// Checkstyle: resume
-
 import java.lang.ref.ReferenceQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
+
+import sun.util.locale.provider.LocaleResources;
 
 @TargetClass(LocaleResources.class)
 final class Target_sun_util_locale_provider_LocaleResources {

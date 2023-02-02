@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,14 @@ package com.oracle.truffle.dsl.processor.model;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationValue;
 
+import java.util.Objects;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
@@ -73,15 +75,26 @@ public final class CacheExpression extends MessageContainer {
     private boolean isWeakReferenceGet;
     private boolean isWeakReference;
     private boolean adopt = true;
-
-    private TypeMirror languageType;
-    private TypeMirror referenceType;
+    private boolean neverDefault;
+    private boolean neverDefaultGuaranteed;
+    private InlinedNodeData inlinedNode;
 
     private LibraryData cachedlibrary;
+    private boolean usedInGuard;
+
+    private AnnotationMirror sharedGroupMirror;
+    private AnnotationValue sharedGroupValue;
+    private String sharedGroup;
 
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
         this.sourceAnnotationMirror = sourceAnnotationMirror;
+        this.sharedGroupMirror = ElementUtils.findAnnotationMirror(sourceParameter.getVariableElement(), types.Cached_Shared);
+        this.sharedGroupValue = sharedGroupMirror != null ? getAnnotationValue(sharedGroupMirror, "value") : null;
+        this.sharedGroup = sharedGroupMirror != null ? getAnnotationValue(String.class, sharedGroupMirror, "value", false) : null;
+        if (this.sharedGroupMirror != null && sharedGroup == null) {
+            this.sharedGroup = sourceParameter.getVariableElement().getSimpleName().toString();
+        }
     }
 
     public CacheExpression copy() {
@@ -90,19 +103,51 @@ public final class CacheExpression extends MessageContainer {
         copy.defaultExpression = this.defaultExpression;
         copy.uncachedExpression = this.uncachedExpression;
         copy.alwaysInitialized = this.alwaysInitialized;
+        copy.eagerInitialize = this.eagerInitialize;
+        copy.uncachedExpressionError = this.uncachedExpressionError;
+        copy.requiresBoundary = this.requiresBoundary;
+        copy.mergedLibrary = this.mergedLibrary;
+        copy.isWeakReference = this.isWeakReference;
+        copy.isWeakReferenceGet = this.isWeakReferenceGet;
+        copy.adopt = this.adopt;
+        copy.inlinedNode = this.inlinedNode != null ? this.inlinedNode.copy() : null;
+        copy.cachedlibrary = cachedlibrary;
+        copy.usedInGuard = usedInGuard;
+        copy.neverDefault = neverDefault;
+        copy.neverDefaultGuaranteed = neverDefaultGuaranteed;
         return copy;
     }
 
-    public void setLanguageType(TypeMirror languageType) {
-        this.languageType = languageType;
+    public void setIsUsedInGuard(boolean b) {
+        this.usedInGuard = b;
     }
 
-    public boolean isReference() {
-        if (isCachedLanguage()) {
-            return !ElementUtils.typeEquals(getLanguageType(), getParameter().getType());
-        } else {
-            return ElementUtils.typeEquals(getReferenceType(), getParameter().getType());
-        }
+    public boolean isUsedInGuard() {
+        return usedInGuard;
+    }
+
+    public boolean isNeverDefault() {
+        return neverDefault;
+    }
+
+    public void setNeverDefault(boolean neverDefault) {
+        this.neverDefault = neverDefault;
+    }
+
+    public boolean isNeverDefaultGuaranteed() {
+        return neverDefaultGuaranteed;
+    }
+
+    public void setNeverDefaultGuaranteed(boolean neverDefault) {
+        this.neverDefaultGuaranteed = neverDefault;
+    }
+
+    public void setInlinedNode(InlinedNodeData inlinedNode) {
+        this.inlinedNode = inlinedNode;
+    }
+
+    public InlinedNodeData getInlinedNode() {
+        return inlinedNode;
     }
 
     public boolean isEagerInitialize() {
@@ -113,36 +158,29 @@ public final class CacheExpression extends MessageContainer {
         this.eagerInitialize = alreadyInitialized;
     }
 
-    public TypeMirror getReferenceType() {
-        return referenceType;
-    }
-
-    public void setReferenceType(TypeMirror supplierType) {
-        this.referenceType = supplierType;
-    }
-
-    public TypeMirror getLanguageType() {
-        return languageType;
+    public void clearSharing() {
+        this.sharedGroup = null;
+        this.sharedGroupMirror = null;
+        this.sharedGroupValue = null;
     }
 
     public AnnotationMirror getSharedGroupMirror() {
-        return ElementUtils.findAnnotationMirror(sourceParameter.getVariableElement(), types.Cached_Shared);
+        return sharedGroupMirror;
+    }
+
+    public boolean isEncodedEnum() {
+        if (!isCached()) {
+            return false;
+        }
+        return ElementUtils.isAssignable(getParameter().getType(), ProcessorContext.getInstance().getType(Enum.class));
     }
 
     public AnnotationValue getSharedGroupValue() {
-        AnnotationMirror sharedAnnotation = getSharedGroupMirror();
-        if (sharedAnnotation != null) {
-            return getAnnotationValue(sharedAnnotation, "value");
-        }
-        return null;
+        return sharedGroupValue;
     }
 
     public String getSharedGroup() {
-        AnnotationMirror sharedAnnotation = getSharedGroupMirror();
-        if (sharedAnnotation != null) {
-            return getAnnotationValue(String.class, sharedAnnotation, "value");
-        }
-        return null;
+        return sharedGroup;
     }
 
     public void setDefaultExpression(DSLExpression expression) {
@@ -215,14 +253,6 @@ public final class CacheExpression extends MessageContainer {
         return ElementUtils.getAnnotationValue(String.class, getMessageAnnotation(), "limit", false);
     }
 
-    public boolean isCachedContext() {
-        return isType(types.CachedContext);
-    }
-
-    public boolean isCachedLanguage() {
-        return isType(types.CachedLanguage);
-    }
-
     private boolean isType(DeclaredType type) {
         return ElementUtils.typeEquals(sourceAnnotationMirror.getAnnotationType(), type);
     }
@@ -255,6 +285,21 @@ public final class CacheExpression extends MessageContainer {
 
     public boolean isMergedLibrary() {
         return mergedLibrary;
+    }
+
+    public boolean isThisExpression() {
+        DSLExpression e = getDefaultExpression();
+        if (!(e instanceof Variable)) {
+            return false;
+        }
+        Variable v = (Variable) e;
+        if (v.getResolvedVariable() instanceof CodeVariableElement) {
+            if (v.getResolvedVariable().getSimpleName().toString().equals("this")) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public String getMergedLibraryIdentifier() {
@@ -337,6 +382,15 @@ public final class CacheExpression extends MessageContainer {
 
     public void setCachedLibrary(LibraryData cachedlibrary) {
         this.cachedlibrary = cachedlibrary;
+    }
+
+    public boolean usesDefaultCachedInitializer() {
+        return ElementUtils.getAnnotationValue(getMessageAnnotation(), "value", false) == null;
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "@" + Integer.toHexString(hashCode()) + "[" + Objects.toString(sourceParameter) + "]";
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,6 +59,16 @@ public class BasicInductionVariable extends InductionVariable {
     }
 
     @Override
+    public InductionVariable duplicate() {
+        return new BasicInductionVariable(loop, phi, init, rawStride, (BinaryArithmeticNode<?>) op.copyWithInputs(true));
+    }
+
+    @Override
+    public InductionVariable duplicateWithNewInit(ValueNode newInit) {
+        return new BasicInductionVariable(loop, phi, newInit, rawStride, (BinaryArithmeticNode<?>) op.copyWithInputs(true));
+    }
+
+    @Override
     public StructuredGraph graph() {
         return phi.graph();
     }
@@ -67,7 +77,7 @@ public class BasicInductionVariable extends InductionVariable {
         return op;
     }
 
-    public void setOP(BinaryArithmeticNode<?> newOp) {
+    public void setOp(BinaryArithmeticNode<?> newOp) {
         rawStride = newOp.getY();
         op = newOp;
     }
@@ -148,6 +158,11 @@ public class BasicInductionVariable extends InductionVariable {
 
     @Override
     public ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp) {
+        return extremumNode(assumeLoopEntered, stamp, loop.counted.maxTripCountNode(assumeLoopEntered));
+    }
+
+    @Override
+    public ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp, ValueNode maxTripCount) {
         Stamp fromStamp = phi.stamp(NodeView.DEFAULT);
         StructuredGraph graph = graph();
         ValueNode stride = strideNode();
@@ -156,11 +171,11 @@ public class BasicInductionVariable extends InductionVariable {
             stride = IntegerConvertNode.convert(stride, stamp, graph(), NodeView.DEFAULT);
             initNode = IntegerConvertNode.convert(initNode, stamp, graph(), NodeView.DEFAULT);
         }
-        ValueNode maxTripCount = loop.counted().maxTripCountNode(assumeLoopEntered);
-        if (!maxTripCount.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
-            maxTripCount = IntegerConvertNode.convert(maxTripCount, stamp, graph(), NodeView.DEFAULT);
+        ValueNode effectiveTripCount = maxTripCount;
+        if (!effectiveTripCount.stamp(NodeView.DEFAULT).isCompatible(stamp)) {
+            effectiveTripCount = IntegerConvertNode.convert(effectiveTripCount, stamp, graph(), NodeView.DEFAULT);
         }
-        return add(graph, mul(graph, stride, sub(graph, maxTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
+        return add(graph, mul(graph, stride, sub(graph, effectiveTripCount, ConstantNode.forIntegerStamp(stamp, 1, graph))), initNode);
     }
 
     @Override
@@ -197,5 +212,10 @@ public class BasicInductionVariable extends InductionVariable {
     @Override
     public String toString() {
         return String.format("BasicInductionVariable %s %s %s %s", initNode(), phi, op.getNodeClass().shortName(), strideNode());
+    }
+
+    @Override
+    public ValueNode entryTripValue() {
+        return init;
     }
 }

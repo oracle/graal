@@ -44,37 +44,69 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Types;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.model.Template;
 
 /**
  * THIS IS NOT PUBLIC API.
  */
-public class ProcessorContext {
+public class ProcessorContext implements AutoCloseable {
 
     private final ProcessingEnvironment environment;
-
-    private final Map<String, Template> models = new HashMap<>();
-
-    private final ProcessCallback callback;
     private final Log log;
     private TruffleTypes types;
+    private final Map<String, TypeElement> typeLookupCache = new HashMap<>();
+    private final Map<Class<?>, Map<String, Object>> modelCache = new HashMap<>();
 
-    public ProcessorContext(ProcessingEnvironment env, ProcessCallback callback) {
+    private Timer currentTimer;
+
+    private final boolean timingsEnabled;
+
+    public ProcessorContext(ProcessingEnvironment env) {
         this.environment = env;
-        this.callback = callback;
-        boolean emitWarnings = !Boolean.parseBoolean(System.getProperty("truffle.dsl.ignoreCompilerWarnings", "false"));
-        this.log = new Log(environment, emitWarnings);
+        boolean emitWarnings = !Boolean.parseBoolean(System.getProperty("truffle.dsl.ignoreCompilerWarnings", "false")) || TruffleProcessorOptions.suppressAllWarnings(env);
+
+        String[] suppressWarnings = null;
+        if (emitWarnings) {
+            suppressWarnings = TruffleProcessorOptions.suppressDSLWarnings(env);
+            if (suppressWarnings != null) {
+                for (String warning : suppressWarnings) {
+                    if (!TruffleSuppressedWarnings.ALL_KEYS.contains(warning)) {
+                        throw new IllegalArgumentException(String.format("Invalid truffle.dsl.SuppressWarnings key '%s' specified.", warning));
+                    }
+                }
+            }
+        }
+
+        this.log = new Log(environment, emitWarnings, suppressWarnings);
+        this.timingsEnabled = TruffleProcessorOptions.printTimings(env);
+    }
+
+    Timer getCurrentTimer() {
+        return currentTimer;
+    }
+
+    void setCurrentTimer(Timer currentTimer) {
+        this.currentTimer = currentTimer;
+    }
+
+    public boolean timingsEnabled() {
+        return timingsEnabled;
+    }
+
+    public static TruffleTypes types() {
+        return getInstance().getTypes();
     }
 
     public TruffleTypes getTypes() {
@@ -89,38 +121,71 @@ public class ProcessorContext {
         return environment;
     }
 
-    public boolean containsTemplate(TypeElement element) {
-        return models.containsKey(ElementUtils.getQualifiedName(element));
-    }
-
-    public void registerTemplate(TypeElement element, Template model) {
-        models.put(ElementUtils.getQualifiedName(element), model);
-    }
-
-    public Template getTemplate(TypeMirror templateTypeMirror, boolean invokeCallback) {
-        String qualifiedName = ElementUtils.getQualifiedName(templateTypeMirror);
-        Template model = models.get(qualifiedName);
-        if (model == null && invokeCallback) {
-            callback.callback(ElementUtils.fromTypeMirror(templateTypeMirror));
-            model = models.get(qualifiedName);
-        }
-        return model;
-    }
-
     public DeclaredType getDeclaredType(Class<?> element) {
-        return (DeclaredType) ElementUtils.getType(environment, element);
+        return (DeclaredType) getType(element);
     }
 
     public DeclaredType getDeclaredTypeOptional(String element) {
-        TypeElement type = ElementUtils.getTypeElement(environment, element);
+        TypeElement type = getTypeElement(element);
         if (type == null) {
             return null;
         }
         return (DeclaredType) type.asType();
     }
 
+    public TypeElement getTypeElement(final CharSequence typeName) {
+        final String typeNameString = typeName.toString();
+        TypeElement type = typeLookupCache.get(typeNameString);
+        if (type == null) {
+            type = environment.getElementUtils().getTypeElement(typeName);
+            if (type != null) {
+                typeLookupCache.put(typeNameString, type);
+            }
+        }
+        return type;
+    }
+
+    public TypeMirror getType(Class<?> element) {
+        if (element.isArray()) {
+            return environment.getTypeUtils().getArrayType(getType(element.getComponentType()));
+        }
+        if (element.isPrimitive()) {
+            if (element == void.class) {
+                return environment.getTypeUtils().getNoType(TypeKind.VOID);
+            }
+            TypeKind typeKind;
+            if (element == boolean.class) {
+                typeKind = TypeKind.BOOLEAN;
+            } else if (element == byte.class) {
+                typeKind = TypeKind.BYTE;
+            } else if (element == short.class) {
+                typeKind = TypeKind.SHORT;
+            } else if (element == char.class) {
+                typeKind = TypeKind.CHAR;
+            } else if (element == int.class) {
+                typeKind = TypeKind.INT;
+            } else if (element == long.class) {
+                typeKind = TypeKind.LONG;
+            } else if (element == float.class) {
+                typeKind = TypeKind.FLOAT;
+            } else if (element == double.class) {
+                typeKind = TypeKind.DOUBLE;
+            } else {
+                assert false;
+                return null;
+            }
+            return environment.getTypeUtils().getPrimitiveType(typeKind);
+        } else {
+            TypeElement typeElement = getTypeElement(element.getCanonicalName());
+            if (typeElement == null) {
+                return null;
+            }
+            return environment.getTypeUtils().erasure(typeElement.asType());
+        }
+    }
+
     public DeclaredType getDeclaredType(String element) {
-        TypeElement type = ElementUtils.getTypeElement(environment, element);
+        TypeElement type = getTypeElement(element);
         if (type == null) {
             throw new IllegalArgumentException("Processor requested type " + element + " but was not on the classpath.");
         }
@@ -129,10 +194,6 @@ public class ProcessorContext {
 
     public boolean isType(TypeMirror type, Class<?> clazz) {
         return ElementUtils.typeEquals(type, getType(clazz));
-    }
-
-    public TypeMirror getType(Class<?> element) {
-        return ElementUtils.getType(environment, element);
     }
 
     public TypeElement getTypeElement(Class<?> element) {
@@ -147,19 +208,10 @@ public class ProcessorContext {
     public interface ProcessCallback {
 
         void callback(TypeElement template);
-
     }
 
     public TypeMirror reloadTypeElement(TypeElement type) {
-        return getType(type.getQualifiedName().toString());
-    }
-
-    private TypeMirror getType(String className) {
-        TypeElement element = ElementUtils.getTypeElement(environment, className);
-        if (element != null) {
-            return element.asType();
-        }
-        return null;
+        return type.asType();
     }
 
     public TypeMirror reloadType(TypeMirror type) {
@@ -183,21 +235,11 @@ public class ProcessorContext {
 
     private static final ThreadLocal<ProcessorContext> instance = new ThreadLocal<>();
 
-    public static ProcessorContext enter(ProcessingEnvironment environment, ProcessCallback callback) {
-        ProcessorContext context = new ProcessorContext(environment, callback);
-        setThreadLocalInstance(context);
-        return context;
-    }
-
     public static ProcessorContext enter(ProcessingEnvironment environment) {
-        return enter(environment, null);
-    }
-
-    public static void leave() {
-        instance.set(null);
-    }
-
-    private static void setThreadLocalInstance(ProcessorContext context) {
+        ProcessorContext context = new ProcessorContext(environment);
+        if (instance.get() != null) {
+            throw new IllegalStateException("context already entered");
+        }
         instance.set(context);
         if (context != null && context.types == null) {
             try {
@@ -206,6 +248,23 @@ public class ProcessorContext {
                 TruffleProcessor.handleThrowable(null, e, null);
                 throw e;
             }
+        }
+        return context;
+    }
+
+    @Override
+    public void close() {
+        ProcessorContext context = instance.get();
+        if (context != this) {
+            throw new IllegalStateException("context cannot be left if not entered");
+        }
+        context.notifyLeave();
+        instance.set(null);
+    }
+
+    private void notifyLeave() {
+        if (currentTimer != null && timingsEnabled()) {
+            currentTimer.printSummary(System.out, "  ");
         }
     }
 
@@ -228,4 +287,20 @@ public class ProcessorContext {
         }
         return (Map<K, V>) cacheMap;
     }
+
+    @SuppressWarnings("unchecked")
+    public <T> T parseIfAbsent(TypeElement element, Class<?> cacheKey,
+                    Function<TypeElement, T> parser) {
+        Map<String, Object> cache = modelCache.computeIfAbsent(cacheKey, (e) -> new HashMap<>());
+        String typeId = ElementUtils.getUniqueIdentifier(element.asType());
+        T result;
+        if (cache.containsKey(typeId)) {
+            result = (T) cache.get(typeId);
+        } else {
+            result = parser.apply(element);
+            cache.put(typeId, result);
+        }
+        return result;
+    }
+
 }

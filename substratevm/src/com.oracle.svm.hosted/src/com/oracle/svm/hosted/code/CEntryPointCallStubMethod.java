@@ -25,34 +25,27 @@
 package com.oracle.svm.hosted.code;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Iterator;
 
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.DeadEndNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
-import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -61,14 +54,13 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins.CEntryPointBuiltinImplementation;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -78,8 +70,7 @@ import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.code.IsolateEnterStub;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
-import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -90,22 +81,15 @@ import com.oracle.svm.hosted.c.info.EnumLookupInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
-import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.LineNumberTable;
-import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
-import jdk.vm.ci.meta.SpeculationLog;
 
-public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, GraphProvider {
-
+public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     static CEntryPointCallStubMethod create(AnalysisMethod targetMethod, CEntryPointData entryPointData, AnalysisMetaAccess metaAccess) {
         ResolvedJavaMethod unwrappedMethod = targetMethod.getWrapped();
         MetaAccessProvider unwrappedMetaAccess = metaAccess.getWrapped();
@@ -114,37 +98,15 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         return new CEntryPointCallStubMethod(entryPointData, unwrappedMethod, declaringClass, constantPool);
     }
 
-    /**
-     * Line numbers are bogus because this is generated code, but we need to include them in our
-     * debug information. Otherwise, when setting a breakpoint, GDB will just pick a "nearby" code
-     * location that has line number information, which can be in a different function.
-     */
-    private static final LineNumberTable lineNumberTable = new LineNumberTable(new int[]{1}, new int[]{0});
-
     private static final JavaKind cEnumParameterKind = JavaKind.Int;
 
     private final CEntryPointData entryPointData;
     private final ResolvedJavaMethod targetMethod;
-    private final ResolvedJavaType holderClass;
-    private final ConstantPool holderConstantPool;
-
-    private StackTraceElement stackTraceElement;
 
     private CEntryPointCallStubMethod(CEntryPointData entryPointData, ResolvedJavaMethod targetMethod, ResolvedJavaType holderClass, ConstantPool holderConstantPool) {
+        super(SubstrateUtil.uniqueStubName(targetMethod), holderClass, targetMethod.getSignature(), holderConstantPool);
         this.entryPointData = entryPointData;
         this.targetMethod = targetMethod;
-        this.holderClass = holderClass;
-        this.holderConstantPool = holderConstantPool;
-    }
-
-    @Override
-    public String getName() {
-        return SubstrateUtil.uniqueShortName(targetMethod);
-    }
-
-    @Override
-    public Signature getSignature() {
-        return targetMethod.getSignature();
     }
 
     @Override
@@ -152,17 +114,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         return targetMethod.getParameters();
     }
 
-    @Override
-    public ResolvedJavaType getDeclaringClass() {
-        return holderClass;
-    }
-
-    @Override
-    public ConstantPool getConstantPool() {
-        return holderConstantPool;
-    }
-
-    private ResolvedJavaMethod lookupMethodInUniverse(UniverseMetaAccess metaAccess, ResolvedJavaMethod method) {
+    private static ResolvedJavaMethod lookupMethodInUniverse(UniverseMetaAccess metaAccess, ResolvedJavaMethod method) {
         ResolvedJavaMethod universeMethod = method;
         MetaAccessProvider wrappedMetaAccess = metaAccess.getWrapped();
         if (wrappedMetaAccess instanceof UniverseMetaAccess) {
@@ -184,14 +136,9 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     }
 
     @Override
-    public boolean allowRuntimeCompilation() {
-        return false;
-    }
-
-    @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         if (entryPointData.getBuiltin() != CEntryPointData.DEFAULT_BUILTIN) {
-            return buildBuiltinGraph(debug, method, providers);
+            return buildBuiltinGraph(debug, method, providers, purpose);
         }
 
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
@@ -202,11 +149,50 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         JavaType[] parameterLoadTypes = Arrays.copyOf(parameterTypes, parameterTypes.length);
         EnumInfo[] parameterEnumInfos;
 
-        parameterEnumInfos = adaptParameterTypes(providers, nativeLibraries, kit, parameterTypes, parameterLoadTypes, purpose);
+        parameterEnumInfos = adaptParameterTypes(providers, nativeLibraries, kit, parameterTypes, parameterLoadTypes);
 
-        ValueNode[] args = kit.loadArguments(parameterLoadTypes).toArray(new ValueNode[0]);
+        ValueNode[] args = kit.loadArguments(parameterLoadTypes).toArray(ValueNode.EMPTY_ARRAY);
 
-        InvokeNode prologueInvoke = generatePrologue(providers, kit, parameterLoadTypes, targetMethod.getParameterAnnotations(), args);
+        InvokeWithExceptionNode invokePrologue = generatePrologue(providers, kit, parameterLoadTypes, targetMethod.getParameterAnnotations(), args);
+        if (invokePrologue != null) {
+            ResolvedJavaMethod prologueMethod = invokePrologue.callTarget().targetMethod();
+            JavaKind prologueReturnKind = prologueMethod.getSignature().getReturnKind();
+            if (prologueReturnKind == JavaKind.Int) {
+                kit.startIf(kit.unique(new IntegerEqualsNode(invokePrologue, ConstantNode.forInt(0, kit.getGraph()))), BranchProbabilityNode.VERY_FAST_PATH_PROFILE);
+                kit.thenPart();
+                kit.elsePart();
+
+                Class<?> bailoutCustomizer = entryPointData.getPrologueBailout();
+                JavaKind targetMethodReturnKind = targetMethod.getSignature().getReturnKind();
+                boolean createdReturnNode = false;
+                if (bailoutCustomizer == CEntryPointOptions.AutomaticPrologueBailout.class) {
+                    if (targetMethodReturnKind == JavaKind.Int) {
+                        kit.createReturn(invokePrologue, JavaKind.Int);
+                        createdReturnNode = true;
+                    } else if (targetMethodReturnKind == JavaKind.Void) {
+                        kit.createReturn(null, JavaKind.Void);
+                        createdReturnNode = true;
+                    } else {
+                        VMError.shouldNotReachHere("@CEntryPointOptions on " + targetMethod + " must specify a custom prologue bailout as the method's return type is neither int nor void.");
+                    }
+                }
+
+                if (!createdReturnNode) {
+                    ResolvedJavaMethod[] bailoutMethods = providers.getMetaAccess().lookupJavaType(bailoutCustomizer).getDeclaredMethods();
+                    UserError.guarantee(bailoutMethods.length == 1 && bailoutMethods[0].isStatic(), "Prologue bailout customization class must declare exactly one static method: %s -> %s",
+                                    targetMethod, bailoutCustomizer);
+
+                    InvokeWithExceptionNode invokeBailoutCustomizer = generatePrologueOrEpilogueInvoke(kit, bailoutMethods[0], invokePrologue);
+                    VMError.guarantee(bailoutMethods[0].getSignature().getReturnKind() == method.getSignature().getReturnKind(),
+                                    "Return type mismatch: %s is incompatible with %s", bailoutMethods[0], targetMethod);
+                    kit.createReturn(invokeBailoutCustomizer, targetMethod.getSignature().getReturnKind());
+                }
+
+                kit.endIf();
+            } else {
+                VMError.guarantee(prologueReturnKind == JavaKind.Void, "%s is a prologue method and must therefore either return int or void.", prologueMethod);
+            }
+        }
 
         adaptArgumentValues(providers, kit, parameterTypes, parameterEnumInfos, args);
 
@@ -223,23 +209,30 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             System.arraycopy(args, 0, invokeArgs, 1, args.length);
         }
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(universeTargetMethod, invokeKind, kit.getFrameState(), invokeBci, invokeArgs);
+        patchNodeSourcePosition(invoke);
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
-        generateExceptionHandler(providers, kit, exception, invoke.getStackKind());
+        generateExceptionHandler(method, providers, purpose, kit, exception, invoke.getStackKind());
         kit.endInvokeWithException();
 
-        ValueNode returnValue = adaptReturnValue(method, providers, purpose, metaAccess, nativeLibraries, kit, invoke);
-
-        InvokeNode epilogueInvoke = generateEpilogue(providers, kit);
-
-        kit.createReturn(returnValue, returnValue.getStackKind());
-
-        inlinePrologueAndEpilogue(kit, prologueInvoke, epilogueInvoke, invoke.getStackKind());
-
+        generateEpilogueAndReturn(method, providers, purpose, kit, invoke);
         return kit.finalizeGraph();
     }
 
-    private StructuredGraph buildBuiltinGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers) {
+    private void generateEpilogueAndReturn(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, HostedGraphKit kit, ValueNode value) {
+        ValueNode returnValue = adaptReturnValue(method, providers, purpose, kit, value);
+        generateEpilogue(providers, kit);
+        kit.createReturn(returnValue, returnValue.getStackKind());
+    }
+
+    private static void patchNodeSourcePosition(InvokeWithExceptionNode invoke) {
+        NodeSourcePosition position = invoke.getNodeSourcePosition();
+        if (position != null && position.getBCI() == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+            invoke.setNodeSourcePosition(new NodeSourcePosition(position.getCaller(), position.getMethod(), invoke.bci()));
+        }
+    }
+
+    private StructuredGraph buildBuiltinGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         ResolvedJavaMethod universeTargetMethod = unwrapMethodAndLookupInUniverse((UniverseMetaAccess) providers.getMetaAccess());
 
         UserError.guarantee(entryPointData.getPrologue() == CEntryPointData.DEFAULT_PROLOGUE,
@@ -259,11 +252,11 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         for (ResolvedJavaMethod candidate : metaAccess.lookupJavaType(CEntryPointBuiltins.class).getDeclaredMethods()) {
             CEntryPointBuiltinImplementation annotation = candidate.getAnnotation(CEntryPointBuiltinImplementation.class);
             if (annotation != null && annotation.builtin().equals(builtin)) {
-                VMError.guarantee(builtinCallee == null, "More than one candidate for @" + CEntryPoint.class.getSimpleName() + " built-in " + builtin);
+                VMError.guarantee(builtinCallee == null, "More than one candidate for @%s built-in %s", CEntryPoint.class.getSimpleName(), builtin);
                 builtinCallee = candidate;
             }
         }
-        VMError.guarantee(builtinCallee != null, "No candidate for @" + CEntryPoint.class.getSimpleName() + " built-in " + builtin);
+        VMError.guarantee(builtinCallee != null, "No candidate for @%s built-in %s", CEntryPoint.class.getSimpleName(), builtin);
 
         ResolvedJavaType isolateType = providers.getMetaAccess().lookupJavaType(Isolate.class);
         ResolvedJavaType threadType = providers.getMetaAccess().lookupJavaType(IsolateThread.class);
@@ -273,33 +266,31 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         for (int i = 0; i < builtinParamTypes.length; i++) {
             ResolvedJavaType type = (ResolvedJavaType) builtinParamTypes[i];
             if (isolateType.isAssignableFrom(type)) {
-                VMError.guarantee(builtinIsolateIndex == -1, "@" + CEntryPoint.class.getSimpleName() + " built-in with more than one " +
-                                Isolate.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+                VMError.guarantee(builtinIsolateIndex == -1, "@%s built-in with more than one %s parameter: %s",
+                                CEntryPoint.class.getSimpleName(), Isolate.class.getSimpleName(), builtinCallee);
                 builtinIsolateIndex = i;
             } else if (threadType.isAssignableFrom(type)) {
-                VMError.guarantee(builtinThreadIndex == -1, "@" + CEntryPoint.class.getSimpleName() + " built-in with more than one " +
-                                IsolateThread.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+                VMError.guarantee(builtinThreadIndex == -1, "@%s built-in with more than one %s parameter: %s",
+                                CEntryPoint.class.getSimpleName(), IsolateThread.class.getSimpleName(), builtinCallee);
                 builtinThreadIndex = i;
             } else {
-                VMError.shouldNotReachHere("@" + CEntryPoint.class.getSimpleName() + " built-in currently may have only " + Isolate.class.getSimpleName() +
-                                " or " + IsolateThread.class.getSimpleName() + " parameters: " + builtinCallee.format("%H.%n(%p)"));
+                VMError.shouldNotReachHere("@%s built-in currently may have only %s or %s parameters: %s",
+                                CEntryPoint.class.getSimpleName(), Isolate.class.getSimpleName(), IsolateThread.class.getSimpleName(), builtinCallee);
             }
         }
 
-        ValueNode[] args = kit.loadArguments(method.toParameterTypes()).toArray(new ValueNode[0]);
+        ValueNode[] args = kit.loadArguments(method.toParameterTypes()).toArray(ValueNode.EMPTY_ARRAY);
 
         ValueNode[] builtinArgs = new ValueNode[builtinParamTypes.length];
         if (builtinIsolateIndex != -1) {
             VMError.guarantee(executionContext.designatedIsolateIndex != -1 || executionContext.isolateCount == 1,
-                            "@" + CEntryPoint.class.getSimpleName() + " built-in " + entryPointData.getBuiltin() + " needs exactly one " +
-                                            Isolate.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+                            "@%s built-in %s needs exactly one %s parameter: %s", CEntryPoint.class.getSimpleName(), entryPointData.getBuiltin(), Isolate.class.getSimpleName(), builtinCallee);
             int index = (executionContext.designatedIsolateIndex != -1) ? executionContext.designatedIsolateIndex : executionContext.lastIsolateIndex;
             builtinArgs[builtinIsolateIndex] = args[index];
         }
         if (builtinThreadIndex != -1) {
             VMError.guarantee(executionContext.designatedThreadIndex != -1 || executionContext.threadCount == 1,
-                            "@" + CEntryPoint.class.getSimpleName() + " built-in " + entryPointData.getBuiltin() + " needs exactly one " +
-                                            IsolateThread.class.getSimpleName() + " parameter: " + builtinCallee.format("%H.%n(%p)"));
+                            "@%s built-in %s needs exactly one %s parameter: %s", CEntryPoint.class.getSimpleName(), entryPointData.getBuiltin(), IsolateThread.class.getSimpleName(), builtinCallee);
             int index = (executionContext.designatedThreadIndex != -1) ? executionContext.designatedThreadIndex : executionContext.lastThreadIndex;
             builtinArgs[builtinThreadIndex] = args[index];
         }
@@ -309,7 +300,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
 
-        generateExceptionHandler(providers, kit, exception, invoke.getStackKind());
+        generateExceptionHandler(method, providers, purpose, kit, exception, invoke.getStackKind());
         kit.endInvokeWithException();
 
         kit.createReturn(invoke, universeTargetMethod.getSignature().getReturnKind());
@@ -318,7 +309,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     }
 
     private EnumInfo[] adaptParameterTypes(HostedProviders providers, NativeLibraries nativeLibraries, HostedGraphKit kit,
-                    JavaType[] parameterTypes, JavaType[] parameterLoadTypes, Purpose purpose) {
+                    JavaType[] parameterTypes, JavaType[] parameterLoadTypes) {
 
         EnumInfo[] parameterEnumInfos = null;
         for (int i = 0; i < parameterTypes.length; i++) {
@@ -344,8 +335,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                     ValueNode parameterNode = matchingNodes.next();
                     assert !matchingNodes.hasNext() && parameterNode.usages().filter(n -> n != initialState).isEmpty();
                     parameterNode.setStamp(StampFactory.forKind(cEnumParameterKind));
-                } else if (purpose != Purpose.ANALYSIS) {
-                    // for analysis test cases: abort only during compilation
+                } else {
                     throw UserError.abort("Entry point method parameter types are restricted to primitive types, word types and enumerations (@%s): %s",
                                     CEnum.class.getSimpleName(), targetMethod);
                 }
@@ -366,10 +356,10 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         }
     }
 
-    private InvokeNode generatePrologue(HostedProviders providers, SubstrateGraphKit kit, JavaType[] parameterTypes, Annotation[][] parameterAnnotations, ValueNode[] args) {
+    private InvokeWithExceptionNode generatePrologue(HostedProviders providers, SubstrateGraphKit kit, JavaType[] parameterTypes, Annotation[][] parameterAnnotations, ValueNode[] args) {
         Class<?> prologueClass = entryPointData.getPrologue();
         if (prologueClass == NoPrologue.class) {
-            UserError.guarantee(targetMethod.getAnnotation(Uninterruptible.class) != null,
+            UserError.guarantee(Uninterruptible.Utils.isUninterruptible(targetMethod),
                             "%s.%s is allowed only for methods annotated with @%s: %s",
                             CEntryPointOptions.class.getSimpleName(),
                             NoPrologue.class.getSimpleName(),
@@ -384,8 +374,10 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                             "Prologue class must declare exactly one static method: %s -> %s",
                             targetMethod,
                             prologue);
+            UserError.guarantee(Uninterruptible.Utils.isUninterruptible(prologueMethods[0]),
+                            "Prologue method must be annotated with @%s: %s", Uninterruptible.class.getSimpleName(), prologueMethods[0]);
             ValueNode[] prologueArgs = matchPrologueParameters(providers, parameterTypes, args, prologueMethods[0]);
-            return kit.createInvoke(prologueMethods[0], InvokeKind.Static, kit.getFrameState(), kit.bci(), prologueArgs);
+            return generatePrologueOrEpilogueInvoke(kit, prologueMethods[0], prologueArgs);
         }
 
         // Automatically choose prologue from signature and annotations and call
@@ -403,7 +395,16 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         prologueClass = CEntryPointSetup.EnterPrologue.class;
         ResolvedJavaMethod[] prologueMethods = providers.getMetaAccess().lookupJavaType(prologueClass).getDeclaredMethods();
         assert prologueMethods.length == 1 && prologueMethods[0].isStatic() : "Prologue class must declare exactly one static method";
-        return kit.createInvoke(prologueMethods[0], InvokeKind.Static, kit.getFrameState(), kit.bci(), contextValue);
+        return generatePrologueOrEpilogueInvoke(kit, prologueMethods[0], contextValue);
+    }
+
+    private static InvokeWithExceptionNode generatePrologueOrEpilogueInvoke(SubstrateGraphKit kit, ResolvedJavaMethod method, ValueNode... args) {
+        VMError.guarantee(Uninterruptible.Utils.isUninterruptible(method), "The method %s must be uninterruptible as it is used for a prologue or epilogue.", method);
+        InvokeWithExceptionNode invoke = kit.startInvokeWithException(method, InvokeKind.Static, kit.getFrameState(), kit.bci(), args);
+        kit.exceptionPart();
+        kit.append(new DeadEndNode());
+        kit.endInvokeWithException();
+        return invoke;
     }
 
     private static class ExecutionContextParameters {
@@ -500,18 +501,20 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         return prologueValues;
     }
 
-    private void generateExceptionHandler(HostedProviders providers, SubstrateGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
+    private void generateExceptionHandler(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, HostedGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
         if (entryPointData.getExceptionHandler() == CEntryPoint.FatalExceptionHandler.class) {
             kit.appendStateSplitProxy(exception.stateAfter());
             CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception);
             kit.append(leave);
-            kit.append(new DeadEndNode());
+            kit.append(new LoweredDeadEndNode());
         } else {
             ResolvedJavaType throwable = providers.getMetaAccess().lookupJavaType(Throwable.class);
             ResolvedJavaType handler = providers.getMetaAccess().lookupJavaType(entryPointData.getExceptionHandler());
             ResolvedJavaMethod[] handlerMethods = handler.getDeclaredMethods();
             UserError.guarantee(handlerMethods.length == 1 && handlerMethods[0].isStatic(),
-                            "Exception handler class must declare exactly one static method: % -> %s", targetMethod, handler);
+                            "Exception handler class must declare exactly one static method: %s -> %s", targetMethod, handler);
+            UserError.guarantee(Uninterruptible.Utils.isUninterruptible(handlerMethods[0]),
+                            "Exception handler method must be annotated with @%s: %s", Uninterruptible.class.getSimpleName(), handlerMethods[0]);
             JavaType[] handlerParameterTypes = handlerMethods[0].toParameterTypes();
             UserError.guarantee(handlerParameterTypes.length == 1 &&
                             ((ResolvedJavaType) handlerParameterTypes[0]).isAssignableFrom(throwable),
@@ -534,51 +537,36 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             }
 
             /* The exception is handled, we can continue with the normal epilogue. */
-            InvokeNode epilogueInvoke = generateEpilogue(providers, kit);
+            generateEpilogueAndReturn(method, providers, purpose, kit, returnValue);
 
-            kit.createReturn(returnValue, returnValue.getStackKind());
             kit.exceptionPart(); // fail-safe for exceptions in exception handler
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
-            kit.append(new DeadEndNode());
+            kit.append(new LoweredDeadEndNode());
             kit.endInvokeWithException();
-
-            kit.inlineAsIntrinsic(epilogueInvoke, "Inline epilogue.", "GraphBuilding");
         }
     }
 
-    private ValueNode adaptReturnValue(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose,
-                    UniverseMetaAccess metaAccess, NativeLibraries nativeLibraries, HostedGraphKit kit, ValueNode invokeValue) {
-
-        ValueNode returnValue = invokeValue;
+    private ValueNode adaptReturnValue(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, HostedGraphKit kit, ValueNode value) {
+        ValueNode returnValue = value;
         if (returnValue.getStackKind().isPrimitive()) {
             return returnValue;
         }
         JavaType returnType = method.getSignature().getReturnType(null);
+        NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) returnType);
         if (typeInfo instanceof EnumInfo) {
-            IsNullNode isNull = kit.unique(new IsNullNode(returnValue));
-            kit.startIf(isNull, BranchProbabilityNode.VERY_SLOW_PATH_PROFILE);
-            kit.thenPart();
-            ResolvedJavaType enumExceptionType = metaAccess.lookupJavaType(RuntimeException.class);
-            NewInstanceNode enumException = kit.append(new NewInstanceNode(enumExceptionType, true));
-            Iterator<ResolvedJavaMethod> enumExceptionCtor = Arrays.stream(enumExceptionType.getDeclaredConstructors()).filter(
-                            c -> c.getSignature().getParameterCount(false) == 1 && c.getSignature().getParameterType(0, null).equals(metaAccess.lookupJavaType(String.class))).iterator();
-            ConstantNode enumExceptionMessage = kit.createConstant(kit.getConstantReflection().forString("null return value cannot be converted to a C enum value"), JavaKind.Object);
-            kit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, enumExceptionCtor.next(), enumException, enumExceptionMessage);
-            assert !enumExceptionCtor.hasNext();
-            kit.appendStateSplitProxy(kit.getFrameState());
-            CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, enumException);
-            kit.append(leave);
-            kit.append(new DeadEndNode());
-            kit.endIf();
-
             // Always return enum values as a signed word because it should never be a problem if
             // the caller expects a narrower integer type and the various checks already handle
-            // replacements with word types
+            // replacements with word types.
             CInterfaceEnumTool tool = new CInterfaceEnumTool(providers.getMetaAccess(), providers.getSnippetReflection());
             JavaKind cEnumReturnType = providers.getWordTypes().getWordKind();
             assert !cEnumReturnType.isUnsigned() : "requires correct representation of signed values";
-            returnValue = tool.createEnumValueInvoke(kit, (EnumInfo) typeInfo, cEnumReturnType, returnValue);
+            returnValue = tool.startEnumValueInvokeWithException(kit, (EnumInfo) typeInfo, cEnumReturnType, returnValue);
+            kit.exceptionPart();
+            kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
+            kit.append(new LoweredDeadEndNode());
+            kit.endInvokeWithException();
+
         } else if (purpose != Purpose.ANALYSIS) {
             // for analysis test cases: abort only during compilation
             throw UserError.abort("Entry point method return types are restricted to primitive types, word types and enumerations (@%s): %s",
@@ -587,214 +575,23 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         return returnValue;
     }
 
-    private InvokeNode generateEpilogue(HostedProviders providers, SubstrateGraphKit kit) {
+    private void generateEpilogue(HostedProviders providers, SubstrateGraphKit kit) {
         Class<?> epilogueClass = entryPointData.getEpilogue();
         if (epilogueClass == NoEpilogue.class) {
-            UserError.guarantee(targetMethod.getAnnotation(Uninterruptible.class) != null,
+            UserError.guarantee(Uninterruptible.Utils.isUninterruptible(targetMethod),
                             "%s.%s is allowed only for methods annotated with @%s: %s",
                             CEntryPointOptions.class.getSimpleName(),
                             NoEpilogue.class.getSimpleName(),
                             Uninterruptible.class.getSimpleName(),
                             targetMethod);
-            return null;
+            return;
         }
         ResolvedJavaType epilogue = providers.getMetaAccess().lookupJavaType(epilogueClass);
         ResolvedJavaMethod[] epilogueMethods = epilogue.getDeclaredMethods();
         UserError.guarantee(epilogueMethods.length == 1 && epilogueMethods[0].isStatic() && epilogueMethods[0].getSignature().getParameterCount(false) == 0,
                         "Epilogue class must declare exactly one static method without parameters: %s -> %s", targetMethod, epilogue);
-        return kit.createInvoke(epilogueMethods[0], InvokeKind.Static, kit.getFrameState(), kit.bci());
-    }
-
-    private static void inlinePrologueAndEpilogue(SubstrateGraphKit kit, InvokeNode prologueInvoke, InvokeNode epilogueInvoke, JavaKind returnKind) {
-        if (prologueInvoke != null) {
-            FixedNode next = prologueInvoke.next();
-            FrameState stateAfterPrologue = prologueInvoke.stateAfter();
-            if (stateAfterPrologue == null) {
-                stateAfterPrologue = kit.getFrameState().create(prologueInvoke.bci(), null);
-            } else {
-                stateAfterPrologue = stateAfterPrologue.duplicateWithVirtualState();
-            }
-            kit.inlineAsIntrinsic(prologueInvoke, "Inline prologue.", "GraphBuilding");
-            if (next.isAlive() && next.predecessor() instanceof AbstractMergeNode) {
-                AbstractMergeNode merge = (AbstractMergeNode) next.predecessor();
-                if (merge.stateAfter() == null) {
-                    merge.setStateAfter(stateAfterPrologue);
-                }
-            }
-            NodeIterable<CEntryPointPrologueBailoutNode> bailoutNodes = kit.getGraph().getNodes().filter(CEntryPointPrologueBailoutNode.class);
-            for (CEntryPointPrologueBailoutNode node : bailoutNodes) {
-                ValueNode result = node.getResult();
-                switch (returnKind) {
-                    case Float:
-                        assert result.getStackKind().isNumericFloat();
-                        result = kit.unique(new FloatConvertNode(FloatConvert.D2F, result));
-                        break;
-                    case Byte:
-                    case Char:
-                    case Short:
-                    case Int:
-                        assert result.getStackKind().isNumericInteger();
-                        result = kit.unique(new NarrowNode(result, returnKind.getBitCount()));
-                        break;
-                    default:
-                        // no conversion necessary
-                        break;
-                }
-                ReturnNode returnNode = kit.add(new ReturnNode(result));
-                node.replaceAndDelete(returnNode);
-            }
-        }
-
-        if (epilogueInvoke != null && epilogueInvoke.isAlive()) {
-            kit.inlineAsIntrinsic(epilogueInvoke, "Inline epilogue.", "GraphBuilding");
-        }
-    }
-
-    @Override
-    public int getModifiers() {
-        return Modifier.PUBLIC | Modifier.STATIC;
-    }
-
-    @Override
-    public byte[] getCode() {
-        return null;
-    }
-
-    @Override
-    public int getCodeSize() {
-        return 0;
-    }
-
-    @Override
-    public int getMaxLocals() {
-        return 2 * getSignature().getParameterCount(true);
-    }
-
-    @Override
-    public int getMaxStackSize() {
-        return 2;
-    }
-
-    @Override
-    public boolean isSynthetic() {
-        return false;
-    }
-
-    @Override
-    public boolean isVarArgs() {
-        return false;
-    }
-
-    @Override
-    public boolean isBridge() {
-        return false;
-    }
-
-    @Override
-    public boolean isDefault() {
-        return false;
-    }
-
-    @Override
-    public boolean isClassInitializer() {
-        return false;
-    }
-
-    @Override
-    public boolean isConstructor() {
-        return false;
-    }
-
-    @Override
-    public boolean canBeStaticallyBound() {
-        return true;
-    }
-
-    @Override
-    public ExceptionHandler[] getExceptionHandlers() {
-        return new ExceptionHandler[0];
-    }
-
-    @Override
-    public StackTraceElement asStackTraceElement(int bci) {
-        if (stackTraceElement == null) {
-            stackTraceElement = new StackTraceElement(getDeclaringClass().toJavaName(true), getName(), "generated", 0);
-        }
-        return stackTraceElement;
-    }
-
-    @Override
-    public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public void reprofile() {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public Annotation[][] getParameterAnnotations() {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public Type[] getGenericParameterTypes() {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public boolean canBeInlined() {
-        return false;
-    }
-
-    @Override
-    public boolean hasNeverInlineDirective() {
-        return false;
-    }
-
-    @Override
-    public boolean shouldBeInlined() {
-        return false;
-    }
-
-    @Override
-    public LineNumberTable getLineNumberTable() {
-        return lineNumberTable;
-    }
-
-    @Override
-    public LocalVariableTable getLocalVariableTable() {
-        return null;
-    }
-
-    @Override
-    public Constant getEncoding() {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public SpeculationLog getSpeculationLog() {
-        throw VMError.unimplemented();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return null;
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return new Annotation[0];
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return new Annotation[0];
+        UserError.guarantee(Uninterruptible.Utils.isUninterruptible(epilogueMethods[0]),
+                        "Epilogue method must be annotated with @%s: %s", Uninterruptible.class.getSimpleName(), epilogueMethods[0]);
+        generatePrologueOrEpilogueInvoke(kit, epilogueMethods[0]);
     }
 }

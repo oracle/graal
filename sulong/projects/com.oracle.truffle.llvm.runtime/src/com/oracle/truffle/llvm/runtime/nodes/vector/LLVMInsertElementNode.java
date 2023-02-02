@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,6 +55,11 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI1InsertElementNode extends LLVMInsertElementNode {
         @Specialization
+        protected LLVMI1Vector doI1(LLVMI1Vector vector, boolean element, long index) {
+            return doI1(vector, element, (int) index);
+        }
+
+        @Specialization
         @ExplodeLoop
         protected LLVMI1Vector doI1(LLVMI1Vector vector, boolean element, int index) {
             assert vector.getLength() == getVectorLength();
@@ -68,6 +73,11 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI8InsertElementNode extends LLVMInsertElementNode {
+        @Specialization
+        protected LLVMI8Vector doI8(LLVMI8Vector vector, byte element, long index) {
+            return doI8(vector, element, (int) index);
+        }
+
         @Specialization
         @ExplodeLoop
         protected LLVMI8Vector doI8(LLVMI8Vector vector, byte element, int index) {
@@ -83,6 +93,11 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16InsertElementNode extends LLVMInsertElementNode {
         @Specialization
+        protected LLVMI16Vector doI16(LLVMI16Vector vector, short element, long index) {
+            return doI16(vector, element, (int) index);
+        }
+
+        @Specialization
         @ExplodeLoop
         protected LLVMI16Vector doI16(LLVMI16Vector vector, short element, int index) {
             assert vector.getLength() == getVectorLength();
@@ -96,6 +111,11 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI32InsertElementNode extends LLVMInsertElementNode {
+        @Specialization
+        protected LLVMI32Vector doI32(LLVMI32Vector vector, int element, long index) {
+            return doI32(vector, element, (int) index);
+        }
+
         @Specialization
         @ExplodeLoop
         protected LLVMI32Vector doI32(LLVMI32Vector vector, int element, int index) {
@@ -111,6 +131,11 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64InsertElementNode extends LLVMInsertElementNode {
         @Specialization
+        protected LLVMI64Vector doI64(LLVMI64Vector vector, long element, long index) {
+            return doI64(vector, element, (int) index);
+        }
+
+        @Specialization
         @ExplodeLoop
         protected LLVMI64Vector doI64(LLVMI64Vector vector, long element, int index) {
             assert vector.getLength() == getVectorLength();
@@ -120,6 +145,11 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
             }
             result[index] = element;
             return LLVMI64Vector.create(result);
+        }
+
+        @Specialization
+        protected LLVMPointerVector doPointer(LLVMPointerVector vector, LLVMPointer element, long index) {
+            return doPointer(vector, element, (int) index);
         }
 
         @Specialization
@@ -135,12 +165,22 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected LLVMPointerVector doPointer(LLVMPointerVector vector, long element, long index) {
+            return doPointer(vector, element, (int) index);
+        }
+
+        @Specialization
         protected LLVMPointerVector doPointer(LLVMPointerVector vector, long element, int index) {
             return doPointer(vector, LLVMNativePointer.create(element), index);
         }
     }
 
     public abstract static class LLVMFloatInsertElementNode extends LLVMInsertElementNode {
+        @Specialization
+        protected LLVMFloatVector doFloat(LLVMFloatVector vector, float element, long index) {
+            return doFloat(vector, element, (int) index);
+        }
+
         @Specialization
         @ExplodeLoop
         protected LLVMFloatVector doFloat(LLVMFloatVector vector, float element, int index) {
@@ -155,6 +195,11 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMDoubleInsertElementNode extends LLVMInsertElementNode {
+        @Specialization
+        protected LLVMDoubleVector doDouble(LLVMDoubleVector vector, double element, long index) {
+            return doDouble(vector, element, (int) index);
+        }
+
         @Specialization
         @ExplodeLoop
         protected LLVMDoubleVector doDouble(LLVMDoubleVector vector, double element, int index) {

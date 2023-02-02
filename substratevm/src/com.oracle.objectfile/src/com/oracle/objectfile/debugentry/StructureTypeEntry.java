@@ -27,11 +27,11 @@
 package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.lang.reflect.Modifier;
-import java.nio.file.Path;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -47,7 +47,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
 
     public StructureTypeEntry(String typeName, int size) {
         super(typeName, size);
-        this.fields = new LinkedList<>();
+        this.fields = new ArrayList<>();
     }
 
     public Stream<FieldEntry> fields() {
@@ -61,22 +61,20 @@ public abstract class StructureTypeEntry extends TypeEntry {
 
     protected FieldEntry addField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String fieldName = debugInfoBase.uniqueDebugString(debugFieldInfo.name());
-        String valueTypeName = TypeEntry.canonicalize(debugFieldInfo.valueType());
+        ResolvedJavaType valueType = debugFieldInfo.valueType();
+        String valueTypeName = valueType.toJavaName();
         int fieldSize = debugFieldInfo.size();
         int fieldoffset = debugFieldInfo.offset();
         int fieldModifiers = debugFieldInfo.modifiers();
-        debugContext.log("typename %s adding %s field %s type %s size %s at offset %d\n",
+        debugContext.log("typename %s adding %s field %s type %s size %s at offset 0x%x\n",
                         typeName, memberModifiers(fieldModifiers), fieldName, valueTypeName, fieldSize, fieldoffset);
-        TypeEntry valueType = debugInfoBase.lookupTypeEntry(valueTypeName);
-        String fileName = debugFieldInfo.fileName();
-        Path filePath = debugFieldInfo.filePath();
-        Path cachePath = debugFieldInfo.cachePath();
+        TypeEntry valueTypeEntry = debugInfoBase.lookupTypeEntry(valueType);
         /*
          * n.b. the field file may differ from the owning class file when the field is a
          * substitution
          */
-        FileEntry fileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
-        FieldEntry fieldEntry = new FieldEntry(fileEntry, fieldName, this, valueType, fieldSize, fieldoffset, fieldModifiers);
+        FileEntry fileEntry = debugInfoBase.ensureFileEntry(debugFieldInfo);
+        FieldEntry fieldEntry = new FieldEntry(fileEntry, fieldName, this, valueTypeEntry, fieldSize, fieldoffset, fieldModifiers);
         fields.add(fieldEntry);
         return fieldEntry;
     }

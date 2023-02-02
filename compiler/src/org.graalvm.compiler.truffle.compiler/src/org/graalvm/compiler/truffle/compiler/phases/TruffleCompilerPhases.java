@@ -49,11 +49,7 @@ public final class TruffleCompilerPhases {
 
         // truffle safepoints have additional requirements to get eliminated and can not just use
         // default loop safepoint elimination.
-        ListIterator<BasePhase<? super MidTierContext>> safepointElimination = suites.getMidTier().findPhase(LoopSafepointEliminationPhase.class);
-        if (safepointElimination != null) {
-            safepointElimination.remove();
-            safepointElimination.add(new TruffleLoopSafepointEliminationPhase(providers));
-        }
+        suites.getMidTier().replaceAllPhases(LoopSafepointEliminationPhase.class, () -> new TruffleLoopSafepointEliminationPhase(providers));
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,6 @@ import java.util.Arrays;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.FinalBitSet;
 
 public class FinalBitSetCompilationTest extends PartialEvaluationTest {
@@ -77,23 +75,7 @@ public class FinalBitSetCompilationTest extends PartialEvaluationTest {
         }
     }
 
-    private void assertConstant(Object expectedConstant, TestFunction test) {
-        assertPartialEvalEquals(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return expectedConstant;
-            }
-        }, new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return test.execute(frame);
-            }
-        }, new Object[0]);
+    private void assertConstant(Object expectedConstant, FrameFunction ff) {
+        assertPartialEvalEquals(toRootNode((f) -> expectedConstant), toRootNode(ff), new Object[0]);
     }
-
-    @FunctionalInterface
-    interface TestFunction {
-        Object execute(VirtualFrame frame);
-    }
-
 }

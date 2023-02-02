@@ -25,7 +25,6 @@
 
 package com.oracle.objectfile.macho;
 
-import java.util.Iterator;
 import java.util.Map;
 
 import com.oracle.objectfile.BuildDependency;
@@ -65,16 +64,6 @@ public class MachOStrtab extends MachOObjectFile.LinkEditElement {
     @Override
     public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
         return impl.getDependencies(decisions);
-    }
-
-    public Iterable<String> getContentProvider() {
-        return new Iterable<String>() {
-
-            @Override
-            public Iterator<String> iterator() {
-                return impl.iterator();
-            }
-        };
     }
 
     public void setContentProvider(Iterable<String> contentProvider) {

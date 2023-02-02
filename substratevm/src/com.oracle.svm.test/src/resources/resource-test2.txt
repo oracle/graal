@@ -1,0 +1,1 @@
+Native image is awesome!

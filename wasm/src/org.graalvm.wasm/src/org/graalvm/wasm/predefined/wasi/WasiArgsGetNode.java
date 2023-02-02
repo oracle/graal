@@ -62,7 +62,7 @@ public final class WasiArgsGetNode extends WasmBuiltinRootNode {
 
     @TruffleBoundary
     private int argsGet(int argvAddress, int argvBuffAddress) {
-        final String[] arguments = contextReference().get().environment().getApplicationArguments();
+        final String[] arguments = getContext().environment().getApplicationArguments();
         int argvPointer = argvAddress;
         int argvBuffPointer = argvBuffAddress;
         for (final String argument : arguments) {

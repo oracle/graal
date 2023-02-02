@@ -25,11 +25,6 @@
 package org.graalvm.compiler.debug;
 
 import java.io.PrintStream;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -126,7 +121,7 @@ public class TTY {
         out = p == null ? System.out : p.getStream();
     }
 
-    private static final ThreadLocal<LogStream> log = new ThreadLocal<LogStream>() {
+    private static final ThreadLocal<LogStream> log = new ThreadLocal<>() {
 
         @Override
         protected LogStream initialValue() {
@@ -263,58 +258,6 @@ public class TTY {
 
     public static void fillTo(int i) {
         out().fillTo(i, ' ');
-    }
-
-    public static void printFields(Class<?> javaClass) {
-        final String className = javaClass.getSimpleName();
-        TTY.println(className + " {");
-        for (final Field field : javaClass.getFields()) {
-            printField(field, false);
-        }
-        TTY.println("}");
-    }
-
-    public static void printField(final Field field, boolean tabbed) {
-        final String fieldName = String.format("%35s", field.getName());
-        try {
-            String prefix = tabbed ? "" : "    " + fieldName + " = ";
-            String postfix = tabbed ? "\t" : "\n";
-            if (field.getType() == int.class) {
-                TTY.print(prefix + field.getInt(null) + postfix);
-            } else if (field.getType() == boolean.class) {
-                TTY.print(prefix + field.getBoolean(null) + postfix);
-            } else if (field.getType() == float.class) {
-                TTY.print(prefix + field.getFloat(null) + postfix);
-            } else if (field.getType() == String.class) {
-                TTY.print(prefix + field.get(null) + postfix);
-            } else if (field.getType() == Map.class) {
-                Map<?, ?> m = (Map<?, ?>) field.get(null);
-                TTY.print(prefix + printMap(m) + postfix);
-            } else {
-                TTY.print(prefix + field.get(null) + postfix);
-            }
-        } catch (IllegalAccessException e) {
-            // do nothing.
-        }
-    }
-
-    private static String printMap(Map<?, ?> m) {
-        StringBuilder sb = new StringBuilder();
-
-        List<String> keys = new ArrayList<>();
-        for (Object key : m.keySet()) {
-            keys.add((String) key);
-        }
-        Collections.sort(keys);
-
-        for (String key : keys) {
-            sb.append(key);
-            sb.append("\t");
-            sb.append(m.get(key));
-            sb.append("\n");
-        }
-
-        return sb.toString();
     }
 
     public static void flush() {

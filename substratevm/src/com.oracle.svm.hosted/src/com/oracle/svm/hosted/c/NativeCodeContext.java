@@ -42,7 +42,8 @@ public class NativeCodeContext {
     private final Collection<ResolvedJavaMethod> constantAccessors;
     private final Collection<ResolvedJavaType> structTypes;
     private final Collection<ResolvedJavaType> rawStructTypes;
-    private final Collection<ResolvedJavaType> pointerToTypes;
+    private final Collection<ResolvedJavaType> cPointerToTypes;
+    private final Collection<ResolvedJavaType> rawPointerToTypes;
     private final Collection<ResolvedJavaType> enumTypes;
 
     NativeCodeContext(CContext.Directives directives) {
@@ -52,14 +53,16 @@ public class NativeCodeContext {
             this.constantAccessors = new HashSet<>();
             this.structTypes = new HashSet<>();
             this.rawStructTypes = new HashSet<>();
-            this.pointerToTypes = new HashSet<>();
+            this.cPointerToTypes = new HashSet<>();
+            this.rawPointerToTypes = new HashSet<>();
             this.enumTypes = new HashSet<>();
             this.directives = directives;
         } else {
             this.constantAccessors = null;
             this.structTypes = null;
             this.rawStructTypes = null;
-            this.pointerToTypes = null;
+            this.cPointerToTypes = null;
+            this.rawPointerToTypes = null;
             this.enumTypes = null;
             this.directives = null;
         }
@@ -85,8 +88,12 @@ public class NativeCodeContext {
         rawStructTypes.add(type);
     }
 
-    public void appendPointerToType(ResolvedJavaType type) {
-        pointerToTypes.add(type);
+    public void appendCPointerToType(ResolvedJavaType type) {
+        cPointerToTypes.add(type);
+    }
+
+    public void appendRawPointerToType(ResolvedJavaType type) {
+        rawPointerToTypes.add(type);
     }
 
     public void appendEnumType(ResolvedJavaType type) {
@@ -105,8 +112,12 @@ public class NativeCodeContext {
         return rawStructTypes;
     }
 
-    public Collection<ResolvedJavaType> getPointerToTypes() {
-        return pointerToTypes;
+    public Collection<ResolvedJavaType> getCPointerToTypes() {
+        return cPointerToTypes;
+    }
+
+    public Collection<ResolvedJavaType> getRawPointerToTypes() {
+        return rawPointerToTypes;
     }
 
     public Collection<ResolvedJavaType> getEnumTypes() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,13 +26,17 @@ package org.graalvm.compiler.lir.asm;
 
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.core.common.GraalOptions.IsolatedLoopHeaderAlignment;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Formatter;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -43,13 +47,13 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.code.DataSection.RawData;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.ImplicitLIRFrameState;
@@ -58,6 +62,7 @@ import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionVerifier;
 import org.graalvm.compiler.lir.LabelRef;
+import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.StandardOp.LabelHoldingOp;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.options.Option;
@@ -75,7 +80,6 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
-import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.InvokeTarget;
@@ -91,20 +95,12 @@ import jdk.vm.ci.meta.Value;
  */
 public class CompilationResultBuilder {
 
-    private static final List<LIRInstructionVerifier> LIR_INSTRUCTION_VERIFIERS = new ArrayList<>();
-
-    static {
-        for (LIRInstructionVerifier verifier : GraalServices.load(LIRInstructionVerifier.class)) {
-            if (verifier.isEnabled()) {
-                LIR_INSTRUCTION_VERIFIERS.add(verifier);
-            }
-        }
-    }
-
     public static class Options {
         @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug) //
         public static final OptionKey<Boolean> PrintLIRWithAssembly = new OptionKey<>(false);
     }
+
+    public static final List<LIRInstructionVerifier> NO_VERIFIERS = Collections.emptyList();
 
     private static class ExceptionInfo {
 
@@ -128,7 +124,7 @@ public class CompilationResultBuilder {
         }
     }
 
-    public final Assembler asm;
+    public final Assembler<?> asm;
     public final DataBuilder dataBuilder;
     public final CompilationResult compilationResult;
     public final Register uncompressedNullRegister;
@@ -160,9 +156,6 @@ public class CompilationResultBuilder {
     private final DebugContext debug;
     private final EconomicMap<Constant, Data> dataCache;
 
-    private Consumer<LIRInstruction> beforeOp;
-    private Consumer<LIRInstruction> afterOp;
-
     /**
      * These position maps are used for estimating offsets of forward branches. Used for
      * architectures where certain branch instructions have limited displacement such as ARM tbz.
@@ -171,7 +164,7 @@ public class CompilationResultBuilder {
     private EconomicMap<LIRInstruction, Integer> lirPositions;
     /**
      * This flag is for setting the
-     * {@link CompilationResultBuilder#labelWithinRange(LIRInstruction, Label, int)} into a
+     * {@link CompilationResultBuilder#labelWithinLIRRange(LIRInstruction, Label, int)} into a
      * conservative mode and always answering false.
      */
     private boolean conservativeLabelOffsets = false;
@@ -186,9 +179,14 @@ public class CompilationResultBuilder {
      */
     private boolean needsMHDeoptHandler = false;
 
+    /** PCOffset passed within last call to {@link #recordImplicitException(int, LIRFrameState)}. */
+    private int lastImplicitExceptionOffset = Integer.MIN_VALUE;
+
+    private final List<LIRInstructionVerifier> lirInstructionVerifiers;
+
     public CompilationResultBuilder(CodeGenProviders providers,
                     FrameMap frameMap,
-                    Assembler asm,
+                    Assembler<?> asm,
                     DataBuilder dataBuilder,
                     FrameContext frameContext,
                     OptionValues options,
@@ -204,19 +202,21 @@ public class CompilationResultBuilder {
                         debug,
                         compilationResult,
                         uncompressedNullRegister,
-                        EconomicMap.create(Equivalence.DEFAULT));
+                        EconomicMap.create(Equivalence.DEFAULT),
+                        NO_VERIFIERS);
     }
 
     public CompilationResultBuilder(CodeGenProviders providers,
                     FrameMap frameMap,
-                    Assembler asm,
+                    Assembler<?> asm,
                     DataBuilder dataBuilder,
                     FrameContext frameContext,
                     OptionValues options,
                     DebugContext debug,
                     CompilationResult compilationResult,
                     Register uncompressedNullRegister,
-                    EconomicMap<Constant, Data> dataCache) {
+                    EconomicMap<Constant, Data> dataCache,
+                    List<LIRInstructionVerifier> lirInstructionVerifiers) {
         this.target = providers.getCodeCache().getTarget();
         this.providers = providers;
         this.codeCache = providers.getCodeCache();
@@ -231,6 +231,7 @@ public class CompilationResultBuilder {
         this.debug = debug;
         assert frameContext != null;
         this.dataCache = dataCache;
+        this.lirInstructionVerifiers = Objects.requireNonNull(lirInstructionVerifiers);
     }
 
     public void setTotalFrameSize(int frameSize) {
@@ -241,12 +242,29 @@ public class CompilationResultBuilder {
         compilationResult.setMaxInterpreterFrameSize(maxInterpreterFrameSize);
     }
 
-    public CompilationResult.CodeMark recordMark(CompilationResult.MarkId id) {
-        CompilationResult.CodeMark mark = compilationResult.recordMark(asm.position(), id);
-        if (currentCallContext != null) {
-            currentCallContext.recordMark(mark);
-        }
-        return mark;
+    /**
+     * Sets the minimum alignment for an item in the {@linkplain DataSectionReference data section}.
+     */
+    public void setMinDataSectionItemAlignment(int alignment) {
+        compilationResult.setMinDataSectionItemAlignment(alignment);
+    }
+
+    /**
+     * Associates {@code markId} with position {@code codePos} in the compilation result.
+     *
+     * @return the recorded entry for the mark
+     */
+    public CompilationResult.CodeMark recordMark(int codePos, CompilationResult.MarkId markId) {
+        return compilationResult.recordMark(codePos, markId);
+    }
+
+    /**
+     * Associates {@code markId} with the current assembler position in the compilation result.
+     *
+     * @return the recorded entry for the mark
+     */
+    public CompilationResult.CodeMark recordMark(CompilationResult.MarkId markId) {
+        return recordMark(asm.position(), markId);
     }
 
     public void blockComment(String s) {
@@ -273,10 +291,10 @@ public class CompilationResultBuilder {
     }
 
     /**
-     * Calls {@link CompilationResult#close()} on {@link #compilationResult}.
+     * Calls {@link CompilationResult#close(OptionValues)} on {@link #compilationResult}.
      */
     protected void closeCompilationResult() {
-        compilationResult.close();
+        compilationResult.close(options);
     }
 
     public void recordExceptionHandlers(int pcOffset, LIRFrameState info) {
@@ -291,6 +309,7 @@ public class CompilationResultBuilder {
     }
 
     public void recordImplicitException(int pcOffset, LIRFrameState info) {
+        lastImplicitExceptionOffset = pcOffset;
         if (GraalServices.supportsArbitraryImplicitException() && info instanceof ImplicitLIRFrameState) {
             if (pendingImplicitExceptionList == null) {
                 pendingImplicitExceptionList = new ArrayList<>(4);
@@ -306,34 +325,34 @@ public class CompilationResultBuilder {
         assert info.exceptionEdge == null;
     }
 
-    public boolean isImplicitExceptionExist(int pcOffset) {
-        List<Infopoint> infopoints = compilationResult.getInfopoints();
-        for (Infopoint infopoint : infopoints) {
-            if (infopoint.pcOffset == pcOffset && infopoint.reason == InfopointReason.IMPLICIT_EXCEPTION) {
-                return true;
-            }
-        }
-        if (pendingImplicitExceptionList != null) {
-            for (PendingImplicitException pendingImplicitException : pendingImplicitExceptionList) {
-                if (pendingImplicitException.codeOffset == pcOffset) {
-                    return true;
-                }
-            }
-        }
-        return false;
+    public int getLastImplicitExceptionOffset() {
+        return lastImplicitExceptionOffset;
     }
 
-    public void recordDirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
+    /**
+     * Helper to mark invalid deoptimization state as needed.
+     */
+    private void recordIfCallInvalidForDeoptimization(LIRFrameState info, Call call) {
+        if (info != null && !info.validForDeoptimization && info.hasDebugInfo()) {
+            DebugInfo debugInfo = info.debugInfo();
+            assert debugInfo != null;
+            if (debugInfo.hasFrame()) {
+                compilationResult.recordCallInvalidForDeoptimization(call);
+            }
+        }
+    }
+
+    public Call recordDirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
         Call call = compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
-        if (currentCallContext != null) {
-            currentCallContext.recordCall(call);
-        }
+        recordIfCallInvalidForDeoptimization(info, call);
+        return call;
     }
 
     public void recordIndirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
-        compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
+        Call infopoint = compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, false);
+        recordIfCallInvalidForDeoptimization(info, infopoint);
     }
 
     public void recordInfopoint(int pos, LIRFrameState info, InfopointReason reason) {
@@ -384,21 +403,30 @@ public class CompilationResultBuilder {
         assert constant != null;
         debug.log("Constant reference in code: pos = %d, data = %s", asm.position(), constant);
         Data data = createDataItem(constant);
-        data.updateAlignment(alignment);
+        dataBuilder.updateAlignment(data, alignment);
         return recordDataSectionReference(data);
     }
 
     public AbstractAddress recordDataReferenceInCode(Data data, int alignment) {
         assert data != null;
-        data.updateAlignment(alignment);
+        dataBuilder.updateAlignment(data, alignment);
         return recordDataSectionReference(data);
     }
 
+    /**
+     * Creates an entry in the data section for the given constant.
+     *
+     * During one compilation if this is called multiple times for the same constant (as determined
+     * by {@link Object#equals(Object)}), the same data entry will be returned for every call.
+     */
     public Data createDataItem(Constant constant) {
         Data data = dataCache.get(constant);
         if (data == null) {
             data = dataBuilder.createDataItem(constant);
-            dataCache.put(constant, data);
+            Data previousData = dataCache.putIfAbsent(constant, data);
+            if (previousData != null) {
+                data = previousData;
+            }
         }
         return data;
     }
@@ -408,48 +436,8 @@ public class CompilationResultBuilder {
         if (debug.isLogEnabled()) {
             debug.log("Data reference in code: pos = %d, data = %s", asm.position(), Arrays.toString(data));
         }
-        return recordDataSectionReference(new RawData(data, alignment));
-    }
-
-    /**
-     * Returns the integer value of any constant that can be represented by a 32-bit integer value,
-     * including long constants that fit into the 32-bit range.
-     */
-    public int asIntConst(Value value) {
-        assert isJavaConstant(value) && asJavaConstant(value).getJavaKind().isNumericInteger();
-        JavaConstant constant = asJavaConstant(value);
-        long c = constant.asLong();
-        if (!NumUtil.isInt(c)) {
-            throw GraalError.shouldNotReachHere();
-        }
-        return (int) c;
-    }
-
-    /**
-     * Returns the float value of any constant that can be represented by a 32-bit float value.
-     */
-    public float asFloatConst(Value value) {
-        assert isJavaConstant(value) && asJavaConstant(value).getJavaKind() == JavaKind.Float;
-        JavaConstant constant = asJavaConstant(value);
-        return constant.asFloat();
-    }
-
-    /**
-     * Returns the long value of any constant that can be represented by a 64-bit long value.
-     */
-    public long asLongConst(Value value) {
-        assert isJavaConstant(value) && asJavaConstant(value).getJavaKind() == JavaKind.Long;
-        JavaConstant constant = asJavaConstant(value);
-        return constant.asLong();
-    }
-
-    /**
-     * Returns the double value of any constant that can be represented by a 64-bit float value.
-     */
-    public double asDoubleConst(Value value) {
-        assert isJavaConstant(value) && asJavaConstant(value).getJavaKind() == JavaKind.Double;
-        JavaConstant constant = asJavaConstant(value);
-        return constant.asDouble();
+        ArrayDataPointerConstant arrayConstant = new ArrayDataPointerConstant(data, alignment);
+        return recordDataSectionReference(dataBuilder.createSerializableData(arrayConstant, alignment));
     }
 
     /**
@@ -484,48 +472,10 @@ public class CompilationResultBuilder {
         return recordDataReferenceInCode(value, 8);
     }
 
-    /**
-     * Returns the address of an object constant that is embedded as a data reference into the code.
-     */
-    public AbstractAddress asObjectConstRef(JavaConstant value) {
-        assert value.getJavaKind() == JavaKind.Object;
-        return recordDataReferenceInCode(value, 8);
-    }
-
-    public AbstractAddress asByteAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Byte.getByteCount();
-        return asAddress(value);
-    }
-
-    public AbstractAddress asShortAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Short.getByteCount();
-        return asAddress(value);
-    }
-
-    public AbstractAddress asIntAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Int.getByteCount();
-        return asAddress(value);
-    }
-
-    public AbstractAddress asLongAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Long.getByteCount();
-        return asAddress(value);
-    }
-
-    public AbstractAddress asFloatAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Float.getByteCount();
-        return asAddress(value);
-    }
-
-    public AbstractAddress asDoubleAddr(Value value) {
-        assert value.getPlatformKind().getSizeInBytes() >= JavaKind.Double.getByteCount();
-        return asAddress(value);
-    }
-
     public AbstractAddress asAddress(Value value) {
         assert isStackSlot(value);
         StackSlot slot = asStackSlot(value);
-        int size = slot.getPlatformKind().getSizeInBytes() * 8;
+        int size = slot.getPlatformKind().getSizeInBytes() * Byte.SIZE;
         return asm.makeAddress(size, frameMap.getRegisterConfig().getFrameRegister(), frameMap.offsetForStackSlot(slot));
     }
 
@@ -535,10 +485,47 @@ public class CompilationResultBuilder {
      */
     public boolean isSuccessorEdge(LabelRef edge) {
         assert lir != null;
-        AbstractBlockBase<?>[] order = lir.codeEmittingOrder();
-        assert order[currentBlockIndex] == edge.getSourceBlock();
-        AbstractBlockBase<?> nextBlock = LIR.getNextBlock(order, currentBlockIndex);
+        char[] order = lir.codeEmittingOrder();
+        assert order[currentBlockIndex] == edge.getSourceBlock().getId();
+        BasicBlock<?> nextBlock = LIR.getNextBlock(lir.getControlFlowGraph(), order, currentBlockIndex);
         return nextBlock == edge.getTargetBlock();
+    }
+
+    private class BasicBlockInfoLogger {
+        final boolean isEnable;
+        final Formatter formatter;
+
+        BasicBlockInfoLogger() {
+            this.isEnable = DebugOptions.PrintBBInfo.getValue(options) && debug.methodFilterMatchesCurrentMethod();
+            this.formatter = this.isEnable ? new Formatter() : null;
+        }
+
+        void log(BasicBlock<?> b, int startPC, int endPC) {
+            if (this.isEnable) {
+                // Dump basic block information using the following csv format
+                // BBid, BBStartingPC, BBEndingPC, BBfreq, [(succID, succProbability)*]
+                this.formatter.format("%d, %d, %d, %f, [", b.getId(), startPC, endPC, b.getRelativeFrequency());
+                for (int i = 0; i < b.getSuccessorCount(); ++i) {
+                    if (i < b.getSuccessorCount() - 1) {
+                        this.formatter.format("(%d, %f),", b.getSuccessorAt(i).getId(), b.getSuccessorProbabilityAt(i));
+                    } else {
+                        this.formatter.format("(%d, %f)", b.getSuccessorAt(i).getId(), b.getSuccessorProbabilityAt(i));
+                    }
+                }
+                this.formatter.format("]\n");
+            }
+        }
+
+        void close() {
+            if (this.isEnable) {
+                final String path = debug.getDumpPath(".blocks", false);
+                try {
+                    Files.writeString(Paths.get(path), this.formatter.toString());
+                } catch (IOException e) {
+                    throw debug.handle(e);
+                }
+            }
+        }
     }
 
     /**
@@ -547,25 +534,59 @@ public class CompilationResultBuilder {
     public void emit(@SuppressWarnings("hiding") LIR lir) {
         assert this.lir == null;
         assert currentBlockIndex == 0;
+        assert lastImplicitExceptionOffset == Integer.MIN_VALUE;
         this.lir = lir;
         this.currentBlockIndex = 0;
+        this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
-        for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
-            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == null) || lir.codeEmittingOrder()[currentBlockIndex].equals(b);
-            emitBlock(b);
+        final BasicBlockInfoLogger logger = new BasicBlockInfoLogger();
+        BasicBlock<?> previousBlock = null;
+        for (int blockId : lir.codeEmittingOrder()) {
+            BasicBlock<?> b = lir.getBlockById(blockId);
+            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.INVALID_BLOCK_ID) || lir.codeEmittingOrder()[currentBlockIndex] == blockId;
+            if (b != null) {
+                if (b.isAligned() && previousBlock != null) {
+                    boolean hasSuccessorB = false;
+                    for (int i = 0; i < previousBlock.getSuccessorCount(); i++) {
+                        BasicBlock<?> succ = previousBlock.getSuccessorAt(i);
+                        if (succ == b) {
+                            hasSuccessorB = true;
+                            break;
+                        }
+                    }
+                    if (!hasSuccessorB) {
+                        ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(b);
+                        assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
+                        StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
+                        label.setAlignment(IsolatedLoopHeaderAlignment.getValue(options));
+                    }
+                }
+                int basicBlockStartingPC = asm.position();
+                emitBlock(b);
+                int basicBlockEndingPC = asm.position();
+                logger.log(b, basicBlockStartingPC, basicBlockEndingPC);
+                previousBlock = b;
+            }
             currentBlockIndex++;
         }
+        logger.close();
         this.lir = null;
         this.currentBlockIndex = 0;
+        this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
     }
 
-    private void emitBlock(AbstractBlockBase<?> block) {
+    public LIR getLIR() {
+        assert lir != null;
+        return lir;
+    }
+
+    private void emitBlock(BasicBlock<?> block) {
         if (block == null) {
             return;
         }
         boolean emitComment = debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || Options.PrintLIRWithAssembly.getValue(getOptions());
         if (emitComment) {
-            blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
+            blockComment(String.format("block B%d %s", (int) block.getId(), block.getLoop()));
         }
 
         for (LIRInstruction op : lir.getLIRforBlock(block)) {
@@ -574,15 +595,9 @@ public class CompilationResultBuilder {
             }
 
             try {
-                if (beforeOp != null) {
-                    beforeOp.accept(op);
-                }
                 emitOp(op);
-                if (afterOp != null) {
-                    afterOp.accept(op);
-                }
             } catch (GraalError e) {
-                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op.getClass().getName() + " " + op + "\n" + Arrays.toString(lir.codeEmittingOrder()));
+                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op.getClass().getName() + " " + op);
             }
         }
     }
@@ -594,7 +609,7 @@ public class CompilationResultBuilder {
             if (op.getPosition() != null) {
                 recordSourceMapping(start, asm.position(), op.getPosition());
             }
-            if (LIR_INSTRUCTION_VERIFIERS.size() > 0 && start < asm.position()) {
+            if (!lirInstructionVerifiers.isEmpty() && start < asm.position()) {
                 int end = asm.position();
                 for (CodeAnnotation codeAnnotation : compilationResult.getCodeAnnotations()) {
                     if (codeAnnotation instanceof JumpTable) {
@@ -607,9 +622,7 @@ public class CompilationResultBuilder {
                     }
                 }
                 byte[] emittedCode = asm.copy(start, end);
-                for (LIRInstructionVerifier verifier : LIR_INSTRUCTION_VERIFIERS) {
-                    verifier.verify(op, emittedCode);
-                }
+                lirInstructionVerifiers.forEach(v -> v.verify(op, emittedCode));
             }
         } catch (BailoutException e) {
             throw e;
@@ -634,11 +647,7 @@ public class CompilationResultBuilder {
         }
         lir = null;
         currentBlockIndex = 0;
-    }
-
-    public void setOpCallback(Consumer<LIRInstruction> beforeOp, Consumer<LIRInstruction> afterOp) {
-        this.beforeOp = beforeOp;
-        this.afterOp = afterOp;
+        lastImplicitExceptionOffset = Integer.MIN_VALUE;
     }
 
     public OptionValues getOptions() {
@@ -653,57 +662,61 @@ public class CompilationResultBuilder {
         labelBindLirPositions = EconomicMap.create(Equivalence.IDENTITY);
         lirPositions = EconomicMap.create(Equivalence.IDENTITY);
         int instructionPosition = 0;
-        for (AbstractBlockBase<?> block : generatedLIR.codeEmittingOrder()) {
-            if (block != null) {
-                for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
-                    if (op instanceof LabelHoldingOp) {
-                        Label label = ((LabelHoldingOp) op).getLabel();
-                        if (label != null) {
-                            labelBindLirPositions.put(label, instructionPosition);
-                        }
+        for (int blockId : generatedLIR.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
+                continue;
+            }
+            BasicBlock<?> block = generatedLIR.getBlockById(blockId);
+            for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
+                if (op instanceof LabelHoldingOp) {
+                    Label label = ((LabelHoldingOp) op).getLabel();
+                    if (label != null) {
+                        labelBindLirPositions.put(label, instructionPosition);
                     }
-                    lirPositions.put(op, instructionPosition);
-                    instructionPosition++;
                 }
+                lirPositions.put(op, instructionPosition);
+                instructionPosition++;
             }
         }
     }
 
     /**
-     * Answers the code generator whether the jump from instruction to label is within disp LIR
-     * instructions.
+     * Determines whether the distance from the LIR instruction to the label is within
+     * maxLIRDistance LIR instructions.
      *
-     * @param disp Maximum number of LIR instructions between label and instruction
+     * @param maxLIRDistance Maximum number of LIR instructions between label and instruction
      */
-    public boolean labelWithinRange(LIRInstruction instruction, Label label, int disp) {
+    public boolean labelWithinLIRRange(LIRInstruction instruction, Label label, int maxLIRDistance) {
         if (conservativeLabelOffsets) {
+            /* Conservatively assume distance is too far. */
             return false;
         }
         Integer labelPosition = labelBindLirPositions.get(label);
         Integer instructionPosition = lirPositions.get(instruction);
-        boolean result;
         if (labelPosition != null && instructionPosition != null) {
-            result = Math.abs(labelPosition - instructionPosition) < disp;
+            /* If both LIR positions are known, then check distance between instructions. */
+            return Math.abs(labelPosition - instructionPosition) < maxLIRDistance;
         } else {
-            result = false;
+            /* Otherwise, it is not possible to make an estimation. */
+            return false;
         }
-        return result;
     }
 
     /**
      * Sets this CompilationResultBuilder into conservative mode. If set,
-     * {@link CompilationResultBuilder#labelWithinRange(LIRInstruction, Label, int)} always returns
-     * false.
+     * {@link CompilationResultBuilder#labelWithinLIRRange(LIRInstruction, Label, int)} always
+     * returns false.
      */
     public void setConservativeLabelRanges() {
         this.conservativeLabelOffsets = true;
     }
 
     public final boolean needsClearUpperVectorRegisters() {
-        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
-            if (block == null) {
+        for (int blockId : lir.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
+            BasicBlock<?> block = lir.getBlockById(blockId);
             for (LIRInstruction op : lir.getLIRforBlock(block)) {
                 if (op.needsClearUpperVectorRegisters()) {
                     return true;
@@ -711,40 +724,6 @@ public class CompilationResultBuilder {
             }
         }
         return false;
-    }
-
-    private CallContext currentCallContext;
-
-    public final class CallContext implements AutoCloseable {
-        private CompilationResult.CodeMark mark;
-        private Call call;
-
-        @Override
-        public void close() {
-            currentCallContext = null;
-            compilationResult.recordCallContext(mark, call);
-        }
-
-        void recordCall(Call c) {
-            assert this.call == null : "Recording call twice";
-            this.call = c;
-        }
-
-        void recordMark(CompilationResult.CodeMark m) {
-            assert this.mark == null : "Recording mark twice";
-            this.mark = m;
-        }
-    }
-
-    public CallContext openCallContext(boolean direct) {
-        if (currentCallContext != null) {
-            throw GraalError.shouldNotReachHere("Call context already open");
-        }
-        // Currently only AOT requires call context information and only for direct calls.
-        if (compilationResult.isImmutablePIC() && direct) {
-            currentCallContext = new CallContext();
-        }
-        return currentCallContext;
     }
 
     public void setNeedsMHDeoptHandler() {

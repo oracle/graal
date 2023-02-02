@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.SubstrateOptions;
-
 import java.util.function.BooleanSupplier;
+
+import com.oracle.svm.core.thread.LoomSupport;
 
 public class NotLoomJDK implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return !SubstrateOptions.UseLoom.getValue();
+        return !LoomSupport.isEnabled();
     }
 }

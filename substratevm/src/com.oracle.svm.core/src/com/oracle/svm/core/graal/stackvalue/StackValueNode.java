@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,54 +24,61 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
-import static org.graalvm.compiler.core.common.NumUtil.roundUp;
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.ConstantValue;
-import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.word.WordBase;
+import org.graalvm.compiler.nodes.AbstractStateSplit;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.thread.VirtualThreads;
 
-import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public final class StackValueNode extends FixedWithNextNode implements LIRLowerable, IterableNodeType {
+/** @see LoweredStackValueNode */
+@NodeInfo(cycles = NodeCycles.CYCLES_4, size = NodeSize.SIZE_8)
+public class StackValueNode extends AbstractStateSplit implements MemoryAccess, Lowerable, IterableNodeType {
     public static final NodeClass<StackValueNode> TYPE = NodeClass.create(StackValueNode.class);
 
     /*
      * This is a more or less random high number, to catch stack allocations that most likely lead
      * to a stack overflow anyway.
      */
-    private static final int MAX_SIZE = 10 * 1024 * 1024;
+    static final int MAX_SIZE = 10 * 1024 * 1024;
 
-    protected final int size;
+    @OptionalInput(Memory) MemoryKill lastLocationAccess;
 
-    /** All nodes with the same identity get the same stack slot assigned. */
+    protected final int sizeInBytes;
+    protected final int alignmentInBytes;
     protected final StackSlotIdentity slotIdentity;
-
-    /**
-     * We need to make sure that the stack block is reserved only once, even when compiler
-     * optimizations such as loop unrolling duplicate the actual {@link StackValueNode}. While the
-     * node itself is cloned, this holder object is not cloned (it is a shallow object copy). The
-     * holders are created by the {@link StackValuePhase}.
-     */
-    protected StackSlotHolder stackSlotHolder;
+    protected final boolean checkVirtualThread;
 
     public static class StackSlotIdentity {
+        /**
+         * Determines if the same stack slot should be used for all methods in the current
+         * compilation unit (this also ignores the recursion depth).
+         */
+        protected final boolean shared;
         protected final String name;
 
-        public StackSlotIdentity(String name) {
+        public StackSlotIdentity(String name, boolean shared) {
             this.name = name;
+            this.shared = shared;
         }
 
         @Override
@@ -80,50 +87,84 @@ public final class StackValueNode extends FixedWithNextNode implements LIRLowera
         }
     }
 
-    protected static class StackSlotHolder {
-        protected VirtualStackSlot slot;
-        protected final int size;
-        protected NodeLIRBuilderTool gen;
-
-        public StackSlotHolder(int size) {
-            this.size = size;
-        }
+    protected StackValueNode(int sizeInBytes, int alignmentInBytes, StackSlotIdentity slotIdentity, boolean checkVirtualThread) {
+        this(TYPE, sizeInBytes, alignmentInBytes, slotIdentity, checkVirtualThread);
     }
 
-    public StackValueNode(long numElements, long elementSize, StackSlotIdentity slotIdentity) {
-        super(TYPE, FrameAccess.getWordStamp());
+    protected StackValueNode(NodeClass<? extends StackValueNode> type, int sizeInBytes, int alignmentInBytes, StackSlotIdentity slotIdentity, boolean checkVirtualThread) {
+        super(type, FrameAccess.getWordStamp());
+        this.sizeInBytes = sizeInBytes;
+        this.alignmentInBytes = alignmentInBytes;
+        this.slotIdentity = slotIdentity;
+        this.checkVirtualThread = checkVirtualThread;
+    }
 
+    public int getSizeInBytes() {
+        return sizeInBytes;
+    }
+
+    public int getAlignmentInBytes() {
+        return alignmentInBytes;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        if (checkVirtualThread) {
+            return LocationIdentity.any();
+        }
+        return MemoryKill.NO_LOCATION;
+    }
+
+    @Override
+    public MemoryKill getLastLocationAccess() {
+        return lastLocationAccess;
+    }
+
+    @Override
+    public void setLastLocationAccess(MemoryKill lla) {
+        updateUsagesInterface(lastLocationAccess, lla);
+        lastLocationAccess = lla;
+    }
+
+    /**
+     * Factory method used for intrinsifying {@link StackValue} API methods. This method therefore
+     * must follow the API specification.
+     */
+    public static ValueNode create(long numElements, long elementSize, GraphBuilderContext b, boolean disallowVirtualThread) {
         /*
          * Do a careful overflow check, ensuring that the multiplication does not overflow to a
          * small value that seems to be in range.
          */
         if (UnsignedMath.aboveOrEqual(numElements, MAX_SIZE) || UnsignedMath.aboveOrEqual(elementSize, MAX_SIZE) || UnsignedMath.aboveOrEqual(numElements * elementSize, MAX_SIZE)) {
-            throw new PermanentBailoutException("stack value has illegal size " + numElements + " * " + elementSize + ": " + slotIdentity.name);
+            throw new PermanentBailoutException("stack value has illegal size " + numElements + " * " + elementSize);
         }
-        this.size = (int) (numElements * elementSize);
-        this.slotIdentity = slotIdentity;
+
+        int sizeInBytes = NumUtil.safeToInt(numElements * elementSize);
+        return create(sizeInBytes, b.getGraph().method(), b.bci(), disallowVirtualThread);
     }
 
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        assert stackSlotHolder != null : "node not processed by StackValuePhase";
-        assert stackSlotHolder.gen == null || stackSlotHolder.gen == gen : "Same stack slot holder used during multiple compilations, therefore caching a wrong value";
-        stackSlotHolder.gen = gen;
+    public static StackValueNode create(int sizeInBytes, ResolvedJavaMethod method, int bci, boolean disallowVirtualThread) {
+        String name = method.asStackTraceElement(bci).toString();
+        StackSlotIdentity slotIdentity = new StackSlotIdentity(name, false);
 
-        if (size == 0) {
-            gen.setResult(this, new ConstantValue(gen.getLIRGeneratorTool().getLIRKind(FrameAccess.getWordStamp()), JavaConstant.forIntegerKind(FrameAccess.getWordKind(), 0)));
-        } else {
-            VirtualStackSlot slot = stackSlotHolder.slot;
-            if (slot == null) {
-                int wordSize = gen.getLIRGeneratorTool().target().wordSize;
-                int slots = roundUp(size, wordSize) / wordSize;
-                slot = gen.getLIRGeneratorTool().allocateStackSlots(slots);
-                stackSlotHolder.slot = slot;
-            }
-            gen.setResult(this, gen.getLIRGeneratorTool().emitAddress(slot));
-        }
+        /*
+         * We should actually not allow @Uninterruptible(calleeMustBe=false) since it enables
+         * yielding and blocking in callees, or mayBeInlined=true because things might be shuffled
+         * around in a caller, but these are difficult to ensure across multiple callers and
+         * callees.
+         */
+        boolean checkVirtualThread = disallowVirtualThread && VirtualThreads.isSupported() && !Uninterruptible.Utils.isUninterruptible(method);
+        return create(sizeInBytes, slotIdentity, checkVirtualThread);
     }
 
-    @NodeIntrinsic
-    public static native WordBase stackValue(@ConstantNodeParameter long numElements, @ConstantNodeParameter long elementSize, @ConstantNodeParameter StackSlotIdentity slotIdentifier);
+    public static StackValueNode create(int sizeInBytes, StackSlotIdentity slotIdentity, boolean checkVirtualThread) {
+        if (UnsignedMath.aboveOrEqual(sizeInBytes, MAX_SIZE)) {
+            throw new PermanentBailoutException("stack value has illegal size " + sizeInBytes + ": " + slotIdentity.name);
+        }
+
+        /* Alignment is specified by StackValue API methods as "alignment used for stack frames". */
+        int alignmentInBytes = ConfigurationValues.getTarget().stackAlignment;
+
+        return new StackValueNode(sizeInBytes, alignmentInBytes, slotIdentity, checkVirtualThread);
+    }
 }

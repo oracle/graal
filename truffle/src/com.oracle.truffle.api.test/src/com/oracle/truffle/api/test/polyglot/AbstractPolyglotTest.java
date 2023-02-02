@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,23 +43,35 @@ package com.oracle.truffle.api.test.polyglot;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * Base class for polyglot tests that require internal access to a language or instrument
@@ -70,7 +82,8 @@ import com.oracle.truffle.api.nodes.RootNode;
  * @see #setupEnv(Context, ProxyLanguage, ProxyInstrument)
  */
 public abstract class AbstractPolyglotTest {
-
+    private static final String STRONG_ENCAPSULATION_MESSAGE_TEMPLATE = "Cannot use %s with strong encapsulation enabled (e.g. context isolates). " +
+                    "Add TruffleTestAssumptions.assumeWeakEncapsulation() in a @BeforeClass listener of the test class to resolve this.";
     protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     protected Context context;
@@ -79,6 +92,10 @@ public abstract class AbstractPolyglotTest {
     protected TruffleInstrument.Env instrumentEnv;
     protected boolean cleanupOnSetup = true;
     protected boolean enterContext = true;
+    protected boolean needsInstrumentEnv = false;
+    protected boolean needsLanguageEnv = false;
+    protected boolean ignoreCancelOnClose = false;
+    protected boolean ignoreExitOnClose = false;
 
     protected final void setupEnv(Context.Builder contextBuilder, ProxyInstrument instrument) {
         setupEnv(null, contextBuilder, null, instrument);
@@ -105,6 +122,19 @@ public abstract class AbstractPolyglotTest {
     }
 
     private void setupEnv(Context originalContext, Context.Builder builder, ProxyLanguage language, ProxyInstrument instrument) {
+        if (language != null && TruffleTestAssumptions.isStrongEncapsulation()) {
+            throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "custom proxy language"));
+        }
+        if (instrument != null && TruffleTestAssumptions.isStrongEncapsulation()) {
+            throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "custom proxy instrument"));
+        }
+        if (needsLanguageEnv && TruffleTestAssumptions.isStrongEncapsulation()) {
+            throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "language env"));
+        }
+        if (needsInstrumentEnv && TruffleTestAssumptions.isStrongEncapsulation()) {
+            throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "instrument env"));
+        }
+
         if (cleanupOnSetup) {
             cleanup();
         }
@@ -123,8 +153,10 @@ public abstract class AbstractPolyglotTest {
             usedInstrument = instrument;
         }
         usedLanguage.setOnCreate((c) -> {
-            this.languageEnv = c.env;
-            this.language = usedLanguage.languageInstance;
+            if (needsLanguageEnv) {
+                this.languageEnv = c.env;
+                this.language = usedLanguage.languageInstance;
+            }
         });
 
         ProxyLanguage.setDelegate(usedLanguage);
@@ -146,8 +178,10 @@ public abstract class AbstractPolyglotTest {
         if (embedderInstrument == null) {
             throw new IllegalStateException("Test proxy instrument not installed. Inconsistent build?");
         } else {
-            // forces initialization of instrument
-            this.instrumentEnv = embedderInstrument.lookup(ProxyInstrument.Initialize.class).getEnv();
+            if (needsInstrumentEnv) {
+                // forces initialization of instrument
+                this.instrumentEnv = embedderInstrument.lookup(ProxyInstrument.Initialize.class).getEnv();
+            }
         }
 
         Class<?> currentLanguageClass = usedLanguage.getClass();
@@ -164,9 +198,13 @@ public abstract class AbstractPolyglotTest {
             localContext.enter();
         }
 
-        assertNotNull(this.languageEnv);
-        assertNotNull(this.language);
-        assertNotNull(this.instrumentEnv);
+        if (needsLanguageEnv) {
+            assertNotNull(this.languageEnv);
+            assertNotNull(this.language);
+        }
+        if (needsInstrumentEnv) {
+            assertNotNull(this.instrumentEnv);
+        }
 
         usedLanguage.setOnCreate(null);
 
@@ -194,10 +232,123 @@ public abstract class AbstractPolyglotTest {
     @SuppressWarnings({"unchecked", "static-method"})
     protected final <T extends Node> Supplier<T> adoptNode(TruffleLanguage<?> lang, T node) {
         TestRootNode root = new TestRootNode(lang, node);
-        CallTarget target = Truffle.getRuntime().createCallTarget(root);
         // execute it to trigger instrumentations
-        target.call();
+        root.getCallTarget().call();
         return () -> (T) root.node;
+    }
+
+    protected interface ParallelObjectConsumer<T> {
+
+        /**
+         * @param object current object previously created by the objectFactory that is shared
+         *            across threads.
+         * @param threadIndex current thread index of the current iteration
+         * @param objectIndex object index of the current iteration and thread
+         */
+        void accept(T object, int threadIndex, int objectIndex);
+
+    }
+
+    protected final <T extends Node> List<T> assertNodeInParallel(Supplier<T> objectFactory, ParallelObjectConsumer<T> assertions,
+                    int threadPools,
+                    int threads,
+                    int iterations,
+                    int objectCount) throws InterruptedException {
+        return assertInParallel(() -> {
+            T node = objectFactory.get();
+            new TestRootNode(language, node).getCallTarget();
+            return node;
+        }, assertions, threadPools, threads, iterations, objectCount);
+    }
+
+    /**
+     * Runs assertions for a node in parallel. This method aims to maximize races for each
+     * assertions consumer running in parallel.
+     *
+     * @param threadPools number of thread pools
+     * @param threads number of threads in parallel for each iteration
+     * @param number of iterations per thread pool
+     * @param number of objects created through the factory per iteration.
+     */
+    @SuppressWarnings({"unchecked", "static-method"})
+    protected final <T> List<T> assertInParallel(Supplier<T> objectFactory, ParallelObjectConsumer<T> assertions,
+                    int threadPools,
+                    int threads,
+                    int iterations,
+                    int objectCount) throws InterruptedException {
+        List<T> createdObjects = new ArrayList<>();
+        for (int poolIndex = 0; poolIndex < threadPools; poolIndex++) {
+            ExecutorService executorService = Executors.newFixedThreadPool(threads);
+            try {
+                Semaphore semaphore = new Semaphore(0);
+                AtomicReference<T[]> node = new AtomicReference<>();
+                AtomicReference<CountDownLatch> latchRef = new AtomicReference<>();
+                List<Future<?>> futures = new ArrayList<>();
+                AtomicReference<Throwable> error = new AtomicReference<>();
+                for (int i = 0; i < threads; i++) {
+                    int threadIndex = i + 1;
+                    futures.add(executorService.submit(() -> {
+                        while (true) {
+                            try {
+                                semaphore.acquire();
+                            } catch (InterruptedException e1) {
+                                throw new AssertionError(e1);
+                            }
+                            CountDownLatch latch = latchRef.get();
+                            try {
+                                T[] nodes = node.get();
+                                for (int objectIndex = 0; objectIndex < objectCount; objectIndex++) {
+                                    assertions.accept(nodes[objectIndex], threadIndex, objectIndex);
+                                }
+                                if (latch == null) {
+                                    break;
+                                }
+                            } catch (Throwable t) {
+                                error.set(t);
+                            } finally {
+                                if (latch != null) {
+                                    latch.countDown();
+                                    try {
+                                        latch.await();
+                                    } catch (InterruptedException e) {
+                                        throw new AssertionError(e);
+                                    }
+                                }
+                            }
+                        }
+                    }));
+                }
+                try {
+                    for (int i = 0; i < iterations; i++) {
+                        T[] nodes = (T[]) new Node[objectCount];
+                        for (int j = 0; j < objectCount; j++) {
+                            nodes[j] = objectFactory.get();
+                            createdObjects.add(nodes[j]);
+                        }
+                        node.set(nodes);
+                        CountDownLatch latch = new CountDownLatch(threads);
+                        latchRef.set(latch);
+                        semaphore.release(threads);
+                        latch.await();
+                        if (error.get() != null) {
+                            break;
+                        }
+                    }
+
+                } finally {
+                    latchRef.set(null);
+                    semaphore.release(threads);
+                }
+
+                if (error.get() != null) {
+                    throw new AssertionError(error.get());
+                }
+            } finally {
+                executorService.shutdownNow();
+                executorService.awaitTermination(100, TimeUnit.SECONDS);
+            }
+        }
+        return createdObjects;
     }
 
     @After
@@ -207,7 +358,13 @@ public abstract class AbstractPolyglotTest {
                 context.leave();
             }
 
-            context.close();
+            try {
+                context.close();
+            } catch (PolyglotException pe) {
+                if ((!ignoreCancelOnClose || !pe.isCancelled()) && (!ignoreExitOnClose || !pe.isExit())) {
+                    throw pe;
+                }
+            }
             context = null;
         }
         // restore static state
@@ -227,7 +384,7 @@ public abstract class AbstractPolyglotTest {
             callable.call();
         } catch (Throwable t) {
             if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.toString(), t);
             }
             return;
         }
@@ -239,7 +396,7 @@ public abstract class AbstractPolyglotTest {
             run.run();
         } catch (Throwable t) {
             if (!exceptionType.isInstance(t)) {
-                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.toString(), t);
             }
             verifier.accept(exceptionType.cast(t));
             return;
@@ -260,6 +417,10 @@ public abstract class AbstractPolyglotTest {
         fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
+    public static boolean isGraalRuntime() {
+        return Truffle.getRuntime().getName().contains("Graal");
+    }
+
     private static class TestRootNode extends RootNode {
 
         @Child private Node node;
@@ -276,6 +437,12 @@ public abstract class AbstractPolyglotTest {
             return null;
         }
 
+    }
+
+    public static FrameDescriptor createFrameDescriptor(int count) {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder(count);
+        builder.addSlots(count, FrameSlotKind.Illegal);
+        return builder.build();
     }
 
 }

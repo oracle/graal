@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -698,10 +698,10 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     @Override
     public Iterable<V> getValues() {
-        return new Iterable<V>() {
+        return new Iterable<>() {
             @Override
             public Iterator<V> iterator() {
-                return new SparseMapIterator<V>() {
+                return new SparseMapIterator<>() {
                     @SuppressWarnings("unchecked")
                     @Override
                     public V next() {
@@ -735,7 +735,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     @Override
     public MapCursor<K, V> getEntries() {
-        return new MapCursor<K, V>() {
+        return new MapCursor<>() {
             int current = -1;
 
             @Override
@@ -770,6 +770,14 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
                     EconomicMapImpl.this.findAndRemoveHash(EconomicMapImpl.this.getKey(current));
                 }
                 current = EconomicMapImpl.this.remove(current) - 1;
+            }
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public V setValue(V newValue) {
+                V oldValue = (V) EconomicMapImpl.this.getValue(current);
+                EconomicMapImpl.this.setValue(current, newValue);
+                return oldValue;
             }
         };
     }
@@ -843,7 +851,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
     @Override
     public Iterator<K> iterator() {
-        return new SparseMapIterator<K>() {
+        return new SparseMapIterator<>() {
             @SuppressWarnings("unchecked")
             @Override
             public K next() {
@@ -870,5 +878,13 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     @Override
     public void remove(K element) {
         removeKey(element);
+    }
+
+    @Override
+    public Equivalence getEquivalenceStrategy() {
+        if (strategy == null) {
+            return Equivalence.IDENTITY;
+        }
+        return strategy;
     }
 }

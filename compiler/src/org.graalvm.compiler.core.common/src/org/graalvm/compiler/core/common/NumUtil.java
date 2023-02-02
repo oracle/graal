@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,11 @@ import jdk.vm.ci.code.CodeUtil;
  * A collection of static utility functions that check ranges of numbers.
  */
 public class NumUtil {
+
+    public enum Signedness {
+        SIGNED,
+        UNSIGNED
+    }
 
     public static boolean isShiftCount(int x) {
         return 0 <= x && x < 32;
@@ -97,17 +102,23 @@ public class NumUtil {
         return s == (s & 0xFFFF);
     }
 
-    public static boolean isUShort(long s) {
-        return s == (s & 0xFFFF);
-    }
-
     public static boolean is32bit(long x) {
         return -0x80000000L <= x && x < 0x80000000L;
+    }
+
+    public static byte safeToUByte(int v) {
+        assert isUByte(v);
+        return (byte) v;
     }
 
     public static byte safeToByte(int v) {
         assert isByte(v);
         return (byte) v;
+    }
+
+    public static short safeToUShort(int v) {
+        assert isUShort(v);
+        return (short) v;
     }
 
     public static short safeToShort(int v) {
@@ -128,30 +139,8 @@ public class NumUtil {
         return ((number + mod - 1L) / mod) * mod;
     }
 
-    public static int roundDown(int number, int mod) {
-        return number / mod * mod;
-    }
-
-    public static long roundDown(long number, long mod) {
-        return number / mod * mod;
-    }
-
     public static int divideAndRoundUp(int number, int divisor) {
         return (number + divisor - 1) / divisor;
-    }
-
-    public static long divideAndRoundUp(long number, long divisor) {
-        return (number + divisor - 1L) / divisor;
-    }
-
-    public static int log2Ceil(int val) {
-        int x = 1;
-        int log2 = 0;
-        while (x < val) {
-            log2++;
-            x *= 2;
-        }
-        return log2;
     }
 
     public static boolean isUnsignedNbit(int n, int value) {
@@ -243,5 +232,25 @@ public class NumUtil {
 
     public static boolean sameSign(long a, long b) {
         return a < 0 == b < 0;
+    }
+
+    /**
+     * Converts a hex string to a byte array. Two characters are converted to a byte at a time.
+     *
+     * @param hex the hex string
+     * @return byte array
+     */
+    public static byte[] hexStringToBytes(String hex) {
+        int len = hex.length() / 2;
+        byte[] bytes = new byte[len];
+        for (int i = 0; i < len; i++) {
+            // need to parse as int, because parseByte will throw on values > 127
+            int val = Integer.parseInt(hex.substring(i << 1, (i << 1) + 2), 16);
+            if (val < 0 || val > 255) {
+                throw new NumberFormatException("Value out of range: " + val);
+            }
+            bytes[i] = (byte) val;
+        }
+        return bytes;
     }
 }

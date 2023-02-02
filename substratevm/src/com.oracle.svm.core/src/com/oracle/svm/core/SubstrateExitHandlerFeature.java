@@ -24,20 +24,27 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
-@AutomaticFeature
-public class SubstrateExitHandlerFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class SubstrateExitHandlerFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (SubstrateOptions.InstallExitHandlers.getValue() && ImageInfo.isExecutable()) {
-            RuntimeSupport.getRuntimeSupport().addStartupHook(Target_java_lang_Terminator::setup);
+        if (SubstrateOptions.InstallExitHandlers.getValue()) {
+            RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateExitHandlerStartupHook());
+        }
+    }
+}
+
+final class SubstrateExitHandlerStartupHook implements RuntimeSupport.Hook {
+    @Override
+    public void execute(boolean isFirstIsolate) {
+        if (isFirstIsolate) {
+            Target_java_lang_Terminator.setup();
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,6 +86,9 @@ import java.lang.annotation.Target;
  * the use of {@link Fallback} might generate a guard that is very big. Try to avoid the use of
  * {@link Fallback} for specializations that are significantly important for peak performance.
  * </p>
+ *
+ * Fallback annotated methods support {@link Cached}, {@link Bind} and dispatched
+ * {@link com.oracle.truffle.api.library.CachedLibrary}.
  *
  * @see Specialization
  * @see NodeChild

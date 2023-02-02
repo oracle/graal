@@ -46,11 +46,6 @@ public final class MemoryProxyNode extends ProxyNode implements SingleMemoryKill
         this.locationIdentity = locationIdentity;
     }
 
-    public void setValue(MemoryKill newValue) {
-        this.updateUsages(value.asNode(), newValue.asNode());
-        this.value = newValue;
-    }
-
     @Override
     public ValueNode value() {
         return (value == null ? null : value.asNode());
@@ -68,7 +63,7 @@ public final class MemoryProxyNode extends ProxyNode implements SingleMemoryKill
 
     @Override
     public ProxyNode duplicateOn(LoopExitNode newProxyPoint, ValueNode newOriginalNode) {
-        assert newOriginalNode instanceof MemoryKill;
+        assert MemoryKill.isMemoryKill(newOriginalNode);
         return graph().addWithoutUniqueWithInputs(new MemoryProxyNode((MemoryKill) newOriginalNode, newProxyPoint, getKilledLocationIdentity()));
     }
 }

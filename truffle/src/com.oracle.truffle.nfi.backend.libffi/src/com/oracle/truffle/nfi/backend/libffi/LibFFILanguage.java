@@ -48,11 +48,11 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
-import com.oracle.truffle.nfi.backend.spi.NFIBackendTools;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 @TruffleLanguage.Registration(id = "internal/nfi-native", name = "nfi-native", version = "0.1", characterMimeTypes = LibFFILanguage.MIME_TYPE, internal = true, services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
@@ -62,12 +62,8 @@ public class LibFFILanguage extends TruffleLanguage<LibFFIContext> {
 
     private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("libffi backend single context");
 
-    static LibFFILanguage getCurrentLanguage() {
-        return getCurrentLanguage(LibFFILanguage.class);
-    }
-
     static Assumption getSingleContextAssumption() {
-        return getCurrentLanguage().singleContextAssumption;
+        return get(null).singleContextAssumption;
     }
 
     @Override
@@ -80,14 +76,11 @@ public class LibFFILanguage extends TruffleLanguage<LibFFIContext> {
 
     @CompilationFinal(dimensions = 1) final CachedTypeInfo[] simpleTypeMap = new CachedTypeInfo[NativeSimpleType.values().length];
     @CompilationFinal(dimensions = 1) final CachedTypeInfo[] arrayTypeMap = new CachedTypeInfo[NativeSimpleType.values().length];
+    @CompilationFinal(dimensions = 1) final CachedTypeInfo[] varargsTypeMap = new CachedTypeInfo[NativeSimpleType.values().length];
     @CompilationFinal CachedTypeInfo cachedEnvType;
 
     CachedTypeInfo lookupSimpleTypeInfo(NativeSimpleType type) {
         return simpleTypeMap[type.ordinal()];
-    }
-
-    NFIBackendTools getTools() {
-        return backend.tools;
     }
 
     @Override
@@ -100,13 +93,13 @@ public class LibFFILanguage extends TruffleLanguage<LibFFIContext> {
             }
 
             @Override
-            public NFIBackend createBackend(NFIBackendTools tools) {
+            public NFIBackend createBackend() {
                 if (backend == null) {
                     /*
                      * Make sure there is exactly one backend instance per engine. That way we can
                      * use identity equality on the backend object for caching decisions.
                      */
-                    backend = new LibFFINFIBackend(com.oracle.truffle.nfi.backend.libffi.LibFFILanguage.this, tools);
+                    backend = new LibFFINFIBackend(com.oracle.truffle.nfi.backend.libffi.LibFFILanguage.this);
                 }
                 return backend;
             }
@@ -139,17 +132,23 @@ public class LibFFILanguage extends TruffleLanguage<LibFFIContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+        return new RootNode(this) {
 
             @Override
             public Object execute(VirtualFrame frame) {
                 CompilerDirectives.transferToInterpreter();
                 throw new UnsupportedOperationException("illegal access to internal language");
             }
-        });
+        }.getCallTarget();
     }
 
     protected static LibFFIContext getCurrentContext() {
-        return getCurrentContext(LibFFILanguage.class);
+        return LibFFIContext.get(null);
+    }
+
+    private static final LanguageReference<LibFFILanguage> REFERENCE = LanguageReference.create(LibFFILanguage.class);
+
+    public static LibFFILanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 }

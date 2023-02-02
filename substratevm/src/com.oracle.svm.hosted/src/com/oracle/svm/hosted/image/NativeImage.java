@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,11 +58,16 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.CHeader;
+import org.graalvm.nativeimage.c.CHeader.Header;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.type.CConst;
+import org.graalvm.nativeimage.c.type.CTypedef;
+import org.graalvm.nativeimage.c.type.CUnsigned;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
@@ -73,29 +78,26 @@ import com.oracle.objectfile.ObjectFile.ProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CGlobalDataImpl;
-import com.oracle.svm.core.c.CHeader;
-import com.oracle.svm.core.c.CHeader.Header;
-import com.oracle.svm.core.c.CTypedef;
-import com.oracle.svm.core.c.CUnsigned;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapPartition;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -105,11 +107,9 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
-import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -118,6 +118,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -128,6 +129,8 @@ public abstract class NativeImage extends AbstractImage {
     private final ObjectFile objectFile;
     private final int wordSize;
     private final Set<HostedMethod> uniqueEntryPoints = new HashSet<>();
+
+    private long imageHeapSize = -1;
 
     // The sections of the native image.
     private Section textSection;
@@ -141,17 +144,11 @@ public abstract class NativeImage extends AbstractImage {
 
         uniqueEntryPoints.addAll(entryPoints);
 
-        int pageSize = NativeImageOptions.getPageSize();
+        int pageSize = SubstrateOptions.getPageSize();
         objectFile = ObjectFile.getNativeObjectFile(pageSize);
         objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());
         wordSize = FrameAccess.wordSize();
         assert objectFile.getWordSizeInBytes() == wordSize;
-    }
-
-    @Override
-    public Section getTextSection() {
-        assert textSection != null;
-        return textSection;
     }
 
     @Override
@@ -171,7 +168,14 @@ public abstract class NativeImage extends AbstractImage {
         } catch (Exception ex) {
             throw shouldNotReachHere(ex);
         }
-        resultingImageSize = (int) outputFile.toFile().length();
+        debugInfoSize = 0;
+        String debugIdentifier = OS.getCurrent() == OS.DARWIN ? "__debug" : ".debug";
+        for (Element e : objectFile.getElements()) {
+            String name = e.getName();
+            if (name.contains(debugIdentifier) && !name.startsWith(".rela")) {
+                debugInfoSize += e.getMemSize(objectFile.getDecisionsByElement());
+            }
+        }
         if (NativeImageOptions.PrintImageElementSizes.getValue()) {
             for (Element e : objectFile.getElements()) {
                 System.out.printf("PrintImageElementSizes:  size: %15d  name: %s\n", e.getMemSize(objectFile.getDecisionsByElement()), e.getElementName());
@@ -235,7 +239,7 @@ public abstract class NativeImage extends AbstractImage {
         writer.appendln("#endif");
 
         Path headerFile = writer.writeFile(header.name() + dynamicSuffix);
-        BuildArtifacts.singleton().add(ArtifactType.HEADER, headerFile);
+        BuildArtifacts.singleton().add(ArtifactType.C_HEADER, headerFile);
     }
 
     /**
@@ -298,6 +302,11 @@ public abstract class NativeImage extends AbstractImage {
         return rm1Line - rm2Line;
     }
 
+    private static boolean isUnsigned(AnnotatedType type) {
+        var legacyCUnsigned = com.oracle.svm.core.c.CUnsigned.class;
+        return type.isAnnotationPresent(CUnsigned.class) || type.isAnnotationPresent(legacyCUnsigned);
+    }
+
     private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer, boolean dynamic) {
         assert Modifier.isStatic(m.getModifiers()) : "Published methods that go into the header must be static.";
         CEntryPointData cEntryPointData = (CEntryPointData) m.getWrapped().getEntryPointData();
@@ -317,7 +326,7 @@ public abstract class NativeImage extends AbstractImage {
                         (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass()),
                         Optional.ofNullable(annotatedReturnType.getAnnotation(CTypedef.class)).map(CTypedef::name),
                         false,
-                        annotatedReturnType.isAnnotationPresent(CUnsigned.class),
+                        isUnsigned(annotatedReturnType),
                         metaAccess, nativeLibs));
         writer.append(" ");
 
@@ -341,7 +350,7 @@ public abstract class NativeImage extends AbstractImage {
                             (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
                             Optional.ofNullable(annotatedParameterTypes[i].getAnnotation(CTypedef.class)).map(CTypedef::name),
                             annotatedParameterTypes[i].isAnnotationPresent(CConst.class),
-                            annotatedParameterTypes[i].isAnnotationPresent(CUnsigned.class),
+                            isUnsigned(annotatedParameterTypes[i]),
                             metaAccess, nativeLibs));
             if (parameters[i].isNamePresent()) {
                 writer.append(" ");
@@ -390,7 +399,7 @@ public abstract class NativeImage extends AbstractImage {
         }
         ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
         int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + position);
-        baseSectionImpl.markRelocationSite(offsetInSection, wordSize == 8 ? RelocationKind.DIRECT_8 : RelocationKind.DIRECT_4, name, false, 0L);
+        baseSectionImpl.markRelocationSite(offsetInSection, wordSize == 8 ? RelocationKind.DIRECT_8 : RelocationKind.DIRECT_4, name, 0L);
         return symbol;
     }
 
@@ -408,6 +417,8 @@ public abstract class NativeImage extends AbstractImage {
             ImageHeapLayoutInfo heapLayout = heap.getLayouter().layout(heap, objectFile.getPageSize());
             // after this point, the layout is final and must not be changed anymore
             assert !hasDuplicatedObjects(heap.getObjects()) : "heap.getObjects() must not contain any duplicates";
+
+            imageHeapSize = heapLayout.getImageHeapSize();
 
             // Text section (code)
             final int textSectionSize = codeCache.getCodeCacheSize();
@@ -446,21 +457,11 @@ public abstract class NativeImage extends AbstractImage {
                             (offset, symbolName, isGlobalSymbol) -> defineRelocationForSymbol(symbolName, offset));
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
-            /*
-             * If we constructed debug info give the object file a chance to install it
-             */
-            if (SubstrateOptions.GenerateDebugInfo.getValue(HostedOptionValues.singleton()) > 0) {
-                try (Timer.StopTimer t = new Timer(imageName, "dbginfo").start()) {
-                    ImageSingletons.add(SourceManager.class, new SourceManager());
-                    DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap);
-                    objectFile.installDebugInfo(provider);
-                }
-            }
             // - Write the heap to its own section.
             // Dynamic linkers/loaders generally don't ensure any alignment to more than page
             // boundaries, so we take care of this ourselves in CommittedMemoryProvider, if we can.
             int alignment = objectFile.getPageSize();
-            RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(heapLayout.getImageHeapSize(), objectFile.getByteOrder());
+            RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(imageHeapSize, objectFile.getByteOrder());
             ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBackingArray());
             heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), alignment, writable, false, heapSectionImpl);
             objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
@@ -469,7 +470,7 @@ public abstract class NativeImage extends AbstractImage {
             assert !SubstrateOptions.SpawnIsolates.getValue() || heapSectionBuffer.getByteBuffer().getLong((int) offsetOfARelocatablePointer) == 0L;
 
             defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
-            defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, heapLayout.getImageHeapSize());
+            defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, imageHeapSize);
             defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset());
             defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize());
             defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, offsetOfARelocatablePointer);
@@ -564,14 +565,20 @@ public abstract class NativeImage extends AbstractImage {
         return true;
     }
 
-    private static void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
+    private void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert info.getTargetObject() instanceof CFunctionPointer : "Wrong type for FunctionPointer relocation: " + info.getTargetObject().toString();
-        final int functionPointerRelocationSize = 8;
-        assert info.getRelocationSize() == functionPointerRelocationSize : "Function relocation: " + info.getRelocationSize() + " should be " + functionPointerRelocationSize + " bytes.";
+
         // References to functions are via relocations to the symbol for the function.
-        ResolvedJavaMethod method = ((MethodPointer) info.getTargetObject()).getMethod();
+        MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
+        ResolvedJavaMethod method = methodPointer.getMethod();
+        HostedMethod target = (method instanceof HostedMethod) ? (HostedMethod) method : heap.getUniverse().lookup(method);
+        if (!target.isCompiled()) {
+            target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+        }
         // A reference to a method. Mark the relocation site using the symbol name.
-        sectionImpl.markRelocationSite(offset, RelocationKind.getDirect(functionPointerRelocationSize), localSymbolNameForMethod(method), false, 0L);
+        Architecture arch = ConfigurationValues.getTarget().arch;
+        assert (arch instanceof AArch64) || RelocationKind.getDirect(arch.getWordSize()) == info.getRelocationKind();
+        sectionImpl.markRelocationSite(offset, info.getRelocationKind(), localSymbolNameForMethod(target), 0L);
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {
@@ -604,9 +611,8 @@ public abstract class NativeImage extends AbstractImage {
         assert targetObjectInfo != null;
         String targetSectionName = heapSection.getName();
         long address = targetObjectInfo.getAddress();
-        long relocationInfoAddend = info.hasExplicitAddend() ? info.getExplicitAddend() : 0L;
-        long relocationAddend = address + relocationInfoAddend;
-        sectionImpl.markRelocationSite(offset, info.getRelocationKind(), targetSectionName, false, relocationAddend);
+        long relocationAddend = address + info.getAddend();
+        sectionImpl.markRelocationSite(offset, info.getRelocationKind(), targetSectionName, relocationAddend);
     }
 
     private void markDataRelocationSiteFromText(RelocatableBuffer buffer, final ProgbitsSectionImpl sectionImpl, final int offset, final Info info) {
@@ -615,28 +621,28 @@ public abstract class NativeImage extends AbstractImage {
                         info.getRelocationSize();
         Object target = info.getTargetObject();
         if (target instanceof DataSectionReference) {
-            long addend = ((DataSectionReference) target).getOffset() - info.getExplicitAddend();
+            long addend = ((DataSectionReference) target).getOffset() - info.getAddend();
             assert isAddendAligned(arch, addend, info.getRelocationKind()) : "improper addend alignment";
-            sectionImpl.markRelocationSite(offset, info.getRelocationKind(), roDataSection.getName(), false, addend);
+            sectionImpl.markRelocationSite(offset, info.getRelocationKind(), roDataSection.getName(), addend);
         } else if (target instanceof CGlobalDataReference) {
             CGlobalDataReference ref = (CGlobalDataReference) target;
             CGlobalDataInfo dataInfo = ref.getDataInfo();
             CGlobalDataImpl<?> data = dataInfo.getData();
-            long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset() - info.getExplicitAddend();
+            long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset() - info.getAddend();
             assert isAddendAligned(arch, addend, info.getRelocationKind()) : "improper addend alignment";
-            sectionImpl.markRelocationSite(offset, info.getRelocationKind(), rwDataSection.getName(), false, addend);
+            sectionImpl.markRelocationSite(offset, info.getRelocationKind(), rwDataSection.getName(), addend);
             if (dataInfo.isSymbolReference()) { // create relocation for referenced symbol
                 if (objectFile.getSymbolTable().getSymbol(data.symbolName) == null) {
                     objectFile.createUndefinedSymbol(data.symbolName, 0, true);
                 }
                 ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
                 int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset());
-                baseSectionImpl.markRelocationSite(offsetInSection, RelocationKind.getDirect(wordSize), data.symbolName, false, 0L);
+                baseSectionImpl.markRelocationSite(offsetInSection, RelocationKind.getDirect(wordSize), data.symbolName, 0L);
             }
         } else if (target instanceof ConstantReference) {
             // Direct object reference in code that must be patched (not a linker relocation)
-            Object object = SubstrateObjectConstant.asObject(((ConstantReference) target).getConstant());
-            long address = heap.getObjectInfo(object).getAddress();
+            JavaConstant constant = (JavaConstant) ((ConstantReference) target).getConstant();
+            long address = heap.getConstantInfo(constant).getAddress();
             int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
             long targetValue = address >>> encShift;
             assert (targetValue << encShift) == address : "Reference compression shift discards non-zero bits: " + Long.toHexString(address);
@@ -675,9 +681,14 @@ public abstract class NativeImage extends AbstractImage {
                 // validating patched value does not overflow operand
                 switch (info.getRelocationKind()) {
                     case AARCH64_R_MOVW_UABS_G0:
+                        assert (targetValue & 0xFFFF_FFFF_FFFF_0000L) == 0 : "value to patch does not fit";
+                        break;
                     case AARCH64_R_MOVW_UABS_G1:
+                        assert (targetValue & 0xFFFF_FFFF_0000_0000L) == 0 : "value to patch does not fit";
+                        break;
                     case AARCH64_R_MOVW_UABS_G2:
-                        assert (patchValue & 0xFFFF) == patchValue : "value to patch does not fit";
+                        assert (targetValue & 0xFFFF_0000_0000_0000L) == 0 : "value to patch does not fit";
+                        break;
                 }
                 int originalInst = bufferBytes.getInt(offset);
                 int newInst = AArch64Assembler.PatcherUtil.patchMov(originalInst, patchValue);
@@ -686,21 +697,6 @@ public abstract class NativeImage extends AbstractImage {
         } else {
             throw shouldNotReachHere("Unsupported target object for relocation in text section");
         }
-    }
-
-    /**
-     * Given a java.lang.reflect.Method, compute the symbol name of its start address (if any) in
-     * the image. The symbol name returned is the one that would be used for local references (e.g.
-     * for relocation), so is guaranteed to exist if the method is in the image. However, it is not
-     * necessarily visible for linking from other objects.
-     *
-     * @param m a java.lang.reflect.Method
-     * @return its symbol name as it would appear in the image (regardless of whether it actually
-     *         does)
-     */
-    public static String localSymbolNameForMethod(java.lang.reflect.Method m) {
-        /* We don't mangle local symbols, because they never need be referenced by an assembler. */
-        return SubstrateUtil.uniqueShortName(m);
     }
 
     /**
@@ -714,8 +710,7 @@ public abstract class NativeImage extends AbstractImage {
      *         does)
      */
     public static String localSymbolNameForMethod(ResolvedJavaMethod sm) {
-        /* We don't mangle local symbols, because they never need be referenced by an assembler. */
-        return SubstrateOptions.ImageSymbolsPrefix.getValue() + SubstrateUtil.uniqueShortName(sm);
+        return SubstrateOptions.ImageSymbolsPrefix.getValue() + (sm instanceof HostedMethod ? ((HostedMethod) sm).getUniqueShortName() : SubstrateUtil.uniqueShortName(sm));
     }
 
     /**
@@ -745,17 +740,18 @@ public abstract class NativeImage extends AbstractImage {
      *         does)
      */
     public static String globalSymbolNameForMethod(ResolvedJavaMethod sm) {
-        return mangleName(SubstrateUtil.uniqueShortName(sm));
+        return mangleName((sm instanceof HostedMethod ? ((HostedMethod) sm).getUniqueShortName() : SubstrateUtil.uniqueShortName(sm)));
     }
 
     @Override
-    public ObjectFile getOrCreateDebugObjectFile() {
-        assert objectFile != null;
-        /*
-         * FIXME: use ObjectFile.getOrCreateDebugObject, which knows how/whether to split (but is
-         * somewhat unimplemented right now, i.e. doesn't actually implement splitting, even on
-         * Mach-O where this is customary).
-         */
+    public long getImageHeapSize() {
+        assert imageHeapSize > -1 : "imageHeapSize accessed before set";
+        return imageHeapSize;
+    }
+
+    @Override
+    public ObjectFile getObjectFile() {
+        assert objectFile != null : "objectFile accessed before set";
         return objectFile;
     }
 
@@ -888,13 +884,17 @@ public abstract class NativeImage extends AbstractImage {
                  * 3. the linkage names given by @CEntryPoint
                  */
 
+                if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                    /* add a dummy function symbol at the start of the code section */
+                    objectFile.createDefinedSymbol("__svm_code_section", textSection, 0, 0, true, true);
+                }
                 final Map<String, HostedMethod> methodsBySignature = new HashMap<>();
                 // 1. fq with return type
-                for (Map.Entry<HostedMethod, CompilationResult> ent : codeCache.getCompilations().entrySet()) {
-                    final String symName = localSymbolNameForMethod(ent.getKey());
-                    final String signatureString = SubstrateUtil.uniqueShortName(ent.getKey());
+                for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
+                    final String symName = localSymbolNameForMethod(pair.getLeft());
+                    final String signatureString = pair.getLeft().getUniqueShortName();
                     final HostedMethod existing = methodsBySignature.get(signatureString);
-                    HostedMethod current = ent.getKey();
+                    HostedMethod current = pair.getLeft();
                     if (existing != null) {
                         /*
                          * We've hit a signature with multiple methods. Choose the "more specific"
@@ -910,7 +910,7 @@ public abstract class NativeImage extends AbstractImage {
                     } else {
                         methodsBySignature.put(signatureString, current);
                     }
-                    defineMethodSymbol(symName, false, textSection, current, ent.getValue());
+                    defineMethodSymbol(symName, false, textSection, current, pair.getRight());
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {
@@ -931,7 +931,7 @@ public abstract class NativeImage extends AbstractImage {
                         if (cEntryData != null) {
                             assert !cEntryData.getSymbolName().isEmpty();
                             // no need for mangling: name must already be a valid external name
-                            defineMethodSymbol(cEntryData.getSymbolName(), true, textSection, method, codeCache.getCompilations().get(method));
+                            defineMethodSymbol(cEntryData.getSymbolName(), true, textSection, method, codeCache.compilationResultFor(method));
                         }
                     }
                 }
@@ -964,5 +964,14 @@ public abstract class NativeImage extends AbstractImage {
         protected final RelocatableBuffer textBuffer;
         protected final ObjectFile objectFile;
         protected final NativeImageCodeCache codeCache;
+    }
+}
+
+@AutomaticallyRegisteredFeature
+final class MethodPointerInvalidHandlerFeature implements InternalFeature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true);
     }
 }

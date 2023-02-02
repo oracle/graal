@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,20 +47,20 @@ import com.oracle.truffle.regex.tregex.parser.ast.Group;
 
 public final class RegexParserGlobals {
 
-    final Group wordBoundarySubstituion;
-    final Group nonWordBoundarySubstitution;
-    final Group unicodeIgnoreCaseWordBoundarySubstitution;
-    final Group unicodeIgnoreCaseNonWordBoundarySubsitution;
-    final Group multiLineCaretSubstitution;
-    final Group multiLineDollarSubsitution;
-    final Group noLeadSurrogateBehind;
-    final Group noTrailSurrogateAhead;
+    private final Group jsWordBoundarySubstitution;
+    private final Group jsNonWordBoundarySubstitution;
+    private final Group jsUnicodeIgnoreCaseWordBoundarySubstitution;
+    private final Group jsUnicodeIgnoreCaseNonWordBoundarySubsitution;
+    private final Group jsMultiLineCaretSubstitution;
+    private final Group jsMultiLineDollarSubsitution;
+    private final Group jsNoLeadSurrogateBehind;
+    private final Group jsNoTrailSurrogateAhead;
 
     public RegexParserGlobals(RegexLanguage language) {
         final String wordBoundarySrc = "(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$)";
         final String nonWordBoundarySrc = "(?:^|(?<=\\W))(?:(?=\\W)|$)|(?<=\\w)(?=\\w)";
-        wordBoundarySubstituion = RegexParser.parseRootLess(language, wordBoundarySrc);
-        nonWordBoundarySubstitution = RegexParser.parseRootLess(language, nonWordBoundarySrc);
+        jsWordBoundarySubstitution = JSRegexParser.parseRootLess(language, wordBoundarySrc);
+        jsNonWordBoundarySubstitution = JSRegexParser.parseRootLess(language, nonWordBoundarySrc);
         // The definitions of \w and \W depend on whether or not we are using the 'u' and 'i'
         // regexp flags. This means that we cannot substitute \b and \B by the same regular
         // expression all the time; we need an alternative for when both the Unicode and
@@ -75,12 +75,43 @@ public final class RegexParserGlobals {
         // \u212A and we just slightly adjust the expressions `wordBoundarySrc` and
         // `nonWordBoundarySrc` and parse them in non-Unicode mode.
         final Function<String, String> includeExtraCases = s -> s.replace("\\w", "[\\w\\u017F\\u212A]").replace("\\W", "[^\\w\\u017F\\u212A]");
-        unicodeIgnoreCaseWordBoundarySubstitution = RegexParser.parseRootLess(language, includeExtraCases.apply(wordBoundarySrc));
-        unicodeIgnoreCaseNonWordBoundarySubsitution = RegexParser.parseRootLess(language, includeExtraCases.apply(nonWordBoundarySrc));
-        multiLineCaretSubstitution = RegexParser.parseRootLess(language, "(?:^|(?<=[\\r\\n\\u2028\\u2029]))");
-        multiLineDollarSubsitution = RegexParser.parseRootLess(language, "(?:$|(?=[\\r\\n\\u2028\\u2029]))");
-        noLeadSurrogateBehind = RegexParser.parseRootLess(language, "(?:^|(?<=[^\\uD800-\\uDBFF]))");
-        noTrailSurrogateAhead = RegexParser.parseRootLess(language, "(?:$|(?=[^\\uDC00-\\uDFFF]))");
+        jsUnicodeIgnoreCaseWordBoundarySubstitution = JSRegexParser.parseRootLess(language, includeExtraCases.apply(wordBoundarySrc));
+        jsUnicodeIgnoreCaseNonWordBoundarySubsitution = JSRegexParser.parseRootLess(language, includeExtraCases.apply(nonWordBoundarySrc));
+        jsMultiLineCaretSubstitution = JSRegexParser.parseRootLess(language, "(?:^|(?<=[\\r\\n\\u2028\\u2029]))");
+        jsMultiLineDollarSubsitution = JSRegexParser.parseRootLess(language, "(?:$|(?=[\\r\\n\\u2028\\u2029]))");
+        jsNoLeadSurrogateBehind = JSRegexParser.parseRootLess(language, "(?:^|(?<=[^\\uD800-\\uDBFF]))");
+        jsNoTrailSurrogateAhead = JSRegexParser.parseRootLess(language, "(?:$|(?=[^\\uDC00-\\uDFFF]))");
     }
 
+    public Group getJsWordBoundarySubstitution() {
+        return jsWordBoundarySubstitution;
+    }
+
+    public Group getJsNonWordBoundarySubstitution() {
+        return jsNonWordBoundarySubstitution;
+    }
+
+    public Group getJsUnicodeIgnoreCaseWordBoundarySubstitution() {
+        return jsUnicodeIgnoreCaseWordBoundarySubstitution;
+    }
+
+    public Group getJsUnicodeIgnoreCaseNonWordBoundarySubsitution() {
+        return jsUnicodeIgnoreCaseNonWordBoundarySubsitution;
+    }
+
+    public Group getJsMultiLineCaretSubstitution() {
+        return jsMultiLineCaretSubstitution;
+    }
+
+    public Group getJsMultiLineDollarSubsitution() {
+        return jsMultiLineDollarSubsitution;
+    }
+
+    public Group getJsNoLeadSurrogateBehind() {
+        return jsNoLeadSurrogateBehind;
+    }
+
+    public Group getJsNoTrailSurrogateAhead() {
+        return jsNoTrailSurrogateAhead;
+    }
 }

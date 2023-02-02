@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.NeverDefault;
 
 /**
  * <p>
@@ -75,13 +77,95 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * @see ValueProfile
  * @since 0.10
  */
-public abstract class LongValueProfile extends Profile {
+public final class LongValueProfile extends Profile {
+
+    private static final LongValueProfile DISABLED;
+    static {
+        LongValueProfile profile = new LongValueProfile();
+        profile.disable();
+        DISABLED = profile;
+    }
+
+    private static final byte UNINITIALIZED = 0;
+    private static final byte SPECIALIZED = 1;
+    private static final byte GENERIC = 2;
+
+    @CompilationFinal private long cachedValue;
+    @CompilationFinal private byte state = UNINITIALIZED;
 
     LongValueProfile() {
     }
 
     /** @since 0.10 */
-    public abstract long profile(long value);
+    public long profile(long value) {
+        byte localState = this.state;
+        if (localState != GENERIC) {
+            if (localState == SPECIALIZED) {
+                long v = cachedValue;
+                if (v == value) {
+                    return v;
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (localState == UNINITIALIZED) {
+                this.cachedValue = value;
+                this.state = SPECIALIZED;
+            } else {
+                this.state = GENERIC;
+            }
+        }
+        return value;
+    }
+
+    boolean isGeneric() {
+        return state == GENERIC;
+    }
+
+    boolean isUninitialized() {
+        return state == UNINITIALIZED;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void disable() {
+        this.state = GENERIC;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void reset() {
+        if (this != DISABLED) {
+            this.state = UNINITIALIZED;
+        }
+    }
+
+    long getCachedValue() {
+        return cachedValue;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public String toString() {
+        if (this == DISABLED) {
+            return toStringDisabled();
+        } else {
+            return toString(LongValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
+                            String.format("value == (long)%s", cachedValue));
+        }
+
+    }
 
     /**
      * Returns a value profile that profiles the exact value of an <code>long</code>.
@@ -89,11 +173,23 @@ public abstract class LongValueProfile extends Profile {
      * @see LongValueProfile
      * @since 0.10
      */
+    @NeverDefault
     public static LongValueProfile createIdentityProfile() {
-        if (Profile.isProfilingEnabled()) {
-            return Enabled.create();
+        return create();
+    }
+
+    /**
+     * Returns a value profile that profiles the exact value of an <code>long</code>.
+     *
+     * @see LongValueProfile
+     * @since 22.1
+     */
+    @NeverDefault
+    public static LongValueProfile create() {
+        if (isProfilingEnabled()) {
+            return new LongValueProfile();
         } else {
-            return Disabled.INSTANCE;
+            return DISABLED;
         }
     }
 
@@ -103,91 +199,17 @@ public abstract class LongValueProfile extends Profile {
      * @since 19.0
      */
     public static LongValueProfile getUncached() {
-        return Disabled.INSTANCE;
+        return DISABLED;
     }
 
-    static final class Enabled extends LongValueProfile {
-
-        private static final byte UNINITIALIZED = 0;
-        private static final byte SPECIALIZED = 1;
-        private static final byte GENERIC = 2;
-
-        @CompilationFinal private long cachedValue;
-        @CompilationFinal private byte state = UNINITIALIZED;
-
-        @Override
-        public long profile(long value) {
-            byte localState = this.state;
-            if (localState != GENERIC) {
-                if (localState == SPECIALIZED) {
-                    long v = cachedValue;
-                    if (v == value) {
-                        return v;
-                    }
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (localState == UNINITIALIZED) {
-                    this.cachedValue = value;
-                    this.state = SPECIALIZED;
-                } else {
-                    this.state = GENERIC;
-                }
-            }
-            return value;
-        }
-
-        boolean isGeneric() {
-            return state == GENERIC;
-        }
-
-        boolean isUninitialized() {
-            return state == UNINITIALIZED;
-        }
-
-        @Override
-        public void disable() {
-            this.state = GENERIC;
-        }
-
-        @Override
-        public void reset() {
-            this.state = UNINITIALIZED;
-        }
-
-        long getCachedValue() {
-            return cachedValue;
-        }
-
-        @Override
-        public String toString() {
-            return toString(LongValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
-                            String.format("value == (long)%s", cachedValue));
-        }
-
-        /* Needed for lazy class loading. */
-        static LongValueProfile create() {
-            return new Enabled();
-        }
+    /**
+     * Returns an inlined version of the profile. This version is automatically used by Truffle DSL
+     * node inlining.
+     *
+     * @since 23.0
+     */
+    public static InlinedLongValueProfile inline(InlineTarget target) {
+        return InlinedLongValueProfile.inline(target);
     }
 
-    static final class Disabled extends LongValueProfile {
-
-        static final LongValueProfile INSTANCE = new Disabled();
-
-        @Override
-        protected Object clone() {
-            return INSTANCE;
-        }
-
-        @Override
-        public long profile(long value) {
-            return value;
-        }
-
-        @Override
-        public String toString() {
-            return toStringDisabled(LongValueProfile.class);
-        }
-
-    }
 }

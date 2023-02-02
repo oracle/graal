@@ -43,6 +43,8 @@ package com.oracle.truffle.api.nodes;
 import java.lang.ref.WeakReference;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
@@ -98,7 +100,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  */
 public final class EncapsulatingNodeReference {
 
-    private static final ThreadLocal<EncapsulatingNodeReference> CURRENT = new ThreadLocal<EncapsulatingNodeReference>() {
+    /*
+     * Fallback thread local used only if there is no current polyglot context entered.
+     */
+    private static final ThreadLocal<EncapsulatingNodeReference> CURRENT = new ThreadLocal<>() {
 
         @Override
         protected EncapsulatingNodeReference initialValue() {
@@ -106,6 +111,8 @@ public final class EncapsulatingNodeReference {
         }
 
     };
+
+    @CompilationFinal private static volatile boolean seenNullContext;
 
     private final WeakReference<Thread> thread;
     private Node reference;
@@ -153,8 +160,35 @@ public final class EncapsulatingNodeReference {
      *
      * @since 20.2
      */
-    @TruffleBoundary
     public static EncapsulatingNodeReference getCurrent() {
+        /*
+         * If we have never seen an out of context access (common-case) then we can deoptimize early
+         * when reading while not entered in a context. This flag has only an effect in compiled
+         * code paths, so we safe the read for the interpreter.
+         */
+        boolean invalidateOnNull = CompilerDirectives.inCompiledCode() ? !seenNullContext : false;
+        EncapsulatingNodeReference ref = NodeAccessor.ENGINE.getEncapsulatingNodeReference(invalidateOnNull);
+        if (ref != null) {
+            // fast path inside contexts
+            return ref;
+        }
+        // use outside of a polyglot context
+        if (!seenNullContext) {
+            /*
+             * We deliberately do not use an assumption here, as an assumption would be too
+             * footprint heavy. Basically all compilation units that use encapsulating node
+             * references would be registered here. Non-eager deoptimization seems to be fine
+             * trade-off for this use-case as it is extremely unlikely that usages of this profile
+             * are compiled in cases where there is either a context and no context.
+             */
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            seenNullContext = true;
+        }
+        return getThreadLocal();
+    }
+
+    @TruffleBoundary
+    private static EncapsulatingNodeReference getThreadLocal() {
         return CURRENT.get();
     }
 

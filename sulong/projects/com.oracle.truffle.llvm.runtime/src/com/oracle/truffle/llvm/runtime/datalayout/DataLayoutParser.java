@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -119,6 +119,17 @@ final class DataLayoutParser {
         specs.add(newSpec);
     }
 
+    private static void replace(List<DataTypeSpecification> specs, DataTypeSpecification newSpec) {
+        for (DataTypeSpecification spec : specs) {
+            if (spec.type == newSpec.type && spec.getSize() == newSpec.getSize()) {
+                specs.remove(spec);
+                specs.add(newSpec);
+                return;
+            }
+        }
+        specs.add(newSpec);
+    }
+
     /**
      * Parses the LLVM data layout string.
      *
@@ -128,8 +139,7 @@ final class DataLayoutParser {
      * @return the byte order specified by the data layout
      */
     static ByteOrder parseDataLayout(String layout, List<DataTypeSpecification> specs) {
-        /* According to the LLVM documentation, big endian is the default. */
-        ByteOrder byteOrder = BIG_ENDIAN;
+        ByteOrder byteOrder = LITTLE_ENDIAN;
         String[] layoutSpecs = layout.split("-");
         for (String spec : layoutSpecs) {
             if (spec.equals("E")) {
@@ -144,7 +154,7 @@ final class DataLayoutParser {
             DataLayoutType type = getDataType(spec);
             DataTypeSpecification dataTypeSpec = createDataTypeSpec(type, spec);
             if (dataTypeSpec != null) {
-                specs.add(dataTypeSpec);
+                replace(specs, dataTypeSpec);
             }
         }
 
@@ -158,28 +168,7 @@ final class DataLayoutParser {
             }
         }
 
-        // Add specs for 32 bit float and 64 bit double which are supported on all targets
-        // http://releases.llvm.org/3.9.0/docs/LangRef.html#data-layout
-        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.FLOAT, Float.SIZE, Float.SIZE, Float.SIZE));
-        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.FLOAT, Double.SIZE, Double.SIZE, Double.SIZE));
-
-        // FIXME:work around to handle pointer type in LLVM 3.9.0 bitcode format
-        checkPointerType(specs);
         return byteOrder;
-    }
-
-    private static void checkPointerType(List<DataTypeSpecification> specs) {
-        boolean isPointerTypeFound = false;
-        for (DataTypeSpecification spec : specs) {
-            if (spec.type == DataLayoutType.POINTER) {
-                isPointerTypeFound = true;
-                break;
-            }
-        }
-        if (!isPointerTypeFound) {
-            // Use the default pointer type spec
-            specs.add(new DataTypeSpecification(DataLayoutType.POINTER, 64, 64, 64));
-        }
     }
 
     private static DataTypeSpecification createDataTypeSpec(DataLayoutType type, String spec) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,8 +36,8 @@ import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
@@ -369,7 +370,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             // Re-association from "Math.max(x, Math.max(y, C))" to "Math.max(Math.max(x, y), C)"
             return MaxNode.create(matchValue, MaxNode.create(otherValue1, otherValue2, view), view);
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere("unhandled node in reassociation with constants: " + node);
         }
     }
 
@@ -406,6 +407,10 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return node;
         }
         if (isExactMathOperation(node)) {
+            return node;
+        }
+        if (node instanceof GuardedNode && ((GuardedNode) node).getGuard() != null) {
+            // cannot re-associate guarded nodes
             return node;
         }
         ValueNode otherValue = match1.getOtherValue(node);
@@ -476,8 +481,14 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return MaxNode.create(a, MaxNode.create(m1, m2, view), view);
         } else if (node instanceof MinNode) {
             return MinNode.create(a, MinNode.create(m1, m2, view), view);
+        } else if (node instanceof SignedFloatingIntegerDivNode) {
+            return SignedFloatingIntegerDivNode.create(a, SignedFloatingIntegerDivNode.create(m1, m2, view, null, ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant()), view, null,
+                            ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant());
+        } else if (node instanceof SignedFloatingIntegerRemNode) {
+            return SignedFloatingIntegerRemNode.create(a, SignedFloatingIntegerRemNode.create(m1, m2, view, null, ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant()), view, null,
+                            ((FloatingIntegerDivRemNode<?>) node).divisionOverflowIsJVMSCompliant());
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere("unhandled node in reassociation with matched values: " + node);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,16 +43,23 @@ package com.oracle.truffle.api.test.utilities;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class NeverValidAssumptionTest {
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void testCheck() {
-        final NeverValidAssumption assumption = NeverValidAssumption.INSTANCE;
+        final Assumption assumption = Assumption.NEVER_VALID;
 
         try {
             assumption.check();
@@ -65,13 +72,13 @@ public class NeverValidAssumptionTest {
 
     @Test
     public void testIsValid() {
-        final NeverValidAssumption assumption = NeverValidAssumption.INSTANCE;
+        final Assumption assumption = Assumption.NEVER_VALID;
         assertFalse(assumption.isValid());
     }
 
     @Test
     public void testInvalidateDoesNothing() {
-        final NeverValidAssumption assumption = NeverValidAssumption.INSTANCE;
+        final Assumption assumption = Assumption.NEVER_VALID;
         assumption.invalidate();
         assumption.invalidate();
         assumption.invalidate();

@@ -32,8 +32,4 @@ JNIEXPORT jvmtiEnv* JNICALL initializeJvmtiContext(void* (*fetch_by_name)(const 
 
 JNIEXPORT void JNICALL disposeJvmtiContext(jvmtiEnv *env, int version, void (*release_closure)(void *));
 
-JNIEXPORT void JNICALL initializeJvmtiHandlerContext(void (*notify_member_offset_init)(void *));
-
-JNIEXPORT size_t JNICALL lookupMemberOffset(void* info, char* id);
-
 #endif // _JVMTI_ENV_H

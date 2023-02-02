@@ -2,6 +2,73 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 23.0.0
+* (GR-26758) Added the [TraceLimits](https://www.graalvm.org/reference-manual/embed-languages/sandbox-resource-limits#determining-sandbox-resource-limits) option to the Truffle Sandbox to measure a guest application's resource consumption and obtain realistic sandbox parameters.
+* (GR-25849) (GR-41634) Added `IOAccess`, the IO access configuration of a polyglot context. The IO access configuration determines how a guest language can access the host IO. The `IOAccess` class provides a predefined configuration to [disable](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.html#NONE) host IO access, or to [enable](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.html#ALL) full host IO access. A custom configuration can be created using an IOAccess [builder](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.html#newBuilder--).
+* (GR-25849) (GR-41634) Added a new way to configure the IO access using the new class `IOAccess`. The IO access configuration determines how a guest language can access the host IO. The `IOAccess` class provides a predefined configuration to [disable](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.html#NONE) host IO access, or to [enable](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.html#ALL) full host IO access. A custom configuration can be created using an IOAccess [builder](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.html#newBuilder--).
+* Deprecated `Context.Builder#allowIO(boolean)` To migrate, use `builder.allowIO(IOAccess.ALL)` to enable unrestricted IO operations on the host system, or `builder.allowIO(IOAccess.NONE)` to disable IO operations.
+* Deprecated `Context.Builder#fileSystem(FileSystem)`. To migrate, use `builder.allowIO(IOAccess.newBuilder().fileSystem(fileSystem).build())`.
+* Added automatic copying of language resources for embedding Truffle languages in native image. Documentation available [here](https://www.graalvm.org/reference-manual/embed-languages/#build-native-executables-from-polyglot-applications).
+* (GR-41716) Added `HostAccess.Builder.allowMutableTargetMappings(HostAccess.MutableTargetMapping[])` to explicitly enable type coercion from guest objects to mutable Java host objects such as `java.util.Map` or `java.util.List`.
+* (GR-42876) Added [FileSystem#newFileSystem](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#newFileSystem-java.nio.file.FileSystem-) creating a polyglot FileSystem for given Java NIO FileSystem.
+* (GR-43820) Deprecated `org.graalvm.nativeimage.RuntimeOptions#getOptions` methods and `org.graalvm.nativeimage.RuntimeOptions.OptionClass` enum. These elements were mistakenly made API and will be removed in a future version. If your codebase depends on any of these please let us know.
+
+## Version 22.3.0
+* (GR-39852) Native Image API: Added FieldValueTransformer API
+* (GR-35358) Added `Context.Builder.allowInnerContextOptions(boolean)` which allows the context to spawn inner contexts and modify and override language options. The default value for this privilege is set depending `Context.Builder.allowAllPrivilages(boolean)` is set or not. Do not enable this privilege in security sensitive scenarios.
+* (GR-40198) Introduce public API for programmatic JNI / Resource / Proxy / Serialization registration from Feature classes during the image build.
+* (GR-38909) Added Native Image com.oracle.svm.core.annotate annotation classes (@Alias, @TargetClass, @Substitute, ...).
+
+## Version 22.2.0
+* (GR-38925) Added `Value.hasMetaParents() and Value.getMetaParents()` that allow lookup of the hierarchy of parents for meta objects (e.g. super class or implemented interface of Java classes).
+* (GR-38351) Added [FileSystem#allowLanguageHomeAccess](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#allowLanguageHomeAccess-org.graalvm.polyglot.io.FileSystem-) returning a `FileSystem` that forwards access to files in the language home to the default file system.
+* (GR-38351) Added [FileSystem#newReadOnlyFileSystem](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#newReadOnlyFileSystem-org.graalvm.polyglot.io.FileSystem-) returning a read-only decorator for the given file system.
+* Changed the behavior of [`Context.close()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#close--) (as well as `Context.close(false)` which is equivalent). In case the context was cancelled during the close operation or the context was exited during the close operation at request of the guest application, or it was already cancelled or exited before the close operation begins,
+the close operation throws a [`PolyglotException`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException) with [`PolyglotException.isCancelled()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException#isCancelled--) or [`PolyglotException.isExit()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException#isExit--), respectively, equal to `true`.
+* (GR-29138)(EE-only) Added the ability to spawn a native-image isolate for a each `Engine` or `Context` in a native launcher or library.  This feature was previously supported only for the JVM deployment (GR-22699).
+* Added [HostAccess.Builder.allowAccessInheritance](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowAccessInheritance-boolean-) to inherit access to methods that have been explicitly exported in an interface or superclass vs. only explicitly vetted method implementations (e.g. via `@HostAccess.Export`).
+* Made `HostAccess.Builder.allowAccessInheritance(false)` the default. This restricts the set of accessible methods and might break existing code. To restore the previous behavior of `HostAccess.EXPLICIT`, you can use `HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build()`.
+* Added List#add support for polyglot values that are mapped to java.util.List.
+
+## Version 22.1.0
+* Changed the default [`Object` target type mapping (`Value.as(Object.class)`)](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#as-java.lang.Class-) for values that have both array elements and members from `Map` to `List`.
+  Note: This is an incompatible change. Embedders relying on the dynamic type `Map` after a `Object` target type coercion will have to migrate their code.
+  The previous behavior can be restored using a custom [target type mapping](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping-java.lang.Class-java.lang.Class-java.util.function.Predicate-java.util.function.Function-), e.g.:
+  ```java
+  HostAccess access = HostAccess.newBuilder(HostAccess.EXPLICIT)
+          .targetTypeMapping(Value.class, Object.class, v -> v.hasMembers() && v.hasArrayElements(), v -> v.as(Map.class))
+          .build();
+  try (Context c = Context.newBuilder().hostAccess(access).build()) {
+      // run application
+  }
+  ```
+* (GR-35010) Added API for Truffle Languages (`Language#getWebsite()`) and Instruments (`Instrument#getWebsite()`) to provide website information.
+* (GR-33851) Dropped Java 8 support.
+
+## Version 22.0.0
+* (GR-31170) Native Image API: Added `WINDOWS_AARCH64` Platform.
+* (GR-33657) Native Image API: Added `CEntryPoint#include` attribute which can be used to controll if the entry point should be automatically added to the shared library.
+* (GR-22699)(EE-only) Added the ability to spawn a native-image isolate for a each `Engine` or `Context` by calling `Context.Builder.option("engine.SpawnIsolate", "true")`.  This enables heap isolation between the host and guest applications. Using isolates improves security, startup and warmup time of polyglot languages. In this mode, calls between host and guest are more costly as they need to cross a native boundary. It is recommended to use the `HostAccess.SCOPED` policy with this mode to avoid strong cyclic references between host and guest. This mode is experimental in this release and only supported for a limited set of languages. 
+
+## Version 21.3.0
+* Added the ability to share values between contexts. Please see  `Context.Builder.allowValueSharing(boolean)` for further details. 
+* (GR-20286) Polyglot API: Added support for scoped values in guest-to-host callbacks. [Scoped values](https://www.graalvm.org/reference-manual/embed-languages/#controlling-host-callback-parameter-scoping) are automatically released when the callback returns. They can be configured in `HostAccess`.
+
+## Version 21.2.0
+* `AllowVMInspection` is enabled in the native launchers, `SIGQUIT` can be used to generate thread dumps. Performance counters are disabled by default, they can be enabled in the graalvm enterprise by the `--vm.XX:+UsePerfData` option.
+* Changed behavior of `Value.as(TypeLiteral<Function<Object, Object>>).apply()`: When the function is called with an `Object[]` argument, it is passed through as a single argument rather than an array of arguments.
+* Updated the required JVMCI version for Polyglot Embeddings in this release. All GraalVM JDK versions (8, 11, 16) already contain the updated JVMCI version and there is no further action required. If you are using a different JDK than GraalVM and you have configured the Graal compiler on the upgrade module path you will need one of the following JDK versions that include [JDK-8264016](https://bugs.openjdk.java.net/browse/JDK-8264016) for full compatibility:
+
+  * Other JDK 11: Oracle JDK 11.0.13 (2021-10-19), OpenJDK is still to be determined.
+  * Other JDK 16: No current plans to update JVMCI.
+  * Other JDK 17: The new JVMCI version is already integrated into early access builds.
+
+  If your JVMCI version is outdated you will be able to use GraalVM embeddings, but forced context cancellation (`Context.close(true)`) and interrupt (`Context.interrupt(Duration)`) will throw an error. We recommend the following workarounds:
+
+  * Do not use forced context cancellation or interrupt. All other features are still supported.
+  * Switch to the fallback runtime by removing graal.jar from the upgrade-module-path. Note that this will significantly worsen performance and should only be a last resort.
+  * Wait with upgrading to 21.2 until the JDK version has support for the new JVMCI version.
+
 ## Version 21.1.0
 * Added new methods  in `Value` for interacting with buffer-like objects:
     * Added `Value.hasBufferElements()` that returns  `true` if this object supports buffer messages.

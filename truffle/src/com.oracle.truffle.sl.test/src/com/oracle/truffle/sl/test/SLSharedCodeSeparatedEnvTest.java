@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -60,6 +61,11 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.sl.SLLanguage;
 
 public class SLSharedCodeSeparatedEnvTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private ByteArrayOutputStream osRuntime;
     private ByteArrayOutputStream os1;

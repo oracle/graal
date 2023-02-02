@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 abstract class LLVMNativeLibraryDefaults {
 
-    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Object.class)
+    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Object.class, useForAOT = false)
     static class DefaultLibrary {
 
         @ExportMessage
@@ -140,7 +140,7 @@ abstract class LLVMNativeLibraryDefaults {
 
     }
 
-    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class)
+    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class, useForAOT = false)
     static class LongLibrary {
 
         /**
@@ -163,7 +163,7 @@ abstract class LLVMNativeLibraryDefaults {
         }
     }
 
-    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = int[].class)
+    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = byte[].class, useForAOT = false)
     static class ArrayLibrary {
 
         /**
@@ -171,7 +171,7 @@ abstract class LLVMNativeLibraryDefaults {
          * @see LLVMNativeLibrary#isPointer(Object)
          */
         @ExportMessage
-        static boolean isPointer(int[] receiver) {
+        static boolean isPointer(byte[] receiver) {
             return false;
         }
 
@@ -180,15 +180,20 @@ abstract class LLVMNativeLibraryDefaults {
          * @see LLVMNativeLibrary#asPointer(Object)
          */
         @ExportMessage
-        static long asPointer(int[] receiver) throws UnsupportedMessageException {
+        static long asPointer(byte[] receiver) throws UnsupportedMessageException {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedMessageException.create();
         }
 
+        /**
+         * @param receiver
+         * @see LLVMNativeLibrary#asPointer(Object)
+         */
         @ExportMessage
-        static LLVMNativePointer toNativePointer(int[] receiver,
+        static LLVMNativePointer toNativePointer(byte[] receiver,
                         @CachedLibrary("receiver") LLVMNativeLibrary self) {
-            CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(self, "Cannot convert virtual allocation object to native pointer.", receiver);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new LLVMPolyglotException(self, "Cannot convert virtual allocation object to native pointer.");
         }
     }
 }

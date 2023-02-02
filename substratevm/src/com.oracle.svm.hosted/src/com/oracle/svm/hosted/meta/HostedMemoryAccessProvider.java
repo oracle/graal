@@ -98,7 +98,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         if (base.getJavaKind() != JavaKind.Object) {
             return null;
         }
-        HostedType type = (HostedType) metaAccess.lookupJavaType(base);
+        HostedType type = metaAccess.lookupJavaType(base);
         HostedField field = (HostedField) type.findInstanceFieldWithOffset(displacement, null);
         if (field == null) {
             return null;
@@ -107,8 +107,14 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
         assert field.getStorageKind().getStackKind() == stackKind;
 
         JavaConstant result = field.readValue(base);
-        assert result.getJavaKind().getStackKind() == stackKind;
-
+        if (result.getJavaKind().getStackKind() != stackKind) {
+            /*
+             * For certain Word types like RelocatedPointer, the boxed value is returned by
+             * field.readValue(). We cannot constant-fold such a field late in the lower tiers of
+             * the compilation pipeline.
+             */
+            return null;
+        }
         return result;
     }
 }

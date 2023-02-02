@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.extended;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Guard;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -44,6 +45,11 @@ public class GuardedUnsafeLoadNode extends RawLoadNode implements GuardedNode {
         this.guard = (GuardingNode) guard;
     }
 
+    public GuardedUnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, ValueNode guard, boolean forceLocation, MemoryOrderMode memoryOrder) {
+        super(TYPE, object, offset, accessKind, locationIdentity, forceLocation, memoryOrder);
+        this.guard = (GuardingNode) guard;
+    }
+
     public GuardedUnsafeLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, ValueNode guard) {
         this(object, offset, accessKind, locationIdentity, guard, false);
     }
@@ -57,6 +63,14 @@ public class GuardedUnsafeLoadNode extends RawLoadNode implements GuardedNode {
     public void setGuard(GuardingNode guard) {
         updateUsagesInterface(this.guard, guard);
         this.guard = guard;
+    }
+
+    @Override
+    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, MemoryOrderMode memOrder) {
+        // Only improve the location identity; do not attempt to canonicalize to a RawLoadNode
+        // since doing so would lose the guard and prevent floating the read after lowering.
+        assert !getLocationIdentity().equals(identity);
+        return new GuardedUnsafeLoadNode(object(), offset(), accessKind(), identity, (ValueNode) getGuard(), isLocationForced(), memOrder);
     }
 
     @NodeIntrinsic

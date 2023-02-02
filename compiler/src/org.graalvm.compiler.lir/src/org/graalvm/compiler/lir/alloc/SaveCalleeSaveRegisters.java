@@ -27,7 +27,7 @@ package org.graalvm.compiler.lir.alloc;
 import java.util.ArrayList;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -35,11 +35,10 @@ import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase;
 import org.graalvm.compiler.lir.util.RegisterMap;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -58,10 +57,11 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         LIR lir = lirGenRes.getLIR();
         RegisterMap<Variable> savedRegisters = saveAtEntry(lir, context.lirGen, lirGenRes, calleeSaveRegisters, target.arch);
 
-        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
-            if (block == null) {
+        for (int blockId : lir.getBlocks()) {
+            if (LIR.isBlockDeleted(blockId)) {
                 continue;
             }
+            BasicBlock<?> block = lir.getBlockById(blockId);
             if (block.getSuccessorCount() == 0) {
                 restoreAtExit(lir, context.lirGen.getSpillMoveFactory(), lirGenRes, savedRegisters, block);
             }
@@ -69,7 +69,7 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
     }
 
     private static RegisterMap<Variable> saveAtEntry(LIR lir, LIRGeneratorTool lirGen, LIRGenerationResult lirGenRes, RegisterArray calleeSaveRegisters, Architecture arch) {
-        AbstractBlockBase<?> startBlock = lir.getControlFlowGraph().getStartBlock();
+        BasicBlock<?> startBlock = lir.getControlFlowGraph().getStartBlock();
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(startBlock);
         int insertionIndex = 1;
         LIRInsertionBuffer buffer = new LIRInsertionBuffer();
@@ -79,15 +79,7 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         int savedRegisterValueIndex = 0;
         RegisterMap<Variable> saveMap = new RegisterMap<>(arch);
         for (Register register : calleeSaveRegisters) {
-            PlatformKind registerPlatformKind;
-            if (arch instanceof AArch64 && register.getRegisterCategory().equals(AArch64.SIMD)) {
-                /*
-                 * On AArch64 when saving SIMD registers only the bottom 64-bits need to be saved.
-                 */
-                registerPlatformKind = AArch64Kind.DOUBLE;
-            } else {
-                registerPlatformKind = arch.getLargestStorableKind(register.getRegisterCategory());
-            }
+            PlatformKind registerPlatformKind = arch.getLargestStorableKind(register.getRegisterCategory());
             LIRKind lirKind = LIRKind.value(registerPlatformKind);
             RegisterValue registerValue = register.asValue(lirKind);
             Variable saveVariable = lirGen.newVariable(lirKind);
@@ -102,7 +94,7 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         return saveMap;
     }
 
-    private static void restoreAtExit(LIR lir, LIRGeneratorTool.MoveFactory moveFactory, LIRGenerationResult lirGenRes, RegisterMap<Variable> calleeSaveRegisters, AbstractBlockBase<?> block) {
+    private static void restoreAtExit(LIR lir, MoveFactory moveFactory, LIRGenerationResult lirGenRes, RegisterMap<Variable> calleeSaveRegisters, BasicBlock<?> block) {
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
         int insertionIndex = instructions.size() - 1;
         LIRInsertionBuffer buffer = new LIRInsertionBuffer();

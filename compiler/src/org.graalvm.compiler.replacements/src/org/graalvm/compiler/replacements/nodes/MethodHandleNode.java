@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,8 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -75,8 +75,8 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
 /**
  * Node for invocation methods defined on the class {@link MethodHandle}.
  */
-@NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public final class MethodHandleNode extends MacroStateSplitNode implements Simplifiable {
+@NodeInfo(cycles = CYCLES_UNKNOWN, cyclesRationale = "see MacroNode", size = SIZE_UNKNOWN, sizeRationale = "see MacroNode")
+public final class MethodHandleNode extends MacroNode implements Simplifiable {
     public static final NodeClass<MethodHandleNode> TYPE = NodeClass.create(MethodHandleNode.class);
 
     protected final IntrinsicMethod intrinsicMethod;

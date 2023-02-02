@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -42,13 +42,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
     private final EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = EconomicMap.create();
     private final List<Invoke> indirectInvokes = new ArrayList<>();
-    private final TruffleMetaAccessProvider truffleMetaAccessProvider;
+    private final TruffleInliningData truffleInliningData;
     private final PartialEvaluator partialEvaluator;
     private JavaConstant lastDirectCallNode;
     private boolean indirectCall;
 
-    public PEAgnosticInlineInvokePlugin(TruffleMetaAccessProvider truffleMetaAccessProvider, PartialEvaluator partialEvaluator) {
-        this.truffleMetaAccessProvider = truffleMetaAccessProvider;
+    public PEAgnosticInlineInvokePlugin(TruffleInliningData truffleInliningData, PartialEvaluator partialEvaluator) {
+        this.truffleInliningData = truffleInliningData;
         this.partialEvaluator = partialEvaluator;
     }
 
@@ -72,16 +72,12 @@ public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
     @Override
     public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod original, Invoke invoke) {
         if (original.equals(partialEvaluator.callDirectMethod)) {
-            if (lastDirectCallNode == null) {
-                if (indirectCall) {
-                    indirectCall = false;
-                    indirectInvokes.add(invoke);
-                }
-                return;
-            }
-            TruffleCallNode truffleCallNode = truffleMetaAccessProvider.findCallNode(lastDirectCallNode);
+            TruffleCallNode truffleCallNode = truffleInliningData.findCallNode(lastDirectCallNode);
             invokeToTruffleCallNode.put(invoke, truffleCallNode);
             lastDirectCallNode = null;
+        } else if (lastDirectCallNode == null && indirectCall) {
+            indirectCall = false;
+            indirectInvokes.add(invoke);
         }
     }
 

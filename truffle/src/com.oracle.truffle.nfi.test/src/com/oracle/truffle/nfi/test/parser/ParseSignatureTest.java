@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.nfi.test.parser;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
@@ -58,6 +59,7 @@ import com.oracle.truffle.nfi.test.parser.backend.NFITestBackend.ArrayType;
 import com.oracle.truffle.nfi.test.parser.backend.TestCallInfo;
 import com.oracle.truffle.nfi.test.parser.backend.TestSignature;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
+import java.util.Arrays;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
@@ -79,10 +81,12 @@ public class ParseSignatureTest {
         testSymbol = INTEROP.readMember(library, "testSymbol");
     }
 
+    @SuppressWarnings("truffle-inlining")
     abstract static class InlineCacheNode extends Node {
 
         abstract Object execute(CallTarget callTarget);
 
+        @NeverDefault
         static DirectCallNode createInlined(CallTarget callTarget) {
             DirectCallNode ret = DirectCallNode.create(callTarget);
             ret.forceInlining();
@@ -124,10 +128,17 @@ public class ParseSignatureTest {
         }
     }
 
+    static Object[] mkArgs(int count) {
+        Object[] ret = new Object[count];
+        // 0 is compatible with all numeric types
+        Arrays.fill(ret, 0);
+        return ret;
+    }
+
     protected static TestSignature getSignature(CallTarget parsedSignature, int argCount) {
         Object ret = parsedSignature.call();
         try {
-            TestCallInfo info = (TestCallInfo) SignatureLibrary.getUncached().call(ret, testSymbol, new Object[argCount]);
+            TestCallInfo info = (TestCallInfo) SignatureLibrary.getUncached().call(ret, testSymbol, mkArgs(argCount));
             return info.signature;
         } catch (InteropException ex) {
             throw new AssertionError(ex);
@@ -135,7 +146,7 @@ public class ParseSignatureTest {
     }
 
     protected static Matcher<Object> isArrayType(NativeSimpleType expected) {
-        return new TypeSafeMatcher<Object>(ArrayType.class) {
+        return new TypeSafeMatcher<>(ArrayType.class) {
 
             @Override
             protected boolean matchesSafely(Object item) {

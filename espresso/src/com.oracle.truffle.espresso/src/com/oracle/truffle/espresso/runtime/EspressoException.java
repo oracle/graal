@@ -22,28 +22,26 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
-// TODO(peterssen): Fix deprecation, GR-26729
-@SuppressWarnings("deprecation")
-public final class EspressoException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "exception")
+public final class EspressoException extends AbstractTruffleException {
     private static final long serialVersionUID = -7667957575377419520L;
-    private final StaticObject exception;
+    protected final StaticObject exception;
 
-    private EspressoException(@Host(Throwable.class) StaticObject throwable) {
+    private EspressoException(@JavaType(Throwable.class) StaticObject throwable) {
         assert StaticObject.notNull(throwable);
         assert InterpreterToVM.instanceOf(throwable, throwable.getKlass().getMeta().java_lang_Throwable);
         this.exception = throwable;
     }
 
-    public static EspressoException wrap(@Host(Throwable.class) StaticObject throwable, Meta meta) {
+    public static EspressoException wrap(@JavaType(Throwable.class) StaticObject throwable, Meta meta) {
         if (throwable.isForeignObject()) {
             // We can't have hidden fields in foreign objects yet unfortunately.
             return new EspressoException(throwable);
@@ -68,38 +66,26 @@ public final class EspressoException extends RuntimeException implements com.ora
         return getMessage(exception);
     }
 
-    public StaticObject getGuestMessage() {
-        return (StaticObject) exception.getKlass().lookupMethod(Name.getMessage, Signature.String).invokeDirect(exception);
+    private static StaticObject getGuestMessage(StaticObject e) {
+        // this is used in toString, too dangerous to call a method
+        return (StaticObject) e.getKlass().getMeta().java_lang_Throwable_detailMessage.get(e);
     }
 
     public static String getMessage(StaticObject e) {
-        return Meta.toHostStringStatic((StaticObject) e.getKlass().lookupMethod(Name.getMessage, Signature.String).invokeDirect(e));
+        return Meta.toHostStringStatic(getGuestMessage(e));
     }
 
-    @SuppressWarnings("sync-override")
-    @Override
-    public Throwable fillInStackTrace() {
-        return this;
+    public StaticObject getGuestMessage() {
+        return getGuestMessage(getGuestException());
     }
 
-    @Override
-    public StaticObject getExceptionObject() {
+    public StaticObject getGuestException() {
         return exception;
     }
 
     @Override
-    public Node getLocation() {
-        return null;
-    }
-
-    @Override
-    public SourceSection getSourceLocation() {
-        return null;
-    }
-
-    @Override
     public String toString() {
-        return "EspressoException<" + getExceptionObject() + ": " + getMessage() + ">";
+        return "EspressoException<" + getGuestException() + ": " + getMessage() + ">";
     }
 
     // Debug methods
@@ -109,7 +95,7 @@ public final class EspressoException extends RuntimeException implements com.ora
         if (exceptionClass == null) {
             return getMessage() != null && getMessage().contains(message);
         }
-        if (getExceptionObject().getKlass().getType().toString().contains(exceptionClass)) {
+        if (getGuestException().getKlass().getType().toString().contains(exceptionClass)) {
             if (message == null) {
                 return true;
             }

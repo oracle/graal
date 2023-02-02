@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.NoSuchFileException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -152,7 +152,7 @@ public abstract class Source {
     private static final CharSequence CONTENT_UNSET = new String();
     private static final byte[] CONTENT_EMPTY = new byte[0];
 
-    private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, false, null).toSourceNotInterned();
+    private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, false, null, false).toSourceNotInterned();
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
     private static final String URI_SCHEME = "truffle";
     private static final int MAX_BUFFER_SIZE = Integer.MAX_VALUE - 8;
@@ -975,10 +975,10 @@ public abstract class Source {
         return new IllegalArgumentException("Invalid MIME type provided. MIME types consist of a type and a subtype separated by '/'.");
     }
 
-    private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOAllowed();
+    private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOSupported();
 
     static Source buildSource(String language, Object origin, String name, String path, boolean canonicalizePath, String mimeType, Object content, URL url, URI uri, Charset encoding,
-                    boolean internal, boolean interactive, boolean cached, Object fileSystemContext) throws IOException {
+                    boolean internal, boolean interactive, boolean cached, Object fileSystemContext, boolean embedderSource) throws IOException {
         String useName = name;
         URI useUri = uri;
         Object useContent = content;
@@ -993,8 +993,11 @@ public abstract class Source {
         if (useOrigin instanceof File) {
             final File file = (File) useOrigin;
             assert useFileSystemContext != null : "file system context must be provided by polyglot embedding API";
-            TruffleFile truffleFile = SourceAccessor.getTruffleFile(file.toPath().toString(), useFileSystemContext);
-            useOrigin = truffleFile;
+            try {
+                useOrigin = SourceAccessor.getTruffleFile(file.toPath().toString(), useFileSystemContext);
+            } catch (UnsupportedOperationException | IllegalArgumentException e) {
+                throw new AssertionError("Inconsistent path", e);
+            }
         }
 
         if (useOrigin == CONTENT_UNSET) {
@@ -1008,7 +1011,7 @@ public abstract class Source {
                 }
             } else {
                 // Canonicalize the file if it exists
-                useTruffleFile = useTruffleFile.exists() ? useTruffleFile.getCanonicalFile() : useTruffleFile;
+                useTruffleFile = getCanonicalFileIfItExists(useTruffleFile);
             }
             useFileSystemContext = SourceAccessor.LANGUAGE.getFileSystemContext(useTruffleFile);
             useName = useName == null ? useTruffleFile.getName() : useName;
@@ -1037,20 +1040,11 @@ public abstract class Source {
             useUri = useUri == null ? tmpUri : useUri;
             usePath = usePath == null ? useUrl.getPath() : usePath;
             useFileSystemContext = useFileSystemContext == null ? SourceAccessor.ACCESSOR.engineSupport().getCurrentFileSystemContext() : useFileSystemContext;
+            assert useTruffleFile == null;
             try {
                 useTruffleFile = SourceAccessor.getTruffleFile(tmpUri, useFileSystemContext);
-                useTruffleFile = useTruffleFile.exists() ? useTruffleFile.getCanonicalFile() : useTruffleFile;
-                if (useContent == CONTENT_UNSET) {
-                    if (isCharacterBased(useFileSystemContext, language, useMimeType)) {
-                        String fileMimeType = useMimeType == null ? SourceAccessor.detectMimeType(useTruffleFile, getValidMimeTypes(useFileSystemContext, language)) : useMimeType;
-                        useEncoding = useEncoding == null ? findEncoding(useTruffleFile, fileMimeType) : useEncoding;
-                        useContent = read(useTruffleFile, useEncoding);
-                    } else {
-                        useContent = ByteSequence.create(useTruffleFile.readAllBytes());
-                    }
-                }
-            } catch (FileSystemNotFoundException fsnf) {
-                if (ALLOW_IO && SourceAccessor.hasAllAccess(useFileSystemContext)) {
+            } catch (IllegalArgumentException | UnsupportedOperationException e) {
+                if (ALLOW_IO && SourceAccessor.isSocketIOAllowed(useFileSystemContext)) {
                     // Not a recognized by FileSystem, fall back to URLConnection only for allowed
                     // IO without a custom FileSystem
                     URLConnection connection = useUrl.openConnection();
@@ -1064,6 +1058,18 @@ public abstract class Source {
                     }
                 } else {
                     throw new SecurityException("Reading of URL " + useUrl + " is not allowed.");
+                }
+            }
+            if (useTruffleFile != null) {
+                useTruffleFile = getCanonicalFileIfItExists(useTruffleFile);
+                if (useContent == CONTENT_UNSET) {
+                    if (isCharacterBased(useFileSystemContext, language, useMimeType)) {
+                        String fileMimeType = useMimeType == null ? SourceAccessor.detectMimeType(useTruffleFile, getValidMimeTypes(useFileSystemContext, language)) : useMimeType;
+                        useEncoding = useEncoding == null ? findEncoding(useTruffleFile, fileMimeType) : useEncoding;
+                        useContent = read(useTruffleFile, useEncoding);
+                    } else {
+                        useContent = ByteSequence.create(useTruffleFile.readAllBytes());
+                    }
                 }
             }
         } else if (useOrigin instanceof Reader) {
@@ -1080,7 +1086,6 @@ public abstract class Source {
         }
 
         useContent = enforceInterfaceContracts(useContent);
-        SourceImpl.Key key = null;
         String relativePathInLanguageHome = null;
         if (useTruffleFile != null) {
             // The relativePathInLanguageHome has to be calculated also for Sources created in the
@@ -1090,18 +1095,30 @@ public abstract class Source {
             if (relativePathInLanguageHome != null) {
                 Object fsEngineObject = SourceAccessor.ACCESSOR.languageSupport().getFileSystemEngineObject(SourceAccessor.ACCESSOR.languageSupport().getFileSystemContext(useTruffleFile));
                 if (SourceAccessor.ACCESSOR.engineSupport().inContextPreInitialization(fsEngineObject)) {
-                    key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language,
+                    SourceImpl.Key key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language,
                                     useUrl, useUri, useName, usePath, internal, interactive, cached,
-                                    relativePathInLanguageHome);
+                                    relativePathInLanguageHome, embedderSource);
+                    Source source = SOURCES.intern(key);
+                    SourceAccessor.onSourceCreated(source);
+                    return source;
                 }
             }
         }
-        if (key == null) {
-            key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, relativePathInLanguageHome);
+        SourceImpl.Key key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, relativePathInLanguageHome,
+                        embedderSource);
+        return SOURCES.intern(key);
+    }
+
+    private static TruffleFile getCanonicalFileIfItExists(TruffleFile file) throws IOException {
+        if (file.exists()) {
+            try {
+                return file.getCanonicalFile();
+            } catch (NoSuchFileException ex) {
+                // The file may have been deleted between exists() and getCanonicalFile().
+                // We handle this race condition as if the file did not exist.
+            }
         }
-        Source source = SOURCES.intern(key);
-        SourceAccessor.onSourceCreated(source);
-        return source;
+        return file;
     }
 
     static byte[] readBytes(URLConnection connection) throws IOException {
@@ -1244,11 +1261,11 @@ public abstract class Source {
             if (firstGuess != null) {
                 return firstGuess;
             }
-        } catch (URISyntaxException | IllegalArgumentException | FileSystemNotFoundException ex) {
+        } catch (URISyntaxException | IllegalArgumentException | UnsupportedOperationException ex) {
             // swallow and go on
         }
 
-        if (!ALLOW_IO || !SourceAccessor.hasAllAccess(fileSystemContext)) {
+        if (!ALLOW_IO || !SourceAccessor.isSocketIOAllowed(fileSystemContext)) {
             throw new SecurityException("Reading of URL " + url + " is not allowed.");
         }
 
@@ -1341,6 +1358,7 @@ public abstract class Source {
         private boolean cached = true;
         private Charset fileEncoding;
         private Object fileSystemContext;
+        private boolean embedderSource;
 
         SourceBuilder(String language, Object origin) {
             Objects.requireNonNull(language);
@@ -1414,13 +1432,13 @@ public abstract class Source {
          * The MIME type can be guessed by the system based on {@link #findMimeType(TruffleFile)
          * files} or {@link #findMimeType(URL) urls}.
          *
+         * @param mimeType the new mime type to be assigned, or <code>null</code> if default MIME
+         *            type should be used.
+         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
          * @see LanguageInfo#getDefaultMimeType()
          * @see LanguageInfo#getMimeTypes()
          * @see Source#findMimeType(TruffleFile)
          * @see Source#findMimeType(URL)
-         * @param mimeType the new mime type to be assigned, or <code>null</code> if default MIME
-         *            type should be used.
-         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
          * @since 19.0
          */
         public SourceBuilder mimeType(@SuppressWarnings("hiding") String mimeType) {
@@ -1528,6 +1546,18 @@ public abstract class Source {
             return this;
         }
 
+        void embedderSource(boolean b) {
+            this.embedderSource = b;
+        }
+
+        void url(@SuppressWarnings("hiding") URL url) {
+            this.url = url;
+        }
+
+        void path(@SuppressWarnings("hiding") String path) {
+            this.path = path;
+        }
+
         /**
          * Uses configuration of this builder to create new {@link Source} object. The method throws
          * an {@link IOException} if an error loading the source occurred.
@@ -1540,7 +1570,7 @@ public abstract class Source {
         public Source build() throws IOException {
             assert this.language != null;
             Source source = buildSource(this.language, this.origin, this.name, this.path, this.canonicalizePath, this.mimeType, this.content, this.url, this.uri, this.fileEncoding, this.internal,
-                            this.interactive, this.cached, fileSystemContext);
+                            this.interactive, this.cached, fileSystemContext, this.embedderSource);
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {
@@ -1556,7 +1586,6 @@ public abstract class Source {
 
             return source;
         }
-
     }
 
     private static Object getSourceContent(Source source) {
@@ -1724,7 +1753,7 @@ public abstract class Source {
      * Resets cached sources after native image generation.
      *
      * NOTE: this method is called reflectively by downstream projects
-     * {@code com.oracle.svm.truffle.TruffleFeature}.
+     * {@code com.oracle.svm.truffle.TruffleBaseFeature}.
      */
     @SuppressWarnings("unused")
     private static void resetNativeImageState() {

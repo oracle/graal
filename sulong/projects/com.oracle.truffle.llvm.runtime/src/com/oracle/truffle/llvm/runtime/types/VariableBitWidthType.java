@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,6 +52,9 @@ public final class VariableBitWidthType extends Type {
     public static final int MIN_INT_BITS = 1;
     /**
      * Maximum number of bits that can be specified.
+     *
+     * This value changed to {@code 1 << 23} in LLVM 14 (https://reviews.llvm.org/D109721). We keep
+     * the old value to stay compatible with older versions (but it is unlikely to be used anyway).
      *
      * @see <a href=
      *      "https://github.com/llvm/llvm-project/blob/llvmorg-9.0.0/llvm/include/llvm/IR/DerivedTypes.h#L52">

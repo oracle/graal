@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,7 +101,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
         Bytecode code = new ResolvedJavaMethodBytecode(method);
         BytecodeStream stream = new BytecodeStream(code.getCode());
         OptionValues options = debug.getOptions();
-        BciBlockMapping bciBlockMapping = BciBlockMapping.create(stream, code, options, debug);
+        BciBlockMapping bciBlockMapping = BciBlockMapping.create(stream, code, options, debug, true);
 
         for (BciBlock block : bciBlockMapping.getBlocks()) {
             if (block.getStartBci() != -1) {

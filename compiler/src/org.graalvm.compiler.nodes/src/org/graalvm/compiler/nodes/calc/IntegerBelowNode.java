@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,17 +30,20 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(shortName = "|<|")
@@ -50,8 +53,8 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
 
     public IntegerBelowNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y, OP);
-        assert x.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
-        assert y.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
+        assert x.stamp(NodeView.DEFAULT).isIntegerStamp();
+        assert y.stamp(NodeView.DEFAULT).isIntegerStamp();
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, NodeView view) {
@@ -82,6 +85,59 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
         protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
             assert newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
             return new IntegerBelowNode(newX, newY);
+        }
+
+        @Override
+        protected LogicNode optimizeNormalizeCompare(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
+                        Constant constant, AbstractNormalizeCompareNode normalizeNode, boolean mirrored, NodeView view) {
+            PrimitiveConstant primitive = (PrimitiveConstant) constant;
+            long c = primitive.asLong();
+            /*
+             * Optimize comparisons like:
+             *
+             * @formatter:off
+             * (a NC b) |<| c  (not mirrored)
+             * c |<| (a NC b)  (mirrored)
+             * @formatter:on
+             *
+             * (a NC b) is always (-1, 0, 1) corresponding to a (<, ==, >) b according to some signed or unsigned ordering.
+             */
+            if (mirrored) {
+                /* @formatter:off
+                 * c |<| (a NC b)  (mirrored)
+                 * cases for c:
+                 *  UMAX (=-1)  -> false
+                 *  0           -> a != b
+                 *  [1, UMAX-1] -> a < b
+                 * @formatter:on
+                 */
+                if (c == -1) {
+                    return LogicConstantNode.contradiction();
+                } else if (c == 0) {
+                    LogicNode equal = normalizeNode.createEqualComparison(constantReflection, metaAccess, options, smallestCompareWidth, view);
+                    return LogicNegationNode.create(equal);
+                } else {
+                    return normalizeNode.createLowerComparison(constantReflection, metaAccess, options, smallestCompareWidth, view);
+                }
+            } else {
+                /* @formatter:off
+                 * (a NC b) |<| c  (not mirrored)
+                 * cases for c:
+                 *  0         -> false
+                 *  1         -> a == b
+                 *  [2, UMAX] -> a >= b
+                 * @formatter:on
+                 */
+                if (c == 0) {
+                    return LogicConstantNode.contradiction();
+                } else if (c == 1) {
+                    return normalizeNode.createEqualComparison(constantReflection, metaAccess, options, smallestCompareWidth, view);
+                } else {
+                    // a >= b -> !(a < b)
+                    LogicNode compare = normalizeNode.createLowerComparison(constantReflection, metaAccess, options, smallestCompareWidth, view);
+                    return LogicNegationNode.create(compare);
+                }
+            }
         }
 
         @Override
@@ -133,6 +189,31 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
             }
 
             return null;
+        }
+
+        @Override
+        protected boolean isMatchingBitExtendNode(ValueNode node) {
+            return node instanceof ZeroExtendNode;
+        }
+
+        @Override
+        protected boolean addCanOverflow(IntegerStamp a, IntegerStamp b) {
+            assert a.getBits() == b.getBits();
+            // a + b |<| a
+            if (a.getBits() == Long.SIZE) {
+                return Long.compareUnsigned(upperBound(a) + upperBound(b), upperBound(a)) < 0;
+            }
+            if (a.getBits() == Integer.SIZE) {
+                return Integer.compareUnsigned((int) upperBound(a) + (int) upperBound(b), (int) upperBound(a)) < 0;
+            }
+            return true;
+        }
+
+        @Override
+        protected boolean leftShiftCanOverflow(IntegerStamp a, long shift) {
+            // leading zeros, adjusted to stamp bits
+            int leadingZeroForBits = Long.numberOfLeadingZeros(a.upMask()) - (Long.SIZE - a.getBits());
+            return leadingZeroForBits < shift;
         }
 
         @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ParameterAttributes implements ParserListener {
 
@@ -257,6 +257,9 @@ public class ParameterAttributes implements ParserListener {
                     if (attr == Attribute.Kind.BYVAL) {
                         final Type valueType = types.get(buffer.read());
                         group.addAttribute(new Attribute.KnownTypedAttribute(Attribute.Kind.BYVAL, valueType));
+                    } else if (attr == Attribute.Kind.SRET || attr == Attribute.Kind.ELEMENTTYPE) {
+                        final Type typeParam = types.get(buffer.read());
+                        group.addAttribute(new Attribute.KnownTypedAttribute(attr, typeParam));
                     }
                     break;
                 }

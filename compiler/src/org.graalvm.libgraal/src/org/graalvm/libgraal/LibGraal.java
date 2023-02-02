@@ -24,11 +24,18 @@
  */
 package org.graalvm.libgraal;
 
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
+import jdk.vm.ci.services.Services;
 
 /**
  * Access to libgraal, a shared library containing an AOT compiled version of Graal produced by
@@ -56,29 +63,41 @@ import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
  */
 public class LibGraal {
 
-    private static InternalError shouldNotReachHere() {
-        throw new InternalError("JDK specific overlay missing");
+    // NOTE: The use of reflection to access JVMCI API is to support
+    // compiling on JDKs with varying versions of JVMCI.
+
+    static {
+        // Initialize JVMCI to ensure JVMCI opens its packages to Graal.
+        Services.initializeJVMCI();
     }
+
+    private static final Method unhand = methodOrNull(HotSpotJVMCIRuntime.class, "unhand", sig(Class.class, Long.TYPE));
+    private static final Method translate = methodIf(unhand, HotSpotJVMCIRuntime.class, "translate", sig(Object.class));
+    private static final Method registerNativeMethods = methodIf(unhand, HotSpotJVMCIRuntime.class, "registerNativeMethods", sig(Class.class));
+    private static final Method isCurrentThreadAttached = methodIf(unhand, HotSpotJVMCIRuntime.class, "isCurrentThreadAttached");
+    private static final Method attachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "attachCurrentThread", sig(Boolean.TYPE, long[].class), sig(Boolean.TYPE));
+    private static final Method detachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "detachCurrentThread", sig(Boolean.TYPE), sig());
+    private static final Method getFailedSpeculationsAddress = methodIf(unhand, HotSpotSpeculationLog.class, "getFailedSpeculationsAddress");
 
     /**
      * Determines if libgraal is available for use.
      */
     public static boolean isAvailable() {
-        throw shouldNotReachHere();
+        return inLibGraal() || available;
     }
 
     /**
      * Determines if the current runtime supports building a libgraal image.
      */
     public static boolean isSupported() {
-        throw shouldNotReachHere();
+        return getFailedSpeculationsAddress != null;
     }
 
     /**
      * Determines if the current runtime is libgraal.
      */
     public static boolean inLibGraal() {
-        throw shouldNotReachHere();
+        return Services.IS_IN_NATIVE_IMAGE;
     }
 
     /**
@@ -96,9 +115,20 @@ public class LibGraal {
      *             (no matching JNI symbol or the native method is already linked to a different
      *             address)
      */
-    @SuppressWarnings("unused")
     public static void registerNativeMethods(Class<?> clazz) {
-        throw shouldNotReachHere();
+        if (clazz.isPrimitive()) {
+            throw new IllegalArgumentException();
+        }
+        if (inLibGraal() || !isAvailable()) {
+            throw new IllegalStateException();
+        }
+        try {
+            registerNativeMethods.invoke(runtime(), clazz);
+        } catch (Error e) {
+            throw e;
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
+        }
     }
 
     /**
@@ -112,9 +142,15 @@ public class LibGraal {
      * @return a JNI global reference to the mirror of {@code obj} in the peer runtime
      * @throws IllegalArgumentException if {@code obj} is not of a translatable type
      */
-    @SuppressWarnings("unused")
     public static long translate(Object obj) {
-        throw shouldNotReachHere();
+        if (!isAvailable()) {
+            throw new IllegalStateException();
+        }
+        try {
+            return (long) translate.invoke(runtime(), obj);
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
+        }
     }
 
     /**
@@ -126,18 +162,49 @@ public class LibGraal {
      * @return the object referred to by {@code handle}
      * @throws ClassCastException if the returned object cannot be cast to {@code type}
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unchecked")
     public static <T> T unhand(Class<T> type, long handle) {
-        throw shouldNotReachHere();
+        if (!isAvailable()) {
+            throw new IllegalStateException();
+        }
+        try {
+            return (T) unhand.invoke(runtime(), type, handle);
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
+        }
     }
+
+    private static long initializeLibgraal() {
+        if (registerNativeMethods == null) {
+            return 0L;
+        }
+        try {
+            long[] javaVMInfo = (long[]) registerNativeMethods.invoke(runtime(), LibGraalScope.class);
+            long isolate = javaVMInfo[1];
+            return isolate;
+        } catch (InvocationTargetException e) {
+            if (e.getTargetException() instanceof UnsupportedOperationException) {
+                return 0L;
+            }
+            throw new InternalError(e);
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
+        }
+    }
+
+    static final long initialIsolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
+    static final boolean available = initialIsolate != 0L;
 
     /**
      * Determines if the current thread is {@linkplain #attachCurrentThread attached} to the peer
      * runtime.
      */
-    @SuppressWarnings("unused")
-    static boolean isCurrentThreadAttached(HotSpotJVMCIRuntime runtime) {
-        throw shouldNotReachHere();
+    static boolean isCurrentThreadAttached() {
+        try {
+            return (boolean) isCurrentThreadAttached.invoke(runtime());
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
+        }
     }
 
     /**
@@ -148,9 +215,24 @@ public class LibGraal {
      * @return {@code true} if this call attached the current thread, {@code false} if the current
      *         thread was already attached
      */
-    @SuppressWarnings("unused")
     public static boolean attachCurrentThread(boolean isDaemon, long[] isolate) {
-        throw shouldNotReachHere();
+        try {
+            if (attachCurrentThread.getParameterCount() == 2) {
+                long[] javaVMInfo = isolate != null ? new long[4] : null;
+                boolean res = (boolean) attachCurrentThread.invoke(runtime(), isDaemon, javaVMInfo);
+                if (isolate != null) {
+                    isolate[0] = javaVMInfo[1];
+                }
+                return res;
+            } else {
+                if (isolate != null) {
+                    isolate[0] = initialIsolate;
+                }
+                return (boolean) attachCurrentThread.invoke(runtime(), isDaemon);
+            }
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
+        }
     }
 
     /**
@@ -163,9 +245,17 @@ public class LibGraal {
      * @return {@code true} if the {@code JavaVM} associated with the libgraal runtime was destroyed
      *         as a result of this call
      */
-    @SuppressWarnings("unused")
     public static boolean detachCurrentThread(boolean release) {
-        throw shouldNotReachHere();
+        try {
+            if (detachCurrentThread.getParameterCount() == 1) {
+                return (Boolean) detachCurrentThread.invoke(runtime(), release);
+            } else {
+                detachCurrentThread.invoke(runtime());
+                return false;
+            }
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
+        }
     }
 
     /**
@@ -175,8 +265,85 @@ public class LibGraal {
      * @return the address of the pointer to the native failed speculations list.
      * @exception UnsupportedOperationException if unsupported
      */
-    @SuppressWarnings("unused")
     public static long getFailedSpeculationsAddress(HotSpotSpeculationLog log) {
-        throw shouldNotReachHere();
+        if (getFailedSpeculationsAddress != null) {
+            try {
+                return (long) getFailedSpeculationsAddress.invoke(log);
+            } catch (Throwable e) {
+                throw new InternalError(e);
+            }
+        }
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Convenience function for wrapping varargs into an array for use in calls to
+     * {@link #method(Class, String, Class[][])}.
+     */
+    private static Class<?>[] sig(Class<?>... types) {
+        return types;
+    }
+
+    /**
+     * Gets the method in {@code declaringClass} with the unique name {@code name}.
+     *
+     * @param sigs the signatures the method may have
+     */
+    private static Method method(Class<?> declaringClass, String name, Class<?>[]... sigs) {
+        if (sigs.length == 1 || sigs.length == 0) {
+            try {
+                Class<?>[] sig = sigs.length == 1 ? sigs[0] : new Class<?>[0];
+                return declaringClass.getDeclaredMethod(name, sig);
+            } catch (NoSuchMethodException | SecurityException e) {
+                throw (NoSuchMethodError) new NoSuchMethodError(name).initCause(e);
+            }
+        }
+        Method match = null;
+        for (Method m : declaringClass.getDeclaredMethods()) {
+            if (m.getName().equals(name)) {
+                if (match != null) {
+                    throw new InternalError(String.format("Expected single method named %s, found %s and %s",
+                                    name, match, m));
+                }
+                match = m;
+            }
+        }
+        if (match == null) {
+            throw new NoSuchMethodError("Cannot find method " + name + " in " + declaringClass.getName());
+        }
+        Class<?>[] parameterTypes = match.getParameterTypes();
+        for (Class<?>[] sig : sigs) {
+            if (Arrays.equals(parameterTypes, sig)) {
+                return match;
+            }
+        }
+        throw new NoSuchMethodError(String.format("Unexpected signature for %s: %s", name, Arrays.toString(parameterTypes)));
+    }
+
+    /**
+     * Gets the method in {@code declaringClass} with the unique name {@code name} or {@code null}
+     * if not found.
+     *
+     * @param sigs the signatures the method may have
+     */
+    private static Method methodOrNull(Class<?> declaringClass, String name, Class<?>[]... sigs) {
+        try {
+            return method(declaringClass, name, sigs);
+        } catch (NoSuchMethodError e) {
+            return null;
+        }
+    }
+
+    /**
+     * Gets the method in {@code declaringClass} with the unique name {@code name} or {@code null}
+     * if {@code guard == null}.
+     *
+     * @param sigs the signatures the method may have
+     */
+    private static Method methodIf(Object guard, Class<?> declaringClass, String name, Class<?>[]... sigs) {
+        if (guard == null) {
+            return null;
+        }
+        return method(declaringClass, name, sigs);
     }
 }

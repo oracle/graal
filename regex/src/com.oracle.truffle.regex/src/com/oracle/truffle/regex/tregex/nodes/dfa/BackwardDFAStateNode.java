@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,8 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 public class BackwardDFAStateNode extends DFAStateNode {
 
-    public BackwardDFAStateNode(short id, byte flags, short loopTransitionIndex, LoopOptimizationNode loopOptimizationNode, short[] successors, Matchers matchers, DFASimpleCG simpleCG,
-                    AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher) {
-        super(id, flags, loopTransitionIndex, loopOptimizationNode, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
+    public BackwardDFAStateNode(short id, byte flags, short loopTransitionIndex, IndexOfCall indexOfCall, short[] successors, Matchers matchers, DFASimpleCG simpleCG) {
+        super(id, flags, loopTransitionIndex, indexOfCall, successors, matchers, simpleCG);
     }
 
     protected BackwardDFAStateNode(BackwardDFAStateNode copy, short copyID) {

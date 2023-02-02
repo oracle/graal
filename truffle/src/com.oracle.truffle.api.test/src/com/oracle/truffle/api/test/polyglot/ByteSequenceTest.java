@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,10 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.graalvm.polyglot.io.ByteSequence;
+import org.junit.BeforeClass;
 import org.junit.Test;
+
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ByteSequenceTest {
 
@@ -68,6 +71,14 @@ public class ByteSequenceTest {
             return (byte) (index + 1);
         }
 
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        /*
+         * This test does not use polyglot context, no point running it with isolated context.
+         */
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test

@@ -25,6 +25,7 @@
 package com.oracle.svm.core.util;
 
 import java.nio.ByteBuffer;
+import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -185,5 +186,80 @@ public final class Utf8 {
             return null;
         }
         return utf8ToString(true, CTypeConversion.asByteBuffer(source, Integer.MAX_VALUE));
+    }
+
+    /**
+     * Wraps C memory with zero-terminated UTF-8 data or copies that data, returning a
+     * {@link CharSequence}. If the provided pointer is the C null pointer, or the data is not a
+     * valid UTF-8 string, then {@code null} is returned. The returned object is only safe to access
+     * while the C memory is, too.
+     *
+     * @see WrappedAsciiCString
+     */
+    public static CharSequence wrapUtf8CString(CCharPointer source) {
+        if (source.isNull()) {
+            return null;
+        }
+        int hash = 0;
+        int length = 0;
+        byte c = source.read(length);
+        while (c > 0) { // signed, so 1..127
+            length++;
+            hash = 31 * hash + c; // compatible with String.hashCode()
+            c = source.read(length);
+        }
+        if (c < 0) { // non-ASCII character: fallback to copying
+            return utf8ToString(source);
+        }
+        return new WrappedAsciiCString(source, length, hash);
+    }
+
+    /**
+     * Wraps C memory that contains a string consisting of only 7-bit ASCII characters. This should
+     * be the case with many Strings that are passed in via JNI, such as class and member names,
+     * which can then be used in lookups without having to be converted between character sets and
+     * copied. In order to do lookups efficiently, the {@link #hashCode} which is computed by
+     * {@link #wrapUtf8CString} is compatible with that of {@link String#hashCode}.
+     */
+    public static final class WrappedAsciiCString implements CharSequence {
+        private final CCharPointer chars;
+        private final int length;
+        private final int hashCode;
+
+        public WrappedAsciiCString(CCharPointer chars, int length, int hashCode) {
+            this.chars = chars;
+            this.length = length;
+            this.hashCode = hashCode;
+
+            assert ((Predicate<String>) (s -> s.length() == length() && s.hashCode() == hashCode() && CharSequence.compare(s, this) == 0)).test(utf8ToString(chars));
+        }
+
+        @Override
+        public int length() {
+            return length;
+        }
+
+        @Override
+        public char charAt(int index) {
+            if (index < 0 || index >= length) {
+                throw new IndexOutOfBoundsException(index);
+            }
+            return (char) chars.read(index);
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+
+        @Override
+        public String toString() {
+            return new StringBuilder(this).toString();
+        }
+
+        @Override
+        public CharSequence subSequence(int start, int end) {
+            throw new UnsupportedOperationException();
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeList;
+import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -45,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * The {@code NewMultiArrayNode} represents an allocation of a multi-dimensional object array.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
-public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements Lowerable, ArrayLengthProvider {
+public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements Lowerable, ArrayLengthProvider, NodeWithIdentity {
 
     public static final NodeClass<NewMultiArrayNode> TYPE = NodeClass.create(NewMultiArrayNode.class);
     @Input protected NodeInputList<ValueNode> dimensions;

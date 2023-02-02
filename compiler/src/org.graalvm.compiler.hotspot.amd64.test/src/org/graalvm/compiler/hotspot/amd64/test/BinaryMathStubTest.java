@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,8 @@ import java.util.List;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -50,7 +52,7 @@ public class BinaryMathStubTest extends GraalCompilerTest {
         return ret;
     }
 
-    private static final double[] inputs = {0.0D, Math.PI / 2, Math.PI, -1.0D, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY};
+    private static final double[] inputs = {0.0D, -0.0D, 0.5D, Math.PI / 2, 2.0D, Math.PI, -1.0D, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY};
     private final String stub;
 
     public BinaryMathStubTest(String stub) {
@@ -69,6 +71,7 @@ public class BinaryMathStubTest extends GraalCompilerTest {
 
     @Test
     public void testStub() {
+        Assume.assumeTrue("GR-42441", JavaVersionUtil.JAVA_SPEC <= 19);
         for (double x : inputs) {
             for (double y : inputs) {
                 test(stub, x, y);

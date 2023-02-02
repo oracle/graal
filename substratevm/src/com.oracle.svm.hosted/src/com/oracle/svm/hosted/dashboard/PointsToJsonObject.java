@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,24 @@
  */
 package com.oracle.svm.hosted.dashboard;
 
-import com.oracle.svm.hosted.dashboard.ToJson.JsonObject;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonArray;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonString;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonNumber;
-import com.oracle.svm.hosted.dashboard.ToJson.JsonValue;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.core.util.VMError;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.graalvm.graphio.GraphOutput;
+import org.graalvm.graphio.GraphStructure;
+import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
@@ -41,16 +50,14 @@ import com.oracle.graal.pointsto.flow.ArrayCopyTypeFlow;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.BoxTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.DynamicNewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldSinkTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReceiverTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReturnTypeFlow;
-import com.oracle.graal.pointsto.flow.InitialParamTypeFlow;
-import com.oracle.graal.pointsto.flow.InitialReceiverTypeFlow;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow;
@@ -65,28 +72,20 @@ import com.oracle.graal.pointsto.flow.ProxyTypeFlow;
 import com.oracle.graal.pointsto.flow.SourceTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.flow.UnknownTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
-
-import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
-import org.graalvm.graphio.GraphStructure;
-import org.graalvm.graphio.GraphOutput;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.dashboard.ToJson.JsonArray;
+import com.oracle.svm.hosted.dashboard.ToJson.JsonNumber;
+import com.oracle.svm.hosted.dashboard.ToJson.JsonObject;
+import com.oracle.svm.hosted.dashboard.ToJson.JsonString;
+import com.oracle.svm.hosted.dashboard.ToJson.JsonValue;
 
 import jdk.vm.ci.code.BytecodePosition;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.BitSet;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Creates a JSON representation of the pointsto graph, in the format expected by the dashboard. The
@@ -416,13 +415,10 @@ class PointsToJsonObject extends JsonObject {
             names.put(StoreFieldTypeFlow.StoreInstanceFieldTypeFlow.class, "instanceFieldStore");
             names.put(StoreFieldTypeFlow.StoreStaticFieldTypeFlow.class, "staticFieldStore");
             names.put(FieldTypeFlow.class, "field");
-            names.put(OffsetLoadTypeFlow.AtomicReadTypeFlow.class, "atomicRead");
-            names.put(OffsetStoreTypeFlow.AtomicWriteTypeFlow.class, "atomicWrite");
             names.put(NullCheckTypeFlow.class, "nullCheck");
             names.put(ArrayCopyTypeFlow.class, "arrayCopy");
             names.put(BoxTypeFlow.class, "box");
             names.put(CloneTypeFlow.class, "clone");
-            names.put(OffsetStoreTypeFlow.CompareAndSwapTypeFlow.class, "compareAndSwap");
             names.put(FilterTypeFlow.class, "filter");
             names.put(FormalReceiverTypeFlow.class, "formalReceiver");
             names.put(InstanceOfTypeFlow.class, "instanceOf");
@@ -440,10 +436,7 @@ class PointsToJsonObject extends JsonObject {
             names.put(AllSynchronizedTypeFlow.class, "allSynchronized");
             names.put(ArrayElementsTypeFlow.class, "arrayElements");
             names.put(FieldFilterTypeFlow.class, "fieldFilter");
-            names.put(FieldSinkTypeFlow.class, "fieldSink");
-            names.put(InitialParamTypeFlow.class, "initialParam");
-            names.put(InitialReceiverTypeFlow.class, "initialReceiver");
-            names.put(UnknownTypeFlow.class, "unknown");
+            names.put(ContextInsensitiveFieldTypeFlow.class, "fieldSink");
         }
 
         /**
@@ -490,9 +483,10 @@ class PointsToJsonObject extends JsonObject {
             return;
         }
         FeatureImpl.OnAnalysisExitAccessImpl config = (FeatureImpl.OnAnalysisExitAccessImpl) access;
-        BigBang bigbang = config.getBigBang();
-        serializeMethods(bigbang);
-        connectFlowsToEnclosingMethods(bigbang);
+        BigBang bb = config.getBigBang();
+        VMError.guarantee(bb instanceof PointsToAnalysis, "Printing points-to statistics only make sense when point-to analysis is on.");
+        serializeMethods(bb);
+        connectFlowsToEnclosingMethods(bb);
         matchInputsAndUses();
         built = true;
     }
@@ -519,7 +513,7 @@ class PointsToJsonObject extends JsonObject {
 
         private static final String METHOD_FLOW = "method";
 
-        AnalysisWrapper(Class<?> clazz, AnalysisMethod method) {
+        AnalysisWrapper(Class<?> clazz, PointsToAnalysisMethod method) {
             this(clazz, method.getTypeFlow().id());
             this.flowType = METHOD_FLOW;
             this.qualifiedName = method.format("%H.%n(%P)");
@@ -596,7 +590,7 @@ class PointsToJsonObject extends JsonObject {
      */
     private void serializeMethods(BigBang bb) {
         for (AnalysisMethod method : bb.getUniverse().getMethods()) {
-            serializeMethod(new AnalysisWrapper(method.getClass(), method));
+            serializeMethod(bb, new AnalysisWrapper(method.getClass(), PointsToAnalysis.assertPointsToAnalysisMethod(method)));
         }
     }
 
@@ -605,7 +599,7 @@ class PointsToJsonObject extends JsonObject {
      *
      * @param methodWrapper wrapped AnalysisMethod whose type flows to serialize
      */
-    private void serializeMethod(AnalysisWrapper methodWrapper) {
+    private void serializeMethod(BigBang bb, AnalysisWrapper methodWrapper) {
         assert !known.get(methodWrapper.id);
         known.set(methodWrapper.id);
         flows.set(methodWrapper.id, methodWrapper);
@@ -615,14 +609,14 @@ class PointsToJsonObject extends JsonObject {
         }
 
         // Serialize all type flows of this method, recursively serialize their inputs and uses.
-        for (TypeFlow<?> flow : methodWrapper.flowsGraph.linearizedGraph) {
+        for (TypeFlow<?> flow : methodWrapper.flowsGraph.flows()) {
             if (flow == null) {
                 // Can have null-nodes - skip them.
                 continue;
             }
 
             // Serialize this type flow to a JSON object, add it to the node index.
-            serializeTypeFlow(flow);
+            serializeTypeFlow(bb, flow);
         }
     }
 
@@ -638,7 +632,7 @@ class PointsToJsonObject extends JsonObject {
      *
      * @param flow TypeFlow to serialize
      */
-    private void serializeTypeFlow(TypeFlow<?> flow) {
+    private void serializeTypeFlow(BigBang bb, TypeFlow<?> flow) {
         int flowId = flow.id();
 
         if (known.get(flowId)) {
@@ -653,21 +647,21 @@ class PointsToJsonObject extends JsonObject {
         // Perform flow-type specific tasks for certain flow-types.
         if (flow instanceof InvokeTypeFlow) {
             // A callsite gets its callees as uses.
-            Collection<AnalysisMethod> callees = ((InvokeTypeFlow) flow).getCallees();
+            Collection<AnalysisMethod> callees = ((InvokeTypeFlow) flow).getAllCallees();
             flowWrapper.calleeNames = new ArrayList<>();
             for (AnalysisMethod callee : callees) {
-                int calleeId = callee.getTypeFlow().id();
+                int calleeId = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().id();
                 addUnique(flowWrapper.uses, calleeId);
                 flowWrapper.calleeNames.add(callee.getQualifiedName());
             }
         } else if (flow instanceof NewInstanceTypeFlow || flow instanceof DynamicNewInstanceTypeFlow) {
-            flowWrapper.types = serializeTypeState(flow.getState());
+            flowWrapper.types = serializeTypeState(bb, flow.getState());
         } else if (flow instanceof LoadFieldTypeFlow.LoadInstanceFieldTypeFlow || flow instanceof LoadFieldTypeFlow.LoadStaticFieldTypeFlow) {
             LoadFieldTypeFlow loadFlow = (LoadFieldTypeFlow) flow;
             flowWrapper.qualifiedName = fieldName(loadFlow.field());
         } else if (flow instanceof StoreFieldTypeFlow.StoreInstanceFieldTypeFlow || flow instanceof StoreFieldTypeFlow.StoreStaticFieldTypeFlow) {
             TypeState typeState = flow.getState();
-            flowWrapper.types = serializeTypeState(typeState);
+            flowWrapper.types = serializeTypeState(bb, typeState);
             StoreFieldTypeFlow storeFlow = (StoreFieldTypeFlow) flow;
             flowWrapper.qualifiedName = fieldName(storeFlow.field());
         } else if (flow instanceof FieldTypeFlow) {
@@ -678,8 +672,8 @@ class PointsToJsonObject extends JsonObject {
         }
 
         // Set inputs and uses for this node.
-        collectInputs(flow, flowWrapper.inputs);
-        collectUses(flow, flowWrapper.uses);
+        collectInputs(bb, flow, flowWrapper.inputs);
+        collectUses(bb, flow, flowWrapper.uses);
     }
 
     /**
@@ -702,13 +696,13 @@ class PointsToJsonObject extends JsonObject {
      */
     private void connectFlowsToEnclosingMethods(BigBang bb) {
         for (AnalysisMethod method : bb.getUniverse().getMethods()) {
-            AnalysisWrapper methodWrapper = new AnalysisWrapper(method.getClass(), method);
+            AnalysisWrapper methodWrapper = new AnalysisWrapper(method.getClass(), PointsToAnalysis.assertPointsToAnalysisMethod(method));
             if (methodWrapper.flowsGraph == null) {
                 // Some methods (such as interface methods) don't have any flows. This
                 // field is null in that case. Can skip them.
                 continue;
             }
-            for (TypeFlow<?> flow : methodWrapper.flowsGraph.linearizedGraph) {
+            for (TypeFlow<?> flow : methodWrapper.flowsGraph.flows()) {
                 if (flow != null) {
                     connectFlowToEnclosingMethod(flow.id(), methodWrapper.id);
                 }
@@ -775,20 +769,20 @@ class PointsToJsonObject extends JsonObject {
      * @param flow TypeFlow who's inputs and observees to collect
      * @param targetList target array for input use and observee IDs to
      */
-    private void collectInputs(TypeFlow<?> flow, Map<Integer, Integer> targetList) {
+    private void collectInputs(BigBang bb, TypeFlow<?> flow, Map<Integer, Integer> targetList) {
         for (Object input : flow.getInputs()) {
             TypeFlow<?> inputFlow = (TypeFlow<?>) input;
             addUnique(targetList, inputFlow.id());
             // Indirect recursive call. Call with methodId = -1 to indicate that, at this point,
             // we don't know the method ID of the parent methods of the input flows.
-            serializeTypeFlow(inputFlow);
+            serializeTypeFlow(bb, inputFlow);
         }
         for (Object observee : flow.getObservees()) {
             TypeFlow<?> observeeFlow = (TypeFlow<?>) observee;
             addUnique(targetList, observeeFlow.id());
             // Indirect recursive call. Call with methodId = -1 to indicate that, at this point,
             // we don't know the method ID of the parent methods of the observee flows.
-            serializeTypeFlow(observeeFlow);
+            serializeTypeFlow(bb, observeeFlow);
         }
     }
 
@@ -800,20 +794,20 @@ class PointsToJsonObject extends JsonObject {
      * @param flow TypeFlow who's uses and observers to collect
      * @param targetList target list for adding use and observer IDs to
      */
-    private void collectUses(TypeFlow<?> flow, Map<Integer, Integer> targetList) {
+    private void collectUses(BigBang bb, TypeFlow<?> flow, Map<Integer, Integer> targetList) {
         for (Object use : flow.getUses()) {
             TypeFlow<?> useFlow = (TypeFlow<?>) use;
             addUnique(targetList, useFlow.id());
             // Indirect recursive call. Call with methodId = -1 to indicate that, at this point,
             // we don't know the method ID of the parent methods of the use flows.
-            serializeTypeFlow(useFlow);
+            serializeTypeFlow(bb, useFlow);
         }
         for (Object observer : flow.getObservers()) {
             TypeFlow<?> observerFlow = (TypeFlow<?>) observer;
             addUnique(targetList, observerFlow.id());
             // Indirect recursive call. Call with methodId = -1 to indicate that, at this point,
             // we don't know the method ID of the parent methods of the observer flows.
-            serializeTypeFlow(observerFlow);
+            serializeTypeFlow(bb, observerFlow);
         }
     }
 
@@ -834,12 +828,9 @@ class PointsToJsonObject extends JsonObject {
      * @param typeState the TypeState to be serialized.
      * @return a list of the formatted class names of the classes included in the given TypeState.
      */
-    private static ArrayList<String> serializeTypeState(TypeState typeState) {
+    private static ArrayList<String> serializeTypeState(BigBang bb, TypeState typeState) {
         ArrayList<String> types = new ArrayList<>();
-        if (typeState.getClass().getSimpleName().equals("UnknownTypeState")) {
-            return types;
-        }
-        for (AnalysisType type : typeState.types()) {
+        for (AnalysisType type : typeState.types(bb)) {
             types.add(type.toJavaName());
         }
         return types;

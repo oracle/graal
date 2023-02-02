@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.diagnosticsagent;
 
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
 
 public class ObjectInstantiationTraceCreator extends JavaStackTraceCreator {

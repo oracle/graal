@@ -1,0 +1,2 @@
+com.oracle.svm.test.AbstractServiceLoaderTest$ConcreteService
+com.oracle.svm.test.AbstractServiceLoaderTest$AbstractService

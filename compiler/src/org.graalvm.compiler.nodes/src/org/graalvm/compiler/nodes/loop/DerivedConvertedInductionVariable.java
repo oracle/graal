@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 
 public class DerivedConvertedInductionVariable extends DerivedInductionVariable {
 
@@ -52,12 +53,12 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public ValueNode initNode() {
-        return op(base.initNode());
+        return op(base.initNode(), true);
     }
 
     @Override
     public ValueNode strideNode() {
-        return op(base.strideNode());
+        return op(base.strideNode(), false);
     }
 
     @Override
@@ -82,12 +83,23 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public ValueNode extremumNode(boolean assumeLoopEntered, Stamp s) {
+        // base.extremumNode will already perform any necessary conversion operation based on the
+        // stamp, thus we do not "redo" the same here, the caller decides upon the request result
+        // stamp bit width
         return base.extremumNode(assumeLoopEntered, s);
+    }
+
+    /**
+     * @see #extremumNode(boolean, Stamp)
+     */
+    @Override
+    public ValueNode extremumNode(boolean assumeLoopEntered, Stamp s, ValueNode maxTripCount) {
+        return base.extremumNode(assumeLoopEntered, s, maxTripCount);
     }
 
     @Override
     public ValueNode exitValueNode() {
-        return op(base.exitValueNode());
+        return op(base.exitValueNode(), true);
     }
 
     @Override
@@ -104,8 +116,13 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     public void deleteUnusedNodes() {
     }
 
-    public ValueNode op(ValueNode v) {
-        return IntegerConvertNode.convert(v, stamp, graph(), NodeView.DEFAULT);
+    public ValueNode op(ValueNode v, boolean allowZeroExtend) {
+        return op(v, allowZeroExtend, true);
+    }
+
+    private ValueNode op(ValueNode v, boolean allowZeroExtend, boolean gvn) {
+        boolean zeroExtend = allowZeroExtend && value instanceof ZeroExtendNode;
+        return IntegerConvertNode.convert(v, stamp, zeroExtend, graph(), NodeView.DEFAULT, gvn);
     }
 
     @Override
@@ -120,7 +137,16 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public ValueNode copyValue(InductionVariable newBase) {
-        return op(newBase.valueNode());
+        return op(newBase.valueNode(), true);
     }
 
+    @Override
+    public ValueNode copyValue(InductionVariable newBase, boolean gvn) {
+        return op(newBase.valueNode(), true, gvn);
+    }
+
+    @Override
+    public ValueNode entryTripValue() {
+        return op(getBase().entryTripValue(), true);
+    }
 }

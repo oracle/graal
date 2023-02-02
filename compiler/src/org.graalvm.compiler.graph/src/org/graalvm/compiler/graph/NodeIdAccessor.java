@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,12 +44,12 @@ class NodeIdAccessor {
      * Verifies that node identifiers have not changed since this object was created.
      *
      * @return true if the check succeeds
-     * @throws VerificationError if the check fails
+     * @throws GraalGraphError if the check fails
      */
     boolean verifyIdsAreStable() {
         int compressions = graph.compressions - epoch;
         if (compressions != 0) {
-            throw new VerificationError("accessing node id in %s across %d graph compression%s", graph, compressions, compressions == 1 ? "" : "s");
+            throw new GraalGraphError("accessing node id in %s across %d graph compression%s", graph, compressions, compressions == 1 ? "" : "s");
         }
         return true;
     }
@@ -60,6 +60,9 @@ class NodeIdAccessor {
      */
     int getNodeId(Node node) {
         assert verifyIdsAreStable();
+        if (!node.isAlive()) {
+            throw new InternalError(node.toString());
+        }
         return node.id();
     }
 }

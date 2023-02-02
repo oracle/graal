@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,17 +25,26 @@
 package org.graalvm.compiler.core.common.spi;
 
 import java.util.Arrays;
+import java.util.regex.Pattern;
+
+import org.graalvm.compiler.debug.GraalError;
 
 /**
  * The name and signature of a {@link ForeignCallDescriptor foreign call}.
  */
 public final class ForeignCallSignature {
 
+    /**
+     * {@link ForeignCallSignature} names can only contain non-whitespace characters.
+     */
+    public static final Pattern NAME_PATTERN = Pattern.compile("[\\S]+");
+
     private final String name;
     private final Class<?> resultType;
     private final Class<?>[] argumentTypes;
 
     public ForeignCallSignature(String name, Class<?> resultType, Class<?>... argumentTypes) {
+        GraalError.guarantee(NAME_PATTERN.matcher(name).matches(), "invalid foreign call name: %s", name);
         this.name = name;
         this.resultType = resultType;
         this.argumentTypes = argumentTypes;
@@ -76,14 +85,24 @@ public final class ForeignCallSignature {
         return false;
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder(name).append('(');
+    /**
+     * Gets the signature of this foreign call as a String.
+     *
+     * @param withName if true, the {@link #getName()} is prepended to the returned string
+     */
+    public String toString(boolean withName) {
+        StringBuilder sb = withName ? new StringBuilder(name) : new StringBuilder();
+        sb.append('(');
         String sep = "";
         for (Class<?> arg : argumentTypes) {
             sb.append(sep).append(arg.getSimpleName());
             sep = ",";
         }
         return sb.append(')').append(resultType.getSimpleName()).toString();
+    }
+
+    @Override
+    public String toString() {
+        return toString(true);
     }
 }

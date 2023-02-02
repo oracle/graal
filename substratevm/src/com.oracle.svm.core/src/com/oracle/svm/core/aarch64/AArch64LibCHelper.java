@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
 @CLibrary(value = "libchelper", requireStatic = true)
@@ -43,6 +44,15 @@ public class AArch64LibCHelper {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void determineCPUFeatures(CPUFeatures features);
 
+    @Platforms(Platform.AARCH64.class)
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int checkCPUFeatures(CCharPointer cCharPointer);
+
+    @Platforms(Platform.AARCH64.class)
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int checkCPUFeaturesOrExit(CCharPointer buildtimeCPUFeatureMask, CCharPointer errorMessage);
+
+    // Checkstyle: stop
     @CStruct
     @CContext(AArch64LibCHelperDirectives.class)
     public interface CPUFeatures extends PointerBase {
@@ -84,7 +94,27 @@ public class AArch64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fSTXRPREFETCH();
+        boolean fDCPOP();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSHA3();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSHA512();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSVE();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSVE2();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSTXR_PREFETCH();
 
         @AllowNarrowingCast
         @CField
@@ -92,6 +122,15 @@ public class AArch64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fDMBATOMICS();
+        boolean fDMB_ATOMICS();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fPACA();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fSVEBITPERM();
     }
+    // Checkstyle: resume
 }

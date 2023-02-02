@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,19 +28,21 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableList;
 import static jdk.vm.ci.meta.MetaUtil.identityHashCodeString;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Function;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.DebugInfo;
@@ -57,7 +59,6 @@ import jdk.vm.ci.code.site.Reference;
 import jdk.vm.ci.code.site.Site;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.InvokeTarget;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -82,7 +83,7 @@ public class CompilationResult {
 
         @Override
         public final int hashCode() {
-            throw new UnsupportedOperationException("hashCode");
+            throw new UnsupportedOperationException("hashCode"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -95,10 +96,6 @@ public class CompilationResult {
 
         public int getPosition() {
             return position;
-        }
-
-        void setPosition(int position) {
-            this.position = position;
         }
     }
 
@@ -136,7 +133,7 @@ public class CompilationResult {
 
     /**
      * Describes a table of signed offsets embedded in the code. The offsets are relative to the
-     * starting address of the table. This type of table maybe generated when translating a
+     * starting address of the table. This type of table can be generated when translating a
      * multi-way branch based on a key value from a dense value set (e.g. the {@code tableswitch}
      * JVM instruction).
      *
@@ -144,6 +141,30 @@ public class CompilationResult {
      * inclusive.
      */
     public static final class JumpTable extends CodeAnnotation {
+
+        /**
+         * Constants denoting the format and size of each entry in a jump table.
+         */
+        public enum EntryFormat {
+            /**
+             * Each entry is a 4 byte offset.
+             */
+            OFFSET_ONLY(4),
+
+            /**
+             * Each entry contains a 4 byte value followed by a 4 byte offset.
+             */
+            VALUE_AND_OFFSET(8);
+
+            EntryFormat(int size) {
+                this.size = size;
+            }
+
+            /**
+             * Gets the size of an entry in bytes.
+             */
+            public final int size;
+        }
 
         /**
          * The low value in the key range (inclusive).
@@ -158,13 +179,16 @@ public class CompilationResult {
         /**
          * The size (in bytes) of each table entry.
          */
-        public final int entrySize;
+        public final EntryFormat entryFormat;
 
-        public JumpTable(int position, int low, int high, int entrySize) {
+        public JumpTable(int position, int low, int high, EntryFormat entryFormat) {
             super(position);
+            if (high <= low) {
+                throw new IllegalArgumentException(String.format("low (%d) is not less than high(%d)", low, high));
+            }
             this.low = low;
             this.high = high;
-            this.entrySize = entrySize;
+            this.entryFormat = entryFormat;
         }
 
         @Override
@@ -174,7 +198,7 @@ public class CompilationResult {
             }
             if (obj instanceof JumpTable) {
                 JumpTable that = (JumpTable) obj;
-                if (this.getPosition() == that.getPosition() && this.entrySize == that.entrySize && this.low == that.low && this.high == that.high) {
+                if (this.getPosition() == that.getPosition() && this.entryFormat == that.entryFormat && this.low == that.low && this.high == that.high) {
                     return true;
                 }
             }
@@ -193,6 +217,7 @@ public class CompilationResult {
 
     private final DataSection dataSection = new DataSection();
 
+    private final EconomicSet<Call> invalidCallDeoptimizationStates = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
     private final List<Infopoint> infopoints = new ArrayList<>();
     private final List<SourceMapping> sourceMapping = new ArrayList<>();
     private final List<DataPatch> dataPatches = new ArrayList<>();
@@ -201,6 +226,11 @@ public class CompilationResult {
 
     private int totalFrameSize = -1;
     private int maxInterpreterFrameSize = -1;
+
+    /**
+     * The minimum alignment for an item in the {@linkplain DataSectionReference data section}.
+     */
+    private int minDataSectionItemAlignment = 1;
 
     private StackSlot customStackArea = null;
 
@@ -238,33 +268,17 @@ public class CompilationResult {
      */
     private SpeculationLog speculationLog;
 
-    /**
-     * The list of fields that were accessed from the bytecodes.
-     */
-    private ResolvedJavaField[] fields;
-
     private int bytecodeSize;
 
     private boolean hasUnsafeAccess;
 
-    private boolean isImmutablePIC;
-
     public CompilationResult(CompilationIdentifier compilationId) {
-        this(compilationId, null, false);
+        this(compilationId, null);
     }
 
     public CompilationResult(CompilationIdentifier compilationId, String name) {
-        this(compilationId, name, false);
-    }
-
-    public CompilationResult(CompilationIdentifier compilationId, boolean isImmutablePIC) {
-        this(compilationId, null, isImmutablePIC);
-    }
-
-    public CompilationResult(CompilationIdentifier compilationId, String name, boolean isImmutablePIC) {
         this.compilationId = compilationId;
         this.name = name;
-        this.isImmutablePIC = isImmutablePIC;
     }
 
     public CompilationResult(String name) {
@@ -303,6 +317,7 @@ public class CompilationResult {
                 Objects.equals(this.dataSection, that.dataSection) &&
                 Objects.equals(this.exceptionHandlers, that.exceptionHandlers) &&
                 Objects.equals(this.dataPatches, that.dataPatches) &&
+                Objects.equals(this.invalidCallDeoptimizationStates, that.invalidCallDeoptimizationStates) &&
                 Objects.equals(this.infopoints, that.infopoints) &&
                 Objects.equals(this.marks,  that.marks) &&
                 Arrays.equals(this.assumptions, that.assumptions) &&
@@ -405,31 +420,6 @@ public class CompilationResult {
         return speculationLog;
     }
 
-    /**
-     * Sets the fields that were referenced from the bytecodes that were used as input to the
-     * compilation.
-     *
-     * @param accessedFields the collected set of fields accessed during compilation
-     */
-    public void setFields(EconomicSet<ResolvedJavaField> accessedFields) {
-        if (accessedFields != null) {
-            fields = accessedFields.toArray(new ResolvedJavaField[accessedFields.size()]);
-        }
-    }
-
-    /**
-     * Gets the fields that were referenced from bytecodes that were used as input to the
-     * compilation.
-     *
-     * The caller must not modify the contents of the returned array.
-     *
-     * @return {@code null} if the compilation did not record fields dependencies otherwise the
-     *         fields that were accessed from bytecodes were used as input to the compilation.
-     */
-    public ResolvedJavaField[] getFields() {
-        return fields;
-    }
-
     public void setBytecodeSize(int bytecodeSize) {
         checkOpen();
         this.bytecodeSize = bytecodeSize;
@@ -474,8 +464,12 @@ public class CompilationResult {
         this.maxInterpreterFrameSize = maxInterpreterFrameSize;
     }
 
-    public boolean isImmutablePIC() {
-        return this.isImmutablePIC;
+    /**
+     * Sets the minimum alignment for an item in the {@linkplain DataSectionReference data section}.
+     */
+    public void setMinDataSectionItemAlignment(int alignment) {
+        checkOpen();
+        this.minDataSectionItemAlignment = alignment;
     }
 
     /**
@@ -526,7 +520,6 @@ public class CompilationResult {
      * @param target the being called
      * @param debugInfo the debug info for the call
      * @param direct specifies if this is a {@linkplain Call#direct direct} call
-     * @return created call object
      */
     public Call recordCall(int codePos, int size, InvokeTarget target, DebugInfo debugInfo, boolean direct) {
         checkOpen();
@@ -610,6 +603,17 @@ public class CompilationResult {
         infopoints.add(infopoint);
     }
 
+    /**
+     * Mark that the provided call infopoint cannot be used as a deoptimization entrypoint.
+     *
+     * This distinction is necessary as native-image, in addition to deoptimization support, uses
+     * call infopoints for stack traces and debugging information.
+     */
+    public void recordCallInvalidForDeoptimization(Call call) {
+        checkOpen();
+        invalidCallDeoptimizationStates.add(call);
+    }
+
     public void recordSourceMapping(int startOffset, int endOffset, NodeSourcePosition sourcePosition) {
         checkOpen();
         sourceMapping.add(new SourceMapping(startOffset, endOffset, sourcePosition));
@@ -677,6 +681,10 @@ public class CompilationResult {
             annotations = new ArrayList<>();
         }
         annotations.add(annotation);
+    }
+
+    public boolean isValidCallDeoptimizationState(Call call) {
+        return call != null && !invalidCallDeoptimizationStates.contains(call);
     }
 
     /**
@@ -837,15 +845,10 @@ public class CompilationResult {
         if (annotations != null) {
             annotations.clear();
         }
-        callToMark.clear();
     }
 
     public void clearInfopoints() {
         infopoints.clear();
-    }
-
-    public void clearExceptionHandlers() {
-        exceptionHandlers.clear();
     }
 
     private void checkOpen() {
@@ -857,62 +860,29 @@ public class CompilationResult {
     /**
      * Closes this compilation result to future updates.
      */
-    public void close() {
+    public void close(OptionValues options) {
         if (closed) {
             throw new IllegalStateException("Cannot re-close compilation result " + this);
         }
-        dataSection.close();
+        dataSection.close(options, minDataSectionItemAlignment);
         closed = true;
     }
 
-    public void shiftCodePatch(int pos, int bytesToShift) {
-        iterateAndReplace(infopoints, pos, site -> {
-            if (site instanceof Call) {
-                Call call = (Call) site;
-                return new Call(call.target, site.pcOffset + bytesToShift, call.size, call.direct, call.debugInfo);
-            } else {
-                return new Infopoint(site.pcOffset + bytesToShift, site.debugInfo, site.reason);
-            }
-        });
-        iterateAndReplace(dataPatches, pos, site -> new DataPatch(site.pcOffset + bytesToShift, site.reference, site.note));
-        iterateAndReplace(exceptionHandlers, pos, site -> new ExceptionHandler(site.pcOffset + bytesToShift, site.handlerPos));
-        iterateAndReplace(marks, pos, site -> new CodeMark(site.pcOffset + bytesToShift, site.id));
-        if (annotations != null) {
-            for (CodeAnnotation annotation : annotations) {
-                int annotationPos = annotation.position;
-                if (pos <= annotationPos) {
-                    annotation.setPosition(annotationPos + bytesToShift);
-                }
-            }
-        }
+    public String getCodeSignature() {
+        return getSignature(getTargetCode());
     }
 
-    private static <T extends Site> void iterateAndReplace(List<T> sites, int pos, Function<T, T> replacement) {
-        for (int i = 0; i < sites.size(); i++) {
-            T site = sites.get(i);
-            if (pos == site.pcOffset && site instanceof CodeMark) {
-                CodeMark mark = (CodeMark) site;
-                if (mark.id.isMarkAfter()) {
-                    // The insert point is exactly on the mark but the mark is annotating the end of
-                    // the last instruction, so leave it alone.
-                    continue;
-                }
+    public static String getSignature(byte[] data) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(data);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest.digest()) {
+                sb.append(String.format("%02x", b));
             }
-            if (pos <= site.pcOffset) {
-                sites.set(i, replacement.apply(site));
-            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new GraalError(e);
         }
-    }
-
-    private final EconomicMap<Call, CodeMark> callToMark = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-
-    public void recordCallContext(CodeMark mark, Call call) {
-        if (call != null) {
-            callToMark.put(call, mark);
-        }
-    }
-
-    public CodeMark getAssociatedMark(Call call) {
-        return callToMark.get(call);
     }
 }

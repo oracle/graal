@@ -48,7 +48,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -61,7 +60,6 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -69,6 +67,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestInstrument1;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class EngineAPITest {
 
@@ -143,7 +142,9 @@ public class EngineAPITest {
         assertEquals(EngineAPITestLanguage.VERSION, language.getVersion());
         assertEquals(EngineAPITestLanguage.IMPL_NAME, language.getImplementationName());
 
-        assertSame(language, engine.getLanguages().get(EngineAPITestLanguage.ID));
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertSame(language, engine.getLanguages().get(EngineAPITestLanguage.ID));
+        }
 
         engine.close();
     }
@@ -157,29 +158,58 @@ public class EngineAPITest {
         OptionDescriptor descriptor2 = language.getOptions().get(EngineAPITestLanguage.Option2_NAME);
         OptionDescriptor descriptor3 = language.getOptions().get(EngineAPITestLanguage.Option3_NAME);
 
-        assertSame(EngineAPITestLanguage.Option1, descriptor1.getKey());
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertSame(EngineAPITestLanguage.Option1, descriptor1.getKey());
+        }
         assertEquals(EngineAPITestLanguage.Option1_NAME, descriptor1.getName());
         assertEquals(EngineAPITestLanguage.Option1_CATEGORY, descriptor1.getCategory());
         assertEquals(EngineAPITestLanguage.Option1_DEPRECATED, descriptor1.isDeprecated());
         assertEquals(EngineAPITestLanguage.Option1_HELP, descriptor1.getHelp());
+        assertEquals(EngineAPITestLanguage.Option1_UsageSyntax, descriptor1.getUsageSyntax());
 
-        assertSame(EngineAPITestLanguage.Option2, descriptor2.getKey());
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertSame(EngineAPITestLanguage.Option2, descriptor2.getKey());
+        }
         assertEquals(EngineAPITestLanguage.Option2_NAME, descriptor2.getName());
         assertEquals(EngineAPITestLanguage.Option2_CATEGORY, descriptor2.getCategory());
         assertEquals(EngineAPITestLanguage.Option2_DEPRECATED, descriptor2.isDeprecated());
         assertEquals(EngineAPITestLanguage.Option2_HELP, descriptor2.getHelp());
 
-        assertSame(EngineAPITestLanguage.Option3, descriptor3.getKey());
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            assertSame(EngineAPITestLanguage.Option3, descriptor3.getKey());
+        }
         assertEquals(EngineAPITestLanguage.Option3_NAME, descriptor3.getName());
         assertEquals(EngineAPITestLanguage.Option3_CATEGORY, descriptor3.getCategory());
         assertEquals(EngineAPITestLanguage.Option3_DEPRECATED, descriptor3.isDeprecated());
         assertEquals(EngineAPITestLanguage.Option3_HELP, descriptor3.getHelp());
 
+        // Usage syntax defaults
+        assertNull(language.getOptions().get(EngineAPITestLanguage.BooleanFalseOptionName).getUsageSyntax());
+        assertEquals("true|false", language.getOptions().get(EngineAPITestLanguage.BooleanTrueOptionName).getUsageSyntax());
+        assertEquals("two|one|three", language.getOptions().get(EngineAPITestLanguage.EnumOptionName).getUsageSyntax());
+        assertEquals("<value>", language.getOptions().get(EngineAPITestLanguage.MapOptionName).getUsageSyntax());
+
         engine.close();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testFailedEnumConvert() {
+        EngineAPITestLanguage.EnumOption.getType().convert("foo");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testFailedEnumConvertUppercase() {
+        EngineAPITestLanguage.EnumOption.getType().convert("ONE");
+    }
+
+    @Test()
+    public void testEnumConvert() {
+        Assert.assertEquals(EngineAPITestLanguage.OptionEnum.ONE, EngineAPITestLanguage.EnumOption.getType().convert("one"));
     }
 
     @Test
     public void testStableOption() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         try (Engine engine = Engine.newBuilder().option("optiontestinstr1.StringOption1", "Hello").build()) {
             try (Context context = Context.newBuilder().engine(engine).build()) {
                 context.enter();
@@ -194,6 +224,7 @@ public class EngineAPITest {
 
     @Test
     public void testExperimentalOption() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("optiontestinstr1.StringOption2", "Allow").build()) {
             try (Context context = Context.newBuilder().engine(engine).build()) {
                 context.enter();
@@ -263,131 +294,14 @@ public class EngineAPITest {
     public void testEngineName() {
         Engine engine = Engine.create();
         String implName = engine.getImplementationName();
-        assertEquals(Truffle.getRuntime().getName(), engine.getImplementationName());
-        String name = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0)).getClass().getSimpleName();
+        String suffix = TruffleTestAssumptions.isWeakEncapsulation() ? "" : " Isolated";
+        assertEquals(Truffle.getRuntime().getName() + suffix, engine.getImplementationName());
+        String name = RootNode.createConstantNode(0).getCallTarget().getClass().getSimpleName();
         if (name.equals("DefaultCallTarget")) {
             assertEquals(implName, "Interpreted");
         } else if (name.endsWith("OptimizedCallTarget")) {
-            assertTrue(implName, implName.equals("GraalVM EE") || implName.equals("GraalVM CE"));
+            assertTrue(implName, implName.equals("GraalVM EE" + suffix) || implName.equals("GraalVM CE"));
         }
     }
 
-    @Test
-    @SuppressWarnings("try")
-    public void testListLanguagesDoesNotInvalidateSingleContext() {
-        Object prev = resetSingleContextState(false);
-        try {
-            try (Engine engine = Engine.create()) {
-                engine.getLanguages();
-            }
-            assertTrue(isSingleContextAssumptionValid());
-            try (Engine engine = Engine.create()) {
-                try (Context ctx = Context.newBuilder().engine(engine).build()) {
-                    assertFalse(isSingleContextAssumptionValid());
-                }
-            }
-        } finally {
-            restoreSingleContextState(prev);
-        }
-    }
-
-    @Test
-    public void testListInstrumentsDoesNotInvalidateSingleContext() {
-        Object prev = resetSingleContextState(false);
-        try {
-            try (Engine engine = Engine.create()) {
-                engine.getInstruments();
-            }
-            assertTrue(isSingleContextAssumptionValid());
-        } finally {
-            restoreSingleContextState(prev);
-        }
-    }
-
-    @Test
-    public void testContextWithBoundEngineDoesNotInvalidateSingleContext() {
-        Object prev = resetSingleContextState(false);
-        try {
-            try (Context ctx = Context.create()) {
-                ctx.initialize(EngineAPITestLanguage.ID);
-            }
-            assertTrue(isSingleContextAssumptionValid());
-        } finally {
-            restoreSingleContextState(prev);
-        }
-    }
-
-    @Test
-    @SuppressWarnings("try")
-    public void testListLanguagesAndCreateBoundContextDoNotInvalidateSingleContext() {
-        Object prev = resetSingleContextState(false);
-        try {
-            try (Engine engine = Engine.create()) {
-                engine.getLanguages();
-            }
-            assertTrue(isSingleContextAssumptionValid());
-            try (Context ctx = Context.create()) {
-                assertTrue(isSingleContextAssumptionValid());
-            }
-        } finally {
-            restoreSingleContextState(prev);
-        }
-    }
-
-    @Test
-    public void testPrepareContextAndUseItAfterReset() throws Exception {
-        Object prev = resetSingleContextState(false);
-        try {
-            Context ctx = Context.newBuilder().build();
-            Value mul = ctx.eval("sl", "" +
-                            "function mul(a, b) {\n" +
-                            "  return a * b;\n" +
-                            "}\n" +
-                            "function main() {\n" +
-                            "  return mul;\n" +
-                            "}\n");
-            assertFalse(mul.isNull());
-
-            assertEquals(42, mul.execute(7, 6).asInt());
-
-            resetSingleContextState(true);
-
-            assertEquals(72, mul.execute(3, 24).asInt());
-        } finally {
-            restoreSingleContextState(prev);
-        }
-    }
-
-    public static Object resetSingleContextState(boolean reuse) {
-        try {
-            Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
-            Method m = c.getDeclaredMethod("resetSingleContextState", boolean.class);
-            m.setAccessible(true);
-            return m.invoke(null, reuse);
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    static void restoreSingleContextState(Object state) {
-        try {
-            Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
-            Method m = c.getDeclaredMethod("restoreSingleContextState", Object.class);
-            m.setAccessible(true);
-            m.invoke(null, state);
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    private static boolean isSingleContextAssumptionValid() {
-        try {
-            Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
-            Method m = c.getDeclaredMethod("isSingleContextAssumptionValid");
-            m.setAccessible(true);
-            return (Boolean) m.invoke(null);
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
 }

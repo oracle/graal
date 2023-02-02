@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,21 +29,7 @@ import com.oracle.truffle.espresso.meta.ModifiersProvider;
 
 public abstract class Member<T extends Descriptor> implements ModifiersProvider {
 
-    protected final Symbol<Name> name;
-    protected final Symbol<T> descriptor;
-
-    protected Member(Symbol<T> descriptor, Symbol<Name> name) {
-        this.name = name;
-        this.descriptor = descriptor;
-    }
-
-    public Symbol<Name> getName() {
-        return name;
-    }
-
-    public final Symbol<T> getDescriptor() {
-        return descriptor;
-    }
+    public abstract Symbol<Name> getName();
 
     public abstract ObjectKlass getDeclaringKlass();
 }

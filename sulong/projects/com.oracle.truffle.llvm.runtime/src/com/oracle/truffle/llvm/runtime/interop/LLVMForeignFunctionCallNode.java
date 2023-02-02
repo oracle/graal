@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -40,11 +40,11 @@ import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public class LLVMForeignFunctionCallNode extends LLVMForeignCallNode {
 
-    protected LLVMForeignFunctionCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType) {
+    protected LLVMForeignFunctionCallNode(LLVMLanguage language, LLVMFunctionCode function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType) {
         super(language, function, interopType, sourceType, getReturnBaseType(interopType), function.getLLVMFunction().getType().getReturnType());
     }
 
-    public static LLVMForeignFunctionCallNode create(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType) {
+    public static LLVMForeignFunctionCallNode create(LLVMLanguage language, LLVMFunctionCode function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType) {
         return new LLVMForeignFunctionCallNode(language, function, interopType, sourceType);
     }
 

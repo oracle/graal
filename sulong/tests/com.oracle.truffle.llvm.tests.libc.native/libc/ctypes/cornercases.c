@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,8 +31,12 @@
 #include <ctype.h>
 
 int main() {
+#if !defined(_WIN32)
+    // On Windows an assertion prevents values out of the range of 0 <= x <= 255
     printf("%d\n", isalpha(-128));
-#ifdef __linux__
+#endif
+
+#if defined(__linux__) || defined(_WIN32)
     printf("%d\n", isalpha(255));
 #endif
 }

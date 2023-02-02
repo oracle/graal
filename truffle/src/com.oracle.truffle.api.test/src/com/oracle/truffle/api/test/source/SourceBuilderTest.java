@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,7 +78,10 @@ import java.util.zip.ZipEntry;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.IOAccess;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleFile;
@@ -91,9 +94,18 @@ import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.MemoryFileSystem;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import org.junit.Assume;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class SourceBuilderTest extends AbstractPolyglotTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public SourceBuilderTest() {
+        needsLanguageEnv = true;
+    }
 
     @Test
     public void testBinarySourcesUnavailableSourceSection() {
@@ -515,6 +527,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertEquals("File sources with different content have the same URI", source1.getURI(), source2.getURI());
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void jarURLGetsAName() throws IOException {
         setupEnv();
@@ -539,12 +552,15 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         sample.delete();
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testHttpURL() throws IOException, URISyntaxException {
         setupEnv();
         URL resource = new URL("http://example.org/test/File.html");
         Source s = Source.newBuilder("TestJS", resource).content("Empty").build();
-        assertEquals(resource, s.getURL());
+        // The URL is converted into URI before comparison to skip the expensive hostname
+        // normalization.
+        assertEquals(resource.toURI(), s.getURL().toURI());
         assertEquals(resource.toURI(), s.getURI());
         assertEquals("File.html", s.getName());
         assertEquals("/test/File.html", s.getPath());
@@ -552,7 +568,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testBuiltFromSourceLiteral() {
+    public void testBuiltFromSourceLiteral() throws URISyntaxException {
         final String code = "test code";
         final String description = "test description";
         for (int cached = 0; cached <= 1; cached++) {
@@ -568,7 +584,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testBuiltFromBinarySource() {
+    public void testBuiltFromBinarySource() throws URISyntaxException {
         setupEnv();
         ByteSequence bytes = ByteSequence.create(new byte[]{1, 2, 3, 4, 5, 6, 7, 8});
         Source source1 = Source.newBuilder("Lang", bytes, "testName").build();
@@ -578,7 +594,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testBuiltFromSourceReader() throws IOException {
+    public void testBuiltFromSourceReader() throws IOException, URISyntaxException {
         setupEnv();
         StringReader reader = new StringReader("test\ncode");
         Source source1 = Source.newBuilder("Lang", reader, "testName").build();
@@ -588,7 +604,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testBuiltFromSourceFile() {
+    public void testBuiltFromSourceFile() throws URISyntaxException {
         setupEnv();
         File file = new File("some.tjs");
         final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(file.getAbsolutePath());
@@ -598,8 +614,9 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertNewSourceChanged(source1);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
-    public void testBuiltFromSourceURL() throws IOException {
+    public void testBuiltFromSourceURL() throws IOException, URISyntaxException {
         setupEnv();
         URL resource = new URL("http://example.org/test/File.html");
         Source source1 = Source.newBuilder("Lang", resource).content("Empty").build();
@@ -609,7 +626,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testBuiltFromNoContentSource() {
+    public void testBuiltFromNoContentSource() throws URISyntaxException {
         setupEnv();
         // Relative file
         TruffleFile truffleFile = languageEnv.getPublicTruffleFile("some/path");
@@ -619,7 +636,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertNewSourceChanged(source1);
     }
 
-    private static void assertSameProperties(Source s1, Source s2) {
+    private static void assertSameProperties(Source s1, Source s2) throws URISyntaxException {
         assertEquals(s1.hasBytes(), s2.hasBytes());
         assertEquals(s1.hasCharacters(), s2.hasCharacters());
         if (s1.hasCharacters()) {
@@ -635,7 +652,11 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertEquals(s1.getName(), s2.getName());
         assertEquals(s1.getPath(), s2.getPath());
         assertEquals(s1.getURI(), s2.getURI());
-        assertEquals(s1.getURL(), s2.getURL());
+        URL url1 = s1.getURL();
+        URL url2 = s2.getURL();
+        // The URL is converted into URI before comparison to skip the expensive hostname
+        // normalization.
+        assertEquals(url1 == null ? null : url1.toURI(), url2 == null ? null : url2.toURI());
         assertEquals(s1.isInteractive(), s2.isInteractive());
         assertEquals(s1.isInternal(), s2.isInternal());
     }
@@ -901,6 +922,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void throwsErrorIfLangIsNull3() throws MalformedURLException {
         try {
@@ -994,7 +1016,8 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
             text = "// Test";
             out.write(text.getBytes());
         }
-        setupEnv(Context.newBuilder().allowIO(true).fileSystem(fs).build());
+        IOAccess ioAccess = IOAccess.newBuilder().fileSystem(fs).build();
+        setupEnv(Context.newBuilder().allowIO(ioAccess).build());
         try {
             Source.newBuilder("TestJava", queryURL(path.toUri())).build();
             fail("Expected SecurityException");
@@ -1079,6 +1102,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testNotCanonicalizedNotExistingSourcePath() throws IOException {
         Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
@@ -1103,6 +1127,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static URL queryURL(URI uri) throws MalformedURLException {
         return new URL(uri.toString() + "?query");
     }

@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -44,11 +45,10 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Represents the lowered version of an atomic read-and-add operation like
- * {@link sun.misc.Unsafe#getAndAddInt(Object, long, int)}.
+ * {@code sun.misc.Unsafe.getAndAddInt(Object, long, int)}.
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_8, size = SIZE_2)
 public final class LoweredAtomicReadAndAddNode extends FixedAccessNode implements StateSplit, LIRLowerableAccess, SingleMemoryKill {
@@ -56,12 +56,10 @@ public final class LoweredAtomicReadAndAddNode extends FixedAccessNode implement
     public static final NodeClass<LoweredAtomicReadAndAddNode> TYPE = NodeClass.create(LoweredAtomicReadAndAddNode.class);
     @Input ValueNode delta;
     @OptionalInput(State) FrameState stateAfter;
-    private final ValueKind<?> valueKind;
 
-    public LoweredAtomicReadAndAddNode(AddressNode address, LocationIdentity location, ValueNode delta, ValueKind<?> valueKind, BarrierType barrierType) {
+    public LoweredAtomicReadAndAddNode(AddressNode address, LocationIdentity location, ValueNode delta, BarrierType barrierType) {
         super(TYPE, address, location, delta.stamp(NodeView.DEFAULT).unrestricted(), barrierType);
         this.delta = delta;
-        this.valueKind = valueKind;
     }
 
     @Override
@@ -83,7 +81,8 @@ public final class LoweredAtomicReadAndAddNode extends FixedAccessNode implement
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndAdd(gen.operand(getAddress()), valueKind, gen.operand(delta()));
+        LIRKind accessKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp(NodeView.DEFAULT));
+        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndAdd(accessKind, gen.operand(getAddress()), gen.operand(delta()));
         gen.setResult(this, result);
     }
 

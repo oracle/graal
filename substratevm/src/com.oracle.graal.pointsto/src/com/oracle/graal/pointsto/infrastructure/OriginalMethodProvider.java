@@ -26,34 +26,34 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import java.lang.reflect.Executable;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-
-import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Provides a mapping back from a {@link jdk.vm.ci.meta.ResolvedJavaMethod} to a
+ * {@link java.lang.reflect.Executable}, i.e., a mapping from JVMCI back to Java reflection. This is
+ * a best effort operation, all users must be aware that the return value can be null.
+ * 
+ * A null return value means that there is 1) no reflection representation at all - the provided
+ * JVMCI method is a synthetic method without any class/bytecode backing, or 2) that looking up the
+ * reflection object is not possible due to linking errors.
+ */
 public interface OriginalMethodProvider {
 
-    static Executable getJavaMethod(SnippetReflectionProvider reflectionProvider, ResolvedJavaMethod method) {
+    static Executable getJavaMethod(ResolvedJavaMethod method) {
         if (method instanceof OriginalMethodProvider) {
             return ((OriginalMethodProvider) method).getJavaMethod();
-        }
-        try {
-            ResolvedJavaMethod.Parameter[] parameters = method.getParameters();
-            Class<?>[] parameterTypes = new Class<?>[parameters.length];
-            ResolvedJavaType declaringClassType = method.getDeclaringClass();
-            for (int i = 0; i < parameterTypes.length; i++) {
-                parameterTypes[i] = OriginalClassProvider.getJavaClass(reflectionProvider, parameters[i].getType().resolve(declaringClassType));
+        } else {
+            try {
+                return GraalAccess.getOriginalSnippetReflection().originalMethod(method);
+            } catch (LinkageError ignored) {
+                /*
+                 * Ignore any linking problems and incompatible class change errors. Looking up a
+                 * reflective representation of a JVMCI method is always a best effort operation.
+                 */
+                return null;
             }
-            Class<?> declaringClass = OriginalClassProvider.getJavaClass(reflectionProvider, declaringClassType);
-            if (method.isConstructor()) {
-                return declaringClass.getDeclaredConstructor(parameterTypes);
-            } else {
-                return declaringClass.getDeclaredMethod(method.getName(), parameterTypes);
-            }
-        } catch (NoSuchMethodException e) {
-            throw AnalysisError.shouldNotReachHere();
         }
     }
 

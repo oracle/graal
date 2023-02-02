@@ -35,8 +35,9 @@ import jdk.vm.ci.meta.JavaConstant;
  * Policy to decide what constants to scan.
  * 
  * This policy is used to control which instances are really scanned. For example the analysis
- * object scanner doensn't need to scan all String instances, but it must scan at least one, if
- * present. Scanning all String instances would not add additonal information to the analysis state.
+ * object scanner doesn't need to scan all String instances, but it must scan at least one, if
+ * present. Scanning all String instances would not add additional information to the analysis
+ * state.
  * 
  * This policy is also used to control the collection of embedded roots. Similarly, not all Strings
  * need to be collected.
@@ -104,7 +105,7 @@ public abstract class HeapScanningPolicy {
 
         @Override
         public boolean trackConstant(BigBang bb, JavaConstant constant) {
-            AnalysisType type = bb.getMetaAccess().lookupJavaType(constant.getClass());
+            AnalysisType type = bb.getMetaAccess().lookupJavaType(constant);
             SkipData data = skipTypes.get(type);
             if (data != null) {
                 if (data.seenForTracking) {
@@ -118,7 +119,7 @@ public abstract class HeapScanningPolicy {
 
         @Override
         public boolean scanConstant(BigBang bb, JavaConstant constant) {
-            AnalysisType type = ObjectScanner.constantType(bb, constant);
+            AnalysisType type = bb.getMetaAccess().lookupJavaType(constant);
             SkipData data = skipTypes.get(type);
             if (data != null) {
                 if (data.seenForScanning) {

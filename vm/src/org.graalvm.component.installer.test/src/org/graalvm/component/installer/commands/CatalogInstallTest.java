@@ -28,7 +28,9 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import org.graalvm.component.installer.CommandInput;
@@ -43,6 +45,7 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.FileIterable;
 import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.SoftwareChannelSource;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
@@ -534,5 +537,130 @@ public class CatalogInstallTest extends CommandTestBase {
         cmd.executeStep(cmd::prepareInstallation, false);
         List<Installer> installers = cmd.getInstallers();
         assertEquals(1, installers.size());
+    }
+
+    /**
+     * Version 20.3.0 should not accept 20.3.1 (20.3.1.2, 20.3.1.3, ...) components.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testRejectNewerInstallVersion() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "20.3.0");
+        setupCatalog("data/catalog21patch.properties");
+
+        textParams.add("llvm-toolchain");
+
+        paramIterable = new CatalogIterable(this, this);
+        Iterator<ComponentParam> params = paramIterable.iterator();
+        assertTrue(params.hasNext());
+        ComponentParam toolchainParam = params.next();
+        ComponentInfo toolchainInfo = toolchainParam.createMetaLoader().getComponentInfo();
+        assertNotNull(toolchainInfo);
+        assertEquals("org.graalvm.llvm-toolchain", toolchainInfo.getId());
+        assertEquals("Only release is compatible", "20.3.0", toolchainInfo.getVersion().displayString());
+    }
+
+    /**
+     * Checks that all installable versions are collected.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testCollectAllVersions() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "20.3.0");
+        setupCatalog("data/catalog21patch.properties");
+
+        Collection<ComponentInfo> infos = registry.loadComponents("ruby", localRegistry.getGraalVersion().match(Version.Match.Type.INSTALLABLE), false);
+        assertEquals("3 version equal or greater", 3, infos.size());
+
+        infos = registry.loadComponents("ruby", localRegistry.getGraalVersion().match(Version.Match.Type.COMPATIBLE), false);
+        assertEquals("Just 1 version", 1, infos.size());
+
+        infos = registry.loadComponents("llvm-toolchain", localRegistry.getGraalVersion().match(Version.Match.Type.INSTALLABLE), false);
+        assertEquals("3 version equal or greater", 4, infos.size());
+    }
+
+    @Test
+    public void testAcceptsNewerPatchInstallVersion() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "21.0.0.0");
+        setupCatalog("data/catalog21patch.properties");
+
+        textParams.add("ruby");
+        textParams.add("python");
+
+        Collection<ComponentInfo> infos = registry.loadComponents("ruby", localRegistry.getGraalVersion().match(Version.Match.Type.COMPATIBLE), false);
+        assertEquals("Release and patch ruby available", 2, infos.size());
+
+        paramIterable = new CatalogIterable(this, this);
+        Iterator<ComponentParam> params = paramIterable.iterator();
+        assertTrue(params.hasNext());
+        ComponentParam rubyParam = params.next();
+        ComponentInfo rubyInfo = rubyParam.createMetaLoader().getComponentInfo();
+        assertNotNull(rubyInfo);
+        assertEquals("org.graalvm.ruby", rubyInfo.getId());
+        assertEquals("Only release is compatible", "21.0.0", rubyInfo.getVersion().displayString());
+
+        ComponentParam pythonParam = params.next();
+        ComponentInfo pythonInfo = pythonParam.createMetaLoader().getComponentInfo();
+        assertNotNull(pythonInfo);
+        assertEquals("org.graalvm.python", pythonInfo.getId());
+        assertEquals("Patch can be installed", "21.0.0.2", pythonInfo.getVersion().displayString());
+    }
+
+    /**
+     * Checks that 20.3.1.1 will not downgrade to 20.3.1.0.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testWillNotDowngradePatch() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "20.3.1.2");
+        setupCatalog("data/catalog21patch.properties");
+
+        Collection<ComponentInfo> infos;
+        infos = registry.loadComponents("llvm-toolchain", localRegistry.getGraalVersion().match(Version.Match.Type.INSTALLABLE), false);
+        assertEquals("4 version equal or greater", 4, infos.size());
+
+        infos = registry.loadComponents("llvm-toolchain", localRegistry.getGraalVersion().match(Version.Match.Type.COMPATIBLE), false);
+        assertEquals("2 version patch-compatible", 2, infos.size());
+    }
+
+    private static ComponentInfo findVersion(Collection<ComponentInfo> versions, String vString) {
+        Version ver = Version.fromString(vString);
+        return versions.stream().filter(
+                        c -> c.getVersion().equals(ver)).findFirst().orElse(null);
+    }
+
+    /**
+     * Checks that older versions are acceptable.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testAcceptCompatibleOlders() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "21.0.0.2");
+        setupCatalog("data/catalog21patch.properties");
+
+        Collection<ComponentInfo> infos;
+
+        infos = registry.loadComponents("r", localRegistry.getGraalVersion().match(Version.Match.Type.INSTALLABLE), false);
+        assertEquals("1 older version ", 1, infos.size());
+        assertEquals("21.0.0", infos.iterator().next().getVersion().displayString());
+
+        infos = registry.loadComponents("python", localRegistry.getGraalVersion().match(Version.Match.Type.INSTALLABLE), false);
+        assertEquals("2 older and current versions ", 2, infos.size());
+        assertNotNull("21.0.0.2 present", findVersion(infos, "21.0.0.2"));
+        assertNotNull("21.0.0.0 present", findVersion(infos, "21.0.0.0"));
+
+        textParams.add("python");
+
+        paramIterable = new CatalogIterable(this, this);
+        Iterator<ComponentParam> params = paramIterable.iterator();
+
+        ComponentParam pythonParam = params.next();
+        ComponentInfo pythonInfo = pythonParam.createMetaLoader().getComponentInfo();
+        assertNotNull(pythonInfo);
+        assertEquals("Current version offered", "21.0.0.2", pythonInfo.getVersion().toString());
     }
 }

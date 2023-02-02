@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,10 +38,16 @@ public class EconomyCompilerConfigurationFactory extends CompilerConfigurationFa
 
     public static final String NAME = "economy";
 
+    public static final String INFO = "Graal Economy compiler";
+
     public static final int AUTO_SELECTION_PRIORITY = 1;
 
     public EconomyCompilerConfigurationFactory() {
-        super(NAME, AUTO_SELECTION_PRIORITY);
+        this(AUTO_SELECTION_PRIORITY, INFO);
+    }
+
+    protected EconomyCompilerConfigurationFactory(int autoSelectionPriority, String info) {
+        super(NAME, info, autoSelectionPriority);
     }
 
     @Override

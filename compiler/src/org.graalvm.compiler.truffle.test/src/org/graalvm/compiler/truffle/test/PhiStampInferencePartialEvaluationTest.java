@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -48,7 +47,7 @@ public class PhiStampInferencePartialEvaluationTest extends PartialEvaluationTes
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new IfPhiStampTestNode();
         RootNode rootNode = new RootTestNode(fd, "ifPhiStamp", result);
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        RootCallTarget callTarget = rootNode.getCallTarget();
         callTarget.call(new Object[]{true});
         callTarget.call(new Object[]{false});
         new D().get(); // ensure method cannot be statically bound without receiver type info

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.NeverDefault;
 
 /**
  * <p>
@@ -76,13 +78,87 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * @see ValueProfile
  * @since 0.10
  */
-public abstract class IntValueProfile extends Profile {
+public final class IntValueProfile extends Profile {
+    private static final IntValueProfile DISABLED;
+    static {
+        IntValueProfile profile = new IntValueProfile();
+        profile.disable();
+        DISABLED = profile;
+    }
+
+    private static final byte UNINITIALIZED = 0;
+    private static final byte SPECIALIZED = 1;
+    private static final byte GENERIC = 2;
+
+    @CompilationFinal private int cachedValue;
+    @CompilationFinal private byte state = UNINITIALIZED;
 
     IntValueProfile() {
     }
 
     /** @since 0.10 */
-    public abstract int profile(int value);
+    public int profile(int value) {
+        byte localState = this.state;
+        if (localState != GENERIC) {
+            if (localState == SPECIALIZED) {
+                int v = cachedValue;
+                if (v == value) {
+                    return v;
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (localState == UNINITIALIZED) {
+                this.cachedValue = value;
+                this.state = SPECIALIZED;
+            } else {
+                this.state = GENERIC;
+            }
+        }
+        return value;
+    }
+
+    boolean isGeneric() {
+        return state == GENERIC;
+    }
+
+    boolean isUninitialized() {
+        return state == UNINITIALIZED;
+    }
+
+    int getCachedValue() {
+        return cachedValue;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void disable() {
+        this.state = GENERIC;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void reset() {
+        this.state = UNINITIALIZED;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public String toString() {
+        return toString(IntValueProfile.class, isUninitialized(), isGeneric(), //
+                        String.format("value == (int)%s", cachedValue));
+    }
 
     /**
      * Returns a value profile that profiles the exact value of an <code>int</code>.
@@ -91,10 +167,21 @@ public abstract class IntValueProfile extends Profile {
      * @since 0.10
      */
     public static IntValueProfile createIdentityProfile() {
-        if (Profile.isProfilingEnabled()) {
-            return Enabled.create();
+        return create();
+    }
+
+    /**
+     * Returns a value profile that profiles the exact value of an <code>int</code>.
+     *
+     * @see IntValueProfile
+     * @since 22.1
+     */
+    @NeverDefault
+    public static IntValueProfile create() {
+        if (isProfilingEnabled()) {
+            return new IntValueProfile();
         } else {
-            return Disabled.INSTANCE;
+            return DISABLED;
         }
     }
 
@@ -104,92 +191,17 @@ public abstract class IntValueProfile extends Profile {
      * @since 19.0
      */
     public static IntValueProfile getUncached() {
-        return Disabled.INSTANCE;
+        return DISABLED;
     }
 
-    static final class Enabled extends IntValueProfile {
-
-        private static final byte UNINITIALIZED = 0;
-        private static final byte SPECIALIZED = 1;
-        private static final byte GENERIC = 2;
-
-        @CompilationFinal private int cachedValue;
-        @CompilationFinal private byte state = UNINITIALIZED;
-
-        @Override
-        public int profile(int value) {
-            byte localState = this.state;
-            if (localState != GENERIC) {
-                if (localState == SPECIALIZED) {
-                    int v = cachedValue;
-                    if (v == value) {
-                        return v;
-                    }
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (localState == UNINITIALIZED) {
-                    this.cachedValue = value;
-                    this.state = SPECIALIZED;
-                } else {
-                    this.state = GENERIC;
-                }
-            }
-            return value;
-        }
-
-        boolean isGeneric() {
-            return state == GENERIC;
-        }
-
-        boolean isUninitialized() {
-            return state == UNINITIALIZED;
-        }
-
-        int getCachedValue() {
-            return cachedValue;
-        }
-
-        @Override
-        public void disable() {
-            this.state = GENERIC;
-        }
-
-        @Override
-        public void reset() {
-            this.state = UNINITIALIZED;
-        }
-
-        @Override
-        public String toString() {
-            return toString(IntValueProfile.class, isUninitialized(), isGeneric(), //
-                            String.format("value == (int)%s", cachedValue));
-        }
-
-        /* Needed for lazy class loading. */
-        static IntValueProfile create() {
-            return new Enabled();
-        }
-    }
-
-    static final class Disabled extends IntValueProfile {
-
-        static final IntValueProfile INSTANCE = new Disabled();
-
-        @Override
-        protected Object clone() {
-            return INSTANCE;
-        }
-
-        @Override
-        public int profile(int value) {
-            return value;
-        }
-
-        @Override
-        public String toString() {
-            return toStringDisabled(IntValueProfile.class);
-        }
-
+    /**
+     * Returns an inlined version of the profile. This version is automatically used by Truffle DSL
+     * node inlining.
+     *
+     * @since 23.0
+     */
+    public static InlinedIntValueProfile inline(InlineTarget target) {
+        return InlinedIntValueProfile.inline(target);
     }
 
 }

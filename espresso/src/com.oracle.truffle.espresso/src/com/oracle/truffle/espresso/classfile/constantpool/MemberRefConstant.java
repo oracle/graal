@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -32,6 +33,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Member;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.Meta;
 
 /**
  * Interface denoting a field or method entry in a constant pool.
@@ -105,6 +107,14 @@ public interface MemberRefConstant extends PoolConstant {
         public void dump(ByteBuffer buf) {
             buf.putChar(classIndex);
             buf.putChar(nameAndTypeIndex);
+        }
+    }
+
+    @TruffleBoundary
+    static void doAccessCheck(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member, Meta meta) {
+        if (!MemberRefConstant.checkAccess(accessingKlass, resolvedKlass, member)) {
+            String message = "Class " + accessingKlass.getExternalName() + " cannot access method " + resolvedKlass.getExternalName() + "#" + member.getName();
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(message));
         }
     }
 

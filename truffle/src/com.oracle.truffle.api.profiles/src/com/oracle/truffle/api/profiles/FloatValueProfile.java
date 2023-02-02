@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.NeverDefault;
 
 /**
  * <p>
@@ -76,13 +78,92 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * @see ValueProfile
  * @since 0.10
  */
-public abstract class FloatValueProfile extends Profile {
+public final class FloatValueProfile extends Profile {
+    private static final FloatValueProfile DISABLED;
+    static {
+        FloatValueProfile profile = new FloatValueProfile();
+        profile.disable();
+        DISABLED = profile;
+    }
 
-    FloatValueProfile() {
+    private static final int UNINITIALIZED = 0;
+    private static final int SPECIALIZED = 1;
+    private static final int GENERIC = 2;
+
+    @CompilationFinal private float cachedValue;
+    @CompilationFinal private int cachedRawValue;
+    @CompilationFinal private byte state = UNINITIALIZED;
+
+    private FloatValueProfile() {
     }
 
     /** @since 0.10 */
-    public abstract float profile(float value);
+    public float profile(float value) {
+        byte localState = this.state;
+        if (localState != GENERIC) {
+            if (localState == SPECIALIZED) {
+                if (cachedRawValue == Float.floatToRawIntBits(value)) {
+                    return cachedValue;
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (localState == UNINITIALIZED) {
+                this.cachedValue = value;
+                this.cachedRawValue = Float.floatToRawIntBits(value);
+                this.state = SPECIALIZED;
+            } else {
+                this.state = GENERIC;
+            }
+        }
+        return value;
+    }
+
+    boolean isGeneric() {
+        return state == GENERIC;
+    }
+
+    boolean isUninitialized() {
+        return state == UNINITIALIZED;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void disable() {
+        this.state = GENERIC;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void reset() {
+        this.state = UNINITIALIZED;
+    }
+
+    float getCachedValue() {
+        return cachedValue;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public String toString() {
+        if (this == DISABLED) {
+            return toStringDisabled();
+        } else {
+            return toString(FloatValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
+                            String.format("value == (float)%s (raw %h)", cachedValue, cachedRawValue));
+        }
+    }
 
     /**
      * Returns a value profile that profiles the exact value of a <code>float</code> using
@@ -91,11 +172,24 @@ public abstract class FloatValueProfile extends Profile {
      * @see IntValueProfile
      * @since 0.10
      */
+    @NeverDefault
     public static FloatValueProfile createRawIdentityProfile() {
-        if (Profile.isProfilingEnabled()) {
-            return Enabled.create();
+        return create();
+    }
+
+    /**
+     * Returns a value profile that profiles the exact value of a <code>float</code> using
+     * {@link Float#floatToRawIntBits(float)}.
+     *
+     * @see IntValueProfile
+     * @since 22.1
+     */
+    @NeverDefault
+    public static FloatValueProfile create() {
+        if (isProfilingEnabled()) {
+            return new FloatValueProfile();
         } else {
-            return Disabled.INSTANCE;
+            return DISABLED;
         }
     }
 
@@ -105,92 +199,17 @@ public abstract class FloatValueProfile extends Profile {
      * @since 19.0
      */
     public static FloatValueProfile getUncached() {
-        return Disabled.INSTANCE;
+        return DISABLED;
     }
 
-    static final class Enabled extends FloatValueProfile {
-
-        private static final byte UNINITIALIZED = 0;
-        private static final byte SPECIALIZED = 1;
-        private static final byte GENERIC = 2;
-
-        @CompilationFinal private float cachedValue;
-        @CompilationFinal private int cachedRawValue;
-        @CompilationFinal private byte state = UNINITIALIZED;
-
-        @Override
-        public float profile(float value) {
-            byte localState = this.state;
-            if (localState != GENERIC) {
-                if (localState == SPECIALIZED) {
-                    if (cachedRawValue == Float.floatToRawIntBits(value)) {
-                        return cachedValue;
-                    }
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (localState == UNINITIALIZED) {
-                    this.cachedValue = value;
-                    this.cachedRawValue = Float.floatToRawIntBits(value);
-                    this.state = SPECIALIZED;
-                } else {
-                    this.state = GENERIC;
-                }
-            }
-            return value;
-        }
-
-        boolean isGeneric() {
-            return state == GENERIC;
-        }
-
-        boolean isUninitialized() {
-            return state == UNINITIALIZED;
-        }
-
-        @Override
-        public void disable() {
-            this.state = GENERIC;
-        }
-
-        @Override
-        public void reset() {
-            this.state = UNINITIALIZED;
-        }
-
-        float getCachedValue() {
-            return cachedValue;
-        }
-
-        @Override
-        public String toString() {
-            return toString(FloatValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
-                            String.format("value == (float)%s (raw %h)", cachedValue, cachedRawValue));
-        }
-
-        /* Needed for lazy class loading. */
-        static FloatValueProfile create() {
-            return new Enabled();
-        }
+    /**
+     * Returns an inlined version of the profile. This version is automatically used by Truffle DSL
+     * node inlining.
+     *
+     * @since 23.0
+     */
+    public static InlinedFloatValueProfile inline(InlineTarget target) {
+        return InlinedFloatValueProfile.inline(target);
     }
 
-    static final class Disabled extends FloatValueProfile {
-
-        static final FloatValueProfile INSTANCE = new Disabled();
-
-        @Override
-        protected Object clone() {
-            return INSTANCE;
-        }
-
-        @Override
-        public float profile(float value) {
-            return value;
-        }
-
-        @Override
-        public String toString() {
-            return toStringDisabled(FloatValueProfile.class);
-        }
-
-    }
 }

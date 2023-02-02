@@ -27,11 +27,18 @@ package org.graalvm.compiler.truffle.runtime;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
-public final class TraversingBlockingQueue implements BlockingQueue<Runnable> {
-    final BlockingQueue<Runnable> entries = new LinkedBlockingDeque<>();
+/**
+ * See https://github.com/oracle/graal/blob/master/truffle/docs/TraversingCompilationQueue.md .
+ */
+class TraversingBlockingQueue implements BlockingQueue<Runnable> {
+
+    final BlockingQueue<Runnable> entries;
+
+    TraversingBlockingQueue(BlockingQueue<Runnable> entries) {
+        this.entries = entries;
+    }
 
     @SuppressWarnings("unchecked")
     private static CompilationTask task(Runnable entry) {
@@ -79,34 +86,32 @@ public final class TraversingBlockingQueue implements BlockingQueue<Runnable> {
         if (entries.isEmpty()) {
             return null;
         }
-        long time = System.nanoTime();
-        Iterator<Runnable> it = entries.iterator();
         Runnable max = null;
-        while (it.hasNext()) {
-            Runnable entry = it.next();
-            if (!(entry instanceof CompilationTask.ExecutorServiceWrapper)) {
-                // Any non compilation task (e.g. init tasks) has priority
-                removeAndReturn(entry);
+        long time = System.nanoTime();
+        int removed = 0;
+        try {
+            Iterator<Runnable> it = entries.iterator();
+            while (it.hasNext()) {
+                Runnable entry = it.next();
+                CompilationTask task = task(entry);
+                // updateWeight returns false only if the task's target does not exist
+                if (task.isCancelled() || !task.updateWeight(time)) {
+                    it.remove();
+                    removed--;
+                    continue;
+                }
+                if (max == null || task.isHigherPriorityThan(task(max))) {
+                    max = entry;
+                }
             }
-            CompilationTask task = task(entry);
-            // updateWeight returns a negative number only if the task's target does not exist
-            if (task.isCancelled() || task.updateWeight(time) < 0) {
-                it.remove();
-                continue;
+            // entries.remove can only return false if a sleeping thread takes the only element
+            return entries.remove(max) ? max : null;
+        } finally {
+            if (max != null) {
+                CompilationTask task = task(max);
+                task.setTime(System.nanoTime() - time);
+                task.setQueueChange(removed - 1);
             }
-            if (max == null || task.isHigherPriorityThan(task(max))) {
-                max = entry;
-            }
-        }
-        return removeAndReturn(max);
-    }
-
-    private Runnable removeAndReturn(Runnable max) {
-        // entries.remove can only return false if a sleeping thread takes the only element
-        if (entries.remove(max)) {
-            return max;
-        } else {
-            return null;
         }
     }
 
@@ -142,6 +147,10 @@ public final class TraversingBlockingQueue implements BlockingQueue<Runnable> {
 
     @Override
     public Runnable take() throws InterruptedException {
+        Runnable max = takeMax();
+        if (max != null) {
+            return max;
+        }
         return entries.take();
     }
 

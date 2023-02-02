@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.function.IntUnaryOperator;
 
-import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -41,13 +40,12 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.annotate.AlwaysInline;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 
 /**
@@ -79,20 +77,20 @@ import com.oracle.svm.core.option.HostedOptionKey;
  * HeapChunks are *not* examined for interior Object references by the collector, though the Objects
  * allocated within the HeapChunk are examined by the collector.
  */
-final class HeapChunk {
+public final class HeapChunk {
     private HeapChunk() { // all static
     }
 
     static class Options {
-        @Option(help = "Number of bytes at the beginning of each heap chunk that are not used for payload data, i.e., can be freely used as metadata by the heap chunk provider.") //
-        public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = new HostedOptionKey<>(0);
+        // Accessed via reflection by legacy code (see GR-40046).
+        public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = SerialAndEpsilonGCOptions.HeapChunkHeaderPadding;
     }
 
     static class HeaderPaddingSizeProvider implements IntUnaryOperator {
         @Override
         public int applyAsInt(int operand) {
             assert operand == 0 : "padding structure does not declare any fields";
-            return Options.HeapChunkHeaderPadding.getValue();
+            return SerialAndEpsilonGCOptions.HeapChunkHeaderPadding.getValue();
         }
     }
 
@@ -168,6 +166,14 @@ final class HeapChunk {
         @RawField
         @UniqueLocationIdentity
         void setOffsetToNextChunk(SignedWord newNext);
+    }
+
+    public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord chunkSize) {
+        HeapChunk.setEndOffset(chunk, chunkSize);
+        HeapChunk.setTopPointer(chunk, objectsStart);
+        HeapChunk.setSpace(chunk, null);
+        HeapChunk.setNext(chunk, WordFactory.nullPointer());
+        HeapChunk.setPrevious(chunk, WordFactory.nullPointer());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -281,7 +287,7 @@ final class HeapChunk {
             if (!visitor.visitObjectInline(obj)) {
                 return false;
             }
-            offset = offset.add(LayoutEncoding.getSizeFromObject(obj));
+            offset = offset.add(LayoutEncoding.getSizeFromObjectInline(obj));
         }
         return true;
     }
@@ -292,12 +298,12 @@ final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static Pointer asPointer(Header<?> that) {
+    public static Pointer asPointer(Header<?> that) {
         return (Pointer) that;
     }
 
     public static HeapChunk.Header<?> getEnclosingHeapChunk(Object obj) {
-        assert !HeapImpl.getHeapImpl().isInImageHeap(obj) : "Must be checked before calling this method";
+        assert !HeapImpl.getHeapImpl().isInImageHeap(obj) || HeapImpl.usesImageHeapChunks() : "Must be checked before calling this method";
         assert !ObjectHeaderImpl.isPointerToForwardedObject(Word.objectToUntrackedPointer(obj)) : "Forwarded objects must be a pointer and not an object";
         if (ObjectHeaderImpl.isAlignedObject(obj)) {
             return AlignedHeapChunk.getEnclosingChunk(obj);
@@ -308,7 +314,7 @@ final class HeapChunk {
     }
 
     public static HeapChunk.Header<?> getEnclosingHeapChunk(Pointer ptrToObj, UnsignedWord header) {
-        if (ObjectHeaderImpl.isAlignedHeader(ptrToObj, header)) {
+        if (ObjectHeaderImpl.isAlignedHeader(header)) {
             return AlignedHeapChunk.getEnclosingChunkFromObjectPointer(ptrToObj);
         } else {
             return UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(ptrToObj);
@@ -350,32 +356,5 @@ final class HeapChunk {
             return result;
         }
 
-    }
-
-    static boolean verifyObjects(Header<?> that, Pointer start) {
-        Log trace = HeapVerifier.getTraceLog().string("[HeapChunk.verify:");
-        trace.string("  that:  ").hex(that).string("  start: ").hex(start).string("  top: ").hex(getTopPointer(that)).string("  end: ").hex(getEndPointer(that));
-        Pointer p = start;
-        while (p.belowThan(getTopPointer(that))) {
-            if (!HeapImpl.getHeapImpl().getHeapVerifier().verifyObjectAt(p)) {
-                Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[HeapChunk.verify:");
-                witness.string("  that:  ").hex(that).string("  start: ").hex(start).string("  top: ").hex(getTopPointer(that)).string("  end: ").hex(getEndPointer(that));
-                witness.string("  space: ").string(getSpace(that).getName());
-                witness.string("  object at p: ").hex(p).string("  fails to verify").string("]").newline();
-                trace.string("  returns false]").newline();
-                return false;
-            }
-            /* Step carefully over the object. */
-            UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointerCarefully(p);
-            Object o;
-            if (ObjectHeaderImpl.isForwardedHeaderCarefully(header)) {
-                o = ObjectHeaderImpl.getForwardedObject(p);
-            } else {
-                o = p.toObject();
-            }
-            p = p.add(LayoutEncoding.getSizeFromObject(o));
-        }
-        trace.string("  returns true]").newline();
-        return true;
     }
 }

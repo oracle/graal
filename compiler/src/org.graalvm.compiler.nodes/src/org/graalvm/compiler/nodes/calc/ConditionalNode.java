@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,11 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 import static org.graalvm.compiler.nodes.calc.CompareNode.createCompareNode;
 
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
+import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -45,6 +44,8 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -71,7 +72,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
     }
 
     public ConditionalNode(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
-        super(TYPE, trueValue.stamp(NodeView.DEFAULT).meet(falseValue.stamp(NodeView.DEFAULT)));
+        super(TYPE, combineStamps(condition, trueValue, falseValue, NodeView.DEFAULT));
         assert trueValue.stamp(NodeView.DEFAULT).isCompatible(falseValue.stamp(NodeView.DEFAULT));
         this.condition = condition;
         this.trueValue = trueValue;
@@ -87,7 +88,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         if (synonym != null) {
             return synonym;
         }
-        ValueNode result = canonicalizeConditional(condition, trueValue, falseValue, trueValue.stamp(view).meet(falseValue.stamp(view)), view, null);
+        ValueNode result = canonicalizeConditional(condition, trueValue, falseValue, combineStamps(condition, trueValue, falseValue, view), view, null);
         if (result != null) {
             return result;
         }
@@ -96,7 +97,11 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
 
     @Override
     public boolean inferStamp() {
-        Stamp valueStamp = trueValue.stamp(NodeView.DEFAULT).meet(falseValue.stamp(NodeView.DEFAULT));
+        return updateStamp(combineStamps(condition, trueValue, falseValue, NodeView.DEFAULT));
+    }
+
+    private static Stamp combineStamps(LogicNode condition, ValueNode trueValue, ValueNode falseValue, NodeView view) {
+        Stamp valueStamp = trueValue.stamp(view).meet(falseValue.stamp(view));
         if (condition instanceof IntegerLessThanNode) {
             IntegerLessThanNode lessThan = (IntegerLessThanNode) condition;
             if (lessThan.getX() == trueValue && lessThan.getY() == falseValue) {
@@ -121,7 +126,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                 }
             }
         }
-        return updateStamp(valueStamp);
+        return valueStamp;
     }
 
     public ValueNode trueValue() {
@@ -249,29 +254,46 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         /*
          * Convert `x < 0.0 ? Math.ceil(x) : Math.floor(x)` to RoundNode(x, TRUNCATE).
          */
-        // @formatter:off
         if (canonicalizer != null &&
-                canonicalizer.supportsRounding() &&
-                condition instanceof FloatLessThanNode &&
-                trueValue instanceof RoundNode &&
-                falseValue instanceof RoundNode &&
-                ((RoundNode) trueValue).value.valueEquals(((RoundNode) falseValue).value) &&
-                (
-                        (
-                                // x < 0.0 ? ceil(x) : floor(x)
-                                ((FloatLessThanNode) condition).getY().isDefaultConstant() &&
-                                ((RoundNode) trueValue).mode() == RoundingMode.UP &&
-                                ((RoundNode) falseValue).mode() == RoundingMode.DOWN
-                        ) || (
-                                // 0.0 < x ? floor(x) : ceil(x)
-                                ((FloatLessThanNode) condition).getX().isDefaultConstant() &&
-                                ((RoundNode) trueValue).mode() == RoundingMode.DOWN &&
-                                ((RoundNode) falseValue).mode() == RoundingMode.UP
-                        )
-                )) {
-            return new RoundNode(((RoundNode) trueValue).value, RoundingMode.TRUNCATE);
+                        canonicalizer.supportsRounding() &&
+                        condition instanceof FloatLessThanNode &&
+                        trueValue instanceof RoundNode &&
+                        falseValue instanceof RoundNode) {
+            FloatLessThanNode lessThan = (FloatLessThanNode) condition;
+            RoundNode trueRound = (RoundNode) trueValue;
+            RoundNode falseRound = (RoundNode) falseValue;
+
+            if (trueRound.getValue() == falseRound.getValue()) {
+                ValueNode roundInput = trueRound.getValue();
+
+                // Account for the fact that x might be compared as a float but converted to double
+                // for rounding: `x < 0.0f ? Math.ceil((double) x) : Math.floor((double) x)`.
+                ValueNode originalRoundInput = roundInput;
+                if (roundInput instanceof FloatConvertNode && ((FloatConvertNode) roundInput).op == FloatConvert.F2D) {
+                    originalRoundInput = ((FloatConvertNode) roundInput).getValue();
+                }
+
+                boolean isTruncate = false;
+                if (lessThan.getX() == originalRoundInput && lessThan.getY().isDefaultConstant() &&
+                                trueRound.mode() == RoundingMode.UP && falseRound.mode() == RoundingMode.DOWN) {
+                    // x < 0.0 ? ceil(x) : floor(x)
+                    isTruncate = true;
+                } else if (lessThan.getX().isDefaultConstant() && lessThan.getY() == originalRoundInput &&
+                                trueRound.mode() == RoundingMode.DOWN && falseRound.mode() == RoundingMode.UP) {
+                    // 0.0 < x ? floor(x) : ceil(x)
+                    isTruncate = true;
+                }
+
+                if (isTruncate) {
+                    return new RoundNode(roundInput, RoundingMode.TRUNCATE);
+                }
+            }
         }
-        // @formatter:on
+
+        if (condition instanceof IsNullNode && trueValue.isJavaConstant() && trueValue.asJavaConstant().isDefaultForKind() &&
+                        falseValue == ((IsNullNode) condition).getValue()) {
+            return falseValue;
+        }
 
         return null;
     }

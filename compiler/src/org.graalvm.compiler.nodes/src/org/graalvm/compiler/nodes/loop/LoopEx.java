@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -51,14 +50,13 @@ import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
-import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -69,16 +67,17 @@ import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
+import org.graalvm.compiler.nodes.debug.NeverStripMineNode;
+import org.graalvm.compiler.nodes.debug.NeverWriteSinkNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 public class LoopEx {
-    protected final Loop<Block> loop;
+    protected final Loop<HIRBlock> loop;
     protected LoopFragmentInside inside;
     protected LoopFragmentWhole whole;
     protected CountedLoopInfo counted;
@@ -87,12 +86,20 @@ public class LoopEx {
     protected boolean countedLoopChecked;
     protected int size = -1;
 
-    protected LoopEx(Loop<Block> loop, LoopsData data) {
+    protected LoopEx(Loop<HIRBlock> loop, LoopsData data) {
         this.loop = loop;
         this.data = data;
     }
 
-    public Loop<Block> loop() {
+    public double localLoopFrequency() {
+        return data.getCFG().localLoopFrequency(loopBegin());
+    }
+
+    public ProfileSource localFrequencySource() {
+        return data.getCFG().localLoopFrequencySource(loopBegin());
+    }
+
+    public Loop<HIRBlock> loop() {
         return loop;
     }
 
@@ -130,13 +137,13 @@ public class LoopEx {
 
     @SuppressWarnings("unused")
     public LoopFragmentInsideFrom insideFrom(FixedNode point) {
-        // TODO (gd)
+        GraalError.unimplemented();
         return null;
     }
 
     @SuppressWarnings("unused")
     public LoopFragmentInsideBefore insideBefore(FixedNode point) {
-        // TODO (gd)
+        GraalError.unimplemented();
         return null;
     }
 
@@ -182,7 +189,6 @@ public class LoopEx {
 
     public void resetCounted() {
         assert countedLoopChecked;
-        assert counted != null;
         ivs = null;
         counted = null;
         countedLoopChecked = false;
@@ -242,11 +248,8 @@ public class LoopEx {
                         }
                     }
                 }
-                DebugContext debug = graph.getDebug();
-                if (debug.isLogEnabled()) {
-                    debug.log("%s : Re-associated %s into %s", graph.method().format("%H::%n"), binary, result);
-                }
                 binary.replaceAtUsages(result);
+                graph.getOptimizationLog().report(LoopEx.class, "InvariantReassociation", binary);
                 GraphUtil.killWithUnusedFloatingInputs(binary);
                 count++;
             }
@@ -382,8 +385,8 @@ public class LoopEx {
         return false;
     }
 
-    protected boolean isCfgLoopExit(AbstractBeginNode begin) {
-        Block block = data.getCFG().blockFor(begin);
+    public boolean isCfgLoopExit(AbstractBeginNode begin) {
+        HIRBlock block = data.getCFG().blockFor(begin);
         return loop.getDepth() > block.getLoopDepth() || loop.isNaturalExit(block);
     }
 
@@ -394,16 +397,16 @@ public class LoopEx {
     public void nodesInLoopBranch(NodeBitMap branchNodes, AbstractBeginNode branch) {
         EconomicSet<AbstractBeginNode> blocks = EconomicSet.create();
         Collection<AbstractBeginNode> exits = new LinkedList<>();
-        Queue<Block> work = new LinkedList<>();
+        Queue<HIRBlock> work = new LinkedList<>();
         ControlFlowGraph cfg = loopsData().getCFG();
         work.add(cfg.blockFor(branch));
         while (!work.isEmpty()) {
-            Block b = work.remove();
+            HIRBlock b = work.remove();
             if (loop().isLoopExit(b)) {
                 assert !exits.contains(b.getBeginNode());
                 exits.add(b.getBeginNode());
             } else if (blocks.add(b.getBeginNode())) {
-                Block d = b.getDominatedSibling();
+                HIRBlock d = b.getDominatedSibling();
                 while (d != null) {
                     if (loop.getBlocks().contains(d)) {
                         work.add(d);
@@ -536,49 +539,68 @@ public class LoopEx {
         }
     }
 
-    /**
-     * @return true if all nodes in the loop can be duplicated.
-     */
-    public boolean canDuplicateLoop() {
-        for (Node node : inside().nodes()) {
+    public static boolean canDuplicateLoopNode(Node node) {
+        /*
+         * Control flow anchored nodes must not be duplicated.
+         */
+        if (node instanceof ControlFlowAnchored) {
+            return false;
+        }
+        if (node instanceof FrameState) {
+            FrameState frameState = (FrameState) node;
             /*
-             * Control flow anchored nodes must not be duplicated.
+             * Exception handling frame states can cause problems when they are duplicated and one
+             * needs to create a framestate at the duplication merge.
              */
-            if (node instanceof ControlFlowAnchored) {
+            if (frameState.isExceptionHandlingBCI()) {
                 return false;
-            }
-            if (node instanceof FrameState) {
-                FrameState frameState = (FrameState) node;
-                /*
-                 * Exception handling frame states can cause problems when they are duplicated and
-                 * one needs to create a framestate at the duplication merge.
-                 */
-                if (frameState.isExceptionHandlingBCI()) {
-                    return false;
-                }
             }
         }
         return true;
     }
 
-    /**
-     * Remove loop proxies that became obsolete over time, i.e., they proxy a value that already
-     * flowed out of a loop and dominates the loop now.
-     */
-    public static void removeObsoleteProxies(StructuredGraph graph, CoreProviders context) {
-        LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
-        for (LoopEx loop : loopsData.loops()) {
-            removeObsoleteProxiesForLoop(loop);
+    public static boolean canStripMineLoopNode(Node node) {
+        if (node instanceof NeverStripMineNode) {
+            return false;
         }
+        return true;
     }
 
-    public static void removeObsoleteProxiesForLoop(LoopEx loop) {
-        for (LoopExitNode lex : loop.loopBegin().loopExits()) {
-            for (ProxyNode proxy : lex.proxies().snapshot()) {
-                if (loop.isOutsideLoop(proxy.value())) {
-                    proxy.replaceAtUsagesAndDelete(proxy.getOriginalNode());
-                }
+    public static boolean canWriteSinkLoopNode(Node node) {
+        return !(node instanceof NeverWriteSinkNode);
+    }
+
+    /**
+     * @return true if all nodes in the loop can be duplicated.
+     */
+    public boolean canDuplicateLoop() {
+        for (Node node : inside().nodes()) {
+            if (!canDuplicateLoopNode(node)) {
+                return false;
             }
         }
+        return true;
+    }
+
+    public boolean canStripMine() {
+        for (Node node : inside().nodes()) {
+            if (!canStripMineLoopNode(node)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean canWriteSink() {
+        for (Node node : inside().nodes()) {
+            if (!canWriteSinkLoopNode(node)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean canBecomeLimitTestAfterFloatingReads(@SuppressWarnings("unused") IfNode ifNode) {
+        return false;
     }
 }

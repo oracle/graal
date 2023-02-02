@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,19 +27,17 @@ package org.graalvm.compiler.nodes.calc;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
-import java.nio.ByteBuffer;
-
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 import jdk.vm.ci.meta.TriState;
 
@@ -69,14 +67,6 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
             if (forX.isJavaConstant() && forY.isJavaConstant()) {
                 return LogicConstantNode.forBoolean((forX.asJavaConstant().asLong() & forY.asJavaConstant().asLong()) == 0);
             }
-            if (forX.isSerializableConstant() && forY.isSerializableConstant()) {
-                int bufSize = Math.min(forX.asSerializableConstant().getSerializedSize(), forX.asSerializableConstant().getSerializedSize());
-                ByteBuffer xBuf = ByteBuffer.allocate(bufSize);
-                ByteBuffer yBuf = ByteBuffer.allocate(bufSize);
-                forX.asSerializableConstant().serialize(xBuf);
-                forY.asSerializableConstant().serialize(yBuf);
-                return serializableToConst(xBuf, yBuf, bufSize);
-            }
         }
         if (forX.stamp(view) instanceof IntegerStamp && forY.stamp(view) instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) forX.stamp(view);
@@ -86,6 +76,16 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
             } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {
                 return LogicConstantNode.contradiction();
             }
+            // this node is effectively an & operation x & y == 0 so part of the canonicalizations
+            // for AndNode apply
+            ValueNode newLHS = AndNode.eliminateRedundantBinaryArithmeticOp(forX, yStamp);
+            if (newLHS != null) {
+                return new IntegerTestNode(newLHS, forY);
+            }
+            ValueNode newRHS = AndNode.eliminateRedundantBinaryArithmeticOp(forY, xStamp);
+            if (newRHS != null) {
+                return new IntegerTestNode(forX, newRHS);
+            }
         }
         return null;
     }
@@ -94,15 +94,6 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         ValueNode value = canonical(forX, forY, NodeView.from(tool));
         return value != null ? value : this;
-    }
-
-    private static LogicNode serializableToConst(ByteBuffer xBuf, ByteBuffer yBuf, int bufSize) {
-        for (int i = 0; i < bufSize; i++) {
-            if ((xBuf.get(i) & yBuf.get(i)) != 0) {
-                return LogicConstantNode.contradiction();
-            }
-        }
-        return LogicConstantNode.tautology();
     }
 
     @Override

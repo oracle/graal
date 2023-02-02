@@ -29,7 +29,6 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import com.oracle.svm.core.FrameAccess;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
@@ -39,9 +38,11 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.aarch64.AArch64BlockEndOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 
 import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
 @Opcode("FAR_RETURN")
@@ -51,12 +52,14 @@ public final class AArch64FarReturnOp extends AArch64BlockEndOp {
     @Use({REG, ILLEGAL}) AllocatableValue result;
     @Use(REG) AllocatableValue sp;
     @Use(REG) AllocatableValue ip;
+    private final boolean fromMethodWithCalleeSavedRegisters;
 
-    public AArch64FarReturnOp(AllocatableValue result, AllocatableValue sp, AllocatableValue ip) {
+    public AArch64FarReturnOp(AllocatableValue result, AllocatableValue sp, AllocatableValue ip, boolean fromMethodWithCalleeSavedRegisters) {
         super(TYPE);
         this.result = result;
         this.sp = sp;
         this.ip = ip;
+        this.fromMethodWithCalleeSavedRegisters = fromMethodWithCalleeSavedRegisters;
     }
 
     @Override
@@ -81,7 +84,23 @@ public final class AArch64FarReturnOp extends AArch64BlockEndOp {
             masm.ldr(64, fp, fpAddress);
             masm.bind(done);
         }
-        masm.mov(sp.getPlatformKind().getSizeInBytes() * 8, AArch64.sp, asRegister(sp));
-        masm.ret(asRegister(ip));
+
+        masm.mov(sp.getPlatformKind().getSizeInBytes() * Byte.SIZE, AArch64.sp, asRegister(sp));
+
+        if (fromMethodWithCalleeSavedRegisters) {
+            /*
+             * Restoring the callee saved registers may overwrite the register that holds the new
+             * instruction pointer (ip). We therefore leverage a scratch register.
+             */
+            try (AArch64MacroAssembler.ScratchRegister scratch = masm.getScratchRegister()) {
+                Register scratchReg = scratch.getRegister();
+                masm.mov(64, scratchReg, asRegister(ip));
+
+                AArch64CalleeSavedRegisters.singleton().emitRestore(masm, 0, asRegister(result));
+                masm.ret(scratchReg);
+            }
+        } else {
+            masm.ret(asRegister(ip));
+        }
     }
 }

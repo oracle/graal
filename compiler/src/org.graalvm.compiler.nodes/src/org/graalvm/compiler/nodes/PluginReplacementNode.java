@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvi
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
 @NodeInfo(nameTemplate = "PluginReplacement/{p#pluginName}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
-public final class PluginReplacementNode extends FixedWithNextNode {
+public final class PluginReplacementNode extends FixedWithNextNode implements PluginReplacementInterface {
     public static final NodeClass<PluginReplacementNode> TYPE = NodeClass.create(PluginReplacementNode.class);
 
     @Input protected NodeInputList<ValueNode> args;
@@ -51,6 +51,7 @@ public final class PluginReplacementNode extends FixedWithNextNode {
         this.pluginName = pluginName;
     }
 
+    @Override
     public boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection) {
         return function.replace(b, injection, stamp, args);
     }

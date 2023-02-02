@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -31,6 +31,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.Arrays;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LIRValueUtil;
@@ -75,7 +76,7 @@ public class AArch64RestoreRegistersOp extends AArch64LIRInstruction implements 
     }
 
     protected void restoreRegister(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, StackSlot input) {
-        AArch64Move.stack2reg(crb, masm, result.asValue(), input);
+        AArch64Move.stack2reg((AArch64Kind) input.getPlatformKind(), crb, masm, result, input);
     }
 
     @Override

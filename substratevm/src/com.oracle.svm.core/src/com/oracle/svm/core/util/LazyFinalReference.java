@@ -26,11 +26,7 @@ package com.oracle.svm.core.util;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-
-// Checkstyle: stop
-import sun.misc.Unsafe;
-// Checkstyle: resume
+import jdk.internal.misc.Unsafe;
 
 /**
  * An object reference that is set lazily to the reference returned by the provided {@link Supplier}
@@ -40,12 +36,10 @@ import sun.misc.Unsafe;
 public final class LazyFinalReference<T> {
     private static final Object UNINITIALIZED = new Object();
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-
     private static final long VALUE_OFFSET;
     static {
         try {
-            VALUE_OFFSET = UNSAFE.objectFieldOffset(LazyFinalReference.class.getDeclaredField("value"));
+            VALUE_OFFSET = Unsafe.getUnsafe().objectFieldOffset(LazyFinalReference.class.getDeclaredField("value"));
         } catch (Throwable ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -63,19 +57,23 @@ public final class LazyFinalReference<T> {
         this.supplier = supplier;
     }
 
+    public boolean isPresent() {
+        return value != UNINITIALIZED || Unsafe.getUnsafe().getObjectVolatile(this, VALUE_OFFSET) != UNINITIALIZED;
+    }
+
     @SuppressWarnings("unchecked")
     public T get() {
         T v = value;
         if (v == UNINITIALIZED) {
             // Try volatile read first in case of memory inconsistency to avoid Supplier call
-            v = (T) UNSAFE.getObjectVolatile(this, VALUE_OFFSET);
+            v = (T) Unsafe.getUnsafe().getObjectVolatile(this, VALUE_OFFSET);
             if (v == UNINITIALIZED) {
                 T obj = supplier.get();
 
-                if (UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, UNINITIALIZED, obj)) {
+                if (Unsafe.getUnsafe().compareAndSetObject(this, VALUE_OFFSET, UNINITIALIZED, obj)) {
                     v = obj;
                 } else {
-                    v = (T) UNSAFE.getObjectVolatile(this, VALUE_OFFSET);
+                    v = (T) Unsafe.getUnsafe().getObjectVolatile(this, VALUE_OFFSET);
                 }
                 assert v != UNINITIALIZED;
             }

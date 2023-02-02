@@ -181,7 +181,7 @@ public class NodeChildData extends MessageContainer {
     public void setNode(NodeData nodeData) {
         this.childNode = nodeData;
         if (nodeData != null) {
-            getMessages().addAll(nodeData.collectMessages());
+            getMessagesForModification().addAll(nodeData.collectMessages());
         }
     }
 

@@ -23,6 +23,9 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -52,17 +55,22 @@ public final class Target_sun_launcher_LauncherHelper {
                     "                  Print internal options for debugging language implementations and tools.";
 
     @Substitution
-    public static void printHelpMessage(boolean printToStderr,
-                    @GuestCall(target = "sun_launcher_LauncherHelper_printHelpMessage", original = true) DirectCallNode printHelpMessage,
-                    @GuestCall(target = "java_io_PrintStream_println") DirectCallNode println,
-                    @InjectMeta Meta meta) {
-        // Init output stream and print original help message
-        printHelpMessage.call(printToStderr);
+    abstract static class PrintHelpMessage extends SubstitutionNode {
+        abstract void execute(boolean printToStderr);
 
-        // Append espresso specific help
-        StaticObject stream = meta.sun_launcher_LauncherHelper_ostream.getObject(meta.sun_launcher_LauncherHelper.tryInitializeAndGetStatics());
-        if (!StaticObject.isNull(stream)) {
-            println.call(stream, meta.toGuestString(helpMessage));
+        @Specialization
+        void doCached(boolean printToStderr,
+                        @Bind("getMeta()") Meta meta,
+                        @Cached("create(meta.sun_launcher_LauncherHelper_printHelpMessage.getCallTargetNoSubstitution())") DirectCallNode originalPrintHelpMessage,
+                        @Cached("create(meta.java_io_PrintStream_println.getCallTarget())") DirectCallNode println) {
+            // Init output stream and print original help message
+            originalPrintHelpMessage.call(printToStderr);
+
+            // Append espresso specific help
+            StaticObject stream = meta.sun_launcher_LauncherHelper_ostream.getObject(meta.sun_launcher_LauncherHelper.tryInitializeAndGetStatics());
+            if (!StaticObject.isNull(stream)) {
+                println.call(stream, meta.toGuestString(helpMessage));
+            }
         }
     }
 }

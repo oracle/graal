@@ -25,10 +25,13 @@
 package com.oracle.svm.hosted.lambda;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
-import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
+import com.oracle.svm.hosted.annotation.AnnotationWrapper;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -43,7 +46,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 /**
  * Simply changes the name of Lambdas from a random ID into a stable name.
  */
-public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassProvider {
+public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
     private final ResolvedJavaType original;
     private final String stableName;
 
@@ -59,21 +62,15 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return LambdaFormHiddenMethod.Holder.ARRAY;
-    }
-
-    @Override
-    public boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
-        return annotationClass == LambdaFormHiddenMethod.class;
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if (annotationClass == LambdaFormHiddenMethod.class) {
-            return annotationClass.cast(LambdaFormHiddenMethod.Holder.INSTANCE);
-        }
+    public AnnotatedElement getAnnotationRoot() {
         return null;
+    }
+
+    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(LambdaFormHiddenMethod.Holder.INSTANCE);
+
+    @Override
+    public AnnotationValue[] getInjectedAnnotations() {
+        return INJECTED_ANNOTATIONS;
     }
 
     @Override
@@ -146,6 +143,7 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
         return original.isAssignableFrom(other);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return original.getHostClass();
@@ -397,18 +395,8 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
     }
 
     @Override
-    public <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
-        return original.getDeclaredAnnotation(annotationClass);
-    }
-
-    @Override
     public <T extends Annotation> T[] getDeclaredAnnotationsByType(Class<T> annotationClass) {
         return original.getDeclaredAnnotationsByType(annotationClass);
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return original.getDeclaredAnnotations();
     }
 
     public ResolvedJavaType getOriginal() {
@@ -417,6 +405,6 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalClassProvider.getJavaClass(original);
     }
 }

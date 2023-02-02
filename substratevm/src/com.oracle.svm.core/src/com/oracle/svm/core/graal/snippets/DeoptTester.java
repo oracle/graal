@@ -29,14 +29,13 @@ import java.util.Set;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -49,10 +48,10 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
@@ -71,12 +70,12 @@ public class DeoptTester {
 
     private static final Set<Long> handledPCs = new HashSet<>();
 
-    private static final FastThreadLocalInt inDeoptTest = FastThreadLocalFactory.createInt();
+    private static final FastThreadLocalInt inDeoptTest = FastThreadLocalFactory.createInt("DeoptTester.inDeoptTest");
 
     private static final StackFrameVisitor collectPcVisitor = new StackFrameVisitor() {
 
         @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Only deals with IPs, not Objects.")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Only deals with IPs, not Objects.")
         public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
             handledPCs.add(ip.rawValue());
             return true;
@@ -112,8 +111,8 @@ public class DeoptTester {
                             !CEntryPointSnippets.isIsolateInitialized() ||
                             ThreadingSupportImpl.isRecurringCallbackPaused() ||
                             VMOperation.isInProgress() ||
-                            VMThreads.StatusSupport.isStatusIgnoreSafepoints(CurrentIsolate.getCurrentThread()) ||
-                            !JavaThreads.currentJavaThreadInitialized()) {
+                            SafepointBehavior.ignoresSafepoints() ||
+                            !PlatformThreads.isCurrentAssigned()) {
                 return; // Thread or VM is not in a safe (or sane) state for deoptimization
             }
             Pointer startSp = KnownIntrinsics.readCallerStackPointer();

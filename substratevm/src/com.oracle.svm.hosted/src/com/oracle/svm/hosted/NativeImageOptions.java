@@ -27,41 +27,55 @@ package com.oracle.svm.hosted;
 import static org.graalvm.compiler.options.OptionType.Debug;
 import static org.graalvm.compiler.options.OptionType.User;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
-import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 
 public class NativeImageOptions {
 
     public static final int DEFAULT_MAX_ANALYSIS_SCALING = 16;
 
-    @Option(help = "Comma separated list of CPU features that will be used for image generation. " +
-                    "The specific options available are platform dependent. " +
-                    "For AMD64, SSE and SSE2 are enabled by default. Available features are: " +
-                    "CX8, CMOV, FXSR, HT, MMX, AMD_3DNOW_PREFETCH, SSE3, SSSE3, SSE4A, SSE4_1, " +
-                    "SSE4_2, POPCNT, LZCNT, TSC, TSCINV, AVX, AVX2, AES, ERMS, CLMUL, BMI1, " +
-                    "BMI2, RTM, ADX, AVX512F, AVX512DQ, AVX512PF, AVX512ER, AVX512CD, AVX512BW, AVX512VL, " +
-                    "SHA, FMA. On AArch64, no features are enabled by default. Available features " +
-                    "are: FP, ASIMD, EVTSTRM, AES, PMULL, SHA1, SHA2, CRC32, LSE, STXR_PREFETCH, " +
-                    "A53MAC", type = User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    @Option(help = "Comma separated list of CPU features that will be enabled while building the " +
+                    "target executable, irrespective of whether they are supported by the hosted " +
+                    "environment. Note that enabling features not present within the target environment " +
+                    "may result in application crashes. The specific options available are target " +
+                    "platform dependent. See --list-cpu-features for feature list.", type = User)//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+    @APIOption(name = "list-cpu-features")//
+    @Option(help = "Show CPU features specific to the target platform and exit.", type = User)//
+    public static final HostedOptionKey<Boolean> ListCPUFeatures = new HostedOptionKey<>(false);
+
+    @Option(help = "Comma separated list of CPU features that will be enabled for runtime checks. The " +
+                    "native image may check at run time if such features are supported by the target " +
+                    "CPU, and can optimize certain operations based on this information. If a feature " +
+                    "is not supported at run time, a less optimized variant will be executed. Because of " +
+                    "the presence of multiple code variants, enabling runtime features can result in " +
+                    "larger executables. To completely turn off runtime checked CPU features, set this " +
+                    "option to the empty string. The specific options available are target platform " +
+                    "dependent. See --list-cpu-features for feature list. The default values are: " +
+                    "AMD64: 'AVX,AVX2'; AArch64: ''", type = User)//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
-
-    @Option(help = "Define PageSize of a machine that runs the image. The default = 0 (== same as host machine page size)")//
-    protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
 
     @Option(help = "Print information about classes, methods, and fields that are present in the native image")//
     public static final HostedOptionKey<Boolean> PrintUniverse = new HostedOptionKey<>(false);
@@ -81,7 +95,7 @@ public class NativeImageOptions {
     @Option(help = "Print the sizes of the native image heap as the image is built")//
     public static final HostedOptionKey<Boolean> PrintImageHeapPartitionSizes = new HostedOptionKey<>(false);
 
-    @Option(help = "Print features-specific information")//
+    @Option(help = "Print a list of active features")//
     public static final HostedOptionKey<Boolean> PrintFeatures = new HostedOptionKey<>(false);
 
     @Option(help = "Directory for temporary files generated during native image generation. If this option is specified, the temporary files are not deleted so that you can inspect them after native image generation")//
@@ -100,14 +114,9 @@ public class NativeImageOptions {
     @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = User)//
     public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<>(false);
 
-    @APIOption(name = "allow-incomplete-classpath")//
-    @Option(help = "Allow image building with an incomplete class path: report type resolution errors at run time when they are accessed the first time, instead of during image building", type = User)//
-    public static final HostedOptionKey<Boolean> AllowIncompleteClasspath = new HostedOptionKey<Boolean>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            PointstoOptions.UnresolvedIsError.update(values, !newValue);
-        }
-    };
+    @APIOption(name = "allow-incomplete-classpath", deprecated = "Allowing an incomplete classpath is now the default. Use --link-at-build-time to report linking errors at image build time for a class or package.")//
+    @Option(help = "Deprecated", type = User)//
+    static final HostedOptionKey<Boolean> AllowIncompleteClasspath = new HostedOptionKey<>(false);
 
     @SuppressWarnings("all")
     private static boolean areAssertionsEnabled() {
@@ -175,11 +184,49 @@ public class NativeImageOptions {
     @Option(help = "Print unsafe operation offset warnings.)")//
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
 
+    // Inspired by HotSpot's hs_err_<pid>.log files and for build-time errors (err_b).
+    private static final String DEFAULT_ERROR_FILE_NAME = "svm_err_b_%t_pid%p.md";
+
+    public static final Path getErrorFilePath(OptionValues hostedOptionValues) {
+        String errorFile = NativeImageOptions.ErrorFile.getValue(hostedOptionValues);
+        if (errorFile.isEmpty()) {
+            return NativeImageGenerator.generatedFiles(hostedOptionValues).resolve(expandErrorFile(DEFAULT_ERROR_FILE_NAME));
+        } else {
+            return Paths.get(expandErrorFile(errorFile));
+        }
+    }
+
+    private static String expandErrorFile(String errorFile) {
+        String timestamp = new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS").format(new Date(GraalServices.getGlobalTimeStamp()));
+        return errorFile.replaceAll("%p", GraalServices.getExecutionID()).replaceAll("%t", timestamp);
+    }
+
+    @Option(help = "If an error occurs, save a build error report to this file [default: " + DEFAULT_ERROR_FILE_NAME + "] (%p replaced with pid, %t with timestamp).)")//
+    public static final HostedOptionKey<String> ErrorFile = new HostedOptionKey<>("");
+
     @Option(help = "Show exception stack traces for exceptions during image building.)")//
     public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(areAssertionsEnabled());
 
     @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types is necessary.", type = Debug)//
     public static final HostedOptionKey<Integer> MaxReachableTypes = new HostedOptionKey<>(-1);
+
+    @Option(help = "Sets the dir where diagnostic information is dumped.")//
+    public static final HostedOptionKey<String> DiagnosticsDir = new HostedOptionKey<>(
+                    Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", "")).toString());
+
+    @Option(help = "Enables the diagnostic mode.")//
+    public static final HostedOptionKey<Boolean> DiagnosticsMode = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                ClassInitializationOptions.PrintClassInitialization.update(values, true);
+                SubstitutionReportFeature.Options.ReportPerformedSubstitutions.update(values, true);
+                SubstrateOptions.DumpTargetInfo.update(values, true);
+                PrintFeatures.update(values, true);
+                ReportExceptionStackTraces.update(values, true);
+            }
+        }
+    };
 
     public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
         int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);
@@ -200,23 +247,5 @@ public class NativeImageOptions {
             throw UserError.abort("Number of analysis threads can't be larger than NumberOfThreads. Set the NumberOfAnalysisThreads flag to a positive value smaller than NumberOfThreads.");
         }
         return analysisThreads;
-    }
-
-    public static int getPageSize() {
-        int value = PageSize.getValue();
-        if (value == 0) {
-            return hostPageSize;
-        }
-        return value;
-    }
-
-    private static int hostPageSize = getHostPageSize();
-
-    private static int getHostPageSize() {
-        try {
-            return GraalUnsafeAccess.getUnsafe().pageSize();
-        } catch (IllegalArgumentException e) {
-            return 4096;
-        }
     }
 }

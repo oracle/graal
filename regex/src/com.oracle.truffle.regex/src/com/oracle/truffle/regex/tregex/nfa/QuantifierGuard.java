@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,9 @@ package com.oracle.truffle.regex.tregex.nfa;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
+import com.oracle.truffle.regex.tregex.parser.ast.ConditionalBackReferenceGroup;
+
+import java.util.Objects;
 
 /**
  * Transition guards introduced by bounded {@link Quantifier}s.
@@ -112,7 +115,19 @@ public final class QuantifierGuard {
          * also needs to monitor the state of capture groups in between {@link #enterZeroWidth} and
          * {@link #exitZeroWidth}.
          */
-        updateCG
+        updateCG,
+        /**
+         * Transition is entering the then-branch (the first alternative) of a
+         * {@link ConditionalBackReferenceGroup}. The capture group identified by
+         * {@link #getIndex()} must be matched in order to proceed.
+         */
+        checkGroupMatched,
+        /**
+         * Transition is entering the else-branch (the second alternative) of a
+         * {@link ConditionalBackReferenceGroup}. The capture group identified by
+         * {@link #getIndex()} must be *not* matched in order to proceed.
+         */
+        checkGroupNotMatched
     }
 
     public static final QuantifierGuard[] NO_GUARDS = {};
@@ -177,6 +192,14 @@ public final class QuantifierGuard {
         return new QuantifierGuard(Kind.updateCG, index);
     }
 
+    public static QuantifierGuard createCheckGroupMatched(int groupNumber) {
+        return new QuantifierGuard(Kind.checkGroupMatched, groupNumber);
+    }
+
+    public static QuantifierGuard createCheckGroupNotMatched(int groupNumber) {
+        return new QuantifierGuard(Kind.checkGroupNotMatched, groupNumber);
+    }
+
     public Kind getKind() {
         return kind;
     }
@@ -205,6 +228,10 @@ public final class QuantifierGuard {
                 return Kind.enterEmptyMatch;
             case updateCG:
                 return Kind.updateCG;
+            case checkGroupMatched:
+                return Kind.checkGroupMatched;
+            case checkGroupNotMatched:
+                return Kind.checkGroupNotMatched;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
@@ -219,6 +246,20 @@ public final class QuantifierGuard {
      */
     public int getIndex() {
         return index;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof QuantifierGuard)) {
+            return false;
+        }
+        QuantifierGuard other = (QuantifierGuard) obj;
+        return this.kind == other.kind && Objects.equals(this.quantifier, other.quantifier) && this.index == other.index;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(kind, quantifier, index);
     }
 
     @TruffleBoundary

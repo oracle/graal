@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,15 +29,17 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 /**
  * {@code PhiNode}s represent the merging of edges at a control flow merges (
@@ -55,6 +57,28 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     protected PhiNode(NodeClass<? extends PhiNode> c, Stamp stamp, AbstractMergeNode merge) {
         super(c, stamp);
         this.merge = merge;
+    }
+
+    /**
+     * Checks whether for the given node a phi can be created in the graph based on its allowed
+     * usage types.
+     */
+    public static boolean canCreatePhi(ValueNode node) {
+        return node.isAllowedUsageType(InputType.Value) || node.isAllowedUsageType(InputType.Guard);
+    }
+
+    /**
+     * Creates a phi in the graph for the given nodes. Provided values must be allowed as inputs to
+     * phis as checked by {@link #canCreatePhi(ValueNode)}.
+     */
+    public static PhiNode create(AbstractMergeNode merge, ValueNode... values) {
+        if (values[0].isAllowedUsageType(InputType.Value)) {
+            return new ValuePhiNode(values[0].stamp(NodeView.DEFAULT).unrestricted(), merge, values);
+        } else if (values[0].isAllowedUsageType(InputType.Guard)) {
+            return new GuardPhiNode(merge, values);
+        } else {
+            throw GraalError.shouldNotReachHere("Cannot create a phi for this input type.");
+        }
     }
 
     public abstract NodeInputList<ValueNode> values();
@@ -120,10 +144,6 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
         return values().size();
     }
 
-    public void clearValues() {
-        values().clear();
-    }
-
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
@@ -167,7 +187,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     }
 
     /**
-     * If all inputs are the same value, this value is returned, otherwise {@code this}. Note that
+     * If all inputs are the same value, that value is returned, otherwise {@code this}. Note that
      * {@code null} is a valid return value, since {@link GuardPhiNode}s can have {@code null}
      * inputs.
      */
@@ -186,7 +206,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     }
 
     /**
-     * If all inputs (but the first one) are the same value, the value is returned, otherwise
+     * If all inputs (but the first one) are the same value, that value is returned, otherwise
      * {@code this}. Note that {@code null} is a valid return value, since {@link GuardPhiNode}s can
      * have {@code null} inputs.
      */
@@ -229,7 +249,6 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
                     break;
                 }
             }
-
             if (onlySelfUsage) {
                 return null;
             }
@@ -256,9 +275,12 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
                 return false;
             }
         }
+        GraalError.guarantee(isLoopPhi(), "Only loop phis may be degenerated %s", this);
         assert isLoopPhi();
         return true;
     }
+
+    public abstract ProxyNode createProxyFor(LoopExitNode lex);
 
     /**
      * Create a phi of the same kind on the given merge.

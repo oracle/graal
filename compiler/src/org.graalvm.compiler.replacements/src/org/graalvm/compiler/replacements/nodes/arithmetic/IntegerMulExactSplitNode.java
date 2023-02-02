@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,22 +25,23 @@
 package org.graalvm.compiler.replacements.nodes.arithmetic;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_4;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
 import jdk.vm.ci.meta.Value;
 
-@NodeInfo(cycles = CYCLES_4, cyclesRationale = "mul + cmp")
-public final class IntegerMulExactSplitNode extends IntegerExactArithmeticSplitNode {
+@NodeInfo(cycles = CYCLES_4, cyclesRationale = "mul+cmp", size = SIZE_4)
+public final class IntegerMulExactSplitNode extends BinaryIntegerExactArithmeticSplitNode {
     public static final NodeClass<IntegerMulExactSplitNode> TYPE = NodeClass.create(IntegerMulExactSplitNode.class);
 
     public IntegerMulExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {

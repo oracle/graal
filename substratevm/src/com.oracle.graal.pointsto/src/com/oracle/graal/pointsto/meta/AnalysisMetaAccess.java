@@ -40,6 +40,11 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
 
     public AnalysisMetaAccess(AnalysisUniverse analysisUniverse, MetaAccessProvider originalMetaAccess) {
         super(analysisUniverse, originalMetaAccess);
+
+        /* Make sure that Object type is added to the universe before any other types. */
+        lookupJavaType(Object.class);
+        /* Cloneable is needed before any other instance class can be created. */
+        lookupJavaType(Cloneable.class);
     }
 
     @Override
@@ -52,7 +57,7 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
         if (result != null) {
             return Optional.of(result);
         }
-        result = ((AnalysisUniverse) getUniverse()).optionalLookup(getWrapped().lookupJavaType(clazz));
+        result = getUniverse().optionalLookup(getWrapped().lookupJavaType(clazz));
         return Optional.ofNullable(result);
     }
 
@@ -80,4 +85,10 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
     public int getArrayBaseOffset(JavaKind elementKind) {
         throw shouldNotReachHere();
     }
+
+    @Override
+    public AnalysisUniverse getUniverse() {
+        return (AnalysisUniverse) universe;
+    }
+
 }

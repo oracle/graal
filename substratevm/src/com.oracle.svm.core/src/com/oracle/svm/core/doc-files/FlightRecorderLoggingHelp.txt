@@ -1,0 +1,21 @@
+Usage: -XX:FlightRecorderLogging=[tag1[+tag2...][*][=level][,...]]
+
+When this option is not set, logging is enabled at a level of WARNING.
+When this option is set to the empty string, logging is enabled at a level of INFO.
+When this option is set to "disable", logging is disabled entirely.
+
+Otherwise, this option expects a comma separated list of tag combinations, each with an optional wildcard (*) and level.
+A tag combination without a level is given a default level of INFO.
+Messages with tags that match a given tag combination are set to log at that tag combination's level.
+If a tag combination does not have a wildcard, then only messages with exactly the same tags are matched.
+Otherwise, messages whose tags are a subset of the tag combination are matched.
+Specifying "all" instead of a tag combination matches all tag combinations.
+If more than one tag combination matches a message's tags, the rightmost one will apply.
+Messages with tags that do not have any matching tag combinations are set to log at a default level of WARNING.
+This option is case insensitive.
+
+Available log levels:
+[trace, debug, info, warning, error, off]
+
+Available log tags:
+[jfr, system, event, setting, bytecode, parser, metadata, dcmd]

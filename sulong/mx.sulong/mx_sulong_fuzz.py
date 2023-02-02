@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,6 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import os
+import sys
 import stat
 import tempfile
 import shutil
@@ -100,7 +101,7 @@ def fuzz(args=None, out=None):
                 gen.append((tmp_c, 'autogen.c'))
             timeout = parsed_args.timeout
             with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
-                mx_sulong.runLLVM(['--llvm.llDebug', '--llvm.traceIR', '--experimental-options', tmp_out], timeout=timeout, nonZeroIsFatal=False, out=o, err=e)
+                mx_sulong.lli(['--llvm.llDebug', '--log.llvm.TraceIR.level=FINER', '--log.llvm.LLDebug.level=OFF', '--experimental-options', '--engine.WarnInterpreterOnly=false', tmp_out], timeout=timeout, nonZeroIsFatal=False, out=o, err=e)
             with open(tmp_bin_out, 'w') as o, open(tmp_bin_err, 'w') as e:
                 try:
                     mx.run([tmp_out], timeout=timeout, out=o, err=e)
@@ -249,12 +250,12 @@ def check_interesting(args=None, out=None):
     def _not_interesting(msg=None):
         if msg:
             mx.logv(mx.colorize("mx check-interesting: no ({})".format(msg), color="blue"))
-        exit(0)
+        sys.exit(0)
 
     def _interesting(msg=None):
         if msg:
             mx.logv(mx.colorize("mx check-interesting: yes ({})".format(msg), color="cyan"))
-        exit(1)
+        sys.exit(1)
 
     def _files_match_pattern(prefix, out_file, err_file):
         with open(out_file, 'r') as o, open(err_file, 'r') as e:
@@ -280,7 +281,7 @@ def check_interesting(args=None, out=None):
         except SystemExit:
             _not_interesting("Compiling the input file failed!")
         with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
-            mx_sulong.runLLVM([tmp_out], timeout=10, nonZeroIsFatal=False, out=o, err=e)
+            mx_sulong.lli([tmp_out], timeout=10, nonZeroIsFatal=False, out=o, err=e)
         with open(tmp_bin_out, 'w') as o, open(tmp_bin_err, 'w') as e:
             try:
                 mx.run([tmp_out], timeout=10, out=o, err=e)

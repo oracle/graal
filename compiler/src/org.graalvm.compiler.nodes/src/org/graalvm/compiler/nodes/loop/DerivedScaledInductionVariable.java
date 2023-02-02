@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,6 +115,11 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     @Override
+    public ValueNode extremumNode(boolean assumeLoopEntered, Stamp stamp, ValueNode maxTripCount) {
+        return mul(graph(), base.extremumNode(assumeLoopEntered, stamp, maxTripCount), IntegerConvertNode.convert(scale, stamp, graph(), NodeView.DEFAULT));
+    }
+
+    @Override
     public ValueNode exitValueNode() {
         return mul(graph(), base.exitValueNode(), scale);
     }
@@ -168,12 +173,22 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     }
 
     @Override
+    public ValueNode copyValue(InductionVariable newBase, boolean gvn) {
+        return MathUtil.mul(graph(), newBase.valueNode(), scale, gvn);
+    }
+
+    @Override
     public ValueNode copyValue(InductionVariable newBase) {
-        return MathUtil.mul(graph(), newBase.valueNode(), scale);
+        return copyValue(newBase, true);
     }
 
     @Override
     public InductionVariable copy(InductionVariable newBase, ValueNode newValue) {
         return new DerivedScaledInductionVariable(loop, newBase, scale, newValue);
+    }
+
+    @Override
+    public ValueNode entryTripValue() {
+        return mul(graph(), base.entryTripValue(), scale);
     }
 }

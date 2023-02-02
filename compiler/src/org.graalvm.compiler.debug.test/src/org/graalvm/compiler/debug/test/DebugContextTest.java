@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@ import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.DebugVerifyHandler;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -67,7 +68,7 @@ public class DebugContextTest {
             public List<DebugHandler> createHandlers(OptionValues options) {
                 return Arrays.asList(new DebugDumpHandler() {
                     @Override
-                    public void dump(DebugContext ignore, Object object, String format, Object... arguments) {
+                    public void dump(Object object, DebugContext ignore, boolean forced, String format, Object... arguments) {
                         dumpOutput.format("Dumping %s with label \"%s\"%n", object, String.format(format, arguments));
                     }
                 }, new DebugVerifyHandler() {
@@ -162,7 +163,7 @@ public class DebugContextTest {
         }
         String expected;
         try (BufferedReader input = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream(getClass().getSimpleName() + ".testLogging.input")))) {
-            String threadLabel = "[thread:" + Thread.currentThread().getId() + "]";
+            String threadLabel = "[thread:" + GraalServices.getCurrentThreadId() + "]";
             expected = input.lines().collect(Collectors.joining(System.lineSeparator(), "", System.lineSeparator())).replace("[thread:1]", threadLabel);
         }
         String logged = setup.logOutput.toString();

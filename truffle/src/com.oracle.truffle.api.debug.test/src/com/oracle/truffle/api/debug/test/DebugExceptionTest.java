@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.debug.test;
 
-import java.util.List;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -50,8 +48,10 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import java.util.Iterator;
+import java.util.List;
+
+import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
@@ -62,10 +62,9 @@ import com.oracle.truffle.api.debug.DebugStackTraceElement;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.Iterator;
-
-import org.graalvm.polyglot.Source;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class DebugExceptionTest extends AbstractDebugTest {
 
@@ -115,7 +114,7 @@ public class DebugExceptionTest extends AbstractDebugTest {
         Source testSource = testSource("ROOT(\n" +
                         "DEFINE(UncaughtThrow,\n" +
                         "  TRY(STATEMENT, STATEMENT(THROW(IllegalState, TestExceptionMessage)),\n" +
-                        "      CATCH(a, STATEMENT))\n" +
+                        "      CATCH(a, ex, STATEMENT))\n" +
                         "),\n" +
                         "CALL(UncaughtThrow))");
         Breakpoint uncaughtBreakpoint = Breakpoint.newExceptionBuilder(false, true).build();
@@ -143,7 +142,7 @@ public class DebugExceptionTest extends AbstractDebugTest {
 
     @Test
     public void testCaughtException1() {
-        Source testSource = testSource("TRY(STATEMENT(THROW(NPE, TestExceptionMessage)), CATCH(NPE, STATEMENT))\n");
+        Source testSource = testSource("TRY(STATEMENT(THROW(NPE, TestExceptionMessage)), CATCH(NPE, ex, STATEMENT))\n");
         Breakpoint caughtBreakpoint = Breakpoint.newExceptionBuilder(true, true).build();
         try (DebuggerSession session = startSession()) {
             session.install(caughtBreakpoint);
@@ -173,7 +172,7 @@ public class DebugExceptionTest extends AbstractDebugTest {
         Source testSource = testSource("ROOT(\n" +
                         "DEFINE(CaughtThrow,\n" +
                         "  TRY(STATEMENT(CALL(ThrownNPE)),\n" +
-                        "      CATCH(NPE, STATEMENT))\n" +
+                        "      CATCH(NPE, ex, STATEMENT))\n" +
                         "),\n" +
                         "DEFINE(ThrownNPE,\n" +
                         "  STATEMENT(THROW(NPE, TestExceptionMessage))\n" +
@@ -253,7 +252,7 @@ public class DebugExceptionTest extends AbstractDebugTest {
     @Test
     public void testLocationBreakpointOnException() {
         final Source source = testSource("ROOT(\n" +
-                        "  TRY(STATEMENT(THROW(a, b)), CATCH(a, EXPRESSION)),\n" +
+                        "  TRY(STATEMENT(THROW(a, b)), CATCH(a, ex, EXPRESSION)),\n" +
                         "  STATEMENT\n" +
                         ")\n");
         Breakpoint breakpoint = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).suspendAnchor(SuspendAnchor.AFTER).build();
@@ -294,7 +293,7 @@ public class DebugExceptionTest extends AbstractDebugTest {
     @Test
     public void testInactive() throws Throwable {
         final Source source = testSource("ROOT(\n" +
-                        "  TRY(STATEMENT(THROW(a, b)), CATCH(a, EXPRESSION)),\n" +
+                        "  TRY(STATEMENT(THROW(a, b)), CATCH(a, ex, EXPRESSION)),\n" +
                         "  STATEMENT(THROW(c, d))\n" +
                         ")\n");
 

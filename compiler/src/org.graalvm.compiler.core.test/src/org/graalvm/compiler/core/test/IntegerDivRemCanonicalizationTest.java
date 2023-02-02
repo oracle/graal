@@ -24,9 +24,16 @@
  */
 package org.graalvm.compiler.core.test;
 
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.junit.Test;
+
+import jdk.vm.ci.code.CodeUtil;
 
 public class IntegerDivRemCanonicalizationTest extends GraalCompilerTest {
 
@@ -42,4 +49,33 @@ public class IntegerDivRemCanonicalizationTest extends GraalCompilerTest {
         // We expect the remainder to be canonicalized away.
         assertTrue(graph.getNodes().filter(SignedRemNode.class).count() == 0);
     }
+
+    static Stamp foldStamp(Stamp stamp1, Stamp stamp2) {
+        if (stamp1.isEmpty()) {
+            return stamp1;
+        }
+        if (stamp2.isEmpty()) {
+            return stamp2;
+        }
+        IntegerStamp a = (IntegerStamp) stamp1;
+        IntegerStamp b = (IntegerStamp) stamp2;
+        assert a.getBits() == b.getBits();
+        if (a.lowerBound() == a.upperBound() && b.lowerBound() == b.upperBound() && b.lowerBound() != 0) {
+            long value = CodeUtil.convert(a.lowerBound() / b.lowerBound(), a.getBits(), false);
+            return StampFactory.forInteger(a.getBits(), value, value);
+        } else if (b.isStrictlyPositive()) {
+            long newLowerBound = a.lowerBound() < 0 ? a.lowerBound() / b.lowerBound() : a.lowerBound() / b.upperBound();
+            long newUpperBound = a.upperBound() < 0 ? a.upperBound() / b.upperBound() : a.upperBound() / b.lowerBound();
+            return StampFactory.forInteger(a.getBits(), newLowerBound, newUpperBound);
+        } else {
+            return a.unrestricted();
+        }
+    }
+
+    @Test
+    public void testStamp() {
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.StressExplicitExceptionCode, true);
+        test(opt, "foldStamp", IntegerStamp.create(32, Integer.MIN_VALUE, Integer.MAX_VALUE), IntegerStamp.create(32, 0, 0));
+    }
+
 }

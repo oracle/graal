@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,7 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
             TestListener listener = new TestListener();
             try {
                 runtime.addListener(listener);
-                OptimizedCallTarget compilable = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(true));
+                OptimizedCallTarget compilable = (OptimizedCallTarget) RootNode.createConstantNode(true).getCallTarget();
                 compilable.call();
                 String logContent = new String(logOut.toByteArray());
                 String expected = String.format(FORMAT_SUCCESS + "%s%s%n", compilable.getName(), MESSAGE_TO_STREAM, MESSAGE_TO_TTY);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -46,14 +43,12 @@ public abstract class LLVMDerefHandleGetReceiverNode extends LLVMNode {
     public abstract LLVMManagedPointer execute(long addr);
 
     @Specialization
-    public LLVMManagedPointer doPointer(LLVMNativePointer addr,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        return doLong(addr.asNative(), context);
+    public LLVMManagedPointer doPointer(LLVMNativePointer addr) {
+        return doLong(addr.asNative());
     }
 
     @Specialization
-    public LLVMManagedPointer doLong(long address,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        return context.getDerefHandleContainer().getValue(this, address).copy();
+    public LLVMManagedPointer doLong(long address) {
+        return getContext().getDerefHandleContainer().getValue(this, address).copy();
     }
 }

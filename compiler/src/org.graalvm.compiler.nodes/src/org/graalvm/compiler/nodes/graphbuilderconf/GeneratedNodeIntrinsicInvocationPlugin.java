@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
+import java.lang.reflect.Type;
+
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -31,6 +33,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class GeneratedNodeIntrinsicInvocationPlugin extends GeneratedInvocationPlugin {
+
+    public GeneratedNodeIntrinsicInvocationPlugin(String name, Type... argumentTypes) {
+        super(name, argumentTypes);
+    }
+
     protected boolean verifyForeignCallDescriptor(GraphBuilderTool b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor) {
         MetaAccessProvider metaAccess = b.getMetaAccess();
         int parameters = 1;

@@ -52,4 +52,64 @@ public interface VersionFilter {
             return version.java8OrEarlier();
         }
     }
+
+    final class Java9OrLater implements VersionFilter {
+        public static final Java9OrLater INSTANCE = new Java9OrLater();
+
+        private Java9OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java9OrLater();
+        }
+    }
+
+    final class Java11OrEarlier implements VersionFilter {
+        public static final Java11OrEarlier INSTANCE = new Java11OrEarlier();
+
+        private Java11OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java11OrEarlier();
+        }
+    }
+
+    final class Java13OrEarlier implements VersionFilter {
+        public static final Java13OrEarlier INSTANCE = new Java13OrEarlier();
+
+        private Java13OrEarlier() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java13OrEarlier();
+        }
+    }
+
+    final class Java19OrLater implements VersionFilter {
+        public static final Java19OrLater INSTANCE = new Java19OrLater();
+
+        private Java19OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java19OrLater();
+        }
+    }
+
+    final class Java20OrLater implements VersionFilter {
+        public static final Java20OrLater INSTANCE = new Java20OrLater();
+
+        private Java20OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java20OrLater();
+        }
+    }
 }

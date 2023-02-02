@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactoryDelegate;
@@ -50,10 +51,10 @@ public abstract class LLVMVAEnd extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object cleanVAList(LLVMPointer targetAddress,
+    protected Object cleanVAList(VirtualFrame frame, LLVMPointer targetAddress,
                     @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
                     @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
-        vaListLibrary.cleanup(wrapperFactory.execute(targetAddress));
+        vaListLibrary.cleanup(wrapperFactory.execute(targetAddress), frame);
         return null;
     }
 }

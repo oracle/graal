@@ -5,6 +5,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()
@@ -44,6 +45,7 @@ meth public abstract <%0 extends org.graalvm.word.WordBase> {%%0} readWord(int)
 meth public abstract <%0 extends org.graalvm.word.WordBase> {%%0} readWord(int,org.graalvm.word.LocationIdentity)
 meth public abstract <%0 extends org.graalvm.word.WordBase> {%%0} readWord(org.graalvm.word.WordBase)
 meth public abstract <%0 extends org.graalvm.word.WordBase> {%%0} readWord(org.graalvm.word.WordBase,org.graalvm.word.LocationIdentity)
+meth public abstract <%0 extends org.graalvm.word.WordBase> {%%0} readWordVolatile(int,org.graalvm.word.LocationIdentity)
 meth public abstract boolean logicCompareAndSwapInt(int,int,int,org.graalvm.word.LocationIdentity)
 meth public abstract boolean logicCompareAndSwapInt(org.graalvm.word.WordBase,int,int,org.graalvm.word.LocationIdentity)
 meth public abstract boolean logicCompareAndSwapLong(int,long,long,org.graalvm.word.LocationIdentity)
@@ -138,6 +140,7 @@ meth public abstract void writeWord(int,org.graalvm.word.WordBase)
 meth public abstract void writeWord(int,org.graalvm.word.WordBase,org.graalvm.word.LocationIdentity)
 meth public abstract void writeWord(org.graalvm.word.WordBase,org.graalvm.word.WordBase)
 meth public abstract void writeWord(org.graalvm.word.WordBase,org.graalvm.word.WordBase,org.graalvm.word.LocationIdentity)
+meth public abstract void writeWordVolatile(int,org.graalvm.word.WordBase)
 
 CLSS public abstract interface org.graalvm.word.PointerBase
 intf org.graalvm.word.ComparableWord
@@ -218,7 +221,7 @@ meth public abstract org.graalvm.word.UnsignedWord xor(org.graalvm.word.Unsigned
 
 CLSS public abstract interface org.graalvm.word.WordBase
 meth public abstract boolean equals(java.lang.Object)
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public abstract long rawValue()
 
 CLSS public final org.graalvm.word.WordFactory

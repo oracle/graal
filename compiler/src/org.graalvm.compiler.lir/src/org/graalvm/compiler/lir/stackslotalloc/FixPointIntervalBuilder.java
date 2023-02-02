@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,7 @@ import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
@@ -47,6 +47,7 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlotAlias;
 
 import jdk.vm.ci.meta.Value;
 
@@ -81,16 +82,16 @@ final class FixPointIntervalBuilder {
      * virtual stack slots.
      */
     EconomicSet<LIRInstruction> build() {
-        Deque<AbstractBlockBase<?>> worklist = new ArrayDeque<>();
-        AbstractBlockBase<?>[] blocks = lir.getControlFlowGraph().getBlocks();
+        Deque<BasicBlock<?>> worklist = new ArrayDeque<>();
+        BasicBlock<?>[] blocks = lir.getControlFlowGraph().getBlocks();
         for (int i = blocks.length - 1; i >= 0; i--) {
             worklist.add(blocks[i]);
         }
-        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+        for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
             liveInMap.put(block, new BitSet(stackSlotMap.length));
         }
         while (!worklist.isEmpty()) {
-            AbstractBlockBase<?> block = worklist.poll();
+            BasicBlock<?> block = worklist.poll();
             processBlock(block, worklist);
         }
         return usePos;
@@ -99,9 +100,10 @@ final class FixPointIntervalBuilder {
     /**
      * Merge outSet with in-set of successors.
      */
-    private boolean updateOutBlock(AbstractBlockBase<?> block) {
+    private boolean updateOutBlock(BasicBlock<?> block) {
         BitSet union = new BitSet(stackSlotMap.length);
-        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            BasicBlock<?> succ = block.getSuccessorAt(i);
             union.or(liveInMap.get(succ));
         }
         BitSet outSet = liveOutMap.get(block);
@@ -114,7 +116,7 @@ final class FixPointIntervalBuilder {
     }
 
     @SuppressWarnings("try")
-    private void processBlock(AbstractBlockBase<?> block, Deque<AbstractBlockBase<?>> worklist) {
+    private void processBlock(BasicBlock<?> block, Deque<BasicBlock<?>> worklist) {
         DebugContext debug = lir.getDebug();
         if (updateOutBlock(block)) {
             try (Indent indent = debug.logAndIndent("handle block %s", block)) {
@@ -132,7 +134,8 @@ final class FixPointIntervalBuilder {
                 }
 
                 // add predecessors to work list
-                for (AbstractBlockBase<?> b : block.getPredecessors()) {
+                for (int i = 0; i < block.getPredecessorCount(); i++) {
+                    BasicBlock<?> b = block.getPredecessorAt(i);
                     worklist.add(b);
                 }
                 // set in set and mark intervals
@@ -296,21 +299,18 @@ final class FixPointIntervalBuilder {
 
     }
 
-    private StackInterval get(VirtualStackSlot stackSlot) {
-        return stackSlotMap[stackSlot.getId()];
-    }
-
-    private void put(VirtualStackSlot stackSlot, StackInterval interval) {
-        stackSlotMap[stackSlot.getId()] = interval;
-    }
-
-    private StackInterval getOrCreateInterval(VirtualStackSlot stackSlot) {
-        StackInterval interval = get(stackSlot);
-        if (interval == null) {
-            interval = new StackInterval(stackSlot, stackSlot.getValueKind());
-            put(stackSlot, interval);
+    private StackInterval getOrCreateInterval(VirtualStackSlot slot) {
+        VirtualStackSlot stackSlot;
+        if (slot instanceof SimpleVirtualStackSlotAlias) {
+            stackSlot = ((SimpleVirtualStackSlotAlias) slot).getAliasedSlot();
+        } else {
+            stackSlot = slot;
         }
-        return interval;
+
+        if (stackSlotMap[stackSlot.getId()] == null) {
+            stackSlotMap[stackSlot.getId()] = new StackInterval(stackSlot, stackSlot.getValueKind());
+        }
+        return stackSlotMap[stackSlot.getId()];
     }
 
     private StackInterval getIntervalFromStackId(int id) {

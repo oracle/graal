@@ -36,20 +36,21 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
-@AutomaticFeature
-public class ReachabilityHandlerFeature implements Feature {
+@AutomaticallyRegisteredFeature
+public class ReachabilityHandlerFeature extends ReachabilityHandler implements InternalFeature {
 
     private final IdentityHashMap<Object, Set<Object>> activeHandlers = new IdentityHashMap<>();
     private final IdentityHashMap<Object, Map<Object, Set<Object>>> triggeredHandlers = new IdentityHashMap<>();
@@ -58,23 +59,27 @@ public class ReachabilityHandlerFeature implements Feature {
         return ImageSingletons.lookup(ReachabilityHandlerFeature.class);
     }
 
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return !SubstrateOptions.RunReachabilityHandlersConcurrently.getValue();
+    }
+
+    @Override
     public void registerMethodOverrideReachabilityHandler(BeforeAnalysisAccessImpl a, BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
-        registerReachabilityHandler(a, callback, new Executable[]{baseMethod}, false);
+        registerReachabilityHandler(a, callback, new Executable[]{baseMethod});
     }
 
-    public void registerSubtypeReachabilityHandler(BeforeAnalysisAccess a, BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
-        registerReachabilityHandler(a, callback, new Class<?>[]{baseClass}, false);
+    @Override
+    public void registerSubtypeReachabilityHandler(BeforeAnalysisAccessImpl a, BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
+        registerReachabilityHandler(a, callback, new Class<?>[]{baseClass});
     }
 
-    public void registerClassInitializerReachabilityHandler(BeforeAnalysisAccess a, Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
-        registerReachabilityHandler(a, callback, new Class<?>[]{clazz}, true);
+    @Override
+    public void registerReachabilityHandler(BeforeAnalysisAccessImpl a, Consumer<DuringAnalysisAccess> callback, Object[] triggers) {
+        registerReachabilityHandler(a, (Object) callback, triggers);
     }
 
-    public void registerReachabilityHandler(BeforeAnalysisAccess a, Consumer<DuringAnalysisAccess> callback, Object[] triggers) {
-        registerReachabilityHandler(a, callback, triggers, false);
-    }
-
-    private void registerReachabilityHandler(BeforeAnalysisAccess a, Object callback, Object[] triggers, boolean triggerOnClassInitializer) {
+    private void registerReachabilityHandler(BeforeAnalysisAccess a, Object callback, Object[] triggers) {
         if (triggeredHandlers.containsKey(callback)) {
             /* Handler has already been triggered from another registration, so nothing to do. */
             return;
@@ -87,8 +92,7 @@ public class ReachabilityHandlerFeature implements Feature {
 
         for (Object trigger : triggers) {
             if (trigger instanceof Class) {
-                AnalysisType aType = metaAccess.lookupJavaType((Class<?>) trigger);
-                triggerSet.add(triggerOnClassInitializer ? aType.getClassInitializer() : aType);
+                triggerSet.add(metaAccess.lookupJavaType((Class<?>) trigger));
             } else if (trigger instanceof Field) {
                 triggerSet.add(metaAccess.lookupJavaField((Field) trigger));
             } else if (trigger instanceof Executable) {
@@ -180,7 +184,10 @@ public class ReachabilityHandlerFeature implements Feature {
                 Set<Object> prevReachable = handledTriggers.computeIfAbsent(trigger, c -> new HashSet<>());
                 newReachable.removeAll(prevReachable);
                 for (AnalysisMethod reachable : newReachable) {
-                    toOverrideCallback(callback).accept(access, reachable.getJavaMethod());
+                    Executable javaMethod = reachable.getJavaMethod();
+                    if (javaMethod != null) {
+                        toOverrideCallback(callback).accept(access, javaMethod);
+                    }
                     prevReachable.add(reachable);
                 }
             } else {

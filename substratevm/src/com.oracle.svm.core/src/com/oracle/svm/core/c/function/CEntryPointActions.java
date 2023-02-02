@@ -28,11 +28,10 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.thread.PlatformThreads;
 
 /**
  * Advanced entry and leave actions for entry point methods annotated with {@link CEntryPoint}.
@@ -63,13 +62,17 @@ public final class CEntryPointActions {
      * context. If the thread has already been attached, this does not cause the operation to fail.
      *
      * @param isolate an existing isolate.
-     * @param ensureJavaThread when set to true, the method ensures that the
-     *            {@link java.lang.Thread} object for the newly attached thread is created. If the
-     *            parameter is set to false, a later call to one of the
-     *            {@link JavaThreads#ensureJavaThread} methods early after the prologue must be used
-     *            to do the initialization manually.
+     * @param startedByIsolate Whether the current thread has been launched directly by the isolate,
+     *            which makes the isolate responsible for cleanups when the thread detaches.
+     * @param ensureJavaThread when set to true, the method ensures that the {@link Thread} object
+     *            for the newly attached thread is created. If the parameter is set to false, a
+     *            later call to one of the {@link PlatformThreads#ensureCurrentAssigned} methods
+     *            early after the prologue must be used to do the initialization manually.
      * @return 0 on success, otherwise non-zero.
      */
+    public static native int enterAttachThread(Isolate isolate, boolean startedByIsolate, boolean ensureJavaThread);
+
+    /** @see #enterAttachThread(Isolate, boolean, boolean) */
     public static native int enterAttachThread(Isolate isolate, boolean ensureJavaThread);
 
     /**
@@ -88,50 +91,18 @@ public final class CEntryPointActions {
      * @param isolate isolate in which a context for the current thread exists.
      * @return 0 on success, otherwise non-zero.
      */
-    public static native int enterIsolate(Isolate isolate);
+    public static native int enterByIsolate(Isolate isolate);
 
     /**
-     * Enters an existing context for the current thread that has already been created in the given
-     * isolate, during the prologue of a segfault handler. Execution is not expected to resume
-     * normally from the thread.
+     * May only be used during the prologue of a segfault handler. If the thread is already
+     * attached, it enters the existing context of that thread. If the thread is unattached, it
+     * creates a context that is sufficient for executing the segfault handler. After executing the
+     * segfault handler, execution must not resume normally.
      *
      * @param isolate isolate in which a context for the current thread exists.
      * @return 0 on success, otherwise non-zero.
      */
-    public static native int enterIsolateFromCrashHandler(Isolate isolate);
-
-    /**
-     * In the prologue, stop execution and return to the entry point method's caller with the given
-     * return value. The passed word is cast to the entry point method's return type, which must be
-     * a {@link WordBase} type.
-     */
-    public static native void bailoutInPrologue(WordBase value);
-
-    /**
-     * In the prologue, stop execution and return to the entry point method's caller with the given
-     * return value. The passed integer is narrowed to the entry point method's return type, which
-     * must be one of {@code long}, {@code int}, {@code short}, {@code char}, or {@code byte}.
-     */
-    public static native void bailoutInPrologue(long value);
-
-    /**
-     * In the prologue, stop execution and return to the entry point method's caller with the given
-     * return value. The entry point method's return type must be {@code double}, or can also be
-     * {@code float}, in which case a cast is applied.
-     */
-    public static native void bailoutInPrologue(double value);
-
-    /**
-     * In the prologue, stop execution and return to the entry point method's caller with the given
-     * return value. The entry point method's return type must be {@code boolean}.
-     */
-    public static native void bailoutInPrologue(boolean value);
-
-    /**
-     * In the prologue, stop execution and return to the entry point method's caller. The entry
-     * point method's return type must be {@code void}.
-     */
-    public static native void bailoutInPrologue();
+    public static native int enterAttachThreadFromCrashHandler(Isolate isolate);
 
     /**
      * Leaves the current thread's current context.

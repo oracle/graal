@@ -1,0 +1,10 @@
+> export CP=${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-jfluid-heap.jar:${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-profiler-oql.jar:.
+>[0] javac -cp $CP HeapQuery.java
+#> export TMP_DIR=/tmp
+>[??] rm -rf ${TMP_DIR}/array.hprof*
+>[7?] js --insight=sieveArrayInsight.js --heap.dump=${TMP_DIR}/array.hprof sieveArray.js
+# a JavaScript heap has been generated
+>[0] java -cp $CP HeapQuery ${TMP_DIR}/array.hprof -e 'heap.forEachObject((arr) => print(arr.length), "java.lang.Object[]");'
+50000
+>[0] java -cp $CP HeapQuery ${TMP_DIR}/array.hprof -e 'var max = 0; heap.forEachObject((arr) => { for (let i = 0; i < arr.length; i++) { let p = arr[i].value; if (p > max) max = p; } }, "java.lang.Object[]"); print("Maximal number is " + max);'
+Maximal number is 611953

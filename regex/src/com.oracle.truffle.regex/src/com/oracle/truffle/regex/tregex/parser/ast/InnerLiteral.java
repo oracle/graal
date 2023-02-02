@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.string.AbstractString;
 
 /**
@@ -52,10 +54,15 @@ public class InnerLiteral {
     private final AbstractString mask;
     private final int maxPrefixSize;
 
+    private final TruffleString literalTString;
+    private final TruffleString.WithMask maskTString;
+
     public InnerLiteral(AbstractString literal, AbstractString mask, int maxPrefixSize) {
         this.literal = literal;
         this.mask = mask;
         this.maxPrefixSize = maxPrefixSize;
+        this.literalTString = literal.asTString();
+        this.maskTString = mask == null ? null : mask.asTStringMask(literalTString);
     }
 
     /**
@@ -65,6 +72,11 @@ public class InnerLiteral {
         return literal;
     }
 
+    public Object getLiteralContent(boolean tString) {
+        CompilerAsserts.partialEvaluationConstant(tString);
+        return tString ? literalTString : literal.content();
+    }
+
     /**
      * An optional mask for matching the string in ignore-case mode.
      */
@@ -72,8 +84,9 @@ public class InnerLiteral {
         return mask;
     }
 
-    public Object getMaskContent() {
-        return mask == null ? null : mask.content();
+    public Object getMaskContent(boolean tString) {
+        CompilerAsserts.partialEvaluationConstant(tString);
+        return mask == null ? null : tString ? maskTString : mask.content();
     }
 
     /**

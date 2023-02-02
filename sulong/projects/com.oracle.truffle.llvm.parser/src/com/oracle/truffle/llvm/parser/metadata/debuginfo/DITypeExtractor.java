@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.parser.metadata.Flags;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
@@ -57,6 +56,8 @@ import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
@@ -64,11 +65,15 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceClassLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceEnumLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceInheritanceType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import static com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType.UNKNOWN;
@@ -201,7 +206,6 @@ final class DITypeExtractor implements MetadataVisitor {
                 for (final LLVMSourceType member : members) {
                     if (member instanceof LLVMSourceMemberType) {
                         type.addDynamicMember((LLVMSourceMemberType) member);
-
                     } else if (member instanceof LLVMSourceStaticMemberType) {
                         type.addStaticMember((LLVMSourceStaticMemberType) member);
                     }
@@ -212,19 +216,21 @@ final class DITypeExtractor implements MetadataVisitor {
                     for (MDBaseNode elemNode : elemListNode) {
                         if (elemNode instanceof MDSubprogram) {
                             MDSubprogram mdSubprogram = (MDSubprogram) elemNode;
-                            try {
-                                final String methodName = ((MDString) mdSubprogram.getName()).getString();
+                            final String methodName = ((MDString) mdSubprogram.getName()).getString();
+                            if (mdSubprogram.getLinkageName() instanceof MDString) {
                                 final String methodLinkageName = ((MDString) mdSubprogram.getLinkageName()).getString();
                                 final LLVMSourceFunctionType llvmSourceFunctionType = (LLVMSourceFunctionType) parsedTypes.get(mdSubprogram);
+                                final long virtualIndex = mdSubprogram.getVirtuality() > 0 ? mdSubprogram.getVirtualIndex() : -1L;
                                 if (llvmSourceFunctionType != null) {
-                                    type.addMethod(methodName, methodLinkageName, llvmSourceFunctionType);
+                                    type.addMethod(methodName, methodLinkageName, llvmSourceFunctionType, virtualIndex);
                                 }
-                            } catch (ClassCastException cce) {
+                            } else {
                                 /*
                                  * mdSubprogram does not have an MDString as (linkage)name, or
                                  * function could not be found. In this case, just do not add the
                                  * given mdSubprogram as a class method.
                                  */
+
                             }
                         }
                     }
@@ -321,10 +327,6 @@ final class DITypeExtractor implements MetadataVisitor {
         switch (mdType.getTag()) {
 
             case DW_TAG_MEMBER: {
-                if (Flags.ARTIFICIAL.isAllFlags(mdType.getFlags())) {
-                    parsedTypes.put(mdType, LLVMSourceType.VOID);
-                    break;
-                }
 
                 final String name = MDNameExtractor.getName(mdType.getName());
 
@@ -377,11 +379,15 @@ final class DITypeExtractor implements MetadataVisitor {
                 break;
             }
 
+            case DW_TAG_ATOMIC_TYPE:
             case DW_TAG_TYPEDEF:
             case DW_TAG_VOLATILE_TYPE:
             case DW_TAG_CONST_TYPE: {
                 final Function<String, String> decorator;
                 switch (mdType.getTag()) {
+                    case DW_TAG_ATOMIC_TYPE:
+                        decorator = s -> String.format("atomic %s", s);
+                        break;
                     case DW_TAG_VOLATILE_TYPE:
                         decorator = s -> String.format("volatile %s", s);
                         break;
@@ -406,11 +412,12 @@ final class DITypeExtractor implements MetadataVisitor {
             }
 
             case DW_TAG_INHERITANCE: {
-                final LLVMSourceMemberType type = new LLVMSourceMemberType("super", size, align, offset, location);
-                parsedTypes.put(mdType, type);
+                final LLVMSourceInheritanceType inheritanceType = new LLVMSourceInheritanceType("super", size, align, offset, location);
+                parsedTypes.put(mdType, inheritanceType);
                 final LLVMSourceType baseType = resolve(mdType.getBaseType());
-                type.setElementType(baseType);
-                type.setName(() -> String.format("super (%s)", baseType.getName()));
+                inheritanceType.setElementType(baseType);
+                inheritanceType.setName(() -> String.format("super (%s)", baseType.getName()));
+                inheritanceType.setVirtual(Flags.VIRTUAL.isSetIn(mdType.getFlags()));
 
                 break;
             }
@@ -497,7 +504,26 @@ final class DITypeExtractor implements MetadataVisitor {
 
     @Override
     public void visit(MDSubprogram mdSubprogram) {
-        parsedTypes.put(mdSubprogram, resolve(mdSubprogram.getType()));
+        // 'this' parameter of thunk methods is missing in the debug info, thus fix here.
+        LLVMSourceType llvmSourceType = resolve(mdSubprogram.getType());
+        if (Flags.THUNK.isSetIn(mdSubprogram.getFlags())) {
+            SymbolImpl symbol = MDValue.getIfInstance(mdSubprogram.getFunction());
+            if (symbol != null && symbol instanceof FunctionDefinition) {
+                FunctionDefinition function = (FunctionDefinition) symbol;
+                final DataLayout dataLayout = LLVMLanguage.get(null).getDefaultDataLayout();
+                LLVMSourceType llvmSourceReturnType = LLVMSourceTypeFactory.resolveType(function.getType().getReturnType(), dataLayout);
+                List<LLVMSourceType> typeList = new ArrayList<>();
+                typeList.add(llvmSourceReturnType);
+                for (FunctionParameter fp : function.getParameters()) {
+                    LLVMSourceType parameterSourceType = LLVMSourceTypeFactory.resolveType(fp.getType(),
+                                    dataLayout);
+                    typeList.add(parameterSourceType);
+                }
+                llvmSourceType = new LLVMSourceFunctionType(typeList);
+            }
+        }
+        parsedTypes.put(mdSubprogram, llvmSourceType);
+
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@ package org.graalvm.tools.lsp.server.utils;
 
 import java.net.URI;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -36,7 +36,7 @@ import com.oracle.truffle.api.source.Source;
 
 public final class TextDocumentSurrogateMap {
     private final TruffleInstrument.Env env;
-    private final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
+    private final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new LRUCacheMap<>();
 
     public TextDocumentSurrogateMap(TruffleInstrument.Env env) {
         this.env = env;
@@ -52,14 +52,14 @@ public final class TextDocumentSurrogateMap {
 
     public TextDocumentSurrogate getOrCreateSurrogate(URI uri, LanguageInfo languageInfo) {
         return uri2TextDocumentSurrogate.computeIfAbsent(uri,
-                        (anUri) -> new TextDocumentSurrogate(env.getTruffleFile(anUri), languageInfo));
+                        (anUri) -> new TextDocumentSurrogate(env.getTruffleFile(null, anUri), languageInfo));
     }
 
     public TextDocumentSurrogate getOrCreateSurrogate(URI uri, Supplier<LanguageInfo> languageInfoSupplier) {
         return uri2TextDocumentSurrogate.computeIfAbsent(uri,
                         (anUri) -> {
                             LanguageInfo languageInfo = languageInfoSupplier.get();
-                            return new TextDocumentSurrogate(env.getTruffleFile(anUri), languageInfo);
+                            return new TextDocumentSurrogate(env.getTruffleFile(null, anUri), languageInfo);
                         });
     }
 
@@ -83,4 +83,20 @@ public final class TextDocumentSurrogateMap {
         return false;
     }
 
+    private static class LRUCacheMap<K, V> extends LinkedHashMap<K, V> {
+
+        private static final long serialVersionUID = 2428506935618594078L;
+
+        private static final int MAX_SIZE = 2048;
+
+        LRUCacheMap() {
+            super(32, 0.75f, true);
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+            return size() > MAX_SIZE;
+        }
+
+    }
 }

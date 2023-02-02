@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
+import com.oracle.svm.core.util.VMError;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 
 // Checkstyle: stop
@@ -40,17 +44,56 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 @CContext(PosixDirectives.class)
 public class DarwinStat {
 
+    /*
+     * NOTE that we set _DARWIN_USE_64_BIT_INODE in the C directives to force a layout for struct
+     * stat with a 64-bit st_ino, and we have to call functions with a $INODE64 suffix to match,
+     * such as fstat$INODE64.
+     */
+
     @CStruct(addStructKeyword = true)
-    public interface stat64 extends PointerBase {
+    public interface stat extends PointerBase {
         @CField
         long st_size();
     }
 
-    @CFunction("fstat64")
-    public static native int fstat64(int fd, stat64 buf);
+    @CFunction("fstat$INODE64")
+    @Platforms(Platform.DARWIN_AMD64.class)
+    public static native int fstat_amd64(int fd, stat buf);
+
+    @CFunction("fstat")
+    @Platforms(Platform.DARWIN_AARCH64.class)
+    public static native int fstat_aarch64(int fd, stat buf);
+
+    @Platforms(Platform.DARWIN.class)
+    public static int fstat(int fd, stat buf) {
+        if (Platform.includedIn(Platform.AMD64.class)) {
+            return fstat_amd64(fd, buf);
+        } else if (Platform.includedIn(Platform.AARCH64.class)) {
+            return fstat_aarch64(fd, buf);
+        } else {
+            throw VMError.shouldNotReachHere();
+        }
+    }
 
     public static class NoTransitions {
-        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-        public static native int fstat64(int fd, stat64 buf);
+        @CFunction(value = "fstat$INODE64", transition = CFunction.Transition.NO_TRANSITION)
+        @Platforms(Platform.DARWIN_AMD64.class)
+        public static native int fstat_amd64(int fd, stat buf);
+
+        @CFunction(value = "fstat", transition = CFunction.Transition.NO_TRANSITION)
+        @Platforms(Platform.DARWIN_AARCH64.class)
+        public static native int fstat_aarch64(int fd, stat buf);
+
+        @Platforms(Platform.DARWIN.class)
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int fstat(int fd, stat buf) {
+            if (Platform.includedIn(Platform.AMD64.class)) {
+                return fstat_amd64(fd, buf);
+            } else if (Platform.includedIn(Platform.AARCH64.class)) {
+                return fstat_aarch64(fd, buf);
+            } else {
+                throw VMError.shouldNotReachHere();
+            }
+        }
     }
 }

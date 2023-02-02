@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,12 @@ package com.oracle.svm.core.jvmstat;
 
 import java.nio.ByteBuffer;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 
 public interface PerfDataSupport {
-    ByteBuffer attach(String user, int lvmid, int mode);
+    ByteBuffer attach(int lvmid);
 
     void detach(ByteBuffer bb);
 
@@ -45,6 +42,10 @@ public interface PerfDataSupport {
     ByteBuffer createLong(String name, int variability, int units, long value);
 
     ByteBuffer createByteArray(String name, int variability, int units, byte[] value, int maxLength);
+
+    CLongPointer getLong(String name);
+
+    boolean hasLong(String name);
 }
 
 class NoPerfDataSupport implements PerfDataSupport {
@@ -53,7 +54,7 @@ class NoPerfDataSupport implements PerfDataSupport {
     }
 
     @Override
-    public ByteBuffer attach(String user, int lvmid, int mode) {
+    public ByteBuffer attach(int lvmid) {
         throw new IllegalArgumentException("Performance data is not supported.");
     }
 
@@ -81,14 +82,14 @@ class NoPerfDataSupport implements PerfDataSupport {
     public ByteBuffer createByteArray(String name, int variability, int units, byte[] value, int maxLength) {
         throw new IllegalArgumentException("Performance data is not supported.");
     }
-}
 
-@AutomaticFeature
-class PerfDataFeature implements Feature {
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(PerfDataSupport.class)) {
-            ImageSingletons.add(PerfDataSupport.class, new NoPerfDataSupport());
-        }
+    public CLongPointer getLong(String name) {
+        throw new IllegalArgumentException("Performance data is not supported.");
+    }
+
+    @Override
+    public boolean hasLong(String name) {
+        return false;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,26 +30,22 @@
 package com.oracle.truffle.llvm.runtime.memory;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMUniquesRegionAllocNode extends LLVMNode {
 
-    private final FrameSlot uniquesRegionSlot;
     @Child private LLVMExpressionNode allocation;
 
-    public LLVMUniquesRegionAllocNode(LLVMExpressionNode allocation, FrameDescriptor desc) {
+    public LLVMUniquesRegionAllocNode(LLVMExpressionNode allocation) {
         this.allocation = allocation;
-        this.uniquesRegionSlot = LLVMStack.getUniquesRegionSlot(desc);
     }
 
     public abstract void execute(VirtualFrame frame);
 
     @Specialization
     protected void doOp(VirtualFrame frame) {
-        frame.setObject(uniquesRegionSlot, allocation.executeGeneric(frame));
+        frame.setObject(LLVMStack.UNIQUES_REGION_ID, allocation.executeGeneric(frame));
     }
 }

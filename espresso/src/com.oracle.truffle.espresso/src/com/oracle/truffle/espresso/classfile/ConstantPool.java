@@ -31,7 +31,9 @@ import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INTERFACE_M
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INVOKEDYNAMIC;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.LONG;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.METHOD_REF;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.MODULE;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.NAME_AND_TYPE;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.PACKAGE;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.STRING;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
 
@@ -41,7 +43,6 @@ import java.util.Formatter;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
@@ -65,47 +66,67 @@ import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
-import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * Immutable, shareable constant-pool representation.
  */
 public abstract class ConstantPool {
 
+    // @formatter:off
+    public static final byte CONSTANT_Utf8               = 1;
+    public static final byte CONSTANT_Integer            = 3;
+    public static final byte CONSTANT_Float              = 4;
+    public static final byte CONSTANT_Long               = 5;
+    public static final byte CONSTANT_Double             = 6;
+    public static final byte CONSTANT_Class              = 7;
+    public static final byte CONSTANT_String             = 8;
+    public static final byte CONSTANT_Fieldref           = 9;
+    public static final byte CONSTANT_Methodref          = 10;
+    public static final byte CONSTANT_InterfaceMethodref = 11;
+    public static final byte CONSTANT_NameAndType        = 12;
+    public static final byte CONSTANT_MethodHandle       = 15;
+    public static final byte CONSTANT_MethodType         = 16;
+    public static final byte CONSTANT_Dynamic            = 17;
+    public static final byte CONSTANT_InvokeDynamic      = 18;
+    public static final byte CONSTANT_Module             = 19;
+    public static final byte CONSTANT_Package            = 20;
+    // @formatter:on
+
     private static final DebugCounter UTF8_ENTRY_COUNT = DebugCounter.create("UTF8 Constant Pool entries");
 
     public enum Tag {
         INVALID(0),
-        UTF8(1),
-        INTEGER(3, true),
-        FLOAT(4, true),
-        LONG(5, true),
-        DOUBLE(6, true),
-        CLASS(7, true),
-        STRING(8, true),
-        FIELD_REF(9),
-        METHOD_REF(10),
-        INTERFACE_METHOD_REF(11),
-        NAME_AND_TYPE(12),
-        METHODHANDLE(15, true),
-        METHODTYPE(16, true),
-        DYNAMIC(17, true),
-        INVOKEDYNAMIC(18),
-        MODULE(19),
-        PACKAGE(20);
+        UTF8(CONSTANT_Utf8),
+        INTEGER(CONSTANT_Integer, true),
+        FLOAT(CONSTANT_Float, true),
+        LONG(CONSTANT_Long, true),
+        DOUBLE(CONSTANT_Double, true),
+        CLASS(CONSTANT_Class, true),
+        STRING(CONSTANT_String, true),
+        FIELD_REF(CONSTANT_Fieldref),
+        METHOD_REF(CONSTANT_Methodref),
+        INTERFACE_METHOD_REF(CONSTANT_InterfaceMethodref),
+        NAME_AND_TYPE(CONSTANT_NameAndType),
+        METHODHANDLE(CONSTANT_MethodHandle, true),
+        METHODTYPE(CONSTANT_MethodType, true),
+        DYNAMIC(CONSTANT_Dynamic, true),
+        INVOKEDYNAMIC(CONSTANT_InvokeDynamic),
+        MODULE(CONSTANT_Module),
+        PACKAGE(CONSTANT_Package);
 
         private final byte value;
         private final boolean loadable;
 
         Tag(int value) {
-            assert (byte) value == value;
-            this.value = (byte) value;
-            this.loadable = false;
+            this(value, false);
         }
 
         Tag(int value, boolean isLoadable) {
@@ -147,6 +168,34 @@ public abstract class ConstantPool {
             // @formatter:on
         }
 
+        public boolean isValidForVersion(int major) {
+            switch (this) {
+                case UTF8:  // fall-through
+                case INTEGER:  // fall-through
+                case FLOAT:  // fall-through
+                case LONG: // fall-through
+                case DOUBLE: // fall-through
+                case CLASS: // fall-through
+                case STRING: // fall-through
+                case FIELD_REF: // fall-through
+                case METHOD_REF: // fall-through
+                case INTERFACE_METHOD_REF: // fall-through
+                case NAME_AND_TYPE: // fall-through
+                    return major >= 45;
+                case METHODHANDLE: // fall-through
+                case METHODTYPE:
+                case INVOKEDYNAMIC:
+                    return major >= 51;
+                case DYNAMIC:
+                    return major >= 55;
+                case MODULE:
+                case PACKAGE:
+                    return major >= 53;
+                default:
+                    throw EspressoError.shouldNotReachHere("Cannot validate tag version for" + this);
+            }
+        }
+
         public static final List<Tag> VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
     }
@@ -165,31 +214,40 @@ public abstract class ConstantPool {
 
     public abstract byte[] getRawBytes();
 
-    static @Host(ClassFormatError.class) EspressoException unexpectedEntry(int index, ConstantPool.Tag tag, String description, ConstantPool.Tag... expected) {
+    static @JavaType(ClassFormatError.class) EspressoException unexpectedEntry(int index, ConstantPool.Tag tag, String description, ConstantPool.Tag... expected) {
         CompilerDirectives.transferToInterpreter();
         throw classFormatError("Constant pool entry" + (description == null ? "" : " for " + description) + " at " + index + " is a " + tag + ", expected " + Arrays.toString(expected));
     }
 
-    final @Host(ClassFormatError.class) EspressoException unexpectedEntry(int index, String description, ConstantPool.Tag... expected) {
+    final @JavaType(ClassFormatError.class) EspressoException unexpectedEntry(int index, String description, ConstantPool.Tag... expected) {
         CompilerDirectives.transferToInterpreter();
         throw unexpectedEntry(index, tagAt(index), description, expected);
     }
 
-    static @Host(VerifyError.class) EspressoException verifyError(String message) {
+    static @JavaType(VerifyError.class) EspressoException verifyError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
+        if (meta.java_lang_VerifyError == null) {
+            throw EspressoError.fatal("VerifyError during early startup: ", message);
+        }
         throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
     }
 
-    public static @Host(ClassFormatError.class) EspressoException classFormatError(String message) {
+    public static @JavaType(ClassFormatError.class) EspressoException classFormatError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
+        if (meta.java_lang_ClassFormatError == null) {
+            throw EspressoError.fatal("ClassFormatError during early startup: ", message);
+        }
         throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
     }
 
-    static @Host(NoClassDefFoundError.class) EspressoException noClassDefFoundError(String message) {
+    static @JavaType(NoClassDefFoundError.class) EspressoException noClassDefFoundError(String message) {
         CompilerDirectives.transferToInterpreter();
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Meta meta = EspressoContext.get(null).getMeta();
+        if (meta.java_lang_NoClassDefFoundError == null) {
+            throw EspressoError.fatal("NoClassDefFoundError during early startup: ", message);
+        }
         throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
     }
 
@@ -394,14 +452,14 @@ public abstract class ConstantPool {
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, int majorVersion, int minorVersion) {
-        return parse(language, stream, parser, null, null, majorVersion, minorVersion);
+    public static ConstantPool parse(ClassLoadingEnv env, ClassfileStream stream, ClassfileParser parser, int majorVersion, int minorVersion) {
+        return parse(env, stream, parser, null, majorVersion, minorVersion);
     }
 
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser, StaticObject[] patches, EspressoContext context, int majorVersion, int minorVersion) {
+    public static ConstantPool parse(ClassLoadingEnv env, ClassfileStream stream, ClassfileParser parser, StaticObject[] patches, int majorVersion, int minorVersion) {
         final int length = stream.readU2();
         if (length < 1) {
             throw stream.classFormatError("Invalid constant pool size (" + length + ")");
@@ -417,6 +475,10 @@ public abstract class ConstantPool {
             if (tag == null) {
                 throw classFormatError("Invalid constant pool entry type at index " + i);
             }
+            // check version for the tag except for module/package entries which must cause NDCFE
+            if (!tag.isValidForVersion(parser.getMajorVersion()) && tag != MODULE && tag != PACKAGE) {
+                throw classFormatError("Class file version does not support constant tag " + tagByte + " in class file");
+            }
             switch (tag) {
                 case CLASS: {
                     if (existsAt(patches, i)) {
@@ -428,7 +490,7 @@ public abstract class ConstantPool {
                         if (classSpecifier.getKlass().getType() == Type.java_lang_Class) {
                             entries[i] = ClassConstant.preResolved(classSpecifier.getMirrorKlass());
                         } else {
-                            entries[i] = ClassConstant.withString(context.getNames().lookup(context.getMeta().toHostString(patches[i])));
+                            entries[i] = ClassConstant.withString(env.getNames().lookup(env.getMeta().toHostString(patches[i])));
                         }
 
                         break;
@@ -475,7 +537,7 @@ public abstract class ConstantPool {
                 }
                 case INTEGER: {
                     if (existsAt(patches, i)) {
-                        entries[i] = IntegerConstant.create(context.getMeta().unboxInteger(patches[i]));
+                        entries[i] = IntegerConstant.create(env.getMeta().unboxInteger(patches[i]));
                         stream.readS4();
                         break;
                     }
@@ -484,7 +546,7 @@ public abstract class ConstantPool {
                 }
                 case FLOAT: {
                     if (existsAt(patches, i)) {
-                        entries[i] = FloatConstant.create(context.getMeta().unboxFloat(patches[i]));
+                        entries[i] = FloatConstant.create(env.getMeta().unboxFloat(patches[i]));
                         stream.readFloat();
                         break;
                     }
@@ -493,7 +555,7 @@ public abstract class ConstantPool {
                 }
                 case LONG: {
                     if (existsAt(patches, i)) {
-                        entries[i] = LongConstant.create(context.getMeta().unboxLong(patches[i]));
+                        entries[i] = LongConstant.create(env.getMeta().unboxLong(patches[i]));
                         stream.readS8();
                     } else {
                         entries[i] = LongConstant.create(stream.readS8());
@@ -508,7 +570,7 @@ public abstract class ConstantPool {
                 }
                 case DOUBLE: {
                     if (existsAt(patches, i)) {
-                        entries[i] = DoubleConstant.create(context.getMeta().unboxDouble(patches[i]));
+                        entries[i] = DoubleConstant.create(env.getMeta().unboxDouble(patches[i]));
                         stream.readDouble();
                     } else {
                         entries[i] = DoubleConstant.create(stream.readDouble());
@@ -526,7 +588,7 @@ public abstract class ConstantPool {
                     // A new symbol is spawned (copy) only if doesn't already exists.
                     UTF8_ENTRY_COUNT.inc();
                     ByteSequence bytes = stream.readByteSequenceUTF();
-                    entries[i] = language.getUtf8ConstantTable().getOrCreate(bytes);
+                    entries[i] = env.getLanguage().getUtf8ConstantTable().getOrCreate(bytes);
                     break;
                 }
                 case METHODHANDLE: {
@@ -566,10 +628,14 @@ public abstract class ConstantPool {
         }
         int rawPoolLength = stream.getPosition() - rawPoolStartPosition;
 
-        final ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, rawPoolLength);
+        ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, rawPoolLength);
 
-        // Cannot faithfully reconstruct patched pools. obtaining raw pool of patched class is
-        // meaningless anyway.
+        if (parser.hasSeenBadConstant()) {
+            return constantPool;
+        }
+
+        // Cannot faithfully reconstruct patched pools. obtaining raw pool of patched/hidden class
+        // is meaningless anyway.
         assert patches != null || sameRawPool(constantPool, stream, rawPoolStartPosition, rawPoolLength);
 
         // Validation
@@ -586,5 +652,10 @@ public abstract class ConstantPool {
 
     private static boolean existsAt(StaticObject[] patches, int index) {
         return patches != null && 0 <= index && index < patches.length && StaticObject.notNull(patches[index]);
+    }
+
+    @SuppressWarnings("unused")
+    ConstantPool patchForHiddenClass(int thisKlassIndex, Symbol<?> newName) {
+        return this;
     }
 }

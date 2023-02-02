@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -129,6 +129,50 @@ public class ConditionTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void testCheckUtilityMethod() {
+        // this utility method might otherwise only be used for debugging
+        assertTrue(Condition.EQ.check(1, 1));
+        assertFalse(Condition.EQ.check(0, 1));
+        assertFalse(Condition.EQ.check(1, 0));
+
+        assertFalse(Condition.NE.check(1, 1));
+        assertTrue(Condition.NE.check(0, 1));
+        assertTrue(Condition.NE.check(1, 0));
+
+        assertFalse(Condition.LT.check(1, 1));
+        assertTrue(Condition.LT.check(0, 1));
+        assertFalse(Condition.LT.check(1, 0));
+
+        assertTrue(Condition.LE.check(1, 1));
+        assertTrue(Condition.LE.check(0, 1));
+        assertFalse(Condition.LE.check(1, 0));
+
+        assertFalse(Condition.GT.check(1, 1));
+        assertFalse(Condition.GT.check(0, 1));
+        assertTrue(Condition.GT.check(1, 0));
+
+        assertTrue(Condition.GE.check(1, 1));
+        assertFalse(Condition.GE.check(0, 1));
+        assertTrue(Condition.GE.check(1, 0));
+
+        assertFalse(Condition.BT.check(1, 1));
+        assertTrue(Condition.BT.check(0, 1));
+        assertFalse(Condition.BT.check(1, 0));
+
+        assertTrue(Condition.BE.check(1, 1));
+        assertTrue(Condition.BE.check(0, 1));
+        assertFalse(Condition.BE.check(1, 0));
+
+        assertFalse(Condition.AT.check(1, 1));
+        assertFalse(Condition.AT.check(0, 1));
+        assertTrue(Condition.AT.check(1, 0));
+
+        assertTrue(Condition.AE.check(1, 1));
+        assertFalse(Condition.AE.check(0, 1));
+        assertTrue(Condition.AE.check(1, 0));
     }
 
 }

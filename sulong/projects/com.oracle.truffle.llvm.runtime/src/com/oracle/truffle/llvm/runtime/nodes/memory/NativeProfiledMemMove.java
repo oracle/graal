@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,12 +32,10 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMCopyTargetLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -95,7 +93,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
     protected void doManagedAliasing(LLVMManagedPointer target, LLVMManagedPointer source, long length,
                     @Cached("create(target, source)") ManagedMemMoveHelperNode helper,
                     @Cached UnitSizeNode unitSizeNode,
-                    @Cached("createCountingProfile()") ConditionProfile canCopyForward,
+                    @Cached CountingConditionProfile canCopyForward,
                     @SuppressWarnings("unused") @CachedLibrary("target.getObject()") LLVMCopyTargetLibrary copyTargetLib) {
         if (canCopyForward.profile(Long.compareUnsigned(target.getOffset() - source.getOffset(), length) >= 0)) {
             copyForward(target, source, length, helper, unitSizeNode);
@@ -138,7 +136,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         LLVMCopyTargetLibrary copyTargetLib = LLVMCopyTargetLibrary.getFactory().getUncached();
         if (LLVMManagedPointer.isInstance(target) && LLVMManagedPointer.isInstance(source)) {
             // potentially aliasing
-            doManagedAliasing(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source), length, helper, unitSizeNode, ConditionProfile.getUncached(), copyTargetLib);
+            doManagedAliasing(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source), length, helper, unitSizeNode, CountingConditionProfile.getUncached(), copyTargetLib);
         } else if (LLVMManagedPointer.isInstance(target) && LLVMManagedPointer.isInstance(source) &&
                         doCustomCopy(LLVMManagedPointer.cast(target), LLVMManagedPointer.cast(source), length, copyTargetLib)) {
             copyTargetLib.copyFrom(LLVMManagedPointer.cast(target).getObject(), LLVMManagedPointer.cast(source).getObject(), length);
@@ -154,10 +152,9 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
 
     @Specialization(guards = "length <= MAX_JAVA_LEN")
     protected void doInJava(Object target, Object source, long length,
-                    @CachedLanguage LLVMLanguage language,
                     @Cached LLVMToNativeNode convertTarget,
                     @Cached LLVMToNativeNode convertSource) {
-        LLVMMemory memory = language.getLLVMMemory();
+        LLVMMemory memory = getLanguage().getLLVMMemory();
         LLVMNativePointer t = convertTarget.executeWithTarget(target);
         LLVMNativePointer s = convertSource.executeWithTarget(source);
         long targetPointer = t.asNative();
@@ -177,10 +174,9 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
     @SuppressWarnings("deprecation")
     @Specialization(replaces = "doInJava")
     protected void doNative(Object target, Object source, long length,
-                    @CachedLanguage LLVMLanguage language,
                     @Cached LLVMToNativeNode convertTarget,
                     @Cached LLVMToNativeNode convertSource) {
-        language.getLLVMMemory().copyMemory(this, convertSource.executeWithTarget(source).asNative(), convertTarget.executeWithTarget(target).asNative(), length);
+        getLanguage().getLLVMMemory().copyMemory(this, convertSource.executeWithTarget(source).asNative(), convertTarget.executeWithTarget(target).asNative(), length);
     }
 
     private void copyForward(LLVMMemory memory, long target, long source, long length) {

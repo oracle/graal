@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.jvmtiagentbase;
 
+import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import static org.graalvm.word.WordFactory.nullPointer;
 
@@ -39,14 +39,14 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.core.jni.headers.JNIErrors;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNINativeInterface;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
+import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.jni.nativeapi.JNIEnvironment;
-import com.oracle.svm.jni.nativeapi.JNIErrors;
-import com.oracle.svm.jni.nativeapi.JNIFieldId;
-import com.oracle.svm.jni.nativeapi.JNIMethodId;
-import com.oracle.svm.jni.nativeapi.JNINativeInterface;
-import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
-import com.oracle.svm.jni.nativeapi.JNIValue;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
@@ -59,7 +59,7 @@ public final class Support {
 
     public static boolean isInitialized() {
         boolean initialized = jvmtiEnv.isNonNull();
-        assert initialized == jniFunctions.isNonNull();
+        assert initialized == jniFunctions.isNonNull() && initialized == (jvmtiVersion != 0);
         return initialized;
     }
 
@@ -70,14 +70,19 @@ public final class Support {
         check(jvmti.getFunctions().GetJNIFunctionTable().invoke(jvmti, functionsPtr));
         guarantee(functionsPtr.read() != nullPointer(), "Functions table must be initialized exactly once");
 
+        CIntPointer versionPtr = StackValue.get(CIntPointer.class);
+        check(jvmti.getFunctions().GetVersionNumber().invoke(jvmti, versionPtr));
+
         jvmtiEnv = jvmti;
         jniFunctions = functionsPtr.read();
+        jvmtiVersion = versionPtr.read();
     }
 
     public static void destroy() {
         jvmtiFunctions().Deallocate().invoke(jvmtiEnv(), jniFunctions);
         jniFunctions = nullPointer();
         jvmtiEnv = nullPointer();
+        jvmtiVersion = 0;
     }
 
     public static String getSystemProperty(JvmtiEnv jvmti, String propertyName) {
@@ -114,6 +119,9 @@ public final class Support {
     /** The original unmodified JNI function table. */
     private static JNINativeInterface jniFunctions;
 
+    /** See JVMTI function {@code GetVersionNumber}. */
+    private static int jvmtiVersion;
+
     public static JvmtiEnv jvmtiEnv() {
         return jvmtiEnv;
     }
@@ -126,7 +134,14 @@ public final class Support {
         return jniFunctions;
     }
 
+    public static int jvmtiVersion() {
+        return jvmtiVersion;
+    }
+
     public static String fromCString(CCharPointer s) {
+        if (s.isNull()) {
+            return null;
+        }
         return CTypeConversion.toJavaString(s, SubstrateUtil.strlen(s), StandardCharsets.UTF_8);
     }
 
@@ -155,12 +170,8 @@ public final class Support {
         return CTypeConversion.toCString(s);
     }
 
-    public static JNIObjectHandle getCallerClass(int depth) {
-        return getMethodDeclaringClass(getCallerMethod(depth));
-    }
-
-    public static JNIObjectHandle getDirectCallerClass() {
-        return getCallerClass(1);
+    public static boolean isSerializable(JNIEnvironment env, JNIObjectHandle serializeTargetClass) {
+        return jniFunctions().getIsAssignableFrom().invoke(env, serializeTargetClass, JvmtiAgentBase.singleton().handles().javaIoSerializable);
     }
 
     public static JNIMethodId getCallerMethod(int depth) {
@@ -173,9 +184,25 @@ public final class Support {
         return nullPointer();
     }
 
-    public static JNIObjectHandle getObjectArgument(int slot) {
+    public static JNIObjectHandle getObjectArgument(JNIObjectHandle thread, int slot) {
+        assert thread.notEqual(nullHandle()) : "JDK-8292657: must not use NULL for the current thread because it does not apply to virtual threads on JDK 19";
         WordPointer handlePtr = StackValue.get(WordPointer.class);
-        if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), nullHandle(), 0, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
+        if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), thread, 0, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
+            return nullHandle();
+        }
+        return handlePtr.read();
+    }
+
+    /**
+     * This method might be slightly faster than {@link #getObjectArgument}, but can only be used
+     * for instance methods, not static methods.
+     */
+    public static JNIObjectHandle getReceiver(JNIObjectHandle thread) {
+        assert thread.notEqual(nullHandle()) : "JDK-8292657: must not use NULL for the current thread because it does not apply to virtual threads on JDK 19";
+        WordPointer handlePtr = StackValue.get(WordPointer.class);
+        JvmtiError result = jvmtiFunctions().GetLocalInstance().invoke(jvmtiEnv(), thread, 0, handlePtr);
+        if (result != JvmtiError.JVMTI_ERROR_NONE) {
+            assert result != JvmtiError.JVMTI_ERROR_INVALID_SLOT : "not an instance method";
             return nullHandle();
         }
         return handlePtr.read();
@@ -234,18 +261,6 @@ public final class Support {
         return methodName;
     }
 
-    public static JNIObjectHandle getObjectField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle obj, String name, String signature) {
-        try (CCharPointerHolder nameHolder = toCString(name);
-                        CCharPointerHolder sigHolder = toCString(signature);) {
-            JNIFieldId fieldId = jniFunctions().getGetFieldID().invoke(env, clazz, nameHolder.get(), sigHolder.get());
-            if (nullHandle().notEqual(fieldId)) {
-                return jniFunctions().getGetObjectField().invoke(env, obj, fieldId);
-            } else {
-                return nullHandle();
-            }
-        }
-    }
-
     public static boolean clearException(JNIEnvironment localEnv) {
         if (jniFunctions().getExceptionCheck().invoke(localEnv)) {
             jniFunctions().getExceptionClear().invoke(localEnv);
@@ -262,13 +277,19 @@ public final class Support {
         return false;
     }
 
-    public static JNIObjectHandle handleException(JNIEnvironment localEnv) {
+    public static JNIObjectHandle handleException(JNIEnvironment localEnv, boolean clear) {
         if (jniFunctions().getExceptionCheck().invoke(localEnv)) {
             JNIObjectHandle exception = jniFunctions().getExceptionOccurred().invoke(localEnv);
-            jniFunctions().getExceptionClear().invoke(localEnv);
+            if (clear) {
+                jniFunctions().getExceptionClear().invoke(localEnv);
+            }
             return exception;
         }
         return nullHandle();
+    }
+
+    public static JNIObjectHandle readObjectField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        return jniFunctions().getGetObjectField().invoke(env, obj, fieldId);
     }
 
     /*
@@ -310,6 +331,11 @@ public final class Support {
         args.addressOf(2).setObject(l2);
         args.addressOf(3).setObject(l3);
         return jniFunctions().getCallObjectMethodA().invoke(env, obj, method, args);
+    }
+
+    public static JNIObjectHandle callStaticObjectMethod(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method) {
+        JNIValue args = StackValue.get(0, JNIValue.class);
+        return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
     }
 
     public static JNIObjectHandle callStaticObjectMethodL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, JNIObjectHandle l0) {
@@ -371,6 +397,12 @@ public final class Support {
         jniFunctions().getCallStaticVoidMethodA().invoke(env, clazz, method, args);
     }
 
+    public static boolean callStaticBooleanMethodL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, JNIObjectHandle l0) {
+        JNIValue args = StackValue.get(1, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        return jniFunctions().getCallStaticBooleanMethodA().invoke(env, clazz, method, args);
+    }
+
     public static boolean callBooleanMethod(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method) {
         return jniFunctions().getCallBooleanMethodA().invoke(env, obj, method, nullPointer());
     }
@@ -414,7 +446,14 @@ public final class Support {
     }
 
     public static void check(JvmtiError resultCode) {
-        guarantee(resultCode.equals(JvmtiError.JVMTI_ERROR_NONE), "JVMTI call failed with " + resultCode.name());
+        guarantee(resultCode.equals(JvmtiError.JVMTI_ERROR_NONE), "JVMTI call failed with %s", resultCode);
+    }
+
+    public static void checkPhase(JvmtiError resultCode) throws WrongPhaseException {
+        if (resultCode == JvmtiError.JVMTI_ERROR_WRONG_PHASE) {
+            throw new WrongPhaseException();
+        }
+        check(resultCode);
     }
 
     public static void checkJni(int resultCode) {
@@ -422,5 +461,9 @@ public final class Support {
     }
 
     private Support() {
+    }
+
+    public static class WrongPhaseException extends Exception {
+        private static final long serialVersionUID = 8503239518909756105L;
     }
 }

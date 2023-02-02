@@ -51,12 +51,26 @@ public final class LogNode extends FixedWithNextNode implements Lowerable {
     protected final String message;
     @OptionalInput ValueNode l1;
     @OptionalInput ValueNode l2;
+    @OptionalInput ValueNode l3;
 
-    public LogNode(@ConstantNodeParameter String message, ValueNode l1, ValueNode l2) {
+    public LogNode(@ConstantNodeParameter String message, ValueNode l1, ValueNode l2, ValueNode l3) {
         super(TYPE, StampFactory.forVoid());
         this.message = message;
         this.l1 = l1;
         this.l2 = l2;
+        this.l3 = l3;
+    }
+
+    public LogNode(@ConstantNodeParameter String message, ValueNode l1, ValueNode l2) {
+        this(message, l1, l2, null);
+    }
+
+    public LogNode(@ConstantNodeParameter String message, ValueNode l1) {
+        this(message, l1, null, null);
+    }
+
+    public LogNode(@ConstantNodeParameter String message) {
+        this(message, null, null, null);
     }
 
     public ValueNode getL1() {
@@ -65,6 +79,10 @@ public final class LogNode extends FixedWithNextNode implements Lowerable {
 
     public ValueNode getL2() {
         return l2;
+    }
+
+    public ValueNode getL3() {
+        return l3;
     }
 
     public String message() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,6 +36,8 @@ import org.graalvm.polyglot.io.ByteSequence;
 public final class ElfSectionHeaderTable {
     private static final int ELF32_SHTENT_SIZE = 40;
     private static final int ELF64_SHTENT_SIZE = 64;
+
+    private static final int SHF_ALLOC = 0x2;
 
     public static final class Entry {
         private final int shName;
@@ -91,7 +93,12 @@ public final class ElfSectionHeaderTable {
             return shEntsize;
         }
 
+        public boolean isAllocated() {
+            return (getFlags() & SHF_ALLOC) != 0;
+        }
+
         public long getShAddr() {
+            assert isAllocated();
             return shAddr;
         }
 

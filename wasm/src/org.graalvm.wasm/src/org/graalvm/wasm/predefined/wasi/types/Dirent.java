@@ -56,7 +56,7 @@ public final class Dirent {
     }
 
     /** Size of this structure, in bytes. */
-    public static int BYTES = 24;
+    public static final int BYTES = 24;
 
     /** Reads the offset of the next directory entry stored in this directory. */
     public static long readDNext(Node node, WasmMemory memory, int address) {

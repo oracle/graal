@@ -22,11 +22,12 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -54,6 +55,8 @@ public final class Ids<T> {
 
     private HashMap<String, Long> innerClassIDMap = new HashMap<>(16);
 
+    private DebuggerController controller;
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Ids(T nullObject) {
         this.nullObject = nullObject;
@@ -68,14 +71,15 @@ public final class Ids<T> {
      */
     public long getIdAsLong(T object) {
         if (object == null) {
-            JDWPLogger.log("Null object when getting ID", JDWPLogger.LogLevel.IDS);
+            log(() -> "Null object when getting ID");
             return 0;
         }
         // lookup in cache
         for (int i = 1; i < objects.length; i++) {
             // really slow lookup path
             if (objects[i].get() == object) {
-                JDWPLogger.log("ID cache hit for object: %s with ID: %d", JDWPLogger.LogLevel.IDS, object, i);
+                final int index = i;
+                log(() -> "ID cache hit for object: " + object + " with ID: " + index);
                 return i;
             }
         }
@@ -105,7 +109,8 @@ public final class Ids<T> {
         for (int i = 1; i < objects.length; i++) {
             // really slow lookup path
             if (objects[i].get() == object) {
-                JDWPLogger.log("ID cache hit for object: %s with ID: %d", JDWPLogger.LogLevel.IDS, object, i);
+                final int index = i;
+                log(() -> "ID cache hit for object: " + object + " with ID: " + index);
                 return i;
             }
         }
@@ -120,16 +125,16 @@ public final class Ids<T> {
      */
     public T fromId(int id) {
         if (id == 0) {
-            JDWPLogger.log("Null object from ID: %d", JDWPLogger.LogLevel.IDS, id);
+            log(() -> "Null object from ID: " + id);
             return nullObject;
         }
         WeakReference<T> ref = objects[id];
         T o = ref.get();
         if (o == null) {
-            JDWPLogger.log("object with ID: %d was garbage collected", JDWPLogger.LogLevel.IDS, id);
+            log(() -> "object with ID: " + id + " was garbage collected");
             return null;
         } else {
-            JDWPLogger.log("returning object: %s for ID: %d", JDWPLogger.LogLevel.IDS, o, id);
+            log(() -> "returning object: " + o + " for ID: " + id);
             return o;
         }
     }
@@ -145,7 +150,7 @@ public final class Ids<T> {
         WeakReference<T>[] expandedArray = Arrays.copyOf(objects, objects.length + 1);
         expandedArray[objects.length] = new WeakReference<>(object);
         objects = expandedArray;
-        JDWPLogger.log("Generating new ID: %d for object: %s", JDWPLogger.LogLevel.IDS, id, object);
+        log(() -> "Generating new ID: " + id + " for object: " + object);
         if (object instanceof KlassRef) {
             KlassRef klass = (KlassRef) object;
             Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klass.getNameAsString());
@@ -159,7 +164,7 @@ public final class Ids<T> {
     public void replaceObject(T original, T replacement) {
         int id = (int) getIdAsLong(original);
         objects[id] = new WeakReference<>(replacement);
-        JDWPLogger.log("Replaced ID: %d", JDWPLogger.LogLevel.IDS, id);
+        log(() -> "Replaced ID: " + id);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -183,5 +188,15 @@ public final class Ids<T> {
 
     public boolean checkRemoved(long refTypeId) {
         return innerClassIDMap.containsValue(refTypeId);
+    }
+
+    public void injectController(DebuggerController control) {
+        this.controller = control;
+    }
+
+    private void log(Supplier<String> supplier) {
+        if (controller != null) {
+            controller.finest(supplier);
+        }
     }
 }

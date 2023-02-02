@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,11 +33,12 @@ import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosit
 import static org.graalvm.compiler.debug.DebugOptions.Dump;
 import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
 import static org.graalvm.compiler.debug.DebugOptions.MethodFilter;
+import static org.graalvm.compiler.debug.DebugOptions.PrintBackendCFG;
+import static org.graalvm.compiler.debug.PathUtilities.getPath;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Map;
 
@@ -47,6 +48,7 @@ import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.BailoutException;
 
@@ -222,10 +224,41 @@ public abstract class CompilationWrapper<T> {
             return performCompilation(initialDebug);
         } catch (Throwable cause) {
             return onCompilationFailure(new Failure(cause, initialDebug));
+        } finally {
+            // Notify the runtime that most objects allocated in the current compilation are dead
+            // and can be reclaimed. If performCompilation includes code installation, the GC pause
+            // should not prolong the time until the compiled code can be executed.
+            GraalServices.notifyLowMemoryPoint(true);
         }
     }
 
-    private T handleFailure(DebugContext initialDebug, Throwable cause) {
+    private static void printCompilationFailureActionAlternatives(PrintStream ps, ExceptionAction... alternatives) {
+        if (alternatives.length > 0) {
+            ps.printf("If in an environment where setting system properties is possible, the following%n");
+            ps.printf("properties are available to change compilation failure reporting:%n");
+            for (ExceptionAction action : alternatives) {
+                String option = CompilationFailureAction.getName();
+                if (action == ExceptionAction.Silent) {
+                    ps.printf("- To disable compilation failure notifications, set %s to %s (e.g., -Dgraal.%s=%s).%n",
+                                    option, action,
+                                    option, action);
+                } else if (action == ExceptionAction.Print) {
+                    ps.printf("- To print a message for a compilation failure without retrying the compilation, " +
+                                    "set %s to %s (e.g., -Dgraal.%s=%s).%n",
+                                    option, action,
+                                    option, action);
+                } else if (action == ExceptionAction.Diagnose) {
+                    ps.printf("- To capture more information for diagnosing or reporting a compilation failure, " +
+                                    "set %s to %s or %s (e.g., -Dgraal.%s=%s).%n",
+                                    option, action,
+                                    ExceptionAction.ExitVM,
+                                    option, action);
+                }
+            }
+        }
+    }
+
+    protected T handleFailure(DebugContext initialDebug, Throwable cause) {
         OptionValues initialOptions = initialDebug.getOptions();
 
         synchronized (CompilationFailureAction) {
@@ -250,14 +283,7 @@ public abstract class CompilationWrapper<T> {
                 try (PrintStream ps = new PrintStream(baos)) {
                     ps.printf("%s: Compilation of %s failed: ", Thread.currentThread(), this);
                     cause.printStackTrace(ps);
-                    ps.printf("To disable compilation failure notifications, set %s to %s (e.g., -Dgraal.%s=%s).%n",
-                                    CompilationFailureAction.getName(), ExceptionAction.Silent,
-                                    CompilationFailureAction.getName(), ExceptionAction.Silent);
-                    ps.printf("To capture more information for diagnosing or reporting a compilation failure, " +
-                                    "set %s to %s or %s (e.g., -Dgraal.%s=%s).%n",
-                                    CompilationFailureAction.getName(), ExceptionAction.Diagnose,
-                                    ExceptionAction.ExitVM,
-                                    CompilationFailureAction.getName(), ExceptionAction.Diagnose);
+                    printCompilationFailureActionAlternatives(ps, ExceptionAction.Silent, ExceptionAction.Diagnose);
                 }
                 TTY.print(baos.toString());
                 return handleException(cause);
@@ -271,20 +297,15 @@ public abstract class CompilationWrapper<T> {
                 return handleException(cause);
             }
 
-            File dumpPath = null;
+            String dumpPath = null;
             try {
                 String dir = this.outputDirectory.getPath();
                 if (dir != null) {
                     String dumpName = PathUtilities.sanitizeFileName(toString());
-                    dumpPath = new File(dir, dumpName);
-                    dumpPath.mkdirs();
-                    if (!dumpPath.exists()) {
-                        TTY.println("Warning: could not create diagnostics directory " + dumpPath);
-                        dumpPath = null;
-                    }
+                    dumpPath = PathUtilities.createDirectories(getPath(dir, dumpName));
                 }
             } catch (Throwable t) {
-                TTY.println("Warning: could not create Graal diagnostic directory");
+                TTY.println("Warning: could not create Graal diagnostics directory");
                 t.printStackTrace(TTY.out);
             }
 
@@ -296,13 +317,7 @@ public abstract class CompilationWrapper<T> {
 
                 ps.printf("%s: Compilation of %s failed:%n", Thread.currentThread(), this);
                 cause.printStackTrace(ps);
-                ps.printf("To disable compilation failure notifications, set %s to %s (e.g., -Dgraal.%s=%s).%n",
-                                CompilationFailureAction.getName(), ExceptionAction.Silent,
-                                CompilationFailureAction.getName(), ExceptionAction.Silent);
-                ps.printf("To print a message for a compilation failure without retrying the compilation, " +
-                                "set %s to %s (e.g., -Dgraal.%s=%s).%n",
-                                CompilationFailureAction.getName(), ExceptionAction.Print,
-                                CompilationFailureAction.getName(), ExceptionAction.Print);
+                printCompilationFailureActionAlternatives(ps, ExceptionAction.Silent, ExceptionAction.Print);
                 if (dumpPath != null) {
                     ps.println("Retrying compilation of " + this);
                 } else {
@@ -316,8 +331,8 @@ public abstract class CompilationWrapper<T> {
                 return handleException(cause);
             }
 
-            File retryLogFile = new File(dumpPath, "retry.log");
-            try (PrintStream ps = new PrintStream(new FileOutputStream(retryLogFile))) {
+            String retryLogFile = getPath(dumpPath, "retry.log");
+            try (PrintStream ps = new PrintStream(PathUtilities.openOutputStream(retryLogFile))) {
                 ps.print(message);
             } catch (IOException ioe) {
                 TTY.printf("Error writing to %s: %s%n", retryLogFile, ioe);
@@ -326,7 +341,8 @@ public abstract class CompilationWrapper<T> {
             OptionValues retryOptions = new OptionValues(initialOptions,
                             Dump, ":" + DebugOptions.DiagnoseDumpLevel.getValue(initialOptions),
                             MethodFilter, null,
-                            DumpPath, dumpPath.getPath(),
+                            DumpPath, dumpPath,
+                            PrintBackendCFG, true,
                             TrackNodeSourcePosition, true);
 
             ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
@@ -343,9 +359,9 @@ public abstract class CompilationWrapper<T> {
         }
     }
 
-    private T postRetry(ExceptionAction action, File retryLogFile, ByteArrayOutputStream logBaos, PrintStream ps, T res) {
+    private T postRetry(ExceptionAction action, String retryLogFile, ByteArrayOutputStream logBaos, PrintStream ps, T res) {
         ps.close();
-        try (FileOutputStream fos = new FileOutputStream(retryLogFile, true)) {
+        try (OutputStream fos = PathUtilities.openOutputStream(retryLogFile, true)) {
             fos.write(logBaos.toByteArray());
         } catch (Throwable e) {
             TTY.printf("Error writing to %s: %s%n", retryLogFile, e);

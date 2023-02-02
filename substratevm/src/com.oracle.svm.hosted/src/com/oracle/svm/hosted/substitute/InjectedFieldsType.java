@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.hosted.substitute;
 
-import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.util.Arrays;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvider {
+public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
 
     private final ResolvedJavaType original;
 
@@ -198,18 +198,8 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return original.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return original.getDeclaredAnnotations();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return original.getAnnotation(annotationClass);
+    public AnnotatedElement getAnnotationRoot() {
+        return original;
     }
 
     @Override
@@ -277,6 +267,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
         throw JVMCIError.unimplemented();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return original.getHostClass();
@@ -284,7 +275,7 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
 
     @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalClassProvider.getJavaClass(original);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.HostAccess;
 
 /**
  * Interface to be implemented to mimic guest language objects that contain members.
@@ -63,16 +64,16 @@ public interface ProxyObject extends Proxy {
     Object getMember(String key);
 
     /**
-     * Returns array of member keys. The returned array must be interpreted as having array elements
-     * using the semantics of {@link Context#asValue(Object)} otherwise and
-     * {@link IllegalStateException} is thrown. If one of the return values of the array is not a
-     * {@link String} then a {@link ClassCastException} is thrown. Examples for valid return values
-     * are:
+     * Returns an array of member keys. The returned array must be interpreted as having array
+     * elements using the semantics of {@link Context#asValue(Object)} and taking host access into
+     * consideration. Otherwise, an {@link IllegalStateException} is thrown. If one of the return
+     * values of the array is not a {@link String} then a {@link ClassCastException} is thrown.
+     * Examples for valid return values are:
      * <ul>
      * <li><code>null</code> for no member keys
      * <li>{@link ProxyArray} that returns {@link String} values for each array element
-     * <li>{@link List } with exclusively String elements
-     * <li>{@link String String[]}
+     * <li>{@link List } with exclusively String elements ({@link HostAccess} must allowListAccess)
+     * <li>{@link String String[]} ({@link HostAccess} must allowArrayAccess)
      * <li>A guest language object representing an array of strings.
      * </ul>
      * Every member key returned by the {@link #getMemberKeys()} method must return

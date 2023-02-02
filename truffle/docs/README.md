@@ -1,22 +1,27 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle Language Implementation Framework
+permalink: /graalvm-as-a-platform/language-implementation-framework/
+---
 # Truffle Language Implementation Framework
 
-The Truffle language implementation framework (henceforth "Truffle") is an open source library for building tools and programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
-Together with the open source [GraalVM compiler](https://github.com/oracle/graal/tree/master/compiler), Truffle represents a significant step
-forward in programming language implementation technology in the current era of dynamic languages.
+The Truffle language implementation framework (Truffle) is an open source library for building tools and programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
+Together with the open source [Graal compiler](https://github.com/oracle/graal/tree/master/compiler), Truffle represents a significant step forward in programming language implementation technology in the current era of dynamic languages.
 
-The Truffle bits are uploaded to [Maven central](https://mvnrepository.com/artifact/org.graalvm.truffle). You can use them from your
-`pom.xml` file as:
+The Truffle bits are uploaded to [Maven central](https://mvnrepository.com/artifact/org.graalvm.truffle). 
+You can use them from your `pom.xml` file as:
 
 ```xml
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>20.3.0</version> <!-- or any later version -->
+    <version>22.1.0</version> <!-- or any later version -->
 </dependency>
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>20.3.0</version>
+    <version>22.1.0<</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -31,7 +36,7 @@ It simplifies language implementation by automatically deriving high-performance
 Information on how to get starting building your language can be found in the [Language Implementation Tutorial](./LanguageTutorial.md).
 The reference API documentation is available as part of the [Truffle Javadoc](http://graalvm.org/truffle/javadoc/).
 Start with looking at the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) class, which one should subclass to start developing a language.
-Truffle comes prebuilt with the GraalVM compiler and several language implementations as part of GraalVM.
+Truffle comes prebuilt with the Graal Compiler and several language implementations as part of GraalVM.
 
 A good way to start implementing your language with Truffle is to fork the [SimpleLanguage](https://github.com/graalvm/simplelanguage) project and start hacking.
 SimpleLanguage is a relatively small language implementation, well-documented, and designed to demonstrate most of the Truffle features.
@@ -44,7 +49,7 @@ Consider reading [these publications](https://github.com/oracle/graal/blob/maste
 Implementing a language using Truffle offers a way to interoperate with other "Truffle" languages.
 To learn more about verifying that your language is a valid polyglot citizen, read more about using the [Polyglot TCK](./TCK.md).
 Somewhat related topics worth exploring are [Truffle Libraries](./TruffleLibraries.md), as well as how to use them to implement a language [interoperability](./InteropMigration.md).
-Languages implemented with Truffle can also be embedded in Java host applications using the [Polyglot API](https://www.graalvm.org/docs/reference-manual/embed-languages/).
+Languages implemented with Truffle can also be embedded in Java host applications using the [Polyglot API](../../docs/reference-manual/embedding/embed-languages.md).
 
 To better understand how to improve the performance of your language please consult the documentation on [profiling](./Profiling.md) and [optimizing](./Optimizing.md) your language.
 Also, to better understand how to use Truffle's automated monomorphization feature (i.e., splitting), look at the [related documentation](./splitting/Monomorphization.md).

@@ -41,23 +41,26 @@
 
 package org.graalvm.wasm.predefined.wasi.fd;
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
-import org.graalvm.wasm.WasmOptions;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.graalvm.wasm.WasmOptions;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
+
 public final class FdManager implements Closeable {
 
     private final Map<Integer, Fd> handles;
 
     public FdManager(TruffleLanguage.Env env) {
+        CompilerAsserts.neverPartOfCompilation();
         handles = new HashMap<>();
 
         put(0, new InputStreamFd(env.in()));

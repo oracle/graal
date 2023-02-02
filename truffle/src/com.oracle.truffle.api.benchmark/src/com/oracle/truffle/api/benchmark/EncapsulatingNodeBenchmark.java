@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,11 +48,9 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @State(Scope.Thread)
@@ -61,89 +59,20 @@ public class EncapsulatingNodeBenchmark extends TruffleBenchmark {
 
     static final String TEST_LANGUAGE = "benchmark-test-language";
 
-    @State(Scope.Thread)
-    public static class PushPopOldCompiled {
-        final Source source = Source.create(TEST_LANGUAGE, "");
-        final Context context = Context.create(TEST_LANGUAGE);
-        {
-            context.initialize(TEST_LANGUAGE);
-        }
-        final Integer intValue = 42;
-        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null) {
-
-            private final Integer constant = 42;
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Node prev0 = NodeUtil.pushEncapsulatingNode(this);
-                Node prev1 = NodeUtil.pushEncapsulatingNode(this);
-                Node prev2 = NodeUtil.pushEncapsulatingNode(this);
-                sideEffect++;
-                NodeUtil.popEncapsulatingNode(prev2);
-                NodeUtil.popEncapsulatingNode(prev1);
-                NodeUtil.popEncapsulatingNode(prev0);
-                return constant;
-            }
-        });
-
-        private final Node node = new Node() {
-        };
-
-        @TearDown
-        public void tearDown() {
-            context.close();
-        }
-    }
-
     private static final Object[] EMPTY_ARGS = new Object[0];
 
-    @Benchmark
-    public Object pushPopOldCompiled(PushPopOldCompiled state) {
-        return state.callTarget.call(EMPTY_ARGS);
-    }
-
     static volatile long sideEffect = 0;
-
-    @Benchmark
-    public Object pushPopOldInterpreter(PushPopOldCompiled state) {
-        Node prev0 = NodeUtil.pushEncapsulatingNode(state.node);
-        Node prev1 = NodeUtil.pushEncapsulatingNode(state.node);
-        Node prev2 = NodeUtil.pushEncapsulatingNode(state.node);
-        sideEffect++;
-        NodeUtil.popEncapsulatingNode(prev2);
-        NodeUtil.popEncapsulatingNode(prev1);
-        NodeUtil.popEncapsulatingNode(prev0);
-        return null;
-    }
-
-    @Benchmark
-    public Object pushPopNewInterpreter(PushPopNewCompiled state) {
-        Node node = state.node;
-        EncapsulatingNodeReference nodeRef0 = EncapsulatingNodeReference.getCurrent();
-        Node prev0 = nodeRef0.set(node);
-
-        EncapsulatingNodeReference nodeRef1 = EncapsulatingNodeReference.getCurrent();
-        Node prev1 = nodeRef0.set(node);
-
-        EncapsulatingNodeReference nodeRef2 = EncapsulatingNodeReference.getCurrent();
-        Node prev2 = nodeRef0.set(node);
-        sideEffect++;
-
-        nodeRef2.set(prev2);
-        nodeRef1.set(prev1);
-        nodeRef0.set(prev0);
-        return null;
-    }
 
     @State(Scope.Thread)
     public static class PushPopNewCompiled {
         final Source source = Source.create(TEST_LANGUAGE, "");
-        final Context context = Context.create(TEST_LANGUAGE);
+        final Context context = Context.newBuilder(TEST_LANGUAGE).allowExperimentalOptions(true).build();
         {
+            maybeEnter();
             context.initialize(TEST_LANGUAGE);
         }
         final Integer intValue = 42;
-        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+        final CallTarget callTarget = new RootNode(null) {
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -162,10 +91,13 @@ public class EncapsulatingNodeBenchmark extends TruffleBenchmark {
                 nodeRef0.set(prev0);
                 return null;
             }
-        });
+        }.getCallTarget();
 
         final Node node = new Node() {
         };
+
+        protected void maybeEnter() {
+        }
 
         @TearDown
         public void tearDown() {
@@ -174,7 +106,106 @@ public class EncapsulatingNodeBenchmark extends TruffleBenchmark {
     }
 
     @Benchmark
-    public Object pushPopNewCompiled(PushPopNewCompiled state) {
+    public Object pushPopNewInterpreterNotEntered(PushPopNewCompiled state) {
+        Node node = state.node;
+        EncapsulatingNodeReference nodeRef0 = EncapsulatingNodeReference.getCurrent();
+        Node prev0 = nodeRef0.set(node);
+
+        EncapsulatingNodeReference nodeRef1 = EncapsulatingNodeReference.getCurrent();
+        Node prev1 = nodeRef0.set(node);
+
+        EncapsulatingNodeReference nodeRef2 = EncapsulatingNodeReference.getCurrent();
+        Node prev2 = nodeRef0.set(node);
+        sideEffect++;
+
+        nodeRef2.set(prev2);
+        nodeRef1.set(prev1);
+        nodeRef0.set(prev0);
+        return null;
+    }
+
+    @Benchmark
+    public Object pushPopNewCompiledNotEntered(PushPopNewCompiled state) {
+        return state.callTarget.call(EMPTY_ARGS);
+    }
+
+    @State(Scope.Thread)
+    public static class PushPopNewCompiledEnteredSingleThread extends PushPopNewCompiled {
+
+        @Override
+        protected void maybeEnter() {
+            context.enter();
+        }
+
+    }
+
+    @State(Scope.Thread)
+    public static class PushPopNewCompiledEnteredMultiThread extends PushPopNewCompiled {
+
+        @Override
+        protected void maybeEnter() {
+            context.enter();
+
+            // touch context on a second thread
+            Thread t = new Thread(() -> {
+                context.enter();
+                context.leave();
+            });
+            t.start();
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+    }
+
+    @Benchmark
+    public Object pushPopNewInterpreterEnteredSingleThread(PushPopNewCompiledEnteredSingleThread state) {
+        Node node = state.node;
+        EncapsulatingNodeReference nodeRef0 = EncapsulatingNodeReference.getCurrent();
+        Node prev0 = nodeRef0.set(node);
+
+        EncapsulatingNodeReference nodeRef1 = EncapsulatingNodeReference.getCurrent();
+        Node prev1 = nodeRef0.set(node);
+
+        EncapsulatingNodeReference nodeRef2 = EncapsulatingNodeReference.getCurrent();
+        Node prev2 = nodeRef0.set(node);
+        sideEffect++;
+
+        nodeRef2.set(prev2);
+        nodeRef1.set(prev1);
+        nodeRef0.set(prev0);
+        return null;
+    }
+
+    @Benchmark
+    public Object pushPopNewCompiledEnteredSingleThread(PushPopNewCompiledEnteredSingleThread state) {
+        return state.callTarget.call(EMPTY_ARGS);
+    }
+
+    @Benchmark
+    public Object pushPopNewInterpreterEnteredMultiThread(PushPopNewCompiledEnteredMultiThread state) {
+        Node node = state.node;
+        EncapsulatingNodeReference nodeRef0 = EncapsulatingNodeReference.getCurrent();
+        Node prev0 = nodeRef0.set(node);
+
+        EncapsulatingNodeReference nodeRef1 = EncapsulatingNodeReference.getCurrent();
+        Node prev1 = nodeRef0.set(node);
+
+        EncapsulatingNodeReference nodeRef2 = EncapsulatingNodeReference.getCurrent();
+        Node prev2 = nodeRef0.set(node);
+        sideEffect++;
+
+        nodeRef2.set(prev2);
+        nodeRef1.set(prev1);
+        nodeRef0.set(prev0);
+        return null;
+    }
+
+    @Benchmark
+    public Object pushPopNewCompiledEnteredMultiThread(PushPopNewCompiledEnteredMultiThread state) {
         return state.callTarget.call(EMPTY_ARGS);
     }
 

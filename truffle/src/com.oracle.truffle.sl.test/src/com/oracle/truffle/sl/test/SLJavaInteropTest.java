@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,10 +43,12 @@ package com.oracle.truffle.sl.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,12 +68,18 @@ public class SLJavaInteropTest {
     @Before
     public void create() {
         os = new ByteArrayOutputStream();
-        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).out(os).build();
+        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((s) -> true).out(os).build();
     }
 
     @After
     public void dispose() {
         context.close();
+    }
+
+    @Test
+    public void testHostFunctionDisplayName() {
+        assertEquals(BigInteger.class.getName() + ".valueOf", context.eval("sl", "function main() {\n" + "    return java(\"java.math.BigInteger\").valueOf;\n" + "}\n").toString());
+        assertEquals(BigInteger.class.getName() + ".add", context.eval("sl", "function main() {\n" + "    return java(\"java.math.BigInteger\").ZERO.add;\n" + "}\n").toString());
     }
 
     @Test
@@ -359,6 +367,41 @@ public class SLJavaInteropTest {
         assertNumber(33L, c);
     }
 
+    @Test
+    public void testMemberAssignment() {
+        Integer hostObject = 6;
+        context.eval("sl", "function createNewObject() {\n" +
+                        "  return new();\n" +
+                        "}\n" +
+                        "\n" +
+                        "function assignObjectMemberFoo(obj, member) {\n" +
+                        "  obj.foo = member;\n" +
+                        "  return obj;\n" +
+                        "}\n");
+        Value bindings = context.getBindings("sl");
+        Value obj = bindings.getMember("createNewObject").execute();
+        bindings.getMember("assignObjectMemberFoo").execute(obj, hostObject);
+        assertTrue(obj.hasMember("foo"));
+        assertEquals(hostObject.intValue(), obj.getMember("foo").asInt());
+    }
+
+    @Test
+    public void testCallback() {
+        TestObject hostObject = new TestObject();
+        context.eval("sl", "function createNewObject() {\n" +
+                        "  return new();\n" +
+                        "}\n" +
+                        "\n" +
+                        "function callMemberCallback(obj, memberName) {\n" +
+                        "  return obj[memberName].callback(\"test\");\n" +
+                        "}\n");
+        Value bindings = context.getBindings("sl");
+        Value obj = bindings.getMember("createNewObject").execute();
+        obj.putMember("hostObject", hostObject);
+        Value v = bindings.getMember("callMemberCallback").execute(obj, "hostObject");
+        assertEquals("test", v.asString());
+    }
+
     /**
      * Converts a {@link ByteArrayOutputStream} content into UTF-8 String with UNIX line ends.
      */
@@ -478,6 +521,13 @@ public class SLJavaInteropTest {
 
             sumArray(pairs.get("two"));
             sumArray(pairs.get("one"));
+        }
+    }
+
+    public static class TestObject {
+
+        public String callback(String msg) {
+            return msg;
         }
     }
 }

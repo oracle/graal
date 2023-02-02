@@ -24,34 +24,20 @@ package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
-import com.oracle.truffle.espresso.descriptors.Names;
-import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.JavaVersion;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.StringTable;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
-public interface ContextAccess {
+public interface ContextAccess extends LanguageAccess {
     EspressoContext getContext();
 
-    default EspressoLanguage getEspressoLanguage() {
+    default EspressoLanguage getLanguage() {
         return getContext().getLanguage();
-    }
-
-    default Names getNames() {
-        return getContext().getNames();
-    }
-
-    default Types getTypes() {
-        return getContext().getTypes();
-    }
-
-    default Signatures getSignatures() {
-        return getContext().getSignatures();
     }
 
     default Meta getMeta() {
@@ -60,6 +46,14 @@ public interface ContextAccess {
 
     default VM getVM() {
         return getContext().getVM();
+    }
+
+    default ThreadsAccess getThreadAccess() {
+        return getContext().getThreadAccess();
+    }
+
+    default GuestAllocator getAllocator() {
+        return getContext().getAllocator();
     }
 
     default InterpreterToVM getInterpreterToVM() {
@@ -76,10 +70,6 @@ public interface ContextAccess {
 
     default Substitutions getSubstitutions() {
         return getContext().getSubstitutions();
-    }
-
-    default JavaVersion getJavaVersion() {
-        return getContext().getJavaVersion();
     }
 
     default NativeAccess getNativeAccess() {

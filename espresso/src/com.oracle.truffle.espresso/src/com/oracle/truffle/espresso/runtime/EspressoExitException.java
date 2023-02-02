@@ -22,11 +22,14 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-// TODO(peterssen): Fix deprecation, GR-26729
-@SuppressWarnings("deprecation")
-public final class EspressoExitException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
+@ExportLibrary(InteropLibrary.class)
+public final class EspressoExitException extends AbstractTruffleException {
 
     private static final long serialVersionUID = 7140601650442131207L;
 
@@ -36,18 +39,14 @@ public final class EspressoExitException extends RuntimeException implements com
         this.status = status;
     }
 
-    @Override
-    public Node getLocation() {
-        return null;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public ExceptionType getExceptionType() {
+        return ExceptionType.EXIT;
     }
 
-    @Override
-    public boolean isExit() {
-        return true;
-    }
-
-    @Override
-    public int getExitStatus() {
+    @ExportMessage
+    public int getExceptionExitStatus() {
         return status;
     }
 }

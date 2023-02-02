@@ -53,7 +53,7 @@ public final class Callback implements TruffleObject {
             return ret;
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(arity, arguments.length);
+            throw ArityException.create(arity, arity, arguments.length);
         }
     }
 

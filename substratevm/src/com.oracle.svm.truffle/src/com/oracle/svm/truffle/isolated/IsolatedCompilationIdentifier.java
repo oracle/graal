@@ -28,7 +28,6 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
 import com.oracle.svm.graal.isolated.CompilerHandle;
@@ -58,6 +57,11 @@ final class IsolatedCompilationIdentifier extends IsolatedObjectProxy<TruffleCom
     }
 
     @Override
+    public String toString() {
+        return toString(Verbosity.DETAILED);
+    }
+
+    @Override
     public String toString(Verbosity verbosity) {
         int ordinal = verbosity.ordinal();
         if (descriptions[ordinal] == null) {
@@ -67,14 +71,12 @@ final class IsolatedCompilationIdentifier extends IsolatedObjectProxy<TruffleCom
         return descriptions[ordinal];
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void close0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationIdentifier> compilationHandle) {
         IsolatedCompileClient.get().unhand(compilationHandle).close();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static CompilerHandle<String> toString0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationIdentifier> idHandle, int verbosityOrdinal) {
         TruffleCompilationIdentifier id = IsolatedCompileClient.get().unhand(idHandle);
         String description = id.toString(VERBOSITIES[verbosityOrdinal]);

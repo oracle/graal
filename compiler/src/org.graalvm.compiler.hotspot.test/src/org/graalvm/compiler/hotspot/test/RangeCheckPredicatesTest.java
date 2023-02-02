@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,6 +26,28 @@
 
 package org.graalvm.compiler.hotspot.test;
 
+import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
+import static jdk.vm.ci.meta.DeoptimizationReason.LoopLimitCheck;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopPredication;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopPredicationMainPath;
+import static org.graalvm.compiler.core.common.GraalOptions.SpeculativeGuardMovement;
+
+import java.util.HashSet;
+import java.util.List;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.loop.phases.LoopPredicationPhase;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -33,25 +55,6 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.common.cfg.Loop;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
-import org.graalvm.compiler.nodes.cfg.Block;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.junit.Assert;
-import org.junit.Test;
-
-import java.util.HashSet;
-import java.util.List;
-
-import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
-import static jdk.vm.ci.meta.DeoptimizationReason.LoopLimitCheck;
-import static org.graalvm.compiler.core.common.GraalOptions.LoopPredicationMainPath;
 
 public class RangeCheckPredicatesTest extends GraalCompilerTest {
     @SuppressWarnings("unused") private static int volatileField;
@@ -67,12 +70,23 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
         return speculationLog;
     }
 
+    /**
+     * Initializes the overrides for the tests in this class which are written specifically for the
+     * graph shapes produced by {@link LoopPredicationPhase}.
+     */
+    private static EconomicMap<OptionKey<?>, Object> initOverrides() {
+        EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
+        overrides.put(SpeculativeGuardMovement, false);
+        overrides.put(LoopPredication, true);
+        return overrides;
+    }
+
     private static OptionValues getOptionsMainPath() {
-        return getInitialOptions();
+        return new OptionValues(getInitialOptions(), initOverrides());
     }
 
     private static OptionValues getOptionsAllPaths() {
-        EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
+        EconomicMap<OptionKey<?>, Object> overrides = initOverrides();
         overrides.put(LoopPredicationMainPath, false);
         return new OptionValues(getInitialOptions(), overrides);
     }
@@ -92,10 +106,10 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
         int extraLoopLimitCheck;
         if (!loopLimitCheck) {
             // Running with UseJVMCICompiler off causes hotspot to account for trap twice
-            extraBoundsCheck = (useJVMCICompiler || JavaVersionUtil.JAVA_SPEC <= 8) ? 1 : 2;
+            extraBoundsCheck = useJVMCICompiler ? 1 : 2;
             extraLoopLimitCheck = 0;
         } else {
-            extraBoundsCheck = (useJVMCICompiler || JavaVersionUtil.JAVA_SPEC <= 8) ? 0 : 1;
+            extraBoundsCheck = useJVMCICompiler ? 0 : 1;
             extraLoopLimitCheck = 1;
         }
         Object[] args = new Object[testParameters.length + 1];
@@ -125,9 +139,9 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
     private boolean noRangeCheckInLoop(String method) {
         StructuredGraph graph = getFinalGraph(getResolvedJavaMethod(method), getOptionsMainPath());
         final StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
-        final List<Loop<Block>> loops = schedule.getCFG().getLoops();
+        final List<Loop<HIRBlock>> loops = schedule.getCFG().getLoops();
         Assert.assertEquals(1, loops.size());
-        final Loop<Block> loop = loops.get(0);
+        final Loop<HIRBlock> loop = loops.get(0);
         return loop.getBlocks().size() == 2;
     }
 
@@ -1025,11 +1039,11 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
 
     private static int countRangeChecksInLoop(StructuredGraph graph) {
         StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
-        List<Loop<Block>> loops = schedule.getCFG().getLoops();
+        List<Loop<HIRBlock>> loops = schedule.getCFG().getLoops();
         Assert.assertEquals(1, loops.size());
-        Loop<Block> loop = loops.get(0);
+        Loop<HIRBlock> loop = loops.get(0);
         int rangeChecks = 0;
-        for (Block block : loop.getBlocks()) {
+        for (HIRBlock block : loop.getBlocks()) {
             for (Node node : schedule.nodesFor(block)) {
                 if (node instanceof IntegerBelowNode) {
                     rangeChecks++;

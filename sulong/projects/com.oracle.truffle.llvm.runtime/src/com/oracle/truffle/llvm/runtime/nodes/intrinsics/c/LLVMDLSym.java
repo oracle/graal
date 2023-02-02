@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,16 +30,22 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.c;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension.NativeLookupResult;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.LLVMDLHandler;
@@ -53,19 +59,23 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMDLSym extends LLVMIntrinsic {
 
+    // Linux Mac
+    // RTLD_NEXT ((void *) -1l) ((void *) -1)
+    // RTLD_DEFAULT ((void *) 0) ((void *) -2)
+
     @Specialization(guards = "isLLVMLibrary(libraryHandle)", limit = "2")
+    @GenerateAOT.Exclude
     protected Object doOp(LLVMManagedPointer libraryHandle,
                     LLVMPointer symbol,
                     @Cached() LLVMReadStringNode readStr,
                     @CachedLibrary("getLibrary(libraryHandle)") InteropLibrary interop,
-                    @Cached WrappedFunctionNode wrapper,
-                    @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+                    @Cached WrappedFunctionNode wrapper) {
         try {
             String symbolName = readStr.executeWithTarget(symbol);
             Object function = interop.readMember(getLibrary(libraryHandle), symbolName);
             return wrapper.execute(function);
         } catch (InteropException e) {
-            ctx.setDLError(2);
+            getContext().setDLError(2);
             return LLVMNativePointer.createNull();
         }
     }
@@ -77,11 +87,41 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
         return LLVMNativePointer.createNull();
     }
 
-    @Specialization
-    protected Object doNative(@SuppressWarnings("unused") LLVMNativePointer libraryHandle,
-                    @SuppressWarnings("unused") LLVMPointer symbol,
-                    @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr) {
-        return LLVMNativePointer.createNull();
+    @Specialization(guards = "isRtldDefault(libraryHandle)")
+    protected Object doDefaultHandle(@SuppressWarnings("unused") LLVMNativePointer libraryHandle,
+                    @SuppressWarnings("unused") LLVMPointer symbolName,
+                    @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr,
+                    @Cached WrappedFunctionNode wrapper,
+                    @Cached BranchProfile exception) {
+        LLVMContext ctx = LLVMContext.get(this);
+        String name = readStr.executeWithTarget(symbolName);
+        LLVMSymbol symbol = ctx.getGlobalScopeChain().get(name);
+        if (symbol == null) {
+            Object nativeSymbol = getNativeSymbol(name, ctx);
+            if (nativeSymbol == null) {
+                ctx.setDLError(2);
+                return LLVMNativePointer.createNull();
+            }
+            return wrapper.execute(nativeSymbol);
+        }
+        return ctx.getSymbol(symbol, exception);
+    }
+
+    @TruffleBoundary
+    protected Object getNativeSymbol(String name, LLVMContext context) {
+        NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
+        if (nativeContextExtension != null) {
+            NativeLookupResult result = nativeContextExtension.getNativeFunctionOrNull(name);
+            if (result != null) {
+                return result.getObject();
+            }
+        }
+        return null;
+    }
+
+    protected boolean isRtldDefault(LLVMNativePointer libraryHandle) {
+        PlatformCapability<?> sysContextExt = LLVMLanguage.get(null).getCapability(PlatformCapability.class);
+        return sysContextExt.isDefaultDLSymFlagSet(libraryHandle.asNative());
     }
 
     protected Object getLibrary(LLVMManagedPointer pointer) {
@@ -101,14 +141,14 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
             return LLVMManagedPointer.create(function);
         }
 
+        @GenerateAOT.Exclude
         @Specialization(guards = {"!isFunctionDescriptor(symbol)", "interopLibrary.isPointer(symbol)"}, limit = "1")
         protected LLVMNativePointer doNFISymbol(Object symbol,
-                        @CachedLibrary("symbol") InteropLibrary interopLibrary,
-                        @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+                        @CachedLibrary("symbol") InteropLibrary interopLibrary) {
             try {
                 return LLVMNativePointer.create(interopLibrary.asPointer(symbol));
             } catch (InteropException e) {
-                ctx.setDLError(2);
+                getContext().setDLError(2);
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }

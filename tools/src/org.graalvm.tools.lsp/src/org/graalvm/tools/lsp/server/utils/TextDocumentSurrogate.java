@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -148,7 +148,7 @@ public final class TextDocumentSurrogate {
 
     public Set<URI> getCoverageUris(SourceSection section) {
         List<CoverageData> coverageDataObjects = section2coverageData.get(SourceSectionReference.from(section));
-        return coverageDataObjects == null ? null : coverageDataObjects.stream().map(coverageData -> coverageData.getCovarageUri()).collect(Collectors.toSet());
+        return coverageDataObjects == null ? null : coverageDataObjects.stream().map(coverageData -> coverageData.getCoverageUri()).collect(Collectors.toSet());
     }
 
     public void addLocationCoverage(SourceSectionReference section, CoverageData coverageData) {
@@ -175,7 +175,7 @@ public final class TextDocumentSurrogate {
             Entry<SourceSectionReference, List<CoverageData>> entry = iterator.next();
             for (Iterator<CoverageData> iteratorData = entry.getValue().iterator(); iteratorData.hasNext();) {
                 CoverageData coverageData = iteratorData.next();
-                if (coverageData.getCovarageUri().equals(runScriptUri)) {
+                if (coverageData.getCoverageUri() != null && coverageData.getCoverageUri().equals(runScriptUri)) {
                     iteratorData.remove();
                 }
             }
@@ -219,7 +219,6 @@ public final class TextDocumentSurrogate {
         boolean successful = callTarget != null;
         if (successful) {
             sourceWrapper.setParsingSuccessful(true);
-            sourceWrapper.setCallTarget(callTarget);
             changeEventsSinceLastSuccessfulParsing.clear();
         }
     }

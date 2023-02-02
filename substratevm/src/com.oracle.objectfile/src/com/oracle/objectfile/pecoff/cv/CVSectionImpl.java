@@ -38,9 +38,19 @@ import java.util.Set;
 
 abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
 
+    private final CVDebugInfo cvDebugInfo;
     boolean debug = false;
 
-    CVSectionImpl() {
+    CVSectionImpl(CVDebugInfo debugInfo) {
+        this.cvDebugInfo = debugInfo;
+    }
+
+    protected CVDebugInfo getCvDebugInfo() {
+        return this.cvDebugInfo;
+    }
+
+    protected DebugContext getDebugContext() {
+        return cvDebugInfo.getDebugContext();
     }
 
     private String debugSectionLogName() {
@@ -52,25 +62,26 @@ abstract class CVSectionImpl extends BasicProgbitsSectionImpl {
         return "PeCoff" + getSectionName().replace(".", "");
     }
 
-    protected void enableLog(DebugContext context) {
+    protected void enableLog(DebugContext debugContext) {
         /*
          * Unlike in the Dwarf debug code, debug output may be enabled in both the sizing and
          * writing phases. (Currently turned off in the sizing state)
          */
-        if (context.areScopesEnabled()) {
+        cvDebugInfo.setDebugContext(debugContext);
+        if (debugContext.areScopesEnabled()) {
             debug = true;
         }
     }
 
-    protected void log(DebugContext context, String format, Object... args) {
+    protected void log(String format, Object... args) {
         if (debug) {
-            context.logv(DebugContext.INFO_LEVEL, format, args);
+            getDebugContext().logv(DebugContext.INFO_LEVEL, format, args);
         }
     }
 
-    protected void verboseLog(DebugContext context, String format, Object... args) {
+    protected void verboseLog(String format, Object... args) {
         if (debug) {
-            context.logv(DebugContext.VERBOSE_LEVEL, format, args);
+            getDebugContext().logv(DebugContext.VERBOSE_LEVEL, format, args);
         }
     }
 

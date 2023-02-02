@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -55,17 +54,17 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 final class SignatureRootNode extends RootNode {
 
     final String backendId;
-    final ContextReference<NFIContext> ctxRef;
 
     @Child BuildSignatureNode buildSignature;
 
     SignatureRootNode(NFILanguage language, String backendId, BuildSignatureNode buildSignature) {
         super(language);
         this.backendId = backendId;
-        this.ctxRef = lookupContextReference(NFILanguage.class);
         this.buildSignature = buildSignature;
     }
 
@@ -76,7 +75,7 @@ final class SignatureRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        API api = ctxRef.get().getAPI(backendId);
+        API api = NFIContext.get(this).getAPI(backendId);
         return buildSignature.execute(api);
     }
 
@@ -90,7 +89,7 @@ final class SignatureRootNode extends RootNode {
             this.argBuilders = argBuilders;
         }
 
-        private static final ArrayFactory<NFIType> FACTORY = new ArrayFactory<NFIType>() {
+        private static final ArrayFactory<NFIType> FACTORY = new ArrayFactory<>() {
 
             @Override
             public NFIType[] create(int size) {
@@ -178,7 +177,10 @@ final class SignatureRootNode extends RootNode {
         Object getType(API api,
                         @CachedLibrary("api.backend") NFIBackendLibrary backendLibrary) {
             Object backendType = backendLibrary.getSimpleType(api.backend, type);
-            return new NFIType(NFIType.SIMPLE, backendType);
+            if (backendType == null) {
+                throw new NFIUnsupportedTypeException(type.name());
+            }
+            return new NFIType(SimpleTypeCachedState.get(type), backendType);
         }
     }
 
@@ -194,7 +196,10 @@ final class SignatureRootNode extends RootNode {
         Object getType(API api,
                         @CachedLibrary("api.backend") NFIBackendLibrary backendLibrary) {
             Object backendType = backendLibrary.getArrayType(api.backend, type);
-            return new NFIType(NFIType.SIMPLE, backendType);
+            if (backendType == null) {
+                throw new NFIUnsupportedTypeException("[%s]", type.name());
+            }
+            return new NFIType(SimpleTypeCachedState.nop(), backendType);
         }
     }
 
@@ -204,7 +209,10 @@ final class SignatureRootNode extends RootNode {
         Object getType(API api,
                         @CachedLibrary("api.backend") NFIBackendLibrary backend) {
             Object backendType = backend.getEnvType(api.backend);
-            return new NFIType(NFIType.INJECTED, backendType, null);
+            if (backendType == null) {
+                throw new NFIUnsupportedTypeException("ENV");
+            }
+            return new NFIType(SimpleTypeCachedState.injected(), backendType, null);
         }
     }
 
@@ -221,7 +229,7 @@ final class SignatureRootNode extends RootNode {
                         @CachedLibrary("api.backend") NFIBackendLibrary backend) {
             Object signature = buildSignature.execute(api);
             Object backendType = backend.getSimpleType(api.backend, NativeSimpleType.POINTER);
-            return new NFIType(NFIType.CLOSURE, backendType, signature);
+            return new NFIType(SignatureTypeCachedState.INSTANCE, backendType, signature);
         }
     }
 }

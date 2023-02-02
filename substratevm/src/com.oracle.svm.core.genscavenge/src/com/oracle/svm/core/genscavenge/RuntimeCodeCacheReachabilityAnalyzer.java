@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
@@ -52,7 +52,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
     }
 
     @Override
-    public boolean visitObjectReference(Pointer ptrPtrToObject, boolean compressed) {
+    public boolean visitObjectReference(Pointer ptrPtrToObject, boolean compressed, Object holderObject) {
         assert !unreachableObjects;
         Pointer ptrToObj = ReferenceAccess.singleton().readObjectAsUntrackedPointer(ptrPtrToObject, compressed);
         if (ptrToObj.isNonNull() && !isReachable(ptrToObj)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,10 +45,15 @@ import java.util.function.Function;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -60,9 +65,9 @@ final class DefaultRuntimeAccessor extends Accessor {
     static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
     static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
-    static final JDKSupport JDK = ACCESSOR.jdkSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final FrameSupport FRAME = ACCESSOR.framesSupport();
 
     private DefaultRuntimeAccessor() {
     }
@@ -74,6 +79,23 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
+        public RootCallTarget newCallTarget(CallTarget sourceCallTarget, RootNode rootNode) {
+            return new DefaultCallTarget(rootNode);
+        }
+
+        @Override
+        public boolean isLoaded(CallTarget callTarget) {
+            return ((DefaultCallTarget) callTarget).isLoaded();
+        }
+
+        @Override
+        public void notifyOnLoad(CallTarget callTarget) {
+            DefaultCallTarget target = (DefaultCallTarget) callTarget;
+            DefaultRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
+            target.setLoaded();
+        }
+
+        @Override
         public ThreadLocalHandshake getThreadLocalHandshake() {
             return DefaultThreadLocalHandshake.SINGLETON;
         }
@@ -81,6 +103,37 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public void onLoopCount(Node source, int iterations) {
             // do nothing
+        }
+
+        @Override
+        public boolean pollBytecodeOSRBackEdge(BytecodeOSRNode osrNode) {
+            return false;
+        }
+
+        @Override
+        public Object tryBytecodeOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
+            return null;
+        }
+
+        @Override
+        public void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
+            // do nothing
+        }
+
+        @Override
+        // Support for deprecated frame transfer: GR-38296
+        public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget, Object targetMetadata) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void restoreOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target) {
+            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -102,6 +155,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor) {
             return new DefaultBlockNode<>(elements, executor);
+        }
+
+        @Override
+        public Assumption createAlwaysValidAssumption() {
+            return DefaultAssumption.createAlwaysValid();
         }
 
         @Override
@@ -138,11 +196,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
             return (T) value;
-        }
-
-        @Override
-        public boolean inFirstTier() {
-            return false;
         }
 
         @Override
@@ -209,7 +262,7 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         @SuppressWarnings("unused")
         @Override
-        public Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+        public Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
             throw new UnsupportedOperationException();
         }
 
@@ -218,6 +271,12 @@ final class DefaultRuntimeAccessor extends Accessor {
         public Object getFieldValue(Object resolvedJavaField, Object obj) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public AbstractFastThreadLocal getContextThreadLocal() {
+            return DefaultContextThreadLocal.SINGLETON;
+        }
+
     }
 
 }

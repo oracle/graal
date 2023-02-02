@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,9 +47,9 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
     private final byte preCalculatedUnAnchoredResult;
     private final byte preCalculatedAnchoredResult;
 
-    public TraceFinderDFAStateNode(short id, byte flags, short loopTransitionIndex, LoopOptimizationNode loopOptimizationNode, short[] successors, Matchers matchers,
-                    AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher, byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
-        super(id, flags, loopTransitionIndex, loopOptimizationNode, successors, matchers, null, allTransitionsInOneTreeMatcher);
+    public TraceFinderDFAStateNode(short id, byte flags, short loopTransitionIndex, IndexOfCall indexOfCall, short[] successors, Matchers matchers,
+                    byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
+        super(id, flags, loopTransitionIndex, indexOfCall, successors, matchers, null);
         this.preCalculatedUnAnchoredResult = preCalculatedUnAnchoredResult;
         this.preCalculatedAnchoredResult = initPreCalculatedAnchoredResult(preCalculatedUnAnchoredResult, preCalculatedAnchoredResult);
     }

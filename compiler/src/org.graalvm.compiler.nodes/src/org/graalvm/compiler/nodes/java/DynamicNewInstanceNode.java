@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.lang.reflect.Modifier;
 
@@ -32,28 +32,36 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
-public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {
+public final class DynamicNewInstanceNode extends AbstractNewObjectNode implements Canonicalizable {
     public static final NodeClass<DynamicNewInstanceNode> TYPE = NodeClass.create(DynamicNewInstanceNode.class);
 
     @Input ValueNode clazz;
 
-    public DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
-        this(TYPE, clazz, fillContents, null);
+    public static void createAndPush(GraphBuilderContext b, ValueNode clazz) {
+        ResolvedJavaType constantType = tryConvertToNonDynamic(clazz, b);
+        if (constantType != null) {
+            b.addPush(JavaKind.Object, new NewInstanceNode(constantType, true));
+        } else {
+            ValueNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazz));
+            b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true));
+        }
     }
 
-    protected DynamicNewInstanceNode(NodeClass<? extends DynamicNewInstanceNode> c, ValueNode clazz, boolean fillContents, FrameState stateBefore) {
-        super(c, StampFactory.objectNonNull(), fillContents, stateBefore);
+    protected DynamicNewInstanceNode(ValueNode clazz, boolean fillContents) {
+        super(TYPE, StampFactory.objectNonNull(), fillContents, null);
         this.clazz = clazz;
         assert ((ObjectStamp) clazz.stamp(NodeView.DEFAULT)).nonNull();
     }
@@ -62,32 +70,35 @@ public class DynamicNewInstanceNode extends AbstractNewObjectNode implements Can
         return clazz;
     }
 
-    public static boolean canConvertToNonDynamic(ValueNode clazz, CanonicalizerTool tool) {
+    static ResolvedJavaType tryConvertToNonDynamic(ValueNode clazz, CoreProviders tool) {
         if (clazz.isConstant()) {
-            if (GeneratePIC.getValue(tool.getOptions())) {
-                // Can't fold for AOT, because the resulting NewInstanceNode will be missing its
-                // InitializeKlassNode.
-                return false;
-            }
             ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
             if (type != null && !throwsInstantiationException(type, tool.getMetaAccess()) && tool.getMetaAccessExtensionProvider().canConstantFoldDynamicAllocation(type)) {
-                return true;
+                return type;
             }
         }
-        return false;
+        return null;
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (canConvertToNonDynamic(clazz, tool)) {
-            ResolvedJavaType type = tool.getConstantReflection().asJavaType(clazz.asConstant());
+        ResolvedJavaType type = tryConvertToNonDynamic(clazz, tool);
+        if (type != null) {
             return new NewInstanceNode(type, fillContents(), stateBefore());
         }
         return this;
     }
 
-    public static boolean throwsInstantiationException(Class<?> type, Class<?> classClass) {
-        return type.isPrimitive() || type.isArray() || type.isInterface() || Modifier.isAbstract(type.getModifiers()) || type == classClass;
+    public static boolean throwsInstantiationExceptionInjectedProbability(double probability, Class<?> type, Class<?> classClass) {
+        /*
+         * This method is for use in a snippet and therefore injects probabilities for each
+         * disjunct.
+         */
+        return probability(probability, type.isPrimitive()) ||
+                        probability(probability, type.isArray()) ||
+                        probability(probability, type.isInterface()) ||
+                        probability(probability, Modifier.isAbstract(type.getModifiers())) ||
+                        probability(probability, type == classClass);
     }
 
     public static boolean throwsInstantiationException(ResolvedJavaType type, MetaAccessProvider metaAccess) {

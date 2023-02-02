@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,7 +79,10 @@ public final class AOTSupport {
                     public boolean visit(Node node) {
                         if (node instanceof GenerateAOT.Provider) {
                             GenerateAOT.Provider provider = (GenerateAOT.Provider) node;
-                            provider.prepareForAOT(language, node.getRootNode());
+                            if (node.isAdoptable() && node.getRootNode() == null) {
+                                throw new AssertionError("Node is not yet adopted before prepare " + node);
+                            }
+                            provider.prepareForAOT(language, root);
                         }
                         return NodeUtil.forEachChild(node, this);
                     }

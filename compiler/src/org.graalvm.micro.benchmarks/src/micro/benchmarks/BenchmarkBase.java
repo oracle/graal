@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,6 @@ public class BenchmarkBase {
         public static final int MEASUREMENT_ITERATIONS = 5;
         public static final int WARMUP_ITERATIONS = 5;
         public static final int ITERATIONS_DURATION = 5;
-        public static final int FORKS = 3;
+        public static final int FORKS = 1;
     }
 }

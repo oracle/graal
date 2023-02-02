@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,13 +47,20 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugValue;
+import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.StepConfig;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.tck.DebuggerTester;
+
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 
 public class StepTest extends AbstractDebugTest {
@@ -1047,5 +1054,283 @@ public class StepTest extends AbstractDebugTest {
             });
             expectDone();
         }
+    }
+
+    @Test
+    public void testSteppingDisabled() {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT").prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 3, true, "STATEMENT").prepareStepInto(1);
+            });
+            expectDone();
+            startExecute(c -> {
+                c.enter();
+                tester.getDebugger().disableStepping();
+                c.leave();
+                return c.asValue(null);
+            });
+            expectDone();
+            startEval(source);
+            expectDone();
+            startExecute(c -> {
+                c.enter();
+                tester.getDebugger().restoreStepping();
+                c.leave();
+                return c.asValue(null);
+            });
+            expectDone();
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, "STATEMENT").prepareContinue();
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testSteppingDisabledOnOneThread() throws Exception {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+        Engine engine = Engine.create();
+        Debugger debugger = Debugger.find(engine);
+        List<SuspendedEvent> events = new ArrayList<>();
+        try (DebuggerSession session1 = debugger.startSession(event -> {
+            events.add(event);
+        })) {
+            try (DebuggerSession session2 = debugger.startSession(event -> {
+                events.add(event);
+            })) {
+                session1.suspendNextExecution();
+                session2.suspendNextExecution();
+                CountDownLatch disabledSteppingFinished = new CountDownLatch(1);
+                CountDownLatch allFinished = new CountDownLatch(1);
+                Thread t1 = new Thread(() -> {
+                    org.graalvm.polyglot.Context context1 = org.graalvm.polyglot.Context.newBuilder().engine(engine).build();
+                    context1.enter();
+                    debugger.disableStepping();
+                    context1.eval(source);
+                    disabledSteppingFinished.countDown();
+                    try {
+                        allFinished.await();
+                    } catch (InterruptedException ex) {
+                    }
+                    debugger.restoreStepping();
+                    context1.leave();
+                });
+                List<Throwable> throwables = runWithErrorCheck(t1);
+                // Wait for eval with disabled stepping
+                disabledSteppingFinished.await();
+                Assert.assertEquals(0, events.size());
+                Thread t2 = new Thread(() -> {
+                    org.graalvm.polyglot.Context context2 = org.graalvm.polyglot.Context.newBuilder().engine(engine).build();
+                    context2.eval(source);
+                });
+                runAndCheckForErrors(t2);
+                // A second eval with enabled stepping took place
+                Assert.assertEquals(2, events.size());
+                allFinished.countDown();
+                joinWithErrorCheck(t1, throwables);
+                Assert.assertEquals(2, events.size());
+            }
+        }
+    }
+
+    @Test
+    public void testSteppingDisabledWithBreakpoint() throws Exception {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+        Engine engine = Engine.create();
+        Debugger debugger = Debugger.find(engine);
+        List<SuspendedEvent> events = new ArrayList<>();
+        try (DebuggerSession session1 = debugger.startSession(event -> {
+            // No step events in session1
+            Assert.fail();
+        })) {
+            try (DebuggerSession session2 = debugger.startSession(event -> {
+                events.add(event);
+                event.prepareStepOver(1);
+            })) {
+                session1.suspendNextExecution();
+                session2.suspendNextExecution();
+                Breakpoint bp = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build();
+                session2.install(bp);
+                Thread t1 = new Thread(() -> {
+                    org.graalvm.polyglot.Context context1 = org.graalvm.polyglot.Context.newBuilder().engine(engine).build();
+                    context1.enter();
+                    debugger.disableStepping();
+                    context1.eval(source);
+                    debugger.restoreStepping();
+                    // Later on, we run the source with disabled stepping again,
+                    // but this time with the breakpoint removed:
+                    bp.dispose();
+                    debugger.disableStepping();
+                    context1.eval(source);
+                    debugger.restoreStepping();
+                    context1.leave();
+                });
+                runAndCheckForErrors(t1);
+                // We have two events from the session2 with the breakpoint
+                Assert.assertEquals(2, events.size());
+            }
+        }
+    }
+
+    @Test
+    public void testSteppingDisabledRestore() throws Exception {
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startExecute(c -> {
+                c.enter();
+                try {
+                    tester.getDebugger().restoreStepping();
+                    Assert.fail();
+                } catch (IllegalStateException ex) {
+                    Assert.assertEquals("restoreStepping() called without a corresponding disabledStepping()", ex.getMessage());
+                }
+                c.leave();
+                return c.asValue(null);
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testSteppingDisabledNested() throws Exception {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+        Engine engine = Engine.create();
+        Debugger debugger = Debugger.find(engine);
+        List<SuspendedEvent> events = new ArrayList<>();
+        try (DebuggerSession session = debugger.startSession(event -> {
+            events.add(event);
+            event.prepareStepOver(1);
+        })) {
+            session.suspendNextExecution();
+            Thread t1 = new Thread(() -> {
+                org.graalvm.polyglot.Context context = org.graalvm.polyglot.Context.newBuilder().engine(engine).build();
+                context.enter();
+                for (int i = 0; i < 10; i++) {
+                    debugger.disableStepping();
+                    context.eval(source);
+                    for (int j = 0; j < i; j++) {
+                        debugger.disableStepping();
+                        context.eval(source);
+                    }
+                    for (int j = 0; j < i; j++) {
+                        debugger.restoreStepping();
+                        context.eval(source);
+                    }
+                    debugger.restoreStepping();
+                    Assert.assertEquals(0, events.size());
+                    context.eval(source);
+                    Assert.assertEquals(2, events.size());
+                    events.clear();
+                }
+                context.leave();
+            });
+            runAndCheckForErrors(t1);
+        }
+    }
+
+    @Test
+    public void testSteppingDisabledNestedWithBreakpoint() throws Exception {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+        final Source sourceBp = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+        Engine engine = Engine.create();
+        Debugger debugger = Debugger.find(engine);
+        List<SuspendedEvent> events = new ArrayList<>();
+        try (DebuggerSession session = debugger.startSession(event -> {
+            if (events.isEmpty()) {
+                // The first event is the breakpoint
+                Assert.assertEquals(1, event.getBreakpoints().size());
+            }
+            events.add(event);
+            event.prepareStepInto(1);
+        })) {
+            final int n = 10;
+            session.suspendNextExecution();
+            Thread t1 = new Thread(() -> {
+                org.graalvm.polyglot.Context context = org.graalvm.polyglot.Context.newBuilder().engine(engine).build();
+                context.enter();
+                for (int i = 0; i < n; i++) {
+                    Breakpoint bp = null;
+                    for (int j = 0; j < n; j++) {
+                        debugger.disableStepping();
+                        if (j == i) {
+                            bp = Breakpoint.newBuilder(getSourceImpl(sourceBp)).lineIs(4).build();
+                            session.install(bp);
+                            context.eval(sourceBp);
+                        } else {
+                            context.eval(source);
+                        }
+                    }
+                    Assert.assertEquals("i = " + i, 2, events.size());
+                    for (int j = n - 1; j > 0; j--) {
+                        debugger.restoreStepping();
+                        context.eval(source);
+                        if (i == n - 1 || j - 1 > i) {
+                            Assert.assertEquals("i = " + i + ", j = " + j, 2, events.size());
+                        } else {
+                            // When j == i we have stepping enabled after the breakpoint
+                            Assert.assertEquals("i = " + i + ", j = " + j, 4, events.size());
+                        }
+                    }
+                    int size = events.size();
+                    debugger.restoreStepping();
+                    context.eval(source);
+                    Assert.assertEquals("i = " + i, size + 2, events.size());
+                    events.clear();
+                    bp.dispose();
+                }
+                context.leave();
+            });
+            runAndCheckForErrors(t1);
+        }
+    }
+
+    private static void runAndCheckForErrors(Thread thread) throws InterruptedException {
+        joinWithErrorCheck(thread, runWithErrorCheck(thread));
+    }
+
+    private static List<Throwable> runWithErrorCheck(Thread thread) {
+        List<Throwable> throwables = new LinkedList<>();
+        thread.setUncaughtExceptionHandler((t, ex) -> {
+            throwables.add(ex);
+        });
+        thread.start();
+        return throwables;
+    }
+
+    private static void joinWithErrorCheck(Thread thread, List<Throwable> throwables) throws InterruptedException {
+        thread.join();
+        for (Throwable ex : throwables) {
+            ex.printStackTrace();
+        }
+        Assert.assertTrue(throwables.isEmpty());
     }
 }

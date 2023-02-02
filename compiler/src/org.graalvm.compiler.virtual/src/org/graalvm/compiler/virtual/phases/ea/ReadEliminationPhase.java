@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,10 @@ package org.graalvm.compiler.virtual.phases.ea;
 
 import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
 
+import java.util.Optional;
+
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -71,6 +75,14 @@ public class ReadEliminationPhase extends EffectsPhase<CoreProviders> {
     public ReadEliminationPhase(CanonicalizerPhase canonicalizer, boolean considerGuards) {
         super(1, canonicalizer, true);
         this.considerGuards = considerGuards;
+    }
+
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return NotApplicable.ifAny(
+                        super.notApplicableTo(graphState),
+                        NotApplicable.when(graphState.isAfterStage(StageFlag.FLOATING_READS) && graphState.isBeforeStage(StageFlag.FIXED_READS),
+                                        "This phase must not be applied while reads are floating"));
     }
 
     @Override

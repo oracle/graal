@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,6 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 public class GR23072 {
-    private static final boolean JDK8 = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
     @Test
     public void testGR23072() {
@@ -61,11 +60,9 @@ public class GR23072 {
             BufferedImage bi = new BufferedImage(480, 640, BufferedImage.TYPE_INT_RGB);
             Value g = context.asValue(bi.getGraphics());
 
-            if (!JDK8) {
-                assertThat(g.getMemberKeys(), not(hasItem("alphafill")));
-                Value alphafill = g.getMember("alphafill");
-                assertNull(alphafill);
-            }
+            assertThat(g.getMemberKeys(), not(hasItem("alphafill")));
+            Value alphafill = g.getMember("alphafill");
+            assertNull(alphafill);
 
             // make sure getting the members does not fail
             for (String member : g.getMemberKeys()) {

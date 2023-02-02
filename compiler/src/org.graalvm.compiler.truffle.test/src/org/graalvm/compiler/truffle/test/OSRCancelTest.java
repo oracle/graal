@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -107,7 +107,7 @@ public class OSRCancelTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
 
                 @Child TestInstrumentableNode loop = new TestLoopNode();
 
@@ -116,7 +116,7 @@ public class OSRCancelTest {
                     loop.execute(frame);
                     return "";
                 }
-            });
+            }.getCallTarget();
         }
 
     }

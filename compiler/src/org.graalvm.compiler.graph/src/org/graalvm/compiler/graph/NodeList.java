@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.util.RandomAccess;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 
 public abstract class NodeList<T extends Node> extends AbstractList<T> implements NodeIterable<T>, RandomAccess {
@@ -46,16 +47,25 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
      */
     private static final int MAX_ENTRIES = 65536;
 
-    protected static final Node[] EMPTY_NODE_ARRAY = new Node[0];
-
     protected final Node self;
+    /**
+     * The array that stores the contents of this node list. We over-allocate when adding nodes, and
+     * we do not allocate a smaller array when deleting elements. Therefore not all entries in this
+     * array are valid, and the number of valid elements is tracked by {@link #size}. The valid
+     * indices into this array are those in the range {@code 0..size-1} (inclusive). Elements at
+     * indices {@code size..nodes.length-1} can be overwritten, but they must never be read.
+     */
     protected Node[] nodes;
+    /**
+     * The number of valid entries in the {@link #nodes} array. All operations must maintain the
+     * invariant {@code 0 <= size && size <= nodes.length}.
+     */
     private int size;
     protected final int initialSize;
 
     protected NodeList(Node self) {
         this.self = self;
-        this.nodes = EMPTY_NODE_ARRAY;
+        this.nodes = Node.EMPTY_ARRAY;
         this.initialSize = 0;
     }
 
@@ -64,14 +74,18 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         checkMaxSize(initialSize);
         this.size = initialSize;
         this.initialSize = initialSize;
-        this.nodes = new Node[initialSize];
+        if (initialSize == 0) {
+            this.nodes = Node.EMPTY_ARRAY;
+        } else {
+            this.nodes = new Node[initialSize];
+        }
     }
 
     protected NodeList(Node self, T[] elements) {
         this.self = self;
         if (elements == null || elements.length == 0) {
             this.size = 0;
-            this.nodes = EMPTY_NODE_ARRAY;
+            this.nodes = Node.EMPTY_ARRAY;
             this.initialSize = 0;
         } else {
             checkMaxSize(elements.length);
@@ -89,7 +103,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         this.self = self;
         if (elements == null || elements.isEmpty()) {
             this.size = 0;
-            this.nodes = EMPTY_NODE_ARRAY;
+            this.nodes = Node.EMPTY_ARRAY;
             this.initialSize = 0;
         } else {
             int newSize = elements.size();
@@ -110,38 +124,19 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         }
     }
 
-    protected NodeList(Node self, Collection<? extends NodeInterface> elements) {
-        this.self = self;
-        if (elements == null || elements.isEmpty()) {
-            this.size = 0;
-            this.nodes = EMPTY_NODE_ARRAY;
-            this.initialSize = 0;
-        } else {
-            int newSize = elements.size();
-            checkMaxSize(newSize);
-            this.size = newSize;
-            this.initialSize = newSize;
-            this.nodes = new Node[elements.size()];
-            int i = 0;
-            for (NodeInterface n : elements) {
-                this.nodes[i] = n.asNode();
-                assert this.nodes[i] == null || !this.nodes[i].isDeleted();
-                i++;
-            }
-        }
-    }
-
     /**
      * Removes {@code null} values from the list.
      */
     public void trim() {
+        self.incModCount();
         int newSize = 0;
-        for (int i = 0; i < nodes.length; ++i) {
+        for (int i = 0; i < size; ++i) {
             if (nodes[i] != null) {
                 nodes[newSize] = nodes[i];
                 newSize++;
             }
         }
+        GraalError.guarantee(newSize <= size, "size cannot increase when removing nulls");
         size = newSize;
     }
 
@@ -239,8 +234,13 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     void copy(NodeList<? extends Node> other) {
         self.incModCount();
         incModCount();
-        Node[] newNodes = new Node[other.size];
-        System.arraycopy(other.nodes, 0, newNodes, 0, newNodes.length);
+        Node[] newNodes;
+        if (other.size == 0) {
+            newNodes = Node.EMPTY_ARRAY;
+        } else {
+            newNodes = new Node[other.size];
+            System.arraycopy(other.nodes, 0, newNodes, 0, newNodes.length);
+        }
         nodes = newNodes;
         size = other.size;
     }
@@ -282,8 +282,12 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     }
 
     void clearWithoutUpdate() {
-        nodes = EMPTY_NODE_ARRAY;
+        nodes = Node.EMPTY_ARRAY;
         size = 0;
+    }
+
+    void minimizeSize() {
+        nodes = Graph.trimArrayToNewSize(nodes, size);
     }
 
     @Override
@@ -364,21 +368,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public void setAll(NodeList<T> values) {
-        self.incModCount();
-        incModCount();
-        for (int i = 0; i < size(); i++) {
-            update((T) nodes[i], null);
-        }
-        nodes = Arrays.copyOf(values.nodes, values.size());
-        size = values.size();
-
-        for (int i = 0; i < size(); i++) {
-            update(null, (T) nodes[i]);
-        }
-    }
-
     @Override
     @SuppressWarnings("unchecked")
     public <A> A[] toArray(A[] a) {
@@ -392,16 +381,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @Override
     public Object[] toArray() {
         return Arrays.copyOf(nodes, size);
-    }
-
-    protected void replace(T node, T other) {
-        incModCount();
-        for (int i = 0; i < size(); i++) {
-            if (nodes[i] == node) {
-                nodes[i] = other;
-                update(node, other);
-            }
-        }
     }
 
     @Override
@@ -426,13 +405,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
 
     @Override
     public boolean addAll(Collection<? extends T> c) {
-        for (T e : c) {
-            add(e);
-        }
-        return true;
-    }
-
-    public boolean addAll(T[] c) {
         for (T e : c) {
             add(e);
         }
@@ -484,11 +456,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         @Override
         public int size() {
             return list.size() - offset;
-        }
-
-        public SubList<R> subList(int startIndex) {
-            assert startIndex >= 0 && startIndex < size() : startIndex;
-            return new SubList<>(this.list, startIndex + offset);
         }
 
         @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,6 +52,11 @@ public abstract class LLVMExtractElementNode {
         protected boolean doI1(LLVMI1Vector vector, int index) {
             return vector.getValue(index);
         }
+
+        @Specialization
+        protected boolean doI1(LLVMI1Vector vector, long index) {
+            return vector.getValue(Math.toIntExact(index));
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -61,6 +66,11 @@ public abstract class LLVMExtractElementNode {
         @Specialization
         protected byte doI8(LLVMI8Vector vector, int index) {
             return vector.getValue(index);
+        }
+
+        @Specialization
+        protected byte doI8(LLVMI8Vector vector, long index) {
+            return vector.getValue(Math.toIntExact(index));
         }
     }
 
@@ -72,6 +82,11 @@ public abstract class LLVMExtractElementNode {
         protected short doI16(LLVMI16Vector vector, int index) {
             return vector.getValue(index);
         }
+
+        @Specialization
+        protected short doI16(LLVMI16Vector vector, long index) {
+            return vector.getValue(Math.toIntExact(index));
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -81,6 +96,11 @@ public abstract class LLVMExtractElementNode {
         @Specialization
         protected int doI32(LLVMI32Vector vector, int index) {
             return vector.getValue(index);
+        }
+
+        @Specialization
+        protected int doI32(LLVMI32Vector vector, long index) {
+            return vector.getValue(Math.toIntExact(index));
         }
     }
 
@@ -94,8 +114,18 @@ public abstract class LLVMExtractElementNode {
         }
 
         @Specialization
+        protected long doI64(LLVMI64Vector vector, long index) {
+            return vector.getValue(Math.toIntExact(index));
+        }
+
+        @Specialization
         protected LLVMPointer doPointer(LLVMPointerVector vector, int index) {
             return vector.getValue(index);
+        }
+
+        @Specialization
+        protected LLVMPointer doPointer(LLVMPointerVector vector, long index) {
+            return vector.getValue(Math.toIntExact(index));
         }
     }
 
@@ -107,6 +137,11 @@ public abstract class LLVMExtractElementNode {
         protected float doFloat(LLVMFloatVector vector, int index) {
             return vector.getValue(index);
         }
+
+        @Specialization
+        protected float doFloat(LLVMFloatVector vector, long index) {
+            return vector.getValue(Math.toIntExact(index));
+        }
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
@@ -116,6 +151,11 @@ public abstract class LLVMExtractElementNode {
         @Specialization
         protected double doDouble(LLVMDoubleVector vector, int index) {
             return vector.getValue(index);
+        }
+
+        @Specialization
+        protected double doDouble(LLVMDoubleVector vector, long index) {
+            return vector.getValue(Math.toIntExact(index));
         }
     }
 }

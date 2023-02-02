@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -96,8 +96,7 @@ public abstract class LLVMComplex80BitFloatDiv extends LLVMExpressionNode {
 
             return allocatedMemory;
         } catch (UnexpectedResultException | ClassCastException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
     }
 }

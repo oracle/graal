@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.compiler.nodes.extended;
 
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -36,9 +35,5 @@ public final class OSRStartNode extends StartNode implements Lowerable {
 
     public OSRStartNode() {
         super(TYPE);
-    }
-
-    public NodeIterable<OSRLocalNode> getOSRLocals() {
-        return usages().filter(OSRLocalNode.class);
     }
 }

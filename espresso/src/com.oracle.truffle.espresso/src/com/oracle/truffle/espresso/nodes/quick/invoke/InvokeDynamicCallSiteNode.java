@@ -28,10 +28,11 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
+import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -43,6 +44,7 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
     private final JavaKind returnKind;
     @Child private DirectCallNode callNode;
     final int resultAt;
+    final boolean returnsPrimitiveType;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Symbol<Type>[] parsedSignature;
 
@@ -56,26 +58,25 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
         this.hasAppendix = !StaticObject.isNull(appendix);
         this.callNode = DirectCallNode.create(target.getCallTarget());
         this.resultAt = top - Signatures.slotsForParameters(parsedSignature); // no receiver
+        this.returnsPrimitiveType = Types.isPrimitive(returnType);
     }
 
     @Override
-    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        int argCount = Signatures.parameterCount(parsedSignature, false);
-        Object[] args = BytecodeNode.popBasicArgumentsWithArray(primitives, refs, top, parsedSignature, new Object[argCount + (hasAppendix ? 1 : 0)], argCount, 0);
+    public int execute(VirtualFrame frame) {
+        int argCount = Signatures.parameterCount(parsedSignature);
+        Object[] args = EspressoFrame.popBasicArgumentsWithArray(frame, top, parsedSignature, false, new Object[argCount + (hasAppendix ? 1 : 0)]);
         if (hasAppendix) {
             args[args.length - 1] = appendix;
         }
         Object result = callNode.call(args);
-        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), unbasic(result, returnType), returnKind);
+        if (!returnsPrimitiveType) {
+            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
+        }
+        return (getResultAt() - top) + EspressoFrame.putKind(frame, getResultAt(), unbasic(result, returnType), returnKind);
     }
 
     private int getResultAt() {
         return resultAt;
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return returnKind.isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     // Transforms ints to sub-words

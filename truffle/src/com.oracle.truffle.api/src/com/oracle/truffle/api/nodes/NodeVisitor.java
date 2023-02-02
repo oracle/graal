@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,10 +49,11 @@ public interface NodeVisitor {
 
     /**
      * This visitor method is called for every node in the tree. Its return value determines if the
-     * children of this node should be excluded in the iteration.
+     * visitation continues i.e. As long as the return value is {@code true} the visitation
+     * continues.
      *
      * @param node the node that is currently visited
-     * @return {@code true} if the children should be visited too, {@code false} otherwise
+     * @return {@code true} if the visitation should continue, {@code false} otherwise
      * @since 0.8 or earlier
      */
     boolean visit(Node node);

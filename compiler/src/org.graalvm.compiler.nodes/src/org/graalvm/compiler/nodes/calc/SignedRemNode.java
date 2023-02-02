@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,18 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
@@ -67,10 +69,22 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        return canonical(this, forX, forY, getZeroCheck(), stamp(view), view, tool);
+        return canonical(this, forX, forY, getZeroGuard(), stamp(view), view, tool, this.canDeoptimize() ? tool.divisionOverflowIsJVMSCompliant() : true);
+    }
+
+    /**
+     * This is used as a hook to allow "safe" SignedRemNodes to be created during canonicalization.
+     */
+    protected SignedRemNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck) {
+        return new SignedRemNode(forX, forY, forZeroCheck);
     }
 
     private static ValueNode canonical(SignedRemNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view, CanonicalizerTool tool) {
+        return canonical(self, forX, forY, zeroCheck, stamp, view, tool, self == null ? false : !self.canDeoptimize());
+    }
+
+    private static ValueNode canonical(SignedRemNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view, CanonicalizerTool tool,
+                    boolean divisionOverflowIsJVMSCompliant) {
         if (forX.isConstant() && forY.isConstant()) {
             long y = forY.asJavaConstant().asLong();
             if (y == 0) {
@@ -80,45 +94,69 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
             return ConstantNode.forIntegerStamp(stamp, forX.asJavaConstant().asLong() % y);
         } else if (forY.isConstant() && forX.stamp(view) instanceof IntegerStamp && forY.stamp(view) instanceof IntegerStamp) {
             long constY = forY.asJavaConstant().asLong();
-            IntegerStamp xStamp = (IntegerStamp) forX.stamp(view);
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
             if (constY < 0 && constY != CodeUtil.minValue(yStamp.getBits())) {
                 Stamp newStamp = IntegerStamp.OPS.getRem().foldStamp(forX.stamp(view), forY.stamp(view));
                 return canonical(self, forX, ConstantNode.forIntegerStamp(yStamp, -constY), zeroCheck, newStamp, view, tool);
             }
-
-            if (constY == 1) {
-                return ConstantNode.forIntegerStamp(stamp, 0);
-            } else if (CodeUtil.isPowerOf2(constY) && tool != null && tool.allUsagesAvailable()) {
-                if (allUsagesCompareAgainstZero(self)) {
-                    // x % y == 0 <=> (x & (y-1)) == 0
-                    return new AndNode(forX, ConstantNode.forIntegerStamp(yStamp, constY - 1));
-                } else {
-                    if (xStamp.isPositive()) {
-                        // x & (y - 1)
-                        return new AndNode(forX, ConstantNode.forIntegerStamp(stamp, constY - 1));
-                    } else if (xStamp.isNegative()) {
-                        // -((-x) & (y - 1))
-                        return new NegateNode(new AndNode(new NegateNode(forX), ConstantNode.forIntegerStamp(stamp, constY - 1)));
-                    }
-                }
+            ValueNode v = canonical(self, yStamp, forX, forY, view, tool);
+            if (v != null) {
+                return v;
             }
         }
         if (self != null && self.hasNoUsages() && self.next() instanceof SignedDivNode) {
             SignedDivNode div = (SignedDivNode) self.next();
-            if (div.x == self.x && div.y == self.y && div.getZeroCheck() == self.getZeroCheck() && div.stateBefore() == self.stateBefore()) {
+            if (div.x == self.x && div.y == self.y && div.getZeroGuard() == self.getZeroGuard() && div.stateBefore() == self.stateBefore()) {
                 // left over from canonicalizing ((a - a % b) / b) into (a / b)
                 return null;
             }
         }
+        if (tool != null && self.canFloat() && GraalOptions.FloatingDivNodes.getValue(tool.getOptions()) && self.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
+            IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
+            if (!yStamp.contains(0) && SignedDivNode.divisionIsJVMSCompliant(forX, forY, divisionOverflowIsJVMSCompliant)) {
+                return SignedFloatingIntegerRemNode.create(forX, forY, view, zeroCheck, divisionOverflowIsJVMSCompliant);
+            }
+        }
+
         if (self != null && self.x == forX && self.y == forY) {
             return self;
         } else {
+            if (self != null) {
+                return self.createWithInputs(forX, forY, zeroCheck);
+            }
             return new SignedRemNode(forX, forY, zeroCheck);
         }
     }
 
-    private static boolean allUsagesCompareAgainstZero(SignedRemNode self) {
+    @Override
+    public boolean canFloat() {
+        return true;
+    }
+
+    public static ValueNode canonical(ValueNode self, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view, CanonicalizerTool tool) {
+        long constY = forY.asJavaConstant().asLong();
+        IntegerStamp xStamp = (IntegerStamp) forX.stamp(view);
+        IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
+        if (constY == 1) {
+            return ConstantNode.forIntegerStamp(stamp, 0);
+        } else if (CodeUtil.isPowerOf2(constY) && tool != null && tool.allUsagesAvailable()) {
+            if (allUsagesCompareAgainstZero(self)) {
+                // x % y == 0 <=> (x & (y-1)) == 0
+                return new AndNode(forX, ConstantNode.forIntegerStamp(yStamp, constY - 1));
+            } else {
+                if (xStamp.isPositive()) {
+                    // x & (y - 1)
+                    return new AndNode(forX, ConstantNode.forIntegerStamp(stamp, constY - 1));
+                } else if (xStamp.isNegative()) {
+                    // -((-x) & (y - 1))
+                    return new NegateNode(new AndNode(new NegateNode(forX), ConstantNode.forIntegerStamp(stamp, constY - 1)));
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean allUsagesCompareAgainstZero(ValueNode self) {
         if (self == null) {
             // If the node was not yet created, then we do not know its usages yet.
             return false;

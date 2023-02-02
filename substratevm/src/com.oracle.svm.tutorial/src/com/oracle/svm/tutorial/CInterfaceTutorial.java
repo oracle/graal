@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.tutorial;
 
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -32,6 +33,7 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -59,9 +61,6 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.OS;
-import com.oracle.svm.core.c.ProjectHeaderFile;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.tutorial.CInterfaceTutorial.CInterfaceTutorialDirectives;
 
 @CContext(CInterfaceTutorialDirectives.class)
@@ -75,7 +74,7 @@ public class CInterfaceTutorial {
              * The header file with the C declarations that are imported. We use a helper class that
              * locates the file in our project structure.
              */
-            return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.tutorial", "native/mydata.h"));
+            return Collections.singletonList("\"" + Path.of(System.getProperty("com.oracle.svm.tutorial.headerfile")).toAbsolutePath() + "\"");
         }
     }
 
@@ -183,7 +182,7 @@ public class CInterfaceTutorial {
 
         IsolateThread currentThread = CurrentIsolate.getCurrentThread();
         /* Call a C function directly. */
-        if (OS.getCurrent() != OS.WINDOWS) {
+        if (!Platform.includedIn(Platform.WINDOWS.class)) {
             /*
              * Calling C functions provided by the main executable from a shared library produced by
              * the native-image is not yet supported on Windows.
@@ -252,7 +251,7 @@ public class CInterfaceTutorial {
     @CEntryPoint(name = "java_print_day")
     protected static void printDay(@SuppressWarnings("unused") IsolateThread thread, DayOfTheWeek day) {
         System.out.format("Day: %s (Java ordinal: %d, C value: %d)%n", day.name(), day.ordinal(), day.getCValue());
-        if (OS.getCurrent() != OS.WINDOWS) {
+        if (!Platform.includedIn(Platform.WINDOWS.class)) {
             /*
              * Calling C functions provided by the main executable from a shared library produced by
              * the native-image is not yet supported on Windows.
@@ -298,7 +297,7 @@ public class CInterfaceTutorial {
          */
         @CFieldOffset("header")
         static int offsetOfHeader() {
-            throw VMError.shouldNotReachHere("Calls to the method are replaced with a compile time constant for the offset, so this method body is not reachable.");
+            throw new RuntimeException("Calls to the method are replaced with a compile time constant for the offset, so this method body is not reachable.");
         }
 
         @CField

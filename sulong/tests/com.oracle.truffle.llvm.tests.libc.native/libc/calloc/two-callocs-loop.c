@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int max(int a, int b) {
+int max_int(int a, int b) {
     return a > b ? a : b;
 }
 
@@ -42,7 +42,7 @@ int main() {
         mem[i] = i;
         for (int j = 0; j < 100; j++) {
             mem2[j] = j;
-            sum += max(mem[i], mem2[j]);
+            sum += max_int(mem[i], mem2[j]);
         }
     }
     printf("%d\n", sum);

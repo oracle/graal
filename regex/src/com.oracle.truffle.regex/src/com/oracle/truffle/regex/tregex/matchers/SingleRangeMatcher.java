@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,12 @@
 package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.charset.Range;
 
 /**
  * Matcher for a single character range.
  */
-public abstract class SingleRangeMatcher extends InvertibleCharMatcher {
+public final class SingleRangeMatcher extends InvertibleCharMatcher {
 
     private final int lo;
     private final int hi;
@@ -66,7 +65,7 @@ public abstract class SingleRangeMatcher extends InvertibleCharMatcher {
     }
 
     public static SingleRangeMatcher create(boolean invert, int lo, int hi) {
-        return SingleRangeMatcherNodeGen.create(invert, lo, hi);
+        return new SingleRangeMatcher(invert, lo, hi);
     }
 
     /**
@@ -83,8 +82,8 @@ public abstract class SingleRangeMatcher extends InvertibleCharMatcher {
         return hi;
     }
 
-    @Specialization
-    boolean match(int c) {
+    @Override
+    public boolean match(int c) {
         return result(lo <= c && hi >= c);
     }
 

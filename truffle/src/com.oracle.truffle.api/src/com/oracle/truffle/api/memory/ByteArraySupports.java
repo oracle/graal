@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,7 +80,7 @@ final class ByteArraySupports {
     static {
         // We only use Unsafe for platforms that we know support it, and that support unaligned
         // accesses.
-        if (System.getProperty("os.arch").equals("x86-64") || System.getProperty("os.arch").equals("aarch64") || System.getProperty("os.arch").equals("amd64")) {
+        if (System.getProperty("os.arch").equals("x86_64") || System.getProperty("os.arch").equals("aarch64") || System.getProperty("os.arch").equals("amd64")) {
             final ByteArraySupport nativeOrder = new CheckedByteArraySupport(new UnsafeByteArraySupport());
             if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
                 BIG_ENDIAN = nativeOrder;

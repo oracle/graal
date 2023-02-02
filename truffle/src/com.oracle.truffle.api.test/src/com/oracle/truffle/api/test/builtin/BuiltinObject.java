@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,11 +50,13 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
@@ -68,7 +70,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
@@ -150,6 +152,7 @@ public abstract class BuiltinObject implements TruffleObject {
         return false;
     }
 
+    @NeverDefault
     static BuiltinDescriptor getDescriptorImpl(BuiltinObject object) {
         return object.getBuiltinDescriptor();
     }
@@ -165,7 +168,7 @@ public abstract class BuiltinObject implements TruffleObject {
                 assert member != null;
                 if (member.expectedArgumentCount != arguments.length) {
                     CompilerDirectives.transferToInterpreter();
-                    throw ArityException.create(member.expectedArgumentCount, arguments.length);
+                    throw ArityException.create(member.expectedArgumentCount, member.expectedArgumentCount, arguments.length);
                 }
                 return execute(receiver, arguments);
             } catch (UnsupportedSpecializationException e) {
@@ -314,9 +317,10 @@ public abstract class BuiltinObject implements TruffleObject {
 
         @ExportMessage
         String readArrayElement(long idx,
-                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(idx)) {
-                exception.enter();
+                exception.enter(node);
                 throw InvalidArrayIndexException.create(idx);
             }
             return members[(int) idx].name;

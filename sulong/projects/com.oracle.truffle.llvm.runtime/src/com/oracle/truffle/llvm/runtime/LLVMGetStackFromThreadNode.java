@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,10 +49,9 @@ public abstract class LLVMGetStackFromThreadNode extends LLVMNode {
 
     protected LLVMStack getStack(LLVMThreadingStack threadingStack, Thread cachedThread) {
         if (Thread.currentThread() == cachedThread) {
-            return threadingStack.getStack();
+            return threadingStack.getStack(this);
         }
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**
@@ -72,8 +71,8 @@ public abstract class LLVMGetStackFromThreadNode extends LLVMNode {
      * @see #executeWithTarget(LLVMThreadingStack, Thread)
      */
     @Specialization(replaces = "cached")
-    static LLVMStack generic(LLVMThreadingStack stack, Thread currentThread,
+    LLVMStack generic(LLVMThreadingStack stack, Thread currentThread,
                     @Cached ConditionProfile profile) {
-        return stack.getStackProfiled(currentThread, profile);
+        return stack.getStackProfiled(currentThread, profile, this);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMManagedPointerLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -165,19 +166,17 @@ public abstract class LLVMSimpleLiteralNode extends LLVMExpressionNode {
 
     public abstract static class LLVM80BitFloatLiteralNode extends LLVMSimpleLiteralNode {
 
-        private final boolean sign;
-        private final int exponent;
+        private final short expSign;
         private final long fraction;
 
         public LLVM80BitFloatLiteralNode(LLVM80BitFloat literal) {
-            this.sign = literal.getSign();
-            this.exponent = literal.getExponent();
+            this.expSign = literal.getExpSign();
             this.fraction = literal.getFraction();
         }
 
         @Specialization
         public LLVM80BitFloat do80BitFloat() {
-            return new LLVM80BitFloat(sign, exponent, fraction);
+            return new LLVM80BitFloat(expSign, fraction);
         }
     }
 
@@ -203,6 +202,10 @@ public abstract class LLVMSimpleLiteralNode extends LLVMExpressionNode {
         @Specialization
         public LLVMManagedPointer doManagedPointer() {
             return address.copy();
+        }
+
+        public static LLVMManagedPointerLiteralNode create(LLVMManagedPointer pointer) {
+            return LLVMManagedPointerLiteralNodeGen.create(pointer);
         }
     }
 

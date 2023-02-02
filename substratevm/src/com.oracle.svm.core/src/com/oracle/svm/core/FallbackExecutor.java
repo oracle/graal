@@ -57,15 +57,15 @@ import com.oracle.svm.core.util.VMError;
 public class FallbackExecutor {
     public static class Options {
         @Option(help = "Internal option used to specify system properties for FallbackExecutor.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> FallbackExecutorSystemProperty = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> FallbackExecutorSystemProperty = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
         @Option(help = "Internal option used to specify MainClass for FallbackExecutor.")//
         public static final HostedOptionKey<String> FallbackExecutorMainClass = new HostedOptionKey<>(null);
         @Option(help = "Internal option used to specify Classpath for FallbackExecutor.")//
         public static final HostedOptionKey<String> FallbackExecutorClasspath = new HostedOptionKey<>(null);
         @Option(help = "Internal option used to specify java arguments for FallbackExecutor.")//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> FallbackExecutorJavaArg = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> FallbackExecutorJavaArg = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
         @Option(help = "Internal option used to specify runtime java arguments for FallbackExecutor.")//
-        public static final RuntimeOptionKey<LocatableMultiOptionValue.Strings> FallbackExecutorRuntimeJavaArg = new RuntimeOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final RuntimeOptionKey<LocatableMultiOptionValue.Strings> FallbackExecutorRuntimeJavaArg = new RuntimeOptionKey<>(LocatableMultiOptionValue.Strings.build());
     }
 
     public static void main(String[] args) {
@@ -98,9 +98,7 @@ public class FallbackExecutor {
         command.add(Options.FallbackExecutorMainClass.getValue());
         command.addAll(Arrays.asList(args));
         if (System.getenv("FALLBACK_EXECUTOR_VERBOSE") != null) {
-            // Checkstyle: stop
             System.out.println("Exec: " + String.join(" ", command));
-            // Checkstyle: resume
         }
         ProcessProperties.exec(javaExecutable, command.toArray(new String[0]));
     }
@@ -137,9 +135,7 @@ public class FallbackExecutor {
     }
 
     private static void showError(String s) {
-        // Checkstyle: stop
         System.err.println("Error: " + s);
-        // Checkstyle: resume
         System.exit(1);
     }
 }

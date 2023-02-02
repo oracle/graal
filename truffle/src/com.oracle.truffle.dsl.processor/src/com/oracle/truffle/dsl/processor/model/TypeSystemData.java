@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.dsl.processor.model;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -168,15 +169,15 @@ public class TypeSystemData extends Template {
         return false;
     }
 
-    public List<TypeMirror> lookupTargetTypes() {
+    public Collection<TypeMirror> lookupTargetTypes() {
         List<TypeMirror> sourceTypes = new ArrayList<>();
         for (ImplicitCastData cast : getImplicitCasts()) {
             sourceTypes.add(cast.getTargetType());
         }
-        return ElementUtils.uniqueSortedTypes(sourceTypes, true);
+        return ElementUtils.uniqueTypes(sourceTypes);
     }
 
-    public List<TypeMirror> lookupSourceTypes(TypeMirror targetType) {
+    public Collection<TypeMirror> lookupSourceTypes(TypeMirror targetType) {
         List<TypeMirror> sourceTypes = new ArrayList<>();
         sourceTypes.add(targetType);
         for (ImplicitCastData cast : getImplicitCasts()) {
@@ -184,7 +185,7 @@ public class TypeSystemData extends Template {
                 sourceTypes.add(cast.getSourceType());
             }
         }
-        return ElementUtils.uniqueSortedTypes(sourceTypes, true);
+        return ElementUtils.uniqueTypes(sourceTypes);
     }
 
     public boolean isImplicitSubtypeOf(TypeMirror source, TypeMirror target) {

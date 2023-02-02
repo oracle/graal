@@ -44,9 +44,17 @@ typedef unsigned long long __graal_uword;
 typedef unsigned long __graal_uword;
 #endif
 
+/*
+ * These constants can be used for the pkey field in the
+ * graal_create_isolate_params_t struct to either specify that the isolate is
+ * not part of a protection domain or a new protection domain should be
+ * created for it.
+ */
+#define NO_PROTECTION_DOMAIN 0
+#define NEW_PROTECTION_DOMAIN -1
 
 /* Parameters for the creation of a new isolate. */
-enum { __graal_create_isolate_params_version = 1 };
+enum { __graal_create_isolate_params_version = 4 };
 struct __graal_create_isolate_params_t {
     int version;                                /* Version of this struct */
 
@@ -60,7 +68,11 @@ struct __graal_create_isolate_params_t {
     /* Fields introduced in version 3 */
     int            _reserved_1;                 /* Internal usage, do not use. */
     char         **_reserved_2;                 /* Internal usage, do not use. */
-    int            pkey;                        /* Isolate protection key. */
+    int            pkey;                        /* Isolate protection key or domain. */
+
+    /* Fields introduced in version 4 */
+    char           _reserved_3;                 /* Internal usage, do not use. */
+    char           _reserved_4;                 /* Internal usage, do not use. */
 };
 typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;
 
@@ -108,9 +120,9 @@ typedef graal_isolate_t* (*graal_get_isolate_fn_t)(graal_isolatethread_t* thread
 typedef int (*graal_detach_thread_fn_t)(graal_isolatethread_t* thread);
 
 /*
- * Tears down the passed isolate, waiting for any attached threads to detach from
- * it, then discards the isolate's objects, threads, and any other state or context
- * that is associated with it.
+ * Tears down the isolate of the passed (and still attached) isolate thread,
+ * waiting for any attached threads to detach from it, then discards its objects,
+ * threads, and any other state or context that is associated with it.
  * Returns 0 on success, or a non-zero value on failure.
  */
 typedef int (*graal_tear_down_isolate_fn_t)(graal_isolatethread_t* isolateThread);

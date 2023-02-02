@@ -24,24 +24,23 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import static com.oracle.svm.core.util.VMError.unimplemented;
-
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 
-import com.oracle.svm.core.hub.DynamicHub;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 public class SubstrateStampProvider implements StampProvider {
 
     private final AbstractPointerStamp hubStamp;
+    private final AbstractPointerStamp methodStamp;
 
     public SubstrateStampProvider(MetaAccessProvider metaAccess) {
         this.hubStamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(DynamicHub.class)));
+        this.methodStamp = SubstrateMethodPointerStamp.methodNonNull();
     }
 
     @Override
@@ -51,6 +50,6 @@ public class SubstrateStampProvider implements StampProvider {
 
     @Override
     public AbstractPointerStamp createMethodStamp() {
-        throw unimplemented();
+        return methodStamp;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,29 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AbstractInstrumenter;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.LanguageClientInstrumenter;
+import com.oracle.truffle.api.instrumentation.NearestNodesCollector.NodeListSection;
+import com.oracle.truffle.api.instrumentation.NearestNodesCollector.NodeSection;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.concurrent.Semaphore;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 
 /**
  * An {@linkplain Instrumenter instrumentation} handle for a subscription to a
@@ -224,7 +235,37 @@ public class EventBinding<T> {
         }
     }
 
-    abstract static class LoadSource<T> extends Source<T> {
+    interface LoadedNotifier {
+
+        boolean isNotifyLoaded();
+    }
+
+    static final class LoadNearestSection<T> extends NearestSourceSection<T> implements LoadedNotifier {
+
+        private final boolean notifyLoaded;
+
+        LoadNearestSection(AbstractInstrumenter instrumenter, NearestSectionFilter nearestFilter, SourceSectionFilter filterSourceSection, T element, boolean attached, boolean notifyLoaded) {
+            super(instrumenter, nearestFilter, filterSourceSection, element, attached);
+            this.notifyLoaded = notifyLoaded;
+        }
+
+        @Override
+        void doAttach() {
+            getInstrumenter().attachSourceSectionBinding(this);
+        }
+
+        @Override
+        public boolean isNotifyLoaded() {
+            return notifyLoaded;
+        }
+
+        @Override
+        boolean isExecutionEvent() {
+            return false;
+        }
+    }
+
+    abstract static class LoadSource<T> extends Source<T> implements LoadedNotifier {
 
         private final boolean notifyLoaded;
 
@@ -233,7 +274,8 @@ public class EventBinding<T> {
             this.notifyLoaded = notifyLoaded;
         }
 
-        final boolean isNotifyLoaded() {
+        @Override
+        public final boolean isNotifyLoaded() {
             return notifyLoaded;
         }
 
@@ -247,6 +289,18 @@ public class EventBinding<T> {
 
         Execution(AbstractInstrumenter instrumenter, SourceSectionFilter filterSourceSection, SourceSectionFilter inputFilter, T element) {
             super(instrumenter, filterSourceSection, inputFilter, element);
+        }
+
+        @Override
+        boolean isExecutionEvent() {
+            return true;
+        }
+    }
+
+    static final class NearestExecution<T> extends NearestSourceSection<T> {
+
+        NearestExecution(AbstractInstrumenter instrumenter, NearestSectionFilter nearestFilter, SourceSectionFilter filterSourceSection, T element) {
+            super(instrumenter, nearestFilter, filterSourceSection, element, true);
         }
 
         @Override
@@ -270,11 +324,11 @@ public class EventBinding<T> {
             this.filterSourceSection = filterSourceSection;
         }
 
-        SourceSectionFilter getInputFilter() {
+        final SourceSectionFilter getInputFilter() {
             return inputFilter;
         }
 
-        Set<Class<?>> getLimitedTags() {
+        final Set<Class<?>> getLimitedTags() {
             Set<Class<?>> tags = filterSourceSection.getLimitedTags();
             if (inputFilter != null) {
                 Set<Class<?>> inputTags = inputFilter.getLimitedTags();
@@ -298,19 +352,16 @@ public class EventBinding<T> {
 
         }
 
-        @SuppressWarnings("deprecation")
-        public SourceSectionFilter getFilter() {
+        final SourceSectionFilter getFilter() {
             return filterSourceSection;
         }
 
-        boolean isInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode, Node node, SourceSection nodeSourceSection) {
-            if (isInstrumentedLeaf(providedTags, node, nodeSourceSection)) {
-                if (rootNode == null) {
-                    return false;
-                }
-                return isInstrumentedRoot(providedTags, rootNode, rootNode.getSourceSection(), 0);
+        boolean isInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode, Node node, SourceSection nodeSourceSection, @SuppressWarnings("unused") boolean isProbe) {
+            boolean instrumentedLeaf = isInstrumentedLeaf(providedTags, node, nodeSourceSection);
+            if (!instrumentedLeaf || rootNode == null) {
+                return false;
             }
-            return false;
+            return isInstrumentedRoot(providedTags, rootNode, rootNode.getSourceSection(), 0);
         }
 
         /**
@@ -383,7 +434,8 @@ public class EventBinding<T> {
 
         boolean isInstrumentedLeaf(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection section) {
             try {
-                return getFilter().isInstrumentedNode(providedTags, instrumentedNode, section);
+                boolean instrumented = getFilter().isInstrumentedNode(providedTags, instrumentedNode, section);
+                return instrumented;
             } catch (Throwable t) {
                 if (isLanguageBinding()) {
                     throw t;
@@ -414,6 +466,166 @@ public class EventBinding<T> {
 
         boolean isLanguageBinding() {
             return getInstrumenter() instanceof LanguageClientInstrumenter;
+        }
+
+    }
+
+    abstract static class NearestSourceSection<T> extends EventBinding.Source<T> {
+
+        private final NearestSectionFilter nearestFilter;
+        private final EconomicMap<com.oracle.truffle.api.source.Source, NodeListSection> nearestSourceSections;
+
+        NearestSourceSection(AbstractInstrumenter instrumenter, NearestSectionFilter nearestFilter, SourceSectionFilter filterSourceSection, T element, boolean attached) {
+            super(instrumenter, filterSourceSection, null, element, attached);
+            assert nearestFilter != null;
+            this.nearestFilter = nearestFilter;
+            this.nearestSourceSections = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        }
+
+        @Override
+        boolean isInstrumentedFull(Set<Class<?>> providedTags, RootNode rootNode, Node node, SourceSection nodeSourceSection, boolean isProbe) {
+            boolean instrumentedLeaf = isInstrumentedLeaf(providedTags, node, nodeSourceSection);
+            if (!instrumentedLeaf || rootNode == null) {
+                return false;
+            }
+            if (!isProbe || nearestSourceSections == null || isProbe && isNearestSection(nodeSourceSection)) {
+                return isInstrumentedRoot(providedTags, rootNode, rootNode.getSourceSection(), 0);
+            }
+            return false;
+        }
+
+        final NearestSectionFilter getNearestFilter() {
+            return nearestFilter;
+        }
+
+        List<Node> getNearestNodes() {
+            if (nearestSourceSections == null) {
+                return null;
+            }
+            synchronized (nearestSourceSections) {
+                if (nearestSourceSections.isEmpty()) {
+                    return null;
+                }
+                if (nearestSourceSections.size() == 1) {
+                    NodeListSection nearestNodes = nearestSourceSections.getValues().iterator().next();
+                    return resolveReferences(nearestNodes.nodes);
+                }
+                List<Node> nodes = new ArrayList<>(nearestSourceSections.size());
+                for (NodeListSection nearest : nearestSourceSections.getValues()) {
+                    resolveReferences(nearest.nodes, nodes);
+                }
+                return nodes;
+            }
+        }
+
+        private boolean isNearestSection(SourceSection section) {
+            if (nearestSourceSections != null) {
+                NodeListSection nearest;
+                synchronized (nearestSourceSections) {
+                    nearest = nearestSourceSections.get(section.getSource());
+                }
+                return nearest != null && section.equals(nearest.section);
+            } else {
+                return false;
+            }
+        }
+
+        // Returns a list of old nodes when the new one is accepted as the new nearest,
+        // returns null otherwise.
+        NodeListSection setTheNearest(NodeSection nearest, SourceSection visitingRootSourceSection, Set<Class<? extends Tag>> allTags) {
+            assert nearestSourceSections != null;
+            SourceSection newSection = nearest.section;
+            com.oracle.truffle.api.source.Source source = newSection.getSource();
+            synchronized (nearestSourceSections) {
+                NodeListSection oldNearest = nearestSourceSections.get(source);
+                if (oldNearest == null) {
+                    return insertNearest(nearest);
+                }
+                SourceSection oldSection = oldNearest.section;
+                NodeListSection newNearest;
+                if (!newSection.equals(oldSection)) {
+                    newNearest = updateNearest(nearest, visitingRootSourceSection, allTags, oldNearest);
+                } else {
+                    newNearest = mergeNearest(nearest, oldNearest);
+                }
+                return newNearest;
+            }
+        }
+
+        private NodeListSection insertNearest(NodeSection nearest) {
+            List<WeakReference<Node>> list = new LinkedList<>();
+            list.add(new WeakReference<>(nearest.node));
+            SourceSection newSection = nearest.section;
+            com.oracle.truffle.api.source.Source source = newSection.getSource();
+            nearestSourceSections.put(source, new NodeListSection(list, newSection));
+            return new NodeListSection(Collections.emptyList(), null);
+        }
+
+        private NodeListSection updateNearest(NodeSection nearest, SourceSection visitingRootSourceSection, Set<Class<? extends Tag>> allTags, NodeListSection oldNearest) {
+            // We need to compute which one is closer
+            List<WeakReference<Node>> oldNodes = oldNearest.nodes;
+            SourceSection oldSection = oldNearest.section;
+            Node oldNode = getFirstReferencedNode(oldNodes);
+            if (oldNode == null || NearestNodesCollector.isCloser(nearest, visitingRootSourceSection, oldNode, oldSection, nearestFilter, allTags)) {
+                // all nodes were disposed, or the new one is closer
+                List<WeakReference<Node>> oldNodesCopy = new ArrayList<>(oldNodes);
+                oldNodes.clear();
+                oldNodes.add(new WeakReference<>(nearest.node));
+                SourceSection newSection = nearest.section;
+                com.oracle.truffle.api.source.Source source = newSection.getSource();
+                nearestSourceSections.put(source, new NodeListSection(oldNodes, newSection));
+                return new NodeListSection(oldNodesCopy, oldSection);
+            } else {
+                // the new node is not closer
+                return null;
+            }
+        }
+
+        private static NodeListSection mergeNearest(NodeSection nearest, NodeListSection oldNearest) {
+            // the new nearest has the same source section
+            List<WeakReference<Node>> oldNodes = oldNearest.nodes;
+            Node newNode = nearest.node;
+            boolean contains = false;
+            for (WeakReference<Node> nodeRef : oldNodes) {
+                if (newNode == nodeRef.get()) {
+                    contains = true;
+                    break;
+                }
+            }
+            if (!contains) {
+                oldNodes.add(new WeakReference<>(newNode));
+            }
+            return new NodeListSection(Collections.emptyList(), oldNearest.section);
+        }
+
+        private static Node getFirstReferencedNode(List<WeakReference<Node>> nodes) {
+            Node node = null;
+            Iterator<WeakReference<Node>> nodesIt = nodes.iterator();
+            while (nodesIt.hasNext()) {
+                WeakReference<Node> nodeRef = nodesIt.next();
+                Node n = nodeRef.get();
+                if (n == null) {
+                    nodesIt.remove();
+                } else {
+                    node = n;
+                }
+            }
+            return node;
+        }
+
+        private static List<Node> resolveReferences(List<WeakReference<Node>> nodes) {
+            List<Node> resolved = new ArrayList<>(nodes.size());
+            resolveReferences(nodes, resolved);
+            return resolved;
+        }
+
+        private static void resolveReferences(List<WeakReference<Node>> nodes, List<Node> resolved) {
+            for (WeakReference<Node> ref : nodes) {
+                Node n = ref.get();
+                if (n != null) {
+                    resolved.add(n);
+                }
+            }
         }
 
     }

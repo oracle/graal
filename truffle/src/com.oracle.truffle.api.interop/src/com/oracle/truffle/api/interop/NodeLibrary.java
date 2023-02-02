@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,13 @@
 package com.oracle.truffle.api.interop;
 
 import static com.oracle.truffle.api.interop.AssertUtils.assertString;
-import static com.oracle.truffle.api.interop.AssertUtils.isInteropValue;
 import static com.oracle.truffle.api.interop.AssertUtils.validScope;
 import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
@@ -65,7 +65,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  *
  * @since 20.3
  */
-@DefaultExport(LegacyNodeExports.class)
+@DefaultExport(DefaultNodeExports.class)
 @GenerateLibrary(assertions = NodeLibrary.Asserts.class, receiverType = Node.class)
 public abstract class NodeLibrary extends Library {
 
@@ -104,6 +104,10 @@ public abstract class NodeLibrary extends Library {
      * <p>
      * This method must not cause any observable side-effects. If this method is implemented then
      * also {@link #hasScope(Object, Frame)} must be implemented.
+     * <p>
+     * A returned scope is only valid while the regular guest language execution on this thread is
+     * suspended. If the guest execution is continued e.g. if a new instrumentation event occurs,
+     * the scope is invalid and should be discarded.
      *
      * @param node a Node, never <code>null</code>
      * @param frame a {@link Frame}, can be <code>null</code> in case of lexical access.
@@ -282,11 +286,11 @@ public abstract class NodeLibrary extends Library {
     static class Asserts extends NodeLibrary {
 
         @Child private NodeLibrary delegate;
-        private final boolean isLegacyDelegate;
+        private final boolean isDefaultDelegate;
 
         Asserts(NodeLibrary delegate) {
             this.delegate = delegate;
-            isLegacyDelegate = delegate.getClass().getName().startsWith("com.oracle.truffle.api.interop.LegacyNodeExportsGen$NodeLibraryExports");
+            this.isDefaultDelegate = delegate.getClass().getName().startsWith(DefaultNodeExports.class.getName());
         }
 
         @Override
@@ -425,7 +429,7 @@ public abstract class NodeLibrary extends Library {
         }
 
         private static void assertValidRootInstance(Object instance) {
-            assert isInteropValue(instance) : violationInvariant(instance);
+            assert InteropLibrary.isValidValue(instance) : violationInvariant(instance);
             assert InteropLibrary.getUncached().isExecutable(instance) : String.format("The root instance '%s' is not executable.", instance);
         }
 
@@ -435,10 +439,10 @@ public abstract class NodeLibrary extends Library {
                 return delegate.getView(node, frame, value);
             }
             assert validReceiver(node);
-            assert isInteropValue(value) : violationInvariant(value);
+            assert InteropLibrary.isValidValue(value) : violationInvariant(value);
             Class<?> languageClass = validateLocationAndFrame((Node) node, frame, value);
             Object view = delegate.getView(node, frame, value);
-            assert isInteropValue(view) : violationInvariant(view);
+            assert InteropLibrary.isValidValue(view) : violationInvariant(view);
             InteropLibrary lib = InteropLibrary.getUncached(view);
             try {
                 assert lib.hasLanguage(view) &&
@@ -478,7 +482,7 @@ public abstract class NodeLibrary extends Library {
             assert nodeObject instanceof Node : String.format("The node '%s' does not extend Node.", nodeObject);
             Node node = (Node) nodeObject;
             assert node.getRootNode() != null : String.format("The node '%s' does not have a RootNode.", node);
-            assert InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node) || isLegacyDelegate : String.format(
+            assert InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node) || isDefaultDelegate : String.format(
                             "The node '%s' is not instrumentable. Implement InstrumentableNode and return true from isInstrumentable()", node);
             return true;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.move.LLVMPrimitiveMoveNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class, value = "destination")
@@ -47,21 +52,36 @@ public abstract class LLVMMemCopy extends LLVMBuiltin {
         this.memMove = memMove;
     }
 
+    public static LLVMExpressionNode createIntrinsic(LLVMExpressionNode[] args, LLVMMemMoveNode memMove, NodeFactory nodeFactory) {
+        LLVMExpressionNode serialMovesReplacement = LLVMPrimitiveMoveNode.createSerialMoves(args, nodeFactory, memMove);
+        if (serialMovesReplacement != null) {
+            return serialMovesReplacement;
+        }
+
+        if (args.length == 6) {
+            return LLVMMemCopyNodeGen.create(memMove, args[1], args[2], args[3], args[5]);
+        } else if (args.length == 5) {
+            // LLVM 7 drops the alignment argument
+            return LLVMMemCopyNodeGen.create(memMove, args[1], args[2], args[3], args[4]);
+        } else {
+            throw new LLVMParserException("Illegal number of arguments to @llvm.memcpy.*: " + args.length);
+        }
+    }
+
     @Specialization
     protected Object doVoid(LLVMPointer target, LLVMPointer source, int length, boolean isVolatile) {
         return doVoid(target, source, (long) length, isVolatile);
     }
 
-    /**
-     * @param target @NodeChild
-     * @param source @NodeChild
-     * @param length @NodeChild
-     * @param isVolatile @NodeChild
-     * @see LLVMMemCopy
-     */
     @Specialization
-    protected Object doVoid(LLVMPointer target, LLVMPointer source, long length, boolean isVolatile) {
+    protected Object doVoid(LLVMPointer target, LLVMPointer source, long length, @SuppressWarnings("unused") boolean isVolatile) {
         memMove.executeWithTarget(target, source, length);
         return null;
+    }
+
+    @Specialization
+    protected Object doVoid(LLVMPointer target, LLVMPointer source, LLVMPointer length, boolean isVolatile,
+                    @Cached LLVMToNativeNode toNative) {
+        return doVoid(target, source, toNative.executeWithTarget(length).asNative(), isVolatile);
     }
 }

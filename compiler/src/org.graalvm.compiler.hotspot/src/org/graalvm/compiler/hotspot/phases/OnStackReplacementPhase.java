@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@ package org.graalvm.compiler.hotspot.phases;
 
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
+import java.util.Optional;
+
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -44,6 +46,7 @@ import org.graalvm.compiler.nodes.EntryProxyNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -52,7 +55,7 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.OSRLocalNode;
 import org.graalvm.compiler.nodes.extended.OSRLockNode;
 import org.graalvm.compiler.nodes.extended.OSRMonitorEnterNode;
@@ -104,6 +107,11 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
     private static final SpeculationReasonGroup OSR_LOCAL_SPECULATIONS = new SpeculationReasonGroup("OSRLocal", int.class, Stamp.class, int.class);
 
     @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders providers) {
         DebugContext debug = graph.getDebug();
@@ -140,7 +148,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             osr = getEntryMarker(graph);
             LoopsData loops = providers.getLoopsDataProvider().getLoopsData(graph);
             // Find the loop that contains the EntryMarker
-            Loop<Block> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
+            Loop<HIRBlock> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
             if (l == null) {
                 break;
             }
@@ -151,10 +159,8 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             } else if (iterations > maxIterations) {
                 throw GraalError.shouldNotReachHere();
             }
-            // Peel the outermost loop first
-            while (l.getParent() != null) {
-                l = l.getParent();
-            }
+
+            l = l.getOutmostLoop();
 
             LoopEx loop = loops.loop(l);
             loop.loopBegin().markOsrLoop();
@@ -205,7 +211,8 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
                     }
                     // Speculate on the OSRLocal stamps that could be more precise.
                     SpeculationReason reason = OSR_LOCAL_SPECULATIONS.createSpeculationReason(osrState.bci, narrowedStamp, i);
-                    if (graph.getSpeculationLog().maySpeculate(reason) && osrLocal instanceof OSRLocalNode && value.getStackKind().equals(JavaKind.Object) && !narrowedStamp.isUnrestricted()) {
+                    if (graph.getSpeculationLog().maySpeculate(reason) && osrLocal instanceof OSRLocalNode && value.getStackKind().equals(JavaKind.Object) &&
+                                    !narrowedStamp.isUnrestricted()) {
                         // Add guard.
                         LogicNode check = graph.addOrUniqueWithInputs(InstanceOfNode.createHelper((ObjectStamp) narrowedStamp, osrLocal, null, null));
                         SpeculationLog.Speculation constant = graph.getSpeculationLog().speculate(reason);
@@ -295,7 +302,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
     private static LoopBeginNode osrLoop(EntryMarkerNode osr, CoreProviders providers) {
         // Check that there is an OSR loop for the OSR begin
         LoopsData loops = providers.getLoopsDataProvider().getLoopsData(osr.graph());
-        Loop<Block> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
+        Loop<HIRBlock> l = loops.getCFG().getNodeToBlock().get(osr).getLoop();
         if (l == null) {
             return null;
         }

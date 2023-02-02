@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import static com.oracle.truffle.dsl.processor.LanguageRegistrationProcessor.resolveLanguageId;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 
 import java.util.ArrayList;
@@ -103,8 +104,7 @@ public class OptionProcessor extends AbstractProcessor {
         if (roundEnv.processingOver()) {
             return true;
         }
-        ProcessorContext context = ProcessorContext.enter(processingEnv);
-        try {
+        try (ProcessorContext context = ProcessorContext.enter(processingEnv)) {
             TruffleTypes types = context.getTypes();
             Map<Element, OptionsInfo> map = new HashMap<>();
             for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.Option))) {
@@ -147,7 +147,7 @@ public class OptionProcessor extends AbstractProcessor {
                 while (listIterator.hasNext()) {
                     OptionInfo info = listIterator.next();
                     if (info.valid) {
-                        ExpectError.assertNoErrorExpected(processingEnv, info.field);
+                        ExpectError.assertNoErrorExpected(info.field);
                     } else {
                         listIterator.remove();
                     }
@@ -166,8 +166,6 @@ public class OptionProcessor extends AbstractProcessor {
                     handleThrowable(t, info.type);
                 }
             }
-        } finally {
-            ProcessorContext.leave();
         }
 
         return true;
@@ -197,7 +195,8 @@ public class OptionProcessor extends AbstractProcessor {
             if (context.getEnvironment().getTypeUtils().isAssignable(info.type.asType(), erasedTruffleType)) {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(info.type, types.TruffleLanguage_Registration);
                 if (registration != null) {
-                    groupPrefixStrings = Arrays.asList(ElementUtils.getAnnotationValue(String.class, registration, "id"));
+                    String languageId = resolveLanguageId(info.type, registration);
+                    groupPrefixStrings = Arrays.asList(languageId);
                     if (groupPrefixStrings.get(0).isEmpty()) {
                         error(element, elementAnnotation, "%s must specify an id such that Truffle options can infer their prefix.",
                                         types.TruffleLanguage_Registration.asElement().getSimpleName().toString());
@@ -266,6 +265,8 @@ public class OptionProcessor extends AbstractProcessor {
             }
         }
 
+        String usageSyntax = ElementUtils.getAnnotationValue(String.class, annotation, "usageSyntax");
+
         AnnotationValue value = ElementUtils.getAnnotationValue(elementAnnotation, "name", false);
         String optionName;
         if (value == null) {
@@ -319,7 +320,7 @@ public class OptionProcessor extends AbstractProcessor {
                     name = group + "." + optionName;
                 }
             }
-            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, optionMap, deprecationMessage));
+            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, optionMap, deprecationMessage, usageSyntax));
         }
         return true;
     }
@@ -327,7 +328,7 @@ public class OptionProcessor extends AbstractProcessor {
     private static void error(Element element, AnnotationMirror annotation, String message, Object... args) {
         ProcessingEnvironment processingEnv = ProcessorContext.getInstance().getEnvironment();
         String formattedMessage = String.format(message, args);
-        if (ExpectError.isExpectedError(processingEnv, element, formattedMessage)) {
+        if (ExpectError.isExpectedError(element, formattedMessage)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.ERROR, formattedMessage, element, annotation);
@@ -340,7 +341,7 @@ public class OptionProcessor extends AbstractProcessor {
         CodeTypeElement unit = generateDescriptors(context, element, info);
         DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
         unit.accept(new GenerateOverrideVisitor(overrideType), null);
-        unit.accept(new FixWarningsVisitor(element, overrideType), null);
+        unit.accept(new FixWarningsVisitor(overrideType), null);
         try {
             unit.accept(new CodeWriter(context.getEnvironment(), element), null);
         } catch (RuntimeException e) {
@@ -451,16 +452,26 @@ public class OptionProcessor extends AbstractProcessor {
         builder.end(); // newBuilder call
         if (info.deprecated) {
             builder.startCall("", "deprecated").string("true").end();
-            builder.startCall("", "deprecationMessage").doubleQuote(info.deprecationMessage).end();
+            addCallWithStringWithPossibleNewlines(builder, context, "deprecationMessage", info.deprecationMessage);
         } else {
             builder.startCall("", "deprecated").string("false").end();
         }
-        builder.startCall("", "help").doubleQuote(info.help).end();
+        addCallWithStringWithPossibleNewlines(builder, context, "help", info.help);
+        addCallWithStringWithPossibleNewlines(builder, context, "usageSyntax", info.usageSyntax);
+
         builder.startCall("", "category").staticReference(types.OptionCategory, info.category).end();
         builder.startCall("", "stability").staticReference(types.OptionStability, info.stability).end();
 
         builder.startCall("", "build").end();
         return builder.build();
+    }
+
+    private static void addCallWithStringWithPossibleNewlines(CodeTreeBuilder builder, ProcessorContext context, String callName, String value) {
+        if (value.contains("%n")) {
+            builder.startCall("", callName).startStaticCall(context.getType(String.class), "format").doubleQuote(value).end().end();
+        } else {
+            builder.startCall("", callName).doubleQuote(value).end();
+        }
     }
 
     static class OptionInfo implements Comparable<OptionInfo> {
@@ -475,8 +486,10 @@ public class OptionProcessor extends AbstractProcessor {
         final String category;
         final String stability;
         final String deprecationMessage;
+        private String usageSyntax;
 
-        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, String category, String stability, boolean optionMap, String deprecationMessage) {
+        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, String category, String stability, boolean optionMap, String deprecationMessage,
+                        String usageSyntax) {
             this.name = name;
             this.help = help;
             this.field = field;
@@ -486,6 +499,7 @@ public class OptionProcessor extends AbstractProcessor {
             this.stability = stability;
             this.optionMap = optionMap;
             this.deprecationMessage = deprecationMessage;
+            this.usageSyntax = usageSyntax;
         }
 
         @Override

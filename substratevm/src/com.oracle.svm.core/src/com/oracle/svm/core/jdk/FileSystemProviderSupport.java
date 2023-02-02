@@ -31,14 +31,12 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -47,10 +45,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 public final class FileSystemProviderSupport {
 
@@ -114,8 +111,8 @@ public final class FileSystemProviderSupport {
     }
 }
 
-@AutomaticFeature
-final class FileSystemProviderFeature implements Feature {
+@AutomaticallyRegisteredFeature
+final class FileSystemProviderFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -227,7 +224,7 @@ final class Target_sun_nio_fs_UnixFileSystemProvider {
 final class Target_sun_nio_fs_UnixPath {
 }
 
-class NeedsReinitializationProvider implements RecomputeFieldValue.CustomFieldValueComputer {
+class NeedsReinitializationProvider implements FieldValueTransformer {
     static final int STATUS_NEEDS_REINITIALIZATION = 2;
     static final int STATUS_IN_REINITIALIZATION = 1;
     /*
@@ -237,7 +234,7 @@ class NeedsReinitializationProvider implements RecomputeFieldValue.CustomFieldVa
     static final int STATUS_REINITIALIZED = 0;
 
     @Override
-    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object transform(Object receiver, Object originalValue) {
         return STATUS_NEEDS_REINITIALIZATION;
     }
 }
@@ -288,8 +285,6 @@ class UnixFileSystemAccessors {
     static void setRootDirectory(Target_sun_nio_fs_UnixFileSystem that, Target_sun_nio_fs_UnixPath value) {
         that.injectedRootDirectory = value;
     }
-
-    // Checkstyle: allow synchronization
 
     private static synchronized void reinitialize(Target_sun_nio_fs_UnixFileSystem that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_NEEDS_REINITIALIZATION) {
@@ -384,13 +379,7 @@ class WindowsFileSystemAccessors {
             return;
         }
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_IN_REINITIALIZATION;
-        /*
-         * On JDK 11, the `StaticProperty.userDir()` value is used when re-initializing a
-         * WindowsFileSystem (JDK-8066709).
-         */
-        that.originalConstructor(that.provider, JavaVersionUtil.JAVA_SPEC >= 11
-                        ? ImageSingletons.lookup(SystemPropertiesSupport.class).userDir()
-                        : System.getProperty("user.dir"));
+        that.originalConstructor(that.provider, SystemPropertiesSupport.singleton().userDir());
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_REINITIALIZED;
     }
 }
@@ -400,7 +389,6 @@ class WindowsFileSystemAccessors {
 final class Target_java_io_UnixFileSystem {
 
     @Alias @InjectAccessors(UserDirAccessors.class) //
-    @TargetElement(onlyWith = JDK11OrLater.class)//
     private String userDir;
 
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
@@ -445,7 +433,7 @@ class UserDirAccessors {
          */
         return Platform.includedIn(Platform.WINDOWS.class)
                         ? that.normalize(System.getProperty("user.dir"))
-                        : ImageSingletons.lookup(SystemPropertiesSupport.class).userDir();
+                        : SystemPropertiesSupport.singleton().userDir();
     }
 }
 
@@ -454,7 +442,6 @@ class UserDirAccessors {
 final class Target_java_io_WinNTFileSystem {
 
     @Alias @InjectAccessors(UserDirAccessors.class) //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
     private String userDir;
 
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //

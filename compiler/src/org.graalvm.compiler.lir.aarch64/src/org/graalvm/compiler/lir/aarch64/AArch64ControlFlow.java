@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,31 +25,33 @@
 package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.lr;
-import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import java.util.Arrays;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
-import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StandardOp;
-import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.SwitchStrategy.BaseSwitchClosure;
 import org.graalvm.compiler.lir.Variable;
@@ -60,10 +62,11 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
 public class AArch64ControlFlow {
-    public static final class ReturnOp extends AArch64BlockEndOp implements BlockEndOp {
+    public static final class ReturnOp extends AArch64BlockEndOp {
         public static final LIRInstructionClass<ReturnOp> TYPE = LIRInstructionClass.create(ReturnOp.class);
         @Use({REG, ILLEGAL}) protected Value x;
 
@@ -134,6 +137,53 @@ public class AArch64ControlFlow {
         }
     }
 
+    /**
+     * Emits either a branch or far branch based on the anticipated branch distance.
+     */
+    private static void emitBranchOrFarBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, LIRInstruction instr, int immSize, Label target, Consumer<Label> originalBranch,
+                    Consumer<Label> negatedBranch) {
+
+        /* First determine whether a farBranch is necessary. */
+        boolean isFarBranch;
+        if (target.isBound()) {
+            /*
+             * If the target is already bound, simply check whether the pc offset can be encoded
+             * within instruction.
+             */
+            isFarBranch = !NumUtil.isSignedNbit(immSize, masm.getPCRelativeOffset(target));
+        } else {
+            /*
+             * If target is not yet bound, then estimate whether target will be reachable.
+             *
+             * The provided branch instruction can access +-2^(offsetBits-1) bytes from its
+             * position. Currently, we estimate that each LIR instruction emits 2 (4-byte) AArch64
+             * instructions on average. Hence, we check whether the instruction can be more than
+             * 2^(offsetBits-4) LIR instructions away.
+             *
+             * Note that if we estimate a near branch but the actual target is too far, the
+             * assembler will raise a BranchTargetOutOfBoundsException. When this happens, code
+             * generation will be restarted in a conservative mode that will always assume far
+             * branches.
+             */
+            int maxLIRDistance = (1 << (immSize - 4));
+            isFarBranch = !crb.labelWithinLIRRange(instr, target, maxLIRDistance);
+        }
+
+        if (!isFarBranch) {
+            /* Target is reachable: can conditionally jump directly to it */
+            originalBranch.accept(target);
+        } else {
+            /*
+             * Target is not directly reachable. Must do a direct jump to target and use the negated
+             * branch to skip over jump when the target should not be jumped to.
+             */
+            Label skipJump = new Label();
+            negatedBranch.accept(skipJump);
+            masm.jmp(target);
+            masm.bind(skipJump);
+        }
+    }
+
     public static class CompareBranchZeroOp extends AbstractBranchOp implements StandardOp.BranchOp {
         public static final LIRInstructionClass<CompareBranchZeroOp> TYPE = LIRInstructionClass.create(CompareBranchZeroOp.class);
 
@@ -148,28 +198,19 @@ public class AArch64ControlFlow {
         protected void emitBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, LabelRef target, boolean negate) {
             AArch64Kind kind = (AArch64Kind) this.value.getPlatformKind();
             assert kind.isInteger();
-            int size = kind.getSizeInBytes() * Byte.SIZE;
-
-            Label label = target.label();
-            boolean isFarBranch = isFarBranch(this, 21, crb, masm, label);
-            boolean useCbnz;
-            if (isFarBranch) {
-                useCbnz = !negate;
-                label = new Label();
+            final int size = kind.getSizeInBytes() * Byte.SIZE;
+            Consumer<Label> cbzBranch = l -> masm.cbz(size, asRegister(this.value), l);
+            Consumer<Label> cbnzBranch = l -> masm.cbnz(size, asRegister(this.value), l);
+            Consumer<Label> originalBranch;
+            Consumer<Label> negatedBranch;
+            if (negate) {
+                originalBranch = cbnzBranch;
+                negatedBranch = cbzBranch;
             } else {
-                useCbnz = negate;
+                originalBranch = cbzBranch;
+                negatedBranch = cbnzBranch;
             }
-
-            if (useCbnz) {
-                masm.cbnz(size, asRegister(this.value), label);
-            } else {
-                masm.cbz(size, asRegister(this.value), label);
-            }
-
-            if (isFarBranch) {
-                masm.jmp(target.label());
-                masm.bind(label);
-            }
+            emitBranchOrFarBranch(crb, masm, this, 21, target.label(), originalBranch, negatedBranch);
         }
     }
 
@@ -187,25 +228,18 @@ public class AArch64ControlFlow {
 
         @Override
         protected void emitBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, LabelRef target, boolean negate) {
-            ConditionFlag cond = negate ? ConditionFlag.NE : ConditionFlag.EQ;
-            Label label = target.label();
-            boolean isFarBranch = isFarBranch(this, 14, crb, masm, label);
-
-            if (isFarBranch) {
-                cond = cond.negate();
-                label = new Label();
-            }
-
-            if (cond == ConditionFlag.EQ) {
-                masm.tbz(asRegister(value), index, label);
+            Consumer<Label> tbzBranch = l -> masm.tbz(asRegister(this.value), index, l);
+            Consumer<Label> tbnzBranch = l -> masm.tbnz(asRegister(this.value), index, l);
+            Consumer<Label> originalBranch;
+            Consumer<Label> negatedBranch;
+            if (negate) {
+                originalBranch = tbnzBranch;
+                negatedBranch = tbzBranch;
             } else {
-                masm.tbnz(asRegister(value), index, label);
+                originalBranch = tbzBranch;
+                negatedBranch = tbnzBranch;
             }
-
-            if (isFarBranch) {
-                masm.jmp(target.label());
-                masm.bind(label);
-            }
+            emitBranchOrFarBranch(crb, masm, this, 16, target.label(), originalBranch, negatedBranch);
         }
     }
 
@@ -213,12 +247,12 @@ public class AArch64ControlFlow {
     public static class CondMoveOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<CondMoveOp> TYPE = LIRInstructionClass.create(CondMoveOp.class);
 
-        @Def protected Value result;
-        @Use protected Value trueValue;
-        @Use protected Value falseValue;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue trueValue;
+        @Use({REG}) protected AllocatableValue falseValue;
         private final AArch64Assembler.ConditionFlag condition;
 
-        public CondMoveOp(Variable result, AArch64Assembler.ConditionFlag condition, Value trueValue, Value falseValue) {
+        public CondMoveOp(Variable result, AArch64Assembler.ConditionFlag condition, AllocatableValue trueValue, AllocatableValue falseValue) {
             super(TYPE);
             assert trueValue.getPlatformKind() == falseValue.getPlatformKind() && trueValue.getPlatformKind() == result.getPlatformKind();
             this.result = result;
@@ -232,9 +266,9 @@ public class AArch64ControlFlow {
             AArch64Kind kind = (AArch64Kind) trueValue.getPlatformKind();
             int size = kind.getSizeInBytes() * Byte.SIZE;
             if (kind.isInteger()) {
-                masm.cmov(size, asRegister(result), asRegister(trueValue), asRegister(falseValue), condition);
+                masm.csel(size, asRegister(result), asRegister(trueValue), asRegister(falseValue), condition);
             } else {
-                masm.fcmov(size, asRegister(result), asRegister(trueValue), asRegister(falseValue), condition);
+                masm.fcsel(size, asRegister(result), asRegister(trueValue), asRegister(falseValue), condition);
             }
         }
     }
@@ -242,7 +276,7 @@ public class AArch64ControlFlow {
     public static class CondSetOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<CondSetOp> TYPE = LIRInstructionClass.create(CondSetOp.class);
 
-        @Def protected Value result;
+        @Def({REG}) protected AllocatableValue result;
         private final AArch64Assembler.ConditionFlag condition;
 
         public CondSetOp(Variable result, AArch64Assembler.ConditionFlag condition) {
@@ -258,7 +292,7 @@ public class AArch64ControlFlow {
         }
     }
 
-    public static class StrategySwitchOp extends AArch64BlockEndOp implements StandardOp.BlockEndOp {
+    public static class StrategySwitchOp extends AArch64BlockEndOp {
         public static final LIRInstructionClass<StrategySwitchOp> TYPE = LIRInstructionClass.create(StrategySwitchOp.class);
 
         private final Constant[] keyConstants;
@@ -266,17 +300,14 @@ public class AArch64ControlFlow {
         private final Function<Condition, ConditionFlag> converter;
         private final LabelRef[] keyTargets;
         private final LabelRef defaultTarget;
-        @Alive protected Value key;
-        // TODO (das) This could be optimized: We only need the scratch register in case of a
-        // datapatch, or too large immediates.
-        @Temp protected Value scratch;
+        @Use({REG}) protected AllocatableValue key;
 
-        public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch,
+        public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key,
                         Function<Condition, ConditionFlag> converter) {
-            this(TYPE, strategy, keyTargets, defaultTarget, key, scratch, converter);
+            this(TYPE, strategy, keyTargets, defaultTarget, key, converter);
         }
 
-        protected StrategySwitchOp(LIRInstructionClass<? extends StrategySwitchOp> c, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch,
+        protected StrategySwitchOp(LIRInstructionClass<? extends StrategySwitchOp> c, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key,
                         Function<Condition, ConditionFlag> converter) {
             super(c);
             this.strategy = strategy;
@@ -285,7 +316,6 @@ public class AArch64ControlFlow {
             this.keyTargets = keyTargets;
             this.defaultTarget = defaultTarget;
             this.key = key;
-            this.scratch = scratch;
             assert keyConstants.length == keyTargets.length;
             assert keyConstants.length == strategy.keyProbabilities.length;
         }
@@ -310,18 +340,18 @@ public class AArch64ControlFlow {
 
             protected void emitComparison(Constant c) {
                 JavaConstant jc = (JavaConstant) c;
-                ConstantValue constVal = new ConstantValue(LIRKind.value(key.getPlatformKind()), c);
                 switch (jc.getJavaKind()) {
                     case Int:
                         long lc = jc.asLong();
                         assert NumUtil.isInt(lc);
-                        emitCompare(crb, masm, key, scratch, constVal);
+                        emitCompareHelper(crb, masm, 32, key, jc);
                         break;
                     case Long:
-                        emitCompare(crb, masm, key, scratch, constVal);
+                        emitCompareHelper(crb, masm, 64, key, jc);
                         break;
                     case Object:
-                        emitCompare(crb, masm, key, scratch, constVal);
+                        /* Comparing against ptr */
+                        emitCompareHelper(crb, masm, 64, key, jc);
                         break;
                     default:
                         throw new GraalError("switch only supported for int, long and object");
@@ -334,88 +364,232 @@ public class AArch64ControlFlow {
                 masm.branchConditionally(converter.apply(condition), target);
             }
         }
+
+        private static void emitCompareHelper(CompilationResultBuilder crb, AArch64MacroAssembler masm, int cmpSize, Value key, JavaConstant jc) {
+            assert cmpSize == key.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            long imm = jc.asLong();
+            if (AArch64MacroAssembler.isComparisonImmediate(imm)) {
+                masm.compare(cmpSize, asRegister(key), NumUtil.safeToInt(imm));
+            } else {
+                try (ScratchRegister scratch = masm.getScratchRegister()) {
+                    Register scratchReg = scratch.getRegister();
+                    AArch64Move.const2reg((AArch64Kind) key.getPlatformKind(), crb, masm, scratchReg, jc);
+                    masm.cmp(cmpSize, asRegister(key), scratchReg);
+                }
+            }
+        }
     }
 
-    public static final class TableSwitchOp extends AArch64BlockEndOp {
-        public static final LIRInstructionClass<TableSwitchOp> TYPE = LIRInstructionClass.create(TableSwitchOp.class);
+    /**
+     * This operation jumps to the appropriate destination as specified within a JumpTable, or to
+     * the default condition if there is no match within the JumpTable.
+     *
+     * <p>
+     * The JumpTable contains a series of target offsets, relative to the start of the jump table,
+     * for a contiguous series of indexes in the range [lowKey, highKey]. Finding the appropriate
+     * index within the jump table is accomplished in two steps:
+     *
+     * <ol>
+     * <li>Determine whether the index is within the JumpTable. This is accomplished by first
+     * normalizing the index (normalizedIdx == index - lowKey), and then checking whether
+     * <code>(unsigned(normalizedIdx) <= highKey - lowKey</code>). If not, then one must jump to the
+     * defaultTarget.</li>
+     *
+     * <li>If normalizedIdx is within the JumpTable, then jump to JumpTableStart +
+     * JumpTable[normalizedIdx].</li>
+     * </ol>
+     */
+    public static final class RangeTableSwitchOp extends AArch64BlockEndOp {
+        public static final LIRInstructionClass<RangeTableSwitchOp> TYPE = LIRInstructionClass.create(RangeTableSwitchOp.class);
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
-        @Use protected Value index;
-        @Temp({REG, HINT}) protected Value idxScratch;
-        @Temp protected Value scratch;
+        @Use({REG}) protected AllocatableValue index;
 
-        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Value index, Variable scratch, Variable idxScratch) {
+        public RangeTableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, AllocatableValue index) {
             super(TYPE);
             this.lowKey = lowKey;
+            assert defaultTarget != null;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
             this.index = index;
-            this.scratch = scratch;
-            this.idxScratch = idxScratch;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            Register indexReg = asRegister(index, AArch64Kind.DWORD);
-            Register idxScratchReg = asRegister(idxScratch, AArch64Kind.DWORD);
-            Register scratchReg = asRegister(scratch, AArch64Kind.QWORD);
+            try (ScratchRegister sc1 = masm.getScratchRegister(); ScratchRegister sc2 = masm.getScratchRegister()) {
+                Register scratch1 = sc1.getRegister();
+                Register scratch2 = sc2.getRegister();
+                /* Compare index against jump table bounds */
+                int highKey = lowKey + targets.length - 1;
+                masm.sub(32, scratch2, asRegister(index), lowKey);
+                int keyDiff = highKey - lowKey; // equivalent to targets.length - 1
+                if (AArch64MacroAssembler.isComparisonImmediate(keyDiff)) {
+                    masm.compare(32, scratch2, keyDiff);
+                } else {
+                    masm.mov(scratch1, keyDiff);
+                    masm.cmp(32, scratch2, scratch1);
+                }
 
-            // Compare index against jump table bounds
-            int highKey = lowKey + targets.length - 1;
-            masm.sub(32, idxScratchReg, indexReg, lowKey);
-            int keyDiff = highKey - lowKey;
-            if (AArch64MacroAssembler.isComparisonImmediate(keyDiff)) {
-                masm.cmp(32, idxScratchReg, keyDiff);
-            } else {
-                masm.mov(scratchReg, keyDiff);
-                masm.cmp(32, idxScratchReg, scratchReg);
-            }
-
-            // Jump to default target if index is not within the jump table
-            if (defaultTarget != null) {
+                // Jump to default target if index is not within the jump table
                 masm.branchConditionally(ConditionFlag.HI, defaultTarget.label());
-            }
 
+                emitJumpTable(crb, masm, scratch1, scratch2, lowKey, highKey, Arrays.stream(targets).map(LabelRef::label));
+            }
+        }
+
+        public static void emitJumpTable(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register scratch, Register index, int lowKey, int highKey, Stream<Label> targets) {
             Label jumpTable = new Label();
-            masm.adr(scratchReg, jumpTable);
-            masm.add(64, scratchReg, scratchReg, idxScratchReg, ExtendType.UXTW, 2);
-            masm.jmp(scratchReg);
+            // load start of jump table
+            masm.adr(scratch, jumpTable);
+            /*
+             * Note scratch holds the start of the jump table and index stores the normalized index.
+             * Because each jumpTable index is 4 bytes large, index should be scaled.
+             */
+            AArch64Address jumpTableEntryAddr = AArch64Address.createExtendedRegisterOffsetAddress(32, scratch, index, true, ExtendType.UXTW);
+            // load relative target offset
+            masm.ldrs(64, 32, index, jumpTableEntryAddr);
+            // compute target address (jumpTableStart + target offset)
+            masm.add(64, scratch, scratch, index);
+            // jump to target
+            masm.jmp(scratch);
+
             masm.bind(jumpTable);
             // emit jump table entries
-            for (LabelRef target : targets) {
-                masm.jmp(target.label());
-            }
-            JumpTable jt = new JumpTable(jumpTable.position(), lowKey, highKey - 1, 4);
+            targets.forEach(label -> masm.emitJumpTableOffset(jumpTable, label));
+            JumpTable jt = new JumpTable(jumpTable.position(), lowKey, highKey, EntryFormat.OFFSET_ONLY);
             crb.compilationResult.addAnnotation(jt);
         }
     }
 
-    private static void emitCompare(CompilationResultBuilder crb, AArch64MacroAssembler masm, Value key, Value scratchValue, ConstantValue c) {
-        long imm = c.getJavaConstant().asLong();
-        final int size = key.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-        if (AArch64MacroAssembler.isComparisonImmediate(imm)) {
-            masm.cmp(size, asRegister(key), (int) imm);
-        } else {
-            AArch64Move.move(crb, masm, asAllocatableValue(scratchValue), c);
-            masm.cmp(size, asRegister(key), asRegister(scratchValue));
+    /**
+     * This operation jumps to the appropriate destination as specified within a JumpTable, or to
+     * the default condition if there is no match within the JumpTable.
+     *
+     * <p>
+     * The JumpTable is indexed via {@code hash} and the actions taken dependent on whether a
+     * {@code defaultTarget} is provided:
+     *
+     * <p>
+     * If a defaultTarget is provided, then the JumpTable uses the VALUE_AND_OFFSET format and
+     * {@code originalValue} must be checked against the value within the JumpTable. If the values
+     * match, then corresponding target (JumpTableStart + JumpTable[hash].OFFSET) is jumped to;
+     * otherwise, the code jumps to the default target.
+     *
+     * <p>
+     * If a defaultTarget is not provided, then the JumpTable uses the OFFSET_ONLY format and
+     * JumpTableStart + JumpTable[hash] can be immediately jumped to.
+     */
+    public static final class HashTableSwitchOp extends AArch64BlockEndOp {
+        public static final LIRInstructionClass<HashTableSwitchOp> TYPE = LIRInstructionClass.create(HashTableSwitchOp.class);
+        private final JavaConstant[] keys;
+        private final LabelRef defaultTarget;
+        private final LabelRef[] targets;
+        @Use({REG}) protected AllocatableValue originalValue;
+        @Use({REG}) protected AllocatableValue hash;
+
+        public HashTableSwitchOp(final JavaConstant[] keys, final LabelRef defaultTarget, LabelRef[] targets, AllocatableValue originalValue, AllocatableValue hash) {
+            super(TYPE);
+            this.keys = keys;
+            this.defaultTarget = defaultTarget;
+            this.targets = targets;
+            this.originalValue = originalValue;
+            this.hash = hash;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
+                Register jumpTableBase = scratch1.getRegister();
+                Register jumpTableEntry = scratch2.getRegister();
+
+                Label jumpTable = new Label();
+                // load start of jump table
+                masm.adr(jumpTableBase, jumpTable);
+                /*
+                 * Load jump table entry specified by the hash index. Note the size of load is
+                 * dependent on the EntryFormat kind and the hash value must be scaled accordingly.
+                 */
+                EntryFormat format = defaultTarget == null ? EntryFormat.OFFSET_ONLY : EntryFormat.VALUE_AND_OFFSET;
+                int memAccessSize = format.size * Byte.SIZE;
+                AArch64Address jumpTableEntryAddr = AArch64Address.createExtendedRegisterOffsetAddress(memAccessSize, jumpTableBase, asRegister(hash), true, ExtendType.UXTW);
+                masm.ldrs(64, memAccessSize, jumpTableEntry, jumpTableEntryAddr);
+                if (format == EntryFormat.OFFSET_ONLY) {
+                    // compute target address (jumpTableStart + offset)
+                    masm.add(64, jumpTableEntry, jumpTableBase, jumpTableEntry);
+                    // jump to target
+                    masm.jmp(jumpTableEntry);
+                } else {
+                    assert format == EntryFormat.VALUE_AND_OFFSET;
+                    /*
+                     * Note jumpTableEntry contains the value to compare again originalValue in its
+                     * lower 32 bits and the offset in its upper 32 bits.
+                     */
+
+                    // check if values match; if not, jump to default target
+                    masm.cmp(32, jumpTableEntry, asRegister(originalValue));
+                    masm.branchConditionally(ConditionFlag.NE, defaultTarget.label());
+
+                    /*
+                     * Compute target address (jumpTableStart + target offset). The shift needed to
+                     * extract the offset from the upper 32 bits is folded into the add.
+                     */
+                    masm.add(64, jumpTableBase, jumpTableBase, jumpTableEntry, AArch64Assembler.ShiftType.ASR, 32);
+                    // jump to target
+                    masm.jmp(jumpTableBase);
+                }
+
+                // ensure jump table is aligned with the entry size
+                masm.align(format.size);
+                masm.bind(jumpTable);
+                // emit jump table entries
+                for (int i = 0; i < targets.length; i++) {
+                    if (format == EntryFormat.VALUE_AND_OFFSET) {
+                        masm.emitInt(keys[i].asInt());
+                    }
+                    masm.emitJumpTableOffset(jumpTable, targets[i].label());
+                }
+                JumpTable jt = new JumpTable(jumpTable.position(), 0, keys.length - 1, format);
+                crb.compilationResult.addAnnotation(jt);
+            }
         }
     }
 
-    private static boolean isFarBranch(LIRInstruction instruction, int offsetBits, CompilationResultBuilder crb, AArch64MacroAssembler masm, Label label) {
-        boolean isFarBranch;
-        if (label.isBound()) {
-            // The label.position() is a byte based index. The instruction instruction has
-            // offsetBits bits for the offset and AArch64 instruction is 4 bytes aligned. So
-            // instruction can encode offsetBits+2 bits signed offset.
-            isFarBranch = !NumUtil.isSignedNbit(offsetBits + 2, masm.position() - label.position());
-        } else {
-            // Max range of instruction is 2^offsetBits instructions. We estimate that each LIR
-            // instruction emits 2 AArch64 instructions on average. Thus we test for maximum
-            // 2^(offsetBits-2) LIR instruction offset.
-            int maxLIRDistance = (1 << (offsetBits - 2));
-            isFarBranch = !crb.labelWithinRange(instruction, label, maxLIRDistance);
+    @Opcode("CMOV")
+    public static class ASIMDCondMoveOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<ASIMDCondMoveOp> TYPE = LIRInstructionClass.create(ASIMDCondMoveOp.class);
+
+        @Def({REG}) AllocatableValue result;
+        /*
+         * For each element, the condition reg is expected to contain either all ones or all zeros
+         * to pick between trueVal and falseVal.
+         */
+        @Use({REG}) AllocatableValue condition;
+        /*
+         * trueVal & falseVal cannot be assigned the same reg as the result reg, as condition is
+         * moved into the result reg before trueVal & falseVal are used.
+         */
+        @Alive({REG}) AllocatableValue trueVal;
+        @Alive({REG}) AllocatableValue falseVal;
+
+        public ASIMDCondMoveOp(AllocatableValue result, AllocatableValue condition, AllocatableValue trueVal, AllocatableValue falseVal) {
+            super(TYPE);
+            PlatformKind conditionKind = condition.getPlatformKind();
+            PlatformKind trueKind = trueVal.getPlatformKind();
+            PlatformKind falseKind = falseVal.getPlatformKind();
+            assert conditionKind.getSizeInBytes() == trueKind.getSizeInBytes() && conditionKind.getVectorLength() == trueKind.getVectorLength() : condition + " " + trueVal;
+            assert trueKind == falseKind : trueVal + " " + falseVal;
+            this.result = result;
+            this.condition = condition;
+            this.trueVal = trueVal;
+            this.falseVal = falseVal;
         }
-        return isFarBranch;
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            AArch64ASIMDAssembler.ASIMDSize size = AArch64ASIMDAssembler.ASIMDSize.fromVectorKind(result.getPlatformKind());
+            masm.neon.moveVV(size, asRegister(result), asRegister(condition));
+            masm.neon.bslVVV(size, asRegister(result), asRegister(trueVal), asRegister(falseVal));
+        }
     }
 }

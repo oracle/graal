@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,10 +46,13 @@ import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 /**
  * An extensible object type descriptor for {@link DynamicObject}s.
  *
- * Planned to be deprecated.
- *
  * @since 0.8 or earlier
+ * @deprecated no replacement; dynamic type no longer needs to inherit from {@link ObjectType}.
+ * @see Shape.Builder#dynamicType(Object)
+ * @see DynamicObjectLibrary#getDynamicType(DynamicObject)
+ * @see DynamicObjectLibrary#setDynamicType(DynamicObject, Object)
  */
+@Deprecated(since = "22.2")
 public class ObjectType {
     static final ObjectType DEFAULT = new ObjectType();
 
@@ -58,6 +61,7 @@ public class ObjectType {
      *
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     public ObjectType() {
     }
 
@@ -66,6 +70,7 @@ public class ObjectType {
      *
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     public boolean equals(DynamicObject object, Object other) {
         return object == other;
     }
@@ -75,6 +80,7 @@ public class ObjectType {
      *
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     public int hashCode(DynamicObject object) {
         return System.identityHashCode(object);
     }
@@ -84,6 +90,7 @@ public class ObjectType {
      *
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     @TruffleBoundary
     public String toString(DynamicObject object) {
         return "DynamicObject<" + this.toString() + ">@" + Integer.toHexString(hashCode(object));
@@ -95,6 +102,7 @@ public class ObjectType {
      *
      * @since 19.0
      */
+    @Deprecated(since = "22.2")
     public Class<?> dispatch() {
         return null;
     }

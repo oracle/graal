@@ -86,6 +86,7 @@ public abstract class ProfileData {
         public static boolean isTrusted(ProfileSource source) {
             return source == INJECTED || source == PROFILED;
         }
+
     }
 
     public ProfileSource getProfileSource() {
@@ -162,15 +163,6 @@ public abstract class ProfileData {
         }
 
         /**
-         * Returns a branch profile object with an unknown source and the given designated successor
-         * probability. Most users should use {@link #unknown()} instead to get a profile object
-         * with equal successor probabilities.
-         */
-        public static BranchProbabilityData unknown(double probability) {
-            return BranchProbabilityData.create(probability, ProfileSource.UNKNOWN);
-        }
-
-        /**
          * Computes combined profile data for short-circuiting evaluation of {@code a || b}.
          */
         public static BranchProbabilityData combineShortCircuitOr(BranchProbabilityData a, BranchProbabilityData b) {
@@ -221,14 +213,6 @@ public abstract class ProfileData {
             return loopFrequency;
         }
 
-        public static LoopFrequencyData injected(double loopFrequency) {
-            return LoopFrequencyData.create(loopFrequency, ProfileSource.INJECTED);
-        }
-
-        public static LoopFrequencyData unknown(double loopFrequency) {
-            return LoopFrequencyData.create(loopFrequency, ProfileSource.UNKNOWN);
-        }
-
         public LoopFrequencyData copy(double newFrequency) {
             return LoopFrequencyData.create(newFrequency, getProfileSource());
         }
@@ -239,11 +223,6 @@ public abstract class ProfileData {
          */
         public LoopFrequencyData decrementFrequency(double decrement) {
             double newFrequency = Math.max(1.0, getLoopFrequency() - decrement);
-            return copy(newFrequency);
-        }
-
-        public LoopFrequencyData scaleFrequency(double scaleFactor) {
-            double newFrequency = Math.max(1.0, getLoopFrequency() * scaleFactor);
             return copy(newFrequency);
         }
 

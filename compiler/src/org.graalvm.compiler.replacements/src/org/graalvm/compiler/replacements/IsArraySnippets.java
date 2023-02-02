@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,9 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
+
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ClassIsArrayNode;
@@ -36,18 +37,16 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 
-import jdk.vm.ci.code.TargetDescription;
-
 public abstract class IsArraySnippets implements Snippets {
 
     @Snippet
     Object objectIsArraySnippet(@Snippet.NonNullParameter Object object, Object trueValue, Object falseValue) {
-        return classIsArray(object.getClass()) ? trueValue : falseValue;
+        return unknownProbability(classIsArray(object.getClass())) ? trueValue : falseValue;
     }
 
     @Snippet
     Object classIsArraySnippet(@Snippet.NonNullParameter Class<?> clazz, Object trueValue, Object falseValue) {
-        return classIsArray(clazz) ? trueValue : falseValue;
+        return unknownProbability(classIsArray(clazz)) ? trueValue : falseValue;
     }
 
     protected abstract boolean classIsArray(Class<?> clazz);
@@ -56,10 +55,10 @@ public abstract class IsArraySnippets implements Snippets {
         private final SnippetInfo objectIsArraySnippet;
         private final SnippetInfo classIsArraySnippet;
 
-        public Templates(IsArraySnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, TargetDescription target) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
-            objectIsArraySnippet = snippet(IsArraySnippets.class, "objectIsArraySnippet", null, receiver);
-            classIsArraySnippet = snippet(IsArraySnippets.class, "classIsArraySnippet", null, receiver);
+        public Templates(IsArraySnippets receiver, OptionValues options, Providers providers) {
+            super(options, providers);
+            objectIsArraySnippet = snippet(providers, IsArraySnippets.class, "objectIsArraySnippet", null, receiver);
+            classIsArraySnippet = snippet(providers, IsArraySnippets.class, "classIsArraySnippet", null, receiver);
         }
 
         @Override

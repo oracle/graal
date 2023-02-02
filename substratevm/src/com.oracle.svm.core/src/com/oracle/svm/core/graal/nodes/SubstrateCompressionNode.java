@@ -28,16 +28,17 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.common.type.CompressibleConstant;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.meta.CompressibleConstant;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -51,12 +52,20 @@ public final class SubstrateCompressionNode extends CompressionNode {
         super(TYPE, op, input, SubstrateNarrowOopStamp.mkStamp(op, input.stamp(NodeView.DEFAULT), encoding), encoding);
     }
 
-    public static SubstrateCompressionNode compress(ValueNode input, CompressEncoding encoding) {
-        return input.graph().unique(new SubstrateCompressionNode(CompressionOp.Compress, input, encoding));
+    public static SubstrateCompressionNode compress(StructuredGraph graph, ValueNode input, CompressEncoding encoding) {
+        return graph.unique(compress(input, encoding));
     }
 
-    public static CompressionNode uncompress(ValueNode input, CompressEncoding encoding) {
-        return input.graph().unique(new SubstrateCompressionNode(CompressionOp.Uncompress, input, encoding));
+    public static SubstrateCompressionNode uncompress(StructuredGraph graph, ValueNode input, CompressEncoding encoding) {
+        return graph.unique(uncompress(input, encoding));
+    }
+
+    private static SubstrateCompressionNode compress(ValueNode input, CompressEncoding encoding) {
+        return new SubstrateCompressionNode(CompressionOp.Compress, input, encoding);
+    }
+
+    private static SubstrateCompressionNode uncompress(ValueNode input, CompressEncoding encoding) {
+        return new SubstrateCompressionNode(CompressionOp.Uncompress, input, encoding);
     }
 
     @Override
@@ -83,6 +92,18 @@ public final class SubstrateCompressionNode extends CompressionNode {
             return ((CompressibleConstant) c).uncompress();
         }
         throw GraalError.shouldNotReachHere("invalid constant input for uncompress op: " + c);
+    }
+
+    @Override
+    public ValueNode reverse(ValueNode input) {
+        switch (op) {
+            case Compress:
+                return uncompress(input, encoding);
+            case Uncompress:
+                return compress(input, encoding);
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
     }
 
     @Override

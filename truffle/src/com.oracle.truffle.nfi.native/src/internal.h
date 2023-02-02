@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,8 +58,9 @@
 
 #define __thread __declspec(thread)
 
-#else
+#else // !_WIN32
 
+#include <stdint.h>
 #include <alloca.h>
 
 #endif
@@ -69,7 +70,7 @@ struct __TruffleContextInternal {
     JavaVM *javaVM;
     jobject LibFFIContext;
 
-#if defined(ENABLE_ISOLATED_NAMESPACE)    
+#if defined(ENABLE_ISOLATED_NAMESPACE)
     jfieldID LibFFIContext_isolatedNamespaceId;
 #endif
 
@@ -90,6 +91,8 @@ struct __TruffleContextInternal {
     jfieldID NativeString_nativePointer;
 
     jmethodID LibFFIContext_getNativeEnv;
+    jmethodID LibFFIContext_attachThread;
+    jmethodID LibFFIContext_detachThread;
     jmethodID LibFFIContext_createClosureNativePointer;
     jmethodID LibFFIContext_newClosureRef;
     jmethodID LibFFIContext_releaseClosureRef;
@@ -99,10 +102,12 @@ struct __TruffleContextInternal {
     jfieldID RetPatches_patches;
     jfieldID RetPatches_objects;
 
+    jclass NativeArgumentBuffer_Pointer;
+    jfieldID NativeArgumentBuffer_Pointer_pointer;
+
     jclass Object;
     jclass String;
     jclass UnsatisfiedLinkError;
-
 
     void *__libc_errno_location;
 #if !defined(_WIN32)
@@ -139,8 +144,7 @@ enum TypeTag {
 };
 
 #define DECODE_OFFSET(encoded) (((unsigned int) (encoded)) >> 4)
-#define DECODE_TAG(encoded) ((enum TypeTag) ((encoded) & 0x0F))
-
+#define DECODE_TAG(encoded) ((enum TypeTag)((encoded) &0x0F))
 
 void initialize_intrinsics(struct __TruffleContextInternal *);
 void *check_intrinsify(struct __TruffleContextInternal *, void *);

@@ -504,7 +504,7 @@ public final class PELexer {
 
         @Override
         public Iterator<T> iterator() {
-            return new Iterator<T>() {
+            return new Iterator<>() {
                 int index = from;
 
                 public boolean hasNext() {

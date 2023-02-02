@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -89,7 +89,32 @@ public abstract class Attribute {
         INACCESSIBLEMEM_OR_ARGMEMONLY,
         ALLOCSIZE,
         WRITEONLY,
-        SPECULATABLE;
+        SPECULATABLE,
+        STRICT_FP,
+        SANITIZE_HWADDRESS,
+        NOCF_CHECK,
+        OPT_FOR_FUZZING,
+        SHADOWCALLSTACK,
+        SPECULATIVE_LOAD_HARDENING,
+        IMMARG,
+        WILLRETURN,
+        NOFREE,
+        NOSYNC,
+        SANITIZE_MEMTAG,
+        PREALLOCATED,
+        NO_MERGE,
+        NULL_POINTER_IS_VALID,
+        NOUNDEF,
+        BYREF,
+        MUSTPROGRESS,
+        NO_CALLBACK,
+        HOT,
+        NO_PROFILE,
+        VSCALE_RANGE,
+        SWIFT_ASYNC,
+        NO_SANITIZE_COVERAGE,
+        ELEMENTTYPE,
+        DISABLE_SANITIZER_INSTRUMENTATION;
 
         private static final Kind[] VALUES = values();
 
