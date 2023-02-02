@@ -616,6 +616,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("-n", "--iterations", default=None)
+        parser.add_argument("-sf", default=1, type=float, help="The total number of iterations is equivalent to the value selected by the '-n' flag scaled by this factor.")
         parser.add_argument("-s", "--size", default=None)
         args, remaining = parser.parse_known_args(runArgs)
 
@@ -632,7 +633,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
         if args.iterations:
             if args.iterations.isdigit():
-                return ["-n", args.iterations] + otherArgs
+                return ["-n", str(int(args.sf * int(args.iterations)))] + otherArgs
             if args.iterations == "-1":
                 return None
         else:
@@ -640,7 +641,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
             if iterations == -1:
                 return None
             else:
-                iterations = iterations + self.getExtraIterationCount(iterations)
+                iterations = iterations + int(self.getExtraIterationCount(iterations) * args.sf)
                 return ["-n", str(iterations)] + otherArgs
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
@@ -1922,10 +1923,11 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("-r", default=None)
+        parser.add_argument("-sf", default=1, type=float, help="The total number of iterations is equivalent to the value selected by the '-r' flag scaled by this factor.")
         args, remaining = parser.parse_known_args(runArgs)
         if args.r:
             if args.r.isdigit():
-                return ["-r", args.r] + remaining
+                return ["-r", str(int(args.sf * int(args.r)))] + remaining
             if args.r == "-1":
                 return remaining
         else:
@@ -1933,7 +1935,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             if iterations == -1:
                 return remaining
             else:
-                return ["-r", str(iterations)] + remaining
+                return ["-r", str(int(args.sf * iterations))] + remaining
 
     def vmArgs(self, bmSuiteArgs):
         vm_args = super(RenaissanceBenchmarkSuite, self).vmArgs(bmSuiteArgs)

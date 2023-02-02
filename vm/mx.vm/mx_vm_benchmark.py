@@ -141,7 +141,8 @@ class NativeImageVM(GraalVm):
             for option in self.extra_agentlib_options:
                 if option.startswith('config-output-dir'):
                     mx.abort("config-output-dir must not be set in the extra_agentlib_options.")
-            self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(image_run_args))
+            # Do not strip the run arguments if safepoint-sampler configuration is active.
+            self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(image_run_args), not vm.safepoint_sampler)
             self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(image_run_args))
             self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
             self.pgo_iteration_num = bm_suite.pgo_iteration_num(self.benchmark_name, args)
@@ -193,6 +194,14 @@ class NativeImageVM(GraalVm):
                 self.base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
             if vm.no_inlining_before_analysis:
                 self.base_image_build_args += ['-H:-InlineBeforeAnalysis']
+            if vm.async_sampler:
+                self.base_image_build_args += ['-R:+FlightRecorder',
+                                               '-R:StartFlightRecording=filename=default.jfr',
+                                               '--enable-monitoring=jfr',
+                                               '-H:+SignalHandlerBasedExecutionSampler']
+                for stage in ('instrument-image', 'instrument-run'):
+                    if stage in self.stages:
+                        self.stages.remove(stage)
             if self.image_vm_args is not None:
                 self.base_image_build_args += self.image_vm_args
             self.base_image_build_args += self.extra_image_build_arguments
@@ -219,6 +228,8 @@ class NativeImageVM(GraalVm):
         self.ml = None
         self.jdk_profiles_collect = False
         self.cached_jdk_pgo = False
+        self.async_sampler = False
+        self.safepoint_sampler = False
         self.analysis_context_sensitivity = None
         self.no_inlining_before_analysis = False
         self._configure_from_name(config_name)
@@ -239,7 +250,7 @@ class NativeImageVM(GraalVm):
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>inline-|iterative-|inline-explored-)?' \
-               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<jdk_profiles>jdk-profiles-collect-|cached-jdk-pgo-)?(?P<edition>ce-|ee-)?$'
+               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<jdk_profiles>jdk-profiles-collect-|cached-jdk-pgo-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv(f"== Registering configuration: {config_name}")
         match_name = f"{config_name}-"  # adding trailing dash to simplify the regex
@@ -340,6 +351,16 @@ class NativeImageVM(GraalVm):
                 self.cached_jdk_pgo = True
             else:
                 mx.abort(f'Unknown jdk profiles configuration: {config}')
+
+        if matching.group("sampler") is not None:
+            config = matching.group("sampler")[:-1]
+            if config == 'safepoint-sampler':
+                self.safepoint_sampler = True
+                self.pgo_instrumented_iterations = 1
+            elif config == 'async-sampler':
+                self.async_sampler = True
+            else:
+                mx.abort(f'Unknown type of sampler configuration: {config}')
 
         if matching.group("edition") is not None:
             edition = matching.group("edition")[:-1]
