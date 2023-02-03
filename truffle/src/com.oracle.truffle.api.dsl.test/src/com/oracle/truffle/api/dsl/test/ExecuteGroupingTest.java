@@ -47,6 +47,7 @@ import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.ExecuteGroupingTestFactory.ExecuteGrouping1NodeGen;
@@ -155,6 +156,7 @@ public class ExecuteGroupingTest {
 
     }
 
+    @GenerateInline(false)
     abstract static class StrangeReturnCase extends Node {
 
         // we don't know how to implement executeDouble

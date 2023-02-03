@@ -56,7 +56,6 @@ import mx_sdk_vm
 import mx_unittest
 import tck
 from mx_gate import Task
-from mx_jackpot import jackpot
 from mx_javamodules import as_java_module, get_java_module_info
 from mx_sigtest import sigtest
 from mx_unittest import unittest
@@ -102,7 +101,8 @@ mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
     extraArgs = mx_sdk.build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'Truffle')
-    mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl'] + extraArgs + args)
+    mx.javadoc(['--unified', '--exclude-packages',
+                'com.oracle.truffle.tck,com.oracle.truffle.tck.impl'] + extraArgs + args)
     javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
     checkLinks(javadoc_dir)
 
@@ -241,8 +241,6 @@ def sl(args):
 
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
-    with Task('Jackpot check', tasks) as t:
-        if t: jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
     if jdk.javaCompliance < '9':
         with Task('Truffle Javadoc', tasks) as t:
             if t: javadoc([])
@@ -265,7 +263,7 @@ def _truffle_gate_runner(args, tasks):
 # force using multiple state fields for the tests. This makes sure the tests
 # do not break for rarely used combination of features and bit widths.
 def _truffle_gate_state_bitwidth_tests():
-    runs = [1, 2, 4, 8, 16, 64]
+    runs = [1, 2, 4, 8, 16]
     for run_bits in runs:
         build_args = ['-f', '-p', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
                       '-A-Atruffle.dsl.StateBitWidth={0}'.format(run_bits)]

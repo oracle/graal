@@ -41,12 +41,13 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.RangesBuffer;
 import com.oracle.truffle.regex.charset.SortedListOfRanges;
+
+import java.util.function.BiPredicate;
 
 public class CaseFoldTable {
 
@@ -54,7 +55,11 @@ public class CaseFoldTable {
         ECMAScriptNonUnicode,
         ECMAScriptUnicode,
         PythonAscii,
-        PythonUnicode
+        PythonUnicode;
+
+        public BiPredicate<Integer, Integer> getEqualsPredicate() {
+            return (codePointA, codePointB) -> getTable(this).equalsIgnoreCase(codePointA, codePointB);
+        }
     }
 
     private static CaseFoldTableImpl getTable(CaseFoldingAlgorithm algorithm) {
@@ -74,11 +79,6 @@ public class CaseFoldTable {
 
     public static void applyCaseFold(CodePointSetAccumulator codePointSet, CodePointSetAccumulator tmp, CaseFoldingAlgorithm algorithm) {
         getTable(algorithm).applyCaseFold(codePointSet, tmp);
-    }
-
-    @TruffleBoundary
-    public static boolean equalsIgnoreCase(int codePointA, int codePointB, CaseFoldingAlgorithm algorithm) {
-        return getTable(algorithm).equalsIgnoreCase(codePointA, codePointB);
     }
 
     private static CodePointSet rangeSet(int... ranges) {

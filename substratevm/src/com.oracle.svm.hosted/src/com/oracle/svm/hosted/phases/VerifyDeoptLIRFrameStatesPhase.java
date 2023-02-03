@@ -113,10 +113,17 @@ class Instance {
         errors.append("\nEnd Problem\n");
     }
 
-    private static boolean isImplicitDeoptEntry(BytecodeFrame frame) {
-        boolean isDeoptEntry = ((HostedMethod) frame.getMethod()).compilationInfo.isDeoptEntry(frame.getBCI(), frame.duringCall, frame.rethrowException);
+    private static boolean isImplicitDeoptEntry(LIRFrameState state) {
+        BytecodeFrame frame = state.topFrame;
+        if (frame.duringCall) {
+            /*
+             * A state is an implicit deoptimization entrypoint if it corresponds to a call which is
+             * valid for deoptimization and is registered as a deopt entry.
+             */
+            return state.validForDeoptimization && ((HostedMethod) frame.getMethod()).compilationInfo.isDeoptEntry(frame.getBCI(), frame.duringCall, frame.rethrowException);
+        }
 
-        return frame.duringCall && isDeoptEntry;
+        return false;
     }
 
     private void doState(DebugContext debug, FrameMap frameMap, LIRInstruction op, LIRFrameState state) {
@@ -127,7 +134,7 @@ class Instance {
          * Explicit deoptimization entrypoints are represented with a DeoptEntryOp whereas implicit
          * entry points must query the compilation information.
          */
-        if (op instanceof DeoptEntryOp || isImplicitDeoptEntry(state.topFrame)) {
+        if (op instanceof DeoptEntryOp || isImplicitDeoptEntry(state)) {
             SubstrateReferenceMap refMap = (SubstrateReferenceMap) state.debugInfo().getReferenceMap();
             Map<Integer, Object> refMapRegisters = refMap.getDebugAllUsedRegisters();
             Map<Integer, Object> refMapStackSlots = refMap.getDebugAllUsedStackSlots();

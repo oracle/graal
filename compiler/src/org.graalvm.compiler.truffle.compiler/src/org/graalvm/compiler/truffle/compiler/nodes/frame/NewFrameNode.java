@@ -117,6 +117,8 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
 
     private final SpeculationReason intrinsifyAccessorsSpeculation;
 
+    private boolean isBytecodeOSRTransferTarget = false;
+
     public static byte asStackTag(byte tag) {
         switch (tag) {
             case FrameSlotKindBooleanTag:
@@ -411,5 +413,13 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
 
     public int getIndexedFrameSize() {
         return indexedFrameSize;
+    }
+
+    public boolean isBytecodeOSRTransferTarget() {
+        return isBytecodeOSRTransferTarget;
+    }
+
+    public void setBytecodeOSRTransferTarget() {
+        isBytecodeOSRTransferTarget = true;
     }
 }

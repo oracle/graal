@@ -30,6 +30,7 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.InjectedCompilation
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.CompilationWatchDog;
 import org.graalvm.compiler.core.CompilationWatchDog.EventHandler;
@@ -68,9 +69,39 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
         return value;
     }
 
-    @SuppressWarnings("try")
+    private List<String> events = new ArrayList<>();
+
+    private long firstEvent = System.currentTimeMillis();
+
+    private void event(String label) {
+        long when = System.currentTimeMillis() - firstEvent;
+        events.add(String.format("after %d ms: %s", when, label));
+    }
+
+    private String eventLog() {
+        return events.stream().collect(Collectors.joining(System.lineSeparator()));
+    }
+
     @Override
     protected InstalledCode getCode(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
+        // Make 3 attempts to provoke a stuck compilation.
+        try {
+            return getCodeHelper(installedCodeOwner, graph, true, installAsDefault, options);
+        } catch (AssertionError e) {
+            try {
+                return getCodeHelper(installedCodeOwner, graph, true, installAsDefault, options);
+            } catch (AssertionError e2) {
+                try {
+                    return getCodeHelper(installedCodeOwner, graph, true, installAsDefault, options);
+                } catch (AssertionError e3) {
+                    throw e3;
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("try")
+    private InstalledCode getCodeHelper(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         CompilationIdentifier compilation = new CompilationIdentifier() {
             @Override
             public String toString(Verbosity verbosity) {
@@ -90,11 +121,13 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
 
             @Override
             public void onLongCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier longCompilation, long elapsed, StackTraceElement[] stackTrace) {
+                event("onLongCompilation");
                 longCompilations.add(longCompilation);
             }
 
             @Override
             public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier stuckCompilation, StackTraceElement[] stackTrace, int stackTraceCount) {
+                event("onStuckCompilation");
                 stuckCompilations.add(stuckCompilation);
             }
 
@@ -102,12 +135,13 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
 
         CompilationWatchDog watch = CompilationWatchDog.watch(compilation, options, false, longCompilationHandler);
         try (CompilationWatchDog watchScope = watch) {
+            event("start compiling");
             return super.getCode(installedCodeOwner, graph, forceCompile, installAsDefault, options);
         } finally {
-            Assert.assertTrue(!longCompilations.isEmpty());
-            Assert.assertTrue(longCompilations.toString(), longCompilations.stream().allMatch(id -> id == compilation));
-            Assert.assertTrue(longCompilations.toString(), !stuckCompilations.isEmpty());
-            Assert.assertTrue(stuckCompilations.toString(), longCompilations.stream().allMatch(id -> id == compilation));
+            Assert.assertTrue(eventLog(), !longCompilations.isEmpty());
+            Assert.assertTrue(eventLog(), longCompilations.stream().allMatch(id -> id == compilation));
+            Assert.assertTrue(eventLog(), !stuckCompilations.isEmpty());
+            Assert.assertTrue(eventLog(), longCompilations.stream().allMatch(id -> id == compilation));
         }
     }
 }

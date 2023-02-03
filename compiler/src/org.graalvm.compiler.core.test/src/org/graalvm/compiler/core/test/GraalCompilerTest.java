@@ -112,6 +112,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
+import org.graalvm.compiler.nodes.spi.ProfileProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -713,7 +714,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getProviders().getConstantReflection();
     }
 
-    protected MetaAccessProvider getMetaAccess() {
+    public MetaAccessProvider getMetaAccess() {
         return getProviders().getMetaAccess();
     }
 
@@ -1215,7 +1216,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             assert options != null;
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
                             graphToCompile.getProfilingInfo(), createSuites(options), createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, true);
-            try (DebugCloseable l = graphToCompile.getOptimizationLog().listen(new StableMethodNameFormatter(graphToCompile, getProviders()))) {
+            try (DebugCloseable l = graphToCompile.getOptimizationLog().listen(new StableMethodNameFormatter(getProviders(), graphToCompile.getDebug()))) {
                 return GraalCompiler.compile(request);
             }
         } catch (Throwable e) {
@@ -1436,12 +1437,20 @@ public abstract class GraalCompilerTest extends GraalTest {
         return null;
     }
 
+    protected ProfileProvider getProfileProvider(@SuppressWarnings("unused") ResolvedJavaMethod method) {
+        return null;
+    }
+
     @SuppressWarnings("try")
     protected StructuredGraph parse(StructuredGraph.Builder builder, PhaseSuite<HighTierContext> graphBuilderSuite) {
         ResolvedJavaMethod javaMethod = builder.getMethod();
         builder.speculationLog(getSpeculationLog());
         if (builder.getCancellable() == null) {
             builder.cancellable(getCancellable(javaMethod));
+        }
+        ProfileProvider differentProfileProvider = getProfileProvider(javaMethod);
+        if (differentProfileProvider != null) {
+            builder.profileProvider(differentProfileProvider);
         }
         CompilationIdentifier id = createCompilationId();
         if (id != null) {

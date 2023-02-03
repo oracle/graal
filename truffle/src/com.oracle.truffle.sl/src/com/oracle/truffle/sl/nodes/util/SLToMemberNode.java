@@ -44,6 +44,8 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -62,11 +64,13 @@ import com.oracle.truffle.sl.runtime.SLBigNumber;
  */
 @TypeSystemReference(SLTypes.class)
 @GenerateUncached
+@GenerateInline // indicates that this node can get object inlined into the parent
+@GenerateCached(false) // always inlined so we do not need to keep a cached version around
 public abstract class SLToMemberNode extends Node {
 
     static final int LIMIT = 5;
 
-    public abstract String execute(Object value) throws UnknownIdentifierException;
+    public abstract String execute(Node node, Object value) throws UnknownIdentifierException;
 
     @Specialization
     protected static String fromString(String value) {
@@ -75,7 +79,8 @@ public abstract class SLToMemberNode extends Node {
 
     @Specialization
     protected static String fromTruffleString(TruffleString value,
-                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
+                    // TruffleString nodes cannot be inlined yet
+                    @Cached(inline = false) TruffleString.ToJavaStringNode toJavaStringNode) {
         return toJavaStringNode.execute(value);
     }
 

@@ -48,11 +48,13 @@ import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.TBitSet;
 
 public class ASTTransition implements AbstractTransition<Term, ASTTransition>, JsonConvertible {
 
     private Term target;
     private GroupBoundaries groupBoundaries;
+    private TBitSet matchedConditionGroups;
 
     public ASTTransition(RegexLanguage language) {
         this.groupBoundaries = GroupBoundaries.getEmptyInstance(language);
@@ -90,6 +92,14 @@ public class ASTTransition implements AbstractTransition<Term, ASTTransition>, J
 
     public void setGroupBoundaries(GroupBoundaries groupBoundaries) {
         this.groupBoundaries = groupBoundaries;
+    }
+
+    public TBitSet getMatchedConditionGroups() {
+        return matchedConditionGroups;
+    }
+
+    public void setMatchedConditionGroups(TBitSet matchedConditionGroups) {
+        this.matchedConditionGroups = matchedConditionGroups;
     }
 
     @Override

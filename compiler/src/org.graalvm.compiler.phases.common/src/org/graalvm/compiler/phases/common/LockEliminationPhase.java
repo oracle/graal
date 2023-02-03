@@ -26,7 +26,6 @@ package org.graalvm.compiler.phases.common;
 
 import java.util.Optional;
 
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.GraphState;
@@ -126,9 +125,9 @@ public class LockEliminationPhase extends Phase {
                 return true;
             }
             if (aDominatesB) {
-                return AbstractControlFlowGraph.dominates(lowestBlockA, lowestBlockB);
+                return lowestBlockA.dominates(lowestBlockB);
             } else {
-                return AbstractControlFlowGraph.dominates(lowestBlockB, lowestBlockA);
+                return lowestBlockB.dominates(lowestBlockA);
             }
         }
         return false;
@@ -151,7 +150,7 @@ public class LockEliminationPhase extends Phase {
         if (b2 == null) {
             return b1;
         }
-        if (AbstractControlFlowGraph.dominates(b1, b2)) {
+        if (b1.dominates(b2)) {
             return b2;
         }
         return b1;

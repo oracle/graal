@@ -31,7 +31,9 @@ import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INTERFACE_M
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INVOKEDYNAMIC;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.LONG;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.METHOD_REF;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.MODULE;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.NAME_AND_TYPE;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.PACKAGE;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.STRING;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
 
@@ -124,9 +126,7 @@ public abstract class ConstantPool {
         private final boolean loadable;
 
         Tag(int value) {
-            assert (byte) value == value;
-            this.value = (byte) value;
-            this.loadable = false;
+            this(value, false);
         }
 
         Tag(int value, boolean isLoadable) {
@@ -166,6 +166,34 @@ public abstract class ConstantPool {
                 default: return null;
             }
             // @formatter:on
+        }
+
+        public boolean isValidForVersion(int major) {
+            switch (this) {
+                case UTF8:  // fall-through
+                case INTEGER:  // fall-through
+                case FLOAT:  // fall-through
+                case LONG: // fall-through
+                case DOUBLE: // fall-through
+                case CLASS: // fall-through
+                case STRING: // fall-through
+                case FIELD_REF: // fall-through
+                case METHOD_REF: // fall-through
+                case INTERFACE_METHOD_REF: // fall-through
+                case NAME_AND_TYPE: // fall-through
+                    return major >= 45;
+                case METHODHANDLE: // fall-through
+                case METHODTYPE:
+                case INVOKEDYNAMIC:
+                    return major >= 51;
+                case DYNAMIC:
+                    return major >= 55;
+                case MODULE:
+                case PACKAGE:
+                    return major >= 53;
+                default:
+                    throw EspressoError.shouldNotReachHere("Cannot validate tag version for" + this);
+            }
         }
 
         public static final List<Tag> VALUES = Collections.unmodifiableList(Arrays.asList(values()));
@@ -447,6 +475,10 @@ public abstract class ConstantPool {
             if (tag == null) {
                 throw classFormatError("Invalid constant pool entry type at index " + i);
             }
+            // check version for the tag except for module/package entries which must cause NDCFE
+            if (!tag.isValidForVersion(parser.getMajorVersion()) && tag != MODULE && tag != PACKAGE) {
+                throw classFormatError("Class file version does not support constant tag " + tagByte + " in class file");
+            }
             switch (tag) {
                 case CLASS: {
                     if (existsAt(patches, i)) {
@@ -596,7 +628,11 @@ public abstract class ConstantPool {
         }
         int rawPoolLength = stream.getPosition() - rawPoolStartPosition;
 
-        final ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, rawPoolLength);
+        ConstantPool constantPool = new ConstantPoolImpl(entries, majorVersion, minorVersion, rawPoolLength);
+
+        if (parser.hasSeenBadConstant()) {
+            return constantPool;
+        }
 
         // Cannot faithfully reconstruct patched pools. obtaining raw pool of patched/hidden class
         // is meaningless anyway.

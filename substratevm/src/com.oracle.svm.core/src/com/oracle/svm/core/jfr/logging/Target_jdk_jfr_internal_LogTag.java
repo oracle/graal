@@ -35,11 +35,11 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 
 @TargetClass(value = jdk.jfr.internal.LogTag.class, onlyWith = HasJfrSupport.class)
-final class Target_jdk_jfr_internal_LogTag {
+public final class Target_jdk_jfr_internal_LogTag {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTagSetLevel.class) //
     volatile int tagSetLevel;
 
-    @Alias int id;
+    @Alias public int id;
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)

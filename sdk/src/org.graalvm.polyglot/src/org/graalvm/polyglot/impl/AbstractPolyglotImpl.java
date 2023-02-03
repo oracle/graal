@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -796,9 +796,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object findStaticClass(Object context, String classValue);
 
-        public abstract Object createToHostTypeNode();
-
-        public abstract <T> T toHostType(Object hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
+        public abstract <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
 
         public abstract boolean isHostValue(Object value);
 
@@ -1155,6 +1153,10 @@ public abstract class AbstractPolyglotImpl {
 
     public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
         return getNext().isDefaultProcessHandler(processHandler);
+    }
+
+    public boolean isInternalFileSystem(FileSystem fileSystem) {
+        return getNext().isInternalFileSystem(fileSystem);
     }
 
     public ThreadScope createThreadScope() {

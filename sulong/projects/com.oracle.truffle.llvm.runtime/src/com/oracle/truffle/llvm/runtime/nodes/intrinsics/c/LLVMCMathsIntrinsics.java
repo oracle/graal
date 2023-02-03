@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -70,6 +70,25 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doIntrinsic(double value) {
             return Math.sqrt(value);
+        }
+
+        @Specialization
+        protected LLVMDoubleVector doVector(LLVMDoubleVector value) {
+            double[] result = new double[value.getLength()];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = Math.sqrt(value.getValue(i));
+            }
+            return LLVMDoubleVector.create(result);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMFloatVector doVector(LLVMFloatVector value) {
+            float[] result = new float[value.getLength()];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = (float) Math.sqrt(value.getValue(i));
+            }
+            return LLVMFloatVector.create(result);
         }
     }
 

@@ -102,7 +102,6 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         addDefaultFrame(methodSpec);
         addDefaultFieldMethodSpec(methodSpec);
         addDefaultChildren(shortCircuitName, methodSpec);
-
         return methodSpec;
     }
 
@@ -116,8 +115,12 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
             if (breakName != null && execution.getIndexedName().equals(breakName)) {
                 break;
             }
-
-            spec.addRequired(createValueParameterSpec(execution));
+            ParameterSpec valueSpecification = createValueParameterSpec(execution);
+            if (execution.getIndex() == 0 && getNode().isGenerateInline()) {
+                spec.addOptional(valueSpecification);
+            } else {
+                spec.addRequired(valueSpecification);
+            }
         }
     }
 
@@ -135,6 +138,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
                 methodSpec.addOptional(spec);
             }
         }
+
     }
 
 }

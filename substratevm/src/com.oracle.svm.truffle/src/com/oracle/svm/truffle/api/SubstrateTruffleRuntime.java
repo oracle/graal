@@ -251,7 +251,12 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public boolean isProfilingEnabled() {
         if (profilingEnabled == null) {
-            profilingEnabled = getEngineData(null).profilingEnabled;
+            /*
+             * Inlined profiles are initialized in static initializers when the runtime is not yet
+             * initialized. We need to assume that profiling is enabled, if it is not yet set in the
+             * runtime.
+             */
+            return Boolean.TRUE;
         }
         return profilingEnabled;
     }

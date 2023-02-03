@@ -60,6 +60,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.util.TBitSet;
+import org.graalvm.collections.EconomicMap;
 
 /**
  * Represents a single state in the NFA form of a regular expression. States may either be matcher
@@ -86,6 +87,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     private TBitSet possibleResults;
     private final CodePointSet matcherBuilder;
     private final Set<LookBehindAssertion> finishedLookBehinds;
+    private final EconomicMap<Integer, TBitSet> matchedConditionGroupsMap;
 
     public NFAState(short id,
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
@@ -93,7 +95,28 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
                     Set<LookBehindAssertion> finishedLookBehinds,
                     boolean hasPrefixStates,
                     boolean mustAdvance) {
-        this(id, stateSet, initFlags(hasPrefixStates, mustAdvance), null, matcherBuilder, finishedLookBehinds);
+        this(id, stateSet, initFlags(hasPrefixStates, mustAdvance), null, matcherBuilder, finishedLookBehinds, initMatchedConditionGroupsMap(stateSet));
+    }
+
+    public NFAState(short id,
+                    StateSet<RegexAST, ? extends RegexASTNode> stateSet,
+                    CodePointSet matcherBuilder,
+                    Set<LookBehindAssertion> finishedLookBehinds,
+                    boolean hasPrefixStates,
+                    boolean mustAdvance,
+                    EconomicMap<Integer, TBitSet> matchedConditionGroupsMap) {
+        this(id, stateSet, initFlags(hasPrefixStates, mustAdvance), null, matcherBuilder, finishedLookBehinds, matchedConditionGroupsMap);
+    }
+
+    private static EconomicMap<Integer, TBitSet> initMatchedConditionGroupsMap(StateSet<RegexAST, ? extends RegexASTNode> stateSet) {
+        if (!stateSet.getStateIndex().getProperties().hasConditionalBackReferences()) {
+            return null;
+        }
+        EconomicMap<Integer, TBitSet> matchedConditionGroupsMap = EconomicMap.create();
+        for (RegexASTNode node : stateSet) {
+            matchedConditionGroupsMap.put(node.getId(), TBitSet.getEmptyInstance());
+        }
+        return matchedConditionGroupsMap;
     }
 
     private static byte initFlags(boolean hasPrefixStates, boolean mustAdvance) {
@@ -104,8 +127,9 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
                     short flags,
                     CodePointSet matcherBuilder,
-                    Set<LookBehindAssertion> finishedLookBehinds) {
-        this(id, stateSet, flags, null, matcherBuilder, finishedLookBehinds);
+                    Set<LookBehindAssertion> finishedLookBehinds,
+                    EconomicMap<Integer, TBitSet> matchedConditionGroupsMap) {
+        this(id, stateSet, flags, null, matcherBuilder, finishedLookBehinds, matchedConditionGroupsMap);
     }
 
     private NFAState(short id,
@@ -113,17 +137,19 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
                     short flags,
                     TBitSet possibleResults,
                     CodePointSet matcherBuilder,
-                    Set<LookBehindAssertion> finishedLookBehinds) {
+                    Set<LookBehindAssertion> finishedLookBehinds,
+                    EconomicMap<Integer, TBitSet> matchedConditionGroupsMap) {
         super(id, EMPTY_TRANSITIONS);
         setFlag(flags);
         this.stateSet = stateSet;
         this.possibleResults = possibleResults;
         this.matcherBuilder = matcherBuilder;
         this.finishedLookBehinds = finishedLookBehinds;
+        this.matchedConditionGroupsMap = matchedConditionGroupsMap;
     }
 
     public NFAState createTraceFinderCopy(short copyID) {
-        return new NFAState(copyID, getStateSet(), getFlags(), matcherBuilder, finishedLookBehinds);
+        return new NFAState(copyID, getStateSet(), getFlags(), matcherBuilder, finishedLookBehinds, matchedConditionGroupsMap);
     }
 
     public CodePointSet getCharSet() {
@@ -152,6 +178,29 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
 
     public void setMustAdvance(boolean value) {
         setFlag(FLAG_MUST_ADVANCE, value);
+    }
+
+    public EconomicMap<Integer, TBitSet> getMatchedConditionGroupsMap() {
+        return matchedConditionGroupsMap;
+    }
+
+    public TBitSet getMatchedConditionGroups(RegexASTNode t) {
+        if (!stateSet.getStateIndex().getProperties().hasConditionalBackReferences()) {
+            return TBitSet.getEmptyInstance();
+        }
+        assert matchedConditionGroupsMap.containsKey(t.getId());
+        return matchedConditionGroupsMap.get(t.getId());
+    }
+
+    public TBitSet getMatchedConditionGroupsDebug() {
+        if (!stateSet.getStateIndex().getProperties().hasConditionalBackReferences()) {
+            return TBitSet.getEmptyInstance();
+        }
+        TBitSet matchedConditionGroups = new TBitSet(Long.SIZE);
+        for (RegexASTNode t : stateSet) {
+            matchedConditionGroups.union(matchedConditionGroupsMap.get(t.getId()));
+        }
+        return matchedConditionGroups;
     }
 
     public boolean hasTransitionToAnchoredFinalState(boolean forward) {

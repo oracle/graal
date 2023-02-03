@@ -31,13 +31,13 @@ import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.VMError;
 
@@ -176,7 +176,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
             case 's':
                 return constPool.getUTF8At(buf.getInt());
             case 'E':
-                return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(CodeInfoTable.getImageCodeInfo()), buf.getInt());
+                return ImageSingletons.lookup(ReflectionMetadataDecoder.MetadataAccessor.class).getObject(buf.getInt());
             default:
                 throw new AnnotationFormatError(
                                 "Invalid member-value tag in annotation: " + tag);

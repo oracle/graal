@@ -57,7 +57,7 @@ public abstract class DoubleArrayStore extends EspressoNode {
     public abstract void execute(StaticObject receiver, int index, double value);
 
     @Specialization
-    void executeWithNullCheck(StaticObject array, int index, double value,
+    void doWithNullCheck(StaticObject array, int index, double value,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck doubleArrayStore) {
         doubleArrayStore.execute(nullCheck.execute(array), index, value);

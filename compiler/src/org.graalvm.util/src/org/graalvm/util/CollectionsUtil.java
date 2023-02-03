@@ -24,8 +24,6 @@
  */
 package org.graalvm.util;
 
-import org.graalvm.collections.Pair;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -37,6 +35,8 @@ import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+
+import org.graalvm.collections.Pair;
 
 /**
  * This class contains utility methods for commonly used functional patterns for collections.
@@ -74,7 +74,7 @@ public final class CollectionsUtil {
                     return Collections.emptyIterator();
                 }
                 return new Iterator<>() {
-                    Iterator<Iterable<T>> cursor = iterables.iterator();
+                    final Iterator<Iterable<T>> cursor = iterables.iterator();
                     Iterator<T> currentIterator = cursor.next().iterator();
 
                     private void advance() {
@@ -319,6 +319,55 @@ public final class CollectionsUtil {
                 } else {
                     return Pair.createRight(rhsIterator.next());
                 }
+            }
+        };
+    }
+
+    /**
+     * Returns an iterable over all pairs of elements.
+     *
+     * Suppose that the first iterable returns the elements {@code a1, a2, ..., an} and the second
+     * iterable returns the elements {@code b1, b2, ..., bm}. Then, the method returns the pairs
+     * {@code (a1, b1), (a1, b2), ..., (a1, bm), (a2, b1), (a2, b2), ... (an, bm)}.
+     *
+     * @param lhs the first iterable (left elements of the {@link Pair})
+     * @param rhs the second iterable (right elements of the {@link Pair})
+     * @return an iterable over all pairs of elements
+     */
+    public static <L, R> Iterable<Pair<L, R>> cartesianProduct(Iterable<L> lhs, Iterable<R> rhs) {
+        return () -> new Iterator<>() {
+
+            private L lhsLast = null;
+
+            private final Iterator<L> lhsIterator = lhs.iterator();
+
+            private boolean rhsReachedEnd = true;
+
+            private Iterator<R> rhsIterator = null;
+
+            @Override
+            public boolean hasNext() {
+                if (rhsReachedEnd) {
+                    if (!lhsIterator.hasNext()) {
+                        return false;
+                    }
+                    lhsLast = lhsIterator.next();
+                    rhsIterator = rhs.iterator();
+                    rhsReachedEnd = !rhsIterator.hasNext();
+                    return !rhsReachedEnd;
+                }
+                return true;
+            }
+
+            @Override
+            public Pair<L, R> next() {
+                if (rhsReachedEnd) {
+                    lhsLast = lhsIterator.next();
+                    rhsIterator = rhs.iterator();
+                }
+                R rhsItem = rhsIterator.next();
+                rhsReachedEnd = !rhsIterator.hasNext();
+                return Pair.create(lhsLast, rhsItem);
             }
         };
     }

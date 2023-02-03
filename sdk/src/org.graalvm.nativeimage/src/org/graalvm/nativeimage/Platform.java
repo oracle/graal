@@ -146,6 +146,23 @@ public interface Platform {
         }
     }
 
+    /**
+     * Supported architecture: RISC-V 64-bit.
+     *
+     * @since 22.2
+     */
+    interface RISCV64 extends Platform {
+
+        /**
+         * Returns string representing RISCV64 architecture.
+         *
+         * @since 22.2
+         */
+        default String getArchitecture() {
+            return "riscv64";
+        }
+    }
+
     /*
      * The standard operating systems that are supported.
      */
@@ -307,6 +324,23 @@ public interface Platform {
          * @since 19.0
          */
         public LINUX_AARCH64() {
+        }
+
+    }
+
+    /**
+     * Supported leaf platform: Linux on RISC-V 64-bit.
+     *
+     * @since 22.2
+     */
+    final class LINUX_RISCV64 implements LINUX, RISCV64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 22.2
+         */
+        public LINUX_RISCV64() {
         }
 
     }

@@ -183,7 +183,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
     public abstract static class AbstractUnsafeStoreTypeFlow extends OffsetStoreTypeFlow {
 
         AbstractUnsafeStoreTypeFlow(BytecodePosition storeLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(storeLocation, objectType, componentType, objectFlow, valueFlow);
+            super(storeLocation, objectType, filterUncheckedInterface(componentType), objectFlow, valueFlow);
         }
 
         AbstractUnsafeStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, OffsetStoreTypeFlow original) {

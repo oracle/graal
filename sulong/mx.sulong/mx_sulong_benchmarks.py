@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -164,8 +164,8 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         return []
 
     def flakySuccessPatterns(self):
-        # bzip2 is known to have a compiler error during OSR compilation, which would trigger failurePatterns
-        return [re.compile(r'bzip2')]  # GR-38646
+        # bzip2 is known to have a compiler error during OSR compilation, but peak numbers are still valid
+        return [re.compile(r'Compilation of sendMTFValues<OSR@\d+> failed')]  # GR-38646
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.use_polybench:

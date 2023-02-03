@@ -168,7 +168,7 @@ class NativeImageVM(GraalVm):
             self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
             self.image_build_stats_file = bm_suite.image_build_stats_file(self, args)
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
-            self.base_image_build_args += ['--no-fallback', '-g']
+            self.base_image_build_args += ['--no-fallback', '-H:Debug=2'] # GR-43934
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
             self.base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
 
@@ -812,12 +812,12 @@ class NativeImageVM(GraalVm):
             s.execute_command()
 
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
-        executable_name_args = ['-H:Name=' + instrumentation_image_name]
+        executable_name_args = ['-H:Name=' + instrumentation_image_name, '-H:+UseOldDebugInfo'] # GR-43934
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        # GR-40154/GR-42738 --pgo-sampling does not work with G1/LLVM
-        if self.gc == 'G1' or self.is_llvm:
+        # GR-42738 --pgo-sampling does not work with LLVM
+        if self.is_llvm:
             instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
         else:
             instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
@@ -833,8 +833,8 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
-        # GR-40154/GR-42738 --pgo-sampling does not work with G1/LLVM
-        if self.pgo_aot_inline and self.gc != 'G1' and not self.is_llvm:
+        # GR-42738 --pgo-sampling does not work with LLVM
+        if self.pgo_aot_inline and not self.is_llvm:
             with open(profile_path) as profile_file:
                 parsed = json.load(profile_file)
                 samples = parsed["samplingProfiles"]
@@ -854,7 +854,7 @@ class NativeImageVM(GraalVm):
             self._ensureSamplesAreInProfile(profile_path)
 
     def run_stage_image(self, config, stages):
-        executable_name_args = ['-H:Name=' + config.final_image_name]
+        executable_name_args = ['-H:Name=' + config.final_image_name, '-H:+UseOldDebugInfo'] # GR-43934
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']

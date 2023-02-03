@@ -398,6 +398,7 @@ public final class BytecodeOSRMetadata {
         OsrEntryDescription description = (OsrEntryDescription) targetMetadata;
         CompilerAsserts.partialEvaluationConstant(description);
 
+        GraalRuntimeAccessor.ACCESSOR.startOSRFrameTransfer(target);
         // Transfer indexed frame slots
         transferLoop(description.indexedFrameTags.length, source, target, description.indexedFrameTags);
         // transfer auxiliary slots

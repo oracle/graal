@@ -1274,10 +1274,8 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
-    public static final EnumSet<Edges.Type> WithNoEdges = EnumSet.noneOf(Edges.Type.class);
     public static final EnumSet<Edges.Type> WithAllEdges = EnumSet.allOf(Edges.Type.class);
     public static final EnumSet<Edges.Type> WithOnlyInputEdges = EnumSet.of(Inputs);
-    public static final EnumSet<Edges.Type> WithOnlySucessorEdges = EnumSet.of(Successors);
 
     /**
      * Makes a copy of {@code this} in(to) a given graph.
@@ -1356,10 +1354,6 @@ public abstract class Node implements Cloneable, Formattable {
         if (graph.verifyGraphEdges) {
             verifyEdges();
         }
-        return true;
-    }
-
-    public boolean verifySourcePosition() {
         return true;
     }
 

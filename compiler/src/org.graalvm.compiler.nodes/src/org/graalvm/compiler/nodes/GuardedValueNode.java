@@ -63,6 +63,14 @@ public final class GuardedValueNode extends FloatingGuardedNode implements LIRLo
         return object;
     }
 
+    public static ValueNode create(ValueNode object, GuardingNode guard) {
+        ValueNode canonical = canonicalize(guard, object);
+        if (canonical != null) {
+            return canonical;
+        }
+        return new GuardedValueNode(object, guard);
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         if (object.getStackKind() != JavaKind.Void && object.getStackKind() != JavaKind.Illegal) {
@@ -85,14 +93,21 @@ public final class GuardedValueNode extends FloatingGuardedNode implements LIRLo
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (guard == null) {
-            if (stamp(NodeView.DEFAULT).equals(object().stamp(NodeView.DEFAULT))) {
-                return object();
-            } else {
-                return PiNode.create(object(), stamp(NodeView.DEFAULT));
-            }
+        Node canonical = canonicalize(guard, object);
+        if (canonical != null && canonical != this) {
+            return canonical;
         }
         return this;
+    }
+
+    static ValueNode canonicalize(GuardingNode guard, ValueNode object) {
+        if (guard == null) {
+            return object;
+        }
+        if (object instanceof ConstantNode) {
+            return object;
+        }
+        return null;
     }
 
     @Override

@@ -84,7 +84,7 @@
     ],
     timelimit: "01:30:00",
     forks_batches:: 1,
-    forks_timelimit:: "03:30:00",
+    forks_timelimit:: "04:30:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },

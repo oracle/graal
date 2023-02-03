@@ -137,4 +137,13 @@ public interface ReflectionMetadataDecoder {
             return parameterTypeNames;
         }
     }
+
+    interface MetadataAccessor {
+
+        <T> T getObject(int index);
+
+        Class<?> getClass(int index);
+
+        String getString(int index);
+    }
 }

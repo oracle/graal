@@ -63,6 +63,7 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.Node;
 
+@DisableStateBitWidthModfication
 public class MergeSpecializationsTest {
 
     private static final int THREADS = 25;

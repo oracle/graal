@@ -167,6 +167,7 @@ public final class InnerClassRedefiner {
             if (!hotswapInfo.knowsInnerClass(innerName)) {
                 byte[] classBytes = null;
                 StaticObject resourceGuestString = context.getMeta().toGuestString(innerName + ".class");
+                assert context.getCurrentThread() != null;
                 StaticObject inputStream = (StaticObject) context.getMeta().java_lang_ClassLoader_getResourceAsStream.invokeDirect(definingLoader, resourceGuestString);
                 if (StaticObject.notNull(inputStream)) {
                     classBytes = readAllBytes(inputStream);

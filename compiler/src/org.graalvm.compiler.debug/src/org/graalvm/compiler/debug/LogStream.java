@@ -116,17 +116,6 @@ public class LogStream {
     }
 
     /**
-     * Creates a new log stream that shares the same {@linkplain #consumer output stream} as a given
-     * {@link LogStream}.
-     *
-     * @param log a LogStream whose output stream is shared with this one
-     */
-    public LogStream(LogStream log) {
-        consumer = log.consumer;
-        lineBuffer = new StringBuilder(100);
-    }
-
-    /**
      * Prepends {@link #indentation} to the current output line until its write position is equal to
      * the current {@linkplain #indentationLevel()} level.
      */

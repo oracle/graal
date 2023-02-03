@@ -28,11 +28,14 @@ import static com.oracle.svm.common.meta.MultiMethod.DEOPT_TARGET_METHOD;
 import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -75,6 +78,7 @@ import com.oracle.svm.hosted.code.DeoptimizationUtils;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -83,6 +87,116 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * is enabled.
  */
 public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeature implements Feature {
+
+    public static final class CallTreeNode extends AbstractCallTreeNode {
+        final BytecodePosition position;
+
+        CallTreeNode(AnalysisMethod implementationMethod, AnalysisMethod targetMethod, CallTreeNode parent, BytecodePosition position) {
+            super(parent, targetMethod, implementationMethod);
+            this.position = position;
+        }
+
+        @Override
+        public String getPosition() {
+            if (position == null) {
+                return "[root]";
+            }
+            return position.toString();
+        }
+
+        /**
+         * It is not worthwhile to decode the graph to get the node count.
+         */
+        @Override
+        public int getNodeCount() {
+            return -1;
+        }
+
+    }
+
+    static class RuntimeCompilationCandidateImpl implements RuntimeCompilationCandidate {
+        AnalysisMethod implementationMethod;
+        AnalysisMethod targetMethod;
+
+        RuntimeCompilationCandidateImpl(AnalysisMethod implementationMethod, AnalysisMethod targetMethod) {
+            this.implementationMethod = implementationMethod;
+            this.targetMethod = targetMethod;
+        }
+
+        @Override
+        public AnalysisMethod getImplementationMethod() {
+            return implementationMethod;
+        }
+
+        @Override
+        public AnalysisMethod getTargetMethod() {
+            return targetMethod;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            RuntimeCompilationCandidateImpl that = (RuntimeCompilationCandidateImpl) o;
+            return implementationMethod.equals(that.implementationMethod) && targetMethod.equals(that.targetMethod);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(implementationMethod, targetMethod);
+        }
+    }
+
+    static final class RuntimeCompiledMethodImpl implements RuntimeCompiledMethod {
+        final AnalysisMethod method;
+
+        private RuntimeCompiledMethodImpl(AnalysisMethod method) {
+            this.method = method;
+        }
+
+        @Override
+        public AnalysisMethod getMethod() {
+            return method;
+        }
+
+        @Override
+        public Collection<ResolvedJavaMethod> getInlinedMethods() {
+            /*
+             * Currently no inlining is performed when ParseOnceJIT is enabled.
+             */
+            return List.of();
+        }
+
+        @Override
+        public Collection<ResolvedJavaMethod> getInvokeTargets() {
+            List<ResolvedJavaMethod> targets = new ArrayList<>();
+            for (var invoke : method.getInvokes()) {
+                targets.add(invoke.getTargetMethod());
+            }
+            return targets;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            RuntimeCompiledMethodImpl that = (RuntimeCompiledMethodImpl) o;
+            return method.equals(that.method);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(method);
+        }
+    }
 
     public static class RuntimeGraphBuilderPhase extends AnalysisGraphBuilderPhase {
 
@@ -101,7 +215,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         RuntimeBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext, SVMHost svmHost) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, svmHost);
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, svmHost, false);
         }
 
         @Override
@@ -116,6 +230,10 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
     private final Set<AnalysisMethod> registeredRuntimeCompilations = ConcurrentHashMap.newKeySet();
     private final Map<AnalysisMethod, String> invalidForRuntimeCompilation = new ConcurrentHashMap<>();
+    private final Set<RuntimeCompilationCandidate> runtimeCompilationCandidates = ConcurrentHashMap.newKeySet();
+    private Set<RuntimeCompiledMethod> runtimeCompilations = null;
+    private Map<RuntimeCompilationCandidate, CallTreeNode> runtimeCandidateCallTree = null;
+    private Map<AnalysisMethod, CallTreeNode> runtimeCompiledMethodCallTree = null;
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -143,36 +261,126 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     public void afterAnalysis(AfterAnalysisAccess access) {
         /*
          * At this point need to determine which methods are actually valid for runtime compilation
-         * and make the call tree
+         * and calculate their reachability info.
          */
-        buildRuntimeCallTree();
+        buildCallTrees();
+
+        runtimeCompilations = new HashSet<>();
+        FeatureImpl.AfterAnalysisAccessImpl impl = (FeatureImpl.AfterAnalysisAccessImpl) access;
+        for (var method : impl.getUniverse().getMethods()) {
+            var rMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
+            if (rMethod != null && rMethod.isReachable() && !invalidForRuntimeCompilation.containsKey(rMethod)) {
+                boolean added = runtimeCompilations.add(new RuntimeCompiledMethodImpl(method));
+                if (added) {
+                    assert runtimeCompiledMethodCallTree.containsKey(method);
+                }
+            }
+        }
 
         // call super after
         afterAnalysisHelper();
     }
 
-    // In reality do not need to build a call tree; can create traces as necessary
-    public void buildRuntimeCallTree() {
-        Queue<AnalysisMethod> worklist = new LinkedList<>();
-        Map<AnalysisMethod, AbstractCallTreeNode> callTree = new HashMap<>();
+    @Override
+    protected AbstractCallTreeNode getCallTreeNode(RuntimeCompilationCandidate candidate) {
+        var result = runtimeCandidateCallTree.get(candidate);
+        assert result != null;
+        return result;
+    }
+
+    @Override
+    protected AbstractCallTreeNode getCallTreeNode(RuntimeCompiledMethod method) {
+        return getCallTreeNode(method.getMethod());
+    }
+
+    @Override
+    protected AbstractCallTreeNode getCallTreeNode(ResolvedJavaMethod method) {
+        var result = runtimeCompiledMethodCallTree.get(method);
+        assert result != null;
+        return result;
+    }
+
+    @Override
+    public Collection<RuntimeCompiledMethod> getRuntimeCompiledMethods() {
+        return runtimeCompilations;
+    }
+
+    @Override
+    public Collection<RuntimeCompilationCandidate> getAllRuntimeCompilationCandidates() {
+        return runtimeCompilationCandidates;
+    }
+
+    private void buildCallTrees() {
+        /*
+         * While it is possible to dynamically calculate call traces by enabling
+         * PointstoOptions#TraceAccessChain, creating call trees post-analysis for runtime compiled
+         * methods allows use to not have this overhead during analysis and also to determine the
+         * access chains for multiple call sites with the same destination.
+         *
+         * This is useful to create more stringent blocklist checks.
+         */
+        assert runtimeCandidateCallTree == null && runtimeCompiledMethodCallTree == null;
+        runtimeCandidateCallTree = new HashMap<>();
+        runtimeCompiledMethodCallTree = new HashMap<>();
+
+        Queue<CallTreeNode> worklist = new LinkedList<>();
+
+        /* First initialize with registered runtime compilations */
         for (AnalysisMethod root : registeredRuntimeCompilations) {
             var runtimeRoot = root.getMultiMethod(RUNTIME_COMPILED_METHOD);
             if (runtimeRoot != null) {
-                callTree.computeIfAbsent(runtimeRoot, (m) -> {
-                    worklist.add(m);
-                    return new CallTreeNode();
+                runtimeCandidateCallTree.computeIfAbsent(new RuntimeCompilationCandidateImpl(root, root), (candidate) -> {
+                    var result = new CallTreeNode(root, root, null, null);
+                    worklist.add(result);
+                    return result;
                 });
             }
         }
+
+        /*
+         * Find all runtime compiled methods reachable from registered runtime compilations.
+         *
+         * Note within the maps we store the original methods, not the runtime methods.
+         */
         while (!worklist.isEmpty()) {
-            AnalysisMethod caller = worklist.remove();
-            for (InvokeInfo invokeInfo : caller.getInvokes()) {
+            var caller = worklist.remove();
+            caller.linkAsChild();
+
+            /*
+             * We only need to record one trace for methods
+             */
+            var method = caller.getImplementationMethod();
+            if (runtimeCompiledMethodCallTree.containsKey(method)) {
+                // This method has already been processed
+                continue;
+            } else {
+                runtimeCompiledMethodCallTree.put(method, caller);
+            }
+            var runtimeMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
+            assert runtimeMethod != null;
+
+            for (InvokeInfo invokeInfo : runtimeMethod.getInvokes()) {
+                AnalysisMethod target = invokeInfo.getTargetMethod();
                 for (AnalysisMethod implementation : invokeInfo.getAllCallees()) {
                     if (implementation.getMultiMethodKey() == RUNTIME_COMPILED_METHOD) {
-                        callTree.computeIfAbsent(implementation, (m) -> {
-                            worklist.add(m);
-                            return new CallTreeNode();
+                        var origImpl = implementation.getMultiMethod(ORIGINAL_METHOD);
+                        assert origImpl != null;
+                        runtimeCandidateCallTree.computeIfAbsent(new RuntimeCompilationCandidateImpl(origImpl, target), (candidate) -> {
+                            var result = new CallTreeNode(origImpl, target, caller, invokeInfo.getPosition());
+                            worklist.add(result);
+                            return result;
                         });
+                    } else if (implementation.isOriginalMethod() && implementation.getMultiMethod(RUNTIME_COMPILED_METHOD) == null) {
+                        /*
+                         * Recording that this call was reachable, but not converted to a runtime
+                         * compiled method.
+                         */
+                        runtimeCandidateCallTree.computeIfAbsent(new RuntimeCompilationCandidateImpl(implementation, target),
+                                        (candidate) -> {
+                                            var result = new CallTreeNode(implementation, target, caller, invokeInfo.getPosition());
+                                            result.linkAsChild();
+                                            return result;
+                                        });
                     }
                 }
             }
@@ -365,6 +573,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         public <T extends AnalysisMethod> Collection<T> determineCallees(BigBang bb, T implementation, T target, MultiMethod.MultiMethodKey callerMultiMethodKey, InvokeTypeFlow parsingReason) {
             assert implementation.isOriginalMethod() && target.isOriginalMethod();
 
+            // recording compilation candidate
+            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD) {
+                runtimeCompilationCandidates.add(new RuntimeCompilationCandidateImpl(implementation, target));
+            }
+
             boolean jitPossible = runtimeCompilationCandidatePredicate.allowRuntimeCompilation(implementation);
             if (!jitPossible) {
                 assert !registeredRuntimeCompilations.contains(implementation) : "invalid method registered for runtime compilation";
@@ -469,43 +682,4 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             return multiMethodKey == DEOPT_TARGET_METHOD || multiMethodKey == RUNTIME_COMPILED_METHOD;
         }
     }
-
-    private static class CallTreeNode implements AbstractCallTreeNode {
-
-        @Override
-        public AnalysisMethod getImplementationMethod() {
-            return null;
-        }
-
-        @Override
-        public AnalysisMethod getTargetMethod() {
-            return null;
-        }
-
-        @Override
-        public StructuredGraph getGraph() {
-            return null;
-        }
-
-        @Override
-        public String getSourceReference() {
-            return null;
-        }
-
-        @Override
-        public AbstractCallTreeNode getParent() {
-            return null;
-        }
-
-        @Override
-        public List<AbstractCallTreeNode> getChildren() {
-            return null;
-        }
-
-        @Override
-        public int getLevel() {
-            return 0;
-        }
-    }
-
 }

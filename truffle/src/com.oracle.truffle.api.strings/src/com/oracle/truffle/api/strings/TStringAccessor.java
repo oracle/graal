@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.strings;
 
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -49,6 +50,7 @@ final class TStringAccessor extends Accessor {
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
 
+    @NeverDefault
     static Node createInteropLibrary() {
         return INTEROP.createDispatchedInteropLibrary(3);
     }

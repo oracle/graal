@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,8 +38,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.collections.Pair;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
@@ -84,8 +82,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
@@ -841,19 +839,6 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         }
 
         /**
-         * Recursively try to fold stamps within this expression using information from
-         * {@link #getInfoElements(ValueNode)}. It's only safe to use constants and one
-         * {@link InfoElement} otherwise more than one guard would be required.
-         *
-         * @param node
-         * @return the pair of the @{link InfoElement} used and the stamp produced for the whole
-         *         expression
-         */
-        Pair<InfoElement, Stamp> recursiveFoldStampFromInfo(Node node) {
-            return ConditionalEliminationUtil.recursiveFoldStamp(infoElementProvider, node);
-        }
-
-        /**
          * Look for a preceding guard whose condition is implied by {@code thisGuard}. If we find
          * one, try to move this guard just above that preceding guard so that we can fold it:
          *
@@ -920,7 +905,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                             break;
                         }
                     }
-                } else if (AbstractControlFlowGraph.dominates(testBlock, targetBlock)) {
+                } else if (testBlock.dominates(targetBlock)) {
                     return true;
                 }
             }

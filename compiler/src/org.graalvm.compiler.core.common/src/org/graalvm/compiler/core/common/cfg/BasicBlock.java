@@ -42,8 +42,6 @@ import org.graalvm.compiler.debug.GraalError;
  * abstract basic block is the coupling API.
  */
 public abstract class BasicBlock<T extends BasicBlock<T>> {
-    public static final double[] EMPTY_PROBABILITY_ARRAY = new double[0];
-    public static final double[] SINGLETON_PROBABILITY_ARRAY = new double[]{1.0};
 
     /**
      * Id of this basic block. The id is concurrently used as a unique identifier for the block as
@@ -254,6 +252,14 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
         if (block != null) {
             this.dominatedSibling = block.getId();
         }
+    }
+
+    public final boolean dominates(BasicBlock<?> other) {
+        return AbstractControlFlowGraph.dominates(this, other);
+    }
+
+    public final boolean strictlyDominates(BasicBlock<T> other) {
+        return AbstractControlFlowGraph.strictlyDominates(this, other);
     }
 
     @Override

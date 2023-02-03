@@ -899,7 +899,7 @@ public final class ObjectKlass extends Klass {
         return permittedSubclasses != null && permittedSubclasses.getClasses().length > 0;
     }
 
-    public boolean permittedSubclassCheck(ObjectKlass k) {
+    public boolean permittedSubclassCheck(ObjectKlass subKlass) {
         CompilerAsserts.neverPartOfCompilation();
         if (!getContext().getJavaVersion().java17OrLater()) {
             return true;
@@ -908,15 +908,15 @@ public final class ObjectKlass extends Klass {
         if (permittedSubclasses == null) {
             return true;
         }
-        if (module() != k.module()) {
+        if (module() != subKlass.module()) {
             return false;
         }
-        if (!isPublic() && !sameRuntimePackage(k)) {
+        if (!subKlass.isPublic() && !sameRuntimePackage(subKlass)) {
             return false;
         }
         RuntimeConstantPool pool = getConstantPool();
         for (int index : permittedSubclasses.getClasses()) {
-            if (k.getName().equals(pool.classAt(index).getName(pool))) {
+            if (subKlass.getName().equals(pool.classAt(index).getName(pool))) {
                 // There should be no need to resolve: the previous checks guarantees it would
                 // resolve to k, but resolving here would cause circularity errors.
                 return true;
@@ -1015,14 +1015,14 @@ public final class ObjectKlass extends Klass {
         return getVTable()[vtableIndex].getMethod();
     }
 
-    public Method itableLookup(Klass interfKlass, int index) {
-        assert (index >= 0) : "Undeclared interface method";
-        try {
-            return getItable()[fastLookup(interfKlass, getiKlassTable())][index].getMethod();
-        } catch (IndexOutOfBoundsException e) {
+    public Method itableLookup(Klass interfKlass, int methodIndex) {
+        assert methodIndex >= 0 : "Undeclared interface method";
+        int itableIndex = fastLookup(interfKlass, getiKlassTable());
+        if (itableIndex < 0) {
             Meta meta = getMeta();
             throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", getName(), interfKlass.getName());
         }
+        return getItable()[itableIndex][methodIndex].getMethod();
     }
 
     int findVirtualMethodIndex(Symbol<Name> methodName, Symbol<Signature> signature, Klass subClass) {
@@ -1143,7 +1143,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, LookupMode lookupMode) {
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
         KLASS_LOOKUP_METHOD_COUNT.inc();
         Method method = lookupDeclaredMethod(methodName, signature, lookupMode);
         if (method == null) {
@@ -1156,7 +1156,7 @@ public final class ObjectKlass extends Klass {
             method = lookupPolysigMethod(methodName, signature, lookupMode);
         }
         if (method == null && getSuperKlass() != null) {
-            method = getSuperKlass().lookupMethod(methodName, signature, accessingKlass, lookupMode);
+            method = getSuperKlass().lookupMethod(methodName, signature, lookupMode);
         }
         return method;
     }
@@ -1944,6 +1944,11 @@ public final class ObjectKlass extends Klass {
                 source = getContext().findOrCreateSource(ObjectKlass.this);
             }
             return source;
+        }
+
+        @Override
+        public String toString() {
+            return "KlassVersion<" + getType() + ">";
         }
     }
 }

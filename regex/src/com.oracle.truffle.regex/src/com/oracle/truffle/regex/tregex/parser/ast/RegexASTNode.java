@@ -59,17 +59,19 @@ public abstract class RegexASTNode implements JsonConvertible {
     static final int FLAG_ENDS_WITH_DOLLAR = 1 << 5;
     static final int FLAG_BACK_REFERENCE_IS_NESTED = 1 << 6;
     static final int FLAG_BACK_REFERENCE_IS_FORWARD = 1 << 7;
-    static final int FLAG_GROUP_LOOP = 1 << 8;
-    static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 9;
-    static final int FLAG_EMPTY_GUARD = 1 << 10;
-    static final int FLAG_LOOK_AROUND_NEGATED = 1 << 11;
-    static final int FLAG_HAS_LOOPS = 1 << 12;
-    static final int FLAG_HAS_CAPTURE_GROUPS = 1 << 13;
-    static final int FLAG_HAS_QUANTIFIERS = 1 << 14;
-    static final int FLAG_HAS_LOOK_BEHINDS = 1 << 15;
-    static final int FLAG_HAS_LOOK_AHEADS = 1 << 16;
-    static final int FLAG_HAS_BACK_REFERENCES = 1 << 17;
-    static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 18;
+    static final int FLAG_BACK_REFERENCE_IS_IGNORE_CASE = 1 << 8;
+    static final int FLAG_GROUP_LOOP = 1 << 9;
+    static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 10;
+    static final int FLAG_GROUP_LOCAL_FLAGS = 1 << 11;
+    static final int FLAG_EMPTY_GUARD = 1 << 12;
+    static final int FLAG_LOOK_AROUND_NEGATED = 1 << 13;
+    static final int FLAG_HAS_LOOPS = 1 << 14;
+    static final int FLAG_HAS_CAPTURE_GROUPS = 1 << 15;
+    static final int FLAG_HAS_QUANTIFIERS = 1 << 16;
+    static final int FLAG_HAS_LOOK_BEHINDS = 1 << 17;
+    static final int FLAG_HAS_LOOK_AHEADS = 1 << 18;
+    static final int FLAG_HAS_BACK_REFERENCES = 1 << 19;
+    static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 20;
 
     private int id = -1;
     private RegexASTNode parent;
@@ -472,6 +474,10 @@ public abstract class RegexASTNode implements JsonConvertible {
         return this instanceof Group;
     }
 
+    public boolean isConditionalBackReferenceGroup() {
+        return this instanceof ConditionalBackReferenceGroup;
+    }
+
     public boolean isLookAroundAssertion() {
         return this instanceof LookAroundAssertion;
     }
@@ -530,6 +536,10 @@ public abstract class RegexASTNode implements JsonConvertible {
 
     public Group asGroup() {
         return (Group) this;
+    }
+
+    public ConditionalBackReferenceGroup asConditionalBackReferenceGroup() {
+        return (ConditionalBackReferenceGroup) this;
     }
 
     public LookAroundAssertion asLookAroundAssertion() {

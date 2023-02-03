@@ -86,7 +86,7 @@ public class Interop {
         int cachedCount = 0;
         int genericCount = 0;
 
-        @Specialization(guards = "operation.accept(target)")
+        @Specialization(guards = "operation.accept(target)", limit = "3")
         protected Object interopCached(VirtualFrame frame, TruffleObject target, Object value, //
                         @Cached("target.createOperation()") TruffleObjectOperation operation) {
             cachedCount++;

@@ -1,17 +1,24 @@
 ---
 layout: ni-docs
 toc_group: how-to-guides
-link_title: Build with Reflection
-permalink: /reference-manual/native-image/guides/build-with-reflection/
+link_title: Configure Native Image with the Tracing Agent
+permalink: /reference-manual/native-image/guides/configure-with-tracing-agent/
+redirect_from:
+  - /reference-manual/native-image/guides/build-with-reflection/
 ---
 
-# Build a Native Executable with Reflection 
+# Configure Native Image with the Tracing Agent
 
-Reflection is a feature of the Java programming language that enables a running Java program to examine and modify attributes of its classes, interfaces, fields, and methods.
+To build a native executable for a Java application that uses Java reflection, dynamic proxy objects, JNI, or class path resources, you should either provide the `native-image` tool with JSON-formatted configuration files or pre-compute metadata in the code.
 
-The `native-image` utility provides partial support for reflection. It uses static analysis to detect the elements of your application that are accessed using the Java Reflection API. However, because the analysis is static, it cannot always completely predict all usages of the API when the program runs. In these cases, you must provide a configuration file to the native-image utility to specify the program elements that use the API.
+You can create configuration file(s) by hand, but a more convenient approach is to generate the configuration using the Tracing agent (from now on, the agent). 
+This guide demonstrates how to configure `native-image` with the agent. The agent generates the configuration for you automatically when you run an application on a JVM.
 
+To learn how to build a native executable with the metadata pre-computed in the code, [follow this guide](use-reachability-metadata-repository-gradle.md).
+
+The example application in this guide uses Java reflection. The `native-image` tool only partially detects application elements that are accessed using the Java Reflection API. So, you need to provide it with details about reflectively accessed classes, methods, and fields.
 ## Example with No Configuration
+
 The following application demonstrates the use of Java reflection.
 
 1. Save the following source code in a file named _ReflectionExample.java_:
@@ -78,16 +85,15 @@ The following application demonstrates the use of Java reflection.
     is used by the application and therefore did not include it in the native executable. 
 
 ## Example with Configuration
-To build a native executable containing references to the classes and methods that are accessed via reflection, provide the `native-image` utility with a configuration file that specifies the classes and corresponding methods. (For more information about configuration files, see [Reflection Use in Native Images](../Reflection.md).) You can create this file by hand, but a more convenient approach is to generate the configuration using the tracing agent. The agent generates the configuration for you automatically when you run your application (for more information, see [Assisted Configuration with Tracing Agent](../AutomaticMetadataCollection.md#tracing-agent). 
 
-The following steps demonstrate how to use the javaagent tool, and its output, to create a native executable that relies on reflection.
+The following steps demonstrate how to use the agent, and its output, to create a native executable that relies on reflection and requires configuration.
 
-1. Create a directory `META-INF/native-image` in the working directory:
+1. Create a directory named _META-INF/native-image_ in the working directory:
     ```shell
     mkdir -p META-INF/native-image
     ```
 
-2. Run the application with the tracing agent enabled, as follows:
+2. Run the application with the agent enabled, as follows:
     ```shell
     $JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=META-INF/native-image ReflectionExample StringReverser reverse "hello"
     ```
@@ -140,7 +146,7 @@ The following steps demonstrate how to use the javaagent tool, and its output, t
     ]
     ```
 
-6. Rebuild a native executable and run the resulting file.
+6. Rebuild the native executable and run it.
     ```shell
     $JAVA_HOME/bin/native-image ReflectionExample
     ./reflectionexample StringCapitalizer capitalize "hello"
@@ -150,6 +156,6 @@ The following steps demonstrate how to use the javaagent tool, and its output, t
 
 ### Related Documentation
 
+* [Assisted Configuration with Tracing Agent](../AutomaticMetadataCollection.md#tracing-agent)
 * [Reachability Metadata: Reflection](../ReachabilityMetadata.md#reflection)
-* [Assisted Configuration with Tracing Agent](../AutomaticMetadataCollection.md#tracing-agent) 
 * [java.lang.reflect Javadoc](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/reflect/package-summary.html)

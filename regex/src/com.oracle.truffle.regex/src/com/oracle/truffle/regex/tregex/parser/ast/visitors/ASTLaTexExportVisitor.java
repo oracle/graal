@@ -155,7 +155,15 @@ public final class ASTLaTexExportVisitor extends DepthFirstTraversalRegexASTVisi
 
     @Override
     protected void visit(Group group) {
-        openNode((group.isCapturing() ? String.format("(%d)", group.getGroupNumber()) : "(:?)") + group.loopToString(), group);
+        String groupLabel;
+        if (group.isConditionalBackReferenceGroup()) {
+            groupLabel = String.format("(?(%d))", group.asConditionalBackReferenceGroup().getReferencedGroupNumber());
+        } else if (group.isCapturing()) {
+            groupLabel = String.format("(%d)", group.getGroupNumber());
+        } else {
+            groupLabel = "(:?)";
+        }
+        openNode(groupLabel + group.loopToString(), group);
     }
 
     @Override

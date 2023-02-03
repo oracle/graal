@@ -28,7 +28,6 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
@@ -125,7 +124,7 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
                                 assert dividend instanceof PhiNode;
                                 dividendBlock = sched.getNodeToBlockMap().get(((PhiNode) dividend).merge());
                             }
-                            if (AbstractControlFlowGraph.dominates(dividendBlock, ifBlock)) {
+                            if (dividendBlock.dominates(ifBlock)) {
                                 trappingReplaceTargets.put((IntegerEqualsNode) ifNode.condition(), divRem);
                             }
                         }

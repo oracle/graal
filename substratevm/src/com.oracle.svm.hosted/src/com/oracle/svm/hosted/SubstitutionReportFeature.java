@@ -37,11 +37,10 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.substitute.SubstitutionField;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
@@ -78,7 +77,7 @@ public class SubstitutionReportFeature implements InternalFeature {
     private void findSubstitutedTypes(FeatureImpl.AfterAnalysisAccessImpl access) {
         for (AnalysisType type : access.getUniverse().getTypes()) {
             if (type.isReachable() && !type.isArray()) {
-                ResolvedJavaType t = type.getWrappedWithoutResolve();
+                ResolvedJavaType t = type.getWrapped();
                 if (t instanceof SubstitutionType) {
                     SubstitutionType subType = (SubstitutionType) t;
                     if (subType.isUserSubstitution()) {
@@ -147,7 +146,7 @@ public class SubstitutionReportFeature implements InternalFeature {
     }
 
     private static String getTypeClassFileLocation(ResolvedJavaType type) {
-        Class<?> annotatedClass = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), type);
+        Class<?> annotatedClass = OriginalClassProvider.getJavaClass(type);
         CodeSource source = annotatedClass.getProtectionDomain().getCodeSource();
         return source == null ? "unknown" : source.getLocation().toString();
     }

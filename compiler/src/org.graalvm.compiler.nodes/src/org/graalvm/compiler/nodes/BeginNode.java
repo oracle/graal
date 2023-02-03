@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
@@ -60,6 +61,7 @@ public final class BeginNode extends AbstractBeginNode implements Simplifiable {
 
     @SuppressWarnings("try")
     public static AbstractBeginNode begin(FixedNode with) {
+        GraalError.guarantee(!(with instanceof AbstractMergeNode), "Method must not be called for merges.");
         try (DebugCloseable position = with.withNodeSourcePosition()) {
             if (with instanceof AbstractBeginNode) {
                 return (AbstractBeginNode) with;

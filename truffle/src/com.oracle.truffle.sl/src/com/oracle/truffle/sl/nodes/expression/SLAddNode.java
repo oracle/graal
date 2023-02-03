@@ -41,10 +41,12 @@
 package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLException;
@@ -115,11 +117,12 @@ public abstract class SLAddNode extends SLBinaryNode {
      */
     @Specialization(guards = "isString(left, right)")
     @TruffleBoundary
-    protected TruffleString add(Object left, Object right,
+    protected static TruffleString add(Object left, Object right,
+                    @Bind("this") Node node,
                     @Cached SLToTruffleStringNode toTruffleStringNodeLeft,
                     @Cached SLToTruffleStringNode toTruffleStringNodeRight,
                     @Cached TruffleString.ConcatNode concatNode) {
-        return concatNode.execute(toTruffleStringNodeLeft.execute(left), toTruffleStringNodeRight.execute(right), SLLanguage.STRING_ENCODING, true);
+        return concatNode.execute(toTruffleStringNodeLeft.execute(node, left), toTruffleStringNodeRight.execute(node, right), SLLanguage.STRING_ENCODING, true);
     }
 
     /**

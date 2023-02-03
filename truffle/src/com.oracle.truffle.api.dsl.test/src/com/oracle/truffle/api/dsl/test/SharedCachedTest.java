@@ -48,29 +48,33 @@ import org.junit.Test;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.dsl.test.GenerateInlineTest.SimpleNode;
 import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.SharedStringInGuardNodeGen;
 import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.UnboundExclusiveObjectNodeGen;
 import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.UnboundSharedObjectNodeGen;
+import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.UseGenerateInlineSharedNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "unused"})
 public class SharedCachedTest {
 
-    // TODO GR-38632 how to share primitive caches? maybe through a specialization class?
     abstract static class UnboundCachedPrimitiveNode extends Node {
 
         abstract Object execute(Object arg);
 
         @Specialization(guards = "arg == 42")
-        Object s0(int arg, @Shared("shared") @Cached("arg") int primitive) {
+        Object s0(int arg, @Shared @Cached("arg") int primitive) {
             return arg;
         }
 
         @Specialization(guards = "arg == 43")
-        Object s1(int arg, @Shared("shared") @Cached("arg") int primitive) {
+        Object s1(int arg, @Shared @Cached("arg") int primitive) {
             return arg;
         }
     }
@@ -83,12 +87,12 @@ public class SharedCachedTest {
         abstract Object execute(Object arg);
 
         @Specialization(guards = "arg == ARG0")
-        Object s0(Object arg, @Shared("shared") @Cached("arg") Object cachedArg) {
+        Object s0(Object arg, @Shared @Cached("arg") Object cachedArg) {
             return cachedArg;
         }
 
         @Specialization(guards = "arg == ARG1")
-        Object s1(Object arg, @Shared("shared") @Cached("arg") Object cachedArg) {
+        Object s1(Object arg, @Shared @Cached("arg") Object cachedArg) {
             return cachedArg;
         }
     }
@@ -106,7 +110,7 @@ public class SharedCachedTest {
         assertSame(UnboundSharedObjectNode.ARG1, node.execute(UnboundSharedObjectNode.ARG0));
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings("truffle-inlining")
     abstract static class UnboundExclusiveObjectNode extends Node {
 
         static final Object ARG0 = new Object();
@@ -115,12 +119,12 @@ public class SharedCachedTest {
         abstract Object execute(Object arg);
 
         @Specialization(guards = "arg == ARG0")
-        Object s0(Object arg, @Exclusive @Cached("arg") Object cachedArg) {
+        Object s0(Object arg, @Exclusive @Cached(value = "arg", neverDefault = true) Object cachedArg) {
             return cachedArg;
         }
 
         @Specialization(guards = "arg == ARG1")
-        Object s1(Object arg, @Exclusive @Cached("arg") Object cachedArg) {
+        Object s1(Object arg, @Exclusive @Cached(value = "arg", neverDefault = true) Object cachedArg) {
             return cachedArg;
         }
     }
@@ -153,21 +157,66 @@ public class SharedCachedTest {
 
     }
 
+    @GenerateInline
+    @GenerateUncached
+    @GenerateCached(false)
+    public abstract static class GenerateInlineSharedNode extends Node {
+
+        abstract Object execute(Node node, Object arg);
+
+        @Specialization
+        static Object doInt(Node node, int arg, @Shared @Cached SimpleNode innerNode) {
+            return innerNode.execute(node, arg);
+        }
+
+        @Specialization
+        static Object doLong(Node node, long arg, @Shared @Cached SimpleNode innerNode) {
+            return innerNode.execute(node, arg);
+        }
+
+        @Specialization
+        static Object doObject(Node node, Object arg, @Shared @Cached SimpleNode innerNode) {
+            return innerNode.execute(node, arg);
+        }
+
+    }
+
+    @GenerateUncached
+    public abstract static class UseGenerateInlineSharedNode extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization
+        final Object doInt(Object arg, @Cached GenerateInlineSharedNode innerNode) {
+            return innerNode.execute(this, arg);
+        }
+    }
+
+    @Test
+    public void testUseGenerateInlineSharedNode() {
+        UseGenerateInlineSharedNode node = UseGenerateInlineSharedNodeGen.create();
+
+        assertEquals(42, node.execute(42));
+        assertEquals(42L, node.execute(42L));
+        AbstractPolyglotTest.assertFails(() -> node.execute(""), UnsupportedSpecializationException.class);
+    }
+
     abstract static class UnboundCachedNodeNode extends Node {
 
         abstract Object execute(Object arg);
 
         @Specialization(guards = "arg == 42")
-        Object s0(int arg, @Shared("group") @Cached TestNode node) {
+        Object s0(int arg, @Shared @Cached TestNode group) {
             return arg;
         }
 
         @Specialization(guards = "arg == 43")
-        Object s1(int arg, @Shared("group") @Cached TestNode node) {
+        Object s1(int arg, @Shared @Cached TestNode group) {
             return arg;
         }
     }
 
+    @SuppressWarnings("truffle-sharing")
     abstract static class BoundCachedNodeNode extends Node {
 
         abstract Object execute(Object arg);
@@ -183,19 +232,34 @@ public class SharedCachedTest {
         }
     }
 
+    abstract static class ExplicitNameTestNode extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization(guards = "arg == 42")
+        Object s0(int arg, @Shared("group") @Cached TestNode value) {
+            return arg;
+        }
+
+        @Specialization(guards = "arg == 43")
+        Object s1(int arg, @Shared @Cached TestNode group) {
+            return arg;
+        }
+    }
+
     abstract static class ErrorUnboundCachedNode2 extends Node {
 
         abstract Object execute(Object arg);
 
         @Specialization(guards = "arg == 42")
         Object s0(int arg,
-                        @Cached TestNode node) {
+                        @Exclusive @Cached TestNode node) {
             return arg;
         }
 
         @Specialization(guards = "arg == 43")
         Object s1(int arg,
-                        @Cached TestNode node) {
+                        @Exclusive @Cached TestNode node) {
             return arg;
         }
     }
@@ -206,7 +270,7 @@ public class SharedCachedTest {
 
         @Specialization(guards = "arg == 42")
         Object s0(int arg,
-                        @Cached TestNode node) {
+                        @Exclusive @Cached TestNode node) {
             return arg;
         }
 
@@ -291,7 +355,7 @@ public class SharedCachedTest {
 
         abstract Object execute(Object arg);
 
-        @Specialization(guards = "node == arg")
+        @Specialization(guards = "node == arg", limit = "3")
         Object s0(int arg,
                         @Cached("arg") int node,
                         @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
@@ -301,7 +365,7 @@ public class SharedCachedTest {
             return arg;
         }
 
-        @Specialization(guards = "arg == node")
+        @Specialization(guards = "arg == node", limit = "3")
         Object s1(int arg,
                         @Cached("arg") int node,
                         @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
@@ -339,14 +403,34 @@ public class SharedCachedTest {
 
         @Specialization(guards = "name == cachedName", limit = "1")
         public Object s0(String name,
-                        @Cached("name") @Shared("name") String cachedName) {
+                        @Cached(value = "name", neverDefault = true) @Shared("name") String cachedName) {
             return cachedName;
         }
 
         @Specialization(guards = "name == cachedName", limit = "1")
         public Object s1(String name,
-                        @Cached("name") @Shared("name") String cachedName) {
+                        @Cached(value = "name", neverDefault = true) @Shared("name") String cachedName) {
             return cachedName;
+        }
+    }
+
+    abstract static class ErrorNoSharingTestNode extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization(guards = "arg == 42")
+        Object s0(int arg,
+                        @ExpectError("The cached parameter may be shared with: %n  - s1(..., @Cached(...) TestNode group)%") //
+                        @Cached TestNode value) {
+            return arg;
+        }
+
+        @Specialization(guards = "arg == 43")
+        Object s1(int arg,
+                        @ExpectError("No other cached parameters are specified as shared with the group 'group'.")
+                        //
+                        @Shared @Cached TestNode group) {
+            return arg;
         }
     }
 
@@ -358,31 +442,11 @@ public class SharedCachedTest {
         assertEquals("a", node.execute("a"));
 
         SharedStringInGuardNode errorNode = SharedStringInGuardNodeGen.create();
-        AbstractPolyglotTest.assertFails(() -> errorNode.execute(null), AssertionError.class, (e) -> {
-            assertEquals("Specialization 's0(String, String)' contains a shared cache with name 'cachedName' that returned a null value for the cached initializer. " +
-                            "Null values are not supported for shared cached initializers because null is reserved for the uninitialized state.",
+        AbstractPolyglotTest.assertFails(() -> errorNode.execute(null), IllegalStateException.class, (e) -> {
+            assertEquals("Specialization 's0(String, String)' contains a shared cache with name 'cachedName' that returned a default value for the cached initializer. " +
+                            "Default values are not supported for shared cached initializers because the default value is reserved for the uninitialized state.",
                             e.getMessage());
         });
-    }
-
-    @SuppressWarnings("unused")
-    public abstract static class SharedPrimitiveInGuardNode extends Node {
-
-        public abstract Object execute(Object arg0);
-
-        @ExpectError("This guard references a @Shared cache with a primitive type. This is not supported.%")
-        @Specialization(guards = "value == cachedValue", limit = "1")
-        public Object s0(int value,
-                        @Cached("value") @Shared("value") int cachedValue) {
-            return cachedValue;
-        }
-
-        @ExpectError("This guard references a @Shared cache with a primitive type. This is not supported.%")
-        @Specialization(guards = "value == cachedValue", limit = "1")
-        public Object s1(int value,
-                        @Cached("value") @Shared("value") int cachedValue) {
-            return cachedValue;
-        }
     }
 
 }

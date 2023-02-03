@@ -47,11 +47,6 @@ public interface MemUseTrackerKey extends MetricKey {
      */
     DebugCloseable start(DebugContext debug);
 
-    /**
-     * Gets the current value of this tracker.
-     */
-    long getCurrentValue(DebugContext debug);
-
     @Override
     MemUseTrackerKey doc(String string);
 

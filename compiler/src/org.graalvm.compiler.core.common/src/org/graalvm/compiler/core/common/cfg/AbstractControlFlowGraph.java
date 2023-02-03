@@ -133,4 +133,8 @@ public interface AbstractControlFlowGraph<T extends BasicBlock<T>> {
         }
         return false;
     }
+
+    default BasicBlockSet createBasicBlockSet() {
+        return new BasicBlockSet(this);
+    }
 }

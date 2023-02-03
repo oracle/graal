@@ -105,7 +105,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        static final String call(Sample s, @Cached(value = "0", uncached = "1") int cached) {
+        static final String call(Sample s, @Cached(value = "0", uncached = "1", neverDefault = false) int cached) {
             if (cached == 0) {
                 if (s.name != null) {
                     return s.name + "_cached";
@@ -593,8 +593,8 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     public abstract static class AbstractErrorLibrary11 extends Library {
 
         @SuppressWarnings("static-method")
-        @ExpectError("Library messages must be public.")
-        protected String call(Object receiver) {
+        @ExpectError("Library messages must be public or protected.%")
+        String call(Object receiver) {
             return "default";
         }
 

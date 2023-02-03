@@ -45,13 +45,15 @@ import static org.junit.Assert.assertEquals;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public abstract class RegexTestBase {
 
@@ -128,8 +130,9 @@ public abstract class RegexTestBase {
         assertEquals(isMatch, result.getMember("isMatch").asBoolean());
         if (isMatch) {
             assertEquals(captureGroupBoundsAndLastGroup.length / 2, groupCount);
-            for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
-                if (captureGroupBoundsAndLastGroup[i * 2] != result.invokeMember("getStart", i).asInt() || captureGroupBoundsAndLastGroup[i * 2 + 1] != result.invokeMember("getEnd", i).asInt()) {
+            for (int i = 0; i < groupCount; i++) {
+                if (captureGroupBoundsAndLastGroup[Group.groupNumberToBoundaryIndexStart(i)] != result.invokeMember("getStart", i).asInt() ||
+                                captureGroupBoundsAndLastGroup[Group.groupNumberToBoundaryIndexEnd(i)] != result.invokeMember("getEnd", i).asInt()) {
                     fail(result, captureGroupBoundsAndLastGroup);
                 }
             }
@@ -145,13 +148,50 @@ public abstract class RegexTestBase {
     }
 
     void expectSyntaxError(String pattern, String flags, String expectedMessage) {
+        expectSyntaxError(pattern, flags, "", expectedMessage);
+    }
+
+    void expectSyntaxError(String pattern, String flags, String options, String expectedMessage) {
         try {
-            compileRegex(pattern, flags);
+            compileRegex(pattern, flags, options);
         } catch (PolyglotException e) {
-            Assert.assertTrue(e.getMessage().contains(expectedMessage));
+            String msg = e.getMessage();
+            if (!msg.contains(expectedMessage)) {
+                Assert.fail(String.format("/%s/%s : expected syntax error message containing \"%s\", but was \"%s\"", pattern, flags, expectedMessage, msg));
+            }
             return;
         }
-        Assert.fail();
+        Assert.fail(String.format("/%s/%s : expected \"%s\", but no exception was thrown", pattern, flags, expectedMessage));
+    }
+
+    void expectSyntaxError(String pattern, String flags, String expectedMessage, int expectedPosition) {
+        expectSyntaxError(pattern, flags, "", expectedMessage, expectedPosition);
+    }
+
+    void expectSyntaxError(String pattern, String flags, String options, String expectedMessage, int expectedPosition) {
+        try {
+            compileRegex(pattern, flags, options);
+        } catch (PolyglotException e) {
+            String msg = e.getMessage();
+            int pos = e.getSourceLocation().getCharIndex();
+            if (!msg.contains(expectedMessage)) {
+                Assert.fail(String.format("/%s/%s : expected syntax error message containing \"%s\", but was \"%s\"", pattern, flags, expectedMessage, msg));
+            }
+            if (pos != expectedPosition) {
+                Assert.fail(String.format("/%s/%s : expected syntax error message \"%s\" position here:\n%s\n%s\nbut was here:\n%s\n%s", pattern, flags, expectedMessage, pattern,
+                                generateErrorPosArrow(expectedPosition), pattern, generateErrorPosArrow(pos)));
+            }
+            return;
+        }
+        Assert.fail(String.format("/%s/%s : expected \"%s\", but no exception was thrown", pattern, flags, expectedMessage));
+    }
+
+    private static String generateErrorPosArrow(int pos) {
+        StringBuilder sb = new StringBuilder(pos + 1);
+        for (int i = 0; i < pos; i++) {
+            sb.append(' ');
+        }
+        return sb.append('^').toString();
     }
 
     private static void fail(Value result, int... captureGroupBoundsAndLastGroup) {

@@ -26,9 +26,7 @@
 package com.oracle.svm.core.sampler;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -51,41 +49,38 @@ public final class SamplerBufferAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static SamplerBuffer allocate(UnsignedWord dataSize) {
-        UnsignedWord headerSize = SamplerBufferAccess.getHeaderSize();
-        SamplerBuffer result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(headerSize.add(dataSize));
-        if (result.isNonNull()) {
-            result.setSize(dataSize);
-            result.setFreeable(false);
-            reinitialize(result);
-        }
-        return result;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void free(SamplerBuffer buffer) {
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(buffer);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void reinitialize(SamplerBuffer buffer) {
+        assert buffer.isNonNull();
         Pointer dataStart = getDataStart(buffer);
         buffer.setPos(dataStart);
-        buffer.setOwner(0L);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getDataStart(SamplerBuffer buffer) {
+        assert buffer.isNonNull();
         return ((Pointer) buffer).add(getHeaderSize());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isEmpty(SamplerBuffer buffer) {
+        assert buffer.isNonNull();
         return getDataStart(buffer).equal(buffer.getPos());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getDataEnd(SamplerBuffer buffer) {
+        assert buffer.isNonNull();
         return getDataStart(buffer).add(buffer.getSize());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean verify(SamplerBuffer buffer) {
+        if (buffer.isNull()) {
+            return false;
+        }
+
+        Pointer start = getDataStart(buffer);
+        Pointer end = getDataEnd(buffer);
+        return buffer.getPos().aboveOrEqual(start) && buffer.getPos().belowOrEqual(end);
     }
 }

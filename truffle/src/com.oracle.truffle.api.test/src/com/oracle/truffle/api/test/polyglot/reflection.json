@@ -184,5 +184,9 @@
     "methods": [
       { "name": "removeFileSystemRunnable", "parameterTypes": ["java.net.URI"] }
     ]
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.TruffleFileTest$TestRegisterOnDisposeHostSupport",
+    "allPublicMethods": true
   }
 ]
