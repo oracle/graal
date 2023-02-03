@@ -87,21 +87,21 @@ public class TestObjectAllocationInNewTLABEvent extends JfrTest {
     @Test
     public void test() throws Exception {
 
-        // These arrays must result in exceeding the large array threshold, resulting in new TLABs.
+        // These arrays must result in exceeding the large array threshold, resulting in new TLABs. Big Byte.
         byte[] bigByte = new byte[2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE];
         Arrays.fill(bigByte, (byte) 0);
 
-        // Using char, so it's the same size as bigByte.
+        // Using char, so it's the same size as bigByte. Big Char.
         char[] bigChar = new char[DEFAULT_ALIGNED_HEAP_CHUNK_SIZE];
         Arrays.fill(bigChar, 'm');
 
-        // Try to exhaust TLAB with arrays
+        // Try to exhaust TLAB with small arrays. Small byte.
         for (int i = 0; i < DEFAULT_ALIGNED_HEAP_CHUNK_SIZE / KILO; i++) {
             byteArray = new byte[KILO];
             Arrays.fill(byteArray, (byte) 0);
         }
 
-        // Try to exhaust TLAB with instances
+        // Try to exhaust TLAB with instances. Instance.
         for (int i = 0; i < DEFAULT_ALIGNED_HEAP_CHUNK_SIZE; i++) {
             helper = new Helper();
         }
