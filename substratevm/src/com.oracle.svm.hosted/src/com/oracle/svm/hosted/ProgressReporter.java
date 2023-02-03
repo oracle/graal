@@ -416,7 +416,7 @@ public class ProgressReporter {
         String format = "%9s (%5.2f%%) for ";
         l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), codeAreaSize / (double) imageFileSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
-        EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = Resources.singleton().resources();
+        EconomicMap<Pair<String, String>, Object> resources = Resources.singleton().resources();
         int numResources = resources.size();
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
         l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageFileSize * 100)
@@ -525,9 +525,12 @@ public class ProgressReporter {
                 remainingBytes -= metadataByteLength;
             }
             long resourcesByteLength = 0;
-            for (ResourceStorageEntry resourceList : Resources.singleton().resources().getValues()) {
-                for (byte[] resource : resourceList.getData()) {
-                    resourcesByteLength += resource.length;
+            for (Object value : Resources.singleton().resources().getValues()) {
+                if (value != Resources.NEGATIVE_QUERY) {
+                    ResourceStorageEntry resourceList = (ResourceStorageEntry) value;
+                    for (byte[] resource : resourceList.getData()) {
+                        resourcesByteLength += resource.length;
+                    }
                 }
             }
             recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteLength);

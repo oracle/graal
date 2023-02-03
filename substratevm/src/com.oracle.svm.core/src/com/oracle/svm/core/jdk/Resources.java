@@ -35,6 +35,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Objects;
+import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
@@ -44,6 +46,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.resources.MissingResourceMetadataException;
 import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
@@ -71,7 +74,12 @@ public final class Resources {
      * resourceName) provides implementations for {@code hashCode()} and {@code equals()} needed for
      * the map keys.
      */
-    private final EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
+    private final EconomicMap<Pair<String, String>, Object> resources = ImageHeapMap.create();
+    private final List<Pair<String, Pattern>> includePatterns = new ArrayList<>();
+    private final List<Pair<String, Pattern>> excludePatterns = new ArrayList<>();
+
+    public static final Object NEGATIVE_QUERY = new Object();
+    private static final Object MISSING_METADATA = new Object();
 
     /**
      * Embedding a resource into an image is counted as a modification. Since all resources are
@@ -83,7 +91,7 @@ public final class Resources {
     Resources() {
     }
 
-    public EconomicMap<Pair<String, String>, ResourceStorageEntry> resources() {
+    public EconomicMap<Pair<String, String>, Object> resources() {
         return resources;
     }
 
@@ -99,19 +107,28 @@ public final class Resources {
         }
     }
 
+    private static void updateTimeStamp() {
+        if (singleton().lastModifiedTime == INVALID_TIMESTAMP) {
+            singleton().lastModifiedTime = new Date().getTime();
+        }
+    }
+
+    private static Object addEntry(String moduleName, String resourceName, Object newEntry, EconomicMap<Pair<String, String>, Object> resources) {
+        Pair<String, String> key = Pair.create(moduleName, resourceName);
+        Object entry = resources.get(key);
+        if (entry == null || entry == NEGATIVE_QUERY) {
+            entry = newEntry;
+            updateTimeStamp();
+            resources.put(key, newEntry);
+        }
+        return entry;
+    }
+
     private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
         var resources = singleton().resources;
         synchronized (resources) {
-            Pair<String, String> key = Pair.create(moduleName, resourceName);
-            ResourceStorageEntry entry = resources.get(key);
-            if (entry == null) {
-                if (singleton().lastModifiedTime == INVALID_TIMESTAMP) {
-                    singleton().lastModifiedTime = new Date().getTime();
-                }
-                entry = new ResourceStorageEntry(isDirectory, fromJar);
-                resources.put(key, entry);
-            }
-            entry.getData().add(data);
+            Object entry = addEntry(moduleName, resourceName, new ResourceStorageEntry(isDirectory, fromJar), resources);
+            ((ResourceStorageEntry) entry).getData().add(data);
         }
     }
 
@@ -165,6 +182,46 @@ public final class Resources {
         addEntry(moduleName, resourceDirName, true, content.getBytes(), fromJar);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerNegativeQuery(String resourceName) {
+        registerNegativeQuery(null, resourceName);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerNegativeQuery(String moduleName, String resourceName) {
+        var resources = singleton().resources;
+        synchronized (resources) {
+            addEntry(moduleName, resourceName, NEGATIVE_QUERY, resources);
+        }
+    }
+
+    private static void registerPattern(List<Pair<String, Pattern>> patterns, String module, Pattern pattern) {
+        synchronized (patterns) {
+            updateTimeStamp();
+            patterns.add(Pair.create(module, pattern));
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerIncludePattern(Pattern pattern) {
+        registerIncludePattern(null, pattern);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerIncludePattern(String module, Pattern pattern) {
+        registerPattern(singleton().includePatterns, module, pattern);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerExcludePattern(Pattern pattern) {
+        registerExcludePattern(null, pattern);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerExcludePattern(String module, Pattern pattern) {
+        registerPattern(singleton().excludePatterns, module, pattern);
+    }
+
     /**
      * Avoid pulling native file system by using {@link NativeImageResourcePath} implementation to
      * convert <code>resourceName</code> to canonical variant.
@@ -186,31 +243,63 @@ public final class Resources {
         return resourceName.equals(canonicalResourceName) || removeTrailingSlash(resourceName).equals(canonicalResourceName);
     }
 
-    public static ResourceStorageEntry get(String name) {
-        return get(null, name);
+    public static Object get(String name, boolean throwOnMissing) {
+        return get(null, name, throwOnMissing);
     }
 
-    public static ResourceStorageEntry get(String moduleName, String resourceName) {
+    /**
+     * If {@code throwOnMissing} is false, we have to distinguish an entry that was in the metadata
+     * from one that was not, so the caller can correctly throw the
+     * {@link MissingResourceMetadataException}. This is needed because different modules can be
+     * tried on the same resource name, causing an unexpected exception if we throw directly.
+     */
+    public static Object get(String moduleName, String resourceName, boolean throwOnMissing) {
         String canonicalResourceName = toCanonicalForm(resourceName);
-        ResourceStorageEntry entry = singleton().resources.get(Pair.create(moduleName, canonicalResourceName));
+        Object entry = singleton().resources.get(Pair.create(moduleName, canonicalResourceName));
         if (entry == null) {
+            if (MissingResourceMetadataException.Options.ThrowMissingMetadataExceptions.getValue()) {
+                for (Pair<String, Pattern> pattern : singleton().excludePatterns) {
+                    if (Objects.equals(moduleName, pattern.getLeft()) && (pattern.getRight().matcher(resourceName).matches() || pattern.getRight().matcher(canonicalResourceName).matches())) {
+                        return missingMetaData(resourceName, throwOnMissing);
+                    }
+                }
+                for (Pair<String, Pattern> pattern : singleton().includePatterns) {
+                    if (Objects.equals(moduleName, pattern.getLeft()) && (pattern.getRight().matcher(resourceName).matches() || pattern.getRight().matcher(canonicalResourceName).matches())) {
+                        return null;
+                    }
+                }
+                return missingMetaData(resourceName, throwOnMissing);
+            } else {
+                return null;
+            }
+        }
+        if (entry == NEGATIVE_QUERY) {
             return null;
         }
-        if (entry.isFromJar() && !wasAlreadyInCanonicalForm(resourceName, canonicalResourceName)) {
+        ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
+        if (resourceStorageEntry.isFromJar() && !wasAlreadyInCanonicalForm(resourceName, canonicalResourceName)) {
             /*
              * The resource originally came from a jar file, thus behave like ZipFileSystem behaves
              * for non-canonical paths.
              */
             return null;
         }
-        if (!entry.isDirectory() && hasTrailingSlash(resourceName)) {
+        if (!resourceStorageEntry.isDirectory() && hasTrailingSlash(resourceName)) {
             /*
              * If this is an actual resource file (not a directory) we do not tolerate a trailing
              * slash.
              */
             return null;
         }
-        return entry;
+        return resourceStorageEntry;
+    }
+
+    private static Object missingMetaData(String resourceName, boolean throwOnMissing) {
+        if (throwOnMissing) {
+            throw MissingResourceMetadataException.missingResource(resourceName);
+        } else {
+            return MISSING_METADATA;
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -246,24 +335,31 @@ public final class Resources {
             return null;
         }
 
-        ResourceStorageEntry entry = Resources.get(moduleName, resourceName);
-        if (moduleName == null && entry == null) {
+        Object entry = Resources.get(moduleName, resourceName, false);
+        boolean isInMetadata = entry != MISSING_METADATA;
+        if (moduleName == null && (entry == MISSING_METADATA || entry == null)) {
             /*
              * If no moduleName is specified and entry was not found as classpath-resource we have
              * to search for the resource in all modules in the image.
              */
             for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
-                entry = Resources.get(module.getName(), resourceName);
-                if (entry != null) {
+                entry = Resources.get(module.getName(), resourceName, false);
+                if (entry != MISSING_METADATA) {
+                    isInMetadata = true;
+                }
+                if (entry != null && entry != MISSING_METADATA) {
                     break;
                 }
             }
         }
 
-        if (entry == null) {
+        if (!isInMetadata) {
+            throw MissingResourceMetadataException.missingResource(resourceName);
+        }
+        if (entry == null || entry == MISSING_METADATA) {
             return null;
         }
-        List<byte[]> data = entry.getData();
+        List<byte[]> data = ((ResourceStorageEntry) entry).getData();
         return data.isEmpty() ? null : new ByteArrayInputStream(data.get(0));
     }
 
@@ -276,18 +372,31 @@ public final class Resources {
             return null;
         }
 
+        boolean missingMetadata = true;
+
         List<URL> resourcesURLs = new ArrayList<>();
         String canonicalResourceName = toCanonicalForm(resourceName);
         boolean shouldAppendTrailingSlash = hasTrailingSlash(resourceName);
         /* If moduleName was unspecified we have to consider all modules in the image */
         if (moduleName == null) {
             for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
-                ResourceStorageEntry entry = Resources.get(module.getName(), resourceName);
+                Object entry = Resources.get(module.getName(), resourceName, false);
+                if (entry == MISSING_METADATA) {
+                    continue;
+                }
+                missingMetadata = false;
                 addURLEntries(resourcesURLs, entry, module.getName(), shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
             }
         }
-        ResourceStorageEntry explicitEntry = Resources.get(moduleName, resourceName);
-        addURLEntries(resourcesURLs, explicitEntry, moduleName, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
+        Object explicitEntry = Resources.get(moduleName, resourceName, false);
+        if (explicitEntry != MISSING_METADATA) {
+            missingMetadata = false;
+            addURLEntries(resourcesURLs, explicitEntry, moduleName, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
+        }
+
+        if (missingMetadata) {
+            throw MissingResourceMetadataException.missingResource(resourceName);
+        }
 
         if (resourcesURLs.isEmpty()) {
             return Collections.emptyEnumeration();
@@ -295,11 +404,11 @@ public final class Resources {
         return Collections.enumeration(resourcesURLs);
     }
 
-    private static void addURLEntries(List<URL> resourcesURLs, ResourceStorageEntry entry, String moduleName, String canonicalResourceName) {
+    private static void addURLEntries(List<URL> resourcesURLs, Object entry, String moduleName, String canonicalResourceName) {
         if (entry == null) {
             return;
         }
-        int numberOfResources = entry.getData().size();
+        int numberOfResources = ((ResourceStorageEntry) entry).getData().size();
         for (int index = 0; index < numberOfResources; index++) {
             resourcesURLs.add(createURL(moduleName, canonicalResourceName, index));
         }
@@ -321,9 +430,12 @@ final class ResourcesFeature implements InternalFeature {
          * of lazily initialized fields. Only the byte[] arrays themselves can be safely made
          * read-only.
          */
-        for (ResourceStorageEntry resourceList : Resources.singleton().resources().getValues()) {
-            for (byte[] resource : resourceList.getData()) {
-                access.registerAsImmutable(resource);
+        for (Object entry : Resources.singleton().resources().getValues()) {
+            if (entry != Resources.NEGATIVE_QUERY) {
+                ResourceStorageEntry resourceList = (ResourceStorageEntry) entry;
+                for (byte[] resource : resourceList.getData()) {
+                    access.registerAsImmutable(resource);
+                }
             }
         }
     }

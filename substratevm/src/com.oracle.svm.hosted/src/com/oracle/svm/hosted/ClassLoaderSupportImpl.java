@@ -132,6 +132,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             for (String resName : foundResources) {
                 Optional<InputStream> content = moduleReader.open(resName);
                 if (content.isEmpty()) {
+                    resourceCollector.registerNegativeQuery(moduleName, resName);
                     continue;
                 }
                 try (InputStream is = content.get()) {
@@ -187,6 +188,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             List<String> dirContent = matchedDirectoryResources.get(key);
             if (dirContent != null && !dirContent.contains(entry)) {
                 dirContent.add(entry.substring(last + 1));
+            } else if (dirContent == null) {
+                collector.registerNegativeQuery(null, key);
             }
         }
 

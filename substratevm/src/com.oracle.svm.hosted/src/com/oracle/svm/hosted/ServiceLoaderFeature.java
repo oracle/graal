@@ -258,6 +258,7 @@ public class ServiceLoaderFeature implements InternalFeature {
              * No service implementations registered in the resources. Since we check all classes
              * that the static analysis finds, this case is very likely.
              */
+            Resources.registerNegativeQuery(null, serviceResourceLocation);
             return false;
         }
 

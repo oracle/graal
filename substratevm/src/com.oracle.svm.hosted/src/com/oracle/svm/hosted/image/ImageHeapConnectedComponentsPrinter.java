@@ -148,12 +148,14 @@ public class ImageHeapConnectedComponentsPrinter {
     }
 
     private static void markResources(NativeImageHeap heap) {
-        EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = Resources.singleton().resources();
-        for (ResourceStorageEntry value : resources.getValues()) {
-            for (byte[] arr : value.getData()) {
-                ObjectInfo info = heap.getObjectInfo(arr);
-                if (info != null) {
-                    heap.objectReachabilityInfo.get(info).addReason(HeapInclusionReason.Resource);
+        EconomicMap<Pair<String, String>, Object> resources = Resources.singleton().resources();
+        for (Object value : resources.getValues()) {
+            if (value != Resources.NEGATIVE_QUERY) {
+                for (byte[] arr : ((ResourceStorageEntry) value).getData()) {
+                    ObjectInfo info = heap.getObjectInfo(arr);
+                    if (info != null) {
+                        heap.objectReachabilityInfo.get(info).addReason(HeapInclusionReason.Resource);
+                    }
                 }
             }
         }

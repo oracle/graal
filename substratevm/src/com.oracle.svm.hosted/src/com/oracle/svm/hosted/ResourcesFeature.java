@@ -298,6 +298,11 @@ public final class ResourcesFeature implements InternalFeature {
             registerDirectoryResource(debugContext, moduleName, dir, content, fromJar);
         }
 
+        @Override
+        public void registerNegativeQuery(String moduleName, String resourceName) {
+            Resources.registerNegativeQuery(moduleName, resourceName);
+        }
+
         private void collectModuleName(String moduleName) {
             if (moduleName != null) {
                 includedResourcesModules.add(moduleName);
@@ -316,7 +321,13 @@ public final class ResourcesFeature implements InternalFeature {
 
         DuringAnalysisAccessImpl duringAnalysisAccess = ((DuringAnalysisAccessImpl) access);
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
+        for (ResourcePattern resourcePattern : includePatterns) {
+            Resources.registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern);
+        }
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
+        for (ResourcePattern resourcePattern : excludePatterns) {
+            Resources.registerExcludePattern(resourcePattern.moduleName, resourcePattern.pattern);
+        }
         DebugContext debugContext = duringAnalysisAccess.getDebugContext();
         ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, includedResourcesModules, duringAnalysisAccess.bb.getHeartbeatCallback());
         try {

@@ -56,6 +56,8 @@ public abstract class ClassLoaderSupport {
         void addResource(String moduleName, String resourceName, InputStream resourceStream, boolean fromJar);
 
         void addDirectoryResource(String moduleName, String dir, String content, boolean fromJar);
+
+        void registerNegativeQuery(String moduleName, String resourceName);
     }
 
     public abstract void collectResources(ResourceCollector resourceCollector);
