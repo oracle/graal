@@ -28,7 +28,6 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.I
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.None;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
-import static org.graalvm.compiler.options.OptionType.Debug;
 import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
@@ -64,6 +63,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ModuleSupport;
@@ -627,6 +627,24 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Control debug information output: 0 - no debuginfo, 1 - AOT code debuginfo, 2 - AOT and runtime code debuginfo (runtime code support only with -H:+UseOldDebugInfo).", //
+                    deprecated = true, deprecationMessage = "Please use the -g option.")//
+    public static final HostedOptionKey<Integer> Debug = new HostedOptionKey<>(0) {
+        public void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
+            GenerateDebugInfo.update(values, newValue);
+        }
+    };
+
+    @Option(help = "Use old debuginfo", deprecated = true, deprecationMessage = "Please use the -g option.")//
+    public static final HostedOptionKey<Boolean> UseOldDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateUseOldDebugInfo);
+
+    private static void validateUseOldDebugInfo(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue() && SubstrateOptions.GenerateDebugInfo.getValue() < 1) {
+            throw UserError.abort("The option '%s' can only be used together with '%s'.",
+                            SubstrateOptionsParser.commandArgument(optionKey, "+"), SubstrateOptionsParser.commandArgument(SubstrateOptions.GenerateDebugInfo, "2"));
+        }
+    }
+
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
@@ -716,7 +734,7 @@ public class SubstrateOptions {
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
     public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new RuntimeOptionKey<>(-1, Immutable, RelevantForCompilationIsolates);
 
-    @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = Debug)//
+    @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
 
     @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal). Defaults to false for shared library and true for executables", stability = OptionStability.EXPERIMENTAL, type = Expert)//
@@ -830,13 +848,13 @@ public class SubstrateOptions {
     @Option(help = "Include a list of methods included in the image for runtime inspection.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> IncludeMethodData = new HostedOptionKey<>(true);
 
-    @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = Debug)//
+    @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyTypes = new HostedOptionKey<>(false);
 
     @Option(help = "Run reachability handlers concurrently during analysis.", type = Expert)//
     public static final HostedOptionKey<Boolean> RunReachabilityHandlersConcurrently = new HostedOptionKey<>(true);
 
-    @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = Debug)//
+    @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> UseDirectCallTrampolinesALot = new HostedOptionKey<>(false);
 
     @Option(help = "Initializes and runs main entry point in a new native thread.", type = Expert)//
@@ -855,7 +873,7 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = Debug)//
+    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
 }

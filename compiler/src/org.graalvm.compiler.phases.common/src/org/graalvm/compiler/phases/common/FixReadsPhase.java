@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,10 +36,13 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeStack;
 import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -91,6 +94,14 @@ import java.util.ListIterator;
 
 /**
  * This phase lowers {@link FloatingReadNode FloatingReadNodes} into corresponding fixed reads.
+ * After this operation, there are no longer any nodes in the graph that have to remain below a
+ * control flow split to be considered "safe". Therefore, this phase subsequently removes all
+ * {@link PiNode} instances from the graph. Then it runs a raw conditional elimination
+ * {@link RawConditionalEliminationVisitor} that aggressively uses stamps for values based on
+ * control flow. For every if node, the logic node is inspected and a stamp is derived for the true
+ * and false branch. Stamps for a value are combined based on all previous knowledge about that
+ * value. For merge points, a union of the stamps of a value is constructed. When a value is used,
+ * the corresponding best derived stamp is provided to the canonicalizer.
  */
 public class FixReadsPhase extends BasePhase<CoreProviders> {
 
@@ -107,8 +118,27 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
     private static class FixReadsClosure extends ScheduledNodeIterator {
 
+        /**
+         * Bitmap that is used to schedule nodes for inferring a new stamp when they are visited.
+         * After removing the pi nodes from the graph, the stamp information injected by the pi
+         * nodes is cleared this way.
+         */
+        private final NodeBitMap inferStampBitmap;
+
+        FixReadsClosure(StructuredGraph graph) {
+            inferStampBitmap = graph.createNodeBitMap();
+        }
+
         @Override
         protected void processNode(Node node, HIRBlock block, ScheduleResult schedule, ListIterator<Node> iter) {
+            if (inferStampBitmap.isMarked(node) && node instanceof ValueNode) {
+                ValueNode valueNode = (ValueNode) node;
+                if (valueNode.inferStamp()) {
+                    for (Node n : valueNode.usages()) {
+                        inferStampBitmap.mark(n);
+                    }
+                }
+            }
             if (node instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) node;
                 for (MemoryPhiNode memoryPhi : mergeNode.memoryPhis().snapshot()) {
@@ -129,7 +159,11 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             } else if (node instanceof PiNode) {
                 PiNode piNode = (PiNode) node;
                 if (piNode.stamp(NodeView.DEFAULT).isCompatible(piNode.getOriginalNode().stamp(NodeView.DEFAULT))) {
-                    // Pi nodes are no longer necessary at this point.
+                    // Pi nodes are no longer necessary at this point. Make sure to infer stamps
+                    // for all usages to clear out the stamp information added by the pi node.
+                    for (Node n : piNode.usages()) {
+                        inferStampBitmap.mark(n);
+                    }
                     piNode.replaceAndDelete(piNode.getOriginalNode());
                 }
             } else if (node instanceof MemoryAccess) {
@@ -152,6 +186,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         private final EconomicMap<MergeNode, EconomicMap<ValueNode, Stamp>> endMaps;
         private final DebugContext debug;
         private final RawCanonicalizerTool rawCanonicalizerTool;
+        private final EconomicMap<Node, HIRBlock> nodeToBlockMap;
 
         private class RawCanonicalizerTool extends CoreProvidersDelegate implements NodeView, CanonicalizerTool {
 
@@ -211,6 +246,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             stampMap = graph.createNodeMap();
             undoOperations = new NodeStack();
             replaceConstantInputs = replaceInputsWithConstants && GraalOptions.ReplaceInputsWithConstantsBasedOnStamps.getValue(graph.getOptions());
+            nodeToBlockMap = EconomicMap.create();
         }
 
         protected void replaceInput(Position p, Node oldInput, Node newConstantInput) {
@@ -251,11 +287,27 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             return replacements;
         }
 
-        protected void processNode(Node node) {
+        private static boolean nonNullAndDominates(HIRBlock a, HIRBlock b) {
+            if (a == null) {
+                return false;
+            } else {
+                return a.dominates(b);
+            }
+        }
+
+        protected void processNode(Node node, HIRBlock b, NodePredicate nodePredicate) {
             assert node.isAlive();
 
             if (replaceConstantInputs) {
                 replaceConstantInputs(node);
+            }
+
+            if (node.getNodeClass().valueNumberable()) {
+                Node dominatingDuplicate = graph.findDuplicate(node, nodePredicate);
+                if (dominatingDuplicate != null) {
+                    node.replaceAndDelete(dominatingDuplicate);
+                    return;
+                }
             }
 
             if (node instanceof MergeNode) {
@@ -269,13 +321,17 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             } else if (node instanceof IntegerSwitchNode) {
                 processIntegerSwitch((IntegerSwitchNode) node);
             } else if (node instanceof BinaryNode) {
-                processBinary((BinaryNode) node);
+                processBinary((BinaryNode) node, b, nodePredicate);
             } else if (node instanceof ConditionalNode) {
                 processConditional((ConditionalNode) node);
             } else if (node instanceof UnaryNode) {
-                processUnary((UnaryNode) node);
+                processUnary((UnaryNode) node, b, nodePredicate);
             } else if (node instanceof EndNode) {
                 processEnd((EndNode) node);
+            }
+
+            if (node.getNodeClass().valueNumberable() && node.isAlive()) {
+                nodeToBlockMap.put(node, b);
             }
         }
 
@@ -378,7 +434,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             return blockToNodeMap.get(node);
         }
 
-        protected void processUnary(UnaryNode node) {
+        protected void processUnary(UnaryNode node, HIRBlock block, NodePredicate gvnPredicate) {
             ValueNode value = node.getValue();
             Stamp bestStamp = getBestStamp(value);
             Stamp newStamp = node.foldStamp(bestStamp);
@@ -388,7 +444,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                     if (newNode != node) {
                         // Canonicalization successfully triggered.
                         if (newNode != null && !newNode.isAlive()) {
-                            newNode = graph.addWithoutUniqueWithInputs(newNode);
+                            newNode = addHelper(newNode, block, gvnPredicate);
                         }
                         node.replaceAndDelete(newNode);
                         GraphUtil.tryKillUnused(value);
@@ -397,6 +453,15 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                 }
                 registerNewValueStamp(node, newStamp);
             }
+        }
+
+        private ValueNode addHelper(ValueNode newNode, HIRBlock block, NodePredicate gvnPredicate) {
+            Graph.Mark m = graph.getMark();
+            ValueNode result = graph.addOrUniqueWithInputs(newNode, gvnPredicate);
+            for (Node n : graph.getNewNodes(m)) {
+                nodeToBlockMap.put(n, block);
+            }
+            return result;
         }
 
         protected boolean checkReplaceWithConstant(Stamp newStamp, ValueNode node) {
@@ -411,7 +476,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             return false;
         }
 
-        protected void processBinary(BinaryNode node) {
+        protected void processBinary(BinaryNode node, HIRBlock b, NodePredicate nodePredicate) {
 
             ValueNode x = node.getX();
             ValueNode y = node.getY();
@@ -428,7 +493,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                     if (newNode != node) {
                         // Canonicalization successfully triggered.
                         if (newNode != null && !newNode.isAlive()) {
-                            newNode = graph.addWithoutUniqueWithInputs(newNode);
+                            newNode = addHelper(newNode, b, nodePredicate);
                         }
                         node.replaceAndDelete(newNode);
                         GraphUtil.tryKillUnused(x);
@@ -568,9 +633,10 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         public Integer enter(HIRBlock b) {
             int mark = undoOperations.size();
             blockActionStart.put(b, mark);
+            NodePredicate nodePredicate = n -> nonNullAndDominates(nodeToBlockMap.get(n), b);
             for (Node n : schedule.getBlockToNodesMap().get(b)) {
                 if (n.isAlive()) {
-                    processNode(n);
+                    processNode(n, b, nodePredicate);
                 }
             }
             return mark;
@@ -608,7 +674,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         assert graph.verify();
         schedulePhase.apply(graph, context);
         ScheduleResult schedule = graph.getLastSchedule();
-        FixReadsClosure fixReadsClosure = new FixReadsClosure();
+        FixReadsClosure fixReadsClosure = new FixReadsClosure(graph);
         for (HIRBlock block : schedule.getCFG().getBlocks()) {
             fixReadsClosure.processNodes(block, schedule);
         }
@@ -652,7 +718,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             result.append(stamp);
             if (this.parent != null) {
                 result.append(" (");
-                result.append(this.parent.toString());
+                result.append(this.parent);
                 result.append(")");
             }
             return result.toString();
@@ -662,5 +728,4 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     public BasePhase<? super CoreProviders> getSchedulePhase() {
         return schedulePhase;
     }
-
 }
