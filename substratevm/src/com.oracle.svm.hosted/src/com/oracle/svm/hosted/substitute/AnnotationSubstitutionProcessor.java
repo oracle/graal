@@ -121,6 +121,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     public void registerFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
         ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
+        if (!SubstrateOptions.parseOnce() && classInitializationSupport.shouldInitializeAtRuntime(reflectionField.getDeclaringClass())) {
+            String reason = "It was detected that ParseOnce is disabled. " +
+                            "Registering a field value transformer for a field whose declaring class is marked for run time initialization is not supported in this configuration. " +
+                            "(This can happen for example when trying to include a Truffle Language implementation in a Spring Boot application. " +
+                            "Since the Truffle framework doesn't currently support ParseOnce it automatically disables this feature. " +
+                            "For more information see https://github.com/oracle/graal/issues/4473.)";
+            throw UserError.abort("Cannot register a field value transformer for field %s: %s", field, reason);
+        }
         boolean isFinal = field.isFinal();
         ComputedValueField computedValueField = new ComputedValueField(field, field, Kind.Custom, reflectionField.getType(), transformer, null, null, isFinal, false);
         ResolvedJavaField existingSubstitution = fieldSubstitutions.put(field, computedValueField);
