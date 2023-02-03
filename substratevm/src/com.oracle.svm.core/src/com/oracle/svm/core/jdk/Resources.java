@@ -183,6 +183,21 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerIOException(String resourceName, IOException e) {
+        registerIOException(null, resourceName, e);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerIOException(String moduleName, String resourceName, IOException e) {
+        Pair<String, String> key = Pair.create(moduleName, resourceName);
+        var resources = singleton().resources;
+        synchronized (resources) {
+            updateTimeStamp();
+            resources.put(key, e);
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerNegativeQuery(String resourceName) {
         registerNegativeQuery(null, resourceName);
     }
@@ -272,6 +287,9 @@ public final class Resources {
             } else {
                 return null;
             }
+        }
+        if (entry instanceof IOException) {
+            throw new RuntimeException((IOException) entry);
         }
         if (entry == NEGATIVE_QUERY) {
             return null;

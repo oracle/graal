@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.FileSystem;
@@ -301,6 +302,11 @@ public final class ResourcesFeature implements InternalFeature {
         @Override
         public void registerNegativeQuery(String moduleName, String resourceName) {
             Resources.registerNegativeQuery(moduleName, resourceName);
+        }
+
+        @Override
+        public void registerIOException(String moduleName, String resourceName, IOException e) {
+            Resources.registerIOException(moduleName, resourceName, e);
         }
 
         private void collectModuleName(String moduleName) {

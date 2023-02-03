@@ -137,6 +137,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 }
                 try (InputStream is = content.get()) {
                     resourceCollector.addResource(moduleName, resName, is, false);
+                } catch (IOException resourceException) {
+                    resourceCollector.registerIOException(moduleName, resName, resourceException);
                 }
             }
         } catch (IOException e) {
@@ -144,7 +146,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector) throws IOException {
+    private static void scanDirectory(Path root, ResourceCollector collector) {
         Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
         Set<String> allEntries = new HashSet<>();
 
@@ -172,11 +174,15 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                         filtered = filtered.filter(Predicate.not(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES::contains));
                     }
                     filtered.forEach(queue::push);
+                } catch (IOException resourceException) {
+                    collector.registerIOException(null, relativeFilePath, resourceException);
                 }
             } else {
                 if (collector.isIncluded(null, relativeFilePath, Path.of(relativeFilePath).toUri())) {
                     try (InputStream is = Files.newInputStream(entry)) {
                         collector.addResource(null, relativeFilePath, is, false);
+                    } catch (IOException resourceException) {
+                        collector.registerIOException(null, relativeFilePath, resourceException);
                     }
                 }
             }
@@ -214,6 +220,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     if (collector.isIncluded(null, entry.getName(), jarPath.toUri())) {
                         try (InputStream is = jf.getInputStream(entry)) {
                             collector.addResource(null, entry.getName(), is, true);
+                        } catch (IOException resourceException) {
+                            collector.registerIOException(null, entry.getName(), resourceException);
                         }
                     }
                 }

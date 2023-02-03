@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
@@ -58,6 +59,8 @@ public abstract class ClassLoaderSupport {
         void addDirectoryResource(String moduleName, String dir, String content, boolean fromJar);
 
         void registerNegativeQuery(String moduleName, String resourceName);
+
+        void registerIOException(String moduleName, String resourceName, IOException e);
     }
 
     public abstract void collectResources(ResourceCollector resourceCollector);
