@@ -41,6 +41,7 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -354,7 +355,7 @@ public final class Space {
 
         Object copy = copyAlignedObject(original);
         if (copy != null) {
-            ObjectHeaderImpl.installForwardingPointer(original, copy);
+            ObjectHeaderImpl.getObjectHeaderImpl().installForwardingPointer(original, copy);
         }
         return copy;
     }
@@ -365,10 +366,14 @@ public final class Space {
         assert ObjectHeaderImpl.isAlignedObject(originalObj);
 
         UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInline(originalObj, false);
-        boolean addIdentityHashField = ObjectHeaderImpl.hasIdentityHashFromAddressDuringGC(originalObj);
         UnsignedWord copySize = originalSize;
-        if (probability(SLOW_PATH_PROBABILITY, addIdentityHashField)) {
-            copySize = LayoutEncoding.getSizeFromObjectInline(originalObj, true);
+        boolean addIdentityHashField = false;
+        if (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField()) {
+            Word header = ObjectHeaderImpl.readHeaderFromObject(originalObj);
+            if (probability(SLOW_PATH_PROBABILITY, ObjectHeaderImpl.hasIdentityHashFromAddressInline(header))) {
+                addIdentityHashField = true;
+                copySize = LayoutEncoding.getSizeFromObjectInline(originalObj, true);
+            }
         }
 
         Pointer copyMemory = allocateMemory(copySize);
@@ -390,7 +395,7 @@ public final class Space {
             int value = IdentityHashCodeSupport.computeHashCodeFromAddress(originalObj);
             int offset = LayoutEncoding.getOptionalIdentityHashOffset(copy);
             ObjectAccess.writeInt(copy, offset, value, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
-            ObjectHeaderImpl.setIdentityHashInField(copy);
+            ObjectHeaderImpl.getObjectHeaderImpl().setIdentityHashInField(copy);
         }
         if (isOldSpace()) {
             // If the object was promoted to the old gen, we need to take care of the remembered

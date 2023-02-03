@@ -37,8 +37,10 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
 import org.graalvm.compiler.word.ObjectAccess;
+import org.graalvm.compiler.word.Word;
 
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -57,18 +59,26 @@ final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
     @Override
     protected int computeIdentityHashCode(Object obj) {
         int identityHashCode;
-        ObjectHeader oh = Heap.getHeap().getObjectHeader();
-        if (probability(LIKELY_PROBABILITY, oh.hasIdentityHashField(obj))) {
-            int offset = LayoutEncoding.getOptionalIdentityHashOffset(obj);
+        ObjectLayout ol = ConfigurationValues.getObjectLayout();
+        if (ol.hasFixedIdentityHashField()) {
+            int offset = ol.getFixedIdentityHashOffset();
             identityHashCode = ObjectAccess.readInt(obj, offset, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
-            if (ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && probability(SLOW_PATH_PROBABILITY, identityHashCode == 0)) {
+            if (probability(SLOW_PATH_PROBABILITY, identityHashCode == 0)) {
                 identityHashCode = generateIdentityHashCode(GENERATE_IDENTITY_HASH_CODE, obj);
             }
+            return identityHashCode;
+        }
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word objPtr = Word.objectToUntrackedPointer(obj);
+        Word header = oh.readHeaderFromPointer(objPtr);
+        if (probability(LIKELY_PROBABILITY, oh.hasOptionalIdentityHashField(header))) {
+            int offset = LayoutEncoding.getOptionalIdentityHashOffset(obj);
+            identityHashCode = ObjectAccess.readInt(obj, offset, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
         } else {
             identityHashCode = IdentityHashCodeSupport.computeHashCodeFromAddress(obj);
-            if (probability(NOT_FREQUENT_PROBABILITY, !oh.hasIdentityHashFromAddress(obj))) {
+            if (probability(NOT_FREQUENT_PROBABILITY, !oh.hasIdentityHashFromAddress(header))) {
                 // Note this write leads to frame state issues that break scheduling if done earlier
-                oh.setIdentityHashFromAddress(obj);
+                oh.setIdentityHashFromAddress(objPtr, header);
             }
         }
         return identityHashCode;

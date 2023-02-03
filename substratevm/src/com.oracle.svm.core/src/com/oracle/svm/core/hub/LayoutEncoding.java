@@ -38,6 +38,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
@@ -328,7 +329,8 @@ public class LayoutEncoding {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectInline(Object obj, boolean addOptionalIdHashField) {
-        boolean withOptionalIdHashField = addOptionalIdHashField || Heap.getHeap().getObjectHeader().hasIdentityHashField(obj);
+        boolean withOptionalIdHashField = addOptionalIdHashField ||
+                        (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && hasOptionalIdentityHashField(obj));
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         int encoding = hub.getLayoutEncoding();
         if (isArrayLike(encoding)) {
@@ -336,6 +338,13 @@ public class LayoutEncoding {
         } else {
             return getPureInstanceSize(hub, withOptionalIdHashField);
         }
+    }
+
+    @Uninterruptible(reason = "Prevent a GC moving the object or interfering with its identity hash state.")
+    private static boolean hasOptionalIdentityHashField(Object obj) {
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word header = oh.readHeaderFromPointer(Word.objectToUntrackedPointer(obj));
+        return oh.hasOptionalIdentityHashField(header);
     }
 
     /** Returns the end of the Object when the call started, e.g., for logging. */
