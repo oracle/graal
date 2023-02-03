@@ -312,25 +312,36 @@ public class LayoutEncoding {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObject(Object obj) {
-        return getSizeFromObjectInline(obj);
-    }
-
-    @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getSizeFromObjectInline(Object obj) {
-        return getSizeFromObjectInline(obj, false);
+        return getSizeFromObject(obj, false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObject(Object obj, boolean addOptionalIdHashField) {
-        return getSizeFromObjectInline(obj, addOptionalIdHashField);
+        boolean withOptionalIdHashField = addOptionalIdHashField ||
+                        (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && checkOptionalIdentityHashFieldUninterruptibly(obj));
+        return getSizeFromObjectInline(obj, withOptionalIdHashField);
+    }
+
+    @Uninterruptible(reason = "Prevent a GC moving the object or interfering with its identity hash state.")
+    private static boolean checkOptionalIdentityHashFieldUninterruptibly(Object obj) {
+        return checkOptionalIdentityHashField(obj);
+    }
+
+    @AlwaysInline("GC performance")
+    public static UnsignedWord getSizeFromObjectInlineInGC(Object obj) {
+        return getSizeFromObjectInlineInGC(obj, false);
+    }
+
+    @AlwaysInline("GC performance")
+    public static UnsignedWord getSizeFromObjectInlineInGC(Object obj, boolean addOptionalIdHashField) {
+        boolean withOptionalIdHashField = addOptionalIdHashField ||
+                        (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && checkOptionalIdentityHashField(obj));
+        return getSizeFromObjectInline(obj, withOptionalIdHashField);
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getSizeFromObjectInline(Object obj, boolean addOptionalIdHashField) {
-        boolean withOptionalIdHashField = addOptionalIdHashField ||
-                        (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && hasOptionalIdentityHashField(obj));
+    private static UnsignedWord getSizeFromObjectInline(Object obj, boolean withOptionalIdHashField) {
         DynamicHub hub = KnownIntrinsics.readHub(obj);
         int encoding = hub.getLayoutEncoding();
         if (isArrayLike(encoding)) {
@@ -340,8 +351,9 @@ public class LayoutEncoding {
         }
     }
 
-    @Uninterruptible(reason = "Prevent a GC moving the object or interfering with its identity hash state.")
-    private static boolean hasOptionalIdentityHashField(Object obj) {
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean checkOptionalIdentityHashField(Object obj) {
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
         Word header = oh.readHeaderFromPointer(Word.objectToUntrackedPointer(obj));
         return oh.hasOptionalIdentityHashField(header);
@@ -349,14 +361,14 @@ public class LayoutEncoding {
 
     /** Returns the end of the Object when the call started, e.g., for logging. */
     public static Pointer getObjectEnd(Object obj) {
-        return getObjectEndInline(obj);
+        UnsignedWord size = getSizeFromObject(obj);
+        return Word.objectToUntrackedPointer(obj).add(size);
     }
 
     @AlwaysInline("GC performance")
-    public static Pointer getObjectEndInline(Object obj) {
-        final Pointer objStart = Word.objectToUntrackedPointer(obj);
-        final UnsignedWord objSize = getSizeFromObjectInline(obj);
-        return objStart.add(objSize);
+    public static Pointer getObjectEndInlineInGC(Object obj) {
+        UnsignedWord size = getSizeFromObjectInlineInGC(obj);
+        return Word.objectToUntrackedPointer(obj).add(size);
     }
 
     public static boolean isArray(Object obj) {

@@ -365,14 +365,14 @@ public final class Space {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(originalObj);
 
-        UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInline(originalObj, false);
+        UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, false);
         UnsignedWord copySize = originalSize;
         boolean addIdentityHashField = false;
         if (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField()) {
             Word header = ObjectHeaderImpl.readHeaderFromObject(originalObj);
             if (probability(SLOW_PATH_PROBABILITY, ObjectHeaderImpl.hasIdentityHashFromAddressInline(header))) {
                 addIdentityHashField = true;
-                copySize = LayoutEncoding.getSizeFromObjectInline(originalObj, true);
+                copySize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, true);
             }
         }
 
