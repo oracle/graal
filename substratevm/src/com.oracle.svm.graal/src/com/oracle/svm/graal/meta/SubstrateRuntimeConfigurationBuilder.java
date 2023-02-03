@@ -36,7 +36,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -76,7 +75,7 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
 
     @Override
     protected ConstantFieldProvider createConstantFieldProvider(Providers p) {
-        return new AnalysisConstantFieldProvider(aUniverse, (AnalysisMetaAccess) p.getMetaAccess(), (AnalysisConstantReflectionProvider) p.getConstantReflection(), classInitializationSupport);
+        return new AnalysisConstantFieldProvider(p.getMetaAccess(), hostVM);
     }
 
     @Override
