@@ -1160,7 +1160,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public String toString() {
-        return "AnalysisType<" + qualifiedName + ", allocated: " + isAllocated + ", inHeap: " + isInHeap + ", reachable: " + isReachable + ">";
+        return "AnalysisType<" + unqualifiedName + " -> " + wrapped.toString() + ", allocated: " + (isAllocated != null) +
+                        ", inHeap: " + (isInHeap != null) + ", reachable: " + (isReachable != null) + ">";
     }
 
     @Override
