@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,11 @@
  */
 #include <stdlib.h>
 
-unsigned f1(x) {
+unsigned f1(int x) {
     return ((unsigned) (x != 0) - 3) / 2;
 }
 
-unsigned long long f2(x) {
+unsigned long long f2(int x) {
     return ((unsigned long long) (x != 0) - 3) / 2;
 }
 int main() {
