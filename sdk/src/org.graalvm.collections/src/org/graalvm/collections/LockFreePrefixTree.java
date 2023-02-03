@@ -41,13 +41,16 @@
 
 package org.graalvm.collections;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+
+import static java.lang.Integer.numberOfTrailingZeros;
 
 /**
  * Thread-safe and lock-free prefix-tree implementation in which keys are sequences of 64-bit
@@ -125,12 +128,26 @@ public class LockFreePrefixTree {
         @SuppressWarnings("rawtypes") private static final AtomicReferenceFieldUpdater<Node, AtomicReferenceArray> CHILDREN_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Node.class,
                         AtomicReferenceArray.class, "children");
 
-        private final long key;
-
+        /**
+         * The 64-bit of the node. This field should not be changed after the node is inserted into
+         * the data structure. It is not final to allow pooling nodes, and specifying the key after
+         * they are allocated on the heap. It is not volatile, because it must be set before the
+         * insertion into the concurrent data structure -- the concurrent data structure thus
+         * establishes a happens-before relationship between the write to this field and the other
+         * threads that read this field.
+         */
+        private long key;
         private volatile AtomicReferenceArray<Node> children;
 
         private Node(long key) {
             this.key = key;
+        }
+
+        /**
+         * This constructor variant is only meant when nodes are preallocated and pooled.
+         */
+        private Node() {
+            this.key = 0;
         }
 
         /**
@@ -175,28 +192,32 @@ public class LockFreePrefixTree {
          */
         @SuppressWarnings("unchecked")
         public Node at(Allocator allocator, long childKey) {
-            ensureChildren(allocator);
-            while (true) {
-                AtomicReferenceArray<Node> children0 = readChildren();
-                if (children0 instanceof LinearChildren) {
-                    // Find first empty slot.
-                    Node newChild = getOrAddLinear(allocator, childKey, children0);
-                    if (newChild != null) {
-                        return newChild;
+            try {
+                ensureChildren(allocator);
+                while (true) {
+                    AtomicReferenceArray<Node> children0 = readChildren();
+                    if (children0 instanceof LinearChildren) {
+                        // Find first empty slot.
+                        Node newChild = getOrAddLinear(allocator, childKey, children0);
+                        if (newChild != null) {
+                            return newChild;
+                        } else {
+                            // Children array is full, we need to resize.
+                            tryResizeLinear(allocator, children0);
+                        }
                     } else {
-                        // Children array is full, we need to resize.
-                        tryResizeLinear(allocator, children0);
-                    }
-                } else {
-                    // children0 instanceof HashChildren.
-                    Node newChild = getOrAddHash(allocator, childKey, children0);
-                    if (newChild != null) {
-                        return newChild;
-                    } else {
-                        // Case for growth: the MAX_HASH_SKIPS have been exceeded.
-                        tryResizeHash(allocator, children0);
+                        // children0 instanceof HashChildren.
+                        Node newChild = getOrAddHash(allocator, childKey, children0);
+                        if (newChild != null) {
+                            return newChild;
+                        } else {
+                            // Case for growth: the MAX_HASH_SKIPS have been exceeded.
+                            tryResizeHash(allocator, children0);
+                        }
                     }
                 }
+            } catch (FailedAllocationException e) {
+                return null;
             }
         }
 
@@ -411,9 +432,21 @@ public class LockFreePrefixTree {
     }
 
     /**
+     * Exception that denotes that an allocation failed.
+     */
+    public static class FailedAllocationException extends RuntimeException {
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            return this;
+        }
+    }
+
+    /**
      * Policy for allocating objects of the lock-free prefix tree.
      */
     public static abstract class Allocator {
+        private static final FailedAllocationException FAILED_ALLOCATION_EXCEPTION = new FailedAllocationException();
+
         /**
          * Allocates a new Node object.
          */
@@ -428,6 +461,8 @@ public class LockFreePrefixTree {
          * Allocates a new reference array of child nodes stored as a hash table.
          */
         public abstract Node.HashChildren newHashChildren(int length);
+
+        public abstract void shutdown();
     }
 
     /**
@@ -447,6 +482,10 @@ public class LockFreePrefixTree {
         @Override
         public Node.HashChildren newHashChildren(int length) {
             return new Node.HashChildren(length);
+        }
+
+        @Override
+        public void shutdown() {
         }
     }
 
@@ -468,67 +507,169 @@ public class LockFreePrefixTree {
      * {@link LockFreePrefixTree} only ever allocates arrays that are a power of 2).
      */
     public static class ObjectPoolingAllocator extends Allocator {
-        private static final int DEFAULT_HOUSEKEEPING_PERIOD = 72;
+        private static final int DEFAULT_HOUSEKEEPING_PERIOD_MILLIS = 72;
         private static final int CHILDREN_POOL_COUNT = 32;
+        private static final int INITIAL_NODE_PREALLOCATION_COUNT = 8192;
+        private static final int INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT = 1024;
+        private static final int INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT = 64;
+        private static final int EXPECTED_MAX_HASH_NODE_SIZE = 256;
+        private static final int PREALLOCATION_MULTIPLIER = 2;
 
         private final LockFreePool<Node> nodePool;
         private final LockFreePool<Node.LinearChildren>[] linearChildrenPool;
         private final LockFreePool<Node.HashChildren>[] hashChildrenPool;
+        private final AtomicInteger missedNodePoolRequestCount;
         private final AtomicIntegerArray missedLinearChildrenRequestCounts;
         private final AtomicIntegerArray missedHashChildrenRequestCounts;
         private final HousekeepingThread housekeepingThread;
 
         public ObjectPoolingAllocator() {
-            this(DEFAULT_HOUSEKEEPING_PERIOD);
+            this(DEFAULT_HOUSEKEEPING_PERIOD_MILLIS);
         }
 
         public ObjectPoolingAllocator(int housekeepingPeriodMillis) {
-            this.nodePool = new LockFreePool<>();
+            this.nodePool = createNodePool();
             this.linearChildrenPool = createLinearChildrenPool();
             this.hashChildrenPool = createHashChildrenPool();
+            this.missedNodePoolRequestCount = new AtomicInteger(0);
             this.missedLinearChildrenRequestCounts = new AtomicIntegerArray(32);
             this.missedHashChildrenRequestCounts = new AtomicIntegerArray(32);
             this.housekeepingThread = new HousekeepingThread(housekeepingPeriodMillis);
         }
 
+        private static LockFreePool<Node> createNodePool() {
+            LockFreePool<Node> pool = new LockFreePool<>();
+            for (int i = 0; i < INITIAL_NODE_PREALLOCATION_COUNT; i++) {
+                pool.add(new Node());
+            }
+            return pool;
+        }
+
         @SuppressWarnings("unchecked")
         private static LockFreePool<Node.LinearChildren>[] createLinearChildrenPool() {
             LockFreePool<Node.LinearChildren>[] pools = new LockFreePool<>[CHILDREN_POOL_COUNT];
+            for (int sizeClass = 0; sizeClass < pools.length; sizeClass++) {
+                pools[sizeClass] = new LockFreePool<>();
+                if (sizeClass >= numberOfTrailingZeros(Node.INITIAL_LINEAR_NODE_SIZE) && sizeClass <= numberOfTrailingZeros(Node.MAX_LINEAR_NODE_SIZE)) {
+                    // Preallocate size classes that we know will be needed.
+                    for (int i = 0; i < INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT; i++) {
+                        pools[sizeClass].add(new Node.LinearChildren(1 << sizeClass));
+                    }
+                }
+            }
             return pools;
         }
 
         @SuppressWarnings("unchecked")
         private static LockFreePool<Node.HashChildren>[] createHashChildrenPool() {
             LockFreePool<Node.HashChildren>[] pools = new LockFreePool<>[CHILDREN_POOL_COUNT];
+            for (int sizeClass = 0; sizeClass < pools.length; sizeClass++) {
+                pools[sizeClass] = new LockFreePool<>();
+                if (sizeClass >= numberOfTrailingZeros(Node.INITIAL_HASH_NODE_SIZE) && sizeClass <= numberOfTrailingZeros(EXPECTED_MAX_HASH_NODE_SIZE)) {
+                    // Preallocate size classes that are most likely to be allocated.
+                    for (int i = 0; i < INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT; i++) {
+                        pools[sizeClass].add(new Node.HashChildren(1 << sizeClass));
+                    }
+                }
+            }
             return pools;
         }
 
         @Override
         public Node newNode(long key) {
-            return null;
+            Node obj = nodePool.get();
+            if (obj != null) {
+                obj.key = key;
+                return obj;
+            } else {
+                missedNodePoolRequestCount.incrementAndGet();
+                throw Allocator.FAILED_ALLOCATION_EXCEPTION;
+            }
         }
 
         @Override
         public Node.LinearChildren newLinearChildren(int length) {
-            return null;
+            checkPowerOfTwo(length);
+            int sizeClass = Integer.numberOfTrailingZeros(length);
+            Node.LinearChildren obj = linearChildrenPool[sizeClass].get();
+            if (obj != null) {
+                return obj;
+            } else {
+                missedLinearChildrenRequestCounts.incrementAndGet(sizeClass);
+                throw Allocator.FAILED_ALLOCATION_EXCEPTION;
+            }
         }
 
         @Override
         public Node.HashChildren newHashChildren(int length) {
-            return null;
+            checkPowerOfTwo(length);
+            int sizeClass = Integer.numberOfTrailingZeros(length);
+            Node.HashChildren obj = hashChildrenPool[sizeClass].get();
+            if (obj != null) {
+                return obj;
+            } else {
+                missedHashChildrenRequestCounts.incrementAndGet(sizeClass);
+                throw Allocator.FAILED_ALLOCATION_EXCEPTION;
+            }
+        }
+
+        @Override
+        public void shutdown() {
+            housekeepingThread.isEnabled.set(false);
+            try {
+                housekeepingThread.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException("Interrupted while waiting for housekeeping thread shutdown.", e);
+            }
+        }
+
+        private static void checkPowerOfTwo(int length) {
+            if (Integer.bitCount(length) != 1) {
+                throw new UnsupportedOperationException("Cannot allocate length that is not a power of 2: " + length);
+            }
         }
 
         private class HousekeepingThread extends Thread {
             private final int housekeepingPeriodMillis;
+            private final AtomicBoolean isEnabled;
 
             HousekeepingThread(int housekeepingPeriodMillis) {
                 setDaemon(true);
                 this.housekeepingPeriodMillis = housekeepingPeriodMillis;
+                this.isEnabled = new AtomicBoolean(true);
+            }
+
+            private void housekeep() {
+                int count = missedNodePoolRequestCount.get();
+                if (count > 0) {
+                    for (int i = 0; i < count * PREALLOCATION_MULTIPLIER; i++) {
+                        nodePool.add(new Node());
+                    }
+                    missedNodePoolRequestCount.set(0);
+                }
+                for (int sizeClass = 0; sizeClass < linearChildrenPool.length; sizeClass++) {
+                    count = missedLinearChildrenRequestCounts.get(sizeClass);
+                    if (count > 0) {
+                        for (int i = 0; i < count * PREALLOCATION_MULTIPLIER; i++) {
+                            linearChildrenPool[sizeClass].add(new Node.LinearChildren(1 << sizeClass));
+                        }
+                        missedLinearChildrenRequestCounts.set(sizeClass, 0);
+                    }
+                }
+                for (int sizeClass = 0; sizeClass < hashChildrenPool.length; sizeClass++) {
+                    count = missedHashChildrenRequestCounts.get(sizeClass);
+                    if (count > 0) {
+                        for (int i = 0; i < count * PREALLOCATION_MULTIPLIER; i++) {
+                            hashChildrenPool[sizeClass].add(new Node.HashChildren(1 << sizeClass));
+                        }
+                        missedHashChildrenRequestCounts.set(sizeClass, 0);
+                    }
+                }
             }
 
             @Override
             public void run() {
-                while (true) {
+                while (isEnabled.get()) {
                     try {
                         synchronized (this) {
                             this.wait(housekeepingPeriodMillis);
@@ -538,9 +679,6 @@ public class LockFreePrefixTree {
                         throw new RuntimeException("Allocator's housekeeping thread was interrupted.", e);
                     }
                 }
-            }
-
-            private void housekeep() {
             }
         }
     }
