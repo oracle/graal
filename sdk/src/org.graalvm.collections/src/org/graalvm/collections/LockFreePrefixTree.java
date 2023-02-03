@@ -509,8 +509,8 @@ public class LockFreePrefixTree {
     public static class ObjectPoolingAllocator extends Allocator {
         private static final int DEFAULT_HOUSEKEEPING_PERIOD_MILLIS = 72;
         private static final int CHILDREN_POOL_COUNT = 32;
-        private static final int INITIAL_NODE_PREALLOCATION_COUNT = 8192;
-        private static final int INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT = 1024;
+        private static final int INITIAL_NODE_PREALLOCATION_COUNT = 2048;
+        private static final int INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT = 512;
         private static final int INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT = 64;
         private static final int EXPECTED_MAX_HASH_NODE_SIZE = 256;
         private static final int PREALLOCATION_MULTIPLIER = 2;
@@ -642,7 +642,7 @@ public class LockFreePrefixTree {
             private void housekeep() {
                 int count = missedNodePoolRequestCount.get();
                 if (count > 0) {
-                    for (int i = 0; i < count * PREALLOCATION_MULTIPLIER; i++) {
+                    for (int i = 0; i < Math.max(INITIAL_NODE_PREALLOCATION_COUNT, count * PREALLOCATION_MULTIPLIER); i++) {
                         nodePool.add(new Node());
                     }
                     missedNodePoolRequestCount.set(0);
@@ -650,7 +650,7 @@ public class LockFreePrefixTree {
                 for (int sizeClass = 0; sizeClass < linearChildrenPool.length; sizeClass++) {
                     count = missedLinearChildrenRequestCounts.get(sizeClass);
                     if (count > 0) {
-                        for (int i = 0; i < count * PREALLOCATION_MULTIPLIER; i++) {
+                        for (int i = 0; i < Math.max(INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT, count * PREALLOCATION_MULTIPLIER); i++) {
                             linearChildrenPool[sizeClass].add(new Node.LinearChildren(1 << sizeClass));
                         }
                         missedLinearChildrenRequestCounts.set(sizeClass, 0);
@@ -659,7 +659,7 @@ public class LockFreePrefixTree {
                 for (int sizeClass = 0; sizeClass < hashChildrenPool.length; sizeClass++) {
                     count = missedHashChildrenRequestCounts.get(sizeClass);
                     if (count > 0) {
-                        for (int i = 0; i < count * PREALLOCATION_MULTIPLIER; i++) {
+                        for (int i = 0; i < Math.max(INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT, count); i++) {
                             hashChildrenPool[sizeClass].add(new Node.HashChildren(1 << sizeClass));
                         }
                         missedHashChildrenRequestCounts.set(sizeClass, 0);
