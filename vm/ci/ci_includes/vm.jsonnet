@@ -1,4 +1,5 @@
 local composable = (import '../../../ci/ci_common/common-utils.libsonnet').composable;
+local top_level_ci = (import '../../../ci/ci_common/common-utils.libsonnet').top_level_ci;
 local vm_common = import '../ci_common/common.jsonnet';
 local vm_common_bench = import '../ci_common/common-bench.jsonnet';
 local vm = import 'vm.jsonnet';
@@ -114,11 +115,17 @@ local jdks = common_json.jdks;
 
   local installer_guard = {
     guard+: {
-      includes+: ["<graal>/vm/src/org.graalvm.component.installer**/**"]
+      includes+: ["<graal>/vm/src/org.graalvm.component.installer**/**"] + top_level_ci
     }
   },
 
-  local truffle_guard = {
+  local sdk_guard = {
+    guard+: {
+      includes+: ["<graal>/sdk/**"]
+    }
+  },
+
+  local truffle_guard = sdk_guard + {
     guard+: {
       includes+: ["<graal>/truffle/**"]
     }
