@@ -42,7 +42,7 @@ public interface EspressoLock {
     /**
      * Creates a new {@code EspressoLock} instance.
      */
-    @TruffleBoundary // ReentrantLock.<init> blacklisted by SVM
+    @TruffleBoundary // ReentrantLock.<init> blocklisted by SVM
     static EspressoLock create(BlockingSupport<?> blockingSupport) {
         return new EspressoLockImpl(blockingSupport);
     }
@@ -296,7 +296,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     }
 
     @Override
-    @TruffleBoundary // ReetrantLock.unlock() blacklisted by SVM
+    @TruffleBoundary // ReetrantLock.unlock() blocklisted by SVM
     public void unlock() {
         super.unlock();
     }
