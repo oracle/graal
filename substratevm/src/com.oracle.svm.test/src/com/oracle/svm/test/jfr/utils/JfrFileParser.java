@@ -51,6 +51,7 @@ import com.oracle.svm.test.jfr.utils.poolparsers.ThreadConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ThreadGroupConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ThreadStateConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.VMOperationConstantPoolParser;
+import com.oracle.svm.test.jfr.utils.poolparsers.InflateCauseConstantPoolParser;
 import jdk.jfr.Recording;
 import org.junit.Assert;
 
@@ -78,6 +79,7 @@ public class JfrFileParser {
         supportedConstantPools.put(JfrType.GCName.getId(), new GCNameConstantPoolParser());
         supportedConstantPools.put(JfrType.GCCause.getId(), new GCCauseConstantPoolParser());
         supportedConstantPools.put(JfrType.VMOperation.getId(), new VMOperationConstantPoolParser());
+        supportedConstantPools.put(JfrType.InflationCause.getId(), new InflateCauseConstantPoolParser());
     }
 
     public static HashMap<Long, ConstantPoolParser> getSupportedConstantPools() {

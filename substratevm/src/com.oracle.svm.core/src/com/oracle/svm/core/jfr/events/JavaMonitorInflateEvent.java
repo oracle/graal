@@ -48,7 +48,7 @@ public class JavaMonitorInflateEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit0(Object obj, long startTicks, JfrInflationCause cause) {
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.JavaMonitorInflate)) {
+        if (JfrEvent.JavaMonitorInflate.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
