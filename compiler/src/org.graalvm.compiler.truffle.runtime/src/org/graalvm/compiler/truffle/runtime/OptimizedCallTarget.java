@@ -1262,32 +1262,50 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         profileArguments(args);
     }
 
-    // This should be private but can't be. GR-19397
     @ExplodeLoop
     public final void profileArguments(Object[] args) {
         assert !callProfiled;
         ArgumentsProfile argumentsProfile = this.argumentsProfile;
         if (argumentsProfile == null) {
-            if (CompilerDirectives.inInterpreter()) {
-                initializeProfiledArgumentTypes(args);
+            if (CompilerDirectives.inCompiledCode()) {
+                // do not deoptimize missing argument profile
+                return;
             }
         } else {
             Class<?>[] types = argumentsProfile.types;
-            if (types != null) {
-                if (types.length != args.length) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    transitionToInvalidArgumentsProfile();
-                } else if (argumentsProfile.assumption.isValid()) {
-                    for (int i = 0; i < types.length; i++) {
-                        Class<?> type = types[i];
-                        Object value = args[i];
-                        if (type != null && (value == null || value.getClass() != type)) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            updateProfiledArgumentTypes(args, argumentsProfile);
-                            break;
-                        }
+            if (types == null) {
+                // fast-path: profile invalid
+                return;
+            }
+            if (types.length == args.length) {
+                boolean valid = true;
+                for (int i = 0; i < types.length; i++) {
+                    Class<?> type = types[i];
+                    Object value = args[i];
+                    if (type != null && (value == null || value.getClass() != type)) {
+                        valid = false;
+                        break;
                     }
                 }
+                if (valid) {
+                    // fast-path: profile valid
+                    return;
+                }
+            }
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        profileArgumentsSlow(argumentsProfile, args);
+    }
+
+    // This should be private but can't be. GR-19397
+    public final void profileArgumentsSlow(ArgumentsProfile profile, Object[] args) {
+        if (profile == null) {
+            initializeProfiledArgumentTypes(args);
+        } else {
+            if (profile.types.length != args.length) {
+                transitionToInvalidArgumentsProfile();
+            } else {
+                updateProfiledArgumentTypes(args, profile);
             }
         }
     }
