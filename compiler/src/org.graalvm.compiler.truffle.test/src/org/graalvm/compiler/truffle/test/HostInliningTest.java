@@ -72,7 +72,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -143,6 +145,7 @@ public class HostInliningTest extends GraalCompilerTest {
         runTest("testIndirectThrow");
         runTest("testThrow");
         runTest("testRangeCheck");
+        runTest("testImplicitCast");
     }
 
     @SuppressWarnings("try")
@@ -924,6 +927,19 @@ public class HostInliningTest extends GraalCompilerTest {
 
     private static void indirectThrow() {
         throw new ExpectedException();
+    }
+
+    @TypeSystem
+    static class MyTypes {
+        @ImplicitCast
+        public static double intToDouble(int value) {
+            return value;
+        }
+    }
+
+    @BytecodeInterpreterSwitch
+    static int testImplicitCast(int value) {
+        return (int) MyTypesGen.asImplicitDouble(0, value);
     }
 
     static int testIndirectIntrinsicsImpl(A a) {
