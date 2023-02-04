@@ -151,11 +151,12 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         boolean bytecodeInterpreterSwitch = in.readBoolean();
         boolean bytecodeInterpreterSwitchBoundary = in.readBoolean();
         boolean inInterpreter = in.readBoolean();
+        boolean inInterpreterFastPath = in.readBoolean();
         boolean transferToInterpreterMethod = in.readBoolean();
         boolean callIsInliningCutoff = in.readBoolean();
         return new MethodCache(loopExplosionKind, peInlineKind, inlineKind, inlineable,
                         truffleBoundary, bytecodeInterpreterSwitch, bytecodeInterpreterSwitchBoundary,
-                        inInterpreter, transferToInterpreterMethod, callIsInliningCutoff);
+                        inInterpreter, inInterpreterFastPath, transferToInterpreterMethod, callIsInliningCutoff);
     }
 
     @TruffleFromLibGraal(AsCompilableTruffleAST)
@@ -253,6 +254,16 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         if (JNIMethodScope.scope() != null) {
             MethodCache cache = getMethodCache(method);
             return cache.isInInterpreter;
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
+        if (JNIMethodScope.scope() != null) {
+            MethodCache cache = getMethodCache(method);
+            return cache.isInInterpreterFastPath;
         } else {
             return false;
         }
@@ -435,15 +446,18 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         final boolean isBytecodeInterpreterSwitch;
         final boolean isBytecodeInterpreterSwitchBoundary;
         final boolean isInInterpreter;
+        final boolean isInInterpreterFastPath;
         final boolean isTransferToInterpreterMethod;
         final boolean isInliningCutoff;
 
         MethodCache(LoopExplosionKind explosionKind, InlineKind inlineKindPE, InlineKind inlineKindNonPE, boolean isInlineable, boolean isTruffleBoundary, boolean isBytecodeInterpreterSwitch,
-                        boolean isBytecodeInterpreterSwitchBoundary, boolean isInInterpreter, boolean isTransferToInterpreterMethod, boolean isInliningCutoff) {
+                        boolean isBytecodeInterpreterSwitchBoundary, boolean isInInterpreter, boolean isInInterpreterFastPath,
+                        boolean isTransferToInterpreterMethod, boolean isInliningCutoff) {
             this.explosionKind = explosionKind;
             this.inlineKindPE = inlineKindPE;
             this.inlineKindNonPE = inlineKindNonPE;
             this.isInlineable = isInlineable;
+            this.isInInterpreterFastPath = isInInterpreterFastPath;
             this.isTruffleBoundary = isTruffleBoundary;
             this.isBytecodeInterpreterSwitch = isBytecodeInterpreterSwitch;
             this.isBytecodeInterpreterSwitchBoundary = isBytecodeInterpreterSwitchBoundary;

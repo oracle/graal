@@ -86,6 +86,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.OptimizationFailedException;
@@ -984,6 +985,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         public final ResolvedJavaMethod callInlinedCallMethod;
         public final ResolvedJavaMethod[] anyFrameMethod;
         public final ResolvedJavaMethod inInterpreterMethod;
+        public final ResolvedJavaMethod inInterpreterFastPathMethod;
         public final ResolvedJavaMethod[] transferToInterpreterMethods;
 
         public KnownMethods(MetaAccessProvider metaAccess) {
@@ -998,6 +1000,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             this.transferToInterpreterMethods[0] = searchMethod(compilerDirectives, "transferToInterpreter");
             this.transferToInterpreterMethods[1] = searchMethod(compilerDirectives, "transferToInterpreterAndInvalidate");
             this.inInterpreterMethod = searchMethod(compilerDirectives, "inInterpreter");
+
+            ResolvedJavaType hostCompilerDirectives = metaAccess.lookupJavaType(HostCompilerDirectives.class);
+            this.inInterpreterFastPathMethod = searchMethod(hostCompilerDirectives, "inInterpreterFastPath");
         }
     }
 
@@ -1125,6 +1130,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public boolean isInInterpreter(ResolvedJavaMethod targetMethod) {
         return getKnownMethods().inInterpreterMethod.equals(targetMethod);
+    }
+
+    /**
+     * Determines if {@code method} is an inInterpeter method.
+     */
+    @Override
+    public boolean isInInterpreterFastPath(ResolvedJavaMethod targetMethod) {
+        return getKnownMethods().inInterpreterFastPathMethod.equals(targetMethod);
     }
 
     /**

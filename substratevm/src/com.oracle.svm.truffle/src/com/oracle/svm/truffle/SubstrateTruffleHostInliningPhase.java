@@ -71,7 +71,8 @@ public final class SubstrateTruffleHostInliningPhase extends TruffleHostInlining
             return false;
         } else if (super.isEnabledFor(method)) {
             return true;
-        } else if (isTruffleBoundary(method) == null) {
+        } else if (truffleFeature.runtimeCompiledMethods.contains(translateMethod(method)) &&
+                        isTruffleBoundary(method) == null) {
             return true;
         }
         return false;
@@ -85,13 +86,6 @@ public final class SubstrateTruffleHostInliningPhase extends TruffleHostInlining
             return boundary;
         } else if (truffleFeature.isBlocklisted(translatedMethod)) {
             return "SVM block listed";
-        } else if (!truffleFeature.runtimeCompiledMethods.contains(translatedMethod)) {
-            /*
-             * For non runtime compiled methods trivial inlining is enabled and we can therefore not
-             * assume code designed for partial evaluation. For example if a deopt gets inlined this
-             * phase will explore into bad paths.
-             */
-            return "SVM detected not runtime compiled";
         } else {
             return null;
         }

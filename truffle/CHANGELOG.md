@@ -36,6 +36,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-31342 The node `insert` method is now public instead of protected. This avoids the need to create cumbersome accessor methods when needed in corner-cases.
 * GR-43599 Specifying the sharing group in `@Shared` is now optional for cached values. If not specified, the parameter name will be used as sharing group. For example, `@Shared @Cached MyNode sharedNode` will get the sharing group `sharedNode` assigned. It is recommended to use the explicit sharing group still if it improves readability or if the parameter name cannot be changed.
 * GR-43492 `LanguageReference#get()` is now always supported inside of `InstrumentableNode#materializeInstrumentableNodes()`.
+* GR-43944 Added `HostCompilerDirectives.inInterpreterFastPath()` which allows to mark branches that should only be executed in the interpreter, but also optimized like fast-path code in the host compiler.
 
 ## Version 22.3.0
 
