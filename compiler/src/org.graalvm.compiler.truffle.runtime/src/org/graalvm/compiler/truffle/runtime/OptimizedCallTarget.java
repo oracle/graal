@@ -1393,29 +1393,50 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private void profileReturnValue(Object result) {
         ReturnProfile returnProfile = this.returnProfile;
         if (returnProfile == null) {
-            // we only profile return values in the interpreter as we don't want to deoptimize for
-            // immediate compiles.
-            if (CompilerDirectives.inInterpreter() && engine.returnTypeSpeculation) {
-                final Class<?> type = classOf(result);
-                ReturnProfile newProfile = type == null ? ReturnProfile.INVALID : new ReturnProfile(type);
-                if (!RETURN_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
-                    // Another thread initialized the profile, we need to check it
-                    profileReturnValue(result);
-                }
+            if (CompilerDirectives.inCompiledCode()) {
+                // we only profile return values in the interpreter as we don't want to deoptimize
+                // for immediate compiles.
+                return;
             }
         } else {
-            if (returnProfile.assumption.isValid() && (result == null || returnProfile.type != result.getClass())) {
-                // Immediately go to invalid, do not try to widen the type.
-                // See the comment above the returnProfile field.
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                /*
-                 * The assumption for the old profile must be invalidated before installing a new
-                 * profile.
-                 */
-                returnProfile.assumption.invalidate();
-                ReturnProfile previous = RETURN_PROFILE_UPDATER.getAndSet(this, ReturnProfile.INVALID);
-                assert previous == returnProfile || previous == ReturnProfile.INVALID;
+            if (result != null && returnProfile.type == result.getClass()) {
+                if (CompilerDirectives.inCompiledCode()) {
+                    // no need to check the assumption in the interpeter
+                    if (returnProfile.assumption.isValid()) {
+                        return;
+                    }
+                    // fallthrough to deopt
+                } else {
+                    return;
+                }
             }
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        specializeReturnProfile(returnProfile, result);
+    }
+
+    private void specializeReturnProfile(ReturnProfile previousProfile, Object result) {
+        ReturnProfile newProfile;
+        final Class<?> type = classOf(result);
+        if (previousProfile == null) {
+            if (type == null || !engine.returnTypeSpeculation) {
+                newProfile = ReturnProfile.INVALID;
+            } else {
+                newProfile = new ReturnProfile(type);
+            }
+            if (!RETURN_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
+                // Another thread initialized the profile, we need to check it
+                profileReturnValue(previousProfile);
+            }
+        } else if (previousProfile.assumption.isValid() && returnProfile.type != type) {
+            /*
+             * The assumption for the old profile must be invalidated before installing a new
+             * profile.
+             */
+            previousProfile.assumption.invalidate();
+
+            ReturnProfile previous = RETURN_PROFILE_UPDATER.getAndSet(this, ReturnProfile.INVALID);
+            assert previous == returnProfile || previous == ReturnProfile.INVALID;
         }
     }
 
