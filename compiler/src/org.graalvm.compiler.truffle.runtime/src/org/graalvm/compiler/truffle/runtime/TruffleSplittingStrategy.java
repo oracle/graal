@@ -37,6 +37,7 @@ import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -49,6 +50,7 @@ final class TruffleSplittingStrategy {
     private static final Set<OptimizedCallTarget> waste = Collections.synchronizedSet(new HashSet<>());
     private static final int RECURSIVE_SPLIT_DEPTH = 3;
 
+    @InliningCutoff
     static void beforeCall(OptimizedDirectCallNode call, OptimizedCallTarget currentTarget) {
         final EngineData engineData = currentTarget.engine;
         if (engineData.traceSplittingSummary) {
