@@ -685,7 +685,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public String toString() {
-        return "AnalysisMethod<" + format("%H.%n") + " -> " + wrapped.toString() + ">";
+        return "AnalysisMethod<" + format("%h.%n") + " -> " + wrapped.toString() + ", invoked: " + (isInvoked != null) +
+                        ", implInvoked: " + (isImplementationInvoked != null) + ", intrinsic: " + (isIntrinsicMethod != null) + ", inlined: " + (isInlined != null) +
+                        (isVirtualRootMethod != 0 ? ", virtual root" : "") + (isDirectRootMethod != 0 ? ", direct root" : "") + (isEntryPoint() ? ", entry point" : "") + ">";
     }
 
     @Override
