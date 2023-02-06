@@ -1,5 +1,5 @@
-local composable = (import '../../../ci/ci_common/common-utils.libsonnet').composable;
-local top_level_ci = (import '../../../ci/ci_common/common-utils.libsonnet').top_level_ci;
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
+local composable = utils.composable;
 local vm_common = import '../ci_common/common.jsonnet';
 local vm_common_bench = import '../ci_common/common-bench.jsonnet';
 local vm = import 'vm.jsonnet';
@@ -113,41 +113,21 @@ local jdks = common_json.jdks;
     java19_linux_amd64: "30GB",
   },
 
-  local installer_guard = {
-    guard+: {
-      includes+: ["<graal>/vm/src/org.graalvm.component.installer**/**"] + top_level_ci
-    }
-  },
-
-  local sdk_guard = {
-    guard+: {
-      includes+: ["<graal>/sdk/**"]
-    }
-  },
-
-  local truffle_guard = sdk_guard + {
-    guard+: {
-      includes+: ["<graal>/truffle/**"]
-    }
-  },
-
-  local gu_guard = installer_guard + truffle_guard,
-
   local builds = [
-    self.vm_java_17 + vm_common.gate_vm_linux_amd64 + gu_guard +{
+    utils.add_gate_predicate(self.vm_java_17 + vm_common.gate_vm_linux_amd64 + {
      run: [
        ['mx', 'build'],
        ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-linux-amd64',
-    },
-    self.vm_java_17 + common_json.devkits['windows-jdk17'] + vm_common.gate_vm_windows_amd64 + gu_guard + {
+    }, ['sdk', 'truffle', 'vm']),
+    utils.add_gate_predicate(self.vm_java_17 + common_json.devkits['windows-jdk17'] + vm_common.gate_vm_windows_amd64 + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-windows-amd64',
-    },
+    }, ["sdk", "truffle", "vm"]),
     self.vm_java_17 + vm_common.gate_vm_linux_amd64 + vm_common.sulong_linux + {
      environment+: {
        DYNAMIC_IMPORTS: '/tools,/substratevm,/sulong',
