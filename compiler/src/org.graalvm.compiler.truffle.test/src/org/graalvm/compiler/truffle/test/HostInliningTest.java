@@ -60,12 +60,15 @@ import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.test.HostInliningTestFactory.IfNodeGen;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
+import org.openjdk.jmh.annotations.Setup;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -872,8 +875,25 @@ public class HostInliningTest extends GraalCompilerTest {
         return IF_NODE.execute(true) + IF_NODE.execute(false);
     }
 
-    static final OptimizedCallTarget TARGET = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
-    static final OptimizedDirectCallNode CALL = (OptimizedDirectCallNode) DirectCallNode.create(TARGET);
+    static final Context c = Context.create();
+    static final OptimizedCallTarget TARGET;
+    static final OptimizedDirectCallNode CALL;
+
+    @BeforeClass
+    public static void enterContext() {
+        c.enter();
+    }
+
+    public static void closeContext() {
+        c.close();
+    }
+
+    static {
+        c.enter();
+        TARGET = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
+        CALL = (OptimizedDirectCallNode) DirectCallNode.create(TARGET);
+        c.leave();
+    }
 
     /*
      * This test might fail and needs to be updated if something in the call code changes.
