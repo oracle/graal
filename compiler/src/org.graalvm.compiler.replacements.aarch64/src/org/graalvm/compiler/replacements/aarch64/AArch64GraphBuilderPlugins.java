@@ -82,7 +82,6 @@ import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeUtil;
@@ -228,22 +227,12 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     b.push(kind, b.append(MaxNode.create(x, y, NodeView.DEFAULT)));
                     return true;
                 }
-
-                @Override
-                public boolean isOptional() {
-                    return JavaVersionUtil.JAVA_SPEC < 18;
-                }
             });
             r.register(new InvocationPlugin("min", kind.toJavaClass(), kind.toJavaClass()) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                     b.push(kind, b.append(MinNode.create(x, y, NodeView.DEFAULT)));
                     return true;
-                }
-
-                @Override
-                public boolean isOptional() {
-                    return JavaVersionUtil.JAVA_SPEC < 18;
                 }
             });
         }
@@ -546,11 +535,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                 b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ASCII, JavaKind.Char));
                 return true;
-            }
-
-            @Override
-            public boolean isOptional() {
-                return JavaVersionUtil.JAVA_SPEC < 18;
             }
         });
         r.register(new InvocationPlugin("hasNegatives", byte[].class, int.class, int.class) {

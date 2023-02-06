@@ -191,7 +191,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             });
         }
 
-        r.register(new InvocationPlugin("reverse", type) {
+        r.registerConditional(supportsFeature(arch, "GFNI"), new InvocationPlugin("reverse", type) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 b.addPush(kind, new ReverseBitsNode(arg).canonical(null));
@@ -200,9 +200,9 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static boolean supportsF16C(AMD64 arch) {
+    private static boolean supportsFeature(AMD64 arch, String feature) {
         try {
-            return arch.getFeatures().contains(CPUFeature.valueOf("F16C"));
+            return arch.getFeatures().contains(CPUFeature.valueOf(feature));
         } catch (IllegalArgumentException e) {
             return false;
         }
@@ -211,7 +211,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     private static void registerFloatPlugins(InvocationPlugins plugins, AMD64 arch, Replacements replacements) {
         Registration r = new Registration(plugins, Float.class, replacements);
 
-        boolean supportsF16C = supportsF16C(arch);
+        boolean supportsF16C = supportsFeature(arch, "F16C");
 
         r.registerConditional(supportsF16C, new InvocationPlugin("float16ToFloat", short.class) {
             @Override
@@ -342,22 +342,12 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     b.push(kind, b.append(MaxNode.create(x, y, NodeView.DEFAULT)));
                     return true;
                 }
-
-                @Override
-                public boolean isOptional() {
-                    return JavaVersionUtil.JAVA_SPEC < 18;
-                }
             });
             r.registerConditional(arch.getFeatures().contains(CPUFeature.AVX), new InvocationPlugin("min", kind.toJavaClass(), kind.toJavaClass()) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                     b.push(kind, b.append(MinNode.create(x, y, NodeView.DEFAULT)));
                     return true;
-                }
-
-                @Override
-                public boolean isOptional() {
-                    return JavaVersionUtil.JAVA_SPEC < 18;
                 }
             });
         }
@@ -686,11 +676,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                 b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ASCII, JavaKind.Char));
                 return true;
-            }
-
-            @Override
-            public boolean isOptional() {
-                return JavaVersionUtil.JAVA_SPEC < 18;
             }
         });
 

@@ -36,6 +36,7 @@ import java.lang.reflect.Method;
  */
 public class CarrierThreadTest {
 
+    @SuppressWarnings("preview")
     public static void test() {
         try {
             Thread.ofVirtual().start(() -> {

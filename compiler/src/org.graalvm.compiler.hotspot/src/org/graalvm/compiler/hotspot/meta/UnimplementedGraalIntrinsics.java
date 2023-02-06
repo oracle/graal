@@ -349,6 +349,16 @@ public final class UnimplementedGraalIntrinsics {
             }
         }
 
+        if (JAVA_SPEC >= 20) {
+            if (arch instanceof AMD64) {
+                if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.valueOf("GFNI"))) {
+                    add(ignore,
+                                    "java/lang/Integer.reverse(I)I",
+                                    "java/lang/Long.reverse(J)J");
+                }
+            }
+        }
+
         // JDK-8254231: Implementation of Foreign Linker API (Incubator)
         add(toBeInvestigated,
                         "java/lang/invoke/MethodHandle.linkToNative*");

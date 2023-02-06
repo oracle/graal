@@ -28,6 +28,9 @@ package org.graalvm.compiler.nodes.calc;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
@@ -58,6 +61,24 @@ public final class CompressBitsNode extends BinaryNode implements ArithmeticLIRL
         super(TYPE, computeStamp((IntegerStamp) value.stamp(NodeView.DEFAULT), (IntegerStamp) mask.stamp(NodeView.DEFAULT)), value, mask);
     }
 
+    private static int integerCompress(int i, int mask) {
+        try {
+            Method compress = Integer.class.getDeclaredMethod("compress", int.class, int.class);
+            return (Integer) compress.invoke(null, i, mask);
+        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+            throw GraalError.shouldNotReachHere(e, "Integer.compress is introduced in Java 19");
+        }
+    }
+
+    private static long longCompress(long i, long mask) {
+        try {
+            Method compress = Long.class.getDeclaredMethod("compress", long.class, long.class);
+            return (Long) compress.invoke(null, i, mask);
+        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+            throw GraalError.shouldNotReachHere(e, "Long.compress is introduced in Java 19");
+        }
+    }
+
     static final long INT_MASK = CodeUtil.mask(32);
     static final long LONG_MASK = CodeUtil.mask(64);
 
@@ -71,10 +92,10 @@ public final class CompressBitsNode extends BinaryNode implements ArithmeticLIRL
             }
             // compress result will always be positive
             return IntegerStamp.create(32,
-                            Integer.compress((int) valueStamp.downMask(), (int) maskStamp.downMask()) & INT_MASK,
-                            Integer.compress((int) valueStamp.upMask(), (int) maskStamp.upMask()) & INT_MASK,
+                            integerCompress((int) valueStamp.downMask(), (int) maskStamp.downMask()) & INT_MASK,
+                            integerCompress((int) valueStamp.upMask(), (int) maskStamp.upMask()) & INT_MASK,
                             0,
-                            Integer.compress((int) INT_MASK, (int) maskStamp.upMask()) & INT_MASK);
+                            integerCompress((int) INT_MASK, (int) maskStamp.upMask()) & INT_MASK);
         } else {
             GraalError.guarantee(valueStamp.getStackKind() == JavaKind.Long, "unexpected Java kind %s", valueStamp.getStackKind());
             if (maskStamp.upMask() == LONG_MASK && valueStamp.canBeNegative()) {
@@ -85,10 +106,10 @@ public final class CompressBitsNode extends BinaryNode implements ArithmeticLIRL
             }
             // compress result will always be positive
             return IntegerStamp.create(64,
-                            Long.compress(valueStamp.downMask(), maskStamp.downMask()),
-                            Long.compress(valueStamp.upMask(), maskStamp.upMask()),
+                            longCompress(valueStamp.downMask(), maskStamp.downMask()),
+                            longCompress(valueStamp.upMask(), maskStamp.upMask()),
                             0,
-                            Long.compress(LONG_MASK, maskStamp.upMask()));
+                            longCompress(LONG_MASK, maskStamp.upMask()));
         }
     }
 
@@ -112,9 +133,9 @@ public final class CompressBitsNode extends BinaryNode implements ArithmeticLIRL
             if (value.isConstant()) {
                 JavaConstant valueAsConstant = value.asJavaConstant();
                 if (kind == JavaKind.Int) {
-                    return ConstantNode.forInt(Integer.compress(valueAsConstant.asInt(), maskAsConstant.asInt()));
+                    return ConstantNode.forInt(integerCompress(valueAsConstant.asInt(), maskAsConstant.asInt()));
                 } else {
-                    return ConstantNode.forLong(Long.compress(valueAsConstant.asLong(), maskAsConstant.asLong()));
+                    return ConstantNode.forLong(longCompress(valueAsConstant.asLong(), maskAsConstant.asLong()));
                 }
             } else {
                 if (kind == JavaKind.Int) {

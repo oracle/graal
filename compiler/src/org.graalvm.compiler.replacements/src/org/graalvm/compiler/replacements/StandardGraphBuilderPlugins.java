@@ -648,16 +648,10 @@ public class StandardGraphBuilderPlugins {
         for (JavaKind kind : new JavaKind[]{JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long}) {
             Class<?> javaClass = kind.toJavaClass();
             r.register(new UnsafeGetPlugin(kind, explicitUnsafeNullChecks, "get" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class) {
-                @Override
-                public boolean isOptional() {
-                    return true;
-                }
+
             });
             r.register(new UnsafePutPlugin(kind, explicitUnsafeNullChecks, "put" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, javaClass) {
-                @Override
-                public boolean isOptional() {
-                    return true;
-                }
+
             });
         }
     }
@@ -744,12 +738,9 @@ public class StandardGraphBuilderPlugins {
             r.register(new CacheWritebackPlugin(true, "writebackPreSync0", Receiver.class));
             r.register(new CacheWritebackPlugin(false, "writebackPostSync0", Receiver.class));
 
-            r.register(new UnsafeFencePlugin(MembarNode.FenceKind.STORE_STORE, "storeStoreFence") {
-                @Override
-                public boolean isOptional() {
-                    return JavaVersionUtil.JAVA_SPEC < 18;
-                }
-            });
+            if (JavaVersionUtil.JAVA_SPEC >= 18) {
+                r.register(new UnsafeFencePlugin(MembarNode.FenceKind.STORE_STORE, "storeStoreFence"));
+            }
         }
 
         r.register(new InvocationPlugin("arrayBaseOffset", Receiver.class, Class.class) {
@@ -834,7 +825,7 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerCharacterDataLatin1Plugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, "java.lang.CharacterDataLatin1");
-        r.register(new OptionalInvocationPlugin("isDigit", Receiver.class, int.class) {
+        r.register(new InvocationPlugin("isDigit", Receiver.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode ch) {
                 b.nullCheckedValue(receiver.get());
@@ -1982,18 +1973,6 @@ public class StandardGraphBuilderPlugins {
         Registration r = new Registration(plugins, "java.lang.invoke.MethodHandleImpl", replacements);
         // In later JDKs this no longer exists and the usage is replace by Class.cast which is
         // already an intrinsic
-        r.register(new OptionalInvocationPlugin("castReference", Class.class, Object.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode javaClass, ValueNode object) {
-                b.genCheckcastDynamic(object, javaClass);
-                return true;
-            }
-
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-        });
         r.register(new InlineOnlyInvocationPlugin("profileBoolean", boolean.class, int[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode counters) {

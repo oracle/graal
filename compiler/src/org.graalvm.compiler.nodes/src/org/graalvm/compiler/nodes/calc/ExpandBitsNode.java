@@ -28,6 +28,9 @@ package org.graalvm.compiler.nodes.calc;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
@@ -70,6 +73,24 @@ public final class ExpandBitsNode extends BinaryNode implements ArithmeticLIRLow
         return stamp;
     }
 
+    private static int integerExpand(int i, int mask) {
+        try {
+            Method expand = Integer.class.getDeclaredMethod("expand", int.class, int.class);
+            return (Integer) expand.invoke(null, i, mask);
+        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+            throw GraalError.shouldNotReachHere(e, "Integer.expand is introduced in Java 19");
+        }
+    }
+
+    private static long longExpand(long i, long mask) {
+        try {
+            Method expand = Long.class.getDeclaredMethod("expand", long.class, long.class);
+            return (Long) expand.invoke(null, i, mask);
+        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+            throw GraalError.shouldNotReachHere(e, "Long.expand is introduced in Java 19");
+        }
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool, ValueNode value, ValueNode mask) {
         JavaKind kind = value.getStackKind();
@@ -81,9 +102,9 @@ public final class ExpandBitsNode extends BinaryNode implements ArithmeticLIRLow
             if (value.isConstant()) {
                 JavaConstant valueAsConstant = value.asJavaConstant();
                 if (kind == JavaKind.Int) {
-                    return ConstantNode.forInt(Integer.expand(valueAsConstant.asInt(), maskAsConstant.asInt()));
+                    return ConstantNode.forInt(integerExpand(valueAsConstant.asInt(), maskAsConstant.asInt()));
                 } else {
-                    return ConstantNode.forLong(Long.expand(valueAsConstant.asLong(), maskAsConstant.asLong()));
+                    return ConstantNode.forLong(longExpand(valueAsConstant.asLong(), maskAsConstant.asLong()));
                 }
             } else {
                 if (kind == JavaKind.Int) {
