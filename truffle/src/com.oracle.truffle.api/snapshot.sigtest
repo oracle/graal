@@ -131,6 +131,7 @@ CLSS public final com.oracle.truffle.api.HostCompilerDirectives
 innr public abstract interface static !annotation BytecodeInterpreterSwitch
 innr public abstract interface static !annotation BytecodeInterpreterSwitchBoundary
 innr public abstract interface static !annotation InliningCutoff
+meth public static boolean inInterpreterFastPath()
 supr java.lang.Object
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch
