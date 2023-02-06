@@ -184,6 +184,22 @@ public class LockFreePrefixTree {
         }
 
         /**
+         * Atomically does the bitwise-or on the current value.
+         *
+         * @param pattern a bit pattern to do bitwise-or with
+         * @return the value immediately after the bitwise-or operation
+         */
+        public long bitwiseOrValue(long pattern) {
+            while (true) {
+                long oldValue = get();
+                long newValue = oldValue | pattern;
+                if (compareAndSet(oldValue, newValue)) {
+                    return newValue;
+                }
+            }
+        }
+
+        /**
          * Get existing (or create if missing) child with the given key.
          *
          * May return {@code null} if the operation cannot complete, for example, due to inability
@@ -512,6 +528,7 @@ public class LockFreePrefixTree {
      * {@link LockFreePrefixTree} only ever allocates arrays that are a power of 2).
      */
     public static class ObjectPoolingAllocator extends Allocator {
+        private static final int MIN_HOUSEKEEPING_PERIOD_MILLIS = 4;
         private static final int DEFAULT_HOUSEKEEPING_PERIOD_MILLIS = 72;
         private static final int CHILDREN_POOL_COUNT = 32;
         private static final int INITIAL_NODE_PREALLOCATION_COUNT = 2048;
@@ -636,12 +653,14 @@ public class LockFreePrefixTree {
         }
 
         private class HousekeepingThread extends Thread {
-            private final int housekeepingPeriodMillis;
+            private final int defaultHousekeepingPeriodMillis;
+            private int nextHousekeepingPeriodMillis;
             private final AtomicBoolean isEnabled;
 
-            HousekeepingThread(int housekeepingPeriodMillis) {
+            HousekeepingThread(int defaultHousekeepingPeriodMillis) {
                 setDaemon(true);
-                this.housekeepingPeriodMillis = housekeepingPeriodMillis;
+                this.defaultHousekeepingPeriodMillis = defaultHousekeepingPeriodMillis;
+                this.nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
                 this.isEnabled = new AtomicBoolean(true);
             }
 
@@ -652,6 +671,7 @@ public class LockFreePrefixTree {
                     for (int i = 0; i < growthEstimate; i++) {
                         nodePool.add(new Node());
                     }
+                    nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
                     missedNodePoolRequestCount.set(0);
                 }
                 for (int sizeClass = 0; sizeClass < linearChildrenPool.length; sizeClass++) {
@@ -661,6 +681,7 @@ public class LockFreePrefixTree {
                         for (int i = 0; i < growthEstimate; i++) {
                             linearChildrenPool[sizeClass].add(new Node.LinearChildren(1 << sizeClass));
                         }
+                        nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
                         missedLinearChildrenRequestCounts.set(sizeClass, 0);
                     }
                 }
@@ -669,6 +690,8 @@ public class LockFreePrefixTree {
                     if (count > 0) {
                         int growthEstimate;
                         if (sizeClass < Integer.numberOfTrailingZeros(EXPECTED_MAX_HASH_NODE_SIZE)) {
+                            // Since these nodes are larger, and requested less frequently, we do
+                            // not use the preallocation multiplier.
                             growthEstimate = Math.max(INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT, count);
                         } else {
                             // We expect that the case of allocating very wide nodes is rare.
@@ -677,6 +700,7 @@ public class LockFreePrefixTree {
                         for (int i = 0; i < growthEstimate; i++) {
                             hashChildrenPool[sizeClass].add(new Node.HashChildren(1 << sizeClass));
                         }
+                        nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
                         missedHashChildrenRequestCounts.set(sizeClass, 0);
                     }
                 }
@@ -687,7 +711,10 @@ public class LockFreePrefixTree {
                 while (isEnabled.get()) {
                     try {
                         synchronized (this) {
-                            this.wait(housekeepingPeriodMillis);
+                            System.out.println("Sleeping... " + nextHousekeepingPeriodMillis + " ms.");
+                            this.wait(nextHousekeepingPeriodMillis);
+                            // Decrease housekeeping period up to maximum using an exponential backoff.
+                            nextHousekeepingPeriodMillis = Math.min(defaultHousekeepingPeriodMillis, nextHousekeepingPeriodMillis * 2);
                         }
                         housekeep();
                     } catch (InterruptedException e) {
