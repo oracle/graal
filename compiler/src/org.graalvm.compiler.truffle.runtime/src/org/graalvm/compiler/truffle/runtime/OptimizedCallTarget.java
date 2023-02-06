@@ -1262,10 +1262,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         profileArguments(args);
     }
 
+    // This should be private but can't be. GR-19397
     @ExplodeLoop
     public final void profileArguments(Object[] args) {
         assert !callProfiled;
         ArgumentsProfile argumentsProfile = this.argumentsProfile;
+        if (argumentsProfile == ArgumentsProfile.INVALID) {
+            return;
+        }
+
         if (argumentsProfile == null) {
             if (CompilerDirectives.inCompiledCode()) {
                 // do not deoptimize missing argument profile
@@ -1273,10 +1278,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             }
         } else {
             Class<?>[] types = argumentsProfile.types;
-            if (types == null) {
-                // fast-path: profile invalid
-                return;
-            }
+            assert types != null : "argument types must be set at this point";
             if (types.length == args.length) {
                 boolean valid = true;
                 for (int i = 0; i < types.length; i++) {
@@ -1288,8 +1290,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     }
                 }
                 if (valid) {
-                    // fast-path: profile valid
-                    return;
+                    if (CompilerDirectives.inCompiledCode()) {
+                        if (argumentsProfile.assumption.isValid()) {
+                            return;
+                        }
+                    } else {
+                        // fast-path: profile valid
+                        return;
+                    }
                 }
             }
         }
@@ -1297,8 +1305,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         profileArgumentsSlow(argumentsProfile, args);
     }
 
-    // This should be private but can't be. GR-19397
-    public final void profileArgumentsSlow(ArgumentsProfile profile, Object[] args) {
+    private void profileArgumentsSlow(ArgumentsProfile profile, Object[] args) {
         if (profile == null) {
             initializeProfiledArgumentTypes(args);
         } else {
@@ -1392,21 +1399,29 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private void profileReturnValue(Object result) {
         ReturnProfile returnProfile = this.returnProfile;
+        if (returnProfile == ReturnProfile.INVALID) {
+            return;
+        }
+
         if (returnProfile == null) {
             if (CompilerDirectives.inCompiledCode()) {
-                // we only profile return values in the interpreter as we don't want to deoptimize
+                // we only profile return values in the interpreter as we don't want to
+                // deoptimize
                 // for immediate compiles.
                 return;
             }
         } else {
             if (result != null && returnProfile.type == result.getClass()) {
                 if (CompilerDirectives.inCompiledCode()) {
-                    // no need to check the assumption in the interpeter
-                    if (returnProfile.assumption.isValid()) {
+                    if (!returnProfile.assumption.isValid()) {
                         return;
                     }
-                    // fallthrough to deopt
                 } else {
+                    /*
+                     * The interpreter check for returnProfile.type should be enough to that the
+                     * assumption is valid. If the assumption is not valid then returnProfile.type
+                     * will be null and therefore never match this condition.
+                     */
                     return;
                 }
             }
@@ -1428,7 +1443,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 // Another thread initialized the profile, we need to check it
                 profileReturnValue(previousProfile);
             }
-        } else if (previousProfile.assumption.isValid() && returnProfile.type != type) {
+        } else if (previousProfile.assumption.isValid() && previousProfile.type != type) {
             /*
              * The assumption for the old profile must be invalidated before installing a new
              * profile.
@@ -1436,7 +1451,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             previousProfile.assumption.invalidate();
 
             ReturnProfile previous = RETURN_PROFILE_UPDATER.getAndSet(this, ReturnProfile.INVALID);
-            assert previous == returnProfile || previous == ReturnProfile.INVALID;
+            assert previous == previousProfile || previous == ReturnProfile.INVALID;
         }
     }
 
