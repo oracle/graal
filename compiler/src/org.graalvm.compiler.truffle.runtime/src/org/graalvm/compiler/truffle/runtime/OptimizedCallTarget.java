@@ -1263,7 +1263,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // This should be private but can't be. GR-19397
-    @ExplodeLoop
     public final void profileArguments(Object[] args) {
         assert !callProfiled;
         ArgumentsProfile argumentsProfile = this.argumentsProfile;
@@ -1279,30 +1278,31 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         } else {
             Class<?>[] types = argumentsProfile.types;
             assert types != null : "argument types must be set at this point";
-            if (types.length == args.length) {
-                boolean valid = true;
-                for (int i = 0; i < types.length; i++) {
-                    Class<?> type = types[i];
-                    Object value = args[i];
-                    if (type != null && (value == null || value.getClass() != type)) {
-                        valid = false;
-                        break;
-                    }
-                }
-                if (valid) {
-                    if (CompilerDirectives.inCompiledCode()) {
-                        if (argumentsProfile.assumption.isValid()) {
-                            return;
-                        }
-                    } else {
-                        // fast-path: profile valid
+            if (types.length == args.length && areArgumentTypesValid(args, types)) {
+                if (CompilerDirectives.inCompiledCode()) {
+                    if (argumentsProfile.assumption.isValid()) {
                         return;
                     }
+                } else {
+                    // fast-path: profile valid
+                    return;
                 }
             }
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();
         profileArgumentsSlow(argumentsProfile, args);
+    }
+
+    @ExplodeLoop
+    private static boolean areArgumentTypesValid(Object[] args, Class<?>[] types) {
+        for (int i = 0; i < types.length; i++) {
+            Class<?> type = types[i];
+            Object value = args[i];
+            if (type != null && (value == null || value.getClass() != type)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void profileArgumentsSlow(ArgumentsProfile profile, Object[] args) {
@@ -1405,8 +1405,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
         if (returnProfile == null) {
             if (CompilerDirectives.inCompiledCode()) {
-                // we only profile return values in the interpreter as we don't want to
-                // deoptimize
+                // we only profile return values in the interpreter as we don't want to deoptimize
                 // for immediate compiles.
                 return;
             }
