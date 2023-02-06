@@ -1226,7 +1226,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                      * method, but that would require us to introduce a new runtime compilation
                      * graph builder plugin.
                      *
-                     * By solving this here we ensure that that this behavior is coupled with the
+                     * By solving this here we ensure that this behavior is coupled with the
                      * TruffleHostInlining phase.
                      */
                     int foundCount = 0;
