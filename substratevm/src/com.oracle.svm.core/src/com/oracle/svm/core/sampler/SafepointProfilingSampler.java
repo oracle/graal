@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
 public class SafepointProfilingSampler implements ProfilingSampler, ThreadListener {
-    private final static int DEFAULT_STACK_SIZE = 8 * 1024;
+    private static final int DEFAULT_STACK_SIZE = 8 * 1024;
 
     private final SamplingStackVisitor samplingStackVisitor = new SamplingStackVisitor();
     private final LockFreePrefixTree prefixTree = new LockFreePrefixTree(new LockFreePrefixTree.ObjectPoolingAllocator());

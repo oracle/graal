@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * The internal implementation is a simple Treiber stack.
  *
  * @param <T> Type of the elements in this pool.
+ *
+ * @since 23.0
  */
 public class LockFreePool<T> {
     private final AtomicReference<Node> head;
@@ -76,6 +78,8 @@ public class LockFreePool<T> {
      *
      * @return A previously added element, or {@code null} if there are no previously added elements
      *         that have not been already returned.
+     *
+     * @since 23.0
      */
     public T get() {
         while (true) {
@@ -99,6 +103,8 @@ public class LockFreePool<T> {
      * This method internally allocates objects on the heap.
      *
      * @param element An element to add to the pool.
+     *
+     * @since 23.0
      */
     public void add(T element) {
         while (true) {
@@ -110,7 +116,7 @@ public class LockFreePool<T> {
         }
     }
 
-    private class Node {
+    private final class Node {
         final T element;
         final Node tail;
 

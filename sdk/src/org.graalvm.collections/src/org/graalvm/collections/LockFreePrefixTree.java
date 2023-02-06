@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -188,6 +188,8 @@ public class LockFreePrefixTree {
          *
          * @param pattern a bit pattern to do bitwise-or with
          * @return the value immediately after the bitwise-or operation
+         *
+         * @since 23.0
          */
         public long bitwiseOrValue(long pattern) {
             while (true) {
@@ -452,8 +454,10 @@ public class LockFreePrefixTree {
 
     /**
      * Exception that denotes that an allocation failed.
+     *
+     * @since 23.0
      */
-    public static class FailedAllocationException extends RuntimeException {
+    private static class FailedAllocationException extends RuntimeException {
         private static final long serialVersionUID = -1L;
 
         @Override
@@ -464,30 +468,46 @@ public class LockFreePrefixTree {
 
     /**
      * Policy for allocating objects of the lock-free prefix tree.
+     *
+     * @since 23.0
      */
-    public static abstract class Allocator {
+    public abstract static class Allocator {
         private static final FailedAllocationException FAILED_ALLOCATION_EXCEPTION = new FailedAllocationException();
 
         /**
          * Allocates a new Node object.
+         *
+         * @since 23.0
          */
         public abstract Node newNode(long key);
 
         /**
          * Allocates a new reference array of child nodes stored linearly.
+         *
+         * @since 23.0
          */
         public abstract Node.LinearChildren newLinearChildren(int length);
 
         /**
          * Allocates a new reference array of child nodes stored as a hash table.
+         *
+         * @since 23.0
          */
         public abstract Node.HashChildren newHashChildren(int length);
 
+        /**
+         * Releases the allocator's resources. Allocator should not be used after calling this
+         * method.
+         *
+         * @since 23.0
+         */
         public abstract void shutdown();
     }
 
     /**
      * Allocator that allocates objects directly on the managed heap.
+     *
+     * @since 23.0
      */
     public static class HeapAllocator extends Allocator {
         @Override
@@ -523,9 +543,11 @@ public class LockFreePrefixTree {
      * additional objects whose allocation request previously failed, and it will allocate at least
      * as many objects as there were previous failed allocation requests).
      *
-     * This implementation only allows allocating {@link Node.LinearChildren} and
-     * {@link Node.HashChildren} arrays whose size is a power of 2 (because
+     * This implementation only allows allocating {@code Node.LinearChildren} and
+     * {@code Node.HashChildren} arrays whose size is a power of 2 (because
      * {@link LockFreePrefixTree} only ever allocates arrays that are a power of 2).
+     *
+     * @since 23.0
      */
     public static class ObjectPoolingAllocator extends Allocator {
         private static final int MIN_HOUSEKEEPING_PERIOD_MILLIS = 4;
