@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,7 @@ public final class DebuggerConnection implements Commands {
         jdwpTransport = new Thread(new JDWPTransportThread(), "jdwp-transport");
         jdwpTransport.setDaemon(true);
         jdwpTransport.start();
+        controller.markAsControlThread(jdwpTransport);
         activeThreads.add(jdwpTransport);
 
         if (suspend) {
@@ -191,19 +192,21 @@ public final class DebuggerConnection implements Commands {
 
         @Override
         public void run() {
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
+            try {
+                while (!Thread.currentThread().isInterrupted()) {
                     controller.enterTruffleContext();
-                    processPacket(Packet.fromByteArray(connection.readPacket()));
-                } catch (IOException e) {
-                    if (!Thread.currentThread().isInterrupted()) {
-                        controller.warning(() -> "Failed to process jdwp packet with message: " + e.getMessage());
+                    try {
+                        processPacket(Packet.fromByteArray(connection.readPacket()));
+                    } catch (IOException e) {
+                        if (!Thread.currentThread().isInterrupted()) {
+                            controller.warning(() -> "Failed to process jdwp packet with message: " + e.getMessage());
+                        }
+                    } catch (ConnectionClosedException e) {
+                        // we closed the session, so let the thread run dry
                     }
-                } catch (ConnectionClosedException e) {
-                    // we closed the session, so let the thread run dry
-                } finally {
-                    controller.leaveTruffleContext();
                 }
+            } finally {
+                controller.leaveTruffleContext();
             }
         }
 

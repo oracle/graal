@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,6 +93,7 @@ public final class DebuggerController implements ContextsListener {
     private Object initialThread;
     private final TruffleLogger jdwpLogger;
     private boolean enteredTruffleContext;
+    private Thread controlThread;
 
     public DebuggerController(JDWPInstrument instrument, TruffleLogger logger) {
         this.instrument = instrument;
@@ -780,6 +781,14 @@ public final class DebuggerController implements ContextsListener {
 
     public void cancelBlockingCallFrames(Object guestThread) {
         suspendedInfos.remove(guestThread);
+    }
+
+    public boolean isControlThread() {
+        return controlThread == Thread.currentThread();
+    }
+
+    public void markAsControlThread(Thread thread) {
+        controlThread = thread;
     }
 
     private class SuspendedCallbackImpl implements SuspendedCallback {
