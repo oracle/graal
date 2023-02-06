@@ -34,7 +34,6 @@ import java.util.stream.StreamSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.util.ReflectionUtil;
@@ -226,7 +225,7 @@ public class TypeStateUtils {
     private static AnalysisObject[] checkUnionSize(PointsToAnalysis bb, AnalysisObject[] oa1, AnalysisObject[] oa2, AnalysisObject[] result) {
         assert result.length >= 2;
 
-        if (PointstoOptions.LimitObjectArrayLength.getValue(bb.getOptions()) && (result.length > PointstoOptions.MaxObjectSetSize.getValue(bb.getOptions()))) {
+        if (bb.analysisPolicy().limitObjectArrayLength() && (result.length > bb.analysisPolicy().maxObjectSetSize())) {
             AnalysisObject rObj = result[0].type().getContextInsensitiveAnalysisObject();
             bb.analysisPolicy().noteMerge(bb, oa1);
             bb.analysisPolicy().noteMerge(bb, oa2);
@@ -324,7 +323,7 @@ public class TypeStateUtils {
          * If the LimitObjectArrayLength is enabled then the result MUST be smaller than
          * MaxObjectSetSize.
          */
-        assert !PointstoOptions.LimitObjectArrayLength.getValue(bb.getOptions()) || rList.size() <= PointstoOptions.MaxObjectSetSize.getValue(bb.getOptions());
+        assert !bb.analysisPolicy().limitObjectArrayLength() || rList.size() <= bb.analysisPolicy().maxObjectSetSize();
 
         if (rList.size() == 0) {
             return AnalysisObject.EMPTY_ARRAY;
