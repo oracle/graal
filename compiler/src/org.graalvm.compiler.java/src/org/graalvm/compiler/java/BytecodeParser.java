@@ -3126,11 +3126,11 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     private FixedNode createTarget(double probability, BciBlock block, FrameStateBuilder stateAfter) {
         assert probability >= 0 && probability <= 1.01 : probability;
+        assert block != null;
         SpeculationLog.Speculation neverExecutedSpeculation = isNeverExecutedCode(probability, block.getStartBci());
         if (neverExecutedSpeculation != null) {
             return graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode, neverExecutedSpeculation));
         } else {
-            assert block != null;
             return createTarget(block, stateAfter);
         }
     }
