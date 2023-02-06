@@ -33,12 +33,12 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.SwitchFoldable;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -104,7 +104,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     public void lower(LoweringTool tool) {
         try (DebugCloseable position = this.withNodeSourcePosition()) {
             if (graph().getGuardsStage().allowsFloatingGuards()) {
-                if (getAction() != DeoptimizationAction.None) {
+                if (getAction() != DeoptimizationAction.None && getReason() != DeoptimizationReason.Unresolved) {
                     ValueNode guard = tool.createGuard(this, getCondition(), getReason(), getAction(), getSpeculation(), isNegated(), getNoDeoptSuccessorPosition()).asNode();
                     this.replaceAtUsages(guard);
                     graph().removeFixed(this);
