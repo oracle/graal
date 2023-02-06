@@ -21,7 +21,7 @@ FROM ghcr.io/graalvm/jdk:ol8-java17-<version>
 ```
 
 There are different images provided depending on the  platforms, the architecture and the Java version.
-GraalVM binaries are built for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on AArch64 systems.
+GraalVM binaries are built for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on AArch64 architecture.
 The images are multi-arch (`aarch64` or `amd64` will be pulled depending on Docker host architecture), and tagged with the format `ghcr.io/graalvm/$IMAGE_NAME[:][$os_version][-$java_version][-$version][-$build_number]`.
 The version tag defines the level of specificity.
 It is recommended that the most specific tag be used, e.g., `java17-22.3.0` or `java17-22.3.0-b1`, where the `-b1` means the image required a patch and this specific build will never change.
