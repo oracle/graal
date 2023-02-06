@@ -44,10 +44,12 @@ import jdk.vm.ci.common.JVMCIError;
 public class TypeStateUtils {
 
     private static final MethodHandle bitSetArrayAccess;
+    private static final MethodHandle wordInUseAccess;
     private static final MethodHandle trimToSizeAccess;
     static {
         try {
             bitSetArrayAccess = MethodHandles.lookup().unreflectGetter(ReflectionUtil.lookupField(BitSet.class, "words"));
+            wordInUseAccess = MethodHandles.lookup().unreflectGetter(ReflectionUtil.lookupField(BitSet.class, "wordsInUse"));
             trimToSizeAccess = MethodHandles.lookup().unreflect(ReflectionUtil.lookupMethod(BitSet.class, "trimToSize"));
         } catch (IllegalAccessException t) {
             throw JVMCIError.shouldNotReachHere(t);
@@ -71,6 +73,28 @@ public class TypeStateUtils {
         }
     }
 
+    public static int extractWordsInUseField(BitSet bitSet) {
+        try {
+            return (int) wordInUseAccess.invokeExact(bitSet);
+        } catch (Throwable t) {
+            throw JVMCIError.shouldNotReachHere(t);
+        }
+    }
+
+    public static boolean needsTrim(BitSet bitSet) {
+        int wordsInUse = extractWordsInUseField(bitSet);
+        long[] words = extractBitSetField(bitSet);
+        return wordsInUse != words.length;
+    }
+
+    public static void trimBitSetToSize(BitSet bs) {
+        try {
+            trimToSizeAccess.invokeExact(bs);
+        } catch (Throwable t) {
+            throw JVMCIError.shouldNotReachHere(t);
+        }
+    }
+
     /** Return true if {@code first} is a superset of {@code second}. */
     public static boolean isSuperset(BitSet first, BitSet second) {
         if (first.length() >= second.length()) {
@@ -89,15 +113,6 @@ public class TypeStateUtils {
             return isSuperset;
         }
         return false;
-    }
-
-    public static void trimBitSetToSize(BitSet bs) {
-        try {
-            trimToSizeAccess.invokeExact(bs);
-        } catch (Throwable t) {
-            throw JVMCIError.shouldNotReachHere(t);
-        }
-
     }
 
     public static AnalysisObject[] concat(AnalysisObject[] oa1, AnalysisObject[] oa2) {
@@ -421,7 +436,7 @@ public class TypeStateUtils {
         /* Check if the new bit index exceeds the capacity of bs1. */
         if (bitIndex > highestSetIndex) {
             /* Preallocate the bit set to represent bitIndex without expansion. */
-            bsr = new BitSet(bitIndex);
+            bsr = new BitSet(bitIndex + 1);
             /* First add in the original bits, which will System.arraycopy() bs1 bits into bsr. */
             bsr.or(bs1);
             /* ... then set the new index. */
@@ -432,16 +447,18 @@ public class TypeStateUtils {
             bsr = (BitSet) bs1.clone();
             bsr.set(bitIndex);
         }
+        assert !needsTrim(bsr);
         return bsr;
     }
 
     /** Create a new bit set with the bits of the inputs IDs set. */
     public static BitSet newBitSet(int index1, int index2) {
         /* Preallocate the result bit set to represent index1 and index2 without any expansion. */
-        BitSet typesBitSet = new BitSet(Math.max(index1, index2));
-        typesBitSet.set(index1);
-        typesBitSet.set(index2);
-        return typesBitSet;
+        BitSet bs = new BitSet(Math.max(index1, index2) + 1);
+        bs.set(index1);
+        bs.set(index2);
+        assert !needsTrim(bs);
+        return bs;
     }
 
     public static boolean closeToAllInstantiated(BigBang bb, TypeState state) {
