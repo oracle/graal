@@ -1413,7 +1413,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         } else {
             if (result != null && returnProfile.type == result.getClass()) {
                 if (CompilerDirectives.inCompiledCode()) {
-                    if (!returnProfile.assumption.isValid()) {
+                    if (returnProfile.assumption.isValid()) {
                         return;
                     }
                 } else {
