@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -84,7 +83,7 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
          * applications. So we optimize it as much as possible: We compute the delta of added source
          * and destination types, to avoid re-processing the same elements over and over.
          */
-        if (lastSrc == null || lastDst == null || PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions())) {
+        if (lastSrc == null || lastDst == null || bb.analysisPolicy().allocationSiteSensitiveHeap()) {
             /*
              * No previous state available, process the full type states. We also need to do that
              * when using the allocation site context, because TypeState.forSubtraction does not

@@ -35,7 +35,6 @@ import org.graalvm.compiler.options.OptionValues;
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
@@ -79,7 +78,7 @@ import com.oracle.svm.common.meta.MultiMethod;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 
-public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
+public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
     private final BytecodeAnalysisContextPolicy contextPolicy;
 
@@ -143,7 +142,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public AnalysisObject createHeapObject(PointsToAnalysis bb, AnalysisType type, BytecodePosition allocationSite, AnalysisContext allocationContext) {
-        assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(options);
+        assert allocationSiteSensitiveHeap;
         if (isContextSensitiveAllocation(bb, type, allocationContext)) {
             return new AllocationContextSensitiveObject(bb, type, allocationSite, allocationContext);
         } else {
@@ -268,7 +267,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
-        assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(options);
+        assert allocationSiteSensitiveHeap;
         if (object.isContextInsensitiveObject()) {
             /*
              * Write flow is context-sensitive and read flow is context-insensitive. This split is
@@ -296,7 +295,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public ArrayElementsTypeStore createArrayElementsTypeStore(AnalysisObject object, AnalysisUniverse universe) {
-        assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(options);
+        assert allocationSiteSensitiveHeap;
         if (object.type().isArray()) {
             if (aliasArrayTypeFlows) {
                 /* Alias all array type flows using the elements type flow model of Object type. */
@@ -345,7 +344,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public AnalysisContext allocationContext(PointsToAnalysis bb, MethodFlowsGraph callerGraph) {
-        return contextPolicy.allocationContext((BytecodeAnalysisContext) ((MethodFlowsGraphClone) callerGraph).context(), PointstoOptions.MaxHeapContextDepth.getValue(bb.getOptions()));
+        return contextPolicy.allocationContext((BytecodeAnalysisContext) ((MethodFlowsGraphClone) callerGraph).context(), maxHeapContextDepth);
     }
 
     @Override
@@ -595,7 +594,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         return doUnion0(bb, s1, s2, resultCanBeNull);
     }
 
-    private static TypeState doUnion0(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
+    private TypeState doUnion0(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
 
         /* Speculate that s1 and s2 are distinct sets. */
 
@@ -631,8 +630,8 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         return doUnion1(bb, s1, s2, resultCanBeNull);
     }
 
-    private static TypeState doUnion1(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
-        if (PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions())) {
+    private TypeState doUnion1(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
+        if (allocationSiteSensitiveHeap) {
             return allocationSensitiveSpeculativeUnion1(bb, s1, s2, resultCanBeNull);
         } else {
             return allocationInsensitiveSpeculativeUnion1(bb, s1, s2, resultCanBeNull);
@@ -642,7 +641,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     /**
      * Optimization that gives 1.5-3x in performance for the (typeflow) phase.
      */
-    private static TypeState allocationInsensitiveSpeculativeUnion1(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
+    private TypeState allocationInsensitiveSpeculativeUnion1(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
         if (s1.bitSet().length() >= s2.bitSet().length()) {
             long[] bits1 = TypeStateUtils.extractBitSetField(s1.bitSet());
             long[] bits2 = TypeStateUtils.extractBitSetField(s2.bitSet());
@@ -664,7 +663,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         return doUnion2(bb, s1, s2, resultCanBeNull, 0, 0);
     }
 
-    private static TypeState allocationSensitiveSpeculativeUnion1(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
+    private TypeState allocationSensitiveSpeculativeUnion1(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull) {
         int idx1 = 0;
         int idx2 = 0;
         AnalysisPolicy analysisPolicy = bb.analysisPolicy();
@@ -701,7 +700,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     private static final ThreadLocal<UnsafeArrayListClosable<AnalysisObject>> doUnion2TL = new ThreadLocal<>();
     private static final ThreadLocal<UnsafeArrayListClosable<AnalysisObject>> doUnion2ObjectsTL = new ThreadLocal<>();
 
-    private static TypeState doUnion2(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull, int startId1, int startId2) {
+    private TypeState doUnion2(PointsToAnalysis bb, ContextSensitiveMultiTypeState s1, ContextSensitiveMultiTypeState s2, boolean resultCanBeNull, int startId1, int startId2) {
         try (UnsafeArrayListClosable<AnalysisObject> resultObjectsClosable = getTLArrayList(doUnion2TL, s1.objects.length + s2.objects.length)) {
             UnsafeArrayList<AnalysisObject> resultObjects = resultObjectsClosable.list();
             /* Add the beginning of the s1 list that we already walked above. */
@@ -757,7 +756,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                  * Check if the union of objects of a type in the overlapping section reached the
                  * limit. The limit, bb.options().maxObjectSetSize(), has a minimum value of 1.
                  */
-                if (PointstoOptions.LimitObjectArrayLength.getValue(bb.getOptions()) && unionObjects.size() > PointstoOptions.MaxObjectSetSize.getValue(bb.getOptions())) {
+                if (limitObjectArrayLength && unionObjects.size() > maxObjectSetSize) {
                     int idxStart = 0;
                     int idxEnd = 0;
                     while (idxEnd < unionObjects.size()) {
@@ -772,7 +771,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                          * stride
                          */
                         int size = idxEnd - idxStart;
-                        if (size > PointstoOptions.MaxObjectSetSize.getValue(bb.getOptions())) {
+                        if (size > maxObjectSetSize) {
                             /*
                              * Object count exceeds the limit. Mark the objects in the stride as
                              * merged.
