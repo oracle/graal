@@ -446,11 +446,6 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/Float.isFinite(F)Z");
 
             if (arch instanceof AArch64) {
-                // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8296999
-                add(toBeInvestigated,
-                                "java/lang/Integer.reverse(I)I",
-                                "java/lang/Long.reverse(J)J");
-
                 // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8289552
                 add(toBeInvestigated,
                                 "java/lang/Float.float16ToFloat(S)F",

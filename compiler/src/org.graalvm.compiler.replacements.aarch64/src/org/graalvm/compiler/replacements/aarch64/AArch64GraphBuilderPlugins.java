@@ -80,6 +80,7 @@ import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
+import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
@@ -135,6 +136,14 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Int, b.append(new AArch64BitCountNode(value).canonical(null)));
+                return true;
+            }
+        });
+        // TODO confirm https://bugs.openjdk.org/browse/JDK-8296999 is merged
+        r.register(new InvocationPlugin("reverse", type) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.addPush(kind, new ReverseBitsNode(arg).canonical(null));
                 return true;
             }
         });
