@@ -140,9 +140,9 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     private MethodCache createMethodCache(ResolvedJavaMethod method) {
         long methodHandle = LibGraal.translate(method);
         JByteArray hsByteArray = callReadMethodCache(env(), getHandle(), methodHandle);
-        CCharPointer buffer = StackValue.get(19);
-        JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 19, buffer);
-        BinaryInput in = BinaryInput.create(buffer, 19);
+        CCharPointer buffer = StackValue.get(20);
+        JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 20, buffer);
+        BinaryInput in = BinaryInput.create(buffer, 20);
         LoopExplosionKind loopExplosionKind = LoopExplosionKind.values()[in.readInt()];
         InlineKind peInlineKind = InlineKind.values()[in.readInt()];
         InlineKind inlineKind = InlineKind.values()[in.readInt()];
