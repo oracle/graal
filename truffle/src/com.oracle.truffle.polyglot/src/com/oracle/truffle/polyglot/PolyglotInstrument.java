@@ -41,10 +41,10 @@
 package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Instrument;
@@ -107,7 +107,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         if (optionValues == null) {
             synchronized (instrumentLock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(getAllOptionsInternal(), false);
+                    optionValues = new OptionValuesImpl(getAllOptionsInternal(), engine.sandboxPolicy, false);
                 }
             }
         }
@@ -139,7 +139,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
                         assert verifyNoOverlap(eOptions, cOptions);
                         this.engineOptions = eOptions;
                         this.contextOptions = cOptions;
-                        this.allOptions = TruffleOptionDescriptors.createUnion(eOptions, cOptions);
+                        this.allOptions = LANGUAGE.createOptionDescriptorsUnion(eOptions, cOptions);
                     } catch (Exception e) {
                         throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'. Message: %s.", cache.getId(), cache.getClassName(), e.getMessage()), e);
                     }
@@ -169,11 +169,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
 
     void ensureCreated() {
         if (!created) {
-            if (getSandboxPolicy().ordinal() < engine.sandboxPolicy.ordinal()) {
-                throw PolyglotEngineException.illegalArgument(
-                                String.format("Instrument %s can be used in an engine with at most %s sandbox policy, but the %s sandbox policy is set for an engine.\", ",
-                                                getId(), getSandboxPolicy(), engine.sandboxPolicy));
-            }
+            validateSandbox(engine.sandboxPolicy);
             PolyglotContextImpl[] contexts = null;
             synchronized (instrumentLock) {
                 if (!created) {
@@ -261,7 +257,12 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         return PolyglotLanguage.websiteSubstitutions(cache.getWebsite());
     }
 
-    public SandboxPolicy getSandboxPolicy() {
-        return cache.getSandboxPolicy();
+    private void validateSandbox(SandboxPolicy sandboxPolicy) {
+        SandboxPolicy instrumentSandboxPolicy = cache.getSandboxPolicy();
+        if (instrumentSandboxPolicy.ordinal() < sandboxPolicy.ordinal()) {
+            throw PolyglotEngineException.illegalArgument(PolyglotImpl.sandboxPolicyException(sandboxPolicy,
+                            String.format("The instrument %s requires at most the %s sandbox policy.", getId(), instrumentSandboxPolicy),
+                            String.format("do not enable %s instrument by removing any of the instrument's options from Engine.Builder.option(String,String)", getId())));
+        }
     }
 }

@@ -885,6 +885,8 @@ public abstract class Accessor {
 
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
 
+        public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
+
     }
 
     public abstract static class InstrumentSupport extends Support {

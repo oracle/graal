@@ -573,8 +573,6 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Map<String, Language> getLanguages(Object receiver);
 
-        public abstract Set<String> getExplicitlyPermittedLanguages(Object receiver);
-
         public abstract OptionDescriptors getOptions(Object receiver);
 
         public abstract Context createContext(Object receiver, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,

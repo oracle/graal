@@ -142,16 +142,6 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     }
 
     @Override
-    public Set<String> getExplicitlyPermittedLanguages(Object oreceiver) {
-        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
-        try {
-            return receiver.getExplicitlyPermittedLanguages();
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(receiver, t);
-        }
-    }
-
-    @Override
     public OptionDescriptors getOptions(Object oreceiver) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
@@ -216,7 +206,8 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
         PolyglotEngineImpl engine = (PolyglotEngineImpl) engineReceiver;
         if (engine.sandboxPolicy.ordinal() >= SandboxPolicy.CONSTRAINED.ordinal()) {
-            throw new IllegalArgumentException(String.format("If the sandbox policy %s is set for an engine, execution listeners are not allowed.", engine.sandboxPolicy));
+            throw PolyglotImpl.sandboxPolicyException(engine.sandboxPolicy, "ExecutionListener is attached to an Engine, but execution listeners are not allowed.",
+                            "do not attach execution listeners to this engine");
         }
         Instrumenter instrumenter = (Instrumenter) EngineAccessor.INSTRUMENT.getEngineInstrumenter(engine.instrumentationHandler);
 

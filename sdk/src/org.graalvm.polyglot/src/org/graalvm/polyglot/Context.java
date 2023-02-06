@@ -1787,128 +1787,6 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
-        void validateSandbox() {
-            if (sandboxPolicy == SandboxPolicy.TRUSTED) {
-                return;
-            }
-            if (sandboxPolicy.ordinal() >= SandboxPolicy.CONSTRAINED.ordinal()) {
-                if (permittedLanguages.length == 0 && (sharedEngine == null || sharedEngine.dispatch.getExplicitlyPermittedLanguages(sharedEngine.receiver).isEmpty())) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, the number of languages needs to be set for a context. For example, Context.newBuilder(\"js\").",
-                                                    this.sandboxPolicy));
-                }
-                if (allowAllAccess) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, allowAllAccess must not be set for the context.", this.sandboxPolicy));
-                }
-                if (Boolean.TRUE.equals(allowNativeAccess)) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, allowNativeAccess must not be set for the context.", this.sandboxPolicy));
-                }
-                if (Boolean.TRUE.equals(allowHostClassLoading)) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, allowHostClassLoading must not be set for the context.", this.sandboxPolicy));
-                }
-                if (Boolean.TRUE.equals(allowCreateProcess)) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, allowCreateProcess must not be set for the context.", this.sandboxPolicy));
-                }
-                if (useSystemExit) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, useSystemExit must not be set for the context.", this.sandboxPolicy));
-                }
-                if (Engine.isSystemStream(in) || Engine.isSystemStream(out) || Engine.isSystemStream(err)) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, the stdin, stdout and stderr for the context cannot be redirected to System.in, System.out or System.err.",
-                                                    this.sandboxPolicy));
-                }
-                FileSystem fileSystem = null;
-                if (ioAccess != null) {
-                    if (ioAccess == IOAccess.ALL) {
-                        throw new IllegalArgumentException(
-                                        String.format("If the sandbox policy %s is set, the allowIO value for the context must not be set to IOAccess.ALL.", this.sandboxPolicy));
-                    }
-                    IOAccessor ioAccessor = Engine.getImpl().getIO();
-                    if (ioAccessor.hasHostFileAccess(ioAccess)) {
-                        throw new IllegalArgumentException(
-                                        String.format("If the sandbox policy %s is set, the IOAccess used for allowIO must not have the allowHostFileAccess set.", this.sandboxPolicy));
-                    }
-                    if (ioAccessor.hasHostSocketAccess(ioAccess)) {
-                        throw new IllegalArgumentException(
-                                        String.format("If the sandbox policy %s is set, the IOAccess used for allowIO must not have the allowHostSocketAccess set.", this.sandboxPolicy));
-                    }
-                    assert customFileSystem == null;
-                    fileSystem = ioAccessor.getFileSystem(ioAccess);
-                } else {
-                    fileSystem = customFileSystem;
-                }
-                if (fileSystem != null && Engine.getImpl().isHostFileSystem(fileSystem)) {
-                    throw new IllegalArgumentException(String.format("If the sandbox policy %s is set, the default (host) file system must not be set for a context.", this.sandboxPolicy));
-                }
-                if (Boolean.TRUE.equals(allowIO)) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, the allowIO value for the context must not be set to true.", this.sandboxPolicy));
-                }
-                if (environmentAccess != EnvironmentAccess.NONE) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, the allowEnvironmentAccess value for the context must be set to EnvironmentAccess.NONE. " +
-                                                    "For example, Context.newBuilder(\"js\").allowEnvironmentAccess(EnvironmentAccess.NONE).",
-                                                    this.sandboxPolicy));
-                }
-                if (Boolean.TRUE.equals(allowHostAccess)) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, allowHostAccess must not be set for the context.", this.sandboxPolicy));
-                }
-                if (hostClassFilter == UNSET_HOST_LOOKUP) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, allowHostClassLookup needs to be set for a context. " +
-                                                    "For example, Context.newBuilder(\"js\").allowHostClassLookup(cn -> cn.startsWith(\"com.mycompany.hostclasses.\")).",
-                                                    this.sandboxPolicy));
-                }
-                if (hostAccess != null) {
-                    if (hostAccess == HostAccess.ALL) {
-                        throw new IllegalArgumentException(
-                                        String.format("If the sandbox policy %s is set, the allowHostAccess value for the context must not be set to HostAccess.ALL.", this.sandboxPolicy));
-                    }
-                    if (hostAccess.allowPublic) {
-                        throw new IllegalArgumentException(
-                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not have the allowPublicAccess set.", this.sandboxPolicy));
-                    }
-                    if (hostAccess.allowAccessInheritance) {
-                        throw new IllegalArgumentException(
-                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not have the allowAccessInheritance set.", this.sandboxPolicy));
-                    }
-                    if (hostAccess.allowAllInterfaceImplementations) {
-                        throw new IllegalArgumentException(
-                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not have the allowAllImplementations set.", this.sandboxPolicy));
-                    }
-                    if (hostAccess.allowAllClassImplementations) {
-                        throw new IllegalArgumentException(
-                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not have the allowAllClassImplementations set.",
-                                                        this.sandboxPolicy));
-                    }
-                    if (hostAccess.implementableAnnotations != null && hostAccess.implementableAnnotations.contains(FunctionalInterface.class)) {
-                        throw new IllegalArgumentException(
-                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not allow FunctionalInterface implementations.",
-                                                        this.sandboxPolicy));
-                    }
-                    HostAccess.MutableTargetMapping[] mutableTargetMappings = hostAccess.getMutableTargetMappings();
-                    if (mutableTargetMappings.length > 0) {
-                        throw new IllegalArgumentException(
-                                        String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must not have the allowMutableTargetMappings set.",
-                                                        this.sandboxPolicy));
-                    }
-                }
-            }
-            if (sandboxPolicy.ordinal() >= SandboxPolicy.ISOLATED.ordinal()) {
-                if (hostAccess != null && !hostAccess.isMethodScopingEnabled()) {
-                    throw new IllegalArgumentException(
-                                    String.format("If the sandbox policy %s is set, the HostAccess used for allowHostAccess must have the methodScoping set.",
-                                                    this.sandboxPolicy));
-                }
-            }
-        }
-
         /**
          * Creates a new context instance from the configuration provided in the builder. The same
          * context builder can be used to create multiple context instances.
@@ -1935,9 +1813,6 @@ public final class Context implements AutoCloseable {
 
             validateSandbox();
 
-            // TODO make sure when applying sandbox rules that fields in the builder are not
-            // modified!
-
             Predicate<String> localHostLookupFilter = this.hostClassFilter;
             HostAccess hostAccess = this.hostAccess;
 
@@ -1950,7 +1825,12 @@ public final class Context implements AutoCloseable {
                 hostAccess = HostAccess.ALL;
             }
             if (hostAccess == null) {
-                hostAccess = sandboxPolicy.createDefaultHostAccess(allowAllAccess);
+                hostAccess = switch (sandboxPolicy) {
+                    case TRUSTED -> allowAllAccess ? HostAccess.ALL : HostAccess.EXPLICIT;
+                    case CONSTRAINED -> HostAccess.CONSTRAINED;
+                    case ISOLATED, UNTRUSTED -> HostAccess.ISOLATED;
+                    default -> throw new IllegalArgumentException(String.valueOf(sandboxPolicy));
+                };
             }
 
             PolyglotAccess polyglotAccess = this.polyglotAccess;
@@ -2060,5 +1940,150 @@ public final class Context implements AutoCloseable {
             return optionalBoolean != null ? optionalBoolean : allowAllAccess;
         }
 
+        /**
+         * Validates configured sandbox policy constrains.
+         *
+         * @throws IllegalArgumentException if the context configuration is not compatible with the
+         *             requested sandbox policy.
+         */
+        private void validateSandbox() {
+            if (sandboxPolicy == SandboxPolicy.TRUSTED) {
+                return;
+            }
+            if (sandboxPolicy.ordinal() >= SandboxPolicy.CONSTRAINED.ordinal()) {
+                if (permittedLanguages.length == 0 && sharedEngine == null) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder does not have a list of permitted languages.",
+                                    "create an Context.Builder with a list of permitted languages, for example, Context.newBuilder(\"js\")");
+                }
+                if (allowAllAccess) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder.allowAllAccess(boolean) is set to true, but must not be set to true.",
+                                    "do not set Context.Builder.allowAllAccess(boolean)");
+                }
+                if (Boolean.TRUE.equals(allowNativeAccess)) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder.allowNativeAccess(boolean) is set to true, but must not be set to true.",
+                                    "do not set Context.Builder.allowNativeAccess(boolean)");
+                }
+                if (Boolean.TRUE.equals(allowHostClassLoading)) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder.allowHostClassLoading(boolean) is set to true, but must not be set to true.",
+                                    "do not set Context.Builder.allowHostClassLoading(boolean)");
+                }
+                if (Boolean.TRUE.equals(allowCreateProcess)) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder.allowCreateProcess(boolean) is set to true, but must not be set to true.",
+                                    "do not set Context.Builder.allowCreateProcess(boolean)");
+                }
+                if (useSystemExit) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder.useSystemExit(boolean) is set to true, but must not be set to true.",
+                                    "do not set Context.Builder.useSystemExit(boolean)");
+                }
+                if (Engine.isSystemStream(in)) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder uses the standard input stream, but the input must be redirected.",
+                                    "set Context.Builder.in(InputStream)");
+                }
+                if (Engine.isSystemStream(out)) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder uses the standard output stream, but the output must be redirected.",
+                                    "set Context.Builder.out(OutputStream)");
+                }
+                if (Engine.isSystemStream(err)) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder uses the standard error stream, but the error output must be redirected.",
+                                    "set Context.Builder.err(OutputStream)");
+                }
+                FileSystem fileSystem;
+                if (ioAccess != null) {
+                    IOAccessor ioAccessor = Engine.getImpl().getIO();
+                    if (ioAccessor.hasHostFileAccess(ioAccess)) {
+                        throw throwSandboxException(sandboxPolicy,
+                                        "Context.Builder.allowIO(IOAccess) is set to IOAccess, which allows access to the host file system, but access to the host file system must be disabled.",
+                                        "disable filesystem access using Context.Builder.allowIO(IOAccess.NONE) or install a custom filesystem using Context.Builder.allowIO(IOAccess.newBuilder().fileSystem(customFs))");
+                    }
+                    if (ioAccessor.hasHostSocketAccess(ioAccess)) {
+                        throw throwSandboxException(sandboxPolicy,
+                                        "Context.Builder.allowIO(IOAccess) is set to IOAccess, which allows access to host sockets, but access to host sockets must be disabled.",
+                                        "do not set IOAccess.Builder.allowHostSocketAccess(boolean)");
+                    }
+                    assert customFileSystem == null;
+                    fileSystem = ioAccessor.getFileSystem(ioAccess);
+                } else {
+                    fileSystem = customFileSystem;
+                }
+                if (fileSystem != null && Engine.getImpl().isHostFileSystem(fileSystem)) {
+                    throw throwSandboxException(sandboxPolicy,
+                                    "Context.Builder.allowIO(IOAccess) is set to IOAccess, which has a custom file system that allows access to the host file system, but access to the host file system must be disabled.",
+                                    "disable filesystem access using Context.Builder.allowIO(IOAccess.NONE) or install a non-host custom filesystem using Context.Builder.allowIO(IOAccess.newBuilder().fileSystem(customFs))");
+
+                }
+                if (Boolean.TRUE.equals(allowIO)) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder.allowIO(boolean) is set to true, but must not be set to true.",
+                                    "disable filesystem access using Context.Builder.allowIO(IOAccess.NONE) or install a custom filesystem using Context.Builder.allowIO(IOAccess.newBuilder().fileSystem(customFs))");
+                }
+                if (environmentAccess != null && environmentAccess != EnvironmentAccess.NONE) {
+                    throw throwSandboxException(sandboxPolicy,
+                                    "Context.Builder.allowEnvironmentAccess(EnvironmentAccess) is set to " + environmentAccess + ", but must be set to EnvironmentAccess.NONE.",
+                                    "do not set Context.Builder.allowEnvironmentAccess(EnvironmentAccess) or set it to EnvironmentAccess.NONE");
+                }
+                if (Boolean.TRUE.equals(allowHostAccess)) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder.allowHostAccess(boolean) is set to true, but must not be set to true.",
+                                    "do not set Context.Builder.allowHostAccess(boolean) to use the sandbox policy preset or set Context.Builder.allowHostAccess(HostAccess)");
+                }
+                if (hostClassFilter == UNSET_HOST_LOOKUP) {
+                    throw throwSandboxException(sandboxPolicy, "Context.Builder.allowHostClassLookup(Predicate) is not set, but Java host classes filter must be set.",
+                                    "set Context.Builder.allowHostClassLookup(Predicate)");
+                }
+                if (hostAccess != null) {
+                    if (hostAccess.allowPublic) {
+                        throw throwSandboxException(sandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to HostAccess which was created with HostAccess.Builder.allowPublicAccess(boolean) set to true, " +
+                                                        "but HostAccess.Builder.allowPublicAccess(boolean) must not be set to true.",
+                                        "do not set HostAccess.Builder.allowPublicAccess(boolean)");
+                    }
+                    if (hostAccess.allowAccessInheritance) {
+                        throw throwSandboxException(sandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to HostAccess which was created with HostAccess.Builder.allowAccessInheritance(boolean) set to true, " +
+                                                        "but HostAccess.Builder.allowAccessInheritance(boolean) must not be set to true.",
+                                        "do not set HostAccess.Builder.allowAccessInheritance(boolean)");
+                    }
+                    if (hostAccess.allowAllInterfaceImplementations) {
+                        throw throwSandboxException(sandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to HostAccess which was created with HostAccess.Builder.allowAllImplementations(boolean) set to true, " +
+                                                        "but HostAccess.Builder.allowAllImplementations(boolean) must not be set to true.",
+                                        "do not set HostAccess.Builder.allowAllImplementations(boolean)");
+                    }
+                    if (hostAccess.allowAllClassImplementations) {
+                        throw throwSandboxException(sandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to HostAccess which was created with HostAccess.Builder.allowAllClassImplementations(boolean) set to true, " +
+                                                        "but HostAccess.Builder.allowAllClassImplementations(boolean) must not be set to true.",
+                                        "do not set HostAccess.Builder.allowAllClassImplementations(boolean)");
+                    }
+                    if (hostAccess.implementableAnnotations != null && hostAccess.implementableAnnotations.contains(FunctionalInterface.class)) {
+                        throw throwSandboxException(sandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to HostAccess which allows FunctionalInterface implementations, " +
+                                                        "but FunctionalInterface implementations must not be enabled.",
+                                        "do not set HostAccess.Builder.allowImplementationsAnnotatedBy(FunctionalInterface.class)");
+                    }
+                    HostAccess.MutableTargetMapping[] mutableTargetMappings = hostAccess.getMutableTargetMappings();
+                    if (mutableTargetMappings.length > 0) {
+                        throw throwSandboxException(sandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to HostAccess which allows host object mappings of mutable target types, but it must not be enabled.",
+                                        "disable host object mappings of mutable target types by setting HostAccess.Builder.allowMutableTargetMappings(MutableTargetMapping...) to an empty array");
+                    }
+                }
+            }
+            if (sandboxPolicy.ordinal() >= SandboxPolicy.ISOLATED.ordinal()) {
+                if (hostAccess != null && !hostAccess.isMethodScopingEnabled()) {
+                    throw throwSandboxException(sandboxPolicy,
+                                    "Context.Builder.allowHostAccess(HostAccess) is set to HostAccess which has no HostAccess.Builder.methodScoping(boolean) set to true, " +
+                                                    "but HostAccess.Builder.methodScoping(boolean) must be enabled.",
+                                    "set HostAccess.Builder.methodScoping(boolean)");
+                }
+            }
+        }
+
+        private IllegalArgumentException throwSandboxException(SandboxPolicy sandboxPolicy, String reason, String fix) {
+            Objects.requireNonNull(sandboxPolicy);
+            Objects.requireNonNull(reason);
+            Objects.requireNonNull(fix);
+            String message = String.format("The validation for the given sandbox policy %s failed.%n%s%n" +
+                            "In order to resolve this %s or switch to a less strict sandbox policy using Context.Builder.sandbox(SandboxPolicy).", sandboxPolicy, reason, fix);
+            throw new IllegalArgumentException(message);
+        }
     }
 }

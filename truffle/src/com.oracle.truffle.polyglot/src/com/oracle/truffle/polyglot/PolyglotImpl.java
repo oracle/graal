@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.api.source.Source.CONTENT_NONE;
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.io.File;
 import java.io.IOException;
@@ -63,7 +64,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -256,7 +256,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
 
             LogConfig logConfig = new LogConfig();
-            OptionValuesImpl engineOptions = createEngineOptions(options, logConfig, useAllowExperimentalOptions);
+            OptionValuesImpl engineOptions = createEngineOptions(options, logConfig, sandboxPolicy, useAllowExperimentalOptions);
 
             LogHandler useHandler = logHandler != null ? logHandler : PolyglotEngineImpl.createLogHandler(this, logConfig, dispatchErr);
             EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(useHandler, logConfig.logLevels);
@@ -307,7 +307,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 hostLanguageOnly,
                                 usePolyglotHostService);
             }
-            impl.validateOptionsSandbox();
             return getAPIAccess().newEngine(engineDispatch, impl, registerInActiveEngines);
         } catch (Throwable t) {
             if (impl == null) {
@@ -323,7 +322,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         // sandboxing policy . When it's used as a delegate of other polyglot it needs to support
         // all sandboxing policies.
         if (this == getRootImpl() && sandboxPolicy.ordinal() > SandboxPolicy.CONSTRAINED.ordinal()) {
-            throw PolyglotEngineException.illegalArgument(String.format("The sandbox policy %s is not supported by the GraalVM community edition.", sandboxPolicy));
+            throw PolyglotEngineException.illegalArgument(sandboxPolicyException(sandboxPolicy,
+                            String.format("The Engine.Builder.sandbox(SandboxPolicy) is set to %s, but the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED.",
+                                            sandboxPolicy),
+                            null));
         }
     }
 
@@ -332,11 +334,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return PolyglotEngineImpl.createEngineOptionDescriptors();
     }
 
-    static OptionValuesImpl createEngineOptions(Map<String, String> options, LogConfig logOptions, boolean allowExperimentalOptions) {
+    static OptionValuesImpl createEngineOptions(Map<String, String> options, LogConfig logOptions, SandboxPolicy sandboxPolicy, boolean allowExperimentalOptions) {
         OptionDescriptors engineOptionDescriptors = PolyglotImpl.getInstance().createAllEngineOptionDescriptors();
         Map<String, String> engineOptions = new HashMap<>();
         PolyglotEngineImpl.parseEngineOptions(options, engineOptions, logOptions);
-        OptionValuesImpl values = new OptionValuesImpl(engineOptionDescriptors, true);
+        OptionValuesImpl values = new OptionValuesImpl(engineOptionDescriptors, sandboxPolicy, true);
         values.putAll(null, engineOptions, allowExperimentalOptions);
         return values;
     }
@@ -369,12 +371,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     PolyglotEngineImpl createDefaultEngine(TruffleLanguage<Object> hostLanguage) {
         Map<String, String> options = PolyglotEngineImpl.readOptionsFromSystemProperties(new HashMap<>());
         LogConfig logConfig = new LogConfig();
-        OptionValuesImpl engineOptions = PolyglotImpl.createEngineOptions(options, logConfig, true);
+        SandboxPolicy sandboxPolicy = SandboxPolicy.TRUSTED;
+        OptionValuesImpl engineOptions = PolyglotImpl.createEngineOptions(options, logConfig, sandboxPolicy, true);
         DispatchOutputStream out = INSTRUMENT.createDispatchOutput(System.out);
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
         LogHandler logHandler = PolyglotEngineImpl.createLogHandler(this, logConfig, err);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
-        final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, SandboxPolicy.TRUSTED, new String[0], out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
+        final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, sandboxPolicy, new String[0], out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         true, true, null, logHandler, hostLanguage, false, new DefaultPolyglotHostService(this));
         getAPIAccess().newEngine(engineDispatch, engine, false);
         return engine;
@@ -530,7 +533,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     public OptionDescriptors createUnionOptionDescriptors(OptionDescriptors... optionDescriptors) {
-        return TruffleOptionDescriptors.createUnion(optionDescriptors);
+        return LANGUAGE.createOptionDescriptorsUnion(optionDescriptors);
     }
 
     @Override
@@ -785,6 +788,20 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static RuntimeException hostToGuestException(PolyglotEngineImpl engine, Throwable t) {
         return engine.polyglotHostService.hostToGuestException(engine.host, t);
+    }
+
+    static IllegalArgumentException sandboxPolicyException(SandboxPolicy sandboxPolicy, String reason, String fix) {
+        Objects.requireNonNull(sandboxPolicy);
+        Objects.requireNonNull(reason);
+        StringBuilder resolution = new StringBuilder("In order to resolve this");
+        if (fix != null) {
+            resolution.append(" ");
+            resolution.append(fix);
+            resolution.append(" or");
+        }
+        resolution.append(" switch to a less strict sandbox policy using Context.Builder.sandbox(SandboxPolicy).");
+        String message = String.format("The validation for the given sandbox policy %s failed.%n%s%n%s", sandboxPolicy, reason, resolution);
+        return new IllegalArgumentException(message);
     }
 
     static boolean isGuestPrimitive(Object receiver) {

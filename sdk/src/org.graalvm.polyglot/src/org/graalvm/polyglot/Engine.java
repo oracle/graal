@@ -643,25 +643,6 @@ public final class Engine implements AutoCloseable {
             return this;
         }
 
-        void validateSandbox() {
-            if (sandboxPolicy == SandboxPolicy.TRUSTED) {
-                return;
-            }
-            if (permittedLanguages.length == 0) {
-                throw new IllegalArgumentException(
-                                String.format("If the sandbox policy %s is set, the number of languages needs to be set for the engine. For example, Engine.newBuilder(\"js\").", this.sandboxPolicy));
-            }
-            if (isSystemStream(in) || isSystemStream(out) || isSystemStream(err)) {
-                throw new IllegalArgumentException(
-                                String.format("If the sandbox policy %s is set, the stdin, stdout and stderr need to be set for the engine. For example, Engine.newBuilder(\"js\").stdin(in).stdout(out).stderr(err).",
-                                                this.sandboxPolicy));
-            }
-            if (messageTransport != null) {
-                throw new IllegalArgumentException(
-                                String.format("If the sandbox policy %s is set, the serverTransport must not be set for the engine.", this.sandboxPolicy));
-            }
-        }
-
         /**
          * Creates a new engine instance from the configuration provided in the builder. The same
          * engine builder can be used to create multiple engine instances.
@@ -681,6 +662,46 @@ public final class Engine implements AutoCloseable {
             return engine;
         }
 
+        /**
+         * Validates configured sandbox policy constrains.
+         *
+         * @throws IllegalArgumentException if the engine configuration is not compatible with the
+         *             requested sandbox policy.
+         */
+        private void validateSandbox() {
+            if (sandboxPolicy == SandboxPolicy.TRUSTED) {
+                return;
+            }
+            if (permittedLanguages.length == 0) {
+                throw throwSandboxException(sandboxPolicy, "Engine.Builder does not have a list of permitted languages.",
+                                "create an Engine.Builder with a list of permitted languages, for example, Engine.newBuilder(\"js\")");
+            }
+            if (isSystemStream(in)) {
+                throw throwSandboxException(sandboxPolicy, "Engine.Builder uses the standard input stream, but the input must be redirected.",
+                                "set Engine.Builder.in(InputStream)");
+            }
+            if (isSystemStream(out)) {
+                throw throwSandboxException(sandboxPolicy, "Engine.Builder uses the standard output stream, but the output must be redirected.",
+                                "set Engine.Builder.out(OutputStream)");
+            }
+            if (isSystemStream(err)) {
+                throw throwSandboxException(sandboxPolicy, "Engine.Builder uses the standard error stream, but the error output must be redirected.",
+                                "set Engine.Builder.err(OutputStream)");
+            }
+            if (messageTransport != null) {
+                throw throwSandboxException(sandboxPolicy, "Engine.Builder.serverTransport(MessageTransport) is set, but must not be set.",
+                                "do not set Engine.Builder.serverTransport(MessageTransport)");
+            }
+        }
+
+        private IllegalArgumentException throwSandboxException(SandboxPolicy sandboxPolicy, String reason, String fix) {
+            Objects.requireNonNull(sandboxPolicy);
+            Objects.requireNonNull(reason);
+            Objects.requireNonNull(fix);
+            String message = String.format("The validation for the given sandbox policy %s failed.%n%s%n" +
+                            "In order to resolve this %s or switch to a less strict sandbox policy using Engine.Builder.sandbox(SandboxPolicy).", sandboxPolicy, reason, fix);
+            throw new IllegalArgumentException(message);
+        }
     }
 
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {

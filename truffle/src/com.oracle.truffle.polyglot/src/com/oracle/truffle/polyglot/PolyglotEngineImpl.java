@@ -80,11 +80,9 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.home.HomeFinder;
-import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
@@ -339,6 +337,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         if (!preInitialization) {
             createInstruments(instrumentsOptions, allowExperimentalOptions);
         }
+        validateSandbox();
     }
 
     /**
@@ -608,7 +607,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     static OptionDescriptors createEngineOptionDescriptors() {
         OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
         OptionDescriptors compilerOptionDescriptors = EngineAccessor.RUNTIME.getEngineOptionDescriptors();
-        return TruffleOptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
+        return LANGUAGE.createOptionDescriptorsUnion(engineOptionDescriptors, compilerOptionDescriptors);
     }
 
     void patch(SandboxPolicy newSandboxPolicy,
@@ -671,6 +670,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
             instrument.getEngineOptionValues().putAll(this, instrumentsOptions.get(instrument), newAllowExperimentalOptions);
         }
+        validateSandbox();
     }
 
     static LogHandler createLogHandler(AbstractPolyglotImpl polyglot, LogConfig logConfig, DispatchOutputStream errDispatchOutputStream) {
@@ -1363,7 +1363,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     for (PolyglotInstrument instrument : idToInstrument.values()) {
                         allDescriptors.add(instrument.getAllOptionsInternal());
                     }
-                    allOptions = TruffleOptionDescriptors.createUnion(allDescriptors.toArray(new OptionDescriptors[0]));
+                    allOptions = LANGUAGE.createOptionDescriptorsUnion(allDescriptors.toArray(new OptionDescriptors[0]));
                 }
             }
         }
@@ -1658,8 +1658,13 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         boolean replayEvents;
         boolean contextAddedToEngine;
         try {
-            final FileSystem customFileSystem = getImpl().getIO().getFileSystem(ioAccess);
-            validateSandbox(contextSandboxPolicy);
+            if (contextSandboxPolicy.ordinal() != sandboxPolicy.ordinal()) {
+                throw PolyglotEngineException.illegalArgument(PolyglotImpl.sandboxPolicyException(contextSandboxPolicy,
+                                String.format("The engine and context must have the same SandboxPolicy. The Engine.Builder.sandbox(SandboxPolicy) is set to %s, while the Context.Builder.sandbox(SandboxPolicy) is set to %s.",
+                                                sandboxPolicy, contextSandboxPolicy),
+                                String.format("set Engine.Builder.sandbox(SandboxPolicy) to SandboxPolicy.%s or set Context.Builder.sandbox(SandboxPolicy) to SandboxPolicy.%s", contextSandboxPolicy,
+                                                sandboxPolicy)));
+            }
             synchronized (this.lock) {
                 checkState();
                 if (boundEngine && !contexts.isEmpty()) {
@@ -1705,6 +1710,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             if (error != null) {
                 throw PolyglotEngineException.illegalArgument(error);
             }
+            final FileSystem customFileSystem = getImpl().getIO().getFileSystem(ioAccess);
             final boolean allowHostFileAccess = getImpl().getIO().hasHostFileAccess(ioAccess);
             final FileSystemConfig fileSystemConfig;
             if (!ALLOW_IO) {
@@ -1851,13 +1857,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
         checkTruffleRuntime();
         return context;
-    }
-
-    private void validateSandbox(SandboxPolicy contextSandboxPolicy) {
-        if (contextSandboxPolicy.ordinal() != sandboxPolicy.ordinal()) {
-            throw PolyglotEngineException.illegalArgument(String.format(
-                            "Both Engine and Context must have the same SandboxPolicy. Engine is configured with %s, while Context is configured with %s.", sandboxPolicy, contextSandboxPolicy));
-        }
     }
 
     private PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config) {
@@ -2245,36 +2244,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
-    void validateOptionsSandbox() {
+    private void validateSandbox() {
         if (sandboxPolicy == SandboxPolicy.TRUSTED) {
             return;
         }
-        validateOptionsSandbox(sandboxPolicy, engineOptionValues);
-        for (PolyglotLanguage language : idToLanguage.values()) {
-            OptionValuesImpl optionValues = language.getOptionValuesIfExists();
-            if (optionValues != null) {
-                validateOptionsSandbox(sandboxPolicy, optionValues);
-            }
-        }
-        for (PolyglotInstrument instrument : idToInstrument.values()) {
-            OptionValuesImpl optionValues = instrument.getOptionValuesIfExists();
-            if (optionValues != null) {
-                validateOptionsSandbox(sandboxPolicy, optionValues);
-            }
-        }
-    }
-
-    static void validateOptionsSandbox(SandboxPolicy sandboxPolicy, OptionValuesImpl optionValues) {
-        OptionDescriptors optionDescriptors = optionValues.getDescriptors();
-        TruffleOptionDescriptors truffleOptionDescriptors = optionDescriptors instanceof TruffleOptionDescriptors ? (TruffleOptionDescriptors) optionDescriptors : null;
-        for (OptionDescriptor descriptor : optionDescriptors) {
-            if (optionValues.hasBeenSet(descriptor.getKey())) {
-                SandboxPolicy optionSandboxPolicy = truffleOptionDescriptors != null ? truffleOptionDescriptors.getSandboxPolicy(descriptor.getName()) : SandboxPolicy.TRUSTED;
-                if (optionSandboxPolicy.ordinal() < sandboxPolicy.ordinal()) {
-                    throw PolyglotEngineException.illegalArgument(String.format("The option %s requires at most the %s sandbox policy, but the %s sandbox policy is set for a context.",
-                                    descriptor.getName(), optionSandboxPolicy, sandboxPolicy));
-                }
-            }
+        for (String permittedLanguage : permittedLanguages) {
+            idToLanguage.get(permittedLanguage).validateSandbox(sandboxPolicy);
         }
     }
 

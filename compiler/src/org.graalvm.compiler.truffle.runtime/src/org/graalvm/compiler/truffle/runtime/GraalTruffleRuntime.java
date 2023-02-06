@@ -51,7 +51,6 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -175,8 +174,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private final LoopNodeFactory loopNodeFactory;
     private final EngineCacheSupport engineCacheSupport;
     private final UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
-    private final OptionDescriptors engineOptions;
     private final FloodControlHandler floodControlHandler;
+    private final OptionDescriptors[] runtimeOptionDescriptors;
+    private volatile OptionDescriptors engineOptions;
 
     public GraalTruffleRuntime(Iterable<Class<?>> extraLookupTypes) {
         this.lookupTypes = initLookupTypes(extraLookupTypes);
@@ -185,7 +185,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         EngineCacheSupport support = loadGraalRuntimeServiceProvider(EngineCacheSupport.class, options, false);
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
         options.add(PolyglotCompilerOptions.getDescriptors());
-        this.engineOptions = TruffleOptionDescriptors.createUnion(options.toArray(new OptionDescriptors[options.size()]));
+        this.runtimeOptionDescriptors = options.toArray(new OptionDescriptors[options.size()]);
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
     }
 
@@ -1241,7 +1241,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     final OptionDescriptors getEngineOptionDescriptors() {
-        return engineOptions;
+        // The engineOptions field needs to be initialized lazily because the GraalRuntimeAccessor
+        // cannot be used in the GraalTruffleRuntime constructor. The GraalTruffleRuntime must be
+        // fully initialized before using the accessor otherwise a NullPointerException will be
+        // thrown from the Accessor.Constants static initializer because the Truffle#getRuntime
+        // still returns null.
+        OptionDescriptors res = engineOptions;
+        if (res == null) {
+            res = GraalRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(runtimeOptionDescriptors);
+            engineOptions = res;
+        }
+        return res;
     }
 
     /**

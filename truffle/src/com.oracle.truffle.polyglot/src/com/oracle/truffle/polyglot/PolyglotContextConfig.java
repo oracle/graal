@@ -335,8 +335,8 @@ final class PolyglotContextConfig {
             targetOptions.put(engine, optionKey, options.get(optionKey), allowExperimentalOptions);
         }
         if (sandboxPolicy != SandboxPolicy.TRUSTED) {
-            for (OptionValuesImpl optionValues : optionsById.values()) {
-                PolyglotEngineImpl.validateOptionsSandbox(sandboxPolicy, optionValues);
+            for (String language : allowedPublicLanguages) {
+                engine.idToLanguage.get(language).validateSandbox(sandboxPolicy);
             }
         }
         this.configuredInstruments = instruments == null ? Collections.emptyList() : instruments;

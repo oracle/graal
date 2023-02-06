@@ -48,11 +48,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.SandboxPolicy;
 
 final class OptionValuesImpl implements OptionValues {
 
@@ -62,12 +64,15 @@ final class OptionValuesImpl implements OptionValues {
     static final String SYSTEM_PROPERTY_PREFIX = "polyglot.";
 
     private final OptionDescriptors descriptors;
+    private final SandboxPolicy sandboxPolicy;
     private final Map<OptionKey<?>, Object> values;
     private final Map<OptionKey<?>, String> unparsedValues;
 
-    OptionValuesImpl(OptionDescriptors descriptors, boolean preserveUnparsedValues) {
+    OptionValuesImpl(OptionDescriptors descriptors, SandboxPolicy sandboxPolicy, boolean preserveUnparsedValues) {
         Objects.requireNonNull(descriptors);
+        Objects.requireNonNull(sandboxPolicy);
         this.descriptors = descriptors;
+        this.sandboxPolicy = sandboxPolicy;
         this.values = new HashMap<>();
         this.unparsedValues = preserveUnparsedValues ? new HashMap<>() : null;
     }
@@ -132,6 +137,15 @@ final class OptionValuesImpl implements OptionValues {
 
     public void put(PolyglotEngineImpl engine, String key, String value, boolean allowExperimentalOptions) {
         OptionDescriptor descriptor = findDescriptor(engine, key, allowExperimentalOptions);
+        if (sandboxPolicy != SandboxPolicy.TRUSTED) {
+            SandboxPolicy optionSandboxPolicy = descriptors instanceof TruffleOptionDescriptors ? ((TruffleOptionDescriptors) descriptors).getSandboxPolicy(key) : SandboxPolicy.TRUSTED;
+            if (optionSandboxPolicy.ordinal() < sandboxPolicy.ordinal()) {
+                String optionValue = unparsedValues != null ? unparsedValues.get(descriptor.getKey()) : String.valueOf(values.get(descriptor.getKey()));
+                throw PolyglotEngineException.illegalArgument(PolyglotImpl.sandboxPolicyException(sandboxPolicy,
+                                String.format("The option %s requires at most the %s sandbox policy.", descriptor.getName(), optionSandboxPolicy),
+                                String.format("do not set the %s option by removing Context.Builder.option(\"%s\", \"%s\")", descriptor.getName(), descriptor.getName(), optionValue)));
+            }
+        }
         OptionKey<?> optionKey = descriptor.getKey();
         Object previousValue;
         if (values.containsKey(optionKey)) {
@@ -163,6 +177,7 @@ final class OptionValuesImpl implements OptionValues {
     private OptionValuesImpl(OptionValuesImpl copy) {
         this.values = new HashMap<>(copy.values);
         this.descriptors = copy.descriptors;
+        this.sandboxPolicy = copy.sandboxPolicy;
         this.unparsedValues = copy.unparsedValues;
     }
 
@@ -188,6 +203,9 @@ final class OptionValuesImpl implements OptionValues {
     void copyInto(OptionValuesImpl target) {
         if (!target.values.isEmpty()) {
             throw new IllegalStateException("Values must be empty.");
+        }
+        if (sandboxPolicy != target.sandboxPolicy) {
+            throw new AssertionError("Source and target must have the same SandboxPolicy.");
         }
         target.values.putAll(values);
     }

@@ -201,7 +201,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         if (optionValues == null) {
             synchronized (engine.lock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(getOptionsInternal(), false);
+                    optionValues = new OptionValuesImpl(getOptionsInternal(), engine.sandboxPolicy, false);
                 }
             }
         }
@@ -309,7 +309,12 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         return websiteSubstitutions(cache.getWebsite());
     }
 
-    public SandboxPolicy getSandboxPolicy() {
-        return cache.getSandboxPolicy();
+    void validateSandbox(SandboxPolicy sandboxPolicy) {
+        SandboxPolicy languageSandboxPolicy = cache.getSandboxPolicy();
+        if (languageSandboxPolicy.ordinal() < sandboxPolicy.ordinal()) {
+            throw PolyglotEngineException.illegalArgument(PolyglotImpl.sandboxPolicyException(sandboxPolicy,
+                            String.format("The language %s requires at most the %s sandbox policy.", getId(), languageSandboxPolicy),
+                            String.format("do not enable %s language by removing it from a list of permitted languages in the Context.newBuilder(String...)", getId())));
+        }
     }
 }
