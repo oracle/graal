@@ -745,9 +745,21 @@ public class LockFreePrefixTree {
             }
         }
 
-        private static void log(String formatting, Object... args) {
+        private static void log(String formatting, int a1) {
             if (LOGGING) {
-                System.out.println(String.format(formatting, args));
+                System.out.println(String.format(formatting, a1));
+            }
+        }
+
+        private static void log(String formatting, int a1, int a2) {
+            if (LOGGING) {
+                System.out.println(String.format(formatting, a1, a2));
+            }
+        }
+
+        private static void log(String formatting, int a1, int a2, int a3) {
+            if (LOGGING) {
+                System.out.println(String.format(formatting, a1, a2, a3));
             }
         }
 

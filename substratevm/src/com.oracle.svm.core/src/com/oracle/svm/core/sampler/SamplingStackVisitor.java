@@ -30,16 +30,19 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
-import com.oracle.svm.core.util.VMError;
 
 class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
 
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
         SamplingStackVisitor.StackTrace stackTrace = (SamplingStackVisitor.StackTrace) data;
-        VMError.guarantee(stackTrace.num < StackTrace.MAX_STACK_DEPTH, "The call stack depth of the thread exceeds the maximal set value.");
-        stackTrace.data[stackTrace.num++] = ip.rawValue();
-        return true;
+        if (stackTrace.num < stackTrace.buffer.length) {
+            stackTrace.buffer[stackTrace.num++] = ip.rawValue();
+            return true;
+        } else {
+            stackTrace.overflow = true;
+            return false;
+        }
     }
 
     @Override
@@ -48,9 +51,24 @@ class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
     }
 
     public static class StackTrace {
-        static final int MAX_STACK_DEPTH = 2048;
+        final long[] buffer;
+        int num;
+        boolean overflow;
 
-        final long[] data = new long[MAX_STACK_DEPTH];
-        int num = 0;
+        public StackTrace(long stackSizeInBytes) {
+            this.buffer = new long[((int) stackSizeInBytes) / 4];
+            this.num = 0;
+            this.overflow = false;
+        }
+
+        public void reset() {
+            this.num = 0;
+            this.overflow = false;
+        }
+
+        @Override
+        public String toString() {
+            return "StackTrace<buffer length = " + buffer.length + ", num = " + num + ">";
+        }
     }
 }

@@ -38,7 +38,9 @@ import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
 public class SafepointProfilingSampler implements ProfilingSampler, ThreadListener {
+    private final static int DEFAULT_STACK_SIZE = 8 * 1024;
 
+    private final SamplingStackVisitor samplingStackVisitor = new SamplingStackVisitor();
     private final LockFreePrefixTree prefixTree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -47,7 +49,8 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
 
     @Override
     public void beforeThreadRun() {
-        ThreadingSupportImpl.RecurringCallbackTimer callback = ThreadingSupportImpl.createRecurringCallbackTimer(TimeUtils.millisToNanos(10), (access) -> sampleThreadStack());
+        SamplingStackVisitor.StackTrace stackTrace = new SamplingStackVisitor.StackTrace(DEFAULT_STACK_SIZE);
+        ThreadingSupportImpl.RecurringCallbackTimer callback = ThreadingSupportImpl.createRecurringCallbackTimer(TimeUtils.millisToNanos(10), (access) -> sampleThreadStack(stackTrace));
         ThreadingSupportImpl.setRecurringCallback(CurrentIsolate.getCurrentThread(), callback);
     }
 
@@ -56,13 +59,16 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
         return prefixTree;
     }
 
-    private void sampleThreadStack() {
-        SamplingStackVisitor visitor = new SamplingStackVisitor();
-        SamplingStackVisitor.StackTrace data = new SamplingStackVisitor.StackTrace();
-        walkCurrentThread(data, visitor);
-        long[] result = data.data;
+    private void sampleThreadStack(SamplingStackVisitor.StackTrace stackTrace) {
+        stackTrace.reset();
+        walkCurrentThread(stackTrace, samplingStackVisitor);
+        if (stackTrace.overflow) {
+            // Exceeded the buffer size, ignore this sample.
+            return;
+        }
+        long[] result = stackTrace.buffer;
         LockFreePrefixTree.Node node = prefixTree.root();
-        for (int i = data.num - 1; i >= 0; i--) {
+        for (int i = stackTrace.num - 1; i >= 0; i--) {
             node = node.at(prefixTree().allocator(), result[i]);
             if (node == null) {
                 // The prefix tree had to be extended, but the allocation failed.
