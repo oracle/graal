@@ -530,12 +530,14 @@ public class LockFreePrefixTree {
     public static class ObjectPoolingAllocator extends Allocator {
         private static final int MIN_HOUSEKEEPING_PERIOD_MILLIS = 4;
         private static final int DEFAULT_HOUSEKEEPING_PERIOD_MILLIS = 72;
-        private static final int CHILDREN_POOL_COUNT = 32;
-        private static final int INITIAL_NODE_PREALLOCATION_COUNT = 2048;
-        private static final int INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT = 2048;
-        private static final int INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT = 128;
-        private static final int EXPECTED_MAX_HASH_NODE_SIZE = 512;
-        private static final int PREALLOCATION_MULTIPLIER = 2;
+        private static final int SIZE_CLASS_COUNT = 27;
+        private static final int INITIAL_NODE_PREALLOCATION_COUNT = 4096;
+        private static final int INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT = 4096;
+        private static final int INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT = 256;
+        private static final int MAX_NODE_PREALLOCATION_COUNT = 1 << 22;
+        private static final int MAX_ARRAY_PREALLOCATION_COUNT = 1 << 20;
+        private static final int EXPECTED_MAX_HASH_NODE_SIZE = 1024;
+        private static final boolean LOGGING = false;
 
         private final LockFreePool<Node> nodePool;
         private final LockFreePool<Node.LinearChildren>[] linearChildrenPool;
@@ -554,8 +556,8 @@ public class LockFreePrefixTree {
             this.linearChildrenPool = createLinearChildrenPool();
             this.hashChildrenPool = createHashChildrenPool();
             this.missedNodePoolRequestCount = new AtomicInteger(0);
-            this.missedLinearChildrenRequestCounts = new AtomicIntegerArray(32);
-            this.missedHashChildrenRequestCounts = new AtomicIntegerArray(32);
+            this.missedLinearChildrenRequestCounts = new AtomicIntegerArray(SIZE_CLASS_COUNT);
+            this.missedHashChildrenRequestCounts = new AtomicIntegerArray(SIZE_CLASS_COUNT);
             this.housekeepingThread = new HousekeepingThread(housekeepingPeriodMillis);
             this.housekeepingThread.start();
         }
@@ -570,7 +572,7 @@ public class LockFreePrefixTree {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         private static LockFreePool<Node.LinearChildren>[] createLinearChildrenPool() {
-            LockFreePool<Node.LinearChildren>[] pools = new LockFreePool[CHILDREN_POOL_COUNT];
+            LockFreePool<Node.LinearChildren>[] pools = new LockFreePool[SIZE_CLASS_COUNT];
             for (int sizeClass = 0; sizeClass < pools.length; sizeClass++) {
                 pools[sizeClass] = new LockFreePool<>();
                 if (sizeClass >= numberOfTrailingZeros(Node.INITIAL_LINEAR_NODE_SIZE) && sizeClass <= numberOfTrailingZeros(Node.MAX_LINEAR_NODE_SIZE)) {
@@ -585,7 +587,7 @@ public class LockFreePrefixTree {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         private static LockFreePool<Node.HashChildren>[] createHashChildrenPool() {
-            LockFreePool<Node.HashChildren>[] pools = new LockFreePool[CHILDREN_POOL_COUNT];
+            LockFreePool<Node.HashChildren>[] pools = new LockFreePool[SIZE_CLASS_COUNT];
             for (int sizeClass = 0; sizeClass < pools.length; sizeClass++) {
                 pools[sizeClass] = new LockFreePool<>();
                 if (sizeClass >= numberOfTrailingZeros(Node.INITIAL_HASH_NODE_SIZE) && sizeClass <= numberOfTrailingZeros(EXPECTED_MAX_HASH_NODE_SIZE)) {
@@ -613,6 +615,10 @@ public class LockFreePrefixTree {
         @Override
         public Node.LinearChildren newLinearChildren(int length) {
             checkPowerOfTwo(length);
+            if (Integer.numberOfTrailingZeros(length) >= SIZE_CLASS_COUNT) {
+                // Above maximum allowed length.
+                return null;
+            }
             int sizeClass = Integer.numberOfTrailingZeros(length);
             Node.LinearChildren obj = linearChildrenPool[sizeClass].get();
             if (obj != null) {
@@ -626,6 +632,10 @@ public class LockFreePrefixTree {
         @Override
         public Node.HashChildren newHashChildren(int length) {
             checkPowerOfTwo(length);
+            if (Integer.numberOfTrailingZeros(length) >= SIZE_CLASS_COUNT) {
+                // Above maximum allowed length.
+                return null;
+            }
             int sizeClass = Integer.numberOfTrailingZeros(length);
             Node.HashChildren obj = hashChildrenPool[sizeClass].get();
             if (obj != null) {
@@ -646,62 +656,217 @@ public class LockFreePrefixTree {
             }
         }
 
+        public String status() {
+            StringBuilder content = new StringBuilder();
+            content.append("ObjectPoolingAllocator").append(System.lineSeparator());
+            content.append("======================").append(System.lineSeparator());
+
+            // Misses statistics.
+            content.append("  current node alloc misses:      ").append(missedNodePoolRequestCount.get()).append(System.lineSeparator());
+            content.append("  current linear children misses: ").append(System.lineSeparator());
+            content.append("    size class ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format("%4d", sizeClass));
+            }
+            content.append(System.lineSeparator());
+            content.append("    miss count ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format("%4d", missedLinearChildrenRequestCounts.get(sizeClass)));
+            }
+            content.append(System.lineSeparator());
+            content.append("  current hash children misses: ").append(System.lineSeparator());
+            content.append("    size class ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format("%4d", sizeClass));
+            }
+            content.append(System.lineSeparator());
+            content.append("    miss count ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format("%4d", missedHashChildrenRequestCounts.get(sizeClass)));
+            }
+            content.append(System.lineSeparator());
+
+            // Preallocation levels.
+            content.append("  node preallocation growth:      ").append(housekeepingThread.nodePreallocationGrowth).append(System.lineSeparator());
+            content.append("  linear ch. preallocation growth:").append(System.lineSeparator());
+            content.append("    size class ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format("%4d", sizeClass));
+            }
+            content.append(System.lineSeparator());
+            content.append("    log_2(#)   ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format("%4d", 31 - Integer.numberOfLeadingZeros(housekeepingThread.linearChildrenPreallocationGrowth[sizeClass])));
+            }
+            content.append(System.lineSeparator());
+            content.append("  hash ch. preallocation growth:  ").append(System.lineSeparator());
+            content.append("    size class ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format("%4d", sizeClass));
+            }
+            content.append(System.lineSeparator());
+            content.append("    log_2(#)   ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format("%4d", 31 - Integer.numberOfLeadingZeros(housekeepingThread.hashChildrenPreallocationGrowth[sizeClass])));
+            }
+            content.append(System.lineSeparator());
+
+            // Total preallocation counts.
+            content.append("  node preallocation total:       ").append(housekeepingThread.nodePreallocationTotal).append(System.lineSeparator());
+            content.append("  linear ch. preallocation total: ").append(System.lineSeparator());
+            content.append("    size class ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format("%8d", sizeClass));
+            }
+            content.append(System.lineSeparator());
+            content.append("    log_2(#)   ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format(" %7.1e", 1.0 * housekeepingThread.linearChildrenPreallocationTotal[sizeClass]));
+            }
+            content.append(System.lineSeparator());
+            content.append("  hash ch. preallocation total:   ").append(System.lineSeparator());
+            content.append("    size class ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format("%8d", sizeClass));
+            }
+            content.append(System.lineSeparator());
+            content.append("    log_2(#)   ");
+            for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
+                content.append(String.format(" %7.1e", 1.0 * housekeepingThread.hashChildrenPreallocationTotal[sizeClass]));
+            }
+            content.append(System.lineSeparator());
+
+            return content.toString();
+        }
+
         private static void checkPowerOfTwo(int length) {
             if (Integer.bitCount(length) != 1) {
                 throw new UnsupportedOperationException("Cannot allocate length that is not a power of 2: " + length);
             }
         }
 
+        private static void log(String formatting, Object... args) {
+            if (LOGGING) {
+                System.out.println(String.format(formatting, args));
+            }
+        }
+
         private class HousekeepingThread extends Thread {
+            private final AtomicBoolean isEnabled;
             private final int defaultHousekeepingPeriodMillis;
             private int nextHousekeepingPeriodMillis;
-            private final AtomicBoolean isEnabled;
+            private int nodePreallocationGrowth;
+            private final int[] linearChildrenPreallocationGrowth;
+            private final int[] hashChildrenPreallocationGrowth;
+            private long nodePreallocationTotal;
+            private final long[] linearChildrenPreallocationTotal;
+            private final long[] hashChildrenPreallocationTotal;
 
             HousekeepingThread(int defaultHousekeepingPeriodMillis) {
                 setDaemon(true);
+                this.isEnabled = new AtomicBoolean(true);
                 this.defaultHousekeepingPeriodMillis = defaultHousekeepingPeriodMillis;
                 this.nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
-                this.isEnabled = new AtomicBoolean(true);
+                this.nodePreallocationGrowth = 1;
+                this.linearChildrenPreallocationGrowth = new int[SIZE_CLASS_COUNT];
+                for (int sizeClass = 0; sizeClass < this.linearChildrenPreallocationGrowth.length; sizeClass++) {
+                    this.linearChildrenPreallocationGrowth[sizeClass] = 1;
+                }
+                this.hashChildrenPreallocationGrowth = new int[SIZE_CLASS_COUNT];
+                for (int sizeClass = 0; sizeClass < this.hashChildrenPreallocationGrowth.length; sizeClass++) {
+                    this.hashChildrenPreallocationGrowth[sizeClass] = sizeClass < 16 ? 4 : 1;
+                }
+                this.nodePreallocationTotal = 0;
+                this.linearChildrenPreallocationTotal = new long[SIZE_CLASS_COUNT];
+                this.hashChildrenPreallocationTotal = new long[SIZE_CLASS_COUNT];
             }
 
             private void housekeep() {
+                housekeepNodePool();
+                housekeepLinearChildrenPools();
+                housekeepHashChildrenPools();
+            }
+
+            private void housekeepNodePool() {
                 int count = missedNodePoolRequestCount.get();
                 if (count > 0) {
-                    int growthEstimate = Math.max(INITIAL_NODE_PREALLOCATION_COUNT, count * PREALLOCATION_MULTIPLIER);
+                    // Preallocation rules:
+                    // Allocate at least INITIAL_NODE_PREALLOCATION_COUNT nodes.
+                    // Allocate at least as many nodes as there were missed requests.
+                    // Allocate at least nodePreallocationGrowth nodes, which is a value that
+                    // doubles each time the pool is emptied, and is divided by two each time it is
+                    // not empty.
+                    int growthEstimate = Math.max(INITIAL_NODE_PREALLOCATION_COUNT, count);
+                    growthEstimate = Math.max(growthEstimate, nodePreallocationGrowth);
+                    log("node prealloc = %d, prealloc growth = %d", growthEstimate, nodePreallocationGrowth);
                     for (int i = 0; i < growthEstimate; i++) {
                         nodePool.add(new Node());
                     }
-                    nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
                     missedNodePoolRequestCount.set(0);
+                    nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
+                    nodePreallocationGrowth = Math.min(MAX_NODE_PREALLOCATION_COUNT, nodePreallocationGrowth * 2);
+                    nodePreallocationTotal += growthEstimate;
                 }
+            }
+
+            private void housekeepLinearChildrenPools() {
                 for (int sizeClass = 0; sizeClass < linearChildrenPool.length; sizeClass++) {
-                    count = missedLinearChildrenRequestCounts.get(sizeClass);
+                    int count = missedLinearChildrenRequestCounts.get(sizeClass);
                     if (count > 0) {
-                        int growthEstimate = Math.max(INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT, count * PREALLOCATION_MULTIPLIER);
+                        // Preallocation rules:
+                        // Allocate at least INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT nodes.
+                        // Allocate at least as many nodes as there were missed requests.
+                        // Allocate at least linearChildrenPreallocationGrowth nodes, which is a
+                        // value that doubles each time the pool is emptied, and is divided by two
+                        // each time it is not empty.
+                        int growthEstimate = Math.max(INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT, count);
+                        growthEstimate = Math.max(growthEstimate, linearChildrenPreallocationGrowth[sizeClass]);
+                        log("linear size class %d prealloc = %d, prealloc growth = %d", sizeClass, growthEstimate, linearChildrenPreallocationGrowth[sizeClass]);
                         for (int i = 0; i < growthEstimate; i++) {
                             linearChildrenPool[sizeClass].add(new Node.LinearChildren(1 << sizeClass));
                         }
-                        nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
                         missedLinearChildrenRequestCounts.set(sizeClass, 0);
+                        nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
+                        linearChildrenPreallocationGrowth[sizeClass] = Math.min(MAX_ARRAY_PREALLOCATION_COUNT, linearChildrenPreallocationGrowth[sizeClass] * 2);
+                        linearChildrenPreallocationTotal[sizeClass] += growthEstimate;
                     }
                 }
+            }
+
+            private void housekeepHashChildrenPools() {
                 for (int sizeClass = 0; sizeClass < hashChildrenPool.length; sizeClass++) {
-                    count = missedHashChildrenRequestCounts.get(sizeClass);
+                    int count = missedHashChildrenRequestCounts.get(sizeClass);
                     if (count > 0) {
                         int growthEstimate;
                         if (sizeClass < Integer.numberOfTrailingZeros(EXPECTED_MAX_HASH_NODE_SIZE)) {
-                            // Since these nodes are larger, and requested less frequently, we do
-                            // not use the preallocation multiplier.
+                            // Preallocation rules:
+                            // Allocate at least INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT nodes.
+                            // Allocate at least as many nodes as there were missed requests.
+                            // Allocate at least hashChildrenPreallocationGrowth nodes, which is a
+                            // value that doubles each time the pool is emptied, and is divided by
+                            // two each
+                            // time it is not empty.
                             growthEstimate = Math.max(INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT, count);
+                            growthEstimate = Math.max(growthEstimate, hashChildrenPreallocationGrowth[sizeClass]);
                         } else {
                             // We expect that the case of allocating very wide nodes is rare.
+                            //
+                            // Preallocation rules:
+                            // Allocate at least as many nodes as there were missed requests.
+                            // Allocate at least hashChildrenPreallocationGrowth nodes, which is
+                            // a value that doubles each time the pool is emptied, and is divided by
+                            // two each time it is not empty.
                             growthEstimate = count;
+                            growthEstimate = Math.max(growthEstimate, hashChildrenPreallocationGrowth[sizeClass]);
                         }
+                        log("hash size class %d prealloc = %d, prealloc growth = %d", sizeClass, growthEstimate, hashChildrenPreallocationGrowth[sizeClass]);
                         for (int i = 0; i < growthEstimate; i++) {
                             hashChildrenPool[sizeClass].add(new Node.HashChildren(1 << sizeClass));
                         }
-                        nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
                         missedHashChildrenRequestCounts.set(sizeClass, 0);
+                        nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
+                        hashChildrenPreallocationGrowth[sizeClass] = Math.min(MAX_ARRAY_PREALLOCATION_COUNT, hashChildrenPreallocationGrowth[sizeClass] * 2);
+                        hashChildrenPreallocationTotal[sizeClass] += growthEstimate;
                     }
                 }
             }
@@ -711,9 +876,10 @@ public class LockFreePrefixTree {
                 while (isEnabled.get()) {
                     try {
                         synchronized (this) {
-                            System.out.println("Sleeping... " + nextHousekeepingPeriodMillis + " ms.");
+                            log("housekeeping thread sleeping... %d ms.", nextHousekeepingPeriodMillis);
                             this.wait(nextHousekeepingPeriodMillis);
-                            // Decrease housekeeping period up to maximum using an exponential backoff.
+                            // Decrease housekeeping period up to maximum using an exponential
+                            // backoff.
                             nextHousekeepingPeriodMillis = Math.min(defaultHousekeepingPeriodMillis, nextHousekeepingPeriodMillis * 2);
                         }
                         housekeep();

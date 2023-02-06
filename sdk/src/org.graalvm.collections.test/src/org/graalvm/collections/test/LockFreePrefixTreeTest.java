@@ -239,7 +239,7 @@ public class LockFreePrefixTreeTest {
     public void linearFlatMultithreadedHeap() {
         final LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
         final LockFreePrefixTree tree = new LockFreePrefixTree(a);
-        linearFlatMultithreaded(a, tree);
+        linearFlatMultithreaded(tree, a);
     }
 
     @Test
@@ -247,7 +247,7 @@ public class LockFreePrefixTreeTest {
         final LockFreePrefixTree.ObjectPoolingAllocator a = new LockFreePrefixTree.ObjectPoolingAllocator();
         final LockFreePrefixTree tree = new LockFreePrefixTree(a);
         try {
-            while (!linearFlatMultithreaded(a, tree)) {
+            while (!linearFlatMultithreaded(tree, a)) {
                 delay(a);
             }
         } finally {
@@ -255,7 +255,7 @@ public class LockFreePrefixTreeTest {
         }
     }
 
-    private static boolean linearFlatMultithreaded(LockFreePrefixTree.Allocator a, LockFreePrefixTree tree) {
+    private static boolean linearFlatMultithreaded(LockFreePrefixTree tree, LockFreePrefixTree.Allocator a) {
         final int parallelism = 10;
         final int size = 7;
         boolean built = inParallel(parallelism, threadIndex -> {
@@ -277,148 +277,235 @@ public class LockFreePrefixTreeTest {
         return true;
     }
 
-//    @Test
-//    public void largeMultithreaded() {
-//        final LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
-//        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
-//        final int parallelism = 8;
-//        inParallel(parallelism, threadIndex -> {
-//            for (long i = 1L; i < 2048L; i++) {
-//                LockFreePrefixTree.Node first = tree.root().at(a, threadIndex * 2048L + i);
-//                for (long j = 1L; j < 2048L; j++) {
-//                    LockFreePrefixTree.Node second = first.at(a, j);
-//                    second.setValue(i * j);
-//                }
-//            }
-//        });
-//        for (int t = 0; t < parallelism; t++) {
-//            for (long i = 1L; i < 2048L; i++) {
-//                LockFreePrefixTree.Node first = tree.root().at(a, t * 2048L + i);
-//                for (long j = 1L; j < 2048L; j++) {
-//                    LockFreePrefixTree.Node second = first.at(a, j);
-//                    Assert.assertEquals(i * j, second.value());
-//                }
-//            }
-//        }
-//    }
-//
-//    private void verifyValue(LockFreePrefixTree.HeapAllocator a, LockFreePrefixTree.Node node, int depth, int parallelism) {
-//        if (depth == 0) {
-//            Assert.assertEquals(parallelism, node.value());
-//        } else {
-//            for (long i = 1L; i < 14L; i++) {
-//                final LockFreePrefixTree.Node child = node.at(a, i);
-//                verifyValue(a, child, depth - 1, parallelism);
-//            }
-//        }
-//    }
-//
-//    @Test
-//    public void deepHashMultiThreaded() {
-//        final LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
-//        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
-//        final int depth = 6;
-//        final int parallelism = 8;
-//        final long multiplier = 14L;
-//        inParallel(parallelism, new Consumer<Integer>() {
-//            @Override
-//            public void accept(Integer threadIndex) {
-//                insert(tree.root(), depth);
-//            }
-//
-//            private void insert(LockFreePrefixTree.Node node, int currentDepth) {
-//                if (currentDepth == 0) {
-//                    node.incValue();
-//                } else {
-//                    for (long i = 1L; i < multiplier; i++) {
-//                        final LockFreePrefixTree.Node child = node.at(a, i);
-//                        insert(child, currentDepth - 1);
-//                    }
-//                }
-//            }
-//        });
-//        verifyValue(a, tree.root(), depth, parallelism);
-//    }
-//
-//    private void fillDeepTree(LockFreePrefixTree.HeapAllocator a, LockFreePrefixTree.Node node, int depth, int numChildren) {
-//        if (depth == 0) {
-//            node.incrementAndGet();
-//        } else {
-//            for (int i = 1; i <= numChildren; i++) {
-//                fillDeepTree(a, node.at(a, i), depth - 1, numChildren);
-//            }
-//        }
-//    }
-//
-//    private void checkDeepTree(LockFreePrefixTree.HeapAllocator a, LockFreePrefixTree.Node node, int depth, int numChildren, int parallelism) {
-//        if (depth == 0) {
-//            Assert.assertEquals(parallelism, node.value());
-//        } else {
-//            for (long i = 1L; i <= numChildren; i++) {
-//                checkDeepTree(a, node.at(a, i), depth - 1, numChildren, parallelism);
-//            }
-//        }
-//    }
-//
-//    @Test
-//    public void deepLinearMultiThreaded() {
-//        final LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
-//        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
-//        final int depth = 10;
-//        final int parallelism = 8;
-//        final int numChildren = 4;
-//        inParallel(parallelism, new Consumer<Integer>() {
-//            @Override
-//            public void accept(Integer integer) {
-//                fillDeepTree(a, tree.root(), depth, numChildren);
-//            }
-//        });
-//        checkDeepTree(a, tree.root(), depth, numChildren, parallelism);
-//    }
-//
-//    @Test
-//    public void deepHashMultiThreadedV2() {
-//        LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
-//        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
-//        final int depth = 6;
-//        final int parallelism = 8;
-//        final int numChildren = 10;
-//        inParallel(parallelism, new Consumer<Integer>() {
-//            @Override
-//            public void accept(Integer integer) {
-//                fillDeepTree(a, tree.root(), depth, numChildren);
-//            }
-//        });
-//        checkDeepTree(a, tree.root(), depth, numChildren, parallelism);
-//    }
-//
-//    @Test
-//    public void manyMultiThreaded() {
-//        final LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
-//        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
-//        int parallelism = 8;
-//        int multiplier = 1024;
-//        long batch = 2000L;
-//        inParallel(parallelism, new Consumer<Integer>() {
-//            @Override
-//            public void accept(Integer threadIndex) {
-//                if (threadIndex % 2 == 0) {
-//                    // Mostly read.
-//                    for (int j = 0; j < multiplier; j++) {
-//                        for (long i = 1L; i < batch; i++) {
-//                            tree.root().at(a, i).incValue();
-//                        }
-//                    }
-//                } else {
-//                    // Mostly add new nodes.
-//                    for (long i = batch + 1L; i < multiplier * batch; i++) {
-//                        tree.root().at(a, threadIndex * multiplier * batch + i).incValue();
-//                    }
-//                }
-//            }
-//        });
-//        for (long i = 1L; i < batch; i++) {
-//            Assert.assertEquals(parallelism * multiplier / 2, tree.root().at(a, i).value());
-//        }
-//    }
+    @Test
+    public void largeMultiThreadedHeap() {
+        final LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
+        largeMultiThreaded(a, tree);
+    }
+
+    @Test
+    public void largeMultiThreadedPool() throws InterruptedException {
+        final LockFreePrefixTree.ObjectPoolingAllocator a = new LockFreePrefixTree.ObjectPoolingAllocator();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
+        try {
+            while (!largeMultiThreaded(a, tree)) {
+                delay(a);
+            }
+        } finally {
+            a.shutdown();
+        }
+    }
+
+    private static boolean largeMultiThreaded(LockFreePrefixTree.Allocator a, LockFreePrefixTree tree) {
+        final int parallelism = 8;
+        boolean built = inParallel(parallelism, threadIndex -> {
+            for (long i = 1L; i < 2048L; i++) {
+                LockFreePrefixTree.Node first = tree.root().at(a, threadIndex * 2048L + i);
+                if (first == null) {
+                    return false;
+                }
+                for (long j = 1L; j < 2048L; j++) {
+                    LockFreePrefixTree.Node second = first.at(a, j);
+                    if (second == null) {
+                        return false;
+                    }
+                    second.setValue(i * j);
+                }
+            }
+            return true;
+        });
+        if (!built) {
+            return false;
+        }
+        for (int t = 0; t < parallelism; t++) {
+            for (long i = 1L; i < 2048L; i++) {
+                LockFreePrefixTree.Node first = tree.root().at(a, t * 2048L + i);
+                for (long j = 1L; j < 2048L; j++) {
+                    LockFreePrefixTree.Node second = first.at(a, j);
+                    Assert.assertEquals(i * j, second.value());
+                }
+            }
+        }
+        return true;
+    }
+
+    @Test
+    public void deepHashMultiThreadedHeap() {
+        final LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
+        deepHashMultiThreaded(tree, a);
+    }
+
+    @Test
+    public void deepHashMultiThreadedPool() throws InterruptedException {
+        final LockFreePrefixTree.ObjectPoolingAllocator a = new LockFreePrefixTree.ObjectPoolingAllocator();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
+        try {
+            while (!deepHashMultiThreaded(tree, a)) {
+                delay(a);
+            }
+        } finally {
+            a.shutdown();
+        }
+    }
+
+    private void verifyValue(LockFreePrefixTree.Allocator a, LockFreePrefixTree.Node node, int depth, int parallelism) {
+        if (depth == 0) {
+            Assert.assertEquals((1L << parallelism) - 1, node.value());
+        } else {
+            for (long i = 1L; i < 14L; i++) {
+                final LockFreePrefixTree.Node child = node.at(a, i);
+                verifyValue(a, child, depth - 1, parallelism);
+            }
+        }
+    }
+
+    private boolean deepHashMultiThreaded(LockFreePrefixTree tree, LockFreePrefixTree.Allocator a) {
+        final int depth = 6;
+        final int parallelism = 8;
+        final long multiplier = 14L;
+        boolean built = inParallel(parallelism, new Function<>() {
+            @Override
+            public Boolean apply(Integer threadIndex) {
+                return insert(threadIndex, tree.root(), depth);
+            }
+
+            private boolean insert(int threadIndex, LockFreePrefixTree.Node node, int currentDepth) {
+                if (currentDepth == 0) {
+                    node.bitwiseOrValue(1L << threadIndex);
+                    return true;
+                } else {
+                    for (long i = 1L; i < multiplier; i++) {
+                        final LockFreePrefixTree.Node child = node.at(a, i);
+                        if (child == null) {
+                            return false;
+                        }
+                        if (!insert(threadIndex, child, currentDepth - 1)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            }
+        });
+        if (!built) {
+            return false;
+        }
+        verifyValue(a, tree.root(), depth, parallelism);
+        return true;
+    }
+
+    @Test
+    public void deepLinearMultiThreadedHeap() {
+        final LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
+        deepLinearMultiThreaded(tree, a);
+    }
+
+    @Test
+    public void deepLinearMultiThreadedPool() throws InterruptedException {
+        final LockFreePrefixTree.ObjectPoolingAllocator a = new LockFreePrefixTree.ObjectPoolingAllocator();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
+        try {
+            while (!deepLinearMultiThreaded(tree, a)) {
+                delay(a);
+            }
+        } finally {
+            a.shutdown();
+        }
+    }
+
+    private boolean deepLinearMultiThreaded(LockFreePrefixTree tree, LockFreePrefixTree.Allocator a) {
+        final int depth = 10;
+        final int parallelism = 8;
+        final int numChildren = 4;
+        boolean built = inParallel(parallelism, new Function<>() {
+            @Override
+            public Boolean apply(Integer threadIndex) {
+                return fillDeepTree(threadIndex, a, tree.root(), depth, numChildren);
+            }
+        });
+        if (!built) {
+            return false;
+        }
+        checkDeepTree(a, tree.root(), depth, numChildren, parallelism);
+        return true;
+    }
+
+    private boolean fillDeepTree(Integer threadIndex, LockFreePrefixTree.Allocator a, LockFreePrefixTree.Node node, int depth, int numChildren) {
+        if (depth == 0) {
+            node.bitwiseOrValue(1L << threadIndex);
+            return true;
+        } else {
+            for (int i = 1; i <= numChildren; i++) {
+                LockFreePrefixTree.Node child = node.at(a, i);
+                if (child == null) {
+                    return false;
+                }
+                if (!fillDeepTree(threadIndex, a, child, depth - 1, numChildren)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    private void checkDeepTree(LockFreePrefixTree.Allocator a, LockFreePrefixTree.Node node, int depth, int numChildren, int parallelism) {
+        if (depth == 0) {
+            Assert.assertEquals((1L << parallelism) - 1, node.value());
+        } else {
+            for (long i = 1L; i <= numChildren; i++) {
+                checkDeepTree(a, node.at(a, i), depth - 1, numChildren, parallelism);
+            }
+        }
+    }
+
+    @Test
+    public void deepHashMultiThreadedV2() {
+        LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
+        final int depth = 6;
+        final int parallelism = 8;
+        final int numChildren = 10;
+        inParallel(parallelism, new Function<>() {
+            @Override
+            public Boolean apply(Integer threadIndex) {
+                fillDeepTree(threadIndex, a, tree.root(), depth, numChildren);
+                return true;
+            }
+        });
+        checkDeepTree(a, tree.root(), depth, numChildren, parallelism);
+    }
+
+    @Test
+    public void manyMultiThreaded() {
+        final LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
+        final LockFreePrefixTree tree = new LockFreePrefixTree(a);
+        int parallelism = 8;
+        int multiplier = 1024;
+        long batch = 2000L;
+        inParallel(parallelism, new Function<>() {
+            @Override
+            public Boolean apply(Integer threadIndex) {
+                if (threadIndex % 2 == 0) {
+                    // Mostly read.
+                    for (int j = 0; j < multiplier; j++) {
+                        for (long i = 1L; i < batch; i++) {
+                            tree.root().at(a, i).incValue();
+                        }
+                    }
+                } else {
+                    // Mostly add new nodes.
+                    for (long i = batch + 1L; i < multiplier * batch; i++) {
+                        tree.root().at(a, threadIndex * multiplier * batch + i).incValue();
+                    }
+                }
+                return true;
+            }
+        });
+        for (long i = 1L; i < batch; i++) {
+            Assert.assertEquals(parallelism * multiplier / 2, tree.root().at(a, i).value());
+        }
+    }
 }
