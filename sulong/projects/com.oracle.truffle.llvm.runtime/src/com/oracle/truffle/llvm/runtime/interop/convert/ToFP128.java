@@ -84,7 +84,7 @@ public abstract class ToFP128 extends ForeignToLLVM {
 
     @Specialization(limit = "1", guards = "serialize.isSerializable(value)")
     protected LLVM128BitFloat from128BitFloat(Object value,
-                                            @CachedLibrary("value") SerializableLibrary serialize) {
+                    @CachedLibrary("value") SerializableLibrary serialize) {
         try {
             // this is an FP128 value from the NFI, we have to serialize it
             byte[] buffer = new byte[16];
@@ -95,7 +95,6 @@ public abstract class ToFP128 extends ForeignToLLVM {
             throw CompilerDirectives.shouldNotReachHere(ex);
         }
     }
-
 
     @CompilerDirectives.TruffleBoundary
     static LLVM128BitFloat slowPathPrimitiveConvert(Object value) throws UnsupportedTypeException {
