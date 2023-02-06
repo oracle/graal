@@ -185,9 +185,12 @@ public class LockFreePrefixTree {
 
         /**
          * Get existing (or create if missing) child with the given key.
-         * 
+         *
+         * May return {@code null} if the operation cannot complete, for example, due to inability
+         * to allocate nodes.
+         *
          * @param childKey the key of the child.
-         * @return The child with the given childKey.
+         * @return The child with the given childKey, or {@code null} if cannot complete.
          * @since 22.3
          */
         @SuppressWarnings("unchecked")
@@ -435,6 +438,8 @@ public class LockFreePrefixTree {
      * Exception that denotes that an allocation failed.
      */
     public static class FailedAllocationException extends RuntimeException {
+        private static final long serialVersionUID = -1L;
+
         @Override
         public synchronized Throwable fillInStackTrace() {
             return this;
@@ -510,9 +515,9 @@ public class LockFreePrefixTree {
         private static final int DEFAULT_HOUSEKEEPING_PERIOD_MILLIS = 72;
         private static final int CHILDREN_POOL_COUNT = 32;
         private static final int INITIAL_NODE_PREALLOCATION_COUNT = 2048;
-        private static final int INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT = 512;
-        private static final int INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT = 64;
-        private static final int EXPECTED_MAX_HASH_NODE_SIZE = 256;
+        private static final int INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT = 2048;
+        private static final int INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT = 128;
+        private static final int EXPECTED_MAX_HASH_NODE_SIZE = 512;
         private static final int PREALLOCATION_MULTIPLIER = 2;
 
         private final LockFreePool<Node> nodePool;
@@ -535,6 +540,7 @@ public class LockFreePrefixTree {
             this.missedLinearChildrenRequestCounts = new AtomicIntegerArray(32);
             this.missedHashChildrenRequestCounts = new AtomicIntegerArray(32);
             this.housekeepingThread = new HousekeepingThread(housekeepingPeriodMillis);
+            this.housekeepingThread.start();
         }
 
         private static LockFreePool<Node> createNodePool() {
@@ -545,9 +551,9 @@ public class LockFreePrefixTree {
             return pool;
         }
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         private static LockFreePool<Node.LinearChildren>[] createLinearChildrenPool() {
-            LockFreePool<Node.LinearChildren>[] pools = new LockFreePool<>[CHILDREN_POOL_COUNT];
+            LockFreePool<Node.LinearChildren>[] pools = new LockFreePool[CHILDREN_POOL_COUNT];
             for (int sizeClass = 0; sizeClass < pools.length; sizeClass++) {
                 pools[sizeClass] = new LockFreePool<>();
                 if (sizeClass >= numberOfTrailingZeros(Node.INITIAL_LINEAR_NODE_SIZE) && sizeClass <= numberOfTrailingZeros(Node.MAX_LINEAR_NODE_SIZE)) {
@@ -560,9 +566,9 @@ public class LockFreePrefixTree {
             return pools;
         }
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         private static LockFreePool<Node.HashChildren>[] createHashChildrenPool() {
-            LockFreePool<Node.HashChildren>[] pools = new LockFreePool<>[CHILDREN_POOL_COUNT];
+            LockFreePool<Node.HashChildren>[] pools = new LockFreePool[CHILDREN_POOL_COUNT];
             for (int sizeClass = 0; sizeClass < pools.length; sizeClass++) {
                 pools[sizeClass] = new LockFreePool<>();
                 if (sizeClass >= numberOfTrailingZeros(Node.INITIAL_HASH_NODE_SIZE) && sizeClass <= numberOfTrailingZeros(EXPECTED_MAX_HASH_NODE_SIZE)) {
@@ -642,7 +648,8 @@ public class LockFreePrefixTree {
             private void housekeep() {
                 int count = missedNodePoolRequestCount.get();
                 if (count > 0) {
-                    for (int i = 0; i < Math.max(INITIAL_NODE_PREALLOCATION_COUNT, count * PREALLOCATION_MULTIPLIER); i++) {
+                    int growthEstimate = Math.max(INITIAL_NODE_PREALLOCATION_COUNT, count * PREALLOCATION_MULTIPLIER);
+                    for (int i = 0; i < growthEstimate; i++) {
                         nodePool.add(new Node());
                     }
                     missedNodePoolRequestCount.set(0);
@@ -650,7 +657,8 @@ public class LockFreePrefixTree {
                 for (int sizeClass = 0; sizeClass < linearChildrenPool.length; sizeClass++) {
                     count = missedLinearChildrenRequestCounts.get(sizeClass);
                     if (count > 0) {
-                        for (int i = 0; i < Math.max(INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT, count * PREALLOCATION_MULTIPLIER); i++) {
+                        int growthEstimate = Math.max(INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT, count * PREALLOCATION_MULTIPLIER);
+                        for (int i = 0; i < growthEstimate; i++) {
                             linearChildrenPool[sizeClass].add(new Node.LinearChildren(1 << sizeClass));
                         }
                         missedLinearChildrenRequestCounts.set(sizeClass, 0);
@@ -659,7 +667,14 @@ public class LockFreePrefixTree {
                 for (int sizeClass = 0; sizeClass < hashChildrenPool.length; sizeClass++) {
                     count = missedHashChildrenRequestCounts.get(sizeClass);
                     if (count > 0) {
-                        for (int i = 0; i < Math.max(INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT, count); i++) {
+                        int growthEstimate;
+                        if (sizeClass < Integer.numberOfTrailingZeros(EXPECTED_MAX_HASH_NODE_SIZE)) {
+                            growthEstimate = Math.max(INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT, count);
+                        } else {
+                            // We expect that the case of allocating very wide nodes is rare.
+                            growthEstimate = count;
+                        }
+                        for (int i = 0; i < growthEstimate; i++) {
                             hashChildrenPool[sizeClass].add(new Node.HashChildren(1 << sizeClass));
                         }
                         missedHashChildrenRequestCounts.set(sizeClass, 0);

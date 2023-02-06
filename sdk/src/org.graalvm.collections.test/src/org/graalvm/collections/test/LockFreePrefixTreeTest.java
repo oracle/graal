@@ -48,59 +48,111 @@ import java.util.function.Consumer;
 
 public class LockFreePrefixTreeTest {
 
+    private static final int RETRY_DELAY_MILLIS = 160;
+
     @Test
-    public void smallAlphabet() {
+    public void smallAlphabetHeap() {
         LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
-        LockFreePrefixTree tree = new LockFreePrefixTree(a);
+        smallAlphabet(a);
+    }
 
-        tree.root().at(a, 2L).at(a, 12L).at(a, 18L).setValue(42);
-        tree.root().at(a, 2L).at(a, 12L).at(a, 19L).setValue(43);
-        tree.root().at(a, 2L).at(a, 12L).at(a, 20L).setValue(44);
+    @Test
+    public void smallAlphabetPool() {
+        LockFreePrefixTree.ObjectPoolingAllocator a = new LockFreePrefixTree.ObjectPoolingAllocator();
+        smallAlphabet(a);
+    }
 
-        Assert.assertEquals(42, tree.root().at(a, 2L).at(a, 12L).at(a, 18L).value());
-        Assert.assertEquals(43, tree.root().at(a, 2L).at(a, 12L).at(a, 19L).value());
-        Assert.assertEquals(44, tree.root().at(a, 2L).at(a, 12L).at(a, 20L).value());
+    private static void smallAlphabet(LockFreePrefixTree.Allocator a) {
+        try {
+            LockFreePrefixTree tree = new LockFreePrefixTree(a);
 
-        tree.root().at(a, 3L).at(a, 19L).setValue(21);
+            tree.root().at(a, 2L).at(a, 12L).at(a, 18L).setValue(42);
+            tree.root().at(a, 2L).at(a, 12L).at(a, 19L).setValue(43);
+            tree.root().at(a, 2L).at(a, 12L).at(a, 20L).setValue(44);
 
-        Assert.assertEquals(42, tree.root().at(a, 2L).at(a, 12L).at(a, 18L).value());
-        Assert.assertEquals(21, tree.root().at(a, 3L).at(a, 19L).value());
+            Assert.assertEquals(42, tree.root().at(a, 2L).at(a, 12L).at(a, 18L).value());
+            Assert.assertEquals(43, tree.root().at(a, 2L).at(a, 12L).at(a, 19L).value());
+            Assert.assertEquals(44, tree.root().at(a, 2L).at(a, 12L).at(a, 20L).value());
 
-        tree.root().at(a, 2L).at(a, 6L).at(a, 11L).setValue(123);
+            tree.root().at(a, 3L).at(a, 19L).setValue(21);
 
-        Assert.assertEquals(123, tree.root().at(a, 2L).at(a, 6L).at(a, 11L).value());
+            Assert.assertEquals(42, tree.root().at(a, 2L).at(a, 12L).at(a, 18L).value());
+            Assert.assertEquals(21, tree.root().at(a, 3L).at(a, 19L).value());
 
-        tree.root().at(a, 3L).at(a, 19L).at(a, 11L).incValue();
-        tree.root().at(a, 3L).at(a, 19L).at(a, 11L).incValue();
+            tree.root().at(a, 2L).at(a, 6L).at(a, 11L).setValue(123);
 
-        Assert.assertEquals(2, tree.root().at(a, 3L).at(a, 19L).at(a, 11L).value());
+            Assert.assertEquals(123, tree.root().at(a, 2L).at(a, 6L).at(a, 11L).value());
 
-        for (long i = 1L; i < 6L; i++) {
-            tree.root().at(a, 1L).at(a, 2L).at(a, i).setValue(i * 10);
-        }
-        for (long i = 1L; i < 6L; i++) {
-            Assert.assertEquals(i * 10, tree.root().at(a, 1L).at(a, 2L).at(a, i).value());
+            tree.root().at(a, 3L).at(a, 19L).at(a, 11L).incValue();
+            tree.root().at(a, 3L).at(a, 19L).at(a, 11L).incValue();
+
+            Assert.assertEquals(2, tree.root().at(a, 3L).at(a, 19L).at(a, 11L).value());
+
+            for (long i = 1L; i < 6L; i++) {
+                tree.root().at(a, 1L).at(a, 2L).at(a, i).setValue(i * 10);
+            }
+            for (long i = 1L; i < 6L; i++) {
+                Assert.assertEquals(i * 10, tree.root().at(a, 1L).at(a, 2L).at(a, i).value());
+            }
+        } finally {
+            a.shutdown();
         }
     }
 
     @Test
-    public void largeAlphabet() {
+    public void largeAlphabetHeap() {
         LockFreePrefixTree.HeapAllocator a = new LockFreePrefixTree.HeapAllocator();
         LockFreePrefixTree tree = new LockFreePrefixTree(a);
+        try {
+            largeAlphabet(tree, a);
+        } finally {
+            a.shutdown();
+        }
+    }
+
+    @Test
+    public void largeAlphabetPool() throws InterruptedException {
+        LockFreePrefixTree.ObjectPoolingAllocator a = new LockFreePrefixTree.ObjectPoolingAllocator();
+        LockFreePrefixTree tree = new LockFreePrefixTree(a);
+        try {
+            while (!largeAlphabet(tree, a)) {
+                synchronized (a) {
+                    a.wait(RETRY_DELAY_MILLIS);
+                }
+            }
+        } finally {
+            a.shutdown();
+        }
+    }
+
+    private static boolean largeAlphabet(LockFreePrefixTree tree, LockFreePrefixTree.Allocator a) {
         for (long i = 1L; i < 128L; i++) {
             LockFreePrefixTree.Node first = tree.root().at(a, i);
+            if (first == null) {
+                return false;
+            }
             for (long j = 1L; j < 64L; j++) {
                 LockFreePrefixTree.Node second = first.at(a, j);
+                if (second == null) {
+                    return false;
+                }
                 second.setValue(i * j);
             }
         }
         for (long i = 1L; i < 128L; i++) {
             LockFreePrefixTree.Node first = tree.root().at(a, i);
+            if (first == null) {
+                return false;
+            }
             for (long j = 1L; j < 64L; j++) {
                 LockFreePrefixTree.Node second = first.at(a, j);
+                if (second == null) {
+                    return false;
+                }
                 Assert.assertEquals(i * j, second.value());
             }
         }
+        return true;
     }
 
     private static void inParallel(int parallelism, Consumer<Integer> body) {
