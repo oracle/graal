@@ -47,6 +47,10 @@ public final class BindToRegisterNode extends FixedWithNextNode implements LIRLo
         this.value = value;
     }
 
+    public ValueNode getValue() {
+        return value;
+    }
+
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         gen.getLIRGeneratorTool().append(new StandardOp.BindToRegisterOp(gen.getLIRGeneratorTool().asAllocatable(gen.operand(value))));
