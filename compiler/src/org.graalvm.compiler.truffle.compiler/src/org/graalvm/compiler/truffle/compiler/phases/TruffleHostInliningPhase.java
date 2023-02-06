@@ -535,9 +535,17 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     }
 
     /**
-     * Computes the set of blocks where all successors end in an unwind.
+     * Computes the set of blocks where all direct or transitive successors
+     * {@link HIRBlock#getEndNode() end} in an {@link UnwindNode}.
      */
     private static void computeUnwindBlocks(EconomicSet<AbstractBeginNode> unwindBlocks, HIRBlock[] reversePostOrder) {
+        /*
+         * Since we traverse in post order, we process all blocks before their dominator. This
+         * guarantees that we can traverse all blocks in a single pass, given that we want to find
+         * blocks where all successors end in an unwind. In order to do the single pass we also need
+         * to skip loop ends, therefore we are not following unwind successors through loop ends.
+         * That is a fine trade-off for compilation speed and complexity.
+         */
         block: for (int blockIndex = reversePostOrder.length - 1; blockIndex >= 0; blockIndex--) {
             HIRBlock block = reversePostOrder[blockIndex];
             int successorCount = block.getSuccessorCount();
