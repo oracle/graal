@@ -65,6 +65,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
@@ -231,6 +232,7 @@ abstract class HostToTypeNode extends Node {
     }
 
     @SuppressWarnings({"unused"})
+    @InliningCutoff
     static boolean canConvert(Node node, Object value, Class<?> targetType, Type genericType, Boolean allowsImplementation,
                     HostContext hostContext, int priority,
                     InteropLibrary interop,
