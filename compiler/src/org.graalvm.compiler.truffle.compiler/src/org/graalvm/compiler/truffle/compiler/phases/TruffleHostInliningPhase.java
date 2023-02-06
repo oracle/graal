@@ -422,7 +422,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             }
 
             boolean guardedByInInterpreter = false;
-            boolean fastPathInInterpreter = true;
 
             for (FixedNode node : block.getNodes()) {
                 if (node instanceof FixedGuardNode) {
@@ -440,15 +439,13 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                             if (input instanceof Invoke) {
                                 ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
                                 if (targetMethod != null) {
-                                    boolean inInterpeterFastPath = false;
-                                    if (isInInterpreter(targetMethod) || (inInterpeterFastPath = isInInterpreterFastPath(targetMethod))) {
+                                    if (isInInterpreter(targetMethod)) {
                                         HIRBlock dominatedSilbling = block.getFirstDominated();
                                         while (dominatedSilbling != null) {
                                             inInterpreterBlocks.add(dominatedSilbling.getBeginNode());
                                             dominatedSilbling = dominatedSilbling.getDominatedSibling();
                                         }
                                         guardedByInInterpreter = true;
-                                        fastPathInInterpreter = inInterpeterFastPath;
                                         break;
                                     }
                                 }
@@ -489,7 +486,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                  */
                 boolean unwind = caller.unwind || unwindBlocks.contains(block.getBeginNode());
 
-                boolean inInterpreter = (guardedByInInterpreter && !fastPathInInterpreter) || caller.inInterpreter || isBlockOrDominatorContainedIn(block, inInterpreterBlocks);
+                boolean inInterpreter = (guardedByInInterpreter) || caller.inInterpreter || isBlockOrDominatorContainedIn(block, inInterpreterBlocks);
 
                 /*
                  * The idea is to support composed bytecodes witches from multiple methods. For that
