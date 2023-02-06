@@ -41,7 +41,7 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
     private final static int DEFAULT_STACK_SIZE = 8 * 1024;
 
     private final SamplingStackVisitor samplingStackVisitor = new SamplingStackVisitor();
-    private final LockFreePrefixTree prefixTree = new LockFreePrefixTree(new LockFreePrefixTree.HeapAllocator());
+    private final LockFreePrefixTree prefixTree = new LockFreePrefixTree(new LockFreePrefixTree.ObjectPoolingAllocator());
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SafepointProfilingSampler() {
