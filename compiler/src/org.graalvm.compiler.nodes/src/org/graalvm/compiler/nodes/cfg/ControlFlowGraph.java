@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -190,7 +190,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             identifyBlock(block);
             numBlocks++;
             if (numBlocks > AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX) {
-                throw new RetryableBailoutException("Graph too large to safely compile in reasonable time. Graph contains more than %d basic blocks", AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX);
+                throw new RetryableBailoutException("Graph too large to safely compile in reasonable time. Graph contains more than %d basic blocks",
+                                (int) AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX);
             }
         }
         reversePostOrder = ReversePostOrder.identifyBlocks(this, numBlocks);
