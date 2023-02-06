@@ -55,7 +55,7 @@ It is a complete Java VM that includes all core components, implements the same 
 GraalVM is available as **GraalVM Enterprise** and **GraalVM Community** editions and includes support for Java 11 and Java 17.
 GraalVM Enterprise is based on Oracle JDK while GraalVM Community is based on OpenJDK.
 
-GraalVM is available for Linux x86 64-bit and AArch64 systems and macOS AArch64 systems , and for Windows on x86 64-bit systems.
+GraalVM is available for Linux and macOS on x86 64-bit and AArch64 systems, and for Windows on x86 64-bit architecture.
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
 See the [Getting Started guide](getting-started/graalvm-community/get-started-graalvm-community.md) for installation instructions.
 
