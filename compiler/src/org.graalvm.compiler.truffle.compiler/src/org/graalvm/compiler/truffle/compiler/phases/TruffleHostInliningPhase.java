@@ -438,16 +438,14 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                         for (Node input : condition.inputs()) {
                             if (input instanceof Invoke) {
                                 ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
-                                if (targetMethod != null) {
-                                    if (isInInterpreter(targetMethod)) {
-                                        HIRBlock dominatedSilbling = block.getFirstDominated();
-                                        while (dominatedSilbling != null) {
-                                            inInterpreterBlocks.add(dominatedSilbling.getBeginNode());
-                                            dominatedSilbling = dominatedSilbling.getDominatedSibling();
-                                        }
-                                        guardedByInInterpreter = true;
-                                        break;
+                                if (targetMethod != null && isInInterpreter(targetMethod)) {
+                                    HIRBlock dominatedSilbling = block.getFirstDominated();
+                                    while (dominatedSilbling != null) {
+                                        inInterpreterBlocks.add(dominatedSilbling.getBeginNode());
+                                        dominatedSilbling = dominatedSilbling.getDominatedSibling();
                                     }
+                                    guardedByInInterpreter = true;
+                                    break;
                                 }
                             }
                         }
