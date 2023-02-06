@@ -68,7 +68,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
-import org.openjdk.jmh.annotations.Setup;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -899,8 +898,8 @@ public class HostInliningTest extends GraalCompilerTest {
      * This test might fail and needs to be updated if something in the call code changes.
      */
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined(name = {"traceTransferToInterpreter", "callBoundary",
-                    "profileArgumentsSlow", "<init>", "beforeCall"}, count = {-1, 1, 1, -1, 1})
+    @ExpectNotInlined(name = {"traceTransferToInterpreter", "callBoundary", "profileExceptionType", "addStackFrameInfo",
+                    "profileArgumentsSlow", "<init>", "beforeCall"}, count = {-1, 1, -1, -1, 1, -1, 1})
     static int testInterpreterCaller(@SuppressWarnings("unused") int value) {
         return (int) CALL.call();
     }
