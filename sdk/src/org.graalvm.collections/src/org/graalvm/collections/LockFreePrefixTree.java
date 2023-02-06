@@ -535,7 +535,7 @@ public class LockFreePrefixTree {
         private static final int INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT = 4096;
         private static final int INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT = 256;
         private static final int MAX_NODE_PREALLOCATION_COUNT = 1 << 22;
-        private static final int MAX_ARRAY_PREALLOCATION_COUNT = 1 << 20;
+        private static final int MAX_CHILDREN_PREALLOCATION_COUNT = 1 << 20;
         private static final int EXPECTED_MAX_HASH_NODE_SIZE = 1024;
         private static final boolean LOGGING = false;
 
@@ -827,7 +827,7 @@ public class LockFreePrefixTree {
                         }
                         missedLinearChildrenRequestCounts.set(sizeClass, 0);
                         nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
-                        linearChildrenPreallocationGrowth[sizeClass] = Math.min(MAX_ARRAY_PREALLOCATION_COUNT, linearChildrenPreallocationGrowth[sizeClass] * 2);
+                        linearChildrenPreallocationGrowth[sizeClass] = Math.min(MAX_CHILDREN_PREALLOCATION_COUNT, linearChildrenPreallocationGrowth[sizeClass] * 2);
                         linearChildrenPreallocationTotal[sizeClass] += growthEstimate;
                     }
                 }
@@ -865,7 +865,7 @@ public class LockFreePrefixTree {
                         }
                         missedHashChildrenRequestCounts.set(sizeClass, 0);
                         nextHousekeepingPeriodMillis = MIN_HOUSEKEEPING_PERIOD_MILLIS;
-                        hashChildrenPreallocationGrowth[sizeClass] = Math.min(MAX_ARRAY_PREALLOCATION_COUNT, hashChildrenPreallocationGrowth[sizeClass] * 2);
+                        hashChildrenPreallocationGrowth[sizeClass] = Math.min(MAX_CHILDREN_PREALLOCATION_COUNT, hashChildrenPreallocationGrowth[sizeClass] * 2);
                         hashChildrenPreallocationTotal[sizeClass] += growthEstimate;
                     }
                 }

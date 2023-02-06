@@ -64,11 +64,13 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
         LockFreePrefixTree.Node node = prefixTree.root();
         for (int i = data.num - 1; i >= 0; i--) {
             node = node.at(prefixTree().allocator(), result[i]);
+            if (node == null) {
+                // The prefix tree had to be extended, but the allocation failed.
+                // In this case, simply drop the sample, as the allocation pool will be replenished
+                // before a subsequent sampling round.
+                return;
+            }
         }
-        incStackTraceCounter(node);
-    }
-
-    private static void incStackTraceCounter(LockFreePrefixTree.Node node) {
         node.incValue();
     }
 

@@ -37,7 +37,7 @@ class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
         SamplingStackVisitor.StackTrace stackTrace = (SamplingStackVisitor.StackTrace) data;
-        VMError.guarantee(stackTrace.num < StackTrace.MAX_STACK_DEPTH, "The call stack depth of the thread  exceeds the maximal set value.");
+        VMError.guarantee(stackTrace.num < StackTrace.MAX_STACK_DEPTH, "The call stack depth of the thread exceeds the maximal set value.");
         stackTrace.data[stackTrace.num++] = ip.rawValue();
         return true;
     }
@@ -48,9 +48,9 @@ class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
     }
 
     public static class StackTrace {
-
         static final int MAX_STACK_DEPTH = 2048;
-        long[] data = new long[MAX_STACK_DEPTH];
+
+        final long[] data = new long[MAX_STACK_DEPTH];
         int num = 0;
     }
 }
