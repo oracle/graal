@@ -35,7 +35,6 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -44,6 +43,8 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.resources.MissingResourceMetadataException;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -65,6 +66,8 @@ public class LocalizationSupport {
     public final ResourceBundle.Control control = ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
 
     public final Charset defaultCharset;
+
+    private static final String LOCALE_REGEX = "(_[a-z]{2})?(_[A-Z]{2})?";
 
     public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
         this.defaultLocale = defaultLocale;
@@ -96,21 +99,33 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
-        if (bundle instanceof PropertyResourceBundle) {
+        Boolean trackMetadata = MissingResourceMetadataException.Options.ThrowMissingMetadataExceptions.getValue();
+        if (trackMetadata || bundle instanceof PropertyResourceBundle) {
             String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
             String resultingPattern;
             if (bundleNameWithModule.length < 2) {
-                resultingPattern = control.toBundleName(bundleName, locale).replace('.', '/');
+                resultingPattern = addBasePattern("", bundleName, trackMetadata);
+                resultingPattern = control.toBundleName(resultingPattern, locale);
             } else {
-                String patternWithLocale = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
+                addBasePattern(bundleNameWithModule[0] + ":", bundleNameWithModule[1], trackMetadata);
+                String patternWithLocale = control.toBundleName(bundleNameWithModule[1], locale);
                 resultingPattern = bundleNameWithModule[0] + ':' + patternWithLocale;
             }
             ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), resultingPattern + "\\.properties");
-        } else {
+        }
+        if (!(bundle instanceof PropertyResourceBundle)) {
             RuntimeReflection.register(bundle.getClass());
             RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());
             onBundlePrepared(bundle);
         }
+    }
+
+    private static String addBasePattern(String module, String bundleName, boolean trackMetadata) {
+        String resultingPattern = module + bundleName.replace('.', '/').replace("$", "\\$");
+        if (trackMetadata) {
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), resultingPattern + LOCALE_REGEX + "\\.properties");
+        }
+        return resultingPattern;
     }
 
     /**
@@ -162,6 +177,14 @@ public class LocalizationSupport {
     }
 
     public void prepareClassResourceBundle(@SuppressWarnings("unused") String basename, Class<?> bundleClass) {
+        if (MissingResourceMetadataException.Options.ThrowMissingMetadataExceptions.getValue()) {
+            String[] bundleNameWithModule = SubstrateUtil.split(basename, ":", 2);
+            if (bundleNameWithModule.length < 2) {
+                addBasePattern("", basename, true);
+            } else {
+                addBasePattern(bundleNameWithModule[0] + ":", bundleNameWithModule[1], true);
+            }
+        }
         RuntimeReflection.register(bundleClass);
         RuntimeReflection.registerForReflectiveInstantiation(bundleClass);
         onClassBundlePrepared(bundleClass);
