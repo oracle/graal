@@ -486,7 +486,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                  */
                 boolean unwind = caller.unwind || unwindBlocks.contains(block.getBeginNode());
 
-                boolean inInterpreter = (guardedByInInterpreter) || caller.inInterpreter || isBlockOrDominatorContainedIn(block, inInterpreterBlocks);
+                boolean inInterpreter = guardedByInInterpreter || caller.inInterpreter || isBlockOrDominatorContainedIn(block, inInterpreterBlocks);
 
                 /*
                  * The idea is to support composed bytecodes witches from multiple methods. For that
@@ -1562,7 +1562,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                 boolean fastPathInvoke = isFastPathInvoke(this);
                 return String.format(
                                 "%-" + maxIndent +
-                                                "s [inlined %4s, explored %4s, monomorphic %5s, deopt %5s, unwind %5s, inInterpreter %5s, propagates %5s, invoke %5s, cost %4s, subTreeCost %4s, treeInvokes %4s,  incomplete %5s, reason %s]",
+                                                "s [inlined %4s, explored %4s, monomorphic %5s, deopt %5s, unwind %5s, inInterpreter %5s, propagates %7s, invoke %5s, cost %4s, subTreeCost %4s, treeInvokes %4s,  incomplete %5s, reason %s]",
                                 indent + buildLabel(),
                                 formatOptionalInt(hasCutoffParent() ? -1 : inlinedIndex),
                                 formatOptionalInt(exploredIndex),
