@@ -829,6 +829,8 @@ public abstract class Accessor {
 
         public abstract void materializeHostFrames(Throwable original);
 
+        public abstract Throwable getOrCreateLazyStackTrace(Throwable t);
+
         public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels, Object... loggers);
 
         public abstract Object getDefaultLoggers();

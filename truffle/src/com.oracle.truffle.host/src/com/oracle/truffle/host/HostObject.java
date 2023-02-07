@@ -165,7 +165,7 @@ final class HostObject implements TruffleObject {
             HostObject hostObject = (HostObject) obj;
             return new HostObject(hostObject.obj, context, hostObject.extraInfo);
         } else if (obj instanceof HostException) {
-            return new HostException(((HostException) obj).getOriginal(), context);
+            return ((HostException) obj).withContext(context);
         } else {
             throw CompilerDirectives.shouldNotReachHere("Parameter must be HostObject or HostException.");
         }
@@ -2441,7 +2441,7 @@ final class HostObject implements TruffleObject {
                 if (cause instanceof AbstractTruffleException) {
                     return cause;
                 } else if (!HostAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
-                    return new HostException(cause, context);
+                    return HostException.wrap(cause, context);
                 }
             }
         }
@@ -2451,14 +2451,19 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean hasExceptionStackTrace() {
-        return isException() && TruffleStackTrace.fillIn((Throwable) obj) != null;
+        if (isException()) {
+            Object hostExceptionOrOriginal = extraInfo != null ? extraInfo : obj;
+            return TruffleStackTrace.fillIn((Throwable) hostExceptionOrOriginal) != null;
+        }
+        return false;
     }
 
     @ExportMessage
     @TruffleBoundary
     Object getExceptionStackTrace() throws UnsupportedMessageException {
         if (isException()) {
-            return HostAccessor.EXCEPTION.getExceptionStackTrace(obj);
+            Object hostExceptionOrOriginal = extraInfo != null ? extraInfo : obj;
+            return HostAccessor.EXCEPTION.getExceptionStackTrace(hostExceptionOrOriginal);
         }
         throw UnsupportedMessageException.create();
     }
@@ -2470,7 +2475,7 @@ final class HostObject implements TruffleObject {
         if (isException()) {
             HostException ex = (HostException) extraInfo;
             if (ex == null) {
-                ex = new HostException((Throwable) obj, context);
+                ex = HostException.wrap((Throwable) obj, context);
             }
             throw ex;
         }

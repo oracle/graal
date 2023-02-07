@@ -458,7 +458,7 @@ public final class TruffleStackTrace extends Exception {
         appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit);
     }
 
-    private static LazyStackTrace getOrCreateLazyStackTrace(Throwable throwable) {
+    static LazyStackTrace getOrCreateLazyStackTrace(Throwable throwable) {
         LazyStackTrace lazy;
         if (LanguageAccessor.EXCEPTIONS.isException(throwable)) {
             lazy = (LazyStackTrace) LanguageAccessor.EXCEPTIONS.getLazyStackTrace(throwable);

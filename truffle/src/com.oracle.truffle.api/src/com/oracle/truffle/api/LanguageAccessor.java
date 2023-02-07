@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -128,6 +128,11 @@ final class LanguageAccessor extends Accessor {
         @Override
         public void materializeHostFrames(Throwable original) {
             TruffleStackTrace.materializeHostFrames(original);
+        }
+
+        @Override
+        public Throwable getOrCreateLazyStackTrace(Throwable t) {
+            return TruffleStackTrace.getOrCreateLazyStackTrace(t);
         }
 
         @Override

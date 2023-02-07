@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,20 @@ final class HostException extends AbstractTruffleException {
     @Override
     public String getMessage() {
         return getOriginal().getMessage();
+    }
+
+    static HostException wrap(Throwable original, HostContext context) {
+        HostException hostException = new HostException(original, context);
+        // Share LazyStackTrace with the underlying host exception so that lazy stack trace elements
+        // appended to the HostException propagate to original exception and vice versa.
+        HostAccessor.EXCEPTION.setLazyStackTrace(hostException, HostAccessor.LANGUAGE.getOrCreateLazyStackTrace(original));
+        return hostException;
+    }
+
+    HostException withContext(HostContext context) {
+        HostException hostException = new HostException(original, context);
+        HostAccessor.EXCEPTION.setLazyStackTrace(this, HostAccessor.EXCEPTION.getLazyStackTrace(hostException));
+        return hostException;
     }
 
 }
