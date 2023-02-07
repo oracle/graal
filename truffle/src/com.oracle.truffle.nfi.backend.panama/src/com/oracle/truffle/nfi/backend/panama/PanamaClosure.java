@@ -9,6 +9,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -242,6 +243,7 @@ final class PanamaClosure implements TruffleObject {
     public static final class GenericRetClosureRootNode extends PanamaClosureRootNode {
 
         @Child CallClosureNode callClosure;
+        @Child ArgumentNode toJavaRet;
         @Child private InteropLibrary interopLibrary;
 
         static MonomorphicClosureInfo createInfo(PanamaNFILanguage lang, CachedSignatureInfo signature, Object receiver) {
@@ -259,6 +261,7 @@ final class PanamaClosure implements TruffleObject {
         private GenericRetClosureRootNode(PanamaNFILanguage lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
             super(lang);
             callClosure = CallClosureNodeGen.create(signature, receiver);
+            toJavaRet = signature.retType.createArgumentNode();
             interopLibrary = InteropLibrary.getFactory().createDispatched(4);
         }
 
@@ -268,7 +271,11 @@ final class PanamaClosure implements TruffleObject {
             if (interopLibrary.isNull(ret)) {
                 return NativePointer.NULL.asPointer();
             }
-            return ret;
+            try {
+                return toJavaRet.execute(ret);
+            } catch (UnsupportedTypeException e) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
         }
     }
 }

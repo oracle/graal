@@ -149,6 +149,14 @@ abstract class ArgumentNode extends Node {
             exception.enter();
             if (interop.isNull(arg)) {
                 return NativePointer.NULL.asPointer();
+            } else {
+                try {
+                    if (interop.isNumber(arg)) {
+                        return interop.asLong(arg);
+                    }
+                } catch (UnsupportedMessageException ex2) {
+                    // fallthrough
+                }
             }
             throw UnsupportedTypeException.create(new Object[]{arg});
         }
