@@ -832,7 +832,7 @@ public final class NativeImageHeap implements ImageHeap {
 
         @Override
         public String toString() {
-            StringBuilder result = new StringBuilder(getObject().getClass().getName()).append(":").append(identityHashCode).append(" -> ");
+            StringBuilder result = new StringBuilder(((TypedConstant) constant).getType(metaAccess).toJavaName(true)).append(":").append(identityHashCode).append(" -> ");
             Object cur = getMainReason();
             Object prev = null;
             boolean skipped = false;
