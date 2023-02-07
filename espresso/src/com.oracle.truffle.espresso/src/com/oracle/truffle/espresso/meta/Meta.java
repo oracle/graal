@@ -387,6 +387,7 @@ public final class Meta extends ContextAccessImpl {
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
         java_lang_Thread$FieldHolder = getJavaVersion().java19OrLater() ? knownKlass(Type.java_lang_Thread_FieldHolder) : null;
+        java_lang_Thread$Constants = getJavaVersion().java19OrLater() ? knownKlass(Type.java_lang_Thread_Constants) : null;
         // The interrupted field is no longer hidden as of JDK14+
         HIDDEN_INTERRUPTED = diff() //
                         .field(lower(13), Name.HIDDEN_INTERRUPTED, Type._boolean)//
@@ -408,6 +409,17 @@ public final class Meta extends ContextAccessImpl {
             HIDDEN_THREAD_WAITED_COUNT = null;
         }
 
+        if (getJavaVersion().java19OrLater()) {
+            java_lang_BaseVirtualThread = knownKlass(Type.java_lang_BaseVirtualThread);
+            java_lang_Thread_threadGroup = null;
+            java_lang_Thread$FieldHolder_group = java_lang_Thread$FieldHolder.requireDeclaredField(Name.group, Type.java_lang_ThreadGroup);
+            java_lang_Thread$Constants_VTHREAD_GROUP = java_lang_Thread$Constants.requireDeclaredField(Name.VTHREAD_GROUP, Type.java_lang_ThreadGroup);
+        } else {
+            java_lang_BaseVirtualThread = null;
+            java_lang_Thread_threadGroup = java_lang_Thread.requireDeclaredField(Name.group, Type.java_lang_ThreadGroup);
+            java_lang_Thread$FieldHolder_group = null;
+            java_lang_Thread$Constants_VTHREAD_GROUP = null;
+        }
         java_lang_ThreadGroup = knownKlass(Type.java_lang_ThreadGroup);
         if (getJavaVersion().java17OrEarlier()) {
             java_lang_ThreadGroup_add = java_lang_ThreadGroup.requireDeclaredMethod(Name.add, Signature._void_Thread);
@@ -1222,6 +1234,7 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_nio_ByteOrder;
     public final Field java_nio_ByteOrder_LITTLE_ENDIAN;
 
+    public final ObjectKlass java_lang_BaseVirtualThread;
     public final ObjectKlass java_lang_ThreadGroup;
     public final Method java_lang_ThreadGroup_add;
     public final Method java_lang_Thread_dispatchUncaughtException;
@@ -1231,7 +1244,11 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_lang_Thread_holder;
     public final Field java_lang_Thread_threadStatus;
     public final Field java_lang_Thread$FieldHolder_threadStatus;
+    public final Field java_lang_Thread_threadGroup;
+    public final Field java_lang_Thread$FieldHolder_group;
     public final Field java_lang_Thread_tid;
+    public final ObjectKlass java_lang_Thread$Constants;
+    public final Field java_lang_Thread$Constants_VTHREAD_GROUP;
     public final Field java_lang_Thread_contextClassLoader;
     public final Method java_lang_Thread_init_ThreadGroup_Runnable;
     public final Method java_lang_Thread_init_ThreadGroup_String;

@@ -416,10 +416,12 @@ public final class JDWP {
                 // ensure redefinition atomicity by suspending all
                 // guest threads during the redefine transaction
                 Object[] allGuestThreads = context.getAllGuestThreads();
+                Object prev = null;
                 try {
                     for (Object guestThread : allGuestThreads) {
                         controller.suspend(guestThread);
                     }
+                    prev = controller.enterTruffleContext();
                     int errorCode = context.redefineClasses(redefineInfos);
                     if (errorCode != 0) {
                         reply.errorCode(errorCode);
@@ -431,6 +433,7 @@ public final class JDWP {
                     for (Object guestThread : allGuestThreads) {
                         controller.resume(guestThread, false);
                     }
+                    controller.leaveTruffleContext(prev);
                 }
                 return new CommandResult(reply);
             }

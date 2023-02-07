@@ -379,7 +379,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public Object getThreadGroup(Object thread) {
-        return context.getMeta().java_lang_Thread_getThreadGroup.invokeDirect(thread);
+        return context.getThreadAccess().getThreadGroup((StaticObject) thread);
     }
 
     @Override
@@ -692,7 +692,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean isSystemThread() {
-        return controller.isControlThread() || classRedefinition.isRedefineThread();
+        return classRedefinition.isRedefineThread();
     }
 
     public long getBCI(Node rawNode, Frame frame) {

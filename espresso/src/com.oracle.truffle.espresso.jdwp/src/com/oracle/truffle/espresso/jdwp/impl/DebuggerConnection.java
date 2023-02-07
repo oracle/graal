@@ -58,7 +58,6 @@ public final class DebuggerConnection implements Commands {
         jdwpTransport = new Thread(new JDWPTransportThread(), "jdwp-transport");
         jdwpTransport.setDaemon(true);
         jdwpTransport.start();
-        controller.markAsControlThread(jdwpTransport);
         activeThreads.add(jdwpTransport);
 
         if (suspend) {
@@ -192,21 +191,16 @@ public final class DebuggerConnection implements Commands {
 
         @Override
         public void run() {
-            try {
-                while (!Thread.currentThread().isInterrupted()) {
-                    controller.enterTruffleContext();
-                    try {
-                        processPacket(Packet.fromByteArray(connection.readPacket()));
-                    } catch (IOException e) {
-                        if (!Thread.currentThread().isInterrupted()) {
-                            controller.warning(() -> "Failed to process jdwp packet with message: " + e.getMessage());
-                        }
-                    } catch (ConnectionClosedException e) {
-                        // we closed the session, so let the thread run dry
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    processPacket(Packet.fromByteArray(connection.readPacket()));
+                } catch (IOException e) {
+                    if (!Thread.currentThread().isInterrupted()) {
+                        controller.warning(() -> "Failed to process jdwp packet with message: " + e.getMessage());
                     }
+                } catch (ConnectionClosedException e) {
+                    // we closed the session, so let the thread run dry
                 }
-            } finally {
-                controller.leaveTruffleContext();
             }
         }
 
