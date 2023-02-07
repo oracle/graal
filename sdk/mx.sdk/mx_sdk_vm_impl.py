@@ -662,6 +662,10 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
                     if _library_config.headers:
                         _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
+                    if _debug_images() and not _skip_libraries(_library_config) and _get_svm_support().is_debug_supported(_library_config):
+                        _add(layout, dirname(_svm_library_dest) + '/', 'dependency:' + _library_project_name + '/*.debug', _component)
+                        if _include_sources(_library_config):
+                            _add(layout, dirname(_svm_library_dest) + '/', 'dependency:' + _library_project_name + '/sources', _component)
                 if not stage1 and isinstance(_library_config, mx_sdk.LanguageLibraryConfig) and _library_config.launchers:
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(PolyglotConfig.project_name(_library_config)), _component)
                     # add native launchers for language libraries
