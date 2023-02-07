@@ -26,24 +26,27 @@
 
 package com.oracle.svm.core.jfr.events;
 
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.UnsignedWord;
+
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.jfr.HasJfrSupport;
-import org.graalvm.nativeimage.StackValue;
 
 public class ObjectAllocationInNewTLABEvent {
-    public static void emit(long startTicks, Class<?> clazz, long allocationSize, long tlabSize) {
+    public static void emit(long startTicks, DynamicHub hub, UnsignedWord allocationSize, UnsignedWord tlabSize) {
         if (HasJfrSupport.get()) {
-            emit0(startTicks, clazz, allocationSize, tlabSize);
+            emit0(startTicks, hub, allocationSize, tlabSize);
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emit0(long startTicks, Class<?> clazz, long allocationSize, long tlabSize) {
+    private static void emit0(long startTicks, DynamicHub hub, UnsignedWord allocationSize, UnsignedWord tlabSize) {
         if (JfrEvent.ObjectAllocationInNewTLAB.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
@@ -51,9 +54,9 @@ public class ObjectAllocationInNewTLABEvent {
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ObjectAllocationInNewTLAB, 0));
-            JfrNativeEventWriter.putClass(data, clazz);
-            JfrNativeEventWriter.putLong(data, allocationSize);
-            JfrNativeEventWriter.putLong(data, tlabSize);
+            JfrNativeEventWriter.putClass(data, DynamicHub.toClass(hub));
+            JfrNativeEventWriter.putLong(data, allocationSize.rawValue());
+            JfrNativeEventWriter.putLong(data, tlabSize.rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }

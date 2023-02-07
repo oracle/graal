@@ -30,21 +30,16 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
-import java.util.Arrays;
-
 public class TestObjectAllocationInNewTLABEvent extends JfrTest {
-    static final int KILO = 1024;
-    // the default size for serial and epsilon GC in SVM.
-    static final int DEFAULT_ALIGNED_HEAP_CHUNK_SIZE = KILO * KILO;
-
-    public static Helper helper = null;
-    public static byte[] byteArray = null;
+    private static final int K = 1024;
+    private static final int DEFAULT_ALIGNED_HEAP_CHUNK_SIZE = 1024 * K;
 
     @Override
     public String[] getTestedEvents() {
@@ -53,65 +48,78 @@ public class TestObjectAllocationInNewTLABEvent extends JfrTest {
 
     @Override
     public void validateEvents() throws Throwable {
-        boolean foundBigByte = false;
-        boolean foundSmallByte = false;
-        boolean foundBigChar = false;
+        boolean foundBigByteArray = false;
+        boolean foundSmallByteArray = false;
+        boolean foundBigCharArray = false;
         boolean foundInstance = false;
+
         for (RecordedEvent event : getEvents()) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             if (!eventThread.equals("main")) {
                 continue;
             }
+
+            long allocationSize = event.<Long> getValue("allocationSize");
+            long tlabSize = event.<Long> getValue("tlabSize");
+            String className = event.<RecordedClass> getValue("objectClass").getName();
+
             // >= To account for size of reference
-            if (event.<Long> getValue("allocationSize").longValue() >= (2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE) &&
-                            event.<Long> getValue("tlabSize").longValue() >= (2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE)) {
+            if (allocationSize >= 2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE && tlabSize >= 2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE) {
                 // verify previous owner
-                if (event.<RecordedClass> getValue("objectClass").getName().equals(char[].class.getName())) {
-                    foundBigChar = true;
-                } else if (event.<RecordedClass> getValue("objectClass").getName().equals(byte[].class.getName())) {
-                    foundBigByte = true;
+                if (className.equals(char[].class.getName())) {
+                    foundBigCharArray = true;
+                } else if (className.equals(byte[].class.getName())) {
+                    foundBigByteArray = true;
                 }
-            } else if (event.<Long> getValue("allocationSize").longValue() >= KILO && event.<Long> getValue("tlabSize").longValue() == (DEFAULT_ALIGNED_HEAP_CHUNK_SIZE) &&
-                            event.<RecordedClass> getValue("objectClass").getName().equals(byte[].class.getName())) {
-                foundSmallByte = true;
-            } else if (event.<Long> getValue("tlabSize").longValue() == (DEFAULT_ALIGNED_HEAP_CHUNK_SIZE) && event.<RecordedClass> getValue("objectClass").getName().equals(Helper.class.getName())) {
+            } else if (allocationSize >= K && tlabSize == DEFAULT_ALIGNED_HEAP_CHUNK_SIZE && className.equals(byte[].class.getName())) {
+                foundSmallByteArray = true;
+            } else if (tlabSize == DEFAULT_ALIGNED_HEAP_CHUNK_SIZE && className.equals(Helper.class.getName())) {
                 foundInstance = true;
             }
         }
-        if (!foundBigChar || !foundBigByte || !foundSmallByte || !foundInstance) {
-            assertTrue("Expected events not found. foundBigChar: " + foundBigChar + " foundBigByte:" + foundBigByte + " foundSmallByte:" + foundSmallByte + " foundInstance:" + foundInstance,
-                            foundBigChar && foundBigByte && foundSmallByte && foundInstance);
-        }
+
+        assertTrue(foundBigCharArray);
+        assertTrue(foundBigByteArray);
+        assertTrue(foundSmallByteArray);
+        assertTrue(foundInstance);
     }
 
     @Test
     public void test() throws Exception {
+        // Allocate large arrays (always need a new TLAB).
+        allocateByteArray(2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE);
+        allocateCharArray(DEFAULT_ALIGNED_HEAP_CHUNK_SIZE);
 
-        // These arrays must result in exceeding the large array threshold, resulting in new TLABs. Big Byte.
-        byte[] bigByte = new byte[2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE];
-        Arrays.fill(bigByte, (byte) 0);
-
-        // Using char, so it's the same size as bigByte. Big Char.
-        char[] bigChar = new char[DEFAULT_ALIGNED_HEAP_CHUNK_SIZE];
-        Arrays.fill(bigChar, 'm');
-
-        // Try to exhaust TLAB with small arrays. Small byte.
-        for (int i = 0; i < DEFAULT_ALIGNED_HEAP_CHUNK_SIZE / KILO; i++) {
-            byteArray = new byte[KILO];
-            Arrays.fill(byteArray, (byte) 0);
+        // Exhaust TLAB with small arrays.
+        for (int i = 0; i < DEFAULT_ALIGNED_HEAP_CHUNK_SIZE / K; i++) {
+            allocateByteArray(K);
         }
 
-        // Try to exhaust TLAB with instances. Instance.
+        // Exhaust TLAB with instances.
         for (int i = 0; i < DEFAULT_ALIGNED_HEAP_CHUNK_SIZE; i++) {
-            helper = new Helper();
+            allocateInstance();
         }
+    }
+
+    @NeverInline("Prevent escape analysis.")
+    private static byte[] allocateByteArray(int length) {
+        return new byte[length];
+    }
+
+    @NeverInline("Prevent escape analysis.")
+    private static char[] allocateCharArray(int length) {
+        return new char[length];
+    }
+
+    @NeverInline("Prevent escape analysis.")
+    private static Helper allocateInstance() {
+        return new Helper();
     }
 
     /**
      * This class is only needed to provide a unique name in the event's "objectClass" field that we
      * check.
      */
-    static class Helper {
-        int testField;
+    private static class Helper {
     }
 }
