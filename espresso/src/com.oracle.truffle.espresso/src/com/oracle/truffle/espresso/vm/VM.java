@@ -56,6 +56,7 @@ import java.util.Properties;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicMap;
@@ -152,8 +153,6 @@ import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
 import com.oracle.truffle.espresso.vm.structs.Structs;
 import com.oracle.truffle.espresso.vm.structs.StructsAccess;
-
-import sun.misc.Unsafe;
 
 /**
  * Espresso implementation of the VM interface (libjvm).
@@ -589,16 +588,26 @@ public final class VM extends NativeEnv {
         return Double.isNaN(d);
     }
 
+    private static final class LongCASProbe {
+        static final boolean HOST_SUPPORTS_LONG_CAS;
+        @SuppressWarnings("unused") volatile long foo;
+        static {
+            AtomicLongFieldUpdater<LongCASProbe> updater = AtomicLongFieldUpdater.newUpdater(LongCASProbe.class, "foo");
+            String updaterName = updater.getClass().getSimpleName();
+            if ("CASUpdater".equals(updaterName)) {
+                HOST_SUPPORTS_LONG_CAS = true;
+            } else if ("LockedUpdater".equals(updaterName)) {
+                HOST_SUPPORTS_LONG_CAS = false;
+            } else {
+                throw EspressoError.shouldNotReachHere("Unknown host long updater: " + updaterName);
+            }
+        }
+    }
+
     @VmImpl
     @TruffleBoundary
     public static boolean JVM_SupportsCX8() {
-        try {
-            java.lang.reflect.Field field = AtomicLong.class.getDeclaredField("VM_SUPPORTS_LONG_CAS");
-            Unsafe unsafe = UnsafeAccess.get();
-            return unsafe.getBoolean(unsafe.staticFieldBase(field), unsafe.staticFieldOffset(field));
-        } catch (NoSuchFieldException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
+        return LongCASProbe.HOST_SUPPORTS_LONG_CAS;
     }
 
     @VmImpl(isJni = true)
