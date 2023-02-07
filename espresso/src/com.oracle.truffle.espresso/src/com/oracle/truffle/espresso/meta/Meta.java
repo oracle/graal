@@ -386,8 +386,6 @@ public final class Meta extends ContextAccessImpl {
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
-        java_lang_Thread$FieldHolder = getJavaVersion().java19OrLater() ? knownKlass(Type.java_lang_Thread_FieldHolder) : null;
-        java_lang_Thread$Constants = getJavaVersion().java19OrLater() ? knownKlass(Type.java_lang_Thread_Constants) : null;
         // The interrupted field is no longer hidden as of JDK14+
         HIDDEN_INTERRUPTED = diff() //
                         .field(lower(13), Name.HIDDEN_INTERRUPTED, Type._boolean)//
@@ -412,10 +410,14 @@ public final class Meta extends ContextAccessImpl {
         if (getJavaVersion().java19OrLater()) {
             java_lang_BaseVirtualThread = knownKlass(Type.java_lang_BaseVirtualThread);
             java_lang_Thread_threadGroup = null;
+            java_lang_Thread$FieldHolder = knownKlass(Type.java_lang_Thread_FieldHolder);
+            java_lang_Thread$Constants = knownKlass(Type.java_lang_Thread_Constants);
             java_lang_Thread$FieldHolder_group = java_lang_Thread$FieldHolder.requireDeclaredField(Name.group, Type.java_lang_ThreadGroup);
             java_lang_Thread$Constants_VTHREAD_GROUP = java_lang_Thread$Constants.requireDeclaredField(Name.VTHREAD_GROUP, Type.java_lang_ThreadGroup);
         } else {
             java_lang_BaseVirtualThread = null;
+            java_lang_Thread$FieldHolder = null;
+            java_lang_Thread$Constants = null;
             java_lang_Thread_threadGroup = java_lang_Thread.requireDeclaredField(Name.group, Type.java_lang_ThreadGroup);
             java_lang_Thread$FieldHolder_group = null;
             java_lang_Thread$Constants_VTHREAD_GROUP = null;
