@@ -114,10 +114,13 @@
         }
       },
       "linux": {
+        "packages": {}
       },
       "darwin_amd64": {
+        "packages": {}
       },
       "darwin_aarch64": {
+        "packages": {}
       },
       "windows": {
         "packages": {
