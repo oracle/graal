@@ -477,6 +477,10 @@ public class LockFreePrefixTree {
         /**
          * Allocates a new Node object.
          *
+         * @param key The key to use for the {@code Node} object.
+         * @return Preallocated {@code Node} object.
+         * @throws FailedAllocationException If the allocation request cannot be fulfilled.
+         *
          * @since 23.0
          */
         public abstract Node newNode(long key);
@@ -484,12 +488,20 @@ public class LockFreePrefixTree {
         /**
          * Allocates a new reference array of child nodes stored linearly.
          *
+         * @param length The length of the allocated array.
+         * @return Preallocated array.
+         * @throws FailedAllocationException If the allocation request cannot be fulfilled.
+         *
          * @since 23.0
          */
         public abstract Node.LinearChildren newLinearChildren(int length);
 
         /**
          * Allocates a new reference array of child nodes stored as a hash table.
+         *
+         * @param length The length of the allocated array.
+         * @return Preallocated array.
+         * @throws FailedAllocationException If the allocation request cannot be fulfilled.
          *
          * @since 23.0
          */
@@ -639,7 +651,7 @@ public class LockFreePrefixTree {
             checkPowerOfTwo(length);
             if (Integer.numberOfTrailingZeros(length) >= SIZE_CLASS_COUNT) {
                 // Above maximum allowed length.
-                return null;
+                throw Allocator.FAILED_ALLOCATION_EXCEPTION;
             }
             int sizeClass = Integer.numberOfTrailingZeros(length);
             Node.LinearChildren obj = linearChildrenPool[sizeClass].get();
@@ -656,7 +668,7 @@ public class LockFreePrefixTree {
             checkPowerOfTwo(length);
             if (Integer.numberOfTrailingZeros(length) >= SIZE_CLASS_COUNT) {
                 // Above maximum allowed length.
-                return null;
+                throw Allocator.FAILED_ALLOCATION_EXCEPTION;
             }
             int sizeClass = Integer.numberOfTrailingZeros(length);
             Node.HashChildren obj = hashChildrenPool[sizeClass].get();
