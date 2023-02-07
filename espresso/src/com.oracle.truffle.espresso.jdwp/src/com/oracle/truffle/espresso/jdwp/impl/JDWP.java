@@ -418,10 +418,10 @@ public final class JDWP {
                 Object[] allGuestThreads = context.getAllGuestThreads();
                 Object prev = null;
                 try {
+                    prev = controller.enterTruffleContext();
                     for (Object guestThread : allGuestThreads) {
                         controller.suspend(guestThread);
                     }
-                    prev = controller.enterTruffleContext();
                     int errorCode = context.redefineClasses(redefineInfos);
                     if (errorCode != 0) {
                         reply.errorCode(errorCode);
