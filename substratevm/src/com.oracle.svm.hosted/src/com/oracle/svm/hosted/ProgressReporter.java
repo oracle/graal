@@ -832,10 +832,6 @@ public class ProgressReporter {
         }
     }
 
-    private static void resetANSIMode() {
-        NativeImageSystemIOWrappers.singleton().getOut().print(ANSI.RESET);
-    }
-
     private static class GCStats {
         private final long totalCount;
         private final long totalTimeMillis;
