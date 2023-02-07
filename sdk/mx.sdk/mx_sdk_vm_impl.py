@@ -781,7 +781,8 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
         _metadata_dict.setdefault('JAVA_VERSION', _src_jdk.version)
         _metadata_dict.setdefault('OS_NAME', get_graalvm_os())
         _metadata_dict.setdefault('OS_ARCH', mx.get_arch())
-        _metadata_dict.setdefault('OS_VARIANT', mx.get_os_variant())
+        if mx.get_os_variant():
+            _metadata_dict.setdefault('OS_VARIANT', mx.get_os_variant())
 
         _metadata_dict['GRAALVM_VERSION'] = _suite.release_version()
         _source = _metadata_dict.get('SOURCE') or ''
