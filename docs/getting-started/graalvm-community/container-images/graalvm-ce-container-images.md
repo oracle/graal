@@ -39,7 +39,7 @@ See what types of container images are available [here](https://github.com/graal
     bash-4.4# java -version
     ```
 
-You have pulled a size compact GraalVM Community container image with the GraalVM JDK pre-installed and the Graal compiler.
+You have pulled a size compact GraalVM Community container image with the GraalVM JDK pre-installed and the Graal compiler. Java and the LLVM runtime are available out-of-the box. 
 
 Size compact images are based on GraalVM components RPMs that are available for Oracle Linux 7, Oracle Linux 8, and Oracle Linux 9. Similar to any other available packages, you can install these components using `yum` on Oracle Linux 7 or `microdnf` on the Oracle Linux 8 and Oracle Linux 9 based images.
 
