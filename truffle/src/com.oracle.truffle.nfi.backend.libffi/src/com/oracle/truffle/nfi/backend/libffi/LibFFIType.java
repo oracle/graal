@@ -97,7 +97,6 @@ final class LibFFIType {
             case FP80:
                 return new FP80Type(size, alignment);
             case FP128:
-                System.out.println("Size of LibFFI type for fp128: " + size);
                 return new FP128Type(size, alignment);
             case POINTER:
                 return new PointerType(size, alignment);
