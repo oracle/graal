@@ -179,7 +179,7 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * @param env
      */
     @Override
-    protected void onDispose(Env env) {
+    protected void onFinalize(Env env) {
         if (PRINT_COVERAGE.getValue(env.getOptions())) {
             printResults(env);
         }
