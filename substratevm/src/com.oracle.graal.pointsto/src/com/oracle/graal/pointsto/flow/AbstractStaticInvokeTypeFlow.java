@@ -48,6 +48,11 @@ public abstract class AbstractStaticInvokeTypeFlow extends DirectInvokeTypeFlow 
     }
 
     @Override
+    public boolean needsInitialization() {
+        return true;
+    }
+
+    @Override
     public String toString() {
         return "StaticInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
     }

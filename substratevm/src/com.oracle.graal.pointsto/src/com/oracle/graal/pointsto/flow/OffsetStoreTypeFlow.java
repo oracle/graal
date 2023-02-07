@@ -208,6 +208,11 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             forceUpdate(bb);
         }
 
+        @Override
+        public boolean needsInitialization() {
+            return true;
+        }
+
         public void forceUpdate(PointsToAnalysis bb) {
             /*
              * Unsafe store type flow models unsafe writes to both instance and static fields. From

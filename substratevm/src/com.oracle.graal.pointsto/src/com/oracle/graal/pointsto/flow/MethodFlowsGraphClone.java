@@ -121,12 +121,6 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
     }
 
     @Override
-    public void init(final PointsToAnalysis bb) {
-        // the cloning mechanism does all the initialization
-        throw AnalysisError.shouldNotReachHere();
-    }
-
-    @Override
     @SuppressWarnings("unchecked")
     public <T extends TypeFlow<?>> T lookupCloneOf(PointsToAnalysis bb, T original) {
         assert original != null : "Looking for the clone of a 'null' flow in " + this;
@@ -175,7 +169,9 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
              * Run initialization code for corner case type flows. This can be used to add link from
              * 'outside' into the graph.
              */
-            clone.initFlow(bb);
+            if (clone.needsInitialization()) {
+                clone.initFlow(bb);
+            }
 
             /* Link all 'internal' observers. */
             for (TypeFlow<?> originalObserver : original.getObservers()) {

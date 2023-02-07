@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestate.TypeStateUtils;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.ClassUtil;
 
@@ -180,11 +181,21 @@ public abstract class TypeFlow<T> {
     }
 
     /**
-     * Initialization code for some type flow corner cases.
+     * Initialization code for some type flow corner cases. {@link #needsInitialization()} also
+     * needs to be overridden to enable type flow initialization.
      *
      * @param bb
      */
     public void initFlow(PointsToAnalysis bb) {
+        throw AnalysisError.shouldNotReachHere("Type flow " + format(false, true) + " is not overriding initFlow().");
+    }
+
+    /**
+     * Type flows that require initialization after the graph is created need to override this
+     * method and return true.
+     */
+    public boolean needsInitialization() {
+        return false;
     }
 
     public void setUsedAsAParameter(boolean usedAsAParameter) {

@@ -162,6 +162,11 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             forceUpdate(bb);
         }
 
+        @Override
+        public boolean needsInitialization() {
+            return true;
+        }
+
         public void forceUpdate(PointsToAnalysis bb) {
             /*
              * Unsafe load type flow models unsafe reads from both instance and static fields. From

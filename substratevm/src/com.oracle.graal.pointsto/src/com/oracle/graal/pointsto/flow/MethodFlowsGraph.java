@@ -111,16 +111,6 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         return original;
     }
 
-    public void init(final PointsToAnalysis bb) {
-        for (TypeFlow<?> flow : flows()) {
-            /*
-             * Run initialization code for corner case type flows. This can be used to add link from
-             * 'outside' into the graph.
-             */
-            flow.initFlow(bb);
-        }
-    }
-
     protected static boolean nonCloneableFlow(TypeFlow<?> flow) {
         /*
          * References to field flows and to array elements flows are not part of the method itself;
