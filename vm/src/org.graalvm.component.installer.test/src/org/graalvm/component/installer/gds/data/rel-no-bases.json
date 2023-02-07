@@ -1,0 +1,9 @@
+{
+    "name": "GraalVM Enterprise Edition 19.3.2 on jdk8",
+     "license": "https://acme.org/GRAALVM_EE_JAVA8_19_3_2/license.txt",
+     "licenseLabel": "GraalVM Enterprise Edition License",
+     "edition": "ee",
+     "java": "jdk8",
+     "version": "19.3.2",
+     "catalog": "catalog-19.3.2.properties"
+}

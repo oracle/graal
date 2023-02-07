@@ -63,7 +63,6 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 import java.util.logging.StreamHandler;
 import java.util.stream.Collectors;
-import org.graalvm.component.installer.CommandInput.CatalogFactory;
 import static org.graalvm.component.installer.CommonConstants.PATH_COMPONENT_STORAGE;
 import org.graalvm.component.installer.commands.AvailableCommand;
 import org.graalvm.component.installer.commands.InfoCommand;
@@ -74,12 +73,13 @@ import org.graalvm.component.installer.commands.PreRemoveCommand;
 import org.graalvm.component.installer.commands.RebuildImageCommand;
 import org.graalvm.component.installer.commands.UninstallCommand;
 import org.graalvm.component.installer.commands.UpgradeCommand;
-import org.graalvm.component.installer.model.CatalogContents;
+import org.graalvm.component.installer.gds.GdsCommands;
+import org.graalvm.component.installer.gds.rest.GDSTokenStorage;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.os.WindowsJVMWrapper;
 import org.graalvm.component.installer.persist.DirectoryStorage;
 import org.graalvm.component.installer.remote.CatalogIterable;
-import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
+import org.graalvm.component.installer.remote.GraalEditionList;
 import org.graalvm.launcher.Launcher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -132,7 +132,7 @@ public class ComponentInstaller extends Launcher {
         commands.put("info", new InfoCommand()); // NOI18N
         commands.put("rebuild-images", new RebuildImageCommand()); // NOI18N
         commands.put("update", new UpgradeCommand()); // NOI18N
-        // commands.put("update", new UpgradeCommand(false)); // NOI18N
+        commands.put("upgrade", new UpgradeCommand()); // NOI18N
 
         // commands used internally by system scripts, names intentionally hashed.
         commands.put("#postinstall", new PostInstCommand()); // NOI18N
@@ -187,10 +187,6 @@ public class ComponentInstaller extends Launcher {
 
     static {
         initCommands();
-        forSoftwareChannels(true, (ch) -> {
-            ch.init(SIMPLE_ENV, SIMPLE_ENV);
-            globalOptions.putAll(ch.globalOptions());
-        });
     }
 
     public ComponentInstaller(String[] args) {
@@ -205,17 +201,17 @@ public class ComponentInstaller extends Launcher {
     private static void printHelp(Feedback output) {
         StringBuilder extra = new StringBuilder();
 
-        forSoftwareChannels(false, (ch) -> {
+        forSoftwareChannels(true, (ch) -> {
             ch.init(SIMPLE_ENV, output);
             String s = ch.globalOptionsHelp();
-            if (s != null) {
-                extra.append(s);
+            if (s != null && !s.trim().isEmpty()) {
+                extra.append(s).append("\n");
             }
         });
         String extraS;
 
         if (extra.length() != 0) {
-            extraS = output.l10n("INFO_UsageExtensions", extra.toString());
+            extraS = output.l10n("INFO_UsageExtensions", extra.substring(0, extra.length() - 1));
         } else {
             extraS = ""; // NOI18N
         }
@@ -258,25 +254,42 @@ public class ComponentInstaller extends Launcher {
         this.feedback = feedback;
     }
 
+    Path getGraalHomePath() {
+        return graalHomePath;
+    }
+
     protected Environment setupEnvironment(SimpleGetopt go) {
         Environment e = new Environment(command, parameters, go.getOptValues());
         setInput(e);
         setFeedback(e);
+        return e;
+    }
 
-        finddGraalHome();
-        e.setGraalHome(graalHomePath);
+    protected Environment completeEnvironment() {
+        if (env.getGraalHomePath() != null) {
+            return env;
+        }
+
+        findGraalHome();
+        env.setGraalHome(graalHomePath);
         // Use our own GraalVM's trust store contents; also bypasses embedded trust store
         // when running AOT.
-        Path trustStorePath = SystemUtils.resolveRelative(SystemUtils.getRuntimeBaseDir(e.getGraalHomePath()),
+        Path trustStorePath = SystemUtils.resolveRelative(SystemUtils.getRuntimeBaseDir(env.getGraalHomePath()),
                         "lib/security/cacerts"); // NOI18N
         System.setProperty("javax.net.ssl.trustStore", trustStorePath.normalize().toString()); // NOI18N
-        DirectoryStorage storage = new DirectoryStorage(e, storagePath, graalHomePath);
-        storage.setJavaVersion("" + SystemUtils.getJavaMajorVersion(e));
-        e.setLocalRegistry(new ComponentRegistry(e, storage));
-        FileOperations fops = FileOperations.createPlatformInstance(e, e.getGraalHomePath());
-        e.setFileOperations(fops);
+        DirectoryStorage storage = new DirectoryStorage(env, storagePath, graalHomePath);
+        storage.setConfig(env);
+        storage.setJavaVersion("" + SystemUtils.getJavaMajorVersion(env));
+        env.setLocalRegistry(new ComponentRegistry(env, storage));
+        FileOperations fops = FileOperations.createPlatformInstance(env, env.getGraalHomePath());
+        env.setFileOperations(fops);
 
-        return e;
+        // also sets up input and feedback.
+        forSoftwareChannels(true, (ch) -> {
+            ch.init(input, feedback);
+        });
+
+        return env;
     }
 
     protected SimpleGetopt createOptionsObject(Map<String, String> opts) {
@@ -294,15 +307,12 @@ public class ComponentInstaller extends Launcher {
         command = go.getCommand();
         cmdHandler = commands.get(command);
         parameters = go.getPositionalParameters();
-        // also sets up input and feedback.
         env = setupEnvironment(go);
-        forSoftwareChannels(true, (ch) -> {
-            ch.init(input, feedback);
-        });
         return go;
     }
 
     SimpleGetopt interpretOptions(SimpleGetopt go) {
+        completeEnvironment();
         List<String> unknownOptions = go.getUnknownOptions();
         if (env.hasOption(Commands.OPTION_HELP) && go.getCommand() == null) {
             unknownOptions.add("help");
@@ -331,6 +341,7 @@ public class ComponentInstaller extends Launcher {
             printDefaultHelp(OptionCategory.USER);
             return 1;
         }
+
         SimpleGetopt go = createOptions(cmdline);
         launch(cmdline);
         go = interpretOptions(go);
@@ -343,6 +354,10 @@ public class ComponentInstaller extends Launcher {
             return 0;
         } else if (env.hasOption(Commands.OPTION_SHOW_VERSION)) {
             printVersion();
+        }
+        if (env.hasOption(GdsCommands.OPTION_SHOW_TOKEN)) {
+            GDSTokenStorage.printToken(env, input);
+            return 0;
         }
 
         // check only after the version option:
@@ -371,32 +386,24 @@ public class ComponentInstaller extends Launcher {
         // explicit location
         String catalogURL = getExplicitCatalogURL();
         String builtinCatLocation = getReleaseCatalogURL();
-        RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
-                        input,
-                        feedback,
-                        catalogURL);
         if (builtinCatLocation == null) {
             builtinCatLocation = feedback.l10n("Installer_BuiltingCatalogURL");
         }
-        downloader.setDefaultCatalog(builtinCatLocation); // NOI18N
-        CatalogFactory cFactory = (CommandInput in, ComponentRegistry lreg) -> {
-            RemoteCatalogDownloader nDownloader;
-            if (lreg == in.getLocalRegistry()) {
-                nDownloader = downloader;
-            } else {
-                nDownloader = new RemoteCatalogDownloader(in, env,
-                                downloader.getOverrideCatalogSpec());
-            }
-            CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
-            col.setRemoteEnabled(downloader.isRemoteSourcesAllowed());
-            return col;
-        };
-        env.setCatalogFactory(cFactory);
+
+        GraalEditionList editionList = new GraalEditionList(feedback, input, input.getLocalRegistry());
+        editionList.setDefaultCatalogSpec(builtinCatLocation);
+        editionList.setOverrideCatalogSpec(catalogURL);
+        env.setCatalogFactory(editionList);
+
+        if (input.hasOption(Commands.OPTION_USE_EDITION)) {
+            input.getLocalRegistry().setOverrideEdition(input.optValue(Commands.OPTION_USE_EDITION));
+        }
+
         boolean builtinsImplied = true;
         boolean setIterable = true;
         if (input.hasOption(Commands.OPTION_FILES)) {
             FileIterable fi = new FileIterable(env, env);
-            fi.setCatalogFactory(cFactory);
+            fi.setCatalogFactory(editionList);
             env.setFileIterable(fi);
 
             // optionally resolve local dependencies against parent directories
@@ -410,7 +417,8 @@ public class ComponentInstaller extends Launcher {
                         Path parent = p.getParent();
                         if (parent != null && Files.isDirectory(parent)) {
                             SoftwareChannelSource localSource = new SoftwareChannelSource(parent.toUri().toString(), null);
-                            downloader.addLocalChannelSource(localSource);
+                            localSource.setPriority(10000);
+                            editionList.addLocalChannelSource(localSource);
                         }
                     }
                 }
@@ -419,7 +427,7 @@ public class ComponentInstaller extends Launcher {
             setIterable = false;
         } else if (input.hasOption(Commands.OPTION_URLS)) {
             DownloadURLIterable dit = new DownloadURLIterable(env, env);
-            dit.setCatalogFactory(cFactory);
+            dit.setCatalogFactory(editionList);
             env.setFileIterable(dit);
             setIterable = false;
             builtinsImplied = false;
@@ -428,7 +436,8 @@ public class ComponentInstaller extends Launcher {
         if (setIterable) {
             env.setFileIterable(new CatalogIterable(env, env));
         }
-        downloader.setRemoteSourcesAllowed(builtinsImplied || env.hasOption(Commands.OPTION_CATALOG) ||
+
+        editionList.setRemoteSourcesAllowed(builtinsImplied || env.hasOption(Commands.OPTION_CATALOG) ||
                         env.hasOption(Commands.OPTION_FOREIGN_CATALOG));
         return -1;
     }
@@ -471,6 +480,8 @@ public class ComponentInstaller extends Launcher {
         } catch (UserAbortException ex) {
             feedback.error("ERROR_Aborted", ex, ex.getLocalizedMessage()); // NOI18N
             return 4;
+        } catch (NonInteractiveException ex) {
+            return 5;
         } catch (InstallerStopException ex) {
             feedback.error("INSTALLER_Error", ex, ex.getLocalizedMessage()); // NOI18N
             return 3;
@@ -494,7 +505,7 @@ public class ComponentInstaller extends Launcher {
     }
 
     /**
-     * Finds Graal Home directory. It is either specified by the GRAAL_HOME system property,
+     * Finds Graal Home directory. It is either specified by the GRAALVM_HOME_DEV system property,
      * environment variable, or the executing JAR's location - in the order of precedence.
      * <p/>
      * The location is sanity checked and the method throws {@link FailedOperationException} if not
@@ -502,9 +513,8 @@ public class ComponentInstaller extends Launcher {
      *
      * @return existing Graal home
      */
-    Path finddGraalHome() {
-        String graalHome = input.getParameter("GRAAL_HOME", // NOI18N
-                        input.getParameter("GRAAL_HOME", false), // NOI18N
+    Path findGraalHome() {
+        String graalHome = input.getParameter(CommonConstants.ENV_GRAALVM_HOME_DEV, // NOI18N
                         true);
         Path graalPath = null;
         if (graalHome != null) {
@@ -557,7 +567,15 @@ public class ComponentInstaller extends Launcher {
         return graalPath;
     }
 
+    static void initGlobalOptions() {
+        forSoftwareChannels(true, (ch) -> {
+            ch.init(SIMPLE_ENV, SIMPLE_ENV);
+            globalOptions.putAll(ch.globalOptions());
+        });
+    }
+
     public void run() {
+        initGlobalOptions();
         try {
             System.exit(processCommand(cmdlineParams));
         } catch (UserAbortException ex) {
@@ -749,7 +767,7 @@ public class ComponentInstaller extends Launcher {
 
     /**
      * Configures logging, based on `log.*' options passed on commandline.
-     * 
+     *
      * @param properties
      */
     void configureLogging(Map<String, String> properties) {
@@ -874,12 +892,13 @@ public class ComponentInstaller extends Launcher {
      * called in AOT mode</b>. Unlike the default implementation, this will not replace the existing
      * process, but rather execute a child process with env variables set up, then will perform the
      * post-processing.
-     * 
+     *
      * @param jvmArgs JVM arguments for the process
      * @param remainingArgs program arguments
      */
     @Override
     protected void executeJVM(String classpath, List<String> jvmArgs, List<String> remainingArgs) {
+        completeEnvironment();
         if (SystemUtils.isWindows()) {
             int retcode = executeJVMMode(classpath, jvmArgs, remainingArgs);
             System.exit(retcode);

@@ -103,9 +103,6 @@ public final class CatalogContents implements ComponentCatalog {
     public boolean compatibleVersion(ComponentInfo info) {
         // excludes components that depend on obsolete versions
         // excludes components that depend on
-        if (verifier.validateRequirements(info).hasErrors()) {
-            return false;
-        }
         Version v = info.getVersion();
         Version gv = graalVersion;
         if (allowDistUpdate) {
@@ -142,6 +139,9 @@ public final class CatalogContents implements ComponentCatalog {
             if (!vm.test(v)) {
                 continue;
             }
+            if (verifier.validateRequirements(ci).hasErrors()) {
+                continue;
+            }
             if (explicit || compatibleVersion(ci)) {
                 return ci;
             }
@@ -152,6 +152,7 @@ public final class CatalogContents implements ComponentCatalog {
     /**
      * @return True, if components from newer distributions are allowed.
      */
+    @Override
     public boolean isAllowDistUpdate() {
         return allowDistUpdate;
     }
@@ -317,7 +318,7 @@ public final class CatalogContents implements ComponentCatalog {
                         it.remove();
                     }
                 }
-                Collections.sort(versions, ComponentInfo.versionComparator());
+                Collections.sort(versions, ComponentInfo.versionComparator(installed.getManagementStorage()));
                 if (filelist) {
                     for (ComponentInfo ci : infos) {
                         storage.loadComponentFiles(ci);
@@ -341,7 +342,7 @@ public final class CatalogContents implements ComponentCatalog {
     public ComponentInfo findComponentMatch(String id, Version.Match vmatch, boolean localOnly, boolean exact) {
         ComponentInfo ci = installed.loadSingleComponent(id, false);
         if (ci != null) {
-            if (vmatch.test(ci.getVersion())) {
+            if (vmatch != null && vmatch.test(ci.getVersion())) {
                 return ci;
             }
         }

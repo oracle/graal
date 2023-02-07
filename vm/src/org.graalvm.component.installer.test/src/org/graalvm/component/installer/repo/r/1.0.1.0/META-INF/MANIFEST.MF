@@ -3,7 +3,6 @@ Bundle-Symbolic-Name: org.graalvm.R
 Bundle-Version: 1.0.1.0
 Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version=1.0.1.0
  )(os_name=macos)(os_arch=amd64))"
-x-GraalVM-Polyglot-Part: False
 x-GraalVM-Working-Directories: jre/languages/R
 x-GraalVM-Message-PostInst: NOTES:\n---------------\nSome R packages nee
  d a system-dependent configuration before they can be installed. A gener

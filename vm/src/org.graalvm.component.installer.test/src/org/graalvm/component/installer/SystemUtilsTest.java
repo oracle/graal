@@ -26,7 +26,9 @@ package org.graalvm.component.installer;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -104,4 +106,37 @@ public class SystemUtilsTest {
         assertEquals("", params.get("b"));
     }
 
+    @Test
+    public void testBuildUrlStringWithParameters() throws Exception {
+        Map<String, List<String>> params = new HashMap<>();
+        String baseUrl = "http://acme.org/bu";
+        String url = SystemUtils.buildUrlStringWithParameters(baseUrl, params);
+        assertEquals(baseUrl, url);
+
+        List<String> param1 = new ArrayList<>();
+        params.put("a", param1);
+        url = SystemUtils.buildUrlStringWithParameters(baseUrl, params);
+        assertEquals(baseUrl, url);
+
+        param1.add("b");
+        url = SystemUtils.buildUrlStringWithParameters(baseUrl, params);
+        assertEquals(baseUrl + "?a=b", url);
+
+        param1.add("c");
+        url = SystemUtils.buildUrlStringWithParameters(baseUrl, params);
+        assertEquals(baseUrl + "?a=b&a=c", url);
+
+        List<String> param2 = new ArrayList<>();
+        param2.add("e");
+        params.put("d", param2);
+        url = SystemUtils.buildUrlStringWithParameters(baseUrl, params);
+        assertEquals(baseUrl + "?a=b&a=c&d=e", url);
+
+        params.clear();
+        param1.clear();
+        param1.add("\"");
+        params.put("&", param1);
+        url = SystemUtils.buildUrlStringWithParameters(baseUrl, params);
+        assertEquals(baseUrl + "?%26=%22", url);
+    }
 }

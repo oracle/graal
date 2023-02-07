@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,13 +44,16 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.URLConnectionFactory;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Downloads file to local, optionally checks its integrity using digest.
- * 
+ *
  * @author sdedic
  */
 public final class FileDownloader {
@@ -72,6 +75,38 @@ public final class FileDownloader {
     private final Map<String, String> requestHeaders = new HashMap<>();
     private Consumer<SeekableByteChannel> dataInterceptor;
     private URLConnectionFactory connectionFactory;
+    private boolean simpleOutput;
+
+    private Map<String, List<String>> responseHeader = Collections.emptyMap();
+    private DownloadExceptionInterceptor downloadExceptionInterceptor = (ex, fd) -> ex;
+
+    public interface DownloadExceptionInterceptor {
+        /**
+         * When null is returned another connection will be attempted. Otherwise the returned
+         * Exception is thrown.
+         */
+        IOException interceptDownloadException(IOException downloadException, FileDownloader fileDownloader);
+    }
+
+    public Map<String, List<String>> getResponseHeader() {
+        return responseHeader;
+    }
+
+    public Map<String, String> getRequestHeaders() {
+        return Collections.unmodifiableMap(requestHeaders);
+    }
+
+    /**
+     * Will intercept possible connection problem, if null is returned the downloader will do
+     * another attempt to download otherwise the returned Exception is thrown.
+     *
+     * @param downloadExceptionInterceptor
+     */
+    public void setDownloadExceptionInterceptor(DownloadExceptionInterceptor downloadExceptionInterceptor) {
+        if (downloadExceptionInterceptor != null) {
+            this.downloadExceptionInterceptor = downloadExceptionInterceptor;
+        }
+    }
 
     /**
      * Algorithm to compute file digest. By default SHA-256 is used.
@@ -162,6 +197,10 @@ public final class FileDownloader {
     }
 
     void setupProgress() {
+        if (simpleOutput) {
+            feedback.output("MSG_ProgressStart_Simple@", Long.toString(size));
+            return;
+        }
         if (!displayProgress) {
             return;
         }
@@ -187,6 +226,10 @@ public final class FileDownloader {
         received += chunk;
         int next = cnt(received);
         if (now < next) {
+            if (simpleOutput) {
+                feedback.output("MSG_Progress_Simple@", Long.toString(received));
+                return;
+            }
             progressString.setCharAt(next + startPos - 1, signChar);
             signCount = next;
 
@@ -198,13 +241,14 @@ public final class FileDownloader {
     }
 
     void stopProgress(boolean success) {
-        if (displayProgress) {
+        if (displayProgress && !simpleOutput) {
             feedback.verbatimPart(backspaceString, false);
         }
+        String simpleSuffix = simpleOutput ? "_Simple@" : "";
         if (success) {
-            feedback.verboseOutput("MSG_DownloadingDone");
+            feedback.verboseOutput("MSG_DownloadingDone" + simpleSuffix);
         } else {
-            feedback.output("MSG_DownloadingTerminated");
+            feedback.output("MSG_DownloadingTerminated" + simpleSuffix);
         }
     }
 
@@ -278,20 +322,36 @@ public final class FileDownloader {
         localFile = to.toFile();
     }
 
-    public void download() throws IOException {
-        boolean fromFile = sourceURL.getProtocol().equals("file");
-        if (fileDescription != null) {
-            if (!feedback.verboseOutput("MSG_DownloadingVerbose", getFileDescription(), getSourceURL())) {
-                feedback.output(fromFile ? "MSG_UsingFile" : "MSG_Downloading", getFileDescription(), getSourceURL().getHost());
-            }
-        } else {
-            feedback.output("MSG_DownloadingFrom", getSourceURL());
-        }
+    private int attempt;
 
+    public int getAttemptNr() {
+        return attempt;
+    }
+
+    public void download() throws IOException {
         Path localCache = feedback.getLocalCache(sourceURL);
         if (localCache != null) {
+            feedback.verboseOutput("MSG_Loaded_Cache", sourceURL, localCache);
             localFile = localCache.toFile();
+            Map<String, List<String>> respCache = feedback.getLocalResponseHeadersCache(sourceURL);
+            responseHeader = respCache == null ? Collections.emptyMap() : respCache;
             return;
+        }
+
+        simpleOutput = Boolean.TRUE.toString().equals(System.getProperty(CommonConstants.SYSPROP_SIMPLE_OUTPUT));
+        boolean fromFile = sourceURL.getProtocol().equals("file");
+        if (simpleOutput) {
+            feedback.output(
+                            "MSG_Downloading_Simple@",
+                            getSourceURL(), getFileDescription() == null ? "" : getFileDescription());
+        } else {
+            if (fileDescription != null) {
+                if (!feedback.verboseOutput("MSG_DownloadingVerbose", getFileDescription(), getSourceURL())) {
+                    feedback.output(fromFile ? "MSG_UsingFile" : "MSG_Downloading", getFileDescription(), getSourceURL().getHost());
+                }
+            } else {
+                feedback.output("MSG_DownloadingFrom", getSourceURL());
+            }
         }
 
         if (fromFile) {
@@ -306,10 +366,26 @@ public final class FileDownloader {
             }
         }
 
-        URLConnection conn = getConnectionFactory().createConnection(sourceURL, this::configureHeaders);
+        URLConnectionFactory urlFactory = getConnectionFactory();
+        URLConnection conn = null;
+        attempt = 0;
+        do {
+            try {
+                attempt++;
+                conn = urlFactory.createConnection(sourceURL, this::configureHeaders);
+            } catch (IOException ex) {
+                if ((ex = downloadExceptionInterceptor.interceptDownloadException(ex, this)) != null) {
+                    throw ex;
+                }
+            }
+        } while (conn == null);
 
         size = conn.getContentLengthLong();
-        verbose = feedback.verbosePart("MSG_DownloadReceivingBytes", toKB(size));
+        if (simpleOutput) {
+            verbose = feedback.verboseOutput(null);
+        } else {
+            verbose = feedback.verbosePart("MSG_DownloadReceivingBytes", toKB(size));
+        }
         if (verbose) {
             displayProgress = true;
         }
@@ -328,7 +404,7 @@ public final class FileDownloader {
                                         StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
             int read;
             while ((read = rbc.read(bb)) >= 0) {
-                if (first) {
+                if (first && !simpleOutput) {
                     feedback.verbatimPart(progressString.toString(), false);
                 }
                 bb.flip();
@@ -354,7 +430,9 @@ public final class FileDownloader {
             stopProgress(success);
         }
         verifyDigest();
+        responseHeader = conn.getHeaderFields();
         feedback.addLocalFileCache(sourceURL, localFile.toPath());
+        feedback.addLocalResponseHeadersCache(sourceURL, responseHeader);
     }
 
     public void setConnectionFactory(URLConnectionFactory connFactory) {

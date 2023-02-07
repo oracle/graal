@@ -248,10 +248,10 @@ public final class GenerateCatalog {
             Path listFrom = Paths.get(env.optValue("l"));
             Files.walk(listFrom).filter((p) -> p.toString().endsWith(".jar")).forEach(
                             (p) -> locations.add(p.toString()));
-        } else {
-            while (env.hasParameter()) {
-                locations.add(env.nextParameter());
-            }
+        }
+        // process the rest of non-options parameters as locations.
+        while (env.hasParameter()) {
+            locations.add(env.nextParameter());
         }
 
         for (String spec : locations) {
@@ -271,6 +271,10 @@ public final class GenerateCatalog {
                 if (!f.exists()) {
                     f = null;
                     u = spec;
+                    // create an URI, just to fail fast, if URI is wrong:
+                    URL check = new URL(spec);
+                    // ... and use it somehow, so ECJ does not fail the gate.
+                    assert check.toString() != null;
                 }
             }
             addComponentSpec(f, u);

@@ -68,7 +68,7 @@ public class Installer extends AbstractInstaller {
     private final List<Path> filesToDelete = new ArrayList<>();
     private final List<Path> dirsToDelete = new ArrayList<>();
 
-    private boolean rebuildPolyglot;
+    private boolean allowFilesInComponentDir;
     /**
      * Paths tracked by the component system.
      */
@@ -76,6 +76,14 @@ public class Installer extends AbstractInstaller {
 
     public Installer(Feedback feedback, FileOperations fileOps, ComponentInfo componentInfo, ComponentRegistry registry, ComponentCollection collection, Archive a) {
         super(feedback, fileOps, componentInfo, registry, collection, a);
+    }
+
+    public boolean isAllowFilesInComponentDir() {
+        return allowFilesInComponentDir;
+    }
+
+    public void setAllowFilesInComponentDir(boolean allowFilesInComponentDir) {
+        this.allowFilesInComponentDir = allowFilesInComponentDir;
     }
 
     @Override
@@ -130,7 +138,7 @@ public class Installer extends AbstractInstaller {
     /**
      * Validates requirements, decides whether to install. Returns false if the component should be
      * skipped.
-     * 
+     *
      * @return true, if the component should be installed
      * @throws IOException
      */
@@ -215,10 +223,6 @@ public class Installer extends AbstractInstaller {
         Collections.sort(ll);
         // replace paths with the really tracked ones
         componentInfo.setPaths(ll);
-        rebuildPolyglot = componentInfo.isPolyglotRebuild() ||
-                        ll.stream().filter(p -> p.startsWith(CommonConstants.PATH_POLYGLOT_REGISTRY))
-                                        .findAny()
-                                        .isPresent();
     }
 
     void installFinish() throws IOException {
@@ -232,7 +236,7 @@ public class Installer extends AbstractInstaller {
         final String storagePrefix = CommonConstants.PATH_COMPONENT_STORAGE + "/"; // NOI18N
         for (Archive.FileEntry entry : archive) {
             String path = entry.getName();
-            if (path.startsWith(storagePrefix) && path.length() > storagePrefix.length()) {
+            if (!allowFilesInComponentDir && path.startsWith(storagePrefix) && path.length() > storagePrefix.length()) {
                 // disallow to unpack files in the component database (but permit subdirs). Some
                 // tools may write there, but
                 // GU will manage the storage itself.
@@ -446,11 +450,6 @@ public class Installer extends AbstractInstaller {
             }
         }
         return true;
-    }
-
-    @Override
-    public boolean isRebuildPolyglot() {
-        return rebuildPolyglot;
     }
 
     @Override

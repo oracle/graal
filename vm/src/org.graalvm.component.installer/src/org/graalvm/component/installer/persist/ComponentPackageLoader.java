@@ -31,9 +31,11 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
@@ -60,6 +62,7 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.DistributionType;
+import org.graalvm.component.installer.remote.FileDownloader;
 
 /**
  * Loads information from the component's bundle.
@@ -252,6 +255,10 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                             info.addRequiredValues(parseHeader(BundleConstants.BUNDLE_REQUIRED).parseRequiredCapabilities());
                             info.addProvidedValues(parseHeader(BundleConstants.BUNDLE_PROVIDED, "").parseProvidedCapabilities());
                             info.setDependencies(parseHeader(BundleConstants.BUNDLE_DEPENDENCY, "").parseDependencies());
+                            info.setStability(
+                                            // use the new header, fall back on the old one. Default
+                                            // to "".
+                                            parseHeader(BundleConstants.BUNDLE_STABILITY2, value(BundleConstants.BUNDLE_STABILITY)).parseStability());
                         });
         supplyComponentTag();
         return info;
@@ -259,7 +266,6 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
 
     protected ComponentInfo loadExtendedMetadata(ComponentInfo base) {
         parse(
-                        () -> base.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE)),
                         () -> base.setDistributionType(parseDistributionType()),
                         () -> loadWorkingDirectories(base),
                         () -> loadMessages(base),
@@ -277,8 +283,9 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         try {
             return DistributionType.valueOf(dtString.toUpperCase(Locale.ENGLISH));
         } catch (IllegalArgumentException ex) {
-            throw new MetadataException(BundleConstants.BUNDLE_COMPONENT_DISTRIBUTION,
-                            feedback.l10n("ERROR_InvalidDistributionType", dtString));
+            // do not report the exception, just notice in verbose mode:
+            feedback.verboseOutput("ERROR_InvalidDistributionType", id, dtString);
+            return DistributionType.OPTIONAL;
         }
     }
 
@@ -299,6 +306,26 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         return licensePath;
     }
 
+    protected FileDownloader createFileDownloader(URL remote, String desc) {
+        return new FileDownloader(desc, remote, feedback);
+    }
+
+    public String downloadAndHashLicense(String remote) {
+        String desc = getLicenseType();
+        if (desc == null) {
+            desc = remote;
+        }
+        try {
+            URL u = new URL(remote);
+            FileDownloader dn = createFileDownloader(u, feedback.l10n("LICENSE_RemoteLicenseDescription", desc));
+            dn.download();
+            String s = String.join("\n", Files.readAllLines(dn.getLocalFile().toPath()));
+            return SystemUtils.digestString(s, false) /* + "_" + remote */;
+        } catch (IOException ex) {
+            throw feedback.failure("ERROR_DownloadLicense", ex, desc, ex.getLocalizedMessage());
+        }
+    }
+
     /**
      * License digest or URL.
      */
@@ -313,7 +340,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         if (licPath == null) {
             return null;
         } else if (SystemUtils.isRemotePath(licPath)) { // NOI18N
-            return licPath;
+            return cachedLicenseID = downloadAndHashLicense(licPath);
         }
         Archive.FileEntry foundEntry = null;
 

@@ -40,6 +40,7 @@ import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import java.util.stream.Collectors;
 import org.graalvm.component.installer.Archive;
 import static org.graalvm.component.installer.BundleConstants.META_INF_PATH;
 import static org.graalvm.component.installer.BundleConstants.META_INF_PERMISSIONS_PATH;
@@ -157,13 +158,18 @@ public class JarMetaLoader extends ComponentPackageLoader {
             return null;
         }
         if (SystemUtils.isRemotePath(licPath)) {
-            return licPath;
+            return super.getLicenseID();
         }
         JarEntry je = jarFile.getJarEntry(licPath);
         if (je == null) {
-            return null;
+            throw fb.failure("ERROR_LicenseNotFound", null, getLicensePath());
         }
-        long crc = je.getCrc();
-        return Long.toHexString(crc);
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(
+                        jarFile.getInputStream(je), "UTF-8"))) {
+            String text = r.lines().collect(Collectors.joining("\n"));
+            return SystemUtils.digestString(text, false);
+        } catch (IOException ex) {
+            throw fb.failure("ERROR_LoadLicense", ex, getLicensePath(), ex.getLocalizedMessage());
+        }
     }
 }

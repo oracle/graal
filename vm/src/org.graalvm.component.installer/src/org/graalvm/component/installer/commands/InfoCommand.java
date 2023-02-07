@@ -24,6 +24,8 @@
  */
 package org.graalvm.component.installer.commands;
 
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,6 +37,10 @@ import java.util.zip.ZipException;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
+import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_ERRORS;
+import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_FILENAME;
+import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_REQUIRES;
+import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_PROBLEMS;
 import org.graalvm.component.installer.ComponentInstaller;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.DependencyException;
@@ -71,6 +77,9 @@ public class InfoCommand extends QueryCommandBase {
 
         OPTIONS.put(Commands.OPTION_VERSION, "s");
         OPTIONS.put(Commands.LONG_OPTION_VERSION, Commands.OPTION_VERSION);
+
+        OPTIONS.put(Commands.OPTION_USE_EDITION, "s");
+        OPTIONS.put(Commands.LONG_OPTION_USE_EDITION, Commands.OPTION_USE_EDITION);
     }
 
     private boolean ignoreOpenErrors;
@@ -78,6 +87,7 @@ public class InfoCommand extends QueryCommandBase {
     private boolean fullPath;
     private boolean suppressTable;
     private Version.Match versionFilter;
+    private boolean noComponentPath;
 
     private final List<ComponentParam> components = new ArrayList<>();
     private final Map<ComponentInfo, MetadataLoader> map = new HashMap<>();
@@ -132,6 +142,8 @@ public class InfoCommand extends QueryCommandBase {
         if (vf != null) {
             versionFilter = Version.versionFilter(vf);
         }
+
+        noComponentPath = !(input.hasOption(Commands.OPTION_FILES) || input.hasOption(Commands.OPTION_URLS));
     }
 
     void collectComponents() throws IOException {
@@ -235,6 +247,8 @@ public class InfoCommand extends QueryCommandBase {
         if (printTable) {
             if (fullPath) {
                 feedback.output("INFO_ComponentLongListHeader");
+            } else if (noComponentPath) {
+                feedback.output("INFO_ComponentNoFileHeader");
             } else {
                 feedback.output("INFO_ComponentShortListHeader");
             }
@@ -254,16 +268,46 @@ public class InfoCommand extends QueryCommandBase {
 
     @Override
     void printDetails(ComponentParam param, ComponentInfo info) {
-        if (printTable) {
-            String line = String.format(feedback.l10n("INFO_ComponentShortList"),
+        if (isJson()) {
+            super.printDetails(param, info);
+            JSONObject jsonComponent = getJSONComponent();
+            jsonComponent.put(JSON_KEY_COMPONENT_FILENAME, param.getFullPath());
+            List<String> keys = new ArrayList<>(info.getRequiredGraalValues().keySet());
+            keys.remove(CommonConstants.CAP_GRAALVM_VERSION);
+            if (!keys.isEmpty()) {
+                JSONObject requires = new JSONObject();
+                jsonComponent.put(JSON_KEY_COMPONENT_REQUIRES, requires);
+                Collections.sort(keys);
+                for (String cap : keys) {
+                    requires.put(cap, info.getRequiredGraalValues().get(cap));
+                }
+            }
+            MetadataLoader ldr = map.get(info);
+            List<InstallerStopException> errs = ldr.getErrors();
+            if (!errs.isEmpty()) {
+                JSONArray errors = new JSONArray();
+                jsonComponent.put(JSON_KEY_COMPONENT_ERRORS, errors);
+                for (InstallerStopException ex : errs) {
+                    errors.put(ex.getLocalizedMessage());
+                }
+            }
+            Verifier vfy = new Verifier(feedback, input.getLocalRegistry(), catalog).collect(true).validateRequirements(info);
+            if (vfy.hasErrors()) {
+                JSONArray problems = new JSONArray();
+                jsonComponent.put(JSON_KEY_COMPONENT_PROBLEMS, problems);
+                for (DependencyException ex : vfy.getErrors()) {
+                    problems.put(ex.getLocalizedMessage());
+                }
+            }
+        } else if (printTable) {
+            String line = String.format(feedback.l10n(fullPath ? "INFO_ComponentLongList" : (noComponentPath ? "INFO_ComponentShortListNoFile" : "INFO_ComponentShortList")),
                             shortenComponentId(info), val(info.getVersion().displayString()), val(info.getName()),
-                            filePath(info));
+                            filePath(info), info.getStability().displayName(feedback));
             feedback.verbatimOut(line, false);
-            return;
         } else {
             feedback.output("INFO_ComponentBasicInfo",
                             shortenComponentId(info), val(info.getVersion().displayString()), val(info.getName()),
-                            param.getFullPath(), findRequiredGraalVMVersion(info));
+                            param.getFullPath(), findRequiredGraalVMVersion(info), info.getStability().displayName(feedback));
             List<String> keys = new ArrayList<>(info.getRequiredGraalValues().keySet());
             keys.remove(CommonConstants.CAP_GRAALVM_VERSION);
             if (!keys.isEmpty() && feedback.verboseOutput("INFO_ComponentRequirementsHeader")) {

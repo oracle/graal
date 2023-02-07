@@ -107,6 +107,13 @@ suite = {
         ]
     },
 
+    "libraries": {
+        "TruffleJSON" : {
+          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180813.jar"],
+          "sha1" : "c556821b83878d3a327bc07dedc1bf2998f99a8f",
+        },
+    },
+
     "projects": {
         "org.graalvm.component.installer" : {
             "subDir" : "src",
@@ -116,6 +123,7 @@ suite = {
             "checkstyleVersion" : "8.8",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
+                "vm:TruffleJSON"
             ],
         },
         "org.graalvm.component.installer.test" : {

@@ -54,6 +54,7 @@ public class GraalVMInstaller extends Installer {
     private static final String SYMLINK_NAME = "active";    // NOI18N
 
     private Path currentInstallPath;
+    private boolean disableSymlinks;
     private boolean createSymlink;
 
     public GraalVMInstaller(Feedback feedback, FileOperations fops, ComponentRegistry current,
@@ -78,6 +79,14 @@ public class GraalVMInstaller extends Installer {
         this.currentInstallPath = currentInstallPath.normalize();
     }
 
+    public boolean isDisableSymlinks() {
+        return disableSymlinks;
+    }
+
+    public void setDisableSymlinks(boolean disableSymlinks) {
+        this.disableSymlinks = disableSymlinks;
+    }
+
     public boolean isCreateSymlink() {
         return createSymlink;
     }
@@ -86,10 +95,7 @@ public class GraalVMInstaller extends Installer {
         this.createSymlink = createSymlink;
     }
 
-    @Override
-    public void install() throws IOException {
-        super.install();
-
+    void createSymlink() throws IOException {
         if (Files.getFileStore(getInstallPath()).supportsFileAttributeView("isSymbolicLink")) {
             return;
         }
@@ -108,26 +114,30 @@ public class GraalVMInstaller extends Installer {
         } catch (IllegalArgumentException ex) {
             linkTarget = getInstallPath();
         }
-        if (linkFile != null) {
-            boolean create = false;
-            try {
-                Files.delete(linkFile);
-                create = true;
-                Files.createSymbolicLink(linkFile, linkTarget);
-            } catch (IOException ex) {
-                feedback.error(
-                                create ? "UPGRADE_CantCreateNewSymlink" : "UPGRADE_CantDeleteOldSymlink",
-                                ex, linkFile, ex.getLocalizedMessage());
-            }
+        if (!disableSymlinks) {
+            if (linkFile != null) {
+                boolean create = false;
+                try {
+                    feedback.output("UPGRADE_UpdatingSymlink", linkFile, linkTarget);
+                    Files.delete(linkFile);
+                    create = true;
+                    Files.createSymbolicLink(linkFile, linkTarget);
+                } catch (IOException ex) {
+                    feedback.error(
+                                    create ? "UPGRADE_CantCreateNewSymlink" : "UPGRADE_CantDeleteOldSymlink",
+                                    ex, linkFile, ex.getLocalizedMessage());
+                }
 
-        } else if (createSymlink) {
-            Path linkSource = parent.resolve(SYMLINK_NAME);
-            try {
-                Files.createSymbolicLink(linkSource, linkTarget);
-            } catch (IOException ex) {
-                feedback.error(
-                                "UPGRADE_CantCreateNewSymlink",
-                                ex, linkFile, ex.getLocalizedMessage());
+            } else if (createSymlink) {
+                Path linkSource = parent.resolve(SYMLINK_NAME);
+                try {
+                    feedback.output("UPGRADE_CreatingSymlink", linkSource, linkTarget);
+                    Files.createSymbolicLink(linkSource, linkTarget);
+                } catch (IOException ex) {
+                    feedback.error(
+                                    "UPGRADE_CantCreateNewSymlink",
+                                    ex, linkFile, ex.getLocalizedMessage());
+                }
             }
         }
         return linkFile;

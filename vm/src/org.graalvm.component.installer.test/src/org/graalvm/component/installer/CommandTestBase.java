@@ -29,11 +29,13 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.JarFile;
+
 import org.graalvm.component.installer.DownloadURLIterable.DownloadURLParam;
 import org.graalvm.component.installer.commands.MockStorage;
 import org.graalvm.component.installer.jar.JarMetaLoader;
@@ -41,13 +43,14 @@ import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;
+import org.graalvm.component.installer.model.GraalEdition;
 import org.graalvm.component.installer.os.DefaultFileOperations;
 import org.graalvm.component.installer.os.WindowsFileOperations;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
-import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.test.Handler;
-import org.graalvm.component.installer.remote.RemoteComponentParam;
 import org.graalvm.component.installer.remote.CatalogIterable.CatalogItemParam;
+import org.graalvm.component.installer.remote.FileDownloader;
+import org.graalvm.component.installer.remote.RemoteComponentParam;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
@@ -234,7 +237,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     @Override
     public ComponentCatalog getRegistry() {
         if (registry == null) {
-            registry = getCatalogFactory().createComponentCatalog(this, getLocalRegistry());
+            registry = getCatalogFactory().createComponentCatalog(this);
         }
         return registry;
     }
@@ -277,11 +280,21 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
 
     @Override
     public CatalogFactory getCatalogFactory() {
-        if (registry != null) {
-            return (a, b) -> registry;
-        } else {
-            return (a, b) -> new CatalogContents(this, catalogStorage, getLocalRegistry());
-        }
+        return new CatalogFactory() {
+            @Override
+            public ComponentCatalog createComponentCatalog(CommandInput input) {
+                if (registry != null) {
+                    return registry;
+                } else {
+                    return new CatalogContents(CommandTestBase.this, catalogStorage, getLocalRegistry());
+                }
+            }
+
+            @Override
+            public List<GraalEdition> listEditions(ComponentRegistry targetGraalVM) {
+                return Collections.emptyList();
+            }
+        };
     }
 
     @Override

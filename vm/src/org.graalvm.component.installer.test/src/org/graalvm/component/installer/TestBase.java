@@ -41,6 +41,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.text.MessageFormat;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.List;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -76,6 +78,26 @@ public class TestBase implements Feedback {
     @Rule public TestName testName = new TestName();
 
     public TestBase() {
+    }
+
+    @Override
+    public boolean isSilent() {
+        return feedbackDelegate == null ? false : feedbackDelegate.isSilent();
+    }
+
+    @Override
+    public boolean setSilent(boolean silent) {
+        return feedbackDelegate == null ? false : feedbackDelegate.setSilent(silent);
+    }
+
+    @Override
+    public void addLocalResponseHeadersCache(URL location, Map<String, List<String>> local) {
+
+    }
+
+    @Override
+    public Map<String, List<String>> getLocalResponseHeadersCache(URL location) {
+        return null;
     }
 
     static class ClassTempFolder extends TemporaryFolder {
@@ -265,7 +287,7 @@ public class TestBase implements Feedback {
     }
 
     public void verbosePart(ResourceBundle bundle, String bundleKey, Object... params) {
-        if (bundle != null) {
+        if (bundle != null && bundleKey != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
         }
         if (feedbackDelegate instanceof FeedbackAdapter) {
@@ -507,10 +529,36 @@ public class TestBase implements Feedback {
         public Path getLocalCache(URL location) {
             return TestBase.this.getLocalCache(location);
         }
+
+        @Override
+        public boolean isNonInteractive() {
+            return TestBase.this.isNonInteractive();
+        }
+
+        @Override
+        public boolean isSilent() {
+            return TestBase.this.isSilent();
+        }
+
+        @Override
+        public boolean setSilent(boolean silent) {
+            return TestBase.this.setSilent(silent);
+        }
+
+        @Override
+        public void addLocalResponseHeadersCache(URL location, Map<String, List<String>> local) {
+            TestBase.this.addLocalResponseHeadersCache(location, local);
+        }
+
+        @Override
+        public Map<String, List<String>> getLocalResponseHeadersCache(URL location) {
+            return TestBase.this.getLocalResponseHeadersCache(location);
+        }
     }
 
     public class FeedbackAdapter implements Feedback {
         private ResourceBundle currentBundle;
+        private boolean silent;
 
         @Override
         public boolean verbatimOut(String msg, boolean beVerbose) {
@@ -611,6 +659,37 @@ public class TestBase implements Feedback {
             return TestBase.this.getLocalCache(location);
         }
 
+        @Override
+        public boolean isNonInteractive() {
+            return TestBase.this.isNonInteractive();
+        }
+
+        @Override
+        public boolean isSilent() {
+            return silent;
+        }
+
+        @Override
+        public boolean setSilent(boolean silent) {
+            boolean wasSilent = this.silent;
+            this.silent = silent;
+            return wasSilent;
+        }
+
+        @Override
+        public void addLocalResponseHeadersCache(URL location, Map<String, List<String>> local) {
+            TestBase.this.addLocalResponseHeadersCache(location, local);
+        }
+
+        @Override
+        public Map<String, List<String>> getLocalResponseHeadersCache(URL location) {
+            return TestBase.this.getLocalResponseHeadersCache(location);
+        }
+    }
+
+    @Override
+    public boolean isNonInteractive() {
+        return false;
     }
 
     public static boolean isWindows() {
@@ -638,7 +717,7 @@ public class TestBase implements Feedback {
             nl = userInput.length();
         }
         String r = userInput.substring(0, nl);
-        userInput.delete(0, nl);
+        userInput.delete(0, nl + 1); // including the newline
         return r;
     }
 

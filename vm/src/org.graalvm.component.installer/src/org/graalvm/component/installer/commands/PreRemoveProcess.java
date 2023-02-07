@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.component.installer.commands;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -35,8 +34,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.graalvm.component.installer.CommonConstants;
-import static org.graalvm.component.installer.CommonConstants.WARN_REBUILD_IMAGES;
+
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.FileOperations;
 import org.graalvm.component.installer.SystemUtils;
@@ -51,8 +49,6 @@ public class PreRemoveProcess {
     private final Feedback feedback;
     private final List<ComponentInfo> infos = new ArrayList<>();
     private final FileOperations fileOps;
-
-    private boolean rebuildPolyglot;
 
     private boolean dryRun;
     private boolean ignoreFailedDeletions;
@@ -88,23 +84,19 @@ public class PreRemoveProcess {
 
     /**
      * Process all the components, prints message.
-     * 
+     *
      * @throws IOException if deletion fails
      */
     public void run() throws IOException {
         for (ComponentInfo ci : infos) {
             processComponent(ci);
         }
-        if (rebuildPolyglot && WARN_REBUILD_IMAGES) {
-            Path p = SystemUtils.fromCommonString(CommonConstants.PATH_JRE_BIN);
-            feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, installPath.resolve(p).normalize());
-        }
     }
 
     /**
      * Called also from Uninstaller. Will delete one single file, possibly with altering permissions
      * on the parent so the file can be deleted.
-     * 
+     *
      * @param p file to delete
      * @throws IOException
      */
@@ -127,7 +119,7 @@ public class PreRemoveProcess {
 
     /**
      * Also called from Uninstaller.
-     * 
+     *
      * @param rootPath root path to delete (inclusive)
      * @throws IOException if the deletion fails.
      */
@@ -166,7 +158,6 @@ public class PreRemoveProcess {
     }
 
     void processComponent(ComponentInfo ci) throws IOException {
-        rebuildPolyglot |= ci.isPolyglotRebuild();
         for (String s : ci.getWorkingDirectories()) {
             Path p = installPath.resolve(SystemUtils.fromCommonRelative(s));
             feedback.verboseOutput("UNINSTALL_DeletingDirectoryRecursively", p);

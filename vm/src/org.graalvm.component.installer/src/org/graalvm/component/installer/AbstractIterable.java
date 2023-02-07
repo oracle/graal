@@ -69,7 +69,7 @@ abstract class AbstractIterable implements ComponentIterable {
             return remoteCatalog;
         }
         if (remoteFactory != null) {
-            remoteCatalog = remoteFactory.createComponentCatalog(input, input.getLocalRegistry());
+            remoteCatalog = remoteFactory.createComponentCatalog(input);
         } else {
             remoteCatalog = new NullCatalog();
         }
@@ -100,6 +100,10 @@ abstract class AbstractIterable implements ComponentIterable {
     }
 
     private static class NullCatalog implements ComponentCatalog, DownloadInterceptor {
+        @Override
+        public boolean isAllowDistUpdate() {
+            return false;
+        }
 
         @Override
         public ComponentInfo findComponentMatch(String id, Version.Match vmatch, boolean localOnly, boolean exact) {

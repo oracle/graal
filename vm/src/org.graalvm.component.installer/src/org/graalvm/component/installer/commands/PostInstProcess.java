@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.component.installer.commands;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,9 +31,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommonConstants;
-import static org.graalvm.component.installer.CommonConstants.WARN_REBUILD_IMAGES;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -47,7 +46,6 @@ final class PostInstProcess {
     private final CommandInput input;
     private final Feedback feedback;
     private final List<ComponentInfo> infos = new ArrayList<>();
-    private boolean rebuildPolyglot;
 
     PostInstProcess(CommandInput cInput, Feedback fb) {
         this.input = cInput;
@@ -103,16 +101,6 @@ final class PostInstProcess {
     void run() {
         for (ComponentInfo ci : infos) {
             printPostinst(ci);
-            rebuildPolyglot |= ci.isPolyglotRebuild();
-        }
-
-        if (rebuildPolyglot && WARN_REBUILD_IMAGES) {
-            Path p = SystemUtils.fromCommonString(CommonConstants.PATH_JRE_BIN);
-            Path toolPath = RebuildImageCommand.findNativeImagePath(input, feedback);
-            feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, input.getGraalHomePath().resolve(p).normalize());
-            if (toolPath == null) {
-                feedback.output("INSTALL_RebuildPolyglotNeeded2", CommonConstants.NATIVE_IMAGE_ID);
-            }
         }
     }
 

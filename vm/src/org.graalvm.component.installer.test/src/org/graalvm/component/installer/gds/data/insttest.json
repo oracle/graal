@@ -1,0 +1,20 @@
+{
+    "Releases": {
+        "20.3.0-ee-jdk8": {
+            "name": "GraalVM Enterprise Edition 20.3.0 on jdk8",
+            "license": "test://acme.org/GRAALVM_EE_JAVA8_20.3.0/license.txt",
+            "licenseLabel": "GraalVM Enterprise Edition License",
+            "catalog": "catalog-20.3.0.properties",
+            "edition": "ee",
+            "java": "jdk8",
+            "version": "20.3.0",
+            "base": {
+                "linux-amd64": {
+                    "os": "linux",
+                    "arch": "amd64",
+                    "url": "test://acme.org/GRAALVM_EE_JAVA8_19_3_3/graalvm-ee-java8-linux-amd64-19.3.3.tar.gz"
+                }
+            }
+        }
+    }
+}

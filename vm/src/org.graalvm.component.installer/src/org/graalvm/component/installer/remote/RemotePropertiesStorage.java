@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -43,12 +45,12 @@ import org.graalvm.component.installer.persist.ComponentPackageLoader;
 
 public class RemotePropertiesStorage extends AbstractCatalogStorage {
     protected static final String PROPERTY_HASH = "hash"; // NOI18N
-    private static final String FORMAT_FLAVOUR = "Component.{0}"; // NOI18N
-    private static final String FORMAT_SINGLE_VERSION = "Component.{0}_{1}."; // NOI18N
+    private static final String FORMAT_FLAVOUR = "Component\\.{0}"; // NOI18N
+    private static final String FORMAT_SINGLE_VERSION = "Component\\.{0}_{1}\\."; // NOI18N
 
     private final Properties catalogProperties;
-    private final String flavourPrefix;
-    private final String singleVersionPrefix;
+    private final String flavourRegex;
+    private final String singleRegex;
     private final Version graalVersion;
 
     private RemoteInfoProcessor remoteProcessor = RemoteInfoProcessor.NONE;
@@ -58,9 +60,9 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
     public RemotePropertiesStorage(Feedback fb, ComponentRegistry localReg, Properties catalogProperties, String graalSelector, Version gVersion, URL baseURL) {
         super(localReg, fb, baseURL);
         this.catalogProperties = catalogProperties;
-        flavourPrefix = MessageFormat.format(FORMAT_FLAVOUR, graalSelector);
+        flavourRegex = MessageFormat.format(FORMAT_FLAVOUR, graalSelector);
         graalVersion = gVersion != null ? gVersion : localReg.getGraalVersion();
-        singleVersionPrefix = MessageFormat.format(FORMAT_SINGLE_VERSION,
+        singleRegex = MessageFormat.format(FORMAT_SINGLE_VERSION,
                         graalVersion.originalString(), graalSelector);
     }
 
@@ -96,6 +98,9 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         // already accepted prefixes
         Set<String> acceptedPrefixes = new HashSet<>();
 
+        Pattern flavourPattern = Pattern.compile("^" + flavourRegex, Pattern.CASE_INSENSITIVE);
+        Pattern singlePattern = Pattern.compile("^" + singleRegex, Pattern.CASE_INSENSITIVE);
+
         for (String s : catalogProperties.stringPropertyNames()) {
             String cid;
             String pn;
@@ -105,7 +110,7 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
             int l;
 
             if (slashPos != -1 && secondSlashPos != -1) {
-                if (!s.startsWith(flavourPrefix)) {
+                if (!flavourPattern.matcher(s).find()) {
                     continue;
                 }
                 pn = s.substring(slashPos + 1);
@@ -133,11 +138,12 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
                 }
 
             } else {
-                if (!s.startsWith(singleVersionPrefix)) {
+                Matcher m = singlePattern.matcher(s);
+                if (!m.find()) {
                     continue;
                 }
                 // versionless component
-                l = singleVersionPrefix.length();
+                l = m.end();
                 // normalized version
                 pn = graalVersion.toString() + "/" + s.substring(l);
             }
