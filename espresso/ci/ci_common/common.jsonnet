@@ -104,8 +104,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   },
 
   jdt: {
-    downloads+: {
-      JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
+    environment+: {
+      JDT: "builtin",
     },
   },
 
