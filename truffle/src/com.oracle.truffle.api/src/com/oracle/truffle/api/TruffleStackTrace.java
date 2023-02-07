@@ -328,10 +328,15 @@ public final class TruffleStackTrace extends Exception {
         addStackFrames(stackFrameLimit, lazyFrames, topCallSite, frames);
 
         lazy.stackTrace = new TruffleStackTrace(frames, lazyFrames);
-        if (throwable.getStackTrace().length == 0) {
+        if (hasEmptyStackTrace(throwable)) {
             lazy.stackTrace.materializeHostException();
         }
         return lazy.stackTrace;
+    }
+
+    private static boolean hasEmptyStackTrace(Throwable exception) {
+        StackTraceElement[] stackTrace = exception.getStackTrace();
+        return stackTrace == null || stackTrace.length == 0;
     }
 
     private static final class TracebackElement {

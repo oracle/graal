@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -523,7 +523,7 @@ final class PolyglotExceptionImpl {
         StackTraceElement[] hostStack;
         if (EngineAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
             hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(cause);
-        } else if (cause.getStackTrace() == null || cause.getStackTrace().length == 0) {
+        } else if (hasEmptyStackTrace(cause)) {
             hostStack = impl.exception.getStackTrace();
         } else {
             hostStack = cause.getStackTrace();
@@ -567,7 +567,7 @@ final class PolyglotExceptionImpl {
         } else if (EngineAccessor.EXCEPTION.isException(cause)) {
             return EngineAccessor.EXCEPTION.getLazyStackTrace(cause);
         } else {
-            while (cause.getCause() != null && cause.getStackTrace().length == 0) {
+            while (cause.getCause() != null && hasEmptyStackTrace(cause)) {
                 if (isHostException(engine, cause)) {
                     cause = engine.host.unboxHostException(cause);
                 } else {
@@ -576,6 +576,11 @@ final class PolyglotExceptionImpl {
             }
             return cause;
         }
+    }
+
+    private static boolean hasEmptyStackTrace(Throwable cause) {
+        StackTraceElement[] stackTrace = cause.getStackTrace();
+        return stackTrace == null || stackTrace.length == 0;
     }
 
     private static boolean isHostException(PolyglotEngineImpl engine, Throwable cause) {
