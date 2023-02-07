@@ -134,10 +134,14 @@ public class CPUSamplerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     @Override
-    protected void onDispose(Env env) {
+    protected void onFinalize(Env env) {
         if (env.getOptions().get(CPUSamplerCLI.ENABLED)) {
             CPUSamplerCLI.handleOutput(env, sampler);
         }
+    }
+
+    @Override
+    protected void onDispose(Env env) {
         sampler.close();
     }
 }

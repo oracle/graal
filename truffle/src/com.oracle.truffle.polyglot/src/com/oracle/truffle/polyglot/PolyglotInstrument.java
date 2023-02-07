@@ -66,6 +66,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
     private volatile OptionValuesImpl optionValues;
     private volatile boolean initialized;
     private volatile boolean created;
+    private volatile boolean finalized;
     private volatile boolean closed;
     int requestedAsyncStackDepth = 0;
     LocalLocation[] contextLocalLocations;
@@ -203,11 +204,12 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         }
     }
 
-    void notifyClosing() {
-        if (created && !closed) {
+    void ensureFinalized() {
+        if (created && !finalized && !closed) {
             synchronized (instrumentLock) {
-                if (created && !closed) {
+                if (created && !finalized && !closed) {
                     INSTRUMENT.finalizeInstrument(engine.instrumentationHandler, this);
+                    finalized = true;
                 }
             }
         }

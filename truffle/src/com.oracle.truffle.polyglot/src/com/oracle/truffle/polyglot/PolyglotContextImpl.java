@@ -1328,7 +1328,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         finishCleanup();
         checkSubProcessFinished();
         if (engine.boundEngine && parent == null) {
-            engine.ensureClosed(force, false);
+            engine.ensureClosed(force);
         }
     }
 
