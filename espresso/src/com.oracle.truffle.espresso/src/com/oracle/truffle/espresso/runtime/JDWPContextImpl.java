@@ -692,7 +692,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean isSystemThread() {
-        return controller.isControlThread() || classRedefinition.isRedefineThread();
+        return classRedefinition.isRedefineThread();
     }
 
     public long getBCI(Node rawNode, Frame frame) {

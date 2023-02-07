@@ -92,8 +92,6 @@ public final class DebuggerController implements ContextsListener {
     private TruffleContext truffleContext;
     private Object initialThread;
     private final TruffleLogger jdwpLogger;
-    private boolean enteredTruffleContext;
-    private Thread controlThread;
 
     public DebuggerController(JDWPInstrument instrument, TruffleLogger logger) {
         this.instrument = instrument;
@@ -529,18 +527,17 @@ public final class DebuggerController implements ContextsListener {
         return eventListener;
     }
 
-    public void enterTruffleContext() {
-        // only enter the context once
-        if (truffleContext != null && !enteredTruffleContext) {
-            enteredTruffleContext = true;
-            truffleContext.enter(null);
+    public Object enterTruffleContext() {
+        if (truffleContext != null) {
+            return truffleContext.enter(null);
         }
+        return null;
     }
 
-    public void leaveTruffleContext() {
-        if (truffleContext != null && enteredTruffleContext) {
+    public void leaveTruffleContext(Object previous) {
+        if (truffleContext != null) {
             // pass null as previous since we know the jdwp thread only ever enters one context
-            truffleContext.leave(null, null);
+            truffleContext.leave(null, previous);
         }
     }
 
@@ -781,14 +778,6 @@ public final class DebuggerController implements ContextsListener {
 
     public void cancelBlockingCallFrames(Object guestThread) {
         suspendedInfos.remove(guestThread);
-    }
-
-    public boolean isControlThread() {
-        return controlThread == Thread.currentThread();
-    }
-
-    public void markAsControlThread(Thread thread) {
-        controlThread = thread;
     }
 
     private class SuspendedCallbackImpl implements SuspendedCallback {
