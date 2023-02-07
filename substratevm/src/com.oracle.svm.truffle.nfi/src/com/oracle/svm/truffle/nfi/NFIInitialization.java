@@ -26,8 +26,10 @@ package com.oracle.svm.truffle.nfi;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platform.WINDOWS;
+import org.graalvm.nativeimage.Platform.DARWIN;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.c.CGlobalData;
@@ -86,6 +88,9 @@ public final class NFIInitialization {
              * support FP80, it treats `long double` as double precision only.
              */
             initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.FP80, ffi_type_longdouble.get());
+        }
+        if (Platform.includedIn(AARCH64.class) && !Platform.includedIn(WINDOWS.class) && !Platform.includedIn(DARWIN.class)) {
+            initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.FP128, ffi_type_longdouble.get());
         }
 
         initializeNativeSimpleType(context, Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType.STRING, ffi_type_pointer.get());

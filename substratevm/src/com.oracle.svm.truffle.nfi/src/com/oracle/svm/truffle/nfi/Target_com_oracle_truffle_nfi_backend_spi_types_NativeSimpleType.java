@@ -44,7 +44,7 @@ final class Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType {
     @Alias static Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType FLOAT;
     @Alias static Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType DOUBLE;
     @Alias static Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType FP80;
-
+    @Alias static Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType FP128;
     @Alias static Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType STRING;
     @Alias static Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType OBJECT;
     @Alias static Target_com_oracle_truffle_nfi_backend_spi_types_NativeSimpleType NULLABLE;
