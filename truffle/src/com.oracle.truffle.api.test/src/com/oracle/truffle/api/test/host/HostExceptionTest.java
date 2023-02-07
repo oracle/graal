@@ -101,6 +101,10 @@ public class HostExceptionTest {
 
     private static final String INSTRUMENTATION_TEST_LANGUAGE = "instrumentation-test-language";
 
+    private static final String CATCHER = "catcher";
+    private static final String RUNNER = "runner";
+    private static final String RETHROWER = "rethrower";
+
     @Test
     public void testExceptionFromExecutionListener() {
         ExecutionListener.newBuilder().statements(true).onEnter(new Consumer<ExecutionEvent>() {
@@ -128,13 +132,13 @@ public class HostExceptionTest {
                 protected CallTarget parse(ParsingRequest request) throws Exception {
                     RootNode rootNode;
                     switch (request.getSource().getCharacters().toString()) {
-                        case "catcher":
+                        case CATCHER:
                             rootNode = new CatcherRootNode();
                             break;
-                        case "runner":
+                        case RUNNER:
                             rootNode = new RunnerRootNode();
                             break;
-                        case "rethrower":
+                        case RETHROWER:
                             rootNode = new RethrowerRootNode();
                             break;
                         default:
@@ -188,7 +192,7 @@ public class HostExceptionTest {
     @Test
     public void testUncaughtHostException() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
-        Value catcher = context.eval(ProxyLanguage.ID, "runner");
+        Value catcher = context.eval(ProxyLanguage.ID, RUNNER);
         Runnable thrower = HostExceptionTest::thrower;
         try {
             catcher.execute(thrower);
@@ -206,7 +210,7 @@ public class HostExceptionTest {
             assertTrue(sf.isGuestFrame());
             assertNotNull(sf.getSourceLocation());
             assertEquals(4, sf.getSourceLocation().getStartLine());
-            assertEquals("runner", sf.getRootName());
+            assertEquals(RUNNER, sf.getRootName());
             sf = iterator.next();
             assertTrue(sf.isHostFrame());
             assertThat(sf.getRootName(), containsString("execute"));
@@ -217,7 +221,7 @@ public class HostExceptionTest {
     public void testExceptionObject() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = NoSuchElementException.class;
-        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Runnable thrower = HostExceptionTest::thrower;
         Value result = catcher.execute(thrower);
         assertTrue(result.isHostObject());
@@ -232,7 +236,7 @@ public class HostExceptionTest {
             StackTraceElement sf = iterator.next();
             assertThat(sf.getMethodName(), containsString("thrower"));
             sf = iterator.next();
-            assertThat(sf.getMethodName(), containsString("catcher"));
+            assertThat(sf.getMethodName(), containsString(CATCHER));
             assertEquals(4, sf.getLineNumber());
             sf = iterator.next();
             assertThat(sf.getMethodName(), containsString("execute"));
@@ -243,8 +247,8 @@ public class HostExceptionTest {
     public void testCatchAndThrow() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = NoSuchElementException.class;
-        Value runner = context.eval(ProxyLanguage.ID, "runner");
-        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Value runner = context.eval(ProxyLanguage.ID, RUNNER);
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Runnable thrower = HostExceptionTest::thrower;
         Consumer<Object> consumer = exceptionObject -> {
             throw (RuntimeException) exceptionObject;
@@ -276,7 +280,7 @@ public class HostExceptionTest {
         }
 
         expectedException = BadException.class;
-        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Runnable thrower = () -> {
             throw new BadException();
         };
@@ -301,7 +305,7 @@ public class HostExceptionTest {
         }
 
         expectedException = BadException.class;
-        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Runnable thrower = () -> {
             throw new BadException();
         };
@@ -325,8 +329,8 @@ public class HostExceptionTest {
         }
 
         expectedException = BadException.class;
-        Value runner = context.eval(ProxyLanguage.ID, "runner");
-        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Value runner = context.eval(ProxyLanguage.ID, RUNNER);
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Runnable throwerInner = () -> {
             throw new BadException();
         };
@@ -366,8 +370,8 @@ public class HostExceptionTest {
     public void testNestedPolyglotException() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = TestHostException.class;
-        Value runner = context.eval(ProxyLanguage.ID, "runner");
-        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Value runner = context.eval(ProxyLanguage.ID, RUNNER);
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Runnable throwerInner = () -> {
             throw new TestHostException();
         };
@@ -444,7 +448,7 @@ public class HostExceptionTest {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = NoSuchElementException.class;
         Runnable thrower = HostExceptionTest::thrower;
-        Value rethrower = context.eval(ProxyLanguage.ID, "rethrower");
+        Value rethrower = context.eval(ProxyLanguage.ID, RETHROWER);
 
         // throw and rethrow a host exception
         try {
@@ -458,7 +462,7 @@ public class HostExceptionTest {
         }
 
         // throw, rethrow, and then catch a host exception
-        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Value result = catcher.execute(rethrower, thrower);
         assertTrue(result.isHostObject());
         assertThat(result.asHostObject(), instanceOf(NoSuchElementException.class));
@@ -472,7 +476,7 @@ public class HostExceptionTest {
     public void testHostExceptionMetaInstance() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = NoSuchElementException.class;
-        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Runnable thrower = HostExceptionTest::thrower;
         Value result = catcher.execute(thrower);
         assertTrue(result.isHostObject());
@@ -499,7 +503,7 @@ public class HostExceptionTest {
         customExceptionVerfier = (t) -> {
             assertFalse(env.isHostSymbol(t));
         };
-        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Runnable thrower = HostExceptionTest::thrower;
         catcher.execute(thrower);
     }
@@ -508,7 +512,7 @@ public class HostExceptionTest {
     public void testHostExceptionWithContext() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = RuntimeException.class;
-        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Runnable thrower = HostExceptionTest::thrower;
         Value exception = catcher.execute(thrower);
         try (Context ctx2 = Context.create()) {
@@ -566,12 +570,12 @@ public class HostExceptionTest {
         @TruffleBoundary
         @Override
         public SourceSection getSourceSection() {
-            return Source.newBuilder(ProxyLanguage.ID, "\na\nb\nc\n", "catcher").build().createSection(4);
+            return Source.newBuilder(ProxyLanguage.ID, "\na\nb\nc\n", CATCHER).build().createSection(4);
         }
 
         @Override
         public String getName() {
-            return "catcher";
+            return CATCHER;
         }
 
         @Override
@@ -619,12 +623,12 @@ public class HostExceptionTest {
         @TruffleBoundary
         @Override
         public SourceSection getSourceSection() {
-            return Source.newBuilder(ProxyLanguage.ID, "\na\nb\nc\n", "runner").build().createSection(4);
+            return Source.newBuilder(ProxyLanguage.ID, "\na\nb\nc\n", RUNNER).build().createSection(4);
         }
 
         @Override
         public String getName() {
-            return "runner";
+            return RUNNER;
         }
 
         @Override
@@ -650,12 +654,12 @@ public class HostExceptionTest {
         @TruffleBoundary
         @Override
         public SourceSection getSourceSection() {
-            return Source.newBuilder(ProxyLanguage.ID, "rethrow", "rethrower").build().createSection(1);
+            return Source.newBuilder(ProxyLanguage.ID, "rethrow", RETHROWER).build().createSection(1);
         }
 
         @Override
         public String getName() {
-            return "rethrower";
+            return RETHROWER;
         }
 
         @Override
