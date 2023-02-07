@@ -75,6 +75,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private final JfrGlobalMemory globalMemory;
     private final ReentrantLock lock;
     private final boolean compressedInts;
+    private final JfrMetadata metadata;
     private long notificationThreshold;
 
     private String filename;
@@ -82,23 +83,16 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private long chunkStartTicks;
     private long chunkStartNanos;
     private byte generation;
-    public long lastCheckpointOffset = 0;
-
-    private int lastMetadataId = 0;
-    private int currentMetadataId = 0;
+    public SignedWord lastCheckpointOffset;
     private boolean newChunk = true;
     private boolean isFinal = false;
-    private SignedWord metadataPosition;
-
-    public void setCurrentMetadataId() {
-        currentMetadataId++;
-    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrChunkWriter(JfrGlobalMemory globalMemory) {
+    public JfrChunkWriter(JfrGlobalMemory globalMemory, JfrMetadata metadata) {
         this.lock = new ReentrantLock();
         this.compressedInts = true;
         this.globalMemory = globalMemory;
+        this.metadata = metadata;
     }
 
     @Override
@@ -135,11 +129,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
-    public void markChunkFinal() {
-        assert lock.isHeldByCurrentThread();
-        isFinal = true;
-    }
-
     public boolean openFile(String outputFile) {
         assert lock.isHeldByCurrentThread();
         isFinal = false;
@@ -150,7 +139,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         filename = outputFile;
         fd = getFileSupport().open(filename, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         writeFileHeader();
-        lastCheckpointOffset = -1; // must reset this on new chunk
+        lastCheckpointOffset = WordFactory.signed(-1); // must reset this on new chunk
         return true;
     }
 
@@ -181,7 +170,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     /**
      * Write all the in-memory data to the file.
      */
-    public void closeFile(byte[] metadataDescriptor, JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
+    public void closeFile(JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
         assert lock.isHeldByCurrentThread();
         /*
          * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
@@ -199,7 +188,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             writeThreadCheckpointEvent(threadRepo, false);
         }
         SignedWord constantPoolPosition = writeCheckpointEvent(repositories, false);
-        writeMetadataEvent(metadataDescriptor);
+        writeMetadataEvent();
         patchFileHeader(constantPoolPosition);
         getFileSupport().close(fd);
 
@@ -208,7 +197,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         newChunk = false;
     }
 
-    public void flush(byte[] metadataDescriptor, JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
+    public void flush(JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
         assert lock.isHeldByCurrentThread();
         flushStorage();
 
@@ -216,7 +205,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             writeThreadCheckpointEvent(threadRepo, true);
         }
         SignedWord constantPoolPosition = writeCheckpointEvent(repositories, true);
-        writeMetadataEvent(metadataDescriptor);
+        writeMetadataEvent();
 
         patchFileHeader(constantPoolPosition, true);
         newChunk = false;
@@ -258,7 +247,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().seek(fd, WordFactory.signed(CHUNK_SIZE_OFFSET));
         getFileSupport().writeLong(fd, chunkSize);
         getFileSupport().writeLong(fd, constantPoolPosition.rawValue());
-        getFileSupport().writeLong(fd, metadataPosition.rawValue());
+        getFileSupport().writeLong(fd, metadata.getMetadataPosition().rawValue());
         getFileSupport().writeLong(fd, chunkStartNanos);
         getFileSupport().writeLong(fd, durationNanos);
         getFileSupport().seek(fd, WordFactory.signed(FILE_STATE_OFFSET));
@@ -293,13 +282,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
         SignedWord start = beginEvent();
 
-        if (lastCheckpointOffset < 0) {
-            lastCheckpointOffset = start.rawValue();
+        if (lastCheckpointOffset.lessThan(0)) {
+            lastCheckpointOffset = start;
         }
         writeCompressedLong(CONSTANT_POOL_TYPE_ID);
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
-        writeCompressedLong(lastCheckpointOffset - start.rawValue()); // deltaToNext
+        writeCompressedLong(lastCheckpointOffset.subtract(start).rawValue()); // deltaToNext
         writeCompressedLong(8); // Checkpoint type is "THREADS"
 
         SignedWord poolCountPos = getFileSupport().position(fd);
@@ -312,7 +301,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().writeInt(fd, makePaddedInt(poolCount));
         getFileSupport().seek(fd, currentPos);
         endEvent(start);
-        lastCheckpointOffset = start.rawValue();
+        lastCheckpointOffset = start;
 
         return start;
     }
@@ -321,13 +310,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         assert lock.isHeldByCurrentThread();
         SignedWord start = beginEvent();
 
-        if (lastCheckpointOffset < 0) {
-            lastCheckpointOffset = start.rawValue();
+        if (lastCheckpointOffset.lessThan(0)) {
+            lastCheckpointOffset = start;
         }
         writeCompressedLong(CONSTANT_POOL_TYPE_ID);
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
-        writeCompressedLong(lastCheckpointOffset - start.rawValue()); // deltaToNext
+        writeCompressedLong(lastCheckpointOffset.subtract(start).rawValue()); // deltaToNext
         writeBoolean(true); // flush
 
         SignedWord poolCountPos = getFileSupport().position(fd);
@@ -345,7 +334,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().writeInt(fd, makePaddedInt(poolCount));
         getFileSupport().seek(fd, currentPos);
         endEvent(start);
-        lastCheckpointOffset = start.rawValue();
+        lastCheckpointOffset = start;
 
         return start;
     }
@@ -359,22 +348,20 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return count;
     }
 
-    private void writeMetadataEvent(byte[] metadataDescriptor) {
+    private void writeMetadataEvent() {
         assert lock.isHeldByCurrentThread();
         // always write metadata on a new chunk!
-        if (currentMetadataId != lastMetadataId || newChunk) {
-            lastMetadataId = currentMetadataId;
-        } else {
+        if (!metadata.isDirty() && !newChunk) {
             return;
         }
         SignedWord start = beginEvent();
         writeCompressedLong(METADATA_TYPE_ID);
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
-        writeCompressedLong(0); // metadata id
-        writeBytes(metadataDescriptor); // payload
+        writeCompressedLong(metadata.getCurrentMetadataId()); // metadata id
+        writeBytes(metadata.getDescriptorAndClearDirtyFlag()); // payload
         endEvent(start);
-        metadataPosition = start;
+        metadata.setMetadataPosition(start);
     }
 
     public boolean shouldRotateDisk() {
@@ -644,5 +631,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     public long getChunkStartNanos() {
         return chunkStartNanos;
+    }
+
+    public void markChunkFinal() {
+        assert lock.isHeldByCurrentThread();
+        isFinal = true;
     }
 }

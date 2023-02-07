@@ -92,7 +92,7 @@ public class SubstrateJVM {
      * in).
      */
     private volatile boolean recording;
-    private byte[] metadataDescriptor;
+    private JfrMetadata metadata;
     private String dumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -122,14 +122,14 @@ public class SubstrateJVM {
         threadLocal = new JfrThreadLocal();
         globalMemory = new JfrGlobalMemory();
         samplerBufferPool = new SamplerBufferPool();
-        unlockedChunkWriter = new JfrChunkWriter(globalMemory);
+        metadata = new JfrMetadata(null);
+        unlockedChunkWriter = new JfrChunkWriter(globalMemory, metadata);
         recorderThread = new JfrRecorderThread(globalMemory, unlockedChunkWriter);
 
         jfrLogging = new JfrLogging();
 
         initialized = false;
         recording = false;
-        metadataDescriptor = null;
     }
 
     @Fold
@@ -300,10 +300,7 @@ public class SubstrateJVM {
      * See {@link JVM#storeMetadataDescriptor}.
      */
     public void storeMetadataDescriptor(byte[] bytes) {
-        metadataDescriptor = bytes;
-        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
-        chunkWriter.setCurrentMetadataId();
-        chunkWriter.unlock();
+        metadata.setDescriptor(bytes);
     }
 
     /**
@@ -357,7 +354,7 @@ public class SubstrateJVM {
             if (recording) {
                 boolean existingFile = chunkWriter.hasOpenFile();
                 if (existingFile) {
-                    chunkWriter.closeFile(metadataDescriptor, repositories, threadRepo);
+                    chunkWriter.closeFile(repositories, threadRepo);
                 }
                 if (file != null) {
                     chunkWriter.openFile(file);
@@ -518,7 +515,7 @@ public class SubstrateJVM {
             if (recording) {
                 boolean existingFile = chunkWriter.hasOpenFile();
                 if (existingFile) {
-                    chunkWriter.flush(metadataDescriptor, repositories, threadRepo);
+                    chunkWriter.flush(repositories, threadRepo);
                 }
             }
         } finally {

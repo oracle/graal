@@ -365,7 +365,7 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public boolean isCurrentThreadExcluded() {
-        return excluded.get() == 1 ? true : false;
+        return excluded.get() == 1;
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
