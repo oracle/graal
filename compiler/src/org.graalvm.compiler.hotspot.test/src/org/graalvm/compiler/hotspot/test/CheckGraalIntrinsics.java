@@ -409,7 +409,7 @@ public class CheckGraalIntrinsics extends GraalTest {
 
                             // JDK-8248188: Add IntrinsicCandidate and API for Base64 decoding
                             "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I",
-
+                            "java/util/Base64$Decoder.decodeBlock([BII[BIZZ)I",
                             // JDK-8255150: Add utility methods to check long indexes and ranges
                             "jdk/internal/util/Preconditions.checkIndex(JJLjava/util/function/BiFunction;)J",
 
