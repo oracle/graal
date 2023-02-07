@@ -65,8 +65,8 @@ import java.util.Arrays;
 
 /**
  * On Darwin aarch64, the long double type is a double precision IEEE754 binary floating-point type,
- * which makes it identical to the double type. This behavior contrasts to the standard specification,
- * in which a long double is a quad-precision, IEEE754 binary, floating-point type.
+ * which makes it identical to the double type. This behavior contrasts to the standard
+ * specification, in which a long double is a quad-precision, IEEE754 binary, floating-point type.
  */
 @ValueType
 @ExportLibrary(value = SerializableLibrary.class, useForAOT = false)
