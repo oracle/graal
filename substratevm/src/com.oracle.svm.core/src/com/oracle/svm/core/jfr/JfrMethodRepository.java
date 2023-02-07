@@ -43,16 +43,6 @@ public class JfrMethodRepository implements JfrConstantPool {
     private final JfrMethodEpochData epochData0;
     private final JfrMethodEpochData epochData1;
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void acquireLock() {
-        mutex.lockNoTransition();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void releaseLock() {
-        mutex.unlock();
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrMethodRepository() {
         this.epochData0 = new JfrMethodEpochData();
@@ -117,19 +107,31 @@ public class JfrMethodRepository implements JfrConstantPool {
         return methodId;
     }
 
+    private void maybeLock(boolean flush) {
+        if (flush) {
+            mutex.lock();
+        }
+    }
+
+    private void maybeUnlock(boolean flush) {
+        if (flush) {
+            mutex.unlock();
+        }
+    }
+
     @Override
     public int write(JfrChunkWriter writer, boolean flush) {
-        if (flush) {
-            acquireLock();
+        maybeLock(flush);
+        try {
+            JfrMethodEpochData epochData = getEpochData(!flush);
+            int count = writeMethods(writer, epochData, flush);
+            if (!flush) {
+                epochData.clear();
+            }
+            return count;
+        } finally {
+            maybeUnlock(flush);
         }
-        JfrMethodEpochData epochData = getEpochData(!flush);
-        int count = writeMethods(writer, epochData, flush);
-        if (!flush) {
-            epochData.clear();
-        } else {
-            releaseLock();
-        }
-        return count;
     }
 
     private static int writeMethods(JfrChunkWriter writer, JfrMethodEpochData epochData, boolean flush) {

@@ -112,31 +112,46 @@ public class JfrSymbolRepository implements JfrConstantPool {
         return 0;
     }
 
+    private void maybeLock(boolean flush) {
+        if (flush) {
+            mutex.lock();
+        }
+    }
+    private void maybeUnlock(boolean flush) {
+        if (flush) {
+            mutex.unlock();
+        }
+    }
+
     @Override
     public int write(JfrChunkWriter writer, boolean flush) {
         JfrSymbolHashtable table = getTable(!flush);
+        maybeLock(flush);
+        try {
+            if (table.getSize() == 0) {
+                return EMPTY;
+            }
+            writer.writeCompressedLong(JfrType.Symbol.getId());
+            writer.writeCompressedLong(table.getSize());
 
-        if (table.getSize() == 0) {
-            return EMPTY;
-        }
-        writer.writeCompressedLong(JfrType.Symbol.getId());
-        writer.writeCompressedLong(table.getSize());
-
-        JfrSymbol[] entries = table.getTable();
-        for (int i = 0; i < entries.length; i++) {
-            JfrSymbol entry = entries[i];
-            if (entry.isNonNull()) {
-                while (entry.isNonNull()) {
-                    writeSymbol(writer, entry);
-                    entry = entry.getNext();
+            JfrSymbol[] entries = table.getTable();
+            for (int i = 0; i < entries.length; i++) {
+                JfrSymbol entry = entries[i];
+                if (entry.isNonNull()) {
+                    while (entry.isNonNull()) {
+                        writeSymbol(writer, entry);
+                        entry = entry.getNext();
+                    }
                 }
             }
+            table.clear(); // *** should be cleared only after epoch change
+            return NON_EMPTY;
+        } finally {
+            maybeUnlock(flush);
         }
-        table.clear();
-        return NON_EMPTY;
     }
 
-    private static void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) {
+    private static void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) { // *** only write if not serialized before. Set serialized
         writer.writeCompressedLong(symbol.getId());
         writer.writeByte(JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
         byte[] value = symbol.getValue().getBytes(StandardCharsets.UTF_8);
@@ -156,7 +171,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
     }
 
     @RawStructure
-    private interface JfrSymbol extends UninterruptibleEntry {
+    private interface JfrSymbol extends UninterruptibleEntry { // *** add field for isSerialized?
         @RawField
         long getId();
 

@@ -50,9 +50,6 @@ import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
 
 import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
-import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.release;
-import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.tryAcquire;
-import static com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.isAcquired;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
@@ -74,7 +71,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     public static final long METADATA_TYPE_ID = 0;
     public static final long CONSTANT_POOL_TYPE_ID = 1;
-
+    private static final byte COMPLETE = 0;
     private final JfrGlobalMemory globalMemory;
     private final ReentrantLock lock;
     private final boolean compressedInts;
@@ -85,9 +82,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private long chunkStartTicks;
     private long chunkStartNanos;
     private byte generation;
-    private static final byte COMPLETE = 0;
-    private static final byte MAX_BYTE = 127;
-
     public long lastCheckpointOffset = 0;
 
     private int lastMetadataId = 0;
@@ -287,10 +281,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private byte nextGeneration() {
-        if (generation == MAX_BYTE) {
+        if (generation == Byte.MAX_VALUE) {
             // similar to Hotspot, restart counter if required.
             generation = 1;
-            return MAX_BYTE;
+            return Byte.MAX_VALUE;
         }
         return generation++;
     }
@@ -538,8 +532,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
              * *not* reinitialize the thread-local buffers as the individual threads will handle
              * space reclamation on their own time.
              */
-            traverseList(getJavaBufferList(), true, true);
-            traverseList(getNativeBufferList(), false, true);
+            traverseList(getJavaBufferList(), true);
+            traverseList(getNativeBufferList(), false);
 
             JfrBuffers buffers = globalMemory.getBuffers();
             for (int i = 0; i < globalMemory.getBufferCount(); i++) {
@@ -586,8 +580,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
     private void flushStorage() {
-        traverseList(getJavaBufferList(), true, false);
-        traverseList(getNativeBufferList(), false, false);
+        traverseList(getJavaBufferList(), true);
+        traverseList(getNativeBufferList(), false);
 
         JfrBuffers buffers = globalMemory.getBuffers();
         for (int i = 0; i < globalMemory.getBufferCount(); i++) {
@@ -602,66 +596,49 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
+    private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java) {
         // Traverse back to front to minimize conflict with threads adding new nodes.
         // Which could possibly block traversal early at the head.
 
-        JfrBufferNode node = linkedList.getAndLockTail();
-        // If we couldn't acquire the tail. node is null. Give up, and try again next time.
+        boolean firstIteration = true;
+        JfrBufferNode node = linkedList.getAndLockHead();
+        JfrBufferNode prev = WordFactory.nullPointer();
 
         while (node.isNonNull()) {
-            boolean writeSuccess = false;
-            VMError.guarantee(isAcquired(node) || VMOperation.isInProgressAtSafepoint(), "Cannot traverse JfrBufferNodeLinkedList outside safepoint without acquiring nodes.");
-            JfrBufferNode prev = node.getPrev();
-
-            if (!linkedList.isTail(node)) {
+            try {
+                JfrBufferNode next = node.getNext();
                 JfrBuffer buffer = node.getValue();
                 VMError.guarantee(buffer.isNonNull(), "JFR buffer should exist if we have not already removed its respective node.");
 
-                // Try to get BUFFER if not in safepoint
-                // make one attempt
-                if (!safepoint && !JfrBufferAccess.acquire(buffer)) {
-                    if (tryAcquire(prev)) {
-                        release(node);
-                        node = prev;
-                        continue;
-                    }
-                    release(node);
-                    return;
+                // Try to get BUFFER with one attempt
+                if (!JfrBufferAccess.acquire(buffer)) {
+                    prev = node;
+                    node = next;
                 }
                 write(buffer);
-                writeSuccess = true;
-                if (!safepoint) {
-                    JfrBufferAccess.release(buffer);
+
+                JfrBufferAccess.release(buffer);
+
+                // If a node has been marked dead, the thread was unable to flush upon death.
+                // So we need to flush the buffer above before attempting to remove the node here.
+                if (!node.getAlive()) {
+                    linkedList.removeNode(node, prev);
+                    // if removed current node, should not update prev.
+                } else {
+                    prev = node;
+                }
+                node = next;
+            } finally {
+                if (firstIteration) {
+                    linkedList.releaseList(); // hold onto lock until done with head.
+                    firstIteration = false;
                 }
             }
+        }
 
-            // If a node has been marked dead, the thread was unable to flush upon death.
-            // So we need to flush the buffer above before attempting to remove the node here.
-            if (!node.getAlive()) {
-                if (linkedList.removeNode(node, true)) {
-                    // able to remove node
-                    if (tryAcquire(prev)) {
-                        node = prev;
-                        continue;
-                    }
-                    // Failed to get next node. Give up and try again later
-                    return;
-                }
-            } else if (writeSuccess && java) {
-                // Only notify event writer of flush if the thread (and its locals) is still alive
-                JfrThreadLocal.notifyEventWriter(node.getThread());
-            }
-
-            boolean prevAcquired = tryAcquire(prev);
-            release(node);
-
-            if (!prevAcquired) {
-                return;
-            }
-
-            VMError.guarantee(prev.isNull() || isAcquired(prev) || VMOperation.isInProgressAtSafepoint(), "Cannot advance in JfrBufferNodeLinkedList traversal before acquiring next node.");
-            node = prev;
+        // we may never have entered the while loop if the list is empty.
+        if (firstIteration) {
+            linkedList.releaseList(); // hold onto lock until done with head.
         }
     }
 

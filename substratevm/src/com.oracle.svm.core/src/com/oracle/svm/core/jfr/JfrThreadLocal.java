@@ -146,28 +146,17 @@ public class JfrThreadLocal implements ThreadListener {
         JfrBufferNode nbn = nativeBufferNode.get(isolateThread);
 
         if (jbn.isNonNull() && flushBuffers) {
-            if (getJavaBufferList().lockSection(jbn)) {
-                JfrBuffer jb = jbn.getValue();
-                assert jb.isNonNull() && jbn.getAlive();
-                if (jb.isNonNull()) {
-                    flush(jb, WordFactory.unsigned(0), 0);
-                }
-                getJavaBufferList().removeNode(jbn, false); // also releases locks
-            } else {
-                jbn.setAlive(false);
-            }
+            JfrBuffer jb = jbn.getValue();
+            assert jb.isNonNull() && jbn.getAlive();
+            flush(jb, WordFactory.unsigned(0), 0);
+            jbn.setAlive(false);
+
         }
         if (nbn.isNonNull() && flushBuffers) {
-            if (getNativeBufferList().lockSection(nbn)) {
-                JfrBuffer nb = nbn.getValue();
-                assert nb.isNonNull() && nbn.getAlive();
-                if (nb.isNonNull()) {
-                    flush(nb, WordFactory.unsigned(0), 0);
-                }
-                getNativeBufferList().removeNode(nbn, false);
-            } else {
-                nbn.setAlive(false);
-            }
+            JfrBuffer nb = nbn.getValue();
+            assert nb.isNonNull() && nbn.getAlive();
+            flush(nb, WordFactory.unsigned(0), 0);
+            nbn.setAlive(false);
         }
 
         /* Clear event-related thread-locals. */
@@ -228,21 +217,6 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static UnsignedWord getHeaderSize() {
-        return com.oracle.svm.core.util.UnsignedUtils.roundUp(org.graalvm.nativeimage.c.struct.SizeOf.unsigned(JfrBufferNode.class),
-                        WordFactory.unsigned(com.oracle.svm.core.config.ConfigurationValues.getTarget().wordSize));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static JfrBufferNode allocate(com.oracle.svm.core.jfr.JfrBuffer buffer) {
-        JfrBufferNode node = org.graalvm.nativeimage.ImageSingletons.lookup(org.graalvm.nativeimage.impl.UnmanagedMemorySupport.class).malloc(getHeaderSize());
-        VMError.guarantee(node.isNonNull());
-        node.setValue(buffer);
-        node.setAlive(true);
-        return node;
-    }
-
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
     public JfrBuffer getJavaBuffer() {
         JfrBufferNode result = javaBufferNode.get();
 
@@ -289,13 +263,10 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private static boolean acquireBufferWithRetry(JfrBuffer buffer) {
-        for (int retry = 0; retry < 100000; retry++) {
-            if (JfrBufferAccess.acquire(buffer)) {
-                return true;
-            }
+    private static void acquireBufferWithRetry(JfrBuffer buffer) {
+        while (!JfrBufferAccess.acquire(buffer)) {
+
         }
-        return false;
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -304,9 +275,7 @@ public class JfrThreadLocal implements ThreadListener {
         VMError.guarantee(!VMOperation.isInProgressAtSafepoint(), "Should not be promoting if at safepoint. ");
 
         // Needed for race between streaming flush and promotion
-        if (!acquireBufferWithRetry(threadLocalBuffer)) {
-            return WordFactory.nullPointer();
-        }
+        acquireBufferWithRetry(threadLocalBuffer);
 
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
         if (unflushedSize.aboveThan(0)) {

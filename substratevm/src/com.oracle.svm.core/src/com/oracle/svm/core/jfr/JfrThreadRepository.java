@@ -188,23 +188,34 @@ public final class JfrThreadRepository implements JfrConstantPool {
         return epoch ? epochData0 : epochData1;
     }
 
-    @Override
-    public int write(JfrChunkWriter writer, boolean flush) {
-        JfrThreadEpochData epochData = getEpochData(!flush);
+    private void maybeLock(boolean flush) {
         if (flush) {
-            mutex.lock(); // only required when possibility of read/write same epoch data
+            mutex.lock();
         }
-        int count = writeThreads(writer, epochData);
-        count += writeThreadGroups(writer, epochData);
+    }
 
-        epochData.clear();
-
-        epochData.isDirty = false;
-
+    private void maybeUnlock(boolean flush) {
         if (flush) {
             mutex.unlock();
         }
-        return count;
+    }
+
+    @Override
+    public int write(JfrChunkWriter writer, boolean flush) {
+        JfrThreadEpochData epochData = getEpochData(!flush);
+        maybeLock(flush);
+        try {
+            int count = writeThreads(writer, epochData);
+            count += writeThreadGroups(writer, epochData);
+
+            epochData.clear();
+
+            epochData.isDirty = false;
+
+            return count;
+        } finally {
+            maybeUnlock(flush);
+        }
     }
 
     public boolean isDirty(boolean flush) {

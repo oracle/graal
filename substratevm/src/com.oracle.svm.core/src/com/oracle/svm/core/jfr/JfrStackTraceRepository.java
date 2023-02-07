@@ -230,19 +230,31 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         }
     }
 
-    @Override
-    public int write(JfrChunkWriter writer, boolean flush) {
+    private void maybeLock(boolean flush) {
         if (flush) {
             mutex.lock();
         }
-        JfrStackTraceEpochData epochData = getEpochData(!flush);
-        int count = writeStackTraces(writer, epochData, flush);
-        if (!flush) {
-            epochData.clear();
-        } else {
+    }
+
+    private void maybeUnlock(boolean flush) {
+        if (flush) {
             mutex.unlock();
         }
-        return count;
+    }
+
+    @Override
+    public int write(JfrChunkWriter writer, boolean flush) {
+        maybeLock(flush);
+        try {
+            JfrStackTraceEpochData epochData = getEpochData(!flush);
+            int count = writeStackTraces(writer, epochData, flush);
+            if (!flush) {
+                epochData.clear();
+            }
+            return count;
+        } finally {
+            maybeUnlock(flush);
+        }
     }
 
     private static int writeStackTraces(JfrChunkWriter writer, JfrStackTraceEpochData epochData, boolean flush) {
