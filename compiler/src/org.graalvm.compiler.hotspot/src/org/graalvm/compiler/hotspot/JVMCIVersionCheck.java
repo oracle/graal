@@ -115,9 +115,11 @@ public final class JVMCIVersionCheck {
             return this.major ^ this.minor ^ this.build;
         }
 
+        public static final String AS_TAG_FORMAT = "jvmci-%d.%d-b%02d";
+
         @Override
         public String toString() {
-            return String.format("%d.%d-b%02d", major, minor, build);
+            return String.format(AS_TAG_FORMAT, major, minor, build);
         }
     }
 
@@ -159,9 +161,9 @@ public final class JVMCIVersionCheck {
         this.vmVersion = vmVersion;
     }
 
-    static void check(Map<String, String> props, boolean exitOnFailure, boolean quiet) {
+    static void check(Map<String, String> props, boolean exitOnFailure, String format) {
         JVMCIVersionCheck checker = new JVMCIVersionCheck(props, props.get("java.specification.version"), props.get("java.vm.version"));
-        checker.run(exitOnFailure, JVMCI_MIN_VERSION, quiet);
+        checker.run(exitOnFailure, JVMCI_MIN_VERSION, format);
     }
 
     /**
@@ -172,10 +174,10 @@ public final class JVMCIVersionCheck {
                     String javaSpecVersion,
                     String javaVmVersion, boolean exitOnFailure) {
         JVMCIVersionCheck checker = new JVMCIVersionCheck(props, javaSpecVersion, javaVmVersion);
-        checker.run(exitOnFailure, minVersion, true);
+        checker.run(exitOnFailure, minVersion, null);
     }
 
-    private void run(boolean exitOnFailure, Version minVersion, boolean quiet) {
+    private void run(boolean exitOnFailure, Version minVersion, String format) {
         if (javaSpecVersion.compareTo(Integer.toString(JAVA_MIN_RELEASE)) < 0) {
             failVersionCheck(exitOnFailure, "Graal requires JDK " + JAVA_MIN_RELEASE + " or later.%n");
         } else {
@@ -190,8 +192,8 @@ public final class JVMCIVersionCheck {
                 // A "labsjdk"
                 Version v = Version.parse(vmVersion);
                 if (v != null) {
-                    if (!quiet) {
-                        System.out.println(String.format("%d,%d,%d", v.major, v.minor, v.build));
+                    if (format != null) {
+                        System.out.printf(format + "%n", v.major, v.minor, v.build);
                     }
                     Version actualMinVersion = minVersion;
                     if (javaSpecVersion.equals("19")) {
@@ -220,6 +222,14 @@ public final class JVMCIVersionCheck {
         for (String name : sprops.stringPropertyNames()) {
             props.put(name, sprops.getProperty(name));
         }
-        check(props, true, false);
+        String format = "%d,%d,%d";
+        for (String arg : args) {
+            if (arg.equals("--as-tag")) {
+                format = Version.AS_TAG_FORMAT;
+            } else {
+                throw new IllegalArgumentException("Unknown argument: " + arg);
+            }
+        }
+        check(props, true, format);
     }
 }

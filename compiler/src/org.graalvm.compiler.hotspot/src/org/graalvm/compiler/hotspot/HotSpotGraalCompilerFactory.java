@@ -114,7 +114,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
     }
 
     private void initialize() {
-        JVMCIVersionCheck.check(Services.getSavedProperties(), false, true);
+        JVMCIVersionCheck.check(Services.getSavedProperties(), false, null);
         assert options == null : "cannot select " + getClass() + " service more than once";
         try {
             options = HotSpotGraalOptionValues.defaultOptions();
