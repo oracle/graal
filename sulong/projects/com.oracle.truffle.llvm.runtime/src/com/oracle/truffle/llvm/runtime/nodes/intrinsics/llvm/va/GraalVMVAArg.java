@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,21 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
-#include <graalvm/llvm/polyglot.h>
-#include "common.h"
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDataEscapeNode;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactoryDelegate;
 
-void __sulong_destructor_functions() {
-}
+@NodeChild(type = LLVMExpressionNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class GraalVMVAArg extends LLVMIntrinsic {
 
-void __sulong_print_stacktrace() {
-}
-
-int __sulong_should_print_stacktrace_on_abort() {
-    return 0;
-}
-
-void *_graalvm_llvm_va_arg(void *valist, polyglot_typeid type) {
-    should_not_reach();
-    return NULL;
+    @Specialization
+    protected Object vaArg(Object targetAddress, LLVMInteropType type,
+                    @CachedLibrary(limit = "2") LLVMVaListLibrary vaListLib,
+                    @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
+                    @Cached LLVMPointerDataEscapeNode pointerEscapeNode) {
+        return LLVMVaListStorage.InvokeMember.next(wrapperFactory.execute(targetAddress), type, vaListLib, pointerEscapeNode);
+    }
 }
