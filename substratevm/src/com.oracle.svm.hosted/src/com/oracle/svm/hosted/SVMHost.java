@@ -751,14 +751,34 @@ public class SVMHost extends HostVM {
     @Override
     public boolean platformSupported(AnnotatedElement element) {
         if (element instanceof ResolvedJavaType) {
-            Package p = OriginalClassProvider.getJavaClass((ResolvedJavaType) element).getPackage();
+            ResolvedJavaType javaType = (ResolvedJavaType) element;
+            Package p = OriginalClassProvider.getJavaClass(javaType).getPackage();
             if (p != null && !platformSupported(p)) {
+                return false;
+            }
+            ResolvedJavaType enclosingType;
+            try {
+                enclosingType = javaType.getEnclosingType();
+            } catch (LinkageError e) {
+                enclosingType = null;
+            }
+            if (enclosingType != null && !platformSupported(enclosingType)) {
                 return false;
             }
         }
         if (element instanceof Class) {
-            Package p = ((Class<?>) element).getPackage();
+            Class<?> clazz = (Class<?>) element;
+            Package p = clazz.getPackage();
             if (p != null && !platformSupported(p)) {
+                return false;
+            }
+            Class<?> enclosingClass;
+            try {
+                enclosingClass = clazz.getEnclosingClass();
+            } catch (LinkageError e) {
+                enclosingClass = null;
+            }
+            if (enclosingClass != null && !platformSupported(enclosingClass)) {
                 return false;
             }
         }
