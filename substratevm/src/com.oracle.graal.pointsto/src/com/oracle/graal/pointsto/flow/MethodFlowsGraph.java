@@ -41,8 +41,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -111,28 +109,6 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
 
     public <T extends TypeFlow<?>> T lookupCloneOf(@SuppressWarnings("unused") PointsToAnalysis bb, T original) {
         return original;
-    }
-
-    public void init(final PointsToAnalysis bb) {
-        for (TypeFlow<?> flow : flows()) {
-            if (flow instanceof AbstractUnsafeLoadTypeFlow) {
-                bb.registerUnsafeLoad((AbstractUnsafeLoadTypeFlow) flow);
-            }
-            if (flow instanceof AbstractUnsafeStoreTypeFlow) {
-                bb.registerUnsafeStore((AbstractUnsafeStoreTypeFlow) flow);
-            }
-
-            /*
-             * Run initialization code for corner case type flows. This can be used to add link from
-             * 'outside' into the graph.
-             */
-            flow.initFlow(bb);
-
-            /* Trigger the update for static invokes, there is no receiver to trigger it. */
-            if (flow instanceof AbstractStaticInvokeTypeFlow) {
-                bb.postFlow(flow);
-            }
-        }
     }
 
     protected static boolean nonCloneableFlow(TypeFlow<?> flow) {
