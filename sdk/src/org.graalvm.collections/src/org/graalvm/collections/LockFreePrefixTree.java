@@ -129,10 +129,10 @@ public class LockFreePrefixTree {
                         AtomicReferenceArray.class, "children");
 
         /**
-         * The 64-bit of the node. This field should not be changed after the node is inserted into
-         * the data structure. It is not final to allow pooling nodes, and specifying the key after
-         * they are allocated on the heap. It is not volatile, because it must be set before the
-         * insertion into the concurrent data structure -- the concurrent data structure thus
+         * The 64-bit key of the node. This field should not be changed after the node is inserted
+         * into the data structure. It is not final to allow pooling nodes, and specifying the key
+         * after they are allocated on the heap. It is not volatile, because it must be set before
+         * the insertion into the concurrent data structure -- the concurrent data structure thus
          * establishes a happens-before relationship between the write to this field and the other
          * threads that read this field.
          */
@@ -144,7 +144,7 @@ public class LockFreePrefixTree {
         }
 
         /**
-         * This constructor variant is only meant when nodes are preallocated and pooled.
+         * This constructor variant is only meant to be used when nodes are preallocated and pooled.
          */
         private Node() {
             this.key = 0;
@@ -460,6 +460,13 @@ public class LockFreePrefixTree {
     private static class FailedAllocationException extends RuntimeException {
         private static final long serialVersionUID = -1L;
 
+        FailedAllocationException() {
+        }
+
+        FailedAllocationException(String message) {
+            super(message);
+        }
+
         @Override
         public synchronized Throwable fillInStackTrace() {
             return this;
@@ -478,7 +485,7 @@ public class LockFreePrefixTree {
          * Allocates a new Node object.
          *
          * @param key The key to use for the {@code Node} object.
-         * @return Preallocated {@code Node} object.
+         * @return A fresh {@code Node} object, possibly preallocated.
          * @throws FailedAllocationException If the allocation request cannot be fulfilled.
          *
          * @since 23.0
@@ -489,7 +496,7 @@ public class LockFreePrefixTree {
          * Allocates a new reference array of child nodes stored linearly.
          *
          * @param length The length of the allocated array.
-         * @return Preallocated array.
+         * @return A fresh array, possibly preallocated.
          * @throws FailedAllocationException If the allocation request cannot be fulfilled.
          *
          * @since 23.0
@@ -500,7 +507,7 @@ public class LockFreePrefixTree {
          * Allocates a new reference array of child nodes stored as a hash table.
          *
          * @param length The length of the allocated array.
-         * @return Preallocated array.
+         * @return A fresh array, possibly preallocated.
          * @throws FailedAllocationException If the allocation request cannot be fulfilled.
          *
          * @since 23.0
@@ -556,12 +563,14 @@ public class LockFreePrefixTree {
      * as many objects as there were previous failed allocation requests).
      *
      * This implementation only allows allocating {@code Node.LinearChildren} and
-     * {@code Node.HashChildren} arrays whose size is a power of 2 (because
-     * {@link LockFreePrefixTree} only ever allocates arrays that are a power of 2).
+     * {@code Node.HashChildren} arrays whose length is a power of 2 (because
+     * {@link LockFreePrefixTree} only ever allocates arrays that are a power of 2). If the
+     * requested array length is not a power of 2, an exception is thrown.
      *
      * @since 23.0
      */
     public static class ObjectPoolingAllocator extends Allocator {
+        private static final FailedAllocationException UNSUPPORTED_SIZE_EXCEPTION = new FailedAllocationException("Only arrays that have power-of-two length can be allocated.");
         private static final int MIN_HOUSEKEEPING_PERIOD_MILLIS = 4;
         private static final int DEFAULT_HOUSEKEEPING_PERIOD_MILLIS = 72;
         private static final int SIZE_CLASS_COUNT = 27;
@@ -609,7 +618,7 @@ public class LockFreePrefixTree {
             LockFreePool<Node.LinearChildren>[] pools = new LockFreePool[SIZE_CLASS_COUNT];
             for (int sizeClass = 0; sizeClass < pools.length; sizeClass++) {
                 pools[sizeClass] = new LockFreePool<>();
-                if (sizeClass >= numberOfTrailingZeros(Node.INITIAL_LINEAR_NODE_SIZE) && sizeClass <= numberOfTrailingZeros(Node.MAX_LINEAR_NODE_SIZE)) {
+                if (numberOfTrailingZeros(Node.INITIAL_LINEAR_NODE_SIZE) <= sizeClass && sizeClass <= numberOfTrailingZeros(Node.MAX_LINEAR_NODE_SIZE)) {
                     // Preallocate size classes that we know will be needed.
                     for (int i = 0; i < INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT; i++) {
                         pools[sizeClass].add(new Node.LinearChildren(1 << sizeClass));
@@ -775,7 +784,7 @@ public class LockFreePrefixTree {
 
         private static void checkPowerOfTwo(int length) {
             if (Integer.bitCount(length) != 1) {
-                throw new UnsupportedOperationException("Cannot allocate length that is not a power of 2: " + length);
+                throw UNSUPPORTED_SIZE_EXCEPTION;
             }
         }
 
