@@ -53,7 +53,7 @@ public abstract class LLVMAccessThreadLocalSymbolNode extends LLVMAccessSymbolNo
      * CachedContext is very efficient in single-context mode, otherwise we should get the context
      * from the frame.
      */
-    @Specialization(assumptions = "singleContextAssumption()")
+    @Specialization(guards = "isSingleContext($node)")
     @GenerateAOT.Exclude
     public LLVMPointer accessSingleContext(@Cached BranchProfile exception) throws LLVMIllegalSymbolIndexException {
         LLVMPointer pointer = checkNull(getContext().getSymbol(symbol, exception), exception);

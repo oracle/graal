@@ -203,7 +203,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return callNode.call(code.getLLVMIRFunction(resolve), arguments);
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", replaces = "doDirectCodeFast", guards = {"descriptor == cachedDescriptor", "callNode != null"}, assumptions = "singleContextAssumption()")
+    @Specialization(limit = "INLINE_CACHE_SIZE", replaces = "doDirectCodeFast", guards = {"descriptor == cachedDescriptor", "callNode != null", "isSingleContext($node)"})
     protected static Object doDirectFunction(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("descriptor") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
                     @Cached("cachedDescriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,
@@ -257,7 +257,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
     @GenerateAOT.Exclude
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isNativeFunctionSlowPath()",
-                    "haveNativeCtxExt()"}, assumptions = "singleContextAssumption()")
+                    "haveNativeCtxExt()", "isSingleContext($node)"})
     protected Object doCachedNativeFunction(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor,
                     Object[] arguments,
                     @Cached("descriptor") LLVMFunctionDescriptor cachedDescriptor,
@@ -275,7 +275,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
     @GenerateAOT.Exclude
     @Specialization(replaces = "doCachedNativeFunction", guards = {"descriptor.getFunctionCode() == cachedFunctionCode",
-                    "cachedFunctionCode.isNativeFunctionSlowPath()"}, assumptions = "singleContextAssumption()")
+                    "cachedFunctionCode.isNativeFunctionSlowPath()", "isSingleContext($node)"})
     protected Object doCachedNativeCode(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor,
                     Object[] arguments,
                     @Cached("descriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,

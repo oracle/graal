@@ -102,7 +102,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
      * @param function
      * @see #executeDispatch(Object, Object[])
      */
-    @Specialization(guards = {"function.asNative() == cachedFunction.asNative()", "!cachedFunction.isNull()"}, assumptions = "singleContextAssumption()")
+    @Specialization(guards = {"function.asNative() == cachedFunction.asNative()", "!cachedFunction.isNull()", "isSingleContext($node)"})
     @GenerateAOT.Exclude
     protected Object doCached(LLVMNativePointer function, Object[] arguments,
                     @Cached("function") @SuppressWarnings("unused") LLVMNativePointer cachedFunction,

@@ -115,7 +115,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-    public final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Only a single context is active");
+
+    @CompilationFinal public boolean singleContext;
 
     @CompilationFinal private Configuration activeConfiguration = null;
 
@@ -810,10 +811,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected void initializeMultipleContexts() {
         super.initializeMultipleContexts();
-        singleContextAssumption.invalidate();
+        singleContext = false;
     }
 
     public RootCallTarget createCachedCallTarget(Class<?> key, Function<LLVMLanguage, RootNode> create) {
         return cachedCallTargets.computeIfAbsent(key, k -> create.apply(LLVMLanguage.this).getCallTarget());
     }
+
+    public static boolean isSingleContext(Node node) {
+        return LLVMLanguage.get(node).singleContext;
+    }
+
 }

@@ -35,11 +35,11 @@ import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
@@ -55,6 +55,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @TypeSystemReference(LLVMTypes.class)
 @GenerateAOT
+@ImportStatic(LLVMLanguage.class)
 public abstract class LLVMNode extends Node {
     public static final int DOUBLE_SIZE_IN_BYTES = 8;
     public static final int FLOAT_SIZE_IN_BYTES = 4;
@@ -241,10 +242,6 @@ public abstract class LLVMNode extends Node {
 
     public final LLVMLanguage getLanguage() {
         return LLVMLanguage.get(this);
-    }
-
-    public static Assumption singleContextAssumption() {
-        return LLVMLanguage.get(null).singleContextAssumption;
     }
 
     /**

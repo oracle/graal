@@ -86,9 +86,8 @@ public class TruffleProcessorOptions {
         return System.getProperty(key);
     }
 
-    public static Boolean emitWarningForSlowPathGuards(ProcessingEnvironment env) {
-        String value = getOption(env, OptionsPrefix + EmitWarningForNewFastPathGuards);
-        return value == null ? null : Boolean.parseBoolean(value);
+    public static boolean emitWarningForSlowPathGuards(ProcessingEnvironment env) {
+        return Boolean.parseBoolean(getOption(env, OptionsPrefix + EmitWarningForNewFastPathGuards));
     }
 
     public static Boolean generateSpecializationStatistics(ProcessingEnvironment env) {
