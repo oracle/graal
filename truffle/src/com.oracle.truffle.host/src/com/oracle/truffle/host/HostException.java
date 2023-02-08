@@ -54,7 +54,7 @@ final class HostException extends AbstractTruffleException {
     private final Throwable original;
     final HostObject delegate;
 
-    HostException(Throwable original, HostContext context) {
+    private HostException(Throwable original, HostContext context) {
         this.original = original;
         this.delegate = HostObject.forException(original, context, this);
     }
@@ -66,6 +66,10 @@ final class HostException extends AbstractTruffleException {
     @Override
     public String getMessage() {
         return getOriginal().getMessage();
+    }
+
+    static HostException wrapWithoutStackTrace(Throwable original, HostContext context) {
+        return new HostException(original, context);
     }
 
     static HostException wrap(Throwable original, HostContext context) {
