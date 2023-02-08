@@ -230,12 +230,14 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void maybeLock(boolean flush) {
         if (flush) {
-            mutex.lock();
+            mutex.lockNoTransition();
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void maybeUnlock(boolean flush) {
         if (flush) {
             mutex.unlock();
@@ -243,6 +245,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
     }
 
     @Override
+    @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
     public int write(JfrChunkWriter writer, boolean flush) {
         maybeLock(flush);
         try {
@@ -257,6 +260,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         }
     }
 
+    @Uninterruptible(reason = "May write current epoch data.")
     private static int writeStackTraces(JfrChunkWriter writer, JfrStackTraceEpochData epochData, boolean flush) {
         if (epochData.numberOfSerializedStackTraces == 0) {
             return EMPTY;
@@ -377,6 +381,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
             this.visitedStackTraces = new JfrStackTraceTable();
         }
 
+        @Uninterruptible(reason = "May write current epoch data.")
         void clear() {
             visitedStackTraces.clear();
             numberOfSerializedStackTraces = 0;

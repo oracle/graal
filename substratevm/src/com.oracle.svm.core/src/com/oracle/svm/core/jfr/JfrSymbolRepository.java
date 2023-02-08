@@ -93,6 +93,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
         long rawPointerValue = Word.objectToUntrackedPointer(imageHeapString).rawValue();
         int hashcode = (int) (rawPointerValue ^ (rawPointerValue >>> 32));
         symbol.setHash(hashcode);
+        symbol.setBytes(null);
 
         mutex.lockNoTransition();
         try {
@@ -112,21 +113,56 @@ public class JfrSymbolRepository implements JfrConstantPool {
         return 0;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void maybeLock(boolean flush) {
         if (flush) {
-            mutex.lock();
+            mutex.lockNoTransition();
         }
     }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void maybeUnlock(boolean flush) {
         if (flush) {
             mutex.unlock();
         }
     }
 
+    /**
+     * The purpose of this method is so that String.getBytes() can be used outside uninterruptible
+     * code. This is not an ideal solution because it results in having to scan the table twice.
+     *
+     * This method does not need to be locked during flushes. It can race with other threads adding
+     * entries because in the worst case, the new entries are missed until the next flush.
+     *
+     * This method can be interrupted because there is no locking (no risk of deadlocks), and if it
+     * is interrupted for an operation that results in new pool entries, in the worst case, those
+     * entries will be missed until the next flush.
+     *
+     * Any missed new entries should not be needed in the chunk because their corresponding event
+     * data will not be flushed during this flush operation. This is due to the flushing order:
+     * event data then constant pools.
+     */
     @Override
     public int write(JfrChunkWriter writer, boolean flush) {
         JfrSymbolHashtable table = getTable(!flush);
-        maybeLock(flush);
+        // compute byte arrays
+        JfrSymbol[] entries = table.getTable();
+        for (int i = 0; i < entries.length; i++) {
+            JfrSymbol entry = entries[i];
+            if (entry.isNonNull()) {
+                while (entry.isNonNull()) {
+                    entry.setBytes(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                    entry = entry.getNext();
+                }
+            }
+        }
+        return doWrite(writer, flush, table);
+    }
+
+    @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
+    private int doWrite(JfrChunkWriter writer, boolean flush, JfrSymbolHashtable table) {
+        maybeLock(flush);// *** locking is needed so that other thread's concurrent additions don't
+                         // get cleared
         try {
             if (table.getSize() == 0) {
                 return EMPTY;
@@ -151,10 +187,18 @@ public class JfrSymbolRepository implements JfrConstantPool {
         }
     }
 
-    private static void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) { // *** only write if not serialized before. Set serialized
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) { // *** only write if
+                                                                               // not serialized
+                                                                               // before. Set
+                                                                               // serialized
+        byte[] value = symbol.getBytes();
+        if (value == null) {
+            return;
+        }
         writer.writeCompressedLong(symbol.getId());
         writer.writeByte(JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
-        byte[] value = symbol.getValue().getBytes(StandardCharsets.UTF_8);
+
         if (symbol.getReplaceDotWithSlash()) {
             replaceDotWithSlash(value);
         }
@@ -162,6 +206,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
         writer.writeBytes(value);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void replaceDotWithSlash(byte[] utf8String) {
         for (int i = 0; i < utf8String.length; i++) {
             if (utf8String[i] == '.') {
@@ -185,6 +230,14 @@ public class JfrSymbolRepository implements JfrConstantPool {
         @PinnedObjectField
         @RawField
         void setValue(String value);
+
+        @PinnedObjectField
+        @RawField
+        byte[] getBytes();
+
+        @PinnedObjectField
+        @RawField
+        void setBytes(byte[] bytes);
 
         @RawField
         boolean getReplaceDotWithSlash();

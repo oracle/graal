@@ -107,12 +107,14 @@ public class JfrMethodRepository implements JfrConstantPool {
         return methodId;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void maybeLock(boolean flush) {
         if (flush) {
-            mutex.lock();
+            mutex.lockNoTransition();
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void maybeUnlock(boolean flush) {
         if (flush) {
             mutex.unlock();
@@ -120,6 +122,7 @@ public class JfrMethodRepository implements JfrConstantPool {
     }
 
     @Override
+    @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
     public int write(JfrChunkWriter writer, boolean flush) {
         maybeLock(flush);
         try {
@@ -134,6 +137,7 @@ public class JfrMethodRepository implements JfrConstantPool {
         }
     }
 
+    @Uninterruptible(reason = "May write current epoch data.")
     private static int writeMethods(JfrChunkWriter writer, JfrMethodEpochData epochData, boolean flush) {
         int numberOfMethods = epochData.visitedMethods.getSize();
         if (numberOfMethods == 0) {
@@ -171,6 +175,7 @@ public class JfrMethodRepository implements JfrConstantPool {
             methodBuffer = WordFactory.nullPointer();
         }
 
+        @Uninterruptible(reason = "May write current epoch data.")
         void clear() {
             visitedMethods.clear();
             if (methodBuffer.isNonNull()) {

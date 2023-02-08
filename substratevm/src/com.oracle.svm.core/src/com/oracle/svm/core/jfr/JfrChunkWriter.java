@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jfr;
 
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -46,6 +45,7 @@ import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
+import com.oracle.svm.core.locks.VMMutex;
 
 import com.oracle.svm.core.util.VMError;
 
@@ -73,7 +73,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     public static final long CONSTANT_POOL_TYPE_ID = 1;
     private static final byte COMPLETE = 0;
     private final JfrGlobalMemory globalMemory;
-    private final ReentrantLock lock;
+    private final VMMutex lock;
     private final boolean compressedInts;
     private final JfrMetadata metadata;
     private long notificationThreshold;
@@ -89,7 +89,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrChunkWriter(JfrGlobalMemory globalMemory, JfrMetadata metadata) {
-        this.lock = new ReentrantLock();
+        this.lock = new VMMutex("JfrChunkWriter");
         this.compressedInts = true;
         this.globalMemory = globalMemory;
         this.metadata = metadata;
@@ -118,19 +118,19 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     public void setFilename(String filename) {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isOwner();
         this.filename = filename;
     }
 
     public void maybeOpenFile() {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isOwner();
         if (filename != null) {
             openFile(filename);
         }
     }
 
     public boolean openFile(String outputFile) {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isOwner();
         isFinal = false;
         generation = 1;
         newChunk = true;
@@ -171,7 +171,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
      * Write all the in-memory data to the file.
      */
     public void closeFile(JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isOwner();
         /*
          * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
          * consistent data, even if multiple threads have JFR events in progress.
@@ -198,7 +198,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     public void flush(JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isOwner();
         flushStorage();
 
         if (threadRepo.isDirty(true)) {
@@ -240,7 +240,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private void patchFileHeader(SignedWord constantPoolPosition, boolean flushpoint) {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isOwner();
         SignedWord currentPos = getFileSupport().position(fd);
         long chunkSize = getFileSupport().position(fd).rawValue();
         long durationNanos = JfrTicks.currentTimeNanos() - chunkStartNanos;
@@ -307,7 +307,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private SignedWord writeCheckpointEvent(JfrConstantPool[] repositories, boolean flush) {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isOwner();
         SignedWord start = beginEvent();
 
         if (lastCheckpointOffset.lessThan(0)) {
@@ -349,7 +349,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private void writeMetadataEvent() {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isOwner();
         // always write metadata on a new chunk!
         if (!metadata.isDirty() && !newChunk) {
             return;
@@ -365,7 +365,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     public boolean shouldRotateDisk() {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isOwner();
         return getFileSupport().isValid(fd) && getFileSupport().size(fd).greaterThan(WordFactory.signed(notificationThreshold));
     }
 
@@ -384,28 +384,33 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().seek(fd, end);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeBoolean(boolean value) {
-        assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
         writeByte((byte) (value ? 1 : 0));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeByte(byte value) {
-        assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
         getFileSupport().writeByte(fd, value);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeBytes(byte[] values) {
-        assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
         getFileSupport().write(fd, values);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeCompressedInt(int value) {
-        assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
         writeCompressedLong(value & 0xFFFFFFFFL);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeCompressedLong(long value) {
-        assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.isOwned();
         long v = value;
         if ((v & ~0x7FL) == 0L) {
             getFileSupport().writeByte(fd, (byte) v); // 0-6
@@ -634,7 +639,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     public void markChunkFinal() {
-        assert lock.isHeldByCurrentThread();
+        assert lock.isOwner();
         isFinal = true;
     }
 }

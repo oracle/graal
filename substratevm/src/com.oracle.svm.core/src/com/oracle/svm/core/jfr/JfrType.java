@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.Uninterruptible;
+
 /**
  * Maps JFR types against their IDs in the JDK.
  */
@@ -49,7 +51,7 @@ public enum JfrType {
     JfrType(String name) {
         this.id = JfrMetadataTypeLibrary.lookupType(name);
     }
-
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getId() {
         return id;
     }
