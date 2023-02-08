@@ -537,8 +537,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
              * *not* reinitialize the thread-local buffers as the individual threads will handle
              * space reclamation on their own time.
              */
-            traverseList(getJavaBufferList(), true);
-            traverseList(getNativeBufferList(), false);
+            traverseList(getJavaBufferList(), true, true);
+            traverseList(getNativeBufferList(), false, true);
 
             JfrBuffers buffers = globalMemory.getBuffers();
             for (int i = 0; i < globalMemory.getBufferCount(); i++) {
@@ -585,8 +585,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
     private void flushStorage() {
-        traverseList(getJavaBufferList(), true);
-        traverseList(getNativeBufferList(), false);
+        traverseList(getJavaBufferList(), true, false);
+        traverseList(getNativeBufferList(), false, false);
 
         JfrBuffers buffers = globalMemory.getBuffers();
         for (int i = 0; i < globalMemory.getBufferCount(); i++) {
@@ -601,9 +601,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java) {
-        // Traverse back to front to minimize conflict with threads adding new nodes.
-        // Which could possibly block traversal early at the head.
+    private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
 
         boolean firstIteration = true;
         JfrBufferNode node = linkedList.getAndLockHead();
@@ -619,17 +617,20 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 if (!JfrBufferAccess.acquire(buffer)) {
                     prev = node;
                     node = next;
+                    continue;
                 }
                 write(buffer);
 
                 JfrBufferAccess.release(buffer);
 
-                // If a node has been marked dead, the thread was unable to flush upon death.
-                // So we need to flush the buffer above before attempting to remove the node here.
                 if (!node.getAlive()) {
                     linkedList.removeNode(node, prev);
                     // if removed current node, should not update prev.
                 } else {
+                    // Only notify java event writer if thread is still alive and we are at an epoch change.
+                    if (safepoint && java) {
+                        JfrThreadLocal.notifyEventWriter(node.getThread());
+                    }
                     prev = node;
                 }
                 node = next;
