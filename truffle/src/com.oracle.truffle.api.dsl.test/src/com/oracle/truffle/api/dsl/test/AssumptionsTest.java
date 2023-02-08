@@ -71,6 +71,7 @@ import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArraysAr
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArraysAreCompilationFinalFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionFallbackNodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionFieldNodeGen;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionGuardNodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest1NodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest2NodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest3NodeGen;
@@ -824,4 +825,38 @@ public class AssumptionsTest {
 
     }
 
+    @ImportStatic(Assumption.class)
+    @SuppressWarnings("unused")
+    @NodeField(name = "assumption", type = Assumption.class)
+    abstract static class AssumptionGuardNode extends SlowPathListenerNode {
+
+        abstract String execute(Object arg);
+
+        @Specialization(guards = "a.isValid()")
+        public String s0(
+                        Assumption a,
+                        Object arg) {
+            return "s0";
+        }
+
+        @Specialization
+        public String s1(Object arg) {
+            return "s1";
+        }
+
+    }
+
+    @Test
+    public void testAssumptionGuardNode() {
+        Assumption a = Truffle.getRuntime().createAssumption();
+        AssumptionGuardNode node = AssumptionGuardNodeGen.create(a);
+
+        assertEquals("s0", node.execute(0));
+        assertEquals("s0", node.execute(0));
+        a.invalidate();
+        assertEquals("s1", node.execute(0));
+        assertEquals("s1", node.execute(0));
+
+        assertEquals(2, node.specializeCount);
+    }
 }

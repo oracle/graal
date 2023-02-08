@@ -41,6 +41,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-25539 Added `DebugValue#fitsInBigInteger()` and `DebugValue#asBigInteger()`.
 * GR-25539 Added `GenerateLibrary.Abstract#ifExportedAsWarning()` to specify a library message to be abstract only if another message is exported. A warning is produced that prompts the user to export the message.
 * GR-43903 Usages of `@Specialization(assumptions=...)` that do not bind any cached values in the guard now produce a suppressable warning. In most situations, such specializations should be migrated to use a regular guard instead. 
+* GR-43903 DSL method guards that do not bind dynamic values are no longer just asserted on the fast-path. Only method guards that can always be guaranteed `true` after a slow-path invocation are asserted. Workarounds that used dynamic values bound to a guard to force its execution on the fast-path can now be removed. For example, it is now possible to call `Assumption.isValid()` from a bound `@Cached` value in a guard and it will always be called on the fast-path and no longer just asserted. Note that this change may surface new bugs in existing DSL nodes, especially if they never were tested with assertions enabled. 
 
 ## Version 22.3.0
 

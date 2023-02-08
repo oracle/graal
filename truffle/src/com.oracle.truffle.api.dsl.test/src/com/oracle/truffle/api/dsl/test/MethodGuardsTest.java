@@ -47,9 +47,13 @@ import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.FinalReadAssertionNodeGen;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardCompareWithFieldTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardComplexTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardEqualByteIntTestFactory;
@@ -70,6 +74,8 @@ import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardOrTestFactor
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardStaticFieldTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardStaticFinalFieldCompareTestFactory;
 import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.GuardUnboundMethodTestFactory;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.MethodReadAssertionNodeGen;
+import com.oracle.truffle.api.dsl.test.MethodGuardsTestFactory.NonFinalReadAssertionNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
 @SuppressWarnings("unused")
@@ -462,11 +468,8 @@ public class MethodGuardsTest {
         assertEquals("do1", root.call(1));
         assertEquals("do1", root.call(2));
         node.hiddenValue = false;
-        try {
-            root.call(2);
-            fail("expected Assertion failed");
-        } catch (AssertionError e) {
-        }
+        assertEquals("do2", root.call(2));
+        assertEquals("do2", root.call(2));
     }
 
     @NodeChild
@@ -477,6 +480,11 @@ public class MethodGuardsTest {
         @Specialization(guards = "method()")
         static String do1(int value) {
             return "do1";
+        }
+
+        @Specialization
+        static String do2(int value) {
+            return "do2";
         }
 
         boolean method() {
@@ -625,6 +633,119 @@ public class MethodGuardsTest {
             return "do1";
         }
 
+    }
+
+    static class TestObject {
+
+        final int finalValue = 42;
+
+        int nonFinalValue = 42;
+
+        int method() {
+            return nonFinalValue;
+        }
+    }
+
+    @ImportStatic(Assumption.class)
+    @SuppressWarnings("unused")
+    abstract static class FinalReadAssertionNode extends SlowPathListenerNode {
+
+        abstract String execute(Object arg);
+
+        @Specialization(guards = "o.finalValue == 42")
+        public String s0(
+                        Object arg,
+                        @Cached("new()") TestObject o) {
+            return "s0";
+        }
+
+        @Specialization
+        public String s1(Object arg) {
+            return "s1";
+        }
+
+    }
+
+    @Test
+    public void testFinalReadAssertionNode() {
+        FinalReadAssertionNode node = FinalReadAssertionNodeGen.create();
+
+        assertEquals("s0", node.execute(0));
+        assertEquals("s0", node.execute(0));
+
+        assertEquals(1, node.specializeCount);
+    }
+
+    @ImportStatic(Assumption.class)
+    @SuppressWarnings("unused")
+    abstract static class NonFinalReadAssertionNode extends SlowPathListenerNode {
+
+        abstract String execute(TestObject arg);
+
+        @Specialization(guards = "o.nonFinalValue == 42")
+        public String s0(
+                        TestObject arg,
+                        @Cached(value = "arg", neverDefault = true) TestObject o) {
+            return "s0";
+        }
+
+        @Specialization
+        public String s1(TestObject arg) {
+            return "s1";
+        }
+
+    }
+
+    @Test
+    public void testNonFinalReadAssertionNode() {
+        TestObject o = new TestObject();
+        NonFinalReadAssertionNode node = NonFinalReadAssertionNodeGen.create();
+
+        assertEquals("s0", node.execute(o));
+        assertEquals("s0", node.execute(o));
+
+        o.nonFinalValue = 41;
+
+        assertEquals("s1", node.execute(o));
+        assertEquals("s1", node.execute(o));
+
+        assertEquals(2, node.specializeCount);
+    }
+
+    @ImportStatic(Assumption.class)
+    @SuppressWarnings("unused")
+    abstract static class MethodReadAssertionNode extends SlowPathListenerNode {
+
+        abstract String execute(TestObject arg);
+
+        @Specialization(guards = "o.method() == 42")
+        public String s0(
+                        TestObject arg,
+                        @Cached(value = "arg", neverDefault = true) TestObject o) {
+            return "s0";
+        }
+
+        @Specialization
+        public String s1(TestObject arg) {
+            return "s1";
+        }
+
+    }
+
+    @Test
+    public void testMethodReadAssertionNode() {
+        TestObject o = new TestObject();
+        MethodReadAssertionNode node = MethodReadAssertionNodeGen.create();
+
+        assertEquals("s0", node.execute(o));
+        assertEquals("s0", node.execute(o));
+
+        o.nonFinalValue = 41;
+
+        assertEquals("s1", node.execute(o));
+        assertEquals("s1", node.execute(o));
+
+        assertEquals(2, node.specializeCount);
     }
 
 }

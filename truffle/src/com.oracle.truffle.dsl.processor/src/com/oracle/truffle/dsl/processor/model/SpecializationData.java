@@ -47,9 +47,11 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
@@ -446,6 +448,60 @@ public final class SpecializationData extends TemplateMethod {
                 }
             }
         }
+    }
+
+    /**
+     * Returns <code>true</code> if a guard is guaranteed constant <code>true</code> after it was
+     * true once in the slow-path, else <code>false</code>.
+     */
+    public boolean isGuardTrivialTrueInFastPath(DSLExpression expression) {
+        Object constant = expression.resolveConstant();
+        // simple constant true can fold in the fast-path
+        if (constant instanceof Boolean && (boolean) constant) {
+            return true;
+        }
+        /*
+         * If a dynamic parameter is bound an expression is never trivially true in the fast-path.
+         */
+        if (isDynamicParameterBound(expression, true)) {
+            return false;
+        }
+
+        AtomicBoolean sideEffect = new AtomicBoolean();
+        expression.accept(new AbstractDSLExpressionVisitor() {
+            @Override
+            public void visitCall(Call n) {
+                /*
+                 * If we see a call to a method an expression is sensitive to side-effects.
+                 */
+                sideEffect.set(true);
+            }
+
+            @Override
+            public void visitVariable(Variable n) {
+                VariableElement var = n.getResolvedVariable();
+                if (n.getReceiver() == null) {
+                    /*
+                     * Directly bound variable that is not dynamic. The DSL ensures such reads are
+                     * not side-effecting in the fast-path there. They are effectively final fields.
+                     */
+                } else {
+                    if (!var.getModifiers().contains(Modifier.FINAL)) {
+                        /*
+                         * If we see a non-final read an expression is sensitive to side-effects.
+                         */
+                        sideEffect.set(true);
+                    }
+                }
+            }
+        });
+
+        if (!sideEffect.get()) {
+            return true;
+        }
+
+        return false;
+
     }
 
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
