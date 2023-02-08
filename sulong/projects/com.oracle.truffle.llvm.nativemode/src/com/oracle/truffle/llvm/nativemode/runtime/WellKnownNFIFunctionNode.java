@@ -58,7 +58,7 @@ abstract class WellKnownNFIFunctionNode extends WellKnownNativeFunctionNode {
         return ctxExt.getCachedWellKnownFunction(function).getBoundSignature();
     }
 
-    @Specialization(assumptions = "singleContextAssumption()")
+    @Specialization(guards = "singleContextAssumption().isValid()")
     @GenerateAOT.Exclude
     Object doCached(Object[] args,
                     @Cached("getFunction()") Object cachedFunction,
