@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
@@ -1122,5 +1123,72 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public OptimizationLog getOptimizationLog() {
         return optimizationLog;
+    }
+
+    /**
+     * Implementers of this interface should provide <empf>global</empf> profile-related information
+     * about the {@link StructuredGraph} i.e. global profiling information about the
+     * <empf>compilation unit</empf>.
+     *
+     * Unlike the {@link ProfileProvider} which represents the profile in isolation and relating to
+     * a single method, implementers of this interface provide data in the context of a global
+     * system and relating to a compilation unit (including e.g. inlined methods).
+     */
+    public interface GlobalProfileProvider {
+
+        GlobalProfileProvider DEFAULT = new GlobalProfileProvider() {
+
+            public static final int DEFAULT_TIME = -1;
+
+            /**
+             * The default time provider always returns -1, i.e. the self time is unknown by
+             * default.
+             */
+            @Override
+            public double getGlobalSelfTimePercent() {
+                return DEFAULT_TIME;
+            }
+        };
+
+        /**
+         * This method provides an approximation of what percentage of run time is spent executing
+         * this compilation unit (a.k.a. self time - the time spent executing the compilation unit).
+         * Since the value is meant to represent a percentage, this method should return a value
+         * between 0 and 1 (inclusive) for {@link StructuredGraph graphs} for which the data is
+         * available. If no data is available, this method should return -1 as a way to disambiguate
+         * compilation units that are known to have a self time of 0 and compilation units for which
+         * the data is not present.
+         *
+         * This source of this information could, for example, be gathered through profiling the
+         * application with a sampling based profiler, or just a heuristic-based estimation.
+         *
+         * This data can be used for aggressive optimizations, applying more or less optimization
+         * budget to individual compilation units based on this estimate of how much run time is
+         * spent in that particular compilation unit.
+         *
+         * @return A value between 0 and 1 If self time data is available, -1 otherwise.
+         */
+        double getGlobalSelfTimePercent();
+
+    }
+
+    private GlobalProfileProvider globalProfileProvider = GlobalProfileProvider.DEFAULT;
+
+    /**
+     * Set a {@link GlobalProfileProvider global profile provider} for this {@link StructuredGraph
+     * graph}.
+     */
+    public void setGlobalProfileProvider(GlobalProfileProvider globalProfileProvider) {
+        Objects.requireNonNull(globalProfileProvider);
+        this.globalProfileProvider = globalProfileProvider;
+    }
+
+    /**
+     * See {@link GlobalProfileProvider#getGlobalSelfTimePercent()}.
+     *
+     * @return The current {@link GlobalProfileProvider#getGlobalSelfTimePercent() global self time}
+     */
+    public double getSelfTimePercent() {
+        return globalProfileProvider.getGlobalSelfTimePercent();
     }
 }

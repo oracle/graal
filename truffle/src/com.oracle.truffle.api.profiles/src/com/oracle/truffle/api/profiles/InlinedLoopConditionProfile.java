@@ -319,7 +319,7 @@ public final class InlinedLoopConditionProfile extends InlinedProfile {
      * @since 23.0
      */
     public static InlinedLoopConditionProfile inline(
-                    @RequiredField(value = IntField.class)//
+                    @RequiredField(value = LongField.class)//
                     @RequiredField(value = IntField.class) InlineTarget target) {
         if (Profile.isProfilingEnabled()) {
             return new InlinedLoopConditionProfile(target);

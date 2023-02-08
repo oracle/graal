@@ -74,6 +74,11 @@ public class NewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
         }
     }
 
+    @Override
+    public boolean needsInitialization() {
+        return true;
+    }
+
     NewInstanceTypeFlow(PointsToAnalysis bb, NewInstanceTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows, original.createCloneState(bb, methodFlows));
     }

@@ -1466,7 +1466,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     @SuppressWarnings("try")
     @Override
-    protected Node canonicalizeFixedNode(MethodScope s, Node originalNode) {
+    protected Node canonicalizeFixedNode(MethodScope s, LoopScope loopScope, Node originalNode) {
         PEMethodScope methodScope = (PEMethodScope) s;
 
         Node node = originalNode;
@@ -1583,7 +1583,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
         }
 
-        return super.canonicalizeFixedNode(methodScope, replacedNode);
+        return super.canonicalizeFixedNode(methodScope, loopScope, replacedNode);
     }
 
     protected boolean pluginReplacementMustSucceed() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,8 +23,8 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import static com.oracle.truffle.espresso.vm.VM.StackElement.NATIVE_BCI;
-import static com.oracle.truffle.espresso.vm.VM.StackElement.UNKNOWN_BCI;
+import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.NATIVE_BCI;
+import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.UNKNOWN_BCI;
 
 import java.util.List;
 
@@ -588,7 +588,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
             return throwable;
         }
         int bci = -1;
-        Method m = null;
+        Method m;
         frames = new VM.StackTrace();
         FrameCounter c = new FrameCounter();
         for (TruffleStackTraceElement element : trace) {
@@ -612,7 +612,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
                     if (m.isNative()) {
                         bci = NATIVE_BCI;
                     }
-                    frames.add(new VM.StackElement(m, bci));
+                    frames.add(new VM.EspressoStackElement(m, bci));
                     bci = UNKNOWN_BCI;
                 }
             }
@@ -650,7 +650,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
                                 if (!c.checkFillIn(method)) {
                                     if (!c.checkThrowableInit(method)) {
                                         int bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
-                                        frames.add(new VM.StackElement(method, bci));
+                                        frames.add(new VM.EspressoStackElement(method, bci));
                                         c.inc();
                                     }
                                 }

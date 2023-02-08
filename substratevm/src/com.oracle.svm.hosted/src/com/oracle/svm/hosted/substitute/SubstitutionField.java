@@ -56,7 +56,7 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
     }
 
     @Override
-    public boolean allowConstantFolding() {
+    public boolean isValueAvailableBeforeAnalysis() {
         return true;
     }
 
