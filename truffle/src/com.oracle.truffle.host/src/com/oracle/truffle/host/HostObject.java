@@ -2462,6 +2462,7 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     Object getExceptionStackTrace() throws UnsupportedMessageException {
         if (isException()) {
+            // Using HostException here allows us to make use of its getLocation(), if available.
             Object hostExceptionOrOriginal = extraInfo != null ? extraInfo : obj;
             return HostAccessor.EXCEPTION.getExceptionStackTrace(hostExceptionOrOriginal);
         }
@@ -2475,7 +2476,7 @@ final class HostObject implements TruffleObject {
         if (isException()) {
             HostException ex = (HostException) extraInfo;
             if (ex == null) {
-                ex = HostException.wrap((Throwable) obj, context);
+                ex = HostException.wrap((Throwable) obj, context, node);
             }
             throw ex;
         }

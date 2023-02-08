@@ -43,6 +43,7 @@ package com.oracle.truffle.host;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Exception wrapper for an error occurred in the host language.
@@ -54,7 +55,8 @@ final class HostException extends AbstractTruffleException {
     private final Throwable original;
     final HostObject delegate;
 
-    private HostException(Throwable original, HostContext context) {
+    private HostException(Throwable original, HostContext context, Node location) {
+        super(location);
         this.original = original;
         this.delegate = HostObject.forException(original, context, this);
     }
@@ -69,11 +71,15 @@ final class HostException extends AbstractTruffleException {
     }
 
     static HostException wrapWithoutStackTrace(Throwable original, HostContext context) {
-        return new HostException(original, context);
+        return new HostException(original, context, null);
     }
 
     static HostException wrap(Throwable original, HostContext context) {
-        HostException hostException = new HostException(original, context);
+        return wrap(original, context, null);
+    }
+
+    static HostException wrap(Throwable original, HostContext context, Node location) {
+        HostException hostException = new HostException(original, context, location);
         // Share LazyStackTrace with the underlying host exception so that lazy stack trace elements
         // appended to the HostException propagate to original exception and vice versa.
         HostAccessor.EXCEPTION.setLazyStackTrace(hostException, HostAccessor.LANGUAGE.getOrCreateLazyStackTrace(original));
@@ -81,7 +87,7 @@ final class HostException extends AbstractTruffleException {
     }
 
     HostException withContext(HostContext context) {
-        HostException hostException = new HostException(original, context);
+        HostException hostException = new HostException(original, context, getLocation());
         HostAccessor.EXCEPTION.setLazyStackTrace(this, HostAccessor.EXCEPTION.getLazyStackTrace(hostException));
         return hostException;
     }
