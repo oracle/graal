@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -196,7 +196,8 @@ public final class TruffleStackTrace extends Exception {
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException#AbstractTruffleException(String, Throwable, int, Node)
      * AbstractTruffleException constructor}.
      *
-     * @param throwable the throwable instance to look for guest language frames
+     * @param throwable the {@link Throwable} instance to look for guest language frames
+     * @throws NullPointerException if the {@link Throwable} is null
      * @since 19.0
      */
     @TruffleBoundary
@@ -277,11 +278,13 @@ public final class TruffleStackTrace extends Exception {
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException#AbstractTruffleException(String, Throwable, int, Node)
      * AbstractTruffleException constructor}.
      *
-     * @param throwable the Throwable to fill
+     * @param throwable the {@link Throwable} to fill
+     * @throws NullPointerException if the {@link Throwable} is null
      * @since 19.0
      */
     @TruffleBoundary
     public static TruffleStackTrace fillIn(Throwable throwable) {
+        Objects.requireNonNull(throwable);
         if (throwable instanceof ControlFlowException) {
             return EMPTY;
         }
