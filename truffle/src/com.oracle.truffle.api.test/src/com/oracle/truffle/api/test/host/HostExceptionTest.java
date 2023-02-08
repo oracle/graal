@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,6 +70,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -168,6 +169,16 @@ public class HostExceptionTest {
     public void testAsHostExceptionNull() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         env.asHostException(null);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void testFillInNull() {
+        TruffleStackTrace.fillIn(null);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void testGetStackTraceOfNull() {
+        TruffleStackTrace.getStackTrace(null);
     }
 
     public static void thrower() {
