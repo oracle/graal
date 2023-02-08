@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.sampler;
 
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
@@ -33,6 +34,7 @@ import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
 
 class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
 
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate within the safepoint sampler.")
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
         SamplingStackVisitor.StackTrace stackTrace = (SamplingStackVisitor.StackTrace) data;

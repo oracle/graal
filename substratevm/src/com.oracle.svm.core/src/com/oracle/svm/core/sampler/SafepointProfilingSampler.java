@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.sampler;
 
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.TimeUtils;
 import org.graalvm.collections.LockFreePrefixTree;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -59,6 +60,7 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
         return prefixTree;
     }
 
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate inside the safepoint sampler.")
     private void sampleThreadStack(SamplingStackVisitor.StackTrace stackTrace) {
         stackTrace.reset();
         walkCurrentThread(stackTrace, samplingStackVisitor);
