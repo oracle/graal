@@ -219,7 +219,6 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public JfrBuffer getJavaBuffer() {
         JfrBufferNode result = javaBufferNode.get();
-
         if (result.isNull()) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_JAVA);
             result = JfrBufferNodeLinkedList.createNode(buffer, CurrentIsolate.getCurrentThread());
@@ -268,6 +267,27 @@ public class JfrThreadLocal implements ThreadListener {
 
         }
     }
+    /**
+     * This method only copies the JFR buffer's unflushed data to the global buffers. This can be used outside a safepoint
+     * from the flushing thread while other threads continue writing events.*/
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    public static boolean flushNoReset(JfrBuffer threadLocalBuffer) {
+        // Try to get BUFFER with one attempt
+        if (!JfrBufferAccess.acquire(threadLocalBuffer)) {
+            return false;
+        }
+        UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
+        if (unflushedSize.aboveThan(0)) {
+            JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
+            // Top is increased in JfrGlobalMemory.write
+            if (globalMemory.write(threadLocalBuffer, unflushedSize, true)) {
+                JfrBufferAccess.release(threadLocalBuffer);
+                return true;
+            }
+        }
+        JfrBufferAccess.release(threadLocalBuffer);
+        return false;
+    }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static JfrBuffer flush(JfrBuffer threadLocalBuffer, UnsignedWord uncommitted, int requested) {
@@ -280,7 +300,7 @@ public class JfrThreadLocal implements ThreadListener {
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
         if (unflushedSize.aboveThan(0)) {
             JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
-            if (!globalMemory.write(threadLocalBuffer, unflushedSize)) {
+            if (!globalMemory.write(threadLocalBuffer, unflushedSize, false)) {
                 JfrBufferAccess.reinitialize(threadLocalBuffer);
                 writeDataLoss(threadLocalBuffer, unflushedSize);
                 JfrBufferAccess.release(threadLocalBuffer);

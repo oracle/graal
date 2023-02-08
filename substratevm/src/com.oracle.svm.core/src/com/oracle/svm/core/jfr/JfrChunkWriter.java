@@ -199,7 +199,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     public void flush(JfrThreadRepository threadRepo) {
         assert lock.isOwner();
-        flushStorage();
+        flushStorage(false);
 
         if (threadRepo.isDirty(true)) {
             writeThreadCheckpointEvent(threadRepo, true);
@@ -537,16 +537,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
              * *not* reinitialize the thread-local buffers as the individual threads will handle
              * space reclamation on their own time.
              */
-            traverseList(getJavaBufferList(), true, true);
-            traverseList(getNativeBufferList(), false, true);
-
-            JfrBuffers buffers = globalMemory.getBuffers();
-            for (int i = 0; i < globalMemory.getBufferCount(); i++) {
-                JfrBuffer buffer = buffers.addressOf(i).read();
-                assert !JfrBufferAccess.isAcquired(buffer);
-                write(buffer);
-                JfrBufferAccess.reinitialize(buffer);
-            }
+            flushStorage(true);
 
             JfrTraceIdEpoch.getInstance().changeEpoch();
 
@@ -584,9 +575,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
-    private void flushStorage() {
-        traverseList(getJavaBufferList(), true, false);
-        traverseList(getNativeBufferList(), false, false);
+    private void flushStorage(boolean safepoint) {
+        traverseList(getJavaBufferList(), true, safepoint);
+        traverseList(getNativeBufferList(), false, safepoint);
 
         JfrBuffers buffers = globalMemory.getBuffers();
         for (int i = 0; i < globalMemory.getBufferCount(); i++) {
@@ -604,6 +595,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
 
         boolean firstIteration = true;
+        // hold onto lock until done with the head node.
         JfrBufferNode node = linkedList.getAndLockHead();
         JfrBufferNode prev = WordFactory.nullPointer();
 
@@ -613,15 +605,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 JfrBuffer buffer = node.getValue();
                 VMError.guarantee(buffer.isNonNull(), "JFR buffer should exist if we have not already removed its respective node.");
 
-                // Try to get BUFFER with one attempt
-                if (!JfrBufferAccess.acquire(buffer)) {
+                /* I/O operation may be slow, so this flushes to the global buffers instead of writing to disk directly.
+                * This mitigates the risk of acquiring the TLBs for too long.*/
+                if (!JfrThreadLocal.flushNoReset(buffer)) {
                     prev = node;
                     node = next;
                     continue;
                 }
-                write(buffer);
-
-                JfrBufferAccess.release(buffer);
 
                 if (!node.getAlive()) {
                     linkedList.removeNode(node, prev);
@@ -636,7 +626,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 node = next;
             } finally {
                 if (firstIteration) {
-                    linkedList.releaseList(); // hold onto lock until done with head.
+                    linkedList.releaseList();
                     firstIteration = false;
                 }
             }
@@ -644,7 +634,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
         // we may never have entered the while loop if the list is empty.
         if (firstIteration) {
-            linkedList.releaseList(); // hold onto lock until done with head.
+            linkedList.releaseList();
         }
     }
 

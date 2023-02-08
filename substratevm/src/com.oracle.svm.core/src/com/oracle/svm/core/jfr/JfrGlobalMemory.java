@@ -88,7 +88,7 @@ public class JfrGlobalMemory {
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    public boolean write(JfrBuffer threadLocalBuffer, UnsignedWord unflushedSize) {
+    public boolean write(JfrBuffer threadLocalBuffer, UnsignedWord unflushedSize, boolean doingFlush) {
         JfrBuffer promotionBuffer = acquireBufferWithRetry(unflushedSize, PROMOTION_RETRY_COUNT);
         if (promotionBuffer.isNull()) {
             return false;
@@ -106,7 +106,8 @@ public class JfrGlobalMemory {
         }
         JfrBufferAccess.increaseTop(threadLocalBuffer, unflushedSize);
         // Notify the thread that writes the global memory to disk.
-        if (shouldSignal) {
+        // If we're flushing, the global buffers are about to get persisted anyway
+        if (shouldSignal && !doingFlush) {
             recorderThread.signal();
         }
         return true;
