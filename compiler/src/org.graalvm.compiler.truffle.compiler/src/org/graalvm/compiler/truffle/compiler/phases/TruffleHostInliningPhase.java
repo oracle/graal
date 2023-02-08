@@ -1222,12 +1222,14 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                      * CompilerDirectives.inInterpreter() here we ensure that the call to
                      * inInterpreter() is later skipped by the host inlining phase.
                      *
-                     * Alternatively we could just return true in the host compiler directive
-                     * method, but that would require us to introduce a new runtime compilation
-                     * graph builder plugin.
+                     * Alternatively we could just return true in
+                     * HostCompilerDirectives.inInterpreterFastPath() instead of calling
+                     * CompilerDirectives.inInterpreter() to achieve the same result, but that would
+                     * require us to introduce a new Truffle compiler graph builder plugin, that
+                     * intrinsifies inInterpreterFastPath() to be false during runtime compilation.
                      *
-                     * By solving this here we ensure that this behavior is coupled with the
-                     * TruffleHostInlining phase.
+                     * By solving this with force inlining here we ensure that this behavior is
+                     * coupled with the TruffleHostInlining phase.
                      */
                     int foundCount = 0;
                     for (MethodCallTargetNode target : graph.getNodes(MethodCallTargetNode.TYPE)) {
@@ -1433,8 +1435,8 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         final boolean forceShallowInline;
 
         /**
-         * True if this method contains a deopt in its first block. Note that we also treat
-         * exceptions as deopts.
+         * Set to a value other than {@link BackPropagation#NOTHING} if this method contains a deopt
+         * or an unwind in its first block.
          */
         BackPropagation propagates = BackPropagation.NOTHING;
 
