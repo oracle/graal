@@ -76,7 +76,6 @@ void toFloat(long double n){
 int main(void){
     
     long double m = 5.0;
-    printfp("from long double", &m);
     toLong(m);
     toDouble(m);
     toInt(m);
