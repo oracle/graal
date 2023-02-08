@@ -214,6 +214,6 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     }
 
     boolean isVMThread(Thread thread) {
-        return connection.isVMThread(thread);
+        return connection.isDebuggerThread(thread);
     }
 }

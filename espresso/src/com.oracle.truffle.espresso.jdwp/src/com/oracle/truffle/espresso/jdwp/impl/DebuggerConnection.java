@@ -146,7 +146,7 @@ public final class DebuggerConnection implements Commands {
         };
     }
 
-    boolean isVMThread(Thread thread) {
+    boolean isDebuggerThread(Thread thread) {
         return thread == jdwpTransport || thread == commandProcessor;
     }
 
