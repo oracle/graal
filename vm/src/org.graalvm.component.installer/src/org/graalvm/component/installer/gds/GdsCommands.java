@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,4 +31,8 @@ package org.graalvm.component.installer.gds;
 public final class GdsCommands {
     public static final String OPTION_EMAIL_ADDRESS = "^";
     public static final String LONG_OPTION_EMAIL_ADDRESS = "email";
+    public static final String OPTION_GDS_CONFIG = ";";
+    public static final String LONG_OPTION_GDS_CONFIG = "config";
+    public static final String OPTION_SHOW_TOKEN = "}";
+    public static final String LONG_OPTION_SHOW_TOKEN = "show-ee-token";
 }

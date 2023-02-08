@@ -26,6 +26,8 @@ package org.graalvm.component.installer;
 
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Centralizes feedback from individual commands. Allows to centrally handle verbosity, stacktraces
@@ -139,6 +141,19 @@ public interface Feedback {
 
     boolean isNonInteractive();
 
+    boolean isSilent();
+
+    boolean setSilent(boolean silent);
+
+    default void suppressSilent(Runnable run) {
+        boolean wasSilent = setSilent(false);
+        try {
+            run.run();
+        } finally {
+            setSilent(wasSilent);
+        }
+    }
+
     /**
      * Waits for user input confirmed by ENTER.
      * 
@@ -171,4 +186,21 @@ public interface Feedback {
      * @return locally stored content or {@code null}.
      */
     Path getLocalCache(URL location);
+
+    /**
+     * Provides a cache for remote files response headers.
+     *
+     * @param location remote location
+     * @param local locally response headers
+     */
+    void addLocalResponseHeadersCache(URL location, Map<String, List<String>> local);
+
+    /**
+     * Returns a local response headers cache for the location. Returns {@code null}, if the content
+     * is not locally available.
+     *
+     * @param location the remote location
+     * @return locally stored response headers or {@code null}.
+     */
+    Map<String, List<String>> getLocalResponseHeadersCache(URL location);
 }

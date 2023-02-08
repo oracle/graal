@@ -109,7 +109,7 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
         String[] parts = overrideSpec.split("\\|"); // NOI18N
         for (String s : parts) {
             try {
-                sources.add(new SoftwareChannelSource(s));
+                sources.add(new SoftwareChannelSource(s)); // NOI18N
             } catch (MalformedURLException ex) {
                 feedback.error("REMOTE_FailedToParseParameter", ex, s); // NOI18N
             }

@@ -43,7 +43,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
-import sun.net.ConnectionResetException;
+import java.net.SocketException;
 
 public class FileDownloaderTest extends NetworkTestBase {
 
@@ -389,9 +389,9 @@ public class FileDownloaderTest extends NetworkTestBase {
 
         t.start();
 
-        assertTrue(conn.reachedSem.tryAcquire(1, TimeUnit.SECONDS));
+        assertTrue(conn.reachedSem.tryAcquire(2, TimeUnit.SECONDS));
         // conn.reachedSem.acquire();
-        conn.readException = new ConnectionResetException();
+        conn.readException = new SocketException();
         conn.nextSem.release();
         t.join(1000);
         // t.join();

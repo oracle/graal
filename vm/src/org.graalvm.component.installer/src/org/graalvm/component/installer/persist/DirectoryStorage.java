@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -117,13 +117,13 @@ public class DirectoryStorage implements ManagementStorage {
     private static final String LICENSE_CONTENTS_ID = LICENSE_DIR + "/{0}.id"; // NOI18N'
 
     /**
-     * 
+     *
      * Template for license accepted records.
      */
     static final String LICENSE_FILE_TEMPLATE = LICENSE_DIR + "/{0}.accepted/_all"; // NOI18N'
 
     /**
-     * 
+     *
      */
     private static final String BUNDLE_REQUIRED_PREFIX = BundleConstants.BUNDLE_REQUIRED + "-"; // NOI18N
     private static final String BUNDLE_PROVIDED_PREFIX = BundleConstants.BUNDLE_PROVIDED + "-"; // NOI18N
@@ -354,9 +354,6 @@ public class DirectoryStorage implements ManagementStorage {
         }
         if (!deps.isEmpty()) {
             ci.setDependencies(deps);
-        }
-        if (Boolean.TRUE.toString().equals(loaded.getProperty(BundleConstants.BUNDLE_POLYGLOT_PART, ""))) { // NOI18N
-            ci.setPolyglotRebuild(true);
         }
         List<String> ll = new ArrayList<>();
         for (String s : loaded.getProperty(BundleConstants.BUNDLE_WORKDIRS, "").split(":")) {
@@ -622,9 +619,6 @@ public class DirectoryStorage implements ManagementStorage {
         }
         if (info.getPostinstMessage() != null) {
             p.setProperty(BundleConstants.BUNDLE_MESSAGE_POSTINST, info.getPostinstMessage());
-        }
-        if (info.isPolyglotRebuild()) {
-            p.setProperty(BundleConstants.BUNDLE_POLYGLOT_PART, Boolean.TRUE.toString());
         }
         if (!info.getWorkingDirectories().isEmpty()) {
             p.setProperty(BundleConstants.BUNDLE_WORKDIRS, info.getWorkingDirectories().stream().sequential().collect(Collectors.joining(":")));
