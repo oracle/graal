@@ -5,10 +5,10 @@ permalink: /getting-started/installation-linux/
 
 # Installation on Linux Platforms
 
-Oracle provides GraalVM Enterprise Edition distributions for Linux on AMD64 (Intel) and ARM 64-bit architectures. 
+Oracle provides GraalVM Enterprise Edition distributions for Linux on AMD64 (Intel) and AArch64 architectures. 
 You can install GraalVM Enterprise on Linux from an archive (_.tar.gz_) for the current user into any location, without affecting other JDK installations.
 
-### Note on ARM 64-bit Distribution
+### Note on AArch64 Distribution
 This distribution can be installed on Oracle Linux and Red Hat Enterprise Linux(RHEL) systems for AArch64 CPU architecture.
 
 Follow these steps to install Oracle GraalVM Enterprise Edition on the Linux operating system:
@@ -61,4 +61,4 @@ Language runtimes:
 To assist a user with installation, GraalVM includes **GraalVM Updater**, a command line utility to install and manage additional functionalities.
 Proceed to the [installation steps](../../reference-manual/graalvm-updater.md#component-installation) to add any necessary language runtime or utility from above to GraalVM.
 
-> Note: Runtimes for Python, R, and Ruby languages are not available for the GraalVM Enterprise Linux ARM 64-bit distribution.
+> Note: Runtimes for Python, R, and Ruby languages are not available for the GraalVM Enterprise Linux AArch64 distribution.

@@ -1453,7 +1453,7 @@ public class GraphDecoder {
             }
 
             if (!newNode.isAlive()) {
-                newNode = addFloatingNode(methodScope, newNode);
+                newNode = addFloatingNode(methodScope, loopScope, newNode);
             }
             node = handleFloatingNodeAfterAdd(methodScope, loopScope, newNode);
         }
@@ -1461,7 +1461,7 @@ public class GraphDecoder {
         return node;
     }
 
-    protected Node addFloatingNode(@SuppressWarnings("unused") MethodScope methodScope, Node node) {
+    protected Node addFloatingNode(@SuppressWarnings("unused") MethodScope methodScope, @SuppressWarnings("unused") LoopScope loopScope, Node node) {
         /*
          * We want to exactly reproduce the encoded graph. Even though nodes should be unique in the
          * encoded graph, this is not always guaranteed.

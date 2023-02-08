@@ -69,16 +69,19 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
         return value;
     }
 
+    /**
+     * Access to this list is synchronized to avoid a ConcurrentModificationException.
+     */
     private List<String> events = new ArrayList<>();
 
     private long firstEvent = System.currentTimeMillis();
 
-    private void event(String label) {
+    private synchronized void event(String label) {
         long when = System.currentTimeMillis() - firstEvent;
         events.add(String.format("after %d ms: %s", when, label));
     }
 
-    private String eventLog() {
+    private synchronized String eventLog() {
         return events.stream().collect(Collectors.joining(System.lineSeparator()));
     }
 
@@ -138,10 +141,19 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
             event("start compiling");
             return super.getCode(installedCodeOwner, graph, forceCompile, installAsDefault, options);
         } finally {
-            Assert.assertTrue(eventLog(), !longCompilations.isEmpty());
-            Assert.assertTrue(eventLog(), longCompilations.stream().allMatch(id -> id == compilation));
-            Assert.assertTrue(eventLog(), !stuckCompilations.isEmpty());
-            Assert.assertTrue(eventLog(), longCompilations.stream().allMatch(id -> id == compilation));
+            check(!longCompilations.isEmpty());
+            check(longCompilations.stream().allMatch(id -> id == compilation));
+            check(!stuckCompilations.isEmpty());
+            check(longCompilations.stream().allMatch(id -> id == compilation));
+        }
+    }
+
+    /**
+     * Factored out to only fetch the event log if the condition fails.
+     */
+    private void check(boolean condition) {
+        if (!condition) {
+            Assert.fail(eventLog());
         }
     }
 }

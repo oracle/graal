@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.flow.context.object;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -73,7 +72,7 @@ public class AllocationContextSensitiveObject extends ContextSensitiveAnalysisOb
     @Override
     public ArrayElementsTypeFlow getArrayElementsFlow(PointsToAnalysis bb, boolean isStore) {
         assert type.isArray();
-        assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions());
+        assert bb.analysisPolicy().allocationSiteSensitiveHeap();
 
         if (!arrayElementsTypeStore.writeFlow().getState().canBeNull()) {
             /*

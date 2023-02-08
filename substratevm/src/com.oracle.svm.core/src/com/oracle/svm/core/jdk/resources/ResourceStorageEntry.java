@@ -28,7 +28,7 @@ package com.oracle.svm.core.jdk.resources;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ResourceStorageEntry {
+public final class ResourceStorageEntry {
 
     private final boolean isDirectory;
     private final boolean fromJar;

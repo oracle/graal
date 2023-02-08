@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.meta;
 
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability.ValueAvailability;
+
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -43,15 +46,19 @@ public interface ReadableJavaField extends ResolvedJavaField {
 
     JavaConstant readValue(MetaAccessProvider metaAccess, JavaConstant receiver);
 
-    default boolean isValueAvailableBeforeAnalysis() {
-        return true;
-    }
+    /**
+     * When this method returns true, image heap snapshotting can access the value before analysis.
+     * If the field is final, then the value can also be constant folded before analysis.
+     *
+     * The introduction of this method pre-dates {@link ValueAvailability}, i.e., we could combine
+     * this method and {@link #isValueAvailable} into a single method that returns the
+     * {@link ValueAvailability} of the field.
+     */
+    boolean isValueAvailableBeforeAnalysis();
 
     default boolean isValueAvailable() {
-        return true;
+        return isValueAvailableBeforeAnalysis() || BuildPhaseProvider.isAnalysisFinished();
     }
-
-    boolean allowConstantFolding();
 
     boolean injectFinalForRuntimeCompilation();
 

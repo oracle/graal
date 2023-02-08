@@ -7,7 +7,7 @@ permalink: /docs/getting-started/linux/
 
 ## Installation on Linux Platforms
 
-We provide GraalVM Community Edition distributions for Linux on AMD64 (Intel) and ARM 64-bit architectures. 
+We provide GraalVM Community Edition distributions for Linux on AMD64 (Intel) and AArch64 architectures. 
 You can install GraalVM Community on Linux from an archive (_.tar.gz_) for the current user into any location, without affecting other JDK installations.
 
 Follow these steps to install GraalVM Community Edition on the Linux operating system.
@@ -55,4 +55,4 @@ Language runtimes:
 To assist a user with installation, GraalVM includes **GraalVM Updater**, a command line utility to install and manage additional functionalities.
 Proceed to the [installation steps](../../reference-manual/graalvm-updater.md#component-installation) to add any necessary language runtime or utility from above to GraalVM.
 
-> Note: Runtimes for Python, R, and Ruby languages are not available for the GraalVM Enterprise Linux ARM 64-bit distribution.
+> Note: Runtimes for Python, R, and Ruby languages are not available for the GraalVM Enterprise Linux AArch64 distribution.

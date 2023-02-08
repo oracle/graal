@@ -192,6 +192,16 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public String toJavaName() {
+        return wrapped.toJavaName();
+    }
+
+    @Override
+    public String toJavaName(boolean qualified) {
+        return wrapped.toJavaName(qualified);
+    }
+
+    @Override
     public final JavaKind getJavaKind() {
         return kind;
     }
@@ -345,7 +355,7 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     @Override
     public String toString() {
-        return "HostedType<" + toJavaName(true) + "   " + wrapped.toString() + ">";
+        return "HostedType<" + toJavaName(false) + " -> " + wrapped.toString() + ">";
     }
 
     @Override

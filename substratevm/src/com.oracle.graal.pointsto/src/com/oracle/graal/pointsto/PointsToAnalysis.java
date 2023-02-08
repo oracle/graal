@@ -181,7 +181,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         // force update of the unsafe loads
         for (AbstractUnsafeLoadTypeFlow unsafeLoad : unsafeLoads.keySet()) {
             /* Force update for unsafe accessed static fields. */
-            unsafeLoad.initFlow(this);
+            unsafeLoad.forceUpdate(this);
 
             /*
              * Force update for unsafe accessed instance fields: post the receiver object flow for
@@ -194,7 +194,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         // force update of the unsafe stores
         for (AbstractUnsafeStoreTypeFlow unsafeStore : unsafeStores.keySet()) {
             /* Force update for unsafe accessed static fields. */
-            unsafeStore.initFlow(this);
+            unsafeStore.forceUpdate(this);
 
             /*
              * Force update for unsafe accessed instance fields: post the receiver object flow for

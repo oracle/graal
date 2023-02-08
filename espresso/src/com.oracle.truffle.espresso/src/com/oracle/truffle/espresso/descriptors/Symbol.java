@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -243,11 +243,13 @@ public final class Symbol<T> extends ByteSequence {
 
         // j.l.Throwable
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");
+        public static final Symbol<Name> stackTrace = StaticSymbols.putName("stackTrace");
         public static final Symbol<Name> cause = StaticSymbols.putName("cause");
         public static final Symbol<Name> depth = StaticSymbols.putName("depth");
         public static final Symbol<Name> fillInStackTrace = StaticSymbols.putName("fillInStackTrace");
         public static final Symbol<Name> fillInStackTrace0 = StaticSymbols.putName("fillInStackTrace0");
         public static final Symbol<Name> getMessage = StaticSymbols.putName("getMessage");
+        public static final Symbol<Name> getCause = StaticSymbols.putName("getCause");
         public static final Symbol<Name> detailMessage = StaticSymbols.putName("detailMessage");
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
 
@@ -932,6 +934,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_String_array = StaticSymbols.putSignature(Type._void, Type.java_lang_String_array);
         public static final Symbol<Signature> Class_String_boolean_ClassLoader = StaticSymbols.putSignature(Type.java_lang_Class, Type.java_lang_String, Type._boolean, Type.java_lang_ClassLoader);
 
+        public static final Symbol<Signature> Throwable = StaticSymbols.putSignature(Type.java_lang_Throwable);
         public static final Symbol<Signature> _void_Throwable = StaticSymbols.putSignature(Type._void, Type.java_lang_Throwable);
         public static final Symbol<Signature> StackTraceElement_array = StaticSymbols.putSignature(Type.java_lang_StackTraceElement_array);
         public static final Symbol<Signature> _void_String_Throwable = StaticSymbols.putSignature(Type._void, Type.java_lang_String, Type.java_lang_Throwable);
