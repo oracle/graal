@@ -41,21 +41,22 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.IncompatibleException;
-import org.graalvm.component.installer.model.ComponentRegistry;
-import org.graalvm.component.installer.model.ComponentStorage;
-import org.graalvm.component.installer.remote.FileDownloader;
-import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.model.RemoteInfoProcessor;
+import org.graalvm.component.installer.remote.FileDownloader;
+import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 
 public class WebCatalog implements SoftwareChannel {
     private final String urlString;
@@ -162,10 +163,9 @@ public class WebCatalog implements SoftwareChannel {
 
         StringBuilder sb = new StringBuilder();
         sb.append(
-                SystemUtils.patternOsName(
-                        graalCaps.get(CommonConstants.CAP_OS_NAME),
-                        graalCaps.get(CommonConstants.CAP_OS_VARIANT)
-                ).toLowerCase());
+                        SystemUtils.patternOsName(
+                                        graalCaps.get(CommonConstants.CAP_OS_NAME),
+                                        graalCaps.get(CommonConstants.CAP_OS_VARIANT)).toLowerCase());
         sb.append("_");
         sb.append(SystemUtils.patternOsArch(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase()));
 
