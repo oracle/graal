@@ -1,4 +1,5 @@
-local composable = (import '../../../ci/ci_common/common-utils.libsonnet').composable;
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
+local composable = utils.composable;
 local vm_common = import '../ci_common/common.jsonnet';
 local vm_common_bench = import '../ci_common/common-bench.jsonnet';
 local vm = import 'vm.jsonnet';
@@ -115,20 +116,20 @@ local jdks = common_json.jdks;
   },
 
   local builds = [
-    self.vm_java_17 + vm_common.gate_vm_linux_amd64 + {
+    utils.add_gate_predicate(self.vm_java_17 + vm_common.gate_vm_linux_amd64 + {
      run: [
        ['mx', 'build'],
        ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-linux-amd64',
-    },
-    self.vm_java_17 + common_json.devkits['windows-jdk17'] + vm_common.gate_vm_windows_amd64 + {
+    }, ['sdk', 'truffle', 'vm']),
+    utils.add_gate_predicate(self.vm_java_17 + common_json.devkits['windows-jdk17'] + vm_common.gate_vm_windows_amd64 + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-windows-amd64',
-    },
+    }, ["sdk", "truffle", "vm"]),
     self.vm_java_17 + vm_common.gate_vm_linux_amd64 + vm_common.sulong_linux + {
      environment+: {
        DYNAMIC_IMPORTS: '/tools,/substratevm,/sulong',
