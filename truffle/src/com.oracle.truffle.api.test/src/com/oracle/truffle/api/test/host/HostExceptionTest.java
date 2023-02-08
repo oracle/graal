@@ -585,7 +585,7 @@ public class HostExceptionTest {
         List<String> expectedStack = List.of(
                         RUNNER,
                         CATCHER);
-        assertEquals(expectedStack, getProxyLanguageRootNames(result.as(PolyglotException.class)));
+        assertEquals(expectedStack, getProxyLanguageStackTrace(result.as(PolyglotException.class)));
     }
 
     /**
@@ -636,7 +636,7 @@ public class HostExceptionTest {
                         THROW_EXCEPTION,
                         RUNNER,
                         CATCHER);
-        assertEquals(expectedStack, getProxyLanguageRootNames(result.as(PolyglotException.class)));
+        assertEquals(expectedStack, getProxyLanguageStackTrace(result.as(PolyglotException.class)));
 
         // unwrapping and wrapping the host exception again should not lose the stack trace
         Function<Object, Object> passthrough = t -> {
@@ -646,7 +646,7 @@ public class HostExceptionTest {
         result = runner.execute(runner, passthrough, result);
         assertHostException(result, expectedException);
 
-        assertEquals(expectedStack, getProxyLanguageRootNames(result.as(PolyglotException.class)));
+        assertEquals(expectedStack, getProxyLanguageStackTrace(result.as(PolyglotException.class)));
 
         Consumer<Object> thrower = t -> {
             assertThat(t, instanceOf(expectedException));
@@ -655,7 +655,7 @@ public class HostExceptionTest {
         result = catcher.execute(rethrower, thrower, result);
         assertHostException(result, expectedException);
 
-        assertEquals(expectedStack, getProxyLanguageRootNames(result.as(PolyglotException.class)));
+        assertEquals(expectedStack, getProxyLanguageStackTrace(result.as(PolyglotException.class)));
     }
 
     private static void assertHostException(Value result, Class<? extends Throwable> expectedException) {
@@ -664,8 +664,11 @@ public class HostExceptionTest {
         assertThat(result.asHostObject(), instanceOf(expectedException));
     }
 
-    private static List<String> getProxyLanguageRootNames(PolyglotException polyglotException) {
-        return getProxyLanguageFrames(polyglotException).stream().map(StackFrame::getRootName).toList();
+    private static List<String> getProxyLanguageStackTrace(PolyglotException polyglotException) {
+        return getProxyLanguageFrames(polyglotException).stream().map(stackFrame -> {
+            assertNotNull("Missing source location for stack trace element: " + stackFrame.getRootName(), stackFrame.getSourceLocation());
+            return stackFrame.getRootName();
+        }).toList();
     }
 
     private static List<StackFrame> getProxyLanguageFrames(PolyglotException polyglotException) {
@@ -713,6 +716,8 @@ public class HostExceptionTest {
                     }
 
                     lines.add(name);
+
+                    assertTrue("Missing source location for stack trace element: " + name, INTEROP.hasSourceLocation(stackTraceElement));
                 }
             }
             return lines;
