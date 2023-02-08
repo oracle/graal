@@ -72,10 +72,11 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
         LockFreePrefixTree.Node node = prefixTree.root();
         for (int i = stackTrace.num - 1; i >= 0; i--) {
             if (i >= result.length) {
-                // Due to the RestrictHeapAccess annotation, we need to prevent potential exception allocations.
+                // Due to the RestrictHeapAccess annotation, we need to prevent potential exception
+                // allocations.
                 return;
             }
-            node = node.at(prefixTree().allocator(), result[i]);
+            node = descend(node, result[i]);
             if (node == null) {
                 // The prefix tree had to be extended, but the allocation failed.
                 // In this case, simply drop the sample, as the allocation pool will be replenished
@@ -84,6 +85,11 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
             }
         }
         node.incValue();
+    }
+
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Allocations are not allowed in the safepoint sampler, but we keep them unrestricted due to analysis imprecision.")
+    private LockFreePrefixTree.Node descend(LockFreePrefixTree.Node node, long result) {
+        return node.at(prefixTree().allocator(), result);
     }
 
     @NeverInline("Starts a stack walk in the caller frame")

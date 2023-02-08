@@ -123,6 +123,7 @@ public class LockFreePrefixTree {
         private static final int INITIAL_HASH_NODE_SIZE = 16;
 
         private static final int MAX_LINEAR_NODE_SIZE = 8;
+
         private static final int MAX_HASH_SKIPS = 10;
 
         @SuppressWarnings("rawtypes") private static final AtomicReferenceFieldUpdater<Node, AtomicReferenceArray> CHILDREN_UPDATER = AtomicReferenceFieldUpdater.newUpdater(Node.class,
@@ -479,8 +480,6 @@ public class LockFreePrefixTree {
      * @since 23.0
      */
     public abstract static class Allocator {
-        private static final FailedAllocationException FAILED_ALLOCATION_EXCEPTION = new FailedAllocationException();
-
         /**
          * Allocates a new Node object.
          *
@@ -571,10 +570,20 @@ public class LockFreePrefixTree {
      */
     public static class ObjectPoolingAllocator extends Allocator {
         /**
+         * A preallocated exception object that denotes failed allocations.
+         */
+        private static final FailedAllocationException FAILED_ALLOCATION_EXCEPTION = new FailedAllocationException();
+
+        /**
          * A preallocated exception object, thrown when an invalid length is specified for the
          * object to allocate.
          */
         private static final FailedAllocationException UNSUPPORTED_SIZE_EXCEPTION = new FailedAllocationException("Only arrays that have power-of-two length can be allocated.");
+
+        /**
+         * Preallocated exception object, thrown when an inconsistent internal state is detected.
+         */
+        private static final FailedAllocationException INTERNAL_FAILURE_EXCEPTION = new FailedAllocationException("Allocation failed due to internal exception.");
 
         /**
          * Minimum sleep time of the housekeeping thread, in milliseconds.
@@ -734,7 +743,7 @@ public class LockFreePrefixTree {
                 return obj;
             } else {
                 missedNodePoolRequestCount.incrementAndGet();
-                throw Allocator.FAILED_ALLOCATION_EXCEPTION;
+                throw FAILED_ALLOCATION_EXCEPTION;
             }
         }
 
@@ -743,15 +752,18 @@ public class LockFreePrefixTree {
             checkPowerOfTwo(length);
             if (Integer.numberOfTrailingZeros(length) >= SIZE_CLASS_COUNT) {
                 // Above maximum allowed length.
-                throw Allocator.FAILED_ALLOCATION_EXCEPTION;
+                throw FAILED_ALLOCATION_EXCEPTION;
             }
             int sizeClass = Integer.numberOfTrailingZeros(length);
             Node.LinearChildren obj = linearChildrenPool[sizeClass].get();
             if (obj != null) {
                 return obj;
             } else {
+                if (sizeClass >= missedLinearChildrenRequestCounts.length()) {
+                    throw INTERNAL_FAILURE_EXCEPTION;
+                }
                 missedLinearChildrenRequestCounts.incrementAndGet(sizeClass);
-                throw Allocator.FAILED_ALLOCATION_EXCEPTION;
+                throw FAILED_ALLOCATION_EXCEPTION;
             }
         }
 
@@ -760,15 +772,18 @@ public class LockFreePrefixTree {
             checkPowerOfTwo(length);
             if (Integer.numberOfTrailingZeros(length) >= SIZE_CLASS_COUNT) {
                 // Above maximum allowed length.
-                throw Allocator.FAILED_ALLOCATION_EXCEPTION;
+                throw FAILED_ALLOCATION_EXCEPTION;
             }
             int sizeClass = Integer.numberOfTrailingZeros(length);
             Node.HashChildren obj = hashChildrenPool[sizeClass].get();
             if (obj != null) {
                 return obj;
             } else {
+                if (sizeClass >= missedHashChildrenRequestCounts.length()) {
+                    throw INTERNAL_FAILURE_EXCEPTION;
+                }
                 missedHashChildrenRequestCounts.incrementAndGet(sizeClass);
-                throw Allocator.FAILED_ALLOCATION_EXCEPTION;
+                throw FAILED_ALLOCATION_EXCEPTION;
             }
         }
 
