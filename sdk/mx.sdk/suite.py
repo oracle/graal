@@ -585,8 +585,6 @@ suite = {
             "lib/libclang*.a",
             "lib/liblld*.a",
             "libexec",
-            # the following is added by COMPILER_RT
-            "lib/clang/*/lib/linux/*clang_rt*",
             # Windows libarary excludes
             "lib/*.lib",
           ]
