@@ -146,6 +146,10 @@ public final class DebuggerConnection implements Commands {
         };
     }
 
+    boolean isVMThread(Thread thread) {
+        return thread == jdwpTransport || thread == commandProcessor;
+    }
+
     private class CommandProcessorThread implements Runnable {
 
         @Override
@@ -227,7 +231,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.ALL_CLASSES.createReply(packet, context);
                                     break;
                                 case JDWP.VirtualMachine.ALL_THREADS.ID:
-                                    result = JDWP.VirtualMachine.ALL_THREADS.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.ALL_THREADS.createReply(packet, context, controller);
                                     break;
                                 case JDWP.VirtualMachine.TOP_LEVEL_THREAD_GROUPS.ID:
                                     result = JDWP.VirtualMachine.TOP_LEVEL_THREAD_GROUPS.createReply(packet, context);
@@ -498,7 +502,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ThreadGroupReference.PARENT.createReply(packet, context);
                                     break;
                                 case JDWP.ThreadGroupReference.CHILDREN.ID:
-                                    result = JDWP.ThreadGroupReference.CHILDREN.createReply(packet, context);
+                                    result = JDWP.ThreadGroupReference.CHILDREN.createReply(packet, context, controller);
                                     break;
                             }
                             break;
