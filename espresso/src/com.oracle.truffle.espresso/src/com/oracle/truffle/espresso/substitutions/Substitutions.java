@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.TruffleLogger;
@@ -288,6 +289,7 @@ public final class Substitutions extends ContextAccessImpl {
         return null;
     }
 
+    @TruffleBoundary
     public boolean hasSubstitutionFor(Method method) {
         MethodRef key = getMethodKey(method);
         return STATIC_SUBSTITUTIONS.containsKey(key) || runtimeSubstitutions.containsKey(key);

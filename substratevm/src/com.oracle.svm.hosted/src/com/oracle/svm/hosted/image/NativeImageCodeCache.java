@@ -200,7 +200,7 @@ public abstract class NativeImageCodeCache {
         for (DataSection.Data data : dataSection) {
             if (data instanceof SubstrateDataBuilder.ObjectData) {
                 JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
-                addConstantToHeap(constant, "data section");
+                addConstantToHeap(constant, NativeImageHeap.HeapInclusionReason.DataSection);
             }
         }
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {

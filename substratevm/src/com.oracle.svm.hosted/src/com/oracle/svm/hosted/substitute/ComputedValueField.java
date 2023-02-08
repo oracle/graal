@@ -460,11 +460,6 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     }
 
     @Override
-    public boolean allowConstantFolding() {
-        return isFinal;
-    }
-
-    @Override
     public boolean injectFinalForRuntimeCompilation() {
         if (original.isFinal()) {
             /*

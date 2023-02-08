@@ -20,7 +20,7 @@ mx --env polybench-ce build
 
 To run a microbenchmark, run the following on the built GraalVM:
 ```
-$GRAALVM_HOME/bin/polybench --path=path/to/benchmark.pmh
+$JAVA_HOME/bin/polybench --path=path/to/benchmark.pmh
 ```
 
 ## The PMH Language

@@ -64,6 +64,10 @@ public abstract class AnalysisPolicy {
     protected final boolean relaxTypeFlowConstraints;
     protected final boolean removeSaturatedTypeFlows;
     protected final int typeFlowSaturationCutoff;
+    protected final boolean allocationSiteSensitiveHeap;
+    protected final int maxHeapContextDepth;
+    protected final boolean limitObjectArrayLength;
+    protected final int maxObjectSetSize;
 
     public AnalysisPolicy(OptionValues options) {
         this.options = options;
@@ -72,6 +76,11 @@ public abstract class AnalysisPolicy {
         relaxTypeFlowConstraints = PointstoOptions.RelaxTypeFlowStateConstraints.getValue(options);
         removeSaturatedTypeFlows = PointstoOptions.RemoveSaturatedTypeFlows.getValue(options);
         typeFlowSaturationCutoff = PointstoOptions.TypeFlowSaturationCutoff.getValue(options);
+        allocationSiteSensitiveHeap = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options);
+        maxHeapContextDepth = PointstoOptions.MaxHeapContextDepth.getValue(options);
+        limitObjectArrayLength = PointstoOptions.LimitObjectArrayLength.getValue(options);
+        maxObjectSetSize = PointstoOptions.MaxObjectSetSize.getValue(options);
+
     }
 
     public abstract boolean isContextSensitiveAnalysis();
@@ -90,6 +99,18 @@ public abstract class AnalysisPolicy {
 
     public int typeFlowSaturationCutoff() {
         return typeFlowSaturationCutoff;
+    }
+
+    public boolean allocationSiteSensitiveHeap() {
+        return allocationSiteSensitiveHeap;
+    }
+
+    public boolean limitObjectArrayLength() {
+        return limitObjectArrayLength;
+    }
+
+    public int maxObjectSetSize() {
+        return maxObjectSetSize;
     }
 
     public abstract MethodTypeFlow createMethodTypeFlow(PointsToAnalysisMethod method);

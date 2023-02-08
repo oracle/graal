@@ -264,6 +264,10 @@ public class ReportUtils {
         return new StackTraceElement(stackTraceTruncationSentinel + method.format("%H.%n(%p)"), "", null, -1);
     }
 
+    public static StackTraceElement rootMethodSentinel(String reason) {
+        return new StackTraceElement(reason, "", null, -1);
+    }
+
     public static String typePropagationTrace(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type) {
         return typePropagationTrace(bb, flow, type, "   ");
     }

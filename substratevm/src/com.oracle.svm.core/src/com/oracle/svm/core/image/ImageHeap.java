@@ -29,7 +29,7 @@ import java.util.Collection;
 public interface ImageHeap {
     Collection<? extends ImageHeapObject> getObjects();
 
-    ImageHeapObject addLateToImageHeap(Object object, String reason);
+    ImageHeapObject addLateToImageHeap(Object object, Object reason);
 
     ImageHeapObject addFillerObject(int size);
 

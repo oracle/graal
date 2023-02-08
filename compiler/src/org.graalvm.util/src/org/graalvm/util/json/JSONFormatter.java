@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,6 +92,16 @@ public class JSONFormatter {
         return sb.toString();
     }
 
+    public static String formatJSON(List<?> elements) {
+        return formatJSON(elements, false);
+    }
+
+    public static String formatJSON(List<?> elements, boolean indent) {
+        StringBuilder sb = new StringBuilder();
+        appendTo(sb, elements, indent ? DEFAULT_INDENT : null, EMPTY_STRING);
+        return sb.toString();
+    }
+
     private static String quote(CharSequence value) {
         StringBuilder builder = new StringBuilder(value.length() + 2);
         builder.append(DOUBLE_QUOTE);
@@ -163,6 +173,9 @@ public class JSONFormatter {
                 } else {
                     sb.append(COMMA_SPACE);
                 }
+            }
+            if (indent != null) {
+                sb.append(newIndent);
             }
             appendValue(sb, value, indent, newIndent);
             comma = true;

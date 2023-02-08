@@ -70,8 +70,8 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   jdt: {
-    downloads+: {
-      JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
+    environment+: {
+      JDT: "builtin",
     },
   },
 
