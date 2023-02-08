@@ -79,7 +79,7 @@ public abstract class LLVMVAListNode extends LLVMExpressionNode {
         return allocatesVAListPointer;
     }
 
-    @Specialization(assumptions = "getAssumption()")
+    @Specialization(guards = "getAssumption().isValid()")
     public LLVMManagedPointer createVAList(VirtualFrame frame,
                     @Cached("createAllocaNode()") LLVMExpressionNode allocaNode) {
         // allocaNode == null indicates that no native stack is supported
