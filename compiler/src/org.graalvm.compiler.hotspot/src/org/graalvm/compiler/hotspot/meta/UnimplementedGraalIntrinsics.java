@@ -349,7 +349,21 @@ public final class UnimplementedGraalIntrinsics {
             }
         }
 
+        if (JAVA_SPEC == 20) {
+            // without JIT implementation
+            add(ignore,
+                            "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
+                            "jdk/internal/vm/Continuation.doYield()I",
+                            "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
+                            "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V");
+        }
+
         if (JAVA_SPEC >= 20) {
+            // same ignore reason as "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;"
+            // see also https://bugs.openjdk.org/browse/JDK-8286480
+            add(ignore,
+                            "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;");
+
             if (arch instanceof AMD64) {
                 if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.valueOf("GFNI"))) {
                     add(ignore,
@@ -400,15 +414,6 @@ public final class UnimplementedGraalIntrinsics {
             // This reuses the intrinsic for java/lang/StringCoding.hasNegatives with minor changes
             add(toBeInvestigated,
                             "java/lang/StringCoding.countPositives([BII)I");
-
-            add(toBeInvestigated,
-                            "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;");
-
-            add(toBeInvestigated,
-                            "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
-                            "jdk/internal/vm/Continuation.doYield()I",
-                            "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
-                            "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V");
 
             // JDK-8223347: Integration of Vector API (Incubator)
             add(toBeInvestigated, // @formatter:off
