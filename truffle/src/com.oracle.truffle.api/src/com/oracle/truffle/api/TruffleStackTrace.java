@@ -86,6 +86,8 @@ public final class TruffleStackTrace extends Exception {
     private static final long causeFieldIndex;
     private static final sun.misc.Unsafe UNSAFE;
 
+    private static final int CAUSE_TRAVERSAL_LIMIT = 10;
+
     static {
         Unsafe unsafe;
         try {
@@ -238,24 +240,36 @@ public final class TruffleStackTrace extends Exception {
 
     private static LazyStackTrace findImpl(Throwable t) {
         assert !(t instanceof ControlFlowException);
-        Throwable cause = getCause(t);
+        int traversed = 0;
+        Throwable cause = t;
         while (cause != null) {
+            if (++traversed > CAUSE_TRAVERSAL_LIMIT) {
+                return null;
+            }
+            Throwable innerCause = getCause(cause);
+            if (innerCause == null) {
+                return null;
+            }
+            cause = innerCause;
             if (cause instanceof LazyStackTrace) {
                 return ((LazyStackTrace) cause);
             }
-            cause = getCause(cause);
         }
         return null;
     }
 
     private static Throwable findInsertCause(Throwable t) {
         Throwable lastException = t;
+        int traversed = 0;
         while (lastException != null) {
-            Throwable parentCause = getCause(lastException);
-            if (parentCause == null) {
+            if (++traversed > CAUSE_TRAVERSAL_LIMIT) {
+                return null;
+            }
+            Throwable innerCause = getCause(lastException);
+            if (innerCause == null) {
                 break;
             }
-            lastException = parentCause;
+            lastException = innerCause;
         }
         return lastException;
     }
