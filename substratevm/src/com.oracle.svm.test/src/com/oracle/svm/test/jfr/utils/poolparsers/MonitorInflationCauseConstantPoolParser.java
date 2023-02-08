@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,39 +24,22 @@
  * questions.
  */
 
-package com.oracle.svm.core.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import java.io.IOException;
 
-import com.oracle.svm.core.Uninterruptible;
+import org.junit.Assert;
 
-/**
- * List of all possible inflation causes.
- */
-public enum JfrInflationCause {
-    VM_INTERNAL("VM Internal"),
-    MONITOR_ENTER("Monitor Enter"),
-    WAIT("Monitor Wait"),
-    NOTIFY("Monitor Notify"),
-    HASH_CODE("Monitor Hash Code"),
-    JNI_ENTER("JNI Monitor Enter"),
-    JNI_EXIT("JNI Monitor Exit");
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-    private final String text;
+public class MonitorInflationCauseConstantPoolParser extends ConstantPoolParser {
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    JfrInflationCause(String text) {
-        this.text = text;
-    }
-
-    public String getText() {
-        return text;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getId() {
-        // First entry needs to have id 0.
-        return ordinal();
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int count = input.readInt();
+        for (int i = 0; i < count; i++) {
+            addFoundId(input.readInt());
+            Assert.assertFalse("Inflate cause is empty!", input.readUTF().isEmpty());
+        }
     }
 }

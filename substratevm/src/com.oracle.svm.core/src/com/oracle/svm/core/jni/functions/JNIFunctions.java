@@ -35,7 +35,6 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import com.oracle.svm.core.jfr.JfrInflationCause;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -106,6 +105,7 @@ import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.jni.headers.JNIVersionJDK19OrLater;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -1016,7 +1016,7 @@ public final class JNIFunctions {
         }
         boolean acquired = false;
         try {
-            MonitorSupport.singleton().monitorEnter(obj, JfrInflationCause.JNI_ENTER);
+            MonitorSupport.singleton().monitorEnter(obj, MonitorInflationCause.JNI_ENTER);
             assert Thread.holdsLock(obj);
             acquired = true;
 
@@ -1025,7 +1025,7 @@ public final class JNIFunctions {
         } catch (Throwable t) {
             try {
                 if (acquired) {
-                    MonitorSupport.singleton().monitorExit(obj, JfrInflationCause.JNI_EXIT);
+                    MonitorSupport.singleton().monitorExit(obj, MonitorInflationCause.JNI_ENTER);
                 }
                 if (pinned) {
                     VirtualThreads.singleton().unpinCurrent();
@@ -1050,7 +1050,7 @@ public final class JNIFunctions {
         if (!Thread.holdsLock(obj)) {
             throw new IllegalMonitorStateException();
         }
-        MonitorSupport.singleton().monitorExit(obj, JfrInflationCause.JNI_EXIT);
+        MonitorSupport.singleton().monitorExit(obj, MonitorInflationCause.JNI_EXIT);
         JNIThreadOwnedMonitors.exited(obj);
         if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
             try {

@@ -43,7 +43,7 @@ public enum JfrType {
     GCCause("jdk.types.GCCause"),
     GCName("jdk.types.GCName"),
     VMOperation("jdk.types.VMOperationType"),
-    InflationCause("jdk.types.InflateCause");
+    MonitorInflationCause("jdk.types.InflateCause");
 
     private final long id;
 

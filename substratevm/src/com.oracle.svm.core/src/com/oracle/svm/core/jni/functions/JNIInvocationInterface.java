@@ -42,8 +42,8 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -73,6 +73,7 @@ import com.oracle.svm.core.jni.headers.JNIJavaVMOption;
 import com.oracle.svm.core.jni.headers.JNIJavaVMPointer;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -353,7 +354,7 @@ public final class JNIInvocationInterface {
         static void releaseCurrentThreadOwnedMonitors() {
             JNIThreadOwnedMonitors.forEach((obj, depth) -> {
                 for (int i = 0; i < depth; i++) {
-                    MonitorSupport.singleton().monitorExit(obj);
+                    MonitorSupport.singleton().monitorExit(obj, MonitorInflationCause.VM_INTERNAL);
                 }
                 assert !Thread.holdsLock(obj);
             });

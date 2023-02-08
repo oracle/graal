@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.ThreadStatus;
-import com.oracle.svm.core.jfr.JfrInflationCause;
 
 /**
  * This interface provides functions related to monitor operations (the Java "synchronized" keyword
@@ -45,16 +44,12 @@ public abstract class MonitorSupport {
     /**
      * Implements the semantics of the monitorenter bytecode.
      */
-    public abstract void monitorEnter(Object obj);
-
-    public abstract void monitorEnter(Object obj, JfrInflationCause cause);
+    public abstract void monitorEnter(Object obj, MonitorInflationCause cause);
 
     /**
      * Implements the semantics of the monitorexit bytecode.
      */
-    public abstract void monitorExit(Object obj);
-
-    public abstract void monitorExit(Object obj, JfrInflationCause cause);
+    public abstract void monitorExit(Object obj, MonitorInflationCause cause);
 
     /*
      * Support for objects that are re-locked during deoptimization. This method is called when

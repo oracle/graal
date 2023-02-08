@@ -29,20 +29,18 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-/**
- * Used to serialize all possible inflation causes into the chunk.
- */
-public class JfrInflationCauseSerializer implements JfrConstantPool {
+import com.oracle.svm.core.monitor.MonitorInflationCause;
 
+public class JfrMonitorInflationCauseSerializer implements JfrConstantPool {
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrInflationCauseSerializer() {
+    public JfrMonitorInflationCauseSerializer() {
     }
 
     @Override
     public int write(JfrChunkWriter writer) {
-        writer.writeCompressedLong(JfrType.InflationCause.getId());
+        writer.writeCompressedLong(JfrType.MonitorInflationCause.getId());
 
-        JfrInflationCause[] inflationCauses = JfrInflationCause.values();
+        MonitorInflationCause[] inflationCauses = MonitorInflationCause.values();
         writer.writeCompressedLong(inflationCauses.length);
         for (int i = 0; i < inflationCauses.length; i++) {
             writer.writeCompressedInt(i);

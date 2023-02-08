@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,27 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr.utils.poolparsers;
+package com.oracle.svm.core.monitor;
 
-import java.io.IOException;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import org.junit.Assert;
+public enum MonitorInflationCause {
+    VM_INTERNAL("VM Internal"),
+    MONITOR_ENTER("Monitor Enter"),
+    WAIT("Monitor Wait"),
+    NOTIFY("Monitor Notify"),
+    JNI_ENTER("JNI Monitor Enter"),
+    JNI_EXIT("JNI Monitor Exit");
 
-import com.oracle.svm.test.jfr.utils.RecordingInput;
+    private final String text;
 
-public class InflateCauseConstantPoolParser extends ConstantPoolParser {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    MonitorInflationCause(String text) {
+        this.text = text;
+    }
 
-    @Override
-    public void parse(RecordingInput input) throws IOException {
-        int numberOfInflateCauses = input.readInt();
-        for (int i = 0; i < numberOfInflateCauses; i++) {
-            addFoundId(input.readInt());
-            Assert.assertFalse("Inflate cause is empty!", input.readUTF().isEmpty());
-        }
+    public String getText() {
+        return text;
     }
 }

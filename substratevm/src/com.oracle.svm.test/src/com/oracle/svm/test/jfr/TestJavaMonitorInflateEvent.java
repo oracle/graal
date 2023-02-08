@@ -27,19 +27,20 @@
 package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
+
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.monitor.MonitorInflationCause;
+
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
 public class TestJavaMonitorInflateEvent extends JfrTest {
-    private static final int MILLIS = 60;
-
-    static volatile boolean passedCheckpoint = false;
-    static Thread firstThread;
-    static Thread secondThread;
-    static final EnterHelper enterHelper = new EnterHelper();
+    private static final EnterHelper ENTER_HELPER = new EnterHelper();
+    private static Thread firstThread;
+    private static Thread secondThread;
 
     @Override
     public String[] getTestedEvents() {
@@ -51,8 +52,11 @@ public class TestJavaMonitorInflateEvent extends JfrTest {
         boolean foundCauseEnter = false;
         for (RecordedEvent event : getEvents()) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
-            if (event.<RecordedClass> getValue("monitorClass").getName().equals(EnterHelper.class.getName()) && firstThread.getName().equals(eventThread) &&
-                            event.<String> getValue("cause").equals("Monitor Enter")) {
+            String monitorClass = event.<RecordedClass> getValue("monitorClass").getName();
+            String cause = event.getValue("cause");
+            if (monitorClass.equals(EnterHelper.class.getName()) &&
+                            cause.equals(MonitorInflationCause.MONITOR_ENTER.getText()) &&
+                            (eventThread.equals(firstThread.getName()) || eventThread.equals(secondThread.getName()))) {
                 foundCauseEnter = true;
             }
         }
@@ -63,7 +67,7 @@ public class TestJavaMonitorInflateEvent extends JfrTest {
     public void test() throws Exception {
         Runnable first = () -> {
             try {
-                enterHelper.doWork();
+                ENTER_HELPER.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -71,8 +75,8 @@ public class TestJavaMonitorInflateEvent extends JfrTest {
 
         Runnable second = () -> {
             try {
-                passedCheckpoint = true;
-                enterHelper.doWork();
+                EnterHelper.passedCheckpoint = true;
+                ENTER_HELPER.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -81,17 +85,23 @@ public class TestJavaMonitorInflateEvent extends JfrTest {
         firstThread = new Thread(first);
         secondThread = new Thread(second);
 
-        // Generate event with "Monitor Enter" cause
+        /* Generate event with "Monitor Enter" cause. */
         firstThread.start();
 
         firstThread.join();
         secondThread.join();
     }
 
-    static class EnterHelper {
-        private synchronized void doWork() throws InterruptedException {
+    private static class EnterHelper {
+        static volatile boolean passedCheckpoint = false;
+
+        synchronized void doWork() throws InterruptedException {
             if (Thread.currentThread().equals(secondThread)) {
-                return; // second thread doesn't need to do work.
+                /*
+                 * The second thread only needs to enter the critical section but doesn't need to do
+                 * work.
+                 */
+                return;
             }
             // ensure ordering of critical section entry
             secondThread.start();
@@ -100,7 +110,7 @@ public class TestJavaMonitorInflateEvent extends JfrTest {
             while (!secondThread.getState().equals(Thread.State.BLOCKED) || !passedCheckpoint) {
                 Thread.sleep(10);
             }
-            Thread.sleep(MILLIS);
+            Thread.sleep(60);
         }
     }
 }

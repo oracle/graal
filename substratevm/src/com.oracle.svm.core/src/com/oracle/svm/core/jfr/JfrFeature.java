@@ -169,7 +169,8 @@ public class JfrFeature implements InternalFeature {
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
-        JfrSerializerSupport.get().register(new JfrInflationCauseSerializer());
+        JfrSerializerSupport.get().register(new JfrMonitorInflationCauseSerializer());
+
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 
         if (HOSTED_ENABLED) {
