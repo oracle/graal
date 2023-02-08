@@ -40,6 +40,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-25539 Added `InteropLibrary#fitsInBigInteger()` and `InteropLibrary#asBigInteger()` to access interop values that fit into `java.math.BigInteger` without loss of precision. A warning is produced for objects that export the `isNumber` interop message and don't export the new big integer messages.
 * GR-25539 Added `DebugValue#fitsInBigInteger()` and `DebugValue#asBigInteger()`.
 * GR-25539 Added `GenerateLibrary.Abstract#ifExportedAsWarning()` to specify a library message to be abstract only if another message is exported. A warning is produced that prompts the user to export the message.
+* GR-43903 Usages of `@Specialization(assumptions=...)` that do not bind any cached values in the guard now produce a suppressable warning. In most situations, such specializations should be migrated to use a regular guard instead. 
 
 ## Version 22.3.0
 

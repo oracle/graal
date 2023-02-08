@@ -576,6 +576,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
     @Introspectable
     abstract static class SingleInstanceAssumptionNode extends InlinableTestNode {
 
+        @SuppressWarnings("truffle-assumption")
         @Specialization(assumptions = "cachedAssumption")
         int s0(int value, @Cached(neverDefault = false) Assumption cachedAssumption) {
             assertNotNull(cachedAssumption);

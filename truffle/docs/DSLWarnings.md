@@ -26,6 +26,7 @@ The following warning keys are supported:
 * `truffle-static-method` warnings when the DSL recommends to use the `static` modifier.
 * `truffle-unused` warnings if a DSL attribute or annotation has no effect and is recommended to be removed. 
 * `truffle-abstract-export` warnings if an abstract message of a Truffle library is not exported.
+* `truffle-assumption` if the assumptions feature is used with a specialization that may never have multiple instances.
 
 Specific warnings can also be suppressed globally using the `-Atruffle.dsl.SuppressWarnings=truffle-inlining,truffle-neverdefault` Java compiler processor option. 
 Note that also Java system properties can be used to configure the annotation processor. (e.g. by passing `-J-Dtruffle.dsl.SuppressWarnings=truffle-inlining,truffle-neverdefault` to javac)

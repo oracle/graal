@@ -61,6 +61,7 @@ public class ExpressionOrderTest {
 
         abstract boolean execute(Object value);
 
+        @SuppressWarnings("truffle-assumption")
         @Specialization(guards = {"guard1(value)", "cacheGuard1(cache1)", "guard2(value)", "cacheGuard2(cache2)"}, //
                         assumptions = {"assumptionInitializer1(cache3)", "assumptionInitializer2()"})
         boolean s0(boolean value, @Cached("cacheInitializer1(value)") int cache1,

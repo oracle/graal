@@ -90,7 +90,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "truffle-assumption"})
 public class FallbackTest extends AbstractPolyglotTest {
 
     private static final Object UNKNOWN_OBJECT = new Object() {
@@ -964,7 +964,6 @@ public class FallbackTest extends AbstractPolyglotTest {
                 }
             }
         }
-
     }
 
 }

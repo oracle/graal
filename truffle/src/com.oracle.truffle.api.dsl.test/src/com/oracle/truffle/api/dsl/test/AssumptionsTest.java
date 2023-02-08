@@ -59,6 +59,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -68,6 +69,7 @@ import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArrayTestFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArraysAreCompilationFinalCachedFactory;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionArraysAreCompilationFinalFactory;
+import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionFallbackNodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionFieldNodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest1NodeGen;
 import com.oracle.truffle.api.dsl.test.AssumptionsTestFactory.AssumptionInvalidateTest2NodeGen;
@@ -104,6 +106,7 @@ public class AssumptionsTest {
     }
 
     @NodeChild
+    @SuppressWarnings({"unused", "truffle-assumption"})
     static class FieldTest extends ValueNode {
 
         protected final Assumption field = Truffle.getRuntime().createAssumption();
@@ -130,6 +133,7 @@ public class AssumptionsTest {
 
     @NodeChild
     @NodeField(name = "field", type = Assumption.class)
+    @SuppressWarnings({"unused", "truffle-assumption"})
     static class NodeFieldTest2 extends ValueNode {
 
         @Specialization(assumptions = "field")
@@ -152,6 +156,7 @@ public class AssumptionsTest {
     }
 
     @NodeChild
+    @SuppressWarnings({"unused", "truffle-assumption"})
     static class StaticFieldTest extends ValueNode {
 
         static final Assumption FIELD = Truffle.getRuntime().createAssumption();
@@ -191,6 +196,7 @@ public class AssumptionsTest {
     }
 
     @NodeChild
+    @SuppressWarnings({"unused", "truffle-assumption"})
     static class MethodTest extends ValueNode {
 
         private final Assumption hiddenAssumption = Truffle.getRuntime().createAssumption();
@@ -287,7 +293,7 @@ public class AssumptionsTest {
     }
 
     @NodeChild
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "truffle-assumption"})
     static class MultipleAssumptionsTest extends ValueNode {
 
         Assumption assumption1;
@@ -323,7 +329,7 @@ public class AssumptionsTest {
     }
 
     @NodeChild
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "truffle-assumption"})
     static class AssumptionArrayTest extends ValueNode {
 
         Assumption[] assumptions;
@@ -359,7 +365,7 @@ public class AssumptionsTest {
     }
 
     @NodeChild
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "truffle-assumption"})
     static class MultipleAssumptionArraysTest extends ValueNode {
 
         Assumption[] assumptions1;
@@ -508,6 +514,7 @@ public class AssumptionsTest {
     }
 
     @TypeSystemReference(ExampleTypes.class)
+    @SuppressWarnings({"unused", "truffle-assumption"})
     abstract static class AssumptionInvalidateTest4 extends Node {
 
         Assumption assumptions;
@@ -538,6 +545,7 @@ public class AssumptionsTest {
     }
 
     @NodeChild
+    @SuppressWarnings({"unused", "truffle-assumption"})
     static class AssumptionArraysAreCompilationFinal extends ValueNode {
 
         @Specialization(assumptions = "createAssumptions()")
@@ -597,7 +605,7 @@ public class AssumptionsTest {
 
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "truffle-assumption"})
     abstract static class AssumptionFieldNode extends Node {
 
         static final int SPECIALIZATIONS = 5;
@@ -678,7 +686,7 @@ public class AssumptionsTest {
 
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "truffle-assumption"})
     @GenerateUncached
     @Introspectable
     abstract static class CachedAssumptionNode extends Node {
@@ -746,15 +754,16 @@ public class AssumptionsTest {
     }
 
     @NodeChild
+    @SuppressWarnings("truffle-assumptions")
     static class ErrorIncompatibleReturnType extends ValueNode {
         @ExpectError("Incompatible return type int. Assumptions must be assignable to Assumption or Assumption[].")
-        @Specialization(assumptions = "3")
         static int do1(int value) {
             return value;
         }
     }
 
     @NodeChild
+    @SuppressWarnings({"unused", "truffle-assumption"})
     static class ErrorBoundDynamicValue extends ValueNode {
 
         @ExpectError("Assumption expressions must not bind dynamic parameter values.")
@@ -766,6 +775,53 @@ public class AssumptionsTest {
         Assumption createAssumption(int value) {
             return Truffle.getRuntime().createAssumption(String.valueOf(value));
         }
+    }
+
+    @ImportStatic(Assumption.class)
+    @SuppressWarnings("unused")
+    abstract static class AssumptionFallbackNode extends SlowPathListenerNode {
+
+        abstract boolean execute(Object arg);
+
+        @Specialization(guards = {"arg > 1", "arg == cachedArg"}, assumptions = "assumption", limit = "1")
+        public boolean s0(int arg,
+                        @Cached("arg") int cachedArg,
+                        @Cached("NEVER_VALID") Assumption assumption) {
+            return false;
+        }
+
+        @Fallback
+        public boolean fallback(Object arg) {
+            return true;
+        }
+    }
+
+    @Test
+    public void testAssumptionFallback() {
+        AssumptionFallbackNode node = AssumptionFallbackNodeGen.create();
+
+        node.execute(-1);
+        node.execute(0);
+        node.execute(1);
+        node.execute(2);
+        node.execute(3);
+
+        assertEquals(2, node.specializeCount);
+    }
+
+    @ImportStatic(Assumption.class)
+    @SuppressWarnings("unused")
+    abstract static class AssumptionNoGuardNode extends SlowPathListenerNode {
+
+        abstract boolean execute(Object arg);
+
+        @ExpectError("It is discouraged to use the assumptions property with a specialization that cannot have multiple specialization instances%")
+        @Specialization(assumptions = "assumption")
+        public boolean s0(Object arg,
+                        @Cached(value = "NEVER_VALID", neverDefault = true) Assumption assumption) {
+            return false;
+        }
+
     }
 
 }
