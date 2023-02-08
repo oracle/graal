@@ -44,8 +44,6 @@ import java.util.logging.Logger;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.SystemUtils;
-import org.graalvm.component.installer.SystemUtils.ARCH;
-import org.graalvm.component.installer.SystemUtils.OS;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.gds.GdsCommands;
 import org.graalvm.component.installer.gds.GraalChannelBase;
@@ -298,9 +296,9 @@ public class GDSChannel extends GraalChannelBase {
                     fb.error("OLDS_ErrorReadingRelease", ex, k, ex.getLocalizedMessage());
                     continue;
                 }
-                if (!OS.get().equals(OS.fromName(e.getOs()))) {
+                if (!localRegistry.getGraalCapabilities().get(CommonConstants.CAP_OS_NAME).equals(e.getOs())) {
                     LOG.log(Level.FINER, "Incorrect OS: {0}", k);
-                } else if (!ARCH.get().equals(ARCH.fromName(e.getArch()))) {
+                } else if (!localRegistry.getGraalCapabilities().get(CommonConstants.CAP_OS_ARCH).equals(e.getArch())) {
                     LOG.log(Level.FINER, "Incorrect Arch: {0}", k);
                 } else if (!localRegistry.getJavaVersion().equals(e.getJava())) {
                     LOG.log(Level.FINER, "Incorrect Java: {0}", k);
