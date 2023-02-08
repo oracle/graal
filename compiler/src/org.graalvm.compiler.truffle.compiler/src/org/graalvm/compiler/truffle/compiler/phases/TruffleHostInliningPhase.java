@@ -942,7 +942,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         if (call.unwind) {
             /*
-             * All successors lead to an unwind, or an unwind from a call.
+             * All successors lead to an unwind, or an unconditional unwind in a callee.
              */
             call.reason = "leads to unwind";
             return false;
@@ -1217,10 +1217,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
                 if (isInInterpreterFastPath(method)) {
                     /*
-                     * We force inline CompilerDirectives.inInterpreter() in
-                     * HostCompilerDirectives.inInterpreterFastPath(). By inlining the call here we
-                     * ensure that inInterpreter in the method body is not interpreted by the host
-                     * inlining phase, but is interpreted during runtime compilation.
+                     * By force inlining the call from
+                     * HostCompilerDirectives.inInterpreterFastPath() to
+                     * CompilerDirectives.inInterpreter() here we ensure that the call to
+                     * inInterpreter() is later skipped by the host inlining phase.
                      *
                      * Alternatively we could just return true in the host compiler directive
                      * method, but that would require us to introduce a new runtime compilation
