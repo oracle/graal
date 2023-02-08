@@ -44,6 +44,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Objects;
 
 import org.graalvm.polyglot.PolyglotException;
@@ -304,16 +305,16 @@ public final class TruffleStackTrace extends Exception {
             stackFrameLimit = -1;
         }
         // add the lazily captured stack frames above the manually queried ones
-        ArrayList<TracebackElement> elements = new ArrayList<>();
+        List<TracebackElement> elements = new ArrayList<>();
         TracebackElement currentElement = lazy.current;
         while (currentElement != null) {
             elements.add(currentElement);
             currentElement = currentElement.last;
         }
-        Collections.reverse(elements);
 
         List<TruffleStackTraceElement> frames = new ArrayList<>();
-        for (TracebackElement element : elements) {
+        for (ListIterator<TracebackElement> iterator = elements.listIterator(elements.size()); iterator.hasPrevious();) {
+            TracebackElement element = iterator.previous();
             if (element.root != null) {
                 frames.add(new TruffleStackTraceElement(topCallSite, element.root, element.frame));
                 topCallSite = null;
