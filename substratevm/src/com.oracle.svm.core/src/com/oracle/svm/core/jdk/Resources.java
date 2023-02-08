@@ -197,6 +197,13 @@ public final class Resources {
         }
     }
 
+    public static void registerNegativeQueryRuntime(String resourceName) {
+        var resources = singleton().resources;
+        synchronized (resources) {
+            addEntry(null, resourceName, NEGATIVE_QUERY, resources);
+        }
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerNegativeQuery(String resourceName) {
         registerNegativeQuery(null, resourceName);
