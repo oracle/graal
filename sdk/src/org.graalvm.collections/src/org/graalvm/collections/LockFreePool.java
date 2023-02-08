@@ -47,12 +47,14 @@ import java.util.concurrent.atomic.AtomicReference;
  * Concurrent lock-free pool data structure.
  * <p>
  * Supports two operations -- adding an element, and removing an element. The
- * {@link LockFreePool#add(Object)} operation adds the element into the pool. The
+ * {@link LockFreePool#add(Object)} operation adds an element into the pool. The
  * {@link LockFreePool#get()} operation returns one of the elements previously added to the pool.
- * The guarantee is that an element will only be returned by {@link LockFreePool#get()} as many
- * times as it was previously added to the pool by calling {@link LockFreePool#add(Object)}. If
- * there are no more elements to return, it will return {@code null}. Both operations are lock-free
- * and linearizable -- this data structure is intended for use by multiple threads.
+ * There is no guarantee about the order in which the elements are returned by
+ * {@link LockFreePool#get()}. The guarantee is that an element will only be returned by
+ * {@link LockFreePool#get()} as many times as it was previously added to the pool by calling
+ * {@link LockFreePool#add(Object)}. If there are no more elements to return, it will return
+ * {@code null}. Both operations are lock-free and linearizable -- this data structure is intended
+ * for use by multiple threads.
  *
  * The internal implementation is a simple Treiber stack.
  *
@@ -61,6 +63,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * @since 23.0
  */
 public class LockFreePool<T> {
+    /**
+     * The top-of-the-Treiber-stack pointer.
+     */
     private final AtomicReference<Node> head;
 
     public LockFreePool() {
@@ -116,8 +121,17 @@ public class LockFreePool<T> {
         }
     }
 
+    /**
+     * Internal wrapper node used to wrap the element and the {@code tail} pointer.
+     */
     private final class Node {
+        /**
+         * Element stored in this node.
+         */
         final T element;
+        /**
+         * Pointer to the tail of the linked list, or {@code null} if the end of the list.
+         */
         final Node tail;
 
         private Node(T element, Node tail) {

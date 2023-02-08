@@ -71,6 +71,10 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
         long[] result = stackTrace.buffer;
         LockFreePrefixTree.Node node = prefixTree.root();
         for (int i = stackTrace.num - 1; i >= 0; i--) {
+            if (i >= result.length) {
+                // Due to the RestrictHeapAccess annotation, we need to prevent potential exception allocations.
+                return;
+            }
             node = node.at(prefixTree().allocator(), result[i]);
             if (node == null) {
                 // The prefix tree had to be extended, but the allocation failed.

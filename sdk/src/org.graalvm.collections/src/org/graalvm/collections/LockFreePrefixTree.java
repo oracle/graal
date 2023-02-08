@@ -453,7 +453,7 @@ public class LockFreePrefixTree {
     }
 
     /**
-     * Exception that denotes that an allocation failed.
+     * Exception denoting that an allocation failed.
      *
      * @since 23.0
      */
@@ -570,24 +570,107 @@ public class LockFreePrefixTree {
      * @since 23.0
      */
     public static class ObjectPoolingAllocator extends Allocator {
+        /**
+         * A preallocated exception object, thrown when an invalid length is specified for the
+         * object to allocate.
+         */
         private static final FailedAllocationException UNSUPPORTED_SIZE_EXCEPTION = new FailedAllocationException("Only arrays that have power-of-two length can be allocated.");
+
+        /**
+         * Minimum sleep time of the housekeeping thread, in milliseconds.
+         */
         private static final int MIN_HOUSEKEEPING_PERIOD_MILLIS = 4;
+
+        /**
+         * The default sleep time of the housekeeping thread, in milliseconds.
+         */
         private static final int DEFAULT_HOUSEKEEPING_PERIOD_MILLIS = 72;
+
+        /**
+         * The number of different power-of-two lengths that can be requested when allocating an
+         * array. This number means that the largest array that can be allocated is 2^27.
+         */
         private static final int SIZE_CLASS_COUNT = 27;
+
+        /**
+         * The number of {@code Node} objects that will be preallocated when the node-pool becomes
+         * empty. The allocator may decide to preallocate more nodes, after repetitively having the
+         * pool drained.
+         */
         private static final int INITIAL_NODE_PREALLOCATION_COUNT = 4096;
+
+        /**
+         * The number of {@code LinearChildren} objects that will be preallocated within a certain
+         * size-class, after the respective pool becomes empty.
+         */
         private static final int INITIAL_LINEAR_CHILDREN_PREALLOCATION_COUNT = 4096;
+
+        /**
+         * The number of {@code HashChildren} objects that will be preallocated within a certain
+         * size-class, after the respective pool becomes empty.
+         */
         private static final int INITIAL_HASH_CHILDREN_PREALLOCATION_COUNT = 256;
+
+        /**
+         * The maximum number of {@code Node} objects that the allocator may preallocate.
+         */
         private static final int MAX_NODE_PREALLOCATION_COUNT = 1 << 22;
+
+        /**
+         * The maximum number of array objects that the allocator may preallocate in a specific size
+         * class.
+         */
         private static final int MAX_CHILDREN_PREALLOCATION_COUNT = 1 << 20;
+
+        /**
+         * The expected maximum size of a {@code HashChildren} array, in most use-cases. Nodes for
+         * larger size classes are preallocated more conservatively.
+         */
         private static final int EXPECTED_MAX_HASH_NODE_SIZE = 1024;
+
+        /**
+         * When set to {@code true}, this field will allow debugging the behavior of the pool.
+         */
         private static final boolean LOGGING = false;
 
+        /**
+         * The pool that contains the preallocated {@code Node} objects.
+         */
         private final LockFreePool<Node> nodePool;
+
+        /**
+         * An array of pools, one for each size class, where each pool contains preallocated
+         * {@code LinearChildren} objects.
+         */
         private final LockFreePool<Node.LinearChildren>[] linearChildrenPool;
+
+        /**
+         * An array of pools, one for each size class, where each pool contains preallocated
+         * {@code HashChildren} objects.
+         */
         private final LockFreePool<Node.HashChildren>[] hashChildrenPool;
+
+        /**
+         * The number of failed {@code Node}-allocation requests since the last housekeeping
+         * iteration.
+         */
         private final AtomicInteger missedNodePoolRequestCount;
+
+        /**
+         * The number of failed {@code LinearChildren}-allocation requests since the last
+         * housekeeping iteration, one for each size class.
+         */
         private final AtomicIntegerArray missedLinearChildrenRequestCounts;
+
+        /**
+         * The number of failed {@code HashChildren}-allocation requests since the last housekeeping
+         * iteration, one for each size class.
+         */
         private final AtomicIntegerArray missedHashChildrenRequestCounts;
+
+        /**
+         * The thread that periodically wakes up and refills the object pools.
+         */
         private final HousekeepingThread housekeepingThread;
 
         public ObjectPoolingAllocator() {
@@ -730,8 +813,8 @@ public class LockFreePrefixTree {
             content.append(System.lineSeparator());
 
             // Preallocation levels.
-            content.append("  node preallocation growth:      ").append(housekeepingThread.nodePreallocationGrowth).append(System.lineSeparator());
-            content.append("  linear ch. preallocation growth:").append(System.lineSeparator());
+            content.append("  node prealloc growth:           ").append(housekeepingThread.nodePreallocationGrowth).append(System.lineSeparator());
+            content.append("  linear children prealloc growth:").append(System.lineSeparator());
             content.append("    size class ");
             for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
                 content.append(String.format("%4d", sizeClass));
@@ -742,7 +825,7 @@ public class LockFreePrefixTree {
                 content.append(String.format("%4d", 31 - Integer.numberOfLeadingZeros(housekeepingThread.linearChildrenPreallocationGrowth[sizeClass])));
             }
             content.append(System.lineSeparator());
-            content.append("  hash ch. preallocation growth:  ").append(System.lineSeparator());
+            content.append("  hash children prealloc growth:  ").append(System.lineSeparator());
             content.append("    size class ");
             for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
                 content.append(String.format("%4d", sizeClass));
@@ -755,8 +838,8 @@ public class LockFreePrefixTree {
             content.append(System.lineSeparator());
 
             // Total preallocation counts.
-            content.append("  node preallocation total:       ").append(housekeepingThread.nodePreallocationTotal).append(System.lineSeparator());
-            content.append("  linear ch. preallocation total: ").append(System.lineSeparator());
+            content.append("  node prealloc total:            ").append(housekeepingThread.nodePreallocationTotal).append(System.lineSeparator());
+            content.append("  linear children prealloc total: ").append(System.lineSeparator());
             content.append("    size class ");
             for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
                 content.append(String.format("%8d", sizeClass));
@@ -767,7 +850,7 @@ public class LockFreePrefixTree {
                 content.append(String.format(" %7.1e", 1.0 * housekeepingThread.linearChildrenPreallocationTotal[sizeClass]));
             }
             content.append(System.lineSeparator());
-            content.append("  hash ch. preallocation total:   ").append(System.lineSeparator());
+            content.append("  hash children prealloc total:   ").append(System.lineSeparator());
             content.append("    size class ");
             for (int sizeClass = 0; sizeClass < SIZE_CLASS_COUNT; sizeClass++) {
                 content.append(String.format("%8d", sizeClass));
@@ -807,14 +890,54 @@ public class LockFreePrefixTree {
         }
 
         private class HousekeepingThread extends Thread {
+            /**
+             * Whether the thread is enabled. When {@code false}, the thread should terminate after
+             * the next housekeeping session.
+             */
             private final AtomicBoolean isEnabled;
+
+            /**
+             * The default amount of time between two housekeeping sessions.
+             */
             private final int defaultHousekeepingPeriodMillis;
+
+            /**
+             * The current amount of time between two housekeeping sessions. This time is decreased
+             * whenever an empty pool is found, and increased after a housekeeping session in which
+             * not empty pools were found.
+             */
             private int nextHousekeepingPeriodMillis;
+
+            /**
+             * The minimum number of {@code Node} objects to preallocate.
+             */
             private int nodePreallocationGrowth;
+
+            /**
+             * The minimum number of {@code LinearChildren} objects to preallocate, per size-class.
+             */
             private final int[] linearChildrenPreallocationGrowth;
+
+            /**
+             * The minimum number of {@code HashChildren} objects to preallocate, per size-class.
+             */
             private final int[] hashChildrenPreallocationGrowth;
+
+            /**
+             * Total number of preallocated {@code Node} objects. Used only for statistics dumping.
+             */
             private long nodePreallocationTotal;
+
+            /**
+             * Total number of preallocated {@code LinearChildren} objects, per size class. Used
+             * only for statistics dumping.
+             */
             private final long[] linearChildrenPreallocationTotal;
+
+            /**
+             * Total number of preallocated {@code HashChildren} objects, per size class. Used only
+             * for statistics dumping.
+             */
             private final long[] hashChildrenPreallocationTotal;
 
             HousekeepingThread(int defaultHousekeepingPeriodMillis) {
