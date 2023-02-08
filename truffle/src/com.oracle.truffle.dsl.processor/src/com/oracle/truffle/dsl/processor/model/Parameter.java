@@ -43,6 +43,9 @@ package com.oracle.truffle.dsl.processor.model;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+
 public final class Parameter {
 
     private final ParameterSpec specification;
@@ -95,6 +98,10 @@ public final class Parameter {
      */
     public boolean isDeclared() {
         return declared;
+    }
+
+    public boolean isBind() {
+        return ElementUtils.findAnnotationMirror(variableElement, ProcessorContext.types().Bind) != null;
     }
 
     public void setLocalName(String localName) {

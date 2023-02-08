@@ -485,6 +485,10 @@ public final class SpecializationData extends TemplateMethod {
                      * Directly bound variable that is not dynamic. The DSL ensures such reads are
                      * not side-effecting in the fast-path there. They are effectively final fields.
                      */
+                    Parameter p = findByVariable(var);
+                    if (p != null && p.isBind()) {
+                        sideEffect.set(true);
+                    }
                 } else {
                     if (!var.getModifiers().contains(Modifier.FINAL)) {
                         /*
