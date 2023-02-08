@@ -425,14 +425,13 @@ public class OptionProcessor extends AbstractProcessor {
         sandboxPolicyMethod.getModifiers().remove(ABSTRACT);
         sandboxPolicyMethod.renameArguments("optionName");
 
-        // TODO also test this code
         Map<String, List<OptionInfo>> groupedOptions = new LinkedHashMap<>();
         for (OptionInfo info : model.options) {
             groupedOptions.computeIfAbsent(info.sandboxPolicy, (s) -> new ArrayList<>()).add(info);
         }
 
         builder = sandboxPolicyMethod.createBuilder();
-        builder.startAssert().string("get(optionName) != null").end();
+        builder.startAssert().string("get(optionName) != null : ").doubleQuote("Unknown option ").string(" + optionName").end();
 
         String defaultSandboxPolicy = null;
         String maxEntry = null;
@@ -449,7 +448,7 @@ public class OptionProcessor extends AbstractProcessor {
                 }
             }
         }
-        assert defaultSandboxPolicy != null ^ maxEntry != null;
+        assert (defaultSandboxPolicy != null) != (maxEntry != null);
         groupedOptions.remove(defaultSandboxPolicy);
         groupedOptions.remove(maxEntry);
         elseIf = false;
