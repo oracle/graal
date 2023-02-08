@@ -815,11 +815,7 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        # GR-42738 --pgo-sampling does not work with LLVM
-        if self.is_llvm:
-            instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
-        else:
-            instrument_args = ['--pgo-instrument', '--pgo-sampling'] + ([] if i == 0 else pgo_args)
+        instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
             instrument_args += ['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}']
 
