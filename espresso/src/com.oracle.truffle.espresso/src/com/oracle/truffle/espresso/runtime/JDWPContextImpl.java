@@ -547,12 +547,24 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void stopThread(Object guestThread, Object guestThrowable) {
-        context.getThreadAccess().stop((StaticObject) guestThread, (StaticObject) guestThrowable);
+        Object previous = null;
+        try {
+            previous = controller.enterTruffleContext();
+            context.getThreadAccess().stop((StaticObject) guestThread, (StaticObject) guestThrowable);
+        } finally {
+            controller.leaveTruffleContext(previous);
+        }
     }
 
     @Override
     public void interruptThread(Object thread) {
-        context.interruptThread((StaticObject) thread);
+        Object previous = null;
+        try {
+            previous = controller.enterTruffleContext();
+            context.interruptThread((StaticObject) thread);
+        } finally {
+            controller.leaveTruffleContext(previous);
+        }
     }
 
     @Override
