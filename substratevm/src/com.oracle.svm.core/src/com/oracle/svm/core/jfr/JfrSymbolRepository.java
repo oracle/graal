@@ -161,8 +161,8 @@ public class JfrSymbolRepository implements JfrConstantPool {
 
     @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
     private int doWrite(JfrChunkWriter writer, boolean flush, JfrSymbolHashtable table) {
-        maybeLock(flush);// *** locking is needed so that other thread's concurrent additions don't
-                         // get cleared
+        maybeLock(flush); // *** locking is needed so that other thread's concurrent additions don't
+                          // get cleared
         try {
             if (table.getSize() == 0) {
                 return EMPTY;

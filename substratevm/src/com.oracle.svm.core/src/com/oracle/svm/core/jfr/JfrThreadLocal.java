@@ -142,21 +142,23 @@ public class JfrThreadLocal implements ThreadListener {
     public static void stopRecording(IsolateThread isolateThread, boolean flushBuffers) {
         /* Flush event buffers. From this point onwards, no further JFR events may be emitted. */
 
-        JfrBufferNode jbn = javaBufferNode.get(isolateThread);
-        JfrBufferNode nbn = nativeBufferNode.get(isolateThread);
+        if (flushBuffers) {
+            JfrBufferNode jbn = javaBufferNode.get(isolateThread);
+            JfrBufferNode nbn = nativeBufferNode.get(isolateThread);
 
-        if (jbn.isNonNull() && flushBuffers) {
-            JfrBuffer jb = jbn.getValue();
-            assert jb.isNonNull() && jbn.getAlive();
-            flush(jb, WordFactory.unsigned(0), 0);
-            jbn.setAlive(false);
+            if (jbn.isNonNull()) {
+                JfrBuffer jb = jbn.getValue();
+                assert jb.isNonNull() && jbn.getAlive();
+                flush(jb, WordFactory.unsigned(0), 0);
+                jbn.setAlive(false);
 
-        }
-        if (nbn.isNonNull() && flushBuffers) {
-            JfrBuffer nb = nbn.getValue();
-            assert nb.isNonNull() && nbn.getAlive();
-            flush(nb, WordFactory.unsigned(0), 0);
-            nbn.setAlive(false);
+            }
+            if (nbn.isNonNull()) {
+                JfrBuffer nb = nbn.getValue();
+                assert nb.isNonNull() && nbn.getAlive();
+                flush(nb, WordFactory.unsigned(0), 0);
+                nbn.setAlive(false);
+            }
         }
 
         /* Clear event-related thread-locals. */
@@ -261,32 +263,34 @@ public class JfrThreadLocal implements ThreadListener {
         }
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void acquireBufferWithRetry(JfrBuffer buffer) {
         while (!JfrBufferAccess.acquire(buffer)) {
 
         }
     }
+
     /**
-     * This method only copies the JFR buffer's unflushed data to the global buffers. This can be used outside a safepoint
-     * from the flushing thread while other threads continue writing events.*/
+     * This method only copies the JFR buffer's unflushed data to the global buffers. This can be
+     * used outside a safepoint from the flushing thread while other threads continue writing
+     * events.
+     */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static boolean flushNoReset(JfrBuffer threadLocalBuffer) {
-        // Try to get BUFFER with one attempt
-        if (!JfrBufferAccess.acquire(threadLocalBuffer)) {
-            return false;
-        }
-        UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
-        if (unflushedSize.aboveThan(0)) {
-            JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
-            // Top is increased in JfrGlobalMemory.write
-            if (globalMemory.write(threadLocalBuffer, unflushedSize, true)) {
-                JfrBufferAccess.release(threadLocalBuffer);
-                return true;
+        acquireBufferWithRetry(threadLocalBuffer);
+        try {
+            UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
+            if (unflushedSize.aboveThan(0)) {
+                JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
+                // Top is increased in JfrGlobalMemory.write
+                if (!globalMemory.write(threadLocalBuffer, unflushedSize, true)) {
+                    return false;
+                }
             }
+            return true;
+        } finally {
+            JfrBufferAccess.release(threadLocalBuffer);
         }
-        JfrBufferAccess.release(threadLocalBuffer);
-        return false;
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -296,31 +300,33 @@ public class JfrThreadLocal implements ThreadListener {
 
         // Needed for race between streaming flush and promotion
         acquireBufferWithRetry(threadLocalBuffer);
+        try {
 
-        UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
-        if (unflushedSize.aboveThan(0)) {
-            JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
-            if (!globalMemory.write(threadLocalBuffer, unflushedSize, false)) {
-                JfrBufferAccess.reinitialize(threadLocalBuffer);
-                writeDataLoss(threadLocalBuffer, unflushedSize);
-                JfrBufferAccess.release(threadLocalBuffer);
-                return WordFactory.nullPointer();
+            UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
+            if (unflushedSize.aboveThan(0)) {
+                JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
+                if (!globalMemory.write(threadLocalBuffer, unflushedSize, false)) {
+                    JfrBufferAccess.reinitialize(threadLocalBuffer);
+                    writeDataLoss(threadLocalBuffer, unflushedSize);
+                    return WordFactory.nullPointer();
+                }
             }
-        }
 
-        if (uncommitted.aboveThan(0)) {
-            /* Copy all uncommitted memory to the start of the thread local buffer. */
-            assert JfrBufferAccess.getDataStart(threadLocalBuffer).add(uncommitted).belowOrEqual(JfrBufferAccess.getDataEnd(threadLocalBuffer));
-            UnmanagedMemoryUtil.copy(threadLocalBuffer.getPos(), JfrBufferAccess.getDataStart(threadLocalBuffer), uncommitted);
-        }
-        JfrBufferAccess.reinitialize(threadLocalBuffer);
-        assert JfrBufferAccess.getUnflushedSize(threadLocalBuffer).equal(0);
-        if (threadLocalBuffer.getSize().aboveOrEqual(uncommitted.add(requested))) {
+            if (uncommitted.aboveThan(0)) {
+                /* Copy all uncommitted memory to the start of the thread local buffer. */
+                assert JfrBufferAccess.getDataStart(threadLocalBuffer).add(uncommitted).belowOrEqual(JfrBufferAccess.getDataEnd(threadLocalBuffer));
+                UnmanagedMemoryUtil.copy(threadLocalBuffer.getPos(), JfrBufferAccess.getDataStart(threadLocalBuffer), uncommitted);
+            }
+            JfrBufferAccess.reinitialize(threadLocalBuffer);
+            assert JfrBufferAccess.getUnflushedSize(threadLocalBuffer).equal(0);
+            if (threadLocalBuffer.getSize().aboveOrEqual(uncommitted.add(requested))) {
+                return threadLocalBuffer;
+            }
+
+            return WordFactory.nullPointer();
+        } finally {
             JfrBufferAccess.release(threadLocalBuffer);
-            return threadLocalBuffer;
         }
-        JfrBufferAccess.release(threadLocalBuffer);
-        return WordFactory.nullPointer();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")

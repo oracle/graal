@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.UnsignedUtils;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.thread.SpinLockUtils;
 
 public class JfrBufferNodeLinkedList {
@@ -93,7 +94,7 @@ public class JfrBufferNodeLinkedList {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static org.graalvm.word.UnsignedWord getHeaderSize() {
+    private static UnsignedWord getHeaderSize() {
         return UnsignedUtils.roundUp(SizeOf.unsigned(JfrBufferNode.class), WordFactory.unsigned(ConfigurationValues.getTarget().wordSize));
     }
 

@@ -134,6 +134,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         isFinal = false;
         generation = 1;
         newChunk = true;
+        metadata.setDirty();
         chunkStartNanos = JfrTicks.currentTimeNanos();
         chunkStartTicks = JfrTicks.elapsedTicks();
         filename = outputFile;
@@ -149,7 +150,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
-    public boolean write(JfrBuffer buffer, boolean reset) {
+    public boolean write(JfrBuffer buffer, boolean increaseTop) {
         assert JfrBufferAccess.isAcquired(buffer) || VMOperation.isInProgressAtSafepoint() || buffer.getBufferType() == JfrBufferType.C_HEAP;
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
@@ -157,7 +158,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
 
         boolean success = getFileSupport().write(fd, buffer.getTop(), unflushedSize);
-        if (reset) {
+        if (increaseTop) {
             JfrBufferAccess.increaseTop(buffer, unflushedSize);
         }
         if (!success) {
@@ -189,7 +190,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
         SignedWord constantPoolPosition = writeCheckpointEvent(false);
         writeMetadataEvent();
-        patchFileHeader(constantPoolPosition);
+        patchFileHeader(constantPoolPosition, false);
         getFileSupport().close(fd);
 
         filename = null;
@@ -235,10 +236,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().writeShort(fd, flags);
     }
 
-    public void patchFileHeader(SignedWord constantPoolPosition) {
-        patchFileHeader(constantPoolPosition, false);
-    }
-
     private void patchFileHeader(SignedWord constantPoolPosition, boolean flushpoint) {
         assert lock.isOwner();
         SignedWord currentPos = getFileSupport().position(fd);
@@ -253,14 +250,14 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().seek(fd, WordFactory.signed(FILE_STATE_OFFSET));
         if (flushpoint) {
             // chunk is not finished
-            getFileSupport().writeByte(fd, nextGeneration()); // there are 4 bytes at the end. The
-                                                              // first byte is the finished flag.
+            getFileSupport().writeByte(fd, nextGeneration());
         } else {
             getFileSupport().writeByte(fd, COMPLETE);
         }
         getFileSupport().writeByte(fd, (byte) 0);
         short flags = 0;
         flags += compressedInts ? 1 : 0;
+        // Chunks are marked final when the recording has stopped
         flags += isFinal ? 1 * 2 : 0;
 
         getFileSupport().writeShort(fd, flags);
@@ -345,10 +342,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
      */
     private int writeRepositories(boolean flush) {
         int count = 0;
-        count += com.oracle.svm.core.jfr.SubstrateJVM.getStackTraceRepo().write(this, flush);
-        count += com.oracle.svm.core.jfr.SubstrateJVM.getMethodRepo().write(this, flush);
-        count += com.oracle.svm.core.jfr.SubstrateJVM.getTypeRepository().write(this, flush);
-        count += com.oracle.svm.core.jfr.SubstrateJVM.getSymbolRepository().write(this, flush);
+        count += SubstrateJVM.getStackTraceRepo().write(this, flush);
+        count += SubstrateJVM.getMethodRepo().write(this, flush);
+        count += SubstrateJVM.getTypeRepository().write(this, flush);
+        count += SubstrateJVM.getSymbolRepository().write(this, flush);
         return count;
     }
 
@@ -364,7 +361,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private void writeMetadataEvent() {
         assert lock.isOwner();
         // always write metadata on a new chunk!
-        if (!metadata.isDirty() && !newChunk) {
+        if (!metadata.isDirty()) {
             return;
         }
         SignedWord start = beginEvent();
@@ -605,8 +602,11 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 JfrBuffer buffer = node.getValue();
                 VMError.guarantee(buffer.isNonNull(), "JFR buffer should exist if we have not already removed its respective node.");
 
-                /* I/O operation may be slow, so this flushes to the global buffers instead of writing to disk directly.
-                * This mitigates the risk of acquiring the TLBs for too long.*/
+                /*
+                 * I/O operation may be slow, so this flushes to the global buffers instead of
+                 * writing to disk directly. This mitigates the risk of acquiring the TLBs for too
+                 * long.
+                 */
                 if (!JfrThreadLocal.flushNoReset(buffer)) {
                     prev = node;
                     node = next;
@@ -617,7 +617,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                     linkedList.removeNode(node, prev);
                     // if removed current node, should not update prev.
                 } else {
-                    // Only notify java event writer if thread is still alive and we are at an epoch change.
+                    // Only notify java event writer if thread is still alive and we are at an epoch
+                    // change.
                     if (safepoint && java) {
                         JfrThreadLocal.notifyEventWriter(node.getThread());
                     }
