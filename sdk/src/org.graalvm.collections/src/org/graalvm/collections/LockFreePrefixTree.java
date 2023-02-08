@@ -245,7 +245,7 @@ public class LockFreePrefixTree {
 
         // Postcondition: if return value is null, then no subsequent mutations will be done on the
         // array object ( the children array is full)
-        private Node getOrAddLinear(Allocator allocator, long childKey, AtomicReferenceArray<Node> childrenArray) {
+        private static Node getOrAddLinear(Allocator allocator, long childKey, AtomicReferenceArray<Node> childrenArray) {
             for (int i = 0; i < childrenArray.length(); i++) {
                 Node child = read(childrenArray, i);
                 if (child == null) {
