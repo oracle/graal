@@ -170,7 +170,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     /**
      * Write all the in-memory data to the file.
      */
-    public void closeFile(JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
+    public void closeFile(JfrThreadRepository threadRepo) {
         assert lock.isOwner();
         /*
          * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
@@ -187,7 +187,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         if (threadRepo.isDirty(false)) {
             writeThreadCheckpointEvent(threadRepo, false);
         }
-        SignedWord constantPoolPosition = writeCheckpointEvent(repositories, false);
+        SignedWord constantPoolPosition = writeCheckpointEvent(false);
         writeMetadataEvent();
         patchFileHeader(constantPoolPosition);
         getFileSupport().close(fd);
@@ -197,14 +197,14 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         newChunk = false;
     }
 
-    public void flush(JfrConstantPool[] repositories, JfrThreadRepository threadRepo) {
+    public void flush(JfrThreadRepository threadRepo) {
         assert lock.isOwner();
         flushStorage();
 
         if (threadRepo.isDirty(true)) {
             writeThreadCheckpointEvent(threadRepo, true);
         }
-        SignedWord constantPoolPosition = writeCheckpointEvent(repositories, true);
+        SignedWord constantPoolPosition = writeCheckpointEvent(true);
         writeMetadataEvent();
 
         patchFileHeader(constantPoolPosition, true);
@@ -306,7 +306,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return start;
     }
 
-    private SignedWord writeCheckpointEvent(JfrConstantPool[] repositories, boolean flush) {
+    private SignedWord writeCheckpointEvent(boolean flush) {
         assert lock.isOwner();
         SignedWord start = beginEvent();
 
@@ -321,13 +321,12 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
         SignedWord poolCountPos = getFileSupport().position(fd);
         getFileSupport().writeInt(fd, 0); // We'll patch this later.
-        JfrConstantPool[] serializers = JfrSerializerSupport.get().getSerializers();
 
         int poolCount = 0;
         if (newChunk) {
-            poolCount = writeConstantPools(serializers, flush);
+            poolCount = writeSerializers(flush);
         }
-        poolCount += writeConstantPools(repositories, flush);
+        poolCount += writeRepositories(flush);
 
         SignedWord currentPos = getFileSupport().position(fd);
         getFileSupport().seek(fd, poolCountPos);
@@ -339,9 +338,23 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return start;
     }
 
-    private int writeConstantPools(JfrConstantPool[] constantPools, boolean flush) {
+    /**
+     * Repositories earlier in the write order may reference entries of repositories later in the
+     * write order. This ordering is required to prevent races during flushing without changing
+     * epoch.
+     */
+    private int writeRepositories(boolean flush) {
         int count = 0;
-        for (JfrConstantPool constantPool : constantPools) {
+        count += com.oracle.svm.core.jfr.SubstrateJVM.getStackTraceRepo().write(this, flush);
+        count += com.oracle.svm.core.jfr.SubstrateJVM.getMethodRepo().write(this, flush);
+        count += com.oracle.svm.core.jfr.SubstrateJVM.getTypeRepository().write(this, flush);
+        count += com.oracle.svm.core.jfr.SubstrateJVM.getSymbolRepository().write(this, flush);
+        return count;
+    }
+
+    private int writeSerializers(boolean flush) {
+        int count = 0;
+        for (JfrConstantPool constantPool : JfrSerializerSupport.get().getSerializers()) {
             int poolCount = constantPool.write(this, flush);
             count += poolCount;
         }

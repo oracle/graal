@@ -75,8 +75,6 @@ public class SubstrateJVM {
     private final JfrThreadRepository threadRepo;
     private final JfrStackTraceRepository stackTraceRepo;
     private final JfrMethodRepository methodRepo;
-    private final JfrConstantPool[] repositories;
-
     private final JfrThreadLocal threadLocal;
     private final JfrGlobalMemory globalMemory;
     private final SamplerBufferPool samplerBufferPool;
@@ -112,12 +110,6 @@ public class SubstrateJVM {
         typeRepo = new JfrTypeRepository();
         threadRepo = new JfrThreadRepository();
         methodRepo = new JfrMethodRepository();
-        /*
-         * The ordering in the array dictates the writing order of constant pools in the recording.
-         * Current rules: 1. methodRepo should be after stackTraceRepo; 2. typeRepo should be after
-         * methodRepo and stackTraceRepo; 3. symbolRepo should be on end.
-         */
-        repositories = new JfrConstantPool[]{stackTraceRepo, methodRepo, typeRepo, symbolRepo};
 
         threadLocal = new JfrThreadLocal();
         globalMemory = new JfrGlobalMemory();
@@ -354,7 +346,7 @@ public class SubstrateJVM {
             if (recording) {
                 boolean existingFile = chunkWriter.hasOpenFile();
                 if (existingFile) {
-                    chunkWriter.closeFile(repositories, threadRepo);
+                    chunkWriter.closeFile(threadRepo);
                 }
                 if (file != null) {
                     chunkWriter.openFile(file);
@@ -515,7 +507,7 @@ public class SubstrateJVM {
             if (recording) {
                 boolean existingFile = chunkWriter.hasOpenFile();
                 if (existingFile) {
-                    chunkWriter.flush(repositories, threadRepo);
+                    chunkWriter.flush(threadRepo);
                 }
             }
         } finally {
