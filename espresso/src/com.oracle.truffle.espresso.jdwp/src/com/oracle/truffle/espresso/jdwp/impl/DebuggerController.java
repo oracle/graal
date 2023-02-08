@@ -350,13 +350,24 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
+    public Object[] getVisibleGuestThreads() {
+        Object[] allThreads = context.getAllGuestThreads();
+        ArrayList<Object> visibleThreads = new ArrayList<>(allThreads.length);
+        for (Object thread : allThreads) {
+            if (!instrument.isVMThread(context.asHostThread(thread))) {
+                visibleThreads.add(thread);
+            }
+        }
+        return visibleThreads.toArray(new Object[visibleThreads.size()]);
+    }
+
     public void resumeAll(boolean sessionClosed) {
         Object eventThread = null;
 
         // The order of which to resume threads is not specified, however when RESUME_ALL command is
         // sent while performing a stepping request, some debuggers (IntelliJ is a known case) will
         // expect all other threads but the current stepping thread to be resumed first.
-        for (Object thread : getContext().getAllGuestThreads()) {
+        for (Object thread : getVisibleGuestThreads()) {
             boolean resumed = false;
             SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
@@ -427,7 +438,7 @@ public final class DebuggerController implements ContextsListener {
             case SuspendStrategy.ALL:
                 // suspend all but the current thread
                 // at next execution point
-                for (Object thread : getContext().getAllGuestThreads()) {
+                for (Object thread : getVisibleGuestThreads()) {
                     if (context.asGuestThread(Thread.currentThread()) != thread) {
                         suspend(thread);
                     }
@@ -445,7 +456,7 @@ public final class DebuggerController implements ContextsListener {
     public void suspendAll() {
         fine(() -> "Called suspendAll");
 
-        for (Object thread : getContext().getAllGuestThreads()) {
+        for (Object thread : getVisibleGuestThreads()) {
             suspend(thread);
         }
     }
@@ -575,7 +586,7 @@ public final class DebuggerController implements ContextsListener {
                     @Override
                     public void run() {
                         // suspend other threads
-                        for (Object activeThread : getContext().getAllGuestThreads()) {
+                        for (Object activeThread : getVisibleGuestThreads()) {
                             if (activeThread != thread) {
                                 fine(() -> "Request thread suspend for other thread: " + getThreadName(activeThread));
                                 DebuggerController.this.suspend(activeThread);
@@ -655,7 +666,7 @@ public final class DebuggerController implements ContextsListener {
             byte suspensionStrategy = job.getSuspensionStrategy();
 
             if (suspensionStrategy == SuspendStrategy.ALL) {
-                Object[] allThreads = context.getAllGuestThreads();
+                Object[] allThreads = getVisibleGuestThreads();
                 // resume all threads during invocation of method to avoid potential deadlocks
                 for (Object activeThread : allThreads) {
                     if (activeThread != thread) {
@@ -784,12 +795,12 @@ public final class DebuggerController implements ContextsListener {
 
         @Override
         public void onSuspend(SuspendedEvent event) {
-            if (context.isSystemThread()) {
+            Thread hostThread = Thread.currentThread();
+            if (instrument.isVMThread(hostThread)) {
                 // always allow VM threads to run guest code without
                 // the risk of being suspended
                 return;
             }
-            Thread hostThread = Thread.currentThread();
             Object currentThread = getContext().asGuestThread(hostThread);
             fine(() -> "Suspended at: " + event.getSourceSection() + " in thread: " + getThreadName(currentThread));
 

@@ -388,17 +388,6 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public Object[] getChildrenThreads(Object threadGroup) {
-        ArrayList<Object> result = new ArrayList<>();
-        for (Object thread : getAllGuestThreads()) {
-            if (getThreadGroup(thread) == threadGroup) {
-                result.add(thread);
-            }
-        }
-        return result.toArray();
-    }
-
-    @Override
     public int getArrayLength(Object array) {
         StaticObject staticObject = (StaticObject) array;
         EspressoLanguage language = context.getLanguage();
@@ -700,11 +689,6 @@ public final class JDWPContextImpl implements JDWPContext {
             currentNode = currentNode.getParent();
         }
         return null;
-    }
-
-    @Override
-    public boolean isSystemThread() {
-        return classRedefinition.isRedefineThread();
     }
 
     public long getBCI(Node rawNode, Frame frame) {
