@@ -72,4 +72,9 @@ public class SubstrateNoBarrierSet implements BarrierSet {
     public BarrierType guessStoreBarrierType(ValueNode object, ValueNode value) {
         return BarrierType.NONE;
     }
+
+    @Override
+    public boolean mayNeedPreWriteBarrier(JavaKind storageKind) {
+        return false;
+    }
 }
