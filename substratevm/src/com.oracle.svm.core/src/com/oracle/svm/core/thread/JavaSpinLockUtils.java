@@ -35,26 +35,42 @@ import jdk.internal.misc.Unsafe;
  * of uninterruptible code. We don't do a transition to native in case of a lock contention, so it
  * is crucial that really all code within the critical section is uninterruptible.
  */
-public class SpinLockUtils {
+public class JavaSpinLockUtils {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
-    @Uninterruptible(reason = "This method does not do a transition, so the whole critical section must be uninterruptible.", callerMustBe = true)
-    public static void lockNoTransition(Object obj, long intFieldOffset) {
-        if (UNSAFE.compareAndSetInt(obj, intFieldOffset, 0, 1)) {
-            return; // fast-path
+    private static final int LOCKED = 1;
+    private static final int UNLOCKED = 0;
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void initialize(Object obj, long intFieldOffset) {
+        UNSAFE.putIntVolatile(obj, intFieldOffset, UNLOCKED);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isLocked(Object obj, long intFieldOffset) {
+        return UNSAFE.getIntOpaque(obj, intFieldOffset) != UNLOCKED;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean tryLock(Object obj, long intFieldOffset) {
+        return UNSAFE.compareAndSetInt(obj, intFieldOffset, UNLOCKED, LOCKED);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean tryLock(Object obj, long intFieldOffset, long retries) {
+        if (tryLock(obj, intFieldOffset)) {
+            return true; // fast-path
         }
 
-        int ctr = 0;
-        int yields = 0;
-        while (true) {
-            while (UNSAFE.getIntOpaque(obj, intFieldOffset) != 0) {
-                ctr++;
+        long yields = 0;
+        for (long i = 0; i < retries; i++) {
+            if (isLocked(obj, intFieldOffset)) {
                 /*
                  * It would be better to take into account if we are on a single-processor machine
                  * where spinning is futile. However, determining that is expensive in itself. We do
                  * use fewer successive spins than the equivalent HotSpot code does (0xFFF).
                  */
-                if ((ctr & 0xff) == 0 && VMThreads.singleton().supportsNativeYieldAndSleep()) {
+                if ((i & 0xffL) == 0 && VMThreads.singleton().supportsNativeYieldAndSleep()) {
                     if (yields > 5) {
                         VMThreads.singleton().nativeSleep(1);
                     } else {
@@ -64,12 +80,18 @@ public class SpinLockUtils {
                 } else {
                     PauseNode.pause();
                 }
-            }
-
-            if (UNSAFE.compareAndSetInt(obj, intFieldOffset, 0, 1)) {
-                return;
+            } else if (tryLock(obj, intFieldOffset)) {
+                return true;
             }
         }
+
+        return false;
+    }
+
+    @Uninterruptible(reason = "This method does not do a transition, so the whole critical section must be uninterruptible.", callerMustBe = true)
+    public static void lockNoTransition(Object obj, long intFieldOffset) {
+        boolean result = tryLock(obj, intFieldOffset, Long.MAX_VALUE);
+        assert result;
     }
 
     @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
@@ -83,6 +105,6 @@ public class SpinLockUtils {
          * a #loadstore|#storestore "release" MEMBAR before the ST of 0 into the lock-word which
          * releases the lock.
          */
-        UNSAFE.putIntVolatile(obj, intFieldOffset, 0);
+        UNSAFE.putIntVolatile(obj, intFieldOffset, UNLOCKED);
     }
 }
