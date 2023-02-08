@@ -108,7 +108,11 @@ public abstract class AbstractProfileTest {
 
     protected static final InlinableField[] createInlinedFields(int stateFields, int byteFields, int intFields, int longFields, int refFields) {
         List<InlinableField> fields = new ArrayList<>();
+        addInlinedFields(fields, stateFields, byteFields, intFields, longFields, refFields);
+        return fields.toArray(new InlinableField[fields.size()]);
+    }
 
+    protected static void addInlinedFields(List<InlinableField> fields, int stateFields, int byteFields, int intFields, int longFields, int refFields) {
         for (int i = 0; i < stateFields; i++) {
             fields.add(StateField.create(InlinedStateNode.lookup(), "state" + i));
         }
@@ -128,8 +132,6 @@ public abstract class AbstractProfileTest {
         for (int i = 0; i < refFields; i++) {
             fields.add(ReferenceField.create(InlinedStateNode.lookup(), "ref" + i, Object.class));
         }
-
-        return fields.toArray(new InlinableField[fields.size()]);
     }
 
     protected InlinedStateNode state;
