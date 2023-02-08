@@ -439,6 +439,19 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         verifyRecommendationWarnings(node, recommendInline);
 
+        if (TruffleProcessorOptions.emitWarningForSlowPathGuards(processingEnv)) {
+            for (SpecializationData specialization : node.getReachableSpecializations()) {
+                for (GuardExpression guard : specialization.getGuards()) {
+                    if (!specialization.isDynamicParameterBound(guard.getExpression(), true) && !guard.isWeakReferenceGuard() && !FlatNodeGenFactory.guardNeedsNodeStateBit(specialization, guard)) {
+                        if (!specialization.isGuardTrivialTrueInFastPath(guard.getExpression())) {
+                            guard.addWarning("This guard was only executed in slow-path, but is now executed in the fast-path.");
+                        }
+                    }
+
+                }
+            }
+        }
+
         return node;
     }
 
