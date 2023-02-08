@@ -35,7 +35,6 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -242,23 +241,6 @@ public class InliningLog {
         }
 
         /**
-         * Returns the bci of the provided invoke. Prefers the bci from a node source position over
-         * {@link Invokable#bci()}.
-         *
-         * @param invokable an invokable
-         * @return the bci of the invokable
-         */
-        private static int invokeBCI(Invokable invokable) {
-            if (invokable instanceof Node) {
-                NodeSourcePosition position = ((Node) invokable).getNodeSourcePosition();
-                if (position != null) {
-                    return position.getBCI();
-                }
-            }
-            return invokable.bci();
-        }
-
-        /**
          * Creates and adds a child call-tree node (callsite) to this node.
          *
          * @param childInvoke the invoke which represents the child callsite to be added
@@ -267,7 +249,7 @@ public class InliningLog {
          * @return the created callsite for the child
          */
         private Callsite addChild(Invokable childInvoke, Callsite childOriginalCallsite) {
-            return new Callsite(this, childOriginalCallsite, childInvoke, childInvoke.getTargetMethod(), invokeBCI(childInvoke), invokeIsIndirect(childInvoke), targetTypeProfile(childInvoke));
+            return new Callsite(this, childOriginalCallsite, childInvoke, childInvoke.getTargetMethod(), childInvoke.bci(), invokeIsIndirect(childInvoke), targetTypeProfile(childInvoke));
         }
 
         public String positionString() {
