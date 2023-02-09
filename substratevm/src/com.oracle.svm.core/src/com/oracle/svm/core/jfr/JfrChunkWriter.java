@@ -72,6 +72,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     public static final long METADATA_TYPE_ID = 0;
     public static final long CONSTANT_POOL_TYPE_ID = 1;
     private static final byte COMPLETE = 0;
+    private static final short FLAG_COMPRESSED_INTS = 0b01;
+    private static final short FLAG_CHUNK_FINAL = 0b10;
     private final JfrGlobalMemory globalMemory;
     private final VMMutex lock;
     private final boolean compressedInts;
@@ -226,14 +228,10 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().writeLong(fd, 0L); // durationNanos
         getFileSupport().writeLong(fd, chunkStartTicks);
         getFileSupport().writeLong(fd, JfrTicks.getTicksFrequency());
-        getFileSupport().writeByte(fd, nextGeneration()); // in hotspot a 1 byte generation is
-                                                          // written
-        getFileSupport().writeByte(fd, (byte) 0); // in hotspot 1 byte PAD padding
-        short flags = 0;
-        flags += compressedInts ? 1 : 0;
-        flags += isFinal ? 1 * 2 : 0;
-
-        getFileSupport().writeShort(fd, flags);
+        assert getFileSupport().position(fd).equal(FILE_STATE_OFFSET);
+        getFileSupport().writeByte(fd, nextGeneration()); // A 1 byte generation is written
+        getFileSupport().writeByte(fd, (byte) 0); // A 1 byte padding
+        getFileSupport().writeShort(fd, computeHeaderFlags());
     }
 
     private void patchFileHeader(SignedWord constantPoolPosition, boolean flushpoint) {
@@ -244,6 +242,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().seek(fd, WordFactory.signed(CHUNK_SIZE_OFFSET));
         getFileSupport().writeLong(fd, chunkSize);
         getFileSupport().writeLong(fd, constantPoolPosition.rawValue());
+        assert metadata.getMetadataPosition().greaterThan(0);
         getFileSupport().writeLong(fd, metadata.getMetadataPosition().rawValue());
         getFileSupport().writeLong(fd, chunkStartNanos);
         getFileSupport().writeLong(fd, durationNanos);
@@ -255,20 +254,26 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             getFileSupport().writeByte(fd, COMPLETE);
         }
         getFileSupport().writeByte(fd, (byte) 0);
-        short flags = 0;
-        flags += compressedInts ? 1 : 0;
-        // Chunks are marked final when the recording has stopped
-        flags += isFinal ? 1 * 2 : 0;
-
-        getFileSupport().writeShort(fd, flags);
+        getFileSupport().writeShort(fd, computeHeaderFlags());
 
         // need to move pointer back to correct position for next write
         getFileSupport().seek(fd, currentPos);
     }
 
+    private short computeHeaderFlags() {
+        short flags = 0;
+        if (compressedInts) {
+            flags |= FLAG_COMPRESSED_INTS;
+        }
+        if (isFinal) {
+            flags |= FLAG_CHUNK_FINAL;
+        }
+        return flags;
+    }
+
     private byte nextGeneration() {
         if (generation == Byte.MAX_VALUE) {
-            // similar to Hotspot, restart counter if required.
+            // Restart counter if required.
             generation = 1;
             return Byte.MAX_VALUE;
         }

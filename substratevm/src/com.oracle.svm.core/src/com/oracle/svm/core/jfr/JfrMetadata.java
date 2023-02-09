@@ -26,6 +26,7 @@
 package com.oracle.svm.core.jfr;
 
 import org.graalvm.word.SignedWord;
+import org.graalvm.word.WordFactory;
 public class JfrMetadata {
     private volatile long currentMetadataId;
     private volatile byte[] metadataDescriptor;
@@ -35,6 +36,7 @@ public class JfrMetadata {
         metadataDescriptor = bytes;
         currentMetadataId = 0;
         isDirty = false;
+        metadataPosition = WordFactory.signed(-1);
     }
 
     public void setDescriptor(byte[] bytes) {

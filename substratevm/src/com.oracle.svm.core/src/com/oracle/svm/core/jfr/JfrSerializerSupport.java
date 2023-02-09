@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 
 /**
  * Support for registering and querying {@link JfrConstantPool}s that serialize data.
+ * Serializers are only written upon a new chunk.
  */
 public class JfrSerializerSupport {
     private JfrConstantPool[] serializers;

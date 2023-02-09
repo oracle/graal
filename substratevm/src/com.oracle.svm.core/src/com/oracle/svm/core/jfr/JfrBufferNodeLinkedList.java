@@ -34,12 +34,9 @@ import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import com.oracle.svm.core.config.ConfigurationValues;
 import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.UnsignedUtils;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.thread.SpinLockUtils;
 
 public class JfrBufferNodeLinkedList {
@@ -94,22 +91,21 @@ public class JfrBufferNodeLinkedList {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static UnsignedWord getHeaderSize() {
-        return UnsignedUtils.roundUp(SizeOf.unsigned(JfrBufferNode.class), WordFactory.unsigned(ConfigurationValues.getTarget().wordSize));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static JfrBufferNode createNode(JfrBuffer buffer, IsolateThread thread) {
-        JfrBufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(getHeaderSize());
-        node.setAlive(true);
-        node.setValue(buffer);
-        node.setThread(thread);
-        node.setNext(WordFactory.nullPointer());
+    private static JfrBufferNode createNode(JfrBuffer buffer, IsolateThread thread) {
+        if (buffer.isNull()) {
+            return WordFactory.nullPointer();
+        }
+        JfrBufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(JfrBufferNode.class));
+        if (node.isNonNull()) {
+            node.setAlive(true);
+            node.setValue(buffer);
+            node.setThread(thread);
+            node.setNext(WordFactory.nullPointer());
+        }
         return node;
     }
 
     public JfrBufferNodeLinkedList() {
-        head = WordFactory.nullPointer();
     }
 
     public void teardown() {
@@ -141,16 +137,15 @@ public class JfrBufferNodeLinkedList {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    public void addNode(JfrBufferNode node) {
+    public JfrBufferNode addNode(JfrBuffer buffer, IsolateThread thread) {
+        JfrBufferNode newNode = createNode(buffer, thread);
         acquireList();
         try {
+            // Old head could be null
             JfrBufferNode oldHead = head;
-            if (oldHead.isNull()) {
-                node.setNext(WordFactory.nullPointer());
-                setHead(node);
-            }
-            node.setNext(oldHead);
-            setHead(node);
+            newNode.setNext(oldHead);
+            setHead(newNode);
+            return newNode;
         } finally {
             releaseList();
         }

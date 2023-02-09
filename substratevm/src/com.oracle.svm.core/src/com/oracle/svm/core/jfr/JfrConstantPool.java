@@ -47,8 +47,9 @@ public interface JfrConstantPool {
     int NON_EMPTY = 1;
 
     /**
-     * Persists the data of the previous epoch. May only be called at a safepoint, after the epoch
-     * changed, or during flush.
+     * Persists the data of the previous/current epoch.
+     * 
+     * @param flush Determines whether the current or previous epoch is used.
      */
     int write(JfrChunkWriter writer, boolean flush);
 }
