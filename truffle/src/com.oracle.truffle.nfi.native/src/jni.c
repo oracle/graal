@@ -157,8 +157,10 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "FP80", &ffi_type_longdouble);
 #endif
 
-#if defined(__aarch64__) && !defined(__MACH__)
-    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "FP128", &ffi_type_longdouble);
+#if defined(__aarch64__)
+    #if !defined(__APPLE__)
+        cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "FP128", &ffi_type_longdouble);
+    #endif
 #endif
 
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "STRING", &ffi_type_pointer);
