@@ -1196,7 +1196,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                                     if (!state.isVirtual()) {
                                         break;
                                     }
-                                    setPhiInput(phi, i2, state.getEntry(i));
+                                    ValueNode entry = state.getEntry(i);
+                                    setPhiInput(phi, i2, entry);
                                 }
                             }
                         }

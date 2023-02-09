@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ public final class VirtualFrameGetTagNode extends VirtualFrameAccessorNode imple
     private static final int STATIC_TAG = NewFrameNode.FrameSlotKindStaticTag;
 
     public VirtualFrameGetTagNode(Receiver frame, int frameSlotIndex) {
-        super(TYPE, StampFactory.forKind(JavaKind.Byte), frame, frameSlotIndex, 0, VirtualFrameAccessType.Indexed);
+        super(TYPE, StampFactory.forKind(JavaKind.Byte), frame, frameSlotIndex, 0, VirtualFrameAccessType.Indexed, VirtualFrameAccessFlags.BENIGN);
     }
 
     @Override

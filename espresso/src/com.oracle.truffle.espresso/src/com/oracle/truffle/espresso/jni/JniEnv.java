@@ -40,6 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -106,6 +107,7 @@ public final class JniEnv extends NativeEnv {
     private static final int MAX_JNI_LOCAL_CAPACITY = 1 << 16;
 
     private final JNIHandles handles;
+    @CompilationFinal private JniVersion jniVersion;
 
     private @Pointer TruffleObject jniEnvPtr;
 
@@ -535,7 +537,7 @@ public final class JniEnv extends NativeEnv {
                 Klass klass = clazz.getMirrorKlass(getMeta());
                 klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
-                method = klass.lookupMethod(methodName, methodSignature, klass);
+                method = klass.lookupMethod(methodName, methodSignature);
             }
         }
         if (method == null || method.isStatic()) {
@@ -2491,11 +2493,10 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     @NoSafepoint
     public int GetVersion() {
-        if (getJavaVersion().java8OrEarlier()) {
-            return JniVersion.JNI_VERSION_ESPRESSO_8.version();
-        } else {
-            return JniVersion.JNI_VERSION_ESPRESSO_11.version();
+        if (jniVersion == null) {
+            jniVersion = JniVersion.getJniVersion(getJavaVersion());
         }
+        return jniVersion.version();
     }
 
     /**

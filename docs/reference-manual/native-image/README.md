@@ -93,8 +93,7 @@ There are two installation options:
 
 You can use Visual Studio 2017 version 15.9 or later.
 
-The `native-image` builder will only work when it is run from the **x64 Native Tools Command Prompt**.
-The command for initiating an x64 Native Tools command prompt varies according to whether you only have the Visual Studio Build Tools installed or if you have the full Visual Studio 2019 installed. For more information, see [Using GraalVM and Native Image on Windows 10](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311). -->
+For more information, see [Using GraalVM and Native Image on Windows 10](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311). -->
 
 ## Build a Native Executable
 

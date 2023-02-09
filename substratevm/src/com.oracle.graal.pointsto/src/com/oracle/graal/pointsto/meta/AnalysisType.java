@@ -108,6 +108,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
+    private final String qualifiedName;
+    private final String unqualifiedName;
 
     @SuppressWarnings("unused") private volatile Object isInHeap;
     @SuppressWarnings("unused") private volatile Object isAllocated;
@@ -178,7 +180,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         Reachable;
     }
 
-    private final AnalysisFuture<Void> initializationTask;
+    private final AnalysisFuture<Void> onTypeReachableTask;
     /**
      * Additional information that is only available for types that are marked as reachable.
      */
@@ -210,6 +212,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
         this.wrapped = javaType;
+        qualifiedName = wrapped.toJavaName(true);
+        unqualifiedName = wrapped.toJavaName(false);
+
         isArray = wrapped.isArray();
         isJavaLangObject = wrapped.isJavaLangObject();
         this.storageKind = storageKind;
@@ -293,7 +298,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         }
 
         /* The registration task initializes the type. */
-        this.initializationTask = new AnalysisFuture<>(() -> universe.initializeType(this), null);
+        this.onTypeReachableTask = new AnalysisFuture<>(() -> universe.onTypeReachable(this), null);
         this.typeData = new AnalysisFuture<>(() -> {
             AnalysisError.guarantee(universe.getHeapScanner() != null, "Heap scanner is not available.");
             return universe.getHeapScanner().computeTypeData(this);
@@ -572,7 +577,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
              */
             registerAsAllocated("All array types are marked as instantiated eagerly.");
         }
-        ensureInitialized();
+        ensureOnTypeReachableTaskDone();
     }
 
     public void registerSubtypeReachabilityNotification(SubtypeReachableNotification notification) {
@@ -673,27 +678,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return this.typeData.ensureDone();
     }
 
-    public void ensureInitialized() {
+    public void ensureOnTypeReachableTaskDone() {
         /* Run the registration and wait for it to complete, if necessary. */
-        initializationTask.ensureDone();
-    }
-
-    /**
-     * Called when the {@link AnalysisType} initialization task is processed. This doesn't mean that
-     * the underlying {@link Class} is actually initialized, i.e., it may be initialized at run
-     * time.
-     */
-    public void onInitialized() {
-        if (isInitialized()) {
-            /*
-             * This type is initialized at build time, so the class initializer, if any, cannot be
-             * reachable at run time. Notify the reachability callbacks for the class initializer.
-             */
-            AnalysisMethod clinit = this.getClassInitializer();
-            if (clinit != null) {
-                clinit.notifyReachabilityCallbacks(universe, new ArrayList<>());
-            }
-        }
+        onTypeReachableTask.ensureDone();
     }
 
     public boolean getReachabilityListenerNotified() {
@@ -861,6 +848,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public final String getName() {
         return wrapped.getName();
+    }
+
+    @Override
+    public String toJavaName() {
+        return qualifiedName;
+    }
+
+    @Override
+    public String toJavaName(boolean qualified) {
+        return qualified ? qualifiedName : unqualifiedName;
     }
 
     @Override
@@ -1163,7 +1160,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public String toString() {
-        return "AnalysisType<" + toJavaName(true) + ", allocated: " + isAllocated + ", inHeap: " + isInHeap + ", reachable: " + isReachable + ">";
+        return "AnalysisType<" + unqualifiedName + " -> " + wrapped.toString() + ", allocated: " + (isAllocated != null) +
+                        ", inHeap: " + (isInHeap != null) + ", reachable: " + (isReachable != null) + ">";
     }
 
     @Override

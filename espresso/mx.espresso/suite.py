@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.14.13",
+    "mxversion": "6.15.0",
     "name": "espresso",
     "version" : "23.0.0",
     "release" : False,
@@ -109,7 +109,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
             ],
-            "javaCompliance": "11+",
+            "javaCompliance" : "8+",
             "checkstyle": "com.oracle.truffle.espresso.polyglot",
             "checkstyleVersion": "8.8",
             "license": "UPL",
@@ -120,7 +120,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
             ],
-            "javaCompliance": "11+",
+            "javaCompliance" : "8+",
             "checkstyle": "com.oracle.truffle.espresso.polyglot",
             "license": "UPL",
         },
@@ -139,7 +139,7 @@ suite = {
                 "jdk.unsupported", # sun.misc.Signal
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
-            "javaCompliance": "11+",
+            "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
             "checkstyleVersion": "8.8",
         },
@@ -164,7 +164,7 @@ suite = {
             "requires": [
                 "java.compiler"
             ],
-            "javaCompliance": "11+",
+            "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -175,7 +175,7 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "sdk:LAUNCHER_COMMON",
             ],
-            "javaCompliance": "11+",
+            "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -189,7 +189,7 @@ suite = {
             "requires": [
                 "java.logging",
             ],
-            "javaCompliance": "11+",
+            "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -201,7 +201,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "javaCompliance": "11+",
+            "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso.jdwp",
         },
 
@@ -220,6 +220,12 @@ suite = {
                 "windows": {
                     "<others>": {
                         "cflags": ["-Wall"],
+                    },
+                },
+                "linux-musl": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror", "-Wno-error=cpp"],
+                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
                 },
                 "<others>": {
@@ -248,9 +254,14 @@ suite = {
                         "ldlibs" : ["-ldl"],
                     },
                 },
+                "linux-musl": {
+                    "<others>": {
+                        "ignore": "GNU Linux-only",
+                    },
+                },
                 "<others>": {
                     "<others>": {
-                        "ignore": "Linux-only",
+                        "ignore": "GNU Linux-only",
                     },
                 },
             },
@@ -283,6 +294,16 @@ suite = {
                 "linux": {
                     "<others>": {
                         "cflags": ["-Wall", "-Werror", "-g", "-std=c11", "-D_GNU_SOURCE"],
+                        "ldflags": [
+                            "-Wl,-soname,libjvm.so",
+                            "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
+                        ],
+                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
+                    },
+                },
+                "linux-musl": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror", "-Wno-error=cpp", "-g"],
                         "ldflags": [
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
@@ -401,6 +422,24 @@ suite = {
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
                                 "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
+                                "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
+                                # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
+                                "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                                "dependency:espresso:POLYGLOT/*",
+                                "dependency:espresso:HOTSWAP/*",
+                            ],
+                        },
+                    },
+                },
+                "linux-musl": {
+                    "<others>": {
+                        "layout": {
+                            "./": [
+                                "file:mx.espresso/reflectconfig.json",
+                                "file:mx.espresso/native-image.properties",
+                            ],
+                            "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
+                            "lib/": [
                                 "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
                                 # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",

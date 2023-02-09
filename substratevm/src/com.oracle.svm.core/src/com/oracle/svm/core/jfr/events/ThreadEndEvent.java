@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr.events;
 
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -33,20 +32,19 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 
 public class ThreadEndEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void emit(IsolateThread isolateThread) {
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ThreadEnd)) {
+    public static void emit(Thread thread) {
+        if (JfrEvent.ThreadEnd.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadEnd);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putThread(data, isolateThread);
+            JfrNativeEventWriter.putThread(data, thread);
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }

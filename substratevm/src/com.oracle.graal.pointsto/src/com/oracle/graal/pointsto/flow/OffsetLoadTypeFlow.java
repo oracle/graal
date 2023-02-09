@@ -152,18 +152,22 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
         }
 
         @Override
-        public final AbstractUnsafeLoadTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            AbstractUnsafeLoadTypeFlow copy = makeCopy(bb, methodFlows);
-            // Register the unsafe load. It will be force-updated when new unsafe fields are
-            // registered. Only the clones are registered since the original flows are not updated.
-            bb.registerUnsafeLoad(copy);
-            return copy;
+        public void initFlow(PointsToAnalysis bb) {
+            assert !bb.analysisPolicy().isContextSensitiveAnalysis() || this.isClone();
+            /*
+             * Register the unsafe load. It will be force-updated when new unsafe fields are
+             * registered.
+             */
+            bb.registerUnsafeLoad(this);
+            forceUpdate(bb);
         }
 
-        protected abstract AbstractUnsafeLoadTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
-
         @Override
-        public void initFlow(PointsToAnalysis bb) {
+        public boolean needsInitialization() {
+            return true;
+        }
+
+        public void forceUpdate(PointsToAnalysis bb) {
             /*
              * Unsafe load type flow models unsafe reads from both instance and static fields. From
              * an analysis stand point for static fields the base doesn't matter. An unsafe load can
@@ -186,7 +190,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
         }
 
         @Override
-        public UnsafeLoadTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
+        public AbstractUnsafeLoadTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new UnsafeLoadTypeFlow(bb, methodFlows, this);
         }
 
@@ -244,7 +248,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
         }
 
         @Override
-        public UnsafePartitionLoadTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
+        public AbstractUnsafeLoadTypeFlow copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
             return new UnsafePartitionLoadTypeFlow(bb, methodFlows, this);
         }
 

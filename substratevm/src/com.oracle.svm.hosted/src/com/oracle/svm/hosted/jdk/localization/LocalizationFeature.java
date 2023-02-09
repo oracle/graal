@@ -85,7 +85,6 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -136,7 +135,7 @@ public class LocalizationFeature implements InternalFeature {
 
     protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
-    private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? new ForkJoinPool(NativeImageOptions.NumberOfThreads.getValue()) : null;
+    private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? ForkJoinPool.commonPool() : null;
 
     /**
      * The Locale that the native image is built for.
@@ -160,7 +159,7 @@ public class LocalizationFeature implements InternalFeature {
 
     public static class Options {
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResourceBundles = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResourceBundles = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Make all hosted charsets available at run time")//
         public static final HostedOptionKey<Boolean> AddAllCharsets = new HostedOptionKey<>(false);
@@ -173,7 +172,7 @@ public class LocalizationFeature implements InternalFeature {
         public static final HostedOptionKey<String> DefaultCharset = new HostedOptionKey<>(Charset.defaultCharset().name());
 
         @Option(help = "Comma separated list of locales to be included into the image. The default locale is included in the list automatically if not present.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeLocales = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeLocales = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Make all hosted locales available at run time.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
@@ -185,7 +184,7 @@ public class LocalizationFeature implements InternalFeature {
         public static final HostedOptionKey<Boolean> LocalizationSubstituteLoadLookup = new HostedOptionKey<>(true);
 
         @Option(help = "Regular expressions matching which bundles should be compressed.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LocalizationCompressBundles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LocalizationCompressBundles = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Compress the bundles in parallel.", type = OptionType.Expert)//
         public static final HostedOptionKey<Boolean> LocalizationCompressInParallel = new HostedOptionKey<>(true);
@@ -363,13 +362,6 @@ public class LocalizationFeature implements InternalFeature {
         }
         if (localeCache != null) {
             access.rescanField(localeCache, localeObjectCacheMapField);
-        }
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        if (compressionPool != null) {
-            compressionPool.shutdown();
         }
     }
 

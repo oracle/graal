@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -171,6 +171,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> run = StaticSymbols.putName("run");
         // Thread and System
         public static final Symbol<Name> exit = StaticSymbols.putName("exit");
+        // Thread
+        public static final Symbol<Name> getThreadGroup = StaticSymbols.putName("getThreadGroup");
         // Object and arrays
         public static final Symbol<Name> clone = StaticSymbols.putName("clone");
         public static final Symbol<Name> toString = StaticSymbols.putName("toString");
@@ -241,11 +243,13 @@ public final class Symbol<T> extends ByteSequence {
 
         // j.l.Throwable
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");
+        public static final Symbol<Name> stackTrace = StaticSymbols.putName("stackTrace");
         public static final Symbol<Name> cause = StaticSymbols.putName("cause");
         public static final Symbol<Name> depth = StaticSymbols.putName("depth");
         public static final Symbol<Name> fillInStackTrace = StaticSymbols.putName("fillInStackTrace");
         public static final Symbol<Name> fillInStackTrace0 = StaticSymbols.putName("fillInStackTrace0");
         public static final Symbol<Name> getMessage = StaticSymbols.putName("getMessage");
+        public static final Symbol<Name> getCause = StaticSymbols.putName("getCause");
         public static final Symbol<Name> detailMessage = StaticSymbols.putName("detailMessage");
         public static final Symbol<Name> printStackTrace = StaticSymbols.putName("printStackTrace");
 
@@ -257,6 +261,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getStackTrace = StaticSymbols.putName("getStackTrace");
         public static final Symbol<Name> group = StaticSymbols.putName("group");
         public static final Symbol<Name> holder = StaticSymbols.putName("holder");
+        public static final Symbol<Name> VTHREAD_GROUP = StaticSymbols.putName("VTHREAD_GROUP");
         public static final Symbol<Name> inheritedAccessControlContext = StaticSymbols.putName("inheritedAccessControlContext");
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
         public static final Symbol<Name> parkBlocker = StaticSymbols.putName("parkBlocker");
@@ -342,7 +347,6 @@ public final class Symbol<T> extends ByteSequence {
         // MemberName
         public static final Symbol<Name> flags = StaticSymbols.putName("flags");
         public static final Symbol<Name> form = StaticSymbols.putName("form");
-        public static final Symbol<Name> getSignature = StaticSymbols.putName("getSignature");
 
         // MethodHandle
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
@@ -368,8 +372,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
 
         // MethodType
-        public static final Symbol<Name> fromMethodDescriptorString = StaticSymbols.putName("fromMethodDescriptorString");
-        public static final Symbol<Name> toMethodDescriptorString = StaticSymbols.putName("toMethodDescriptorString");
+        public static final Symbol<Name> ptypes = StaticSymbols.putName("ptypes");
+        public static final Symbol<Name> rtype = StaticSymbols.putName("rtype");
 
         // j.l.ref.Finalizer
         public static final Symbol<Name> finalize = StaticSymbols.putName("finalize");
@@ -696,12 +700,17 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> java_lang_Thread = StaticSymbols.putType("Ljava/lang/Thread;");
         public static final Symbol<Type> java_lang_Thread_FieldHolder = StaticSymbols.putType("Ljava/lang/Thread$FieldHolder;");
+        public static final Symbol<Type> java_lang_Thread_Constants = StaticSymbols.putType("Ljava/lang/Thread$Constants;");
         public static final Symbol<Type> java_lang_ThreadGroup = StaticSymbols.putType("Ljava/lang/ThreadGroup;");
+        public static final Symbol<Type> java_lang_BaseVirtualThread = StaticSymbols.putType("Ljava/lang/BaseVirtualThread;");
+
         public static final Symbol<Type> java_lang_Runnable = StaticSymbols.putType("Ljava/lang/Runnable;");
 
         public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType("Lsun/misc/VM;");
         public static final Symbol<Type> jdk_internal_misc_VM = StaticSymbols.putType("Ljdk/internal/misc/VM;");
         public static final Symbol<Type> java_lang_Thread$State = StaticSymbols.putType("Ljava/lang/Thread$State;");
+        public static final Symbol<Type> jdk_internal_vm_ContinuationScope = StaticSymbols.putType("Ljdk/internal/vm/ContinuationScope;");
+        public static final Symbol<Type> jdk_internal_vm_Continuation = StaticSymbols.putType("Ljdk/internal/vm/Continuation;");
 
         public static final Symbol<Type> sun_misc_Signal = StaticSymbols.putType("Lsun/misc/Signal;");
         public static final Symbol<Type> jdk_internal_misc_Signal = StaticSymbols.putType("Ljdk/internal/misc/Signal;");
@@ -815,7 +824,7 @@ public final class Symbol<T> extends ByteSequence {
         // Stack walking API
         public static final Symbol<Type> java_lang_StackWalker = StaticSymbols.putType("Ljava/lang/StackWalker;");
         public static final Symbol<Type> java_lang_StackStreamFactory = StaticSymbols.putType("Ljava/lang/StackStreamFactory;");
-        public static final Symbol<Type> java_lang_AbstractStackWalker = StaticSymbols.putType("Ljava/lang/StackStreamFactory$AbstractStackWalker;");
+        public static final Symbol<Type> java_lang_StackStreamFactory_AbstractStackWalker = StaticSymbols.putType("Ljava/lang/StackStreamFactory$AbstractStackWalker;");
         public static final Symbol<Type> java_lang_StackFrameInfo = StaticSymbols.putType("Ljava/lang/StackFrameInfo;");
 
         // Special threads
@@ -929,6 +938,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_String_array = StaticSymbols.putSignature(Type._void, Type.java_lang_String_array);
         public static final Symbol<Signature> Class_String_boolean_ClassLoader = StaticSymbols.putSignature(Type.java_lang_Class, Type.java_lang_String, Type._boolean, Type.java_lang_ClassLoader);
 
+        public static final Symbol<Signature> Throwable = StaticSymbols.putSignature(Type.java_lang_Throwable);
         public static final Symbol<Signature> _void_Throwable = StaticSymbols.putSignature(Type._void, Type.java_lang_Throwable);
         public static final Symbol<Signature> StackTraceElement_array = StaticSymbols.putSignature(Type.java_lang_StackTraceElement_array);
         public static final Symbol<Signature> _void_String_Throwable = StaticSymbols.putSignature(Type._void, Type.java_lang_String, Type.java_lang_Throwable);
@@ -952,6 +962,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _boolean_Object = StaticSymbols.putSignature(Type._boolean, Type.java_lang_Object);
         public static final Symbol<Signature> Object_long_int_int_int_int = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> Object_long_int_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int,
+                        Type.java_lang_Object_array);
+        public static final Symbol<Signature> Object_long_int_ContinuationScope_Continuation_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int,
+                        Type.jdk_internal_vm_ContinuationScope, Type.jdk_internal_vm_Continuation, Type._int, Type._int,
                         Type.java_lang_Object_array);
         public static final Symbol<Signature> _byte_array_String_Class_array_int = StaticSymbols.putSignature(Type._byte_array, Type.java_lang_String, Type.java_lang_Class_array, Type._int);
         public static final Symbol<Signature> _byte_array_ClassLoader_String_List_int = StaticSymbols.putSignature(Type._byte_array, Type.java_lang_ClassLoader, Type.java_lang_String,
@@ -1035,6 +1048,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Thread$State_int = StaticSymbols.putSignature(Type.java_lang_Thread$State, Type._int);
         public static final Symbol<Signature> _void_ThreadGroup_String = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_String);
         public static final Symbol<Signature> _void_ThreadGroup_Runnable = StaticSymbols.putSignature(Type._void, Type.java_lang_ThreadGroup, Type.java_lang_Runnable);
+        public static final Symbol<Signature> ThreadGroup = StaticSymbols.putSignature(Type.java_lang_ThreadGroup);
         public static final Symbol<Signature> _void_Thread = StaticSymbols.putSignature(Type._void, Type.java_lang_Thread);
 
         public static final Symbol<Signature> Reference = StaticSymbols.putSignature(Type.java_lang_ref_Reference);

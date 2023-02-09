@@ -274,9 +274,9 @@ def _find_unit_tests(cp, pkgs=None):
 
 def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter, cp, truffle_cp, boot_cp, vm_args, debug_port):
     tests = _find_unit_tests(cp, pkgs=['com.oracle.truffle.tck.tests'])
-    if not _has_explicit_assertion_option(vm_args):
+    if mode.name == 'default' and not _has_explicit_assertion_option(vm_args):
         vm_args.append('-ea')
-    if not _has_explicit_system_assertion_option(vm_args):
+    if mode.name == 'default' and not _has_explicit_system_assertion_option(vm_args):
         vm_args.append('-esa')
     vm_args.extend(mode.vm_args)
     if language_filter:

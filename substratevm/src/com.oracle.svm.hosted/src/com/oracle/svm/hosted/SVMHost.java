@@ -163,6 +163,7 @@ public class SVMHost extends HostVM {
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
     private final Set<AnalysisField> finalFieldsInitializedOutsideOfConstructor = ConcurrentHashMap.newKeySet();
+    private final MultiMethodAnalysisPolicy multiMethodAnalysisPolicy;
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
                     UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
@@ -173,6 +174,13 @@ public class SVMHost extends HostVM {
         this.automaticSubstitutions = automaticSubstitutions;
         this.platform = platform;
         this.linkAtBuildTimeSupport = LinkAtBuildTimeSupport.singleton();
+        if (ImageSingletons.contains(MultiMethodAnalysisPolicy.class)) {
+            multiMethodAnalysisPolicy = ImageSingletons.lookup(MultiMethodAnalysisPolicy.class);
+        } else {
+            /* Install the default so no other policy can be installed. */
+            ImageSingletons.add(HostVM.MultiMethodAnalysisPolicy.class, DEFAULT_MULTIMETHOD_ANALYSIS_POLICY);
+            multiMethodAnalysisPolicy = DEFAULT_MULTIMETHOD_ANALYSIS_POLICY;
+        }
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
@@ -262,7 +270,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public void initializeType(AnalysisType analysisType) {
+    public void onTypeReachable(AnalysisType analysisType) {
         if (!analysisType.isReachable()) {
             throw VMError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + analysisType);
         }
@@ -743,14 +751,34 @@ public class SVMHost extends HostVM {
     @Override
     public boolean platformSupported(AnnotatedElement element) {
         if (element instanceof ResolvedJavaType) {
-            Package p = OriginalClassProvider.getJavaClass((ResolvedJavaType) element).getPackage();
+            ResolvedJavaType javaType = (ResolvedJavaType) element;
+            Package p = OriginalClassProvider.getJavaClass(javaType).getPackage();
             if (p != null && !platformSupported(p)) {
+                return false;
+            }
+            ResolvedJavaType enclosingType;
+            try {
+                enclosingType = javaType.getEnclosingType();
+            } catch (LinkageError e) {
+                enclosingType = null;
+            }
+            if (enclosingType != null && !platformSupported(enclosingType)) {
                 return false;
             }
         }
         if (element instanceof Class) {
-            Package p = ((Class<?>) element).getPackage();
+            Class<?> clazz = (Class<?>) element;
+            Package p = clazz.getPackage();
             if (p != null && !platformSupported(p)) {
+                return false;
+            }
+            Class<?> enclosingClass;
+            try {
+                enclosingClass = clazz.getEnclosingClass();
+            } catch (LinkageError e) {
+                enclosingClass = null;
+            }
+            if (enclosingClass != null && !platformSupported(enclosingClass)) {
                 return false;
             }
         }
@@ -847,11 +875,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public MultiMethodAnalysisPolicy getMultiMethodAnalysisPolicy() {
-        if (ImageSingletons.contains(MultiMethodAnalysisPolicy.class)) {
-            return ImageSingletons.lookup(MultiMethodAnalysisPolicy.class);
-        } else {
-            return super.getMultiMethodAnalysisPolicy();
-        }
+        return multiMethodAnalysisPolicy;
     }
 
     @Override

@@ -732,10 +732,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         assert !sealed;
         DynamicHub hub = (DynamicHub) object;
         Class<?> javaClass = hub.getHostedJavaClass();
-        if (SubstitutionReflectivityFilter.shouldExclude(javaClass, metaAccess, universe)) {
-            throw UserError.abort("Found forbidden %s in the Native Image heap. The class was added with the following reason: %s", javaClass, reason);
-        }
-        if (heapDynamicHubs.add(hub)) {
+        if (heapDynamicHubs.add(hub) && !SubstitutionReflectivityFilter.shouldExclude(javaClass, metaAccess, universe)) {
             registerTypesForClass(metaAccess.lookupJavaType(javaClass), javaClass);
         }
     }
@@ -749,11 +746,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public void registerHeapReflectionField(Field reflectField, ScanReason reason) {
         assert !sealed;
-        if (SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
-            throw UserError.abort("Found forbidden field %s in the Native Image heap. The field was added with the following reason: %s", reflectField, reason);
-        }
         AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
-        if (heapFields.put(analysisField, reflectField) == null) {
+        if (heapFields.put(analysisField, reflectField) == null && !SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
             registerTypesForField(analysisField, reflectField);
             if (analysisField.getDeclaringClass().isAnnotation()) {
                 processAnnotationField(reflectField);
@@ -764,11 +758,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public void registerHeapReflectionExecutable(Executable reflectExecutable, ScanReason reason) {
         assert !sealed;
-        if (SubstitutionReflectivityFilter.shouldExclude(reflectExecutable, metaAccess, universe)) {
-            throw UserError.abort("Found forbidden method %s in the Native Image heap. The method was added with the following reason: %s", reflectExecutable, reason);
-        }
         AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
-        if (heapMethods.put(analysisMethod, reflectExecutable) == null) {
+        if (heapMethods.put(analysisMethod, reflectExecutable) == null && !SubstitutionReflectivityFilter.shouldExclude(reflectExecutable, metaAccess, universe)) {
             registerTypesForMethod(analysisMethod, reflectExecutable);
             if (reflectExecutable instanceof Method && reflectExecutable.getDeclaringClass().isAnnotation()) {
                 processAnnotationMethod(false, (Method) reflectExecutable);

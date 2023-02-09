@@ -230,8 +230,8 @@ public abstract class DebugInfoBase {
          */
         int oopTagsMask = debugInfoProvider.oopTagsMask();
 
-        /* Tag bits must be between 1 and 32 for us to emit as DW_OP_lit<n>. */
-        assert oopTagsMask > 0 && oopTagsMask < 32;
+        /* Tag bits must be between 0 and 32 for us to emit as DW_OP_lit<n>. */
+        assert oopTagsMask >= 0 && oopTagsMask < 32;
         /* Mask must be contiguous from bit 0. */
         assert ((oopTagsMask + 1) & oopTagsMask) == 0;
 

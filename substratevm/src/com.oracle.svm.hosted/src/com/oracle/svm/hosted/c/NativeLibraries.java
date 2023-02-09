@@ -329,9 +329,8 @@ public final class NativeLibraries {
 
             /* Probe for static JDK libraries in user-specified CLibraryPath directory */
             if (staticLibsDir == null) {
-                for (String clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
-                    Path path = Paths.get(clibPathComponent);
-                    Predicate<String> hasStaticLibraryCLibraryPath = s -> Files.isRegularFile(path.resolve(getStaticLibraryName(s)));
+                for (Path clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
+                    Predicate<String> hasStaticLibraryCLibraryPath = s -> Files.isRegularFile(clibPathComponent.resolve(getStaticLibraryName(s)));
                     if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibraryCLibraryPath)) {
                         return libraryPaths;
                     }
@@ -552,7 +551,7 @@ public final class NativeLibraries {
     }
 
     public void finish() {
-        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values());
+        libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).collect(Collectors.toList()));
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());

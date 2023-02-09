@@ -60,7 +60,4 @@ There are two installation options:
 - Install the Visual Studio Build Tools with the Windows 10 SDK
 - Install Visual Studio with the Windows 10 SDK
 
-The last prerequisite is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/).
-On Windows, the `native-image` tool only works when it is executed from the **x64 Native Tools Command Prompt**.
-
 Step-by-step instructions on installing Visual Studio Build Tools and Windows 10 SDK, and starting using Native Image can be found [here](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311).

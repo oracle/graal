@@ -167,7 +167,7 @@ public final class JSRegexParser implements RegexParser {
                     }
                     break;
                 case backReference:
-                    astBuilder.addBackReference((Token.BackReference) token);
+                    astBuilder.addBackReference((Token.BackReference) token, flags.isIgnoreCase());
                     break;
                 case quantifier:
                     if (astBuilder.getCurTerm() == null || !QUANTIFIER_PREV.contains(prevKind)) {

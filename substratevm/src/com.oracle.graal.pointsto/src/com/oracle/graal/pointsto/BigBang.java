@@ -113,7 +113,7 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     }
 
     @SuppressWarnings("unused")
-    default void onTypeInitialized(AnalysisType type) {
+    default void onTypeReachable(AnalysisType type) {
     }
 
     void postTask(CompletionExecutor.DebugContextRunnable task);

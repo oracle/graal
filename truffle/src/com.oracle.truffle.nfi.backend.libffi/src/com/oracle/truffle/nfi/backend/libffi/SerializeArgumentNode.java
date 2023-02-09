@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -287,7 +288,7 @@ abstract class SerializeArgumentNode extends Node {
     @ExportLibrary(InteropLibrary.class)
     static final class BufferSlice implements TruffleObject {
 
-        private final NativeArgumentBuffer buffer;
+        final NativeArgumentBuffer buffer;
         private final int startOffset;
         private final int limit;
 
@@ -323,44 +324,55 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @ExportMessage
-        void writeBufferByte(long offset, byte value) throws InvalidBufferOffsetException {
-            setPosition(offset, Byte.BYTES);
-            buffer.putInt8(value);
+        boolean accepts(@Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) {
+            return buffer.getClass() == bufferType;
         }
 
         @ExportMessage
-        void writeBufferShort(ByteOrder order, long offset, short value) throws InvalidBufferOffsetException {
+        void writeBufferByte(long offset, byte value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
+            setPosition(offset, Byte.BYTES);
+            CompilerDirectives.castExact(buffer, bufferType).putInt8(value);
+        }
+
+        @ExportMessage
+        void writeBufferShort(ByteOrder order, long offset, short value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
             assert order == ByteOrder.nativeOrder();
             setPosition(offset, Short.BYTES);
-            buffer.putInt16(value);
+            CompilerDirectives.castExact(buffer, bufferType).putInt16(value);
         }
 
         @ExportMessage
-        void writeBufferInt(ByteOrder order, long offset, int value) throws InvalidBufferOffsetException {
+        void writeBufferInt(ByteOrder order, long offset, int value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
             assert order == ByteOrder.nativeOrder();
             setPosition(offset, Integer.BYTES);
-            buffer.putInt32(value);
+            CompilerDirectives.castExact(buffer, bufferType).putInt32(value);
         }
 
         @ExportMessage
-        void writeBufferLong(ByteOrder order, long offset, long value) throws InvalidBufferOffsetException {
+        void writeBufferLong(ByteOrder order, long offset, long value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
             assert order == ByteOrder.nativeOrder();
             setPosition(offset, Long.BYTES);
-            buffer.putInt64(value);
+            CompilerDirectives.castExact(buffer, bufferType).putInt64(value);
         }
 
         @ExportMessage
-        void writeBufferFloat(ByteOrder order, long offset, float value) throws InvalidBufferOffsetException {
+        void writeBufferFloat(ByteOrder order, long offset, float value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
             assert order == ByteOrder.nativeOrder();
             setPosition(offset, Float.BYTES);
-            buffer.putFloat(value);
+            CompilerDirectives.castExact(buffer, bufferType).putFloat(value);
         }
 
         @ExportMessage
-        void writeBufferDouble(ByteOrder order, long offset, double value) throws InvalidBufferOffsetException {
+        void writeBufferDouble(ByteOrder order, long offset, double value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
             assert order == ByteOrder.nativeOrder();
             setPosition(offset, Double.BYTES);
-            buffer.putDouble(value);
+            CompilerDirectives.castExact(buffer, bufferType).putDouble(value);
         }
 
         @SuppressWarnings({"static-method", "unused"})

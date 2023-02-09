@@ -169,8 +169,8 @@ public final class ProjectHeaderFile {
         @Override
         public HeaderSearchResult resolveHeader(String projectName, String headerFile) {
             List<String> locations = new ArrayList<>();
-            for (String clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
-                Path clibPathHeaderFile = Paths.get(clibPathComponent).resolve(headerFile).normalize().toAbsolutePath();
+            for (Path clibPathComponent : SubstrateOptions.CLibraryPath.getValue().values()) {
+                Path clibPathHeaderFile = clibPathComponent.resolve(headerFile).normalize().toAbsolutePath();
                 locations.add(clibPathHeaderFile.toString());
                 if (Files.exists(clibPathHeaderFile)) {
                     return new HeaderSearchResult(Optional.of("\"" + clibPathHeaderFile + "\""), locations);

@@ -56,7 +56,6 @@ import mx_sdk_vm
 import mx_unittest
 import tck
 from mx_gate import Task
-from mx_jackpot import jackpot
 from mx_javamodules import as_java_module, get_java_module_info
 from mx_sigtest import sigtest
 from mx_unittest import unittest
@@ -242,8 +241,6 @@ def sl(args):
 
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
-    with Task('Jackpot check', tasks) as t:
-        if t: jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
     if jdk.javaCompliance < '9':
         with Task('Truffle Javadoc', tasks) as t:
             if t: javadoc([])

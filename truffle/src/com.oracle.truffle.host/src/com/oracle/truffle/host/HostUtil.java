@@ -41,6 +41,7 @@
 package com.oracle.truffle.host;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 
@@ -53,6 +54,7 @@ final class HostUtil {
         // no instances
     }
 
+    @InliningCutoff
     static Object convertLossLess(Object value, Class<?> requestedType, InteropLibrary interop) {
         try {
             if (interop.isNumber(value)) {
@@ -90,6 +92,7 @@ final class HostUtil {
         return null;
     }
 
+    @InliningCutoff
     static Object convertToNumber(Object value, InteropLibrary interop) {
         try {
             if (value instanceof Number) {
@@ -112,6 +115,7 @@ final class HostUtil {
         return null;
     }
 
+    @InliningCutoff
     static Object convertLossy(Object value, Class<?> targetType, InteropLibrary interop) {
         if (targetType == char.class || targetType == Character.class) {
             if (interop.fitsInInt(value)) {

@@ -68,7 +68,7 @@ public abstract class InvokeSpecial extends EspressoNode {
     }
 
     static Method.MethodVersion methodLookup(Method method, StaticObject receiver) {
-        if (method.isRemovedByRedefition()) {
+        if (method.isRemovedByRedefinition()) {
             /*
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.

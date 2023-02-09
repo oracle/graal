@@ -96,7 +96,7 @@ public abstract class InvokeStatic extends EspressoNode {
 
     static Method.MethodVersion methodLookup(Method staticMethod) {
         assert staticMethod.isStatic();
-        if (staticMethod.isRemovedByRedefition()) {
+        if (staticMethod.isRemovedByRedefinition()) {
             /*
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -379,23 +379,12 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public Object getThreadGroup(Object thread) {
-        return context.getMeta().java_lang_Thread_group.get((StaticObject) thread);
+        return context.getThreadAccess().getThreadGroup((StaticObject) thread);
     }
 
     @Override
     public Object[] getTopLevelThreadGroups() {
         return new Object[]{context.getMainThreadGroup()};
-    }
-
-    @Override
-    public Object[] getChildrenThreads(Object threadGroup) {
-        ArrayList<Object> result = new ArrayList<>();
-        for (Object thread : getAllGuestThreads()) {
-            if (getThreadGroup(thread) == threadGroup) {
-                result.add(thread);
-            }
-        }
-        return result.toArray();
     }
 
     @Override
@@ -547,12 +536,24 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void stopThread(Object guestThread, Object guestThrowable) {
-        context.getThreadAccess().stop((StaticObject) guestThread, (StaticObject) guestThrowable);
+        Object previous = null;
+        try {
+            previous = controller.enterTruffleContext();
+            context.getThreadAccess().stop((StaticObject) guestThread, (StaticObject) guestThrowable);
+        } finally {
+            controller.leaveTruffleContext(previous);
+        }
     }
 
     @Override
     public void interruptThread(Object thread) {
-        context.interruptThread((StaticObject) thread);
+        Object previous = null;
+        try {
+            previous = controller.enterTruffleContext();
+            context.interruptThread((StaticObject) thread);
+        } finally {
+            controller.leaveTruffleContext(previous);
+        }
     }
 
     @Override
@@ -690,11 +691,6 @@ public final class JDWPContextImpl implements JDWPContext {
         return null;
     }
 
-    @Override
-    public boolean isSystemThread() {
-        return classRedefinition.isRedefineThread();
-    }
-
     public long getBCI(Node rawNode, Frame frame) {
         BciProvider bciProvider = getBciProviderNode(rawNode);
         if (bciProvider == null) {
@@ -770,6 +766,7 @@ public final class JDWPContextImpl implements JDWPContext {
                     controller.warning(() -> "exception while re-running a class initializer!");
                 }
             });
+            assert !changedKlasses.contains(null);
             // run post redefinition plugins before ending the redefinition transaction
             try {
                 classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
@@ -826,9 +823,9 @@ public final class JDWPContextImpl implements JDWPContext {
         // update the JWDP IDs for renamed inner classes
         for (ChangePacket changePacket : changePackets) {
             ObjectKlass klass = changePacket.info.getKlass();
-            changedKlasses.add(klass);
-            if (changePacket.info.isRenamed()) {
-                if (klass != null) {
+            if (klass != null) {
+                changedKlasses.add(klass);
+                if (changePacket.info.isRenamed()) {
                     ids.updateId(klass);
                 }
             }

@@ -33,7 +33,7 @@
 
   bench_jdks:: [
     common["labsjdk-ee-17"],
-    common["labsjdk-ce-20"] # there is no EE JDK20 until JDK 20 GA
+    common["labsjdk-ee-20"]
   ],
 
   // Benchmarking building blocks

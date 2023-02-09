@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,16 +41,11 @@ public final class VirtualFrameSwapNode extends VirtualFrameAccessorNode impleme
     public static final NodeClass<VirtualFrameSwapNode> TYPE = NodeClass.create(VirtualFrameSwapNode.class);
 
     private final int targetSlotIndex;
-    private final byte accessFlags;
 
-    public VirtualFrameSwapNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type, byte accessFlags) {
-        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, -1, type);
+    public VirtualFrameSwapNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, -1, type, accessFlags);
         this.targetSlotIndex = targetSlotIndex;
-        this.accessFlags = accessFlags;
-    }
-
-    public VirtualFrameSwapNode(Receiver frame, int frameSlotIndex, int targetSlotIndex, VirtualFrameAccessType type) {
-        this(frame, frameSlotIndex, targetSlotIndex, type, VirtualFrameAccessFlags.NON_STATIC);
+        assert accessFlags.updatesFrame();
     }
 
     @Override
@@ -70,12 +65,12 @@ public final class VirtualFrameSwapNode extends VirtualFrameAccessorNode impleme
 
                     tool.setVirtualEntry(tagVirtual, targetSlotIndex, tool.getEntry(tagVirtual, frameSlotIndex));
                     tool.setVirtualEntry(tagVirtual, frameSlotIndex, tempTag);
-                    if ((accessFlags & VirtualFrameAccessFlags.OBJECT_FLAG) != 0) {
+                    if (accessFlags.isObject()) {
                         ValueNode tempValue = tool.getEntry(objectVirtual, targetSlotIndex);
                         tool.setVirtualEntry(objectVirtual, targetSlotIndex, tool.getEntry(objectVirtual, frameSlotIndex));
                         tool.setVirtualEntry(objectVirtual, frameSlotIndex, tempValue);
                     }
-                    if ((accessFlags & VirtualFrameAccessFlags.PRIMITIVE_FLAG) != 0) {
+                    if (accessFlags.isPrimitive()) {
                         ValueNode tempPrimitive = tool.getEntry(primitiveVirtual, targetSlotIndex);
                         tool.setVirtualEntry(primitiveVirtual, targetSlotIndex, tool.getEntry(primitiveVirtual, frameSlotIndex));
                         tool.setVirtualEntry(primitiveVirtual, frameSlotIndex, tempPrimitive);
@@ -95,5 +90,10 @@ public final class VirtualFrameSwapNode extends VirtualFrameAccessorNode impleme
 
     public int getTargetSlotIndex() {
         return targetSlotIndex;
+    }
+
+    @Override
+    public <State> void updateVerificationState(VirtualFrameVerificationStateUpdater<State> updater, State state) {
+        updater.swap(state, getFrameSlotIndex(), getTargetSlotIndex());
     }
 }

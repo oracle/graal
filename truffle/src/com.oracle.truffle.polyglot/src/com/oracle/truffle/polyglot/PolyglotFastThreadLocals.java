@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,6 +69,7 @@ final class PolyglotFastThreadLocals {
     private static final AbstractFastThreadLocal IMPL = EngineAccessor.RUNTIME.getContextThreadLocal();
     private static final ConcurrentHashMap<List<AbstractClassLoaderSupplier>, Map<String, LanguageCache>> CLASS_NAME_CACHE = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<Class<?>, CachedReferences> CONTEXT_REFERENCE_CACHE = new ConcurrentHashMap<>();
+    private static final Object NOT_ENTERED = new Object();
 
     private static final FinalIntMap LANGUAGE_INDEXES = new FinalIntMap();
     private static final int RESERVED_NULL = -1; // never set
@@ -89,7 +90,7 @@ final class PolyglotFastThreadLocals {
     static Object[] createFastThreadLocals(PolyglotThreadInfo thread) {
         PolyglotContextImpl context = thread.context;
         assert Thread.holdsLock(context);
-        Object[] data = new Object[LANGUAGE_START + (thread.context.engine.languages.length * LANGUAGE_ELEMENTS)];
+        Object[] data = createEmptyData(thread.context.engine);
         data[THREAD_INDEX] = thread;
         data[CONTEXT_INDEX] = thread.context;
         data[ENCAPSULATING_NODE_REFERENCE_INDEX] = EngineAccessor.NODES.createEncapsulatingNodeReference(thread.getThread());
@@ -102,13 +103,28 @@ final class PolyglotFastThreadLocals {
     }
 
     private static Object[] createFastThreadLocalsForLanguage(PolyglotLanguageInstance instance) {
-        Object[] data = new Object[LANGUAGE_START + (instance.language.engine.languages.length * LANGUAGE_ELEMENTS)];
+        Object[] data = createEmptyData(instance.language.engine);
         data[THREAD_INDEX] = null; // not available if only engine is entered
         data[CONTEXT_INDEX] = null; // not available if only engine is entered
 
         // we take the first language we find. should we fail maybe if there is more than one?
         data[getLanguageIndex(instance) + LANGUAGE_SPI_OFFSET] = instance.spi;
         return data;
+    }
+
+    static Object[] createFastThreadLocals(PolyglotEngineImpl engine, PolyglotLanguageInstance[] instances) {
+        Object[] data = createEmptyData(engine);
+        for (PolyglotLanguageInstance instance : instances) {
+            if (instance != null) {
+                int index = getLanguageIndex(instance);
+                data[LANGUAGE_SPI_OFFSET + index] = instance.spi;
+            }
+        }
+        return data;
+    }
+
+    private static Object[] createEmptyData(PolyglotEngineImpl engine) {
+        return new Object[LANGUAGE_START + (engine.languages.length * LANGUAGE_ELEMENTS)];
     }
 
     private static int getLanguageIndex(PolyglotLanguageInstance instance) {
@@ -148,6 +164,24 @@ final class PolyglotFastThreadLocals {
     public static void leaveLanguage(PolyglotLanguageInstance instance, Object prev) {
         assert IMPL.get()[getLanguageIndex(instance) + LANGUAGE_SPI_OFFSET] != null : "language not entered";
         IMPL.set((Object[]) prev);
+    }
+
+    public static Object enterLayer(RootNode root) {
+        PolyglotSharingLayer layer = (PolyglotSharingLayer) EngineAccessor.NODES.getSharingLayer(root);
+        PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(layer);
+        // Enter the layer unless a context with that layer is entered already
+        if (context == null || !context.layer.equals(layer)) {
+            Object[] prev = IMPL.get();
+            IMPL.set(layer.getFastThreadLocals());
+            return prev;
+        }
+        return NOT_ENTERED;
+    }
+
+    public static void leaveLayer(Object prev) {
+        if (prev != NOT_ENTERED) {
+            IMPL.set((Object[]) prev);
+        }
     }
 
     public static void cleanup(Object[] threadLocals) {

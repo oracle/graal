@@ -126,7 +126,7 @@ public interface ClassConstant extends PoolConstant {
                 Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();
-                    context.getLogger().log(Level.WARNING,
+                    context.getLogger().log(Level.FINE,
                                     "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
                     throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
                 }
@@ -202,7 +202,7 @@ public interface ClassConstant extends PoolConstant {
                 Meta meta = context.getMeta();
                 Klass klass = meta.resolveSymbolOrFail(context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
-                    context.getLogger().log(Level.WARNING,
+                    context.getLogger().log(Level.FINE,
                                     "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
                     throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
                 }

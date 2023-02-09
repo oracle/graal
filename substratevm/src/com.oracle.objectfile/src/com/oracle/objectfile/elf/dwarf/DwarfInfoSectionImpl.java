@@ -1688,8 +1688,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          *
          * The setting for option -H:+/-SpawnIsolates is determined by useHeapBase == true/false.
          *
-         * The setting for option -H:+/-UseCompressedReferences is determined by oopShiftCount ==
-         * zero/non-zero
          */
 
         boolean useHeapBase = dwarfSections.useHeapBase();
@@ -1761,10 +1759,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                     mask = dwarfSections.oopTagsMask();
                     exprSize += 3;
                 } else {
-                    /* We need two shifts to remove the bits. */
-                    rightShift = oopTagsShift;
+                    /* We need one or two shifts to remove the bits. */
+                    if (oopTagsShift != 0) {
+                        rightShift = oopTagsShift;
+                        exprSize += 2;
+                    }
                     leftShift = oopCompressShift;
-                    exprSize += 4;
+                    exprSize += 2;
                 }
             } else {
                 /* No flags to deal with, so we need either an uncompress or nothing. */

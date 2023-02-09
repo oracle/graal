@@ -378,6 +378,16 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public Object enterRootNodeVisit(RootNode root) {
+            return PolyglotFastThreadLocals.enterLayer(root);
+        }
+
+        @Override
+        public void leaveRootNodeVisit(RootNode root, Object prev) {
+            PolyglotFastThreadLocals.leaveLayer(prev);
+        }
+
+        @Override
         public TruffleContext getCurrentCreatorTruffleContext() {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
             return context != null ? context.creatorTruffleContext : null;

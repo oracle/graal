@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -413,46 +413,11 @@ public class LLVMVaListStorage implements TruffleObject {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnsupportedTypeException.create(arguments, "LLVMInteropType");
             }
-            LLVMInteropType type = (LLVMInteropType) arguments[0];
-            Type internalType;
-            if (type instanceof LLVMInteropType.Value) {
-                switch (((LLVMInteropType.Value) type).kind) {
-                    case DOUBLE:
-                        internalType = PrimitiveType.DOUBLE;
-                        break;
-                    case FLOAT:
-                        internalType = PrimitiveType.FLOAT;
-                        break;
-                    case I1:
-                        internalType = PrimitiveType.I1;
-                        break;
-                    case I16:
-                        internalType = PrimitiveType.I16;
-                        break;
-                    case I32:
-                        internalType = PrimitiveType.I32;
-                        break;
-                    case I64:
-                        internalType = PrimitiveType.I64;
-                        break;
-                    case I8:
-                        internalType = PrimitiveType.I8;
-                        break;
-                    case POINTER:
-                        // don't care about the pointee type
-                        internalType = new PointerType(PrimitiveType.I64);
-                        break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere("not implemented");
-                }
-            } else if (type instanceof LLVMInteropType.Structured) {
-                // don't care about the pointee type
-                internalType = new PointerType(PrimitiveType.I64);
-            } else {
-                throw CompilerDirectives.shouldNotReachHere("not implemented");
-            }
-            // only pointers?
-            Object result = vaListLib.shift(receiver, internalType, null);
+            return next(receiver, (LLVMInteropType) arguments[0], vaListLib, pointerEscapeNode);
+        }
+
+        public static Object next(Object receiver, LLVMInteropType type, LLVMVaListLibrary vaListLib, LLVMPointerDataEscapeNode pointerEscapeNode) {
+            Object result = vaListLib.shift(receiver, getInternalType(type), null);
 
             if (!(type instanceof LLVMInteropType.Structured)) {
                 return result;
@@ -465,6 +430,38 @@ public class LLVMVaListStorage implements TruffleObject {
             LLVMPointer ptrArg = LLVMPointer.cast(result);
 
             return pointerEscapeNode.executeWithType(ptrArg, (LLVMInteropType.Structured) type);
+        }
+
+        private static Type getInternalType(LLVMInteropType type) {
+            // only pointers?
+            if (type instanceof LLVMInteropType.Value) {
+                switch (((LLVMInteropType.Value) type).kind) {
+                    case DOUBLE:
+                        return PrimitiveType.DOUBLE;
+                    case FLOAT:
+                        return PrimitiveType.FLOAT;
+                    case I1:
+                        return PrimitiveType.I1;
+                    case I16:
+                        return PrimitiveType.I16;
+                    case I32:
+                        return PrimitiveType.I32;
+                    case I64:
+                        return PrimitiveType.I64;
+                    case I8:
+                        return PrimitiveType.I8;
+                    case POINTER:
+                        // don't care about the pointee type
+                        return new PointerType(PrimitiveType.I64);
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere("not implemented");
+                }
+            } else if (type instanceof LLVMInteropType.Structured) {
+                // don't care about the pointee type
+                return new PointerType(PrimitiveType.I64);
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("not implemented");
+            }
         }
 
         @Fallback
