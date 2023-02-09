@@ -89,7 +89,7 @@ public class NumericNFITest extends NFITest {
         }
         if (IS_AMD64 && !IS_WINDOWS) {
             ret.add(new Object[]{NativeSimpleType.FP80});
-        } else if (IS_AARCH64 && !IS_WINDOWS) {
+        } else if (IS_AARCH64 && !IS_WINDOWS && !IS_DARWIN) {
             ret.add(new Object[]{NativeSimpleType.FP128});
         }
         return ret;

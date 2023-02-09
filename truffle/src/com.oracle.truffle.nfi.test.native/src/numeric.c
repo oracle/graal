@@ -85,7 +85,5 @@ GEN_NUMERIC_TEST(FP80, long double)
 #endif
 
 #if defined(__aarch64__) && !defined(__MACH__) && !defined(__APPLE__)
-    #if !defined(__APPLE__)
-        GEN_NUMERIC_TEST(FP128, long double)
-    #endif
+GEN_NUMERIC_TEST(FP128, long double)
 #endif
