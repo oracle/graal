@@ -65,6 +65,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
@@ -82,8 +83,10 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -92,6 +95,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -133,7 +137,7 @@ public class HostExceptionTest {
 
     @Before
     public void before() {
-        context = Context.newBuilder().allowAllAccess(true).out(outStream).build();
+        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).out(outStream).build();
         if (TruffleTestAssumptions.isWeakEncapsulation()) {
             ProxyLanguage.setDelegate(new ProxyLanguage() {
                 @Override
@@ -687,7 +691,7 @@ public class HostExceptionTest {
     }
 
     @Test
-    public void testMixedHostAndGuestStackTrace() {
+    public void testMixedHostAndGuestStackTraceFromHostException() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = NoSuchElementException.class;
         String expectedMessage = "oh";
@@ -734,6 +738,71 @@ public class HostExceptionTest {
                         CATCHER);
         assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
         assertThat(polyglotException.getPolyglotStackTrace().iterator().next().getRootName(), containsString("newExceptionWithCause"));
+    }
+
+    @Test
+    public void testMixedHostAndGuestStackTraceFromGuestException() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        String expectedMessage = "oh";
+
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
+        Value runner = context.eval(ProxyLanguage.ID, RUNNER);
+        Value throwException = context.eval(ProxyLanguage.ID, THROW_EXCEPTION);
+        ProxyExecutable proxyRunner = HostExceptionTest::hostApply;
+        VarArgsFunction hostRunner = HostExceptionTest::hostApply;
+
+        hostExceptionVerifier = null;
+        customExceptionVerifier = (hostEx) -> {
+            assertEquals(List.of(expectedMessage,
+                            THROW_EXCEPTION,
+                            RUNNER,
+                            RUNNER,
+                            RUNNER,
+                            CATCHER),
+                            formatInteropExceptionStackTrace(hostEx, true));
+
+            Iterator<String> it = formatInteropExceptionStackTrace(hostEx, false).stream().filter(s -> !s.startsWith(Value.class.getName())).iterator();
+            List.of(equalTo(expectedMessage),
+                            equalTo(THROW_EXCEPTION),
+                            equalTo(RUNNER),
+                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
+                            equalTo(RUNNER),
+                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
+                            equalTo(RUNNER),
+                            equalTo(CATCHER)).forEach(matcher -> {
+                                assertThat(it.next(), matcher);
+                            });
+        };
+
+        Value result = catcher.execute(runner, hostRunner, runner, proxyRunner, runner, throwException, expectedMessage);
+        assertTrue(result.toString(), result.isException());
+        assertFalse(result.toString(), result.isHostObject());
+
+        PolyglotException polyglotException = result.as(PolyglotException.class);
+        assertEquals(expectedMessage, polyglotException.getMessage());
+        List<String> expectedStack = List.of(
+                        THROW_EXCEPTION,
+                        RUNNER,
+                        RUNNER,
+                        RUNNER,
+                        CATCHER);
+        assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
+
+        Iterator<PolyglotException.StackFrame> it = stream(polyglotException.getPolyglotStackTrace()).filter(s -> !s.getRootName().startsWith(Value.class.getName())).iterator();
+        List.of(
+                        equalTo(THROW_EXCEPTION),
+                        equalTo(RUNNER),
+                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
+                        equalTo(RUNNER),
+                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
+                        equalTo(RUNNER),
+                        equalTo(CATCHER)).forEach(matcher -> {
+                            PolyglotException.StackFrame element = it.next();
+                            assertThat(element.getRootName(), matcher);
+                            if (element.isGuestFrame()) {
+                                assertNotNull("Missing source location for stack trace element: " + element.getRootName(), element.getSourceLocation());
+                            }
+                        });
     }
 
     private static void assertHostException(Value result, Class<? extends Throwable> expectedException) {
@@ -998,13 +1067,63 @@ public class HostExceptionTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            TruffleObject exceptionSupplier = (TruffleObject) frame.getArguments()[0];
+            Object exceptionSupplier = frame.getArguments()[0];
             Object[] args = Arrays.copyOfRange(frame.getArguments(), 1, frame.getArguments().length);
             try {
-                TruffleObject exception = (TruffleObject) interop.execute(exceptionSupplier, args);
+                Object exception;
+                if (interop.isExecutable(exceptionSupplier)) {
+                    exception = interop.execute(exceptionSupplier, args);
+                } else if (interop.isString(exceptionSupplier)) {
+                    exception = new GuestException(interop.asString(exceptionSupplier), this);
+                } else {
+                    exception = new GuestException(null, this);
+                }
                 throw interop.throwException(exception);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+    }
+
+    @SuppressWarnings("serial")
+    @ExportLibrary(InteropLibrary.class)
+    static final class GuestException extends AbstractTruffleException {
+
+        GuestException(String message, Node location) {
+            super(message, location);
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isException() {
+            return true;
+        }
+
+        @ExportMessage
+        RuntimeException throwException() {
+            throw this;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        ExceptionType getExceptionType() {
+            return ExceptionType.RUNTIME_ERROR;
+        }
+
+        @ExportMessage
+        boolean hasSourceLocation() {
+            Node location = getLocation();
+            return location != null && location.getEncapsulatingSourceSection() != null;
+        }
+
+        @ExportMessage
+        SourceSection getSourceLocation() throws UnsupportedMessageException {
+            Node location = getLocation();
+            SourceSection section = location == null ? null : location.getEncapsulatingSourceSection();
+            if (section == null) {
+                throw UnsupportedMessageException.create();
+            } else {
+                return section;
             }
         }
     }
