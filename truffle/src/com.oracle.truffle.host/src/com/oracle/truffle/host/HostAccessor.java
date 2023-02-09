@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,6 +85,11 @@ final class HostAccessor extends Accessor {
                             (obj instanceof HostException) ||
                             (obj instanceof HostContext) ||
                             (obj instanceof HostProxy);
+        }
+
+        @Override
+        public boolean isHostException(Object obj) {
+            return obj instanceof HostException;
         }
 
         @Override

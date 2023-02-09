@@ -143,7 +143,7 @@ public final class TruffleStackTrace extends Exception {
         this.lazyFrames = lazyFrames;
     }
 
-    /*
+    /**
      * Called when an exception leaves the guest boundary and is passed to the host language. This
      * requires us to capture the host stack frames to build a polyglot stack trace. This can be
      * done lazily because if an exception stays inside a guest language (is thrown and caught in
@@ -231,11 +231,14 @@ public final class TruffleStackTrace extends Exception {
         return LanguageAccessor.ACCESSOR.nodeSupport().findAsynchronousFrames(target, frame);
     }
 
+    /**
+     * Materialize host frames for {@link PolyglotException}.
+     *
+     * @see #materializeHostException()
+     */
     static void materializeHostFrames(Throwable t) {
         TruffleStackTrace stack = fillIn(t);
-        if (stack != null) {
-            stack.materializeHostException();
-        }
+        assert stack.materializedHostException != null || LanguageAccessor.HOST.isHostException(t) || !LanguageAccessor.EXCEPTIONS.isException(t) : t;
     }
 
     private static LazyStackTrace findImpl(Throwable t) {
@@ -311,7 +314,8 @@ public final class TruffleStackTrace extends Exception {
 
         int stackFrameLimit;
         Node topCallSite;
-        if (LanguageAccessor.EXCEPTIONS.isException(throwable)) {
+        boolean isTruffleException = LanguageAccessor.EXCEPTIONS.isException(throwable);
+        if (isTruffleException) {
             topCallSite = LanguageAccessor.EXCEPTIONS.getLocation(throwable);
             stackFrameLimit = LanguageAccessor.EXCEPTIONS.getStackTraceElementLimit(throwable);
         } else {
@@ -342,11 +346,14 @@ public final class TruffleStackTrace extends Exception {
         // attach the remaining stack trace elements
         addStackFrames(stackFrameLimit, lazyFrames, topCallSite, frames);
 
-        lazy.stackTrace = new TruffleStackTrace(frames, lazyFrames);
-        if (hasEmptyStackTrace(throwable)) {
-            lazy.stackTrace.materializeHostException();
+        TruffleStackTrace fullStackTrace = new TruffleStackTrace(frames, lazyFrames);
+        // capture host stack trace for guest language exceptions;
+        // internal and host language exceptions already have a stack trace attached.
+        if (isTruffleException && !LanguageAccessor.HOST.isHostException(throwable) && hasEmptyStackTrace(throwable)) {
+            fullStackTrace.materializeHostException();
         }
-        return lazy.stackTrace;
+        lazy.stackTrace = fullStackTrace;
+        return fullStackTrace;
     }
 
     private static boolean hasEmptyStackTrace(Throwable exception) {

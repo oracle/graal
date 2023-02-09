@@ -280,6 +280,8 @@ public abstract class Accessor {
 
         public abstract boolean isHostBoundaryValue(Object value);
 
+        public abstract boolean isHostException(Object value);
+
         public abstract Object convertPrimitiveLossLess(Object value, Class<?> requestedType);
 
         public abstract Object convertPrimitiveLossy(Object value, Class<?> requestedType);
