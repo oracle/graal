@@ -161,6 +161,11 @@ public abstract class SwitchNode extends ControlSplitNode {
         return true;
     }
 
+    public void setProfileData(SwitchProbabilityData profileData) {
+        this.profileData = profileData;
+        assert assertProbabilities();
+    }
+
     @Override
     public SwitchProbabilityData getProfileData() {
         return profileData;

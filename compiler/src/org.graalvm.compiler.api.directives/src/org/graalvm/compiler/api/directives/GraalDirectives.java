@@ -208,6 +208,38 @@ public final class GraalDirectives {
     }
 
     /**
+     * Injects a probability into the profiling information of a branch of a switch instruction. The
+     * probability must be a value between 0.0 and 1.0 (inclusive). This directive should only be
+     * used as the first statement of each branch of a switch statement. Either all or none of the
+     * branches should contain a call to injectSwitchCaseProbability, and the sum of the values
+     * across all branches must be 1.0.
+     *
+     * Example usage:
+     *
+     * <code>
+     * int a = ...;
+     * switch (a) {
+     *    case 0:
+     *       GraalDirectives.injectSwitchCaseProbability(0.3);
+     *       // ...
+     *       break;
+     *    case 10:
+     *      GraalDirectives.injectSwitchCaseProbability(0.2);
+     *      // ...
+     *      break;
+     *    default:
+     *      GraalDirectives.injectSwitchCaseProbability(0.5);
+     *      // ...
+     *      break;
+     * }
+     * </code>
+     * 
+     * @param probability the probability value between 0.0 and 1.0 that should be injected
+     */
+    public static void injectSwitchCaseProbability(double probability) {
+    }
+
+    /**
      * Consume a value, making sure the compiler doesn't optimize away the computation of this
      * value, even if it is otherwise unused.
      */
