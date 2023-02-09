@@ -233,7 +233,7 @@ public final class GraalDirectives {
      *      break;
      * }
      * </code>
-     * 
+     *
      * @param probability the probability value between 0.0 and 1.0 that should be injected
      */
     public static void injectSwitchCaseProbability(double probability) {

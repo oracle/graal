@@ -31,15 +31,10 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.ProfileData;
-import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -54,8 +49,7 @@ import jdk.vm.ci.meta.JavaKind;
  * removed at once.
  */
 @NodeInfo(cycles = CYCLES_0, cyclesRationale = "Artificial Node", size = SIZE_0)
-public final class SwitchCaseProbabilityNode extends FixedWithNextNode implements Simplifiable, Lowerable {
-
+public final class SwitchCaseProbabilityNode extends FixedWithNextNode implements Lowerable {
     public static final NodeClass<SwitchCaseProbabilityNode> TYPE = NodeClass.create(SwitchCaseProbabilityNode.class);
 
     @Input ValueNode probability;
@@ -72,53 +66,6 @@ public final class SwitchCaseProbabilityNode extends FixedWithNextNode implement
     public void setProbability(ValueNode probability) {
         updateUsages(this.probability, probability);
         this.probability = probability;
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        AbstractBeginNode switchSuccessor = AbstractBeginNode.prevBegin(this);
-        GraalError.guarantee(switchSuccessor != null && switchSuccessor.predecessor() instanceof SwitchNode, "SwitchCaseProbabilityNode can only be used within a switch statement");
-
-        /*
-         * We simplify all SwitchCaseProbabilityNodes at once to check whether all switch cases have
-         * an injected probability attached to them.
-         */
-        SwitchNode switchNode = (SwitchNode) switchSuccessor.predecessor();
-        double[] probabilities = switchNode.getKeyProbabilities();
-        double sum = 0.0;
-        for (int i = 0; i < probabilities.length; ++i) {
-            GraalError.guarantee(switchNode.keySuccessor(i).next() instanceof SwitchCaseProbabilityNode, "All switch branches must be followed by a SwitchCaseProbabilityNode");
-            SwitchCaseProbabilityNode caseProbabilityNode = (SwitchCaseProbabilityNode) switchNode.keySuccessor(i).next();
-            ValueNode probabilityNode = caseProbabilityNode.getProbability();
-            if (!probabilityNode.isConstant()) {
-                /*
-                 * If any of the probabilities are not constant we bail out of simplification, which
-                 * will cause compilation to fail later during lowering since the node will be left
-                 * behind
-                 */
-                return;
-            }
-
-            double probabilityValue = probabilityNode.asJavaConstant().asDouble();
-            if (probabilityValue < 0.0) {
-                throw new GraalError("A negative probability of " + probabilityValue + " is not allowed!");
-            } else if (probabilityValue > 1.0) {
-                throw new GraalError("A probability of more than 1.0 (" + probabilityValue + ") is not allowed!");
-            } else if (Double.isNaN(probabilityValue)) {
-                /*
-                 * We allow NaN if the node is in unreachable code that will eventually fall away,
-                 * or else an error will be thrown during lowering since we keep the node around.
-                 */
-                return;
-            }
-            probabilities[i] = probabilityValue;
-            sum += probabilityValue;
-            caseProbabilityNode.replaceAtUsages(null);
-            graph().removeFixed(caseProbabilityNode);
-        }
-
-        GraalError.guarantee(sum == 1.0, "Sum of all injected switch case probabilities must be 1");
-        switchNode.setProfileData(ProfileData.SwitchProbabilityData.create(probabilities, ProfileSource.INJECTED));
     }
 
     @Override

@@ -64,9 +64,30 @@ public class SwitchCaseProbabilityDirectiveTest extends GraalCompilerTest {
         }
     }
 
+    public static int keyHoleSwitchSnippet(int x) {
+        switch (x) {
+            case 3:
+                GraalDirectives.injectSwitchCaseProbability(0.2);
+                return 10;
+            case 4:
+                GraalDirectives.injectSwitchCaseProbability(0.2);
+                return 20;
+            case 6:
+                GraalDirectives.injectSwitchCaseProbability(0.2);
+                return 30;
+            case 7:
+                GraalDirectives.injectSwitchCaseProbability(0.2);
+                return 40;
+            default:
+                GraalDirectives.injectSwitchCaseProbability(0.2);
+                return 42;
+        }
+    }
+
     @Test
     public void testSwitch() {
         test("switchProbabilitySnippet1", 1);
+        test("keyHoleSwitchSnippet", 4);
     }
 
     @Override
@@ -88,6 +109,22 @@ public class SwitchCaseProbabilityDirectiveTest extends GraalCompilerTest {
                     break;
                 case 2:
                     expectedProbability = 0.1;
+                    break;
+                case 3:
+                    expectedProbability = 0.2;
+                    break;
+                case 4:
+                    expectedProbability = 0.2;
+                    break;
+                case 5:
+                    // Default probability should fill the hole and be divided in two
+                    expectedProbability = 0.1;
+                    break;
+                case 6:
+                    expectedProbability = 0.2;
+                    break;
+                case 7:
+                    expectedProbability = 0.2;
                     break;
                 default:
                     GraalError.shouldNotReachHereUnexpectedValue(switchNode.intKeyAt(i));
