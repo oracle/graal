@@ -542,6 +542,10 @@ public class HostExceptionTest {
         }
     }
 
+    private static RuntimeException newExceptionWithCause(String expectedMessage) {
+        return new NoSuchElementException(expectedMessage, new NoSuchFieldException("no"));
+    }
+
     /**
      * Ensure {@link InteropLibrary#getExceptionStackTrace(Object)} works for host exception causes.
      * Also tests interop and polyglot stack traces.
@@ -552,7 +556,7 @@ public class HostExceptionTest {
         expectedException = NoSuchElementException.class;
         String expectedMessage = "oh";
         Runnable thrower = () -> {
-            throw new NoSuchElementException(expectedMessage, new NoSuchFieldException("no"));
+            throw newExceptionWithCause(expectedMessage);
         };
 
         Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
@@ -582,10 +586,13 @@ public class HostExceptionTest {
         Value result = catcher.execute(runner, thrower);
         assertHostException(result, expectedException);
 
+        PolyglotException polyglotException = result.as(PolyglotException.class);
+        assertEquals(expectedMessage, polyglotException.getMessage());
         List<String> expectedStack = List.of(
                         RUNNER,
                         CATCHER);
-        assertEquals(expectedStack, getProxyLanguageStackTrace(result.as(PolyglotException.class)));
+        assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
+        assertThat(polyglotException.getPolyglotStackTrace().iterator().next().getRootName(), containsString("newExceptionWithCause"));
     }
 
     /**
@@ -598,7 +605,7 @@ public class HostExceptionTest {
         expectedException = NoSuchElementException.class;
         String expectedMessage = "oh";
         Callable<Object> instantiate = () -> {
-            return new NoSuchElementException(expectedMessage, new NoSuchFieldException("no"));
+            return newExceptionWithCause(expectedMessage);
         };
 
         Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
@@ -632,11 +639,14 @@ public class HostExceptionTest {
         Value result = catcher.execute(runner, throwException, runner, instantiate);
         assertHostException(result, expectedException);
 
+        PolyglotException polyglotException = result.as(PolyglotException.class);
+        assertEquals(expectedMessage, polyglotException.getMessage());
         List<String> expectedStack = List.of(
                         THROW_EXCEPTION,
                         RUNNER,
                         CATCHER);
-        assertEquals(expectedStack, getProxyLanguageStackTrace(result.as(PolyglotException.class)));
+        assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
+        assertThat(polyglotException.getPolyglotStackTrace().iterator().next().getRootName(), containsString("newExceptionWithCause"));
 
         // unwrapping and wrapping the host exception again should not lose the stack trace
         Function<Object, Object> passthrough = t -> {
@@ -646,7 +656,9 @@ public class HostExceptionTest {
         result = runner.execute(runner, passthrough, result);
         assertHostException(result, expectedException);
 
-        assertEquals(expectedStack, getProxyLanguageStackTrace(result.as(PolyglotException.class)));
+        polyglotException = result.as(PolyglotException.class);
+        assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
+        assertThat(polyglotException.getPolyglotStackTrace().iterator().next().getRootName(), containsString("newExceptionWithCause"));
 
         Consumer<Object> thrower = t -> {
             assertThat(t, instanceOf(expectedException));
@@ -655,7 +667,10 @@ public class HostExceptionTest {
         result = catcher.execute(rethrower, thrower, result);
         assertHostException(result, expectedException);
 
-        assertEquals(expectedStack, getProxyLanguageStackTrace(result.as(PolyglotException.class)));
+        polyglotException = result.as(PolyglotException.class);
+        assertEquals(expectedMessage, polyglotException.getMessage());
+        assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
+        assertThat(polyglotException.getPolyglotStackTrace().iterator().next().getRootName(), containsString("newExceptionWithCause"));
     }
 
     private static void assertHostException(Value result, Class<? extends Throwable> expectedException) {
