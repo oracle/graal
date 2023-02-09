@@ -231,16 +231,6 @@ public final class TruffleStackTrace extends Exception {
         return LanguageAccessor.ACCESSOR.nodeSupport().findAsynchronousFrames(target, frame);
     }
 
-    /**
-     * Materialize host frames for {@link PolyglotException}.
-     *
-     * @see #materializeHostException()
-     */
-    static void materializeHostFrames(Throwable t) {
-        TruffleStackTrace stack = fillIn(t);
-        assert stack.materializedHostException != null || LanguageAccessor.HOST.isHostException(t) || !LanguageAccessor.EXCEPTIONS.isException(t) : t;
-    }
-
     private static LazyStackTrace findImpl(Throwable t) {
         assert !(t instanceof ControlFlowException);
         int traversed = 0;

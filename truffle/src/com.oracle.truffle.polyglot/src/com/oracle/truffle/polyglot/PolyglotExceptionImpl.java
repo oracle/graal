@@ -125,6 +125,7 @@ final class PolyglotExceptionImpl {
          */
         this.context = (languageContext != null) ? languageContext.context : null;
         this.exception = original;
+        // Note: getStackTrace also materializes host frames.
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
         Error resourceLimitError = getResourceLimitError(engine, exception);
@@ -217,10 +218,6 @@ final class PolyglotExceptionImpl {
         } else {
             this.message = null;
         }
-
-        // late materialization of host frames. only needed if polyglot exceptions cross the
-        // host boundary.
-        EngineAccessor.LANGUAGE.materializeHostFrames(original);
     }
 
     private static Error getResourceLimitError(PolyglotEngineImpl engine, Throwable e) {

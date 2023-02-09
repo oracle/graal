@@ -131,11 +131,6 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public void materializeHostFrames(Throwable original) {
-            TruffleStackTrace.materializeHostFrames(original);
-        }
-
-        @Override
         public Throwable getOrCreateLazyStackTrace(Throwable t) {
             return TruffleStackTrace.getOrCreateLazyStackTrace(t);
         }
