@@ -77,6 +77,9 @@ abstract class ClosureArgumentNode extends Node {
         @Override
         public Object execute(VirtualFrame frame) {
             Object[] args = (Object[]) frame.getArguments()[1];
+            if (index == args.length) { // TODO refactor
+                return frame.getArguments()[0];
+            }
             return args[index];
         }
     }
