@@ -51,8 +51,8 @@ import java.util.function.Predicate;
 /**
  * The sandbox policy presets and validates configurations of a {@link Context context} or
  * {@link Engine engine} to be suitable as a code sandbox. The policy is set by passing it to the
- * respective {@link Engine.Builder#sandbox(SandboxPolicy) engine} or
- * {@link Context.Builder#sandbox(SandboxPolicy) engine} builder method.
+ * {@link Engine.Builder#sandbox(SandboxPolicy) engine} or
+ * {@link Context.Builder#sandbox(SandboxPolicy) context} builder method.
  * <p>
  *
  * There are four policies to choose from that become strictly more strict:

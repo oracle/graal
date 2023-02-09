@@ -57,6 +57,8 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -68,6 +70,7 @@ import java.net.URI;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.function.Predicate;
 
 import static org.junit.Assert.assertTrue;
@@ -98,6 +101,17 @@ public class SandboxPolicyTest {
                         new Configuration(SandboxPolicy.CONSTRAINED, supportsIsolates, supportsSandboxInstrument, hasIsolateLibrary),
                         new Configuration(SandboxPolicy.ISOLATED, supportsIsolates, supportsSandboxInstrument, hasIsolateLibrary),
                         new Configuration(SandboxPolicy.UNTRUSTED, supportsIsolates, supportsSandboxInstrument, hasIsolateLibrary));
+    }
+
+    @Before
+    public void setUp() {
+        Assume.assumeFalse("Restricted Truffle compiler options are specified on the command line.",
+                        configuration.sandboxPolicy != SandboxPolicy.TRUSTED && executedWithXCompOptions());
+    }
+
+    private static boolean executedWithXCompOptions() {
+        Properties props = System.getProperties();
+        return props.containsKey("polyglot.engine.CompileImmediately") || props.containsKey("polyglot.engine.BackgroundCompilation");
     }
 
     private static boolean supportsPolyglotIsolates() {
