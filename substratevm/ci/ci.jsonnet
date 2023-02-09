@@ -1,5 +1,6 @@
 {
-  local common = import "../../ci/ci_common/common.jsonnet",
+  local common     = import "../../ci/ci_common/common.jsonnet",
+  local util       = import "../../ci/ci_common/common-utils.libsonnet",
   local tools      = import "ci_common/tools.libsonnet",
   local sg         = import "ci_common/svm-gate.libsonnet",
   local inc        = import "ci_common/include.libsonnet",
@@ -128,6 +129,6 @@
   },
   // END MAIN BUILD DEFINITION
   processed_builds::run_spec.process(task_dict),
-  builds: [{'defined_in': std.thisFile} + b for b in self.processed_builds.list],
+  builds: [{'defined_in': std.thisFile} + util.add_gate_predicate(b, sg.gate_triggering_suites) for b in self.processed_builds.list],
   assert tools.check_names($.builds),
 }
