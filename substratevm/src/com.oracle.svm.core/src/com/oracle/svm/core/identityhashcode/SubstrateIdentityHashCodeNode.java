@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.identityhashcode;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -33,9 +34,12 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.nodes.IdentityHashCodeNode;
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.svm.core.config.ConfigurationValues;
+
 import jdk.vm.ci.meta.JavaConstant;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_8)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, cyclesRationale = "Decided depending on identity hash code storage.", //
+                size = NodeSize.SIZE_UNKNOWN, sizeRationale = "Decided depending on identity hash code storage.")
 public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
 
     public static final NodeClass<SubstrateIdentityHashCodeNode> TYPE = NodeClass.create(SubstrateIdentityHashCodeNode.class);
@@ -54,11 +58,27 @@ public final class SubstrateIdentityHashCodeNode extends IdentityHashCodeNode {
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION;
+        // Without a fixed field, we must write bits in the object header.
+        return haveFixedField() ? IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION : LocationIdentity.any();
     }
 
     @Override
     protected int getIdentityHashCode(JavaConstant constant) {
         return ((TypedConstant) constant).getIdentityHashCode();
+    }
+
+    @Override
+    public NodeCycles estimatedNodeCycles() {
+        return haveFixedField() ? NodeCycles.CYCLES_2 : NodeCycles.CYCLES_8;
+    }
+
+    @Override
+    protected NodeSize dynamicNodeSizeEstimate() {
+        return haveFixedField() ? NodeSize.SIZE_8 : NodeSize.SIZE_32;
+    }
+
+    @Fold
+    static boolean haveFixedField() {
+        return ConfigurationValues.getObjectLayout().hasFixedIdentityHashField();
     }
 }

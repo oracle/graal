@@ -119,7 +119,7 @@ public final class ImageHeapWalker {
                 } else if (!visitor.visitObject(currentObject)) {
                     return false;
                 }
-                current = LayoutEncoding.getObjectEnd(current.toObject());
+                current = LayoutEncoding.getImageHeapObjectEnd(current.toObject());
             }
             if (HeapImpl.usesImageHeapChunks() && current.belowThan(lastPointer)) {
                 currentChunk = HeapChunk.getNext(currentChunk);
@@ -157,7 +157,7 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
         if (firstStart.isNull()) { // no objects
             return WordFactory.zero();
         }
-        Pointer lastEnd = LayoutEncoding.getObjectEnd(getLastObject(info));
+        Pointer lastEnd = LayoutEncoding.getImageHeapObjectEnd(getLastObject(info));
         return lastEnd.subtract(firstStart);
     }
 

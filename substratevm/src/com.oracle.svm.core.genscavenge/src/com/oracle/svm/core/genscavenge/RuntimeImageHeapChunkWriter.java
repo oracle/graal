@@ -32,6 +32,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.image.ImageHeapObject;
 
 import sun.nio.ch.DirectBuffer;
@@ -59,6 +60,7 @@ public class RuntimeImageHeapChunkWriter implements ImageHeapChunkWriter {
         header.setSpace(null);
         header.setOffsetToPreviousChunk(WordFactory.unsigned(offsetToPreviousChunk));
         header.setOffsetToNextChunk(WordFactory.unsigned(offsetToNextChunk));
+        header.setIdentityHashSalt(WordFactory.zero(), IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION);
     }
 
     @Override
@@ -69,6 +71,7 @@ public class RuntimeImageHeapChunkWriter implements ImageHeapChunkWriter {
         header.setSpace(null);
         header.setOffsetToPreviousChunk(WordFactory.unsigned(offsetToPreviousChunk));
         header.setOffsetToNextChunk(WordFactory.unsigned(offsetToNextChunk));
+        header.setIdentityHashSalt(WordFactory.zero(), IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION);
     }
 
     @Override

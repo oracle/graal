@@ -58,6 +58,7 @@ import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 
 import jdk.internal.misc.Unsafe;
@@ -360,7 +361,7 @@ public final class NativeImageHeapWriter {
                     writeField(buffer, info, field, con, info);
                 }
             }
-            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getIdentityHashCodeOffset()), info.getIdentityHashCode());
+            long idHashOffset;
             if (hybridArray != null) {
                 /*
                  * Write the hybrid array length and the array elements.
@@ -373,7 +374,11 @@ public final class NativeImageHeapWriter {
                     final Object array = Array.get(hybridArray, i);
                     writeConstant(buffer, elementIndex, elementStorageKind, array, info);
                 }
+                idHashOffset = hybridLayout.getOptionalIdentityHashOffset(length);
+            } else {
+                idHashOffset = ((HostedInstanceClass) clazz).getOptionalIdentityHashOffset();
             }
+            bufferBytes.putInt(info.getIndexInBuffer(idHashOffset), info.getIdentityHashCode());
 
         } else if (clazz.isArray()) {
 
@@ -384,7 +389,7 @@ public final class NativeImageHeapWriter {
                     AnalysisConstantReflectionProvider constantReflection = heap.getUniverse().getConstantReflectionProvider();
                     int length = constantReflection.readArrayLength(constant);
                     bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-                    bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getIdentityHashCodeOffset()), info.getIdentityHashCode());
+                    bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayOptionalIdentityHashOffset(kind, length)), info.getIdentityHashCode());
                     constantReflection.forEachArrayElement(constant, (element, index) -> {
                         final int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, index));
                         writeConstant(buffer, elementIndex, kind, element, info);
@@ -396,7 +401,7 @@ public final class NativeImageHeapWriter {
                 Object array = info.getObject();
                 int length = Array.getLength(array);
                 bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-                bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getIdentityHashCodeOffset()), info.getIdentityHashCode());
+                bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayOptionalIdentityHashOffset(kind, length)), info.getIdentityHashCode());
                 if (array instanceof Object[]) {
                     Object[] oarray = (Object[]) array;
                     assert oarray.length == length;

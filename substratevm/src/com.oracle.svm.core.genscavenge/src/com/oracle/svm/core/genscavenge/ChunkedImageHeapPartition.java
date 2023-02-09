@@ -57,7 +57,7 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
         this.hugeObjects = hugeObjects;
 
         /* Cache to prevent frequent lookups of the object layout from ImageSingletons. */
-        minimumObjectSize = ConfigurationValues.getObjectLayout().getMinimumObjectSize();
+        this.minimumObjectSize = ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize();
     }
 
     boolean usesUnalignedObjects() {
@@ -134,7 +134,7 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
         for (ImageHeapObject obj : sorted) {
             long objSize = obj.getSize();
             if (objSize != currentObjectsSize) {
-                assert objSize > currentObjectsSize && objSize >= ConfigurationValues.getObjectLayout().getMinimumObjectSize();
+                assert objSize > currentObjectsSize && objSize >= ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize();
                 currentObjectsSize = objSize;
                 currentQueue = new ArrayDeque<>();
                 map.put(currentObjectsSize, currentQueue);

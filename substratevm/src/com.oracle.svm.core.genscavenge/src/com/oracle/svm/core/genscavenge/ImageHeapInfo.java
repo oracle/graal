@@ -196,11 +196,11 @@ public final class ImageHeapInfo {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static Word getObjectEnd(Object obj) {
+    private static Pointer getObjectEnd(Object obj) {
         if (obj == null) {
             return WordFactory.nullPointer();
         }
-        return Word.objectToUntrackedPointer(obj).add(LayoutEncoding.getSizeFromObject(obj));
+        return LayoutEncoding.getImageHeapObjectEnd(obj);
     }
 
     @SuppressWarnings("unchecked")
