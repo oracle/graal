@@ -34,29 +34,23 @@
 #include <math.h>
 #include "longdouble.h"
 
-
-__attribute__((noinline))
-void toLong(long double n) {
+__attribute__((noinline)) void toLong(long double n) {
 
     long m = (long) n;
     printf("to long %ld\n", m);
     printBits(sizeof(m), &m);
     printfplong("to long fp", &m);
-
 }
 
-__attribute__((noinline))
-void toDouble(long double n){
+__attribute__((noinline)) void toDouble(long double n) {
 
     double m = (double) n;
     printf("to double %lf\n", m);
     printBits(sizeof(m), &m);
     printfpdouble("to double fp", &m);
-
 }
 
-__attribute__((noinline))
-void toInt(long double n){
+__attribute__((noinline)) void toInt(long double n) {
 
     int m = (int) n;
     printf("to int %d\n", m);
@@ -64,8 +58,7 @@ void toInt(long double n){
     printfpint("to int fp", &m);
 }
 
-__attribute__((noinline))
-void toFloat(long double n){
+__attribute__((noinline)) void toFloat(long double n) {
 
     float m = (float) n;
     printf("to float %f\n", m);
@@ -73,8 +66,8 @@ void toFloat(long double n){
     printfpfloat("to float fp", &m);
 }
 
-int main(void){
-    
+int main(void) {
+
     long double m = 5.0;
     toLong(m);
     toDouble(m);

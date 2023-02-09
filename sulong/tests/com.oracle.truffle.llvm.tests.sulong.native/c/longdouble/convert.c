@@ -34,39 +34,32 @@
 #include <math.h>
 #include "longdouble.h"
 
-
-__attribute__((noinline))
-void fromLong(long n) {
+__attribute__((noinline)) void fromLong(long n) {
 
     long double m = (long double) n;
     printfp("from long", &m);
 }
 
-__attribute__((noinline))
-void fromDouble(double n){
+__attribute__((noinline)) void fromDouble(double n) {
 
     long double m = (long double) n;
     printfp("from double", &m);
 }
 
-
-__attribute__((noinline))
-void fromInt(int n){
+__attribute__((noinline)) void fromInt(int n) {
 
     long double m = (long double) n;
     printfp("from int", &m);
 }
 
-
-__attribute__((noinline))
-void fromFloat(float n){
+__attribute__((noinline)) void fromFloat(float n) {
 
     long double m = (long double) n;
     printfp("from float", &m);
 }
 
-int main(void){
-    
+int main(void) {
+
     long double m = 5.0;
     printfp("from long double", &m);
     fromLong(5);
