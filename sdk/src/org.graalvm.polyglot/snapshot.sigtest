@@ -187,11 +187,12 @@ meth public org.graalvm.polyglot.Context$Builder options(java.util.Map<java.lang
 meth public org.graalvm.polyglot.Context$Builder out(java.io.OutputStream)
 meth public org.graalvm.polyglot.Context$Builder processHandler(org.graalvm.polyglot.io.ProcessHandler)
 meth public org.graalvm.polyglot.Context$Builder resourceLimits(org.graalvm.polyglot.ResourceLimits)
+meth public org.graalvm.polyglot.Context$Builder sandbox(org.graalvm.polyglot.SandboxPolicy)
 meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 meth public org.graalvm.polyglot.Context$Builder useSystemExit(boolean)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,ioAccess,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sharedEngine,useSystemExit,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,ioAccess,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sandboxPolicy,sharedEngine,useSystemExit,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
@@ -224,10 +225,11 @@ meth public org.graalvm.polyglot.Engine$Builder logHandler(java.util.logging.Han
 meth public org.graalvm.polyglot.Engine$Builder option(java.lang.String,java.lang.String)
 meth public org.graalvm.polyglot.Engine$Builder options(java.util.Map<java.lang.String,java.lang.String>)
 meth public org.graalvm.polyglot.Engine$Builder out(java.io.OutputStream)
+meth public org.graalvm.polyglot.Engine$Builder sandbox(org.graalvm.polyglot.SandboxPolicy)
 meth public org.graalvm.polyglot.Engine$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Engine$Builder useSystemProperties(boolean)
 supr java.lang.Object
-hfds allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTransport,options,out,permittedLanguages,useSystemProperties
+hfds allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTransport,options,out,permittedLanguages,sandboxPolicy,useSystemProperties
 
 CLSS public final org.graalvm.polyglot.EnvironmentAccess
 fld public final static org.graalvm.polyglot.EnvironmentAccess INHERIT
@@ -238,7 +240,9 @@ hfds name
 
 CLSS public final org.graalvm.polyglot.HostAccess
 fld public final static org.graalvm.polyglot.HostAccess ALL
+fld public final static org.graalvm.polyglot.HostAccess CONSTRAINED
 fld public final static org.graalvm.polyglot.HostAccess EXPLICIT
+fld public final static org.graalvm.polyglot.HostAccess ISOLATED
 fld public final static org.graalvm.polyglot.HostAccess NONE
 fld public final static org.graalvm.polyglot.HostAccess SCOPED
 innr public abstract interface static !annotation DisableMethodScoping
@@ -428,6 +432,15 @@ meth public org.graalvm.polyglot.ResourceLimits$Builder onLimit(java.util.functi
 meth public org.graalvm.polyglot.ResourceLimits$Builder statementLimit(long,java.util.function.Predicate<org.graalvm.polyglot.Source>)
 supr java.lang.Object
 hfds onLimit,statementLimit,statementLimitSourceFilter
+
+CLSS public final !enum org.graalvm.polyglot.SandboxPolicy
+fld public final static org.graalvm.polyglot.SandboxPolicy CONSTRAINED
+fld public final static org.graalvm.polyglot.SandboxPolicy ISOLATED
+fld public final static org.graalvm.polyglot.SandboxPolicy TRUSTED
+fld public final static org.graalvm.polyglot.SandboxPolicy UNTRUSTED
+meth public static org.graalvm.polyglot.SandboxPolicy valueOf(java.lang.String)
+meth public static org.graalvm.polyglot.SandboxPolicy[] values()
+supr java.lang.Enum<org.graalvm.polyglot.SandboxPolicy>
 
 CLSS public final org.graalvm.polyglot.Source
 innr public Builder

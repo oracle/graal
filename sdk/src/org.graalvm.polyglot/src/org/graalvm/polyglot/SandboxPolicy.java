@@ -40,6 +40,14 @@
  */
 package org.graalvm.polyglot;
 
+import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.IOAccess;
+import org.graalvm.polyglot.io.MessageTransport;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.function.Predicate;
+
 /**
  * The sandbox policy presets and validates configurations of a {@link Context context} or
  * {@link Engine engine} to be suitable as a code sandbox. The policy is set by passing it to the
@@ -99,54 +107,59 @@ public enum SandboxPolicy {
      * Policy intended for trusted, but potentially buggy applications. In this mode any access to
      * host resources is required to be as restrictive as possible. In this mode the memory address
      * space of the guest application is shared and with the host application.
-     *
-     * TODO implement:
+     * <p>
+     * The {@code CONSTRAINED} sandbox policy enforces the following context restriction:
      * <ul>
-     * <li>Also works in CE. So we should not require any EE features for this.
-     * <li>Languages must be set explicitly.
-     * <li>Native access must not be enabled.
-     * <li>AllowAllAccess must be off.
-     * <li>HostAccess allowPublicAccess must not be set.
-     * <li>Host class loading must not be enabled
-     * <li>Host lookup is allowed, but a type filter must be set.
-     * <li>stdout,stderr and std in must be redirected
-     * <li>Host access allow access inhertance must not be set.
-     * <li>No mutable target type mappings must be set.
-     * <li>If host access is not set set it to:
-     *
-     * <pre>
-     * HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).allowImplementationsAnnotatedBy(HostAccess.Implementable.class).allowMutableTargetMappings().build();
-     * </pre>
-     *
-     * <li>Only language safe to be used with a sandbox can be used
-     * <li>Only instruments safe to be used with sandbox policy can be used
-     * <li>Only a subset of all options are safe to be used with the sanbox policy can be used.
-     * <li>Anything PolyglotAccess is ok.
-     * <li>Environment access must be desabled (implement preset if not set)
-     * <li>File system can be set to a custom file system. But no default file system must be used
-     * (also if wrapped in a readonly one)
-     * <li>Default log handler is ok, as System.err is redirected.
-     * <li>IO Access must be disabled
-     * <li>Experimental options are allowed.
-     * <li>Process creation is not allowed
-     * <li>Limits may be or not be set.
-     * <li>Method scoping for host access may or may not be enabled.
-     * <li>TODO allow inner contexts? should be fine, no?
-     * <li>TODO can execution listeners be set?
-     * <li>Thread creation may or may not be allowed.
-     * <li>Arguments can be set.
-     * <li>TODO Should options be inherited from System properties? I think so.
-     * <li>TODO allow value sharing? Not sure.
-     * <li>ServerTransport cannot be set.
-     * <li>Polyglot proxies can be used.
-     * <li>Host Sytem.exit must not be used. Use preset and validation (fail if it is invalid).
-     * <li>Host class loader may be set.
-     * <li>Working directory can be changed.
+     * <li>The list of {@link Context#newBuilder(String...) permitted languages} must be explicitly
+     * set.</li>
+     * <li>Standard {@link Context.Builder#in(InputStream) in},
+     * {@link Context.Builder#out(OutputStream) out} and {@link Context.Builder#err(OutputStream)}
+     * err} streams must be redirected.</li>
+     * <li>The {@link Context.Builder#allowAllAccess(boolean) all access} must not be enabled.</li>
+     * <li>The {@link Context.Builder#allowNativeAccess(boolean) native access} must not be
+     * enabled.</li>
+     * <li>The {@link Context.Builder#allowHostClassLoading(boolean)} host class loading} must not
+     * be enabled.</li>
+     * <li>The {@link Context.Builder#allowCreateProcess(boolean) external process execution} must
+     * not be enabled.</li>
+     * <li>The {@link Context.Builder#allowEnvironmentAccess(EnvironmentAccess) environment access}
+     * must be {@link EnvironmentAccess#NONE}.</li>
+     * <li>The {@link Context.Builder#allowHostClassLookup(Predicate) host class lookup} must use a
+     * class filter.</li>
+     * <li>The {@link Context.Builder#useSystemExit(boolean) host System.exit} must not be
+     * used.</li>
+     * <li>The {@link Context.Builder#allowIO(IOAccess) access to the host file system} must be
+     * disabled. IO can be {@link IOAccess#NONE disabled} or it can use a
+     * {@link org.graalvm.polyglot.io.IOAccess.Builder#fileSystem(FileSystem) custom file
+     * system}.</li>
+     * <li>If a custom filesystem is used, it must not be the
+     * {@link FileSystem#newDefaultFileSystem() default filesystem} or a filesytem wrapping the
+     * default file system.</li>
+     * <li>Only languages with a sandbox policy of at least {@code CONSTRAINED} can be used.</li>
+     * <li>Only instruments with a sandbox policy of at least {@code CONSTRAINED} can be used.</li>
+     * <li>Only a subset of options that are safe with the sandbox policy can be used.</li>
+     * <li>If {@link HostAccess} is not specified, the {@link HostAccess#CONSTRAINED} is used.</li>
+     * Otherwise, the specified {@link HostAccess} must not allow
+     * {@link HostAccess.Builder#allowPublicAccess(boolean) public access},
+     * {@link HostAccess.Builder#allowAccessInheritance(boolean) access inheritance},
+     * {@link HostAccess.Builder#allowAllClassImplementations(boolean) all class implementations},
+     * {@link HostAccess.Builder#allowAllImplementations(boolean) all interface implementations} and
+     * {@link HostAccess.Builder#allowMutableTargetMappings(HostAccess.MutableTargetMapping...)
+     * mutable target type mappings}.
+     * <li>The {@link org.graalvm.polyglot.management.ExecutionListener.Builder#attach(Engine)
+     * execution listeners} must not be attached.</li>
+     * <li>The {@link Engine.Builder#serverTransport(MessageTransport) message transport} must not
+     * be set.</li>
      * </ul>
-     *
-     *
-     * TODO minimal example that fullfils the critera
-     *
+     * </p>
+     * <p>
+     * Constrained Context building example:
+     * 
+     * <pre>
+     * Context context = Context.newBuilder("js").sandbox(SandboxPolicy.CONSTRAINED).allowHostClassLookup(null).in(InputStream.nullInputStream()).out(new FileOutputStream("context.stdout")).err(
+     *                 new FileOutputStream("context.stderr")).build();
+     * </pre>
+     * </p>
      *
      * @since 23.0
      */
@@ -158,22 +171,33 @@ public enum SandboxPolicy {
      * attacker to compromise the guest application by providing malicious input. The memory address
      * space of the guest application is isolated from the host application in this mode.
      * <p>
-     * This policy also uses all validations and presets specified for {@link #CONSTRAINED}.
-     *
-     * TODO implement (everything in {@link #CONSTRAINED})
+     * In addition to the {@link #CONSTRAINED} restrictions, the {@code ISOLATED} sandbox policy
+     * adds the following constraints:
      * <ul>
-     * <li>Only works in EE (provide friendly error)
-     * <li>Spawn isolate must be set or will be preset. (we know the languages so auto-detection of
-     * the image should work)
-     * <li>Validate HostAccess uses scopes. If HostAccess is not set use preset:
-     *
-     * <pre>
-     * HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).allowImplementationsAnnotatedBy(HostAccess.Implementable.class).allowMutableTargetMappings().methoScoping(true).build();
-     * </pre>
+     * <li>The {@code engine.SpawnIsolate} option is preset if it has not been explicitly set.</li>
+     * <li>The {@code engine.MaxIsolateMemory} option must be set.</li>
+     * <li>If {@link HostAccess} is not specified, the {@link HostAccess#ISOLATED} is used.</li>
+     * Otherwise, the specified {@link HostAccess} must meet all the constraints of the
+     * {@link #CONSTRAINED} sandbox policy and must in addition use
+     * {@link HostAccess.Builder#methodScoping(boolean) scoped references}.
      * </ul>
+     * </p>
+     * <p>
+     * Isolated Context building example:
+     * 
+     * <pre>
+     * Context context = Context.newBuilder("js")
+     *     .sandbox(SandboxPolicy.ISOLATED)
+     *     .allowHostClassLookup(null)
+     *     .in(InputStream.nullInputStream())
+     *     .out(new FileOutputStream("context.stdout"))
+     *     .err(new FileOutputStream("context.stderr"))
+     *     .option("engine.MaxIsolateMemory", "1GB")
+     *     .build()
+     * </pre>
+     * </p>
      *
-     *
-     * TODO minimal example that fullfils the critera
+     * @since 23.0
      */
     ISOLATED,
 
@@ -184,18 +208,36 @@ public enum SandboxPolicy {
      * In this mode the sandbox employs additional hardening mechanisms at the compiler and runtime
      * level to mitigate e.g. speculative execution attacks.
      * <p>
-     * This policy also uses all validations and presets specified for {@link #ISOLATED}.
-     *
-     * TODO
+     * In addition to the {@link #ISOLATED} constraints, the {@code UNTRUSTED} sandbox policy adds
+     * the following requirements:
      * <ul>
-     * <li>Validate that one of the sandbox mitigations. No preset for now, just the error with
-     * instructions on how to fix.
-     * <li>Validate sandbox.MaxCPUTime, sandbox.MaxHeapMemory, sandbox.MaxASTDepth,
-     * sandbox.MaxStackFrames and sandbox.MaxThreads is set. Recommend use of sandbox.TraceLimits?
+     * <li>The {@code engine.UntrustedCodeMitigation} option is preset to {@code software} if it has
+     * not been explicitly set.</li>
+     * <li>The {@code sandbox.MaxCPUTime}, {@code sandbox.MaxASTDepth},
+     * {@code sandbox.MaxStackFrames}, {@code sandbox.MaxThreads} limits options must be set. Use
+     * {@code sandbox.TraceLimits} to estimate an application's optimal sandbox parameters.</li>
      * </ul>
+     * </p>
+     * <p>
+     * Untrusted Context building example:
+     * 
+     * <pre>
+     * Context context = Context.newBuilder("js")
+     *     .sandbox(SandboxPolicy.UNTRUSTED)
+     *     .allowHostClassLookup(null)
+     *     .in(InputStream.nullInputStream())
+     *     .out(new FileOutputStream("context.stdout"))
+     *     .err(new FileOutputStream("context.stderr"))
+     *     .option("engine.MaxIsolateMemory", "1GB")
+     *     .option("sandbox.MaxCPUTime", "10s")
+     *     .option("sandbox.MaxASTDepth", "100")
+     *     .option("sandbox.MaxStackFrames", "10")
+     *     .option("sandbox.MaxThreads", "1")
+     *     .build()
+     * </pre>
+     * </p>
      *
-     * TODO minimal example that fullfils the critera
-     *
+     * @since 23.0
      */
     UNTRUSTED
 }

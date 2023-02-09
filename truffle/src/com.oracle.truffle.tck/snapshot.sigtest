@@ -70,6 +70,7 @@ meth public abstract !hasdefault java.lang.String website()
 meth public abstract !hasdefault java.lang.String[] byteMimeTypes()
 meth public abstract !hasdefault java.lang.String[] characterMimeTypes()
 meth public abstract !hasdefault java.lang.String[] dependentLanguages()
+meth public abstract !hasdefault org.graalvm.polyglot.SandboxPolicy sandbox()
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratedBy
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)

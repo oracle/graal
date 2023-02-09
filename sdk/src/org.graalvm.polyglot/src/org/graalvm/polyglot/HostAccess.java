@@ -218,21 +218,47 @@ public final class HostAccess {
     public static final HostAccess NONE = newBuilder().name("HostAccess.NONE").build();
 
     /**
-     * The host access preset for the {@link SandboxPolicy#CONSTRAINED} sandbox policy. It's applied
-     * to a context with {@code sandbox(CONSTRAINED)} policy if the
-     * {@link Context.Builder#allowHostAccess(HostAccess)} was not explicitly set by the embedder.
+     * Predefined host access policy used by Context with a {@link SandboxPolicy#CONSTRAINED}
+     * sandbox policy when the host access policy is not explicitly specified by the embedder.
+     * <p>
+     * Equivalent of using the following builder configuration:
+     *
+     * <pre>
+     * <code>
+     * HostAccess.newBuilder().
+     *           allowAccessAnnotatedBy(Export.class).
+     *           allowImplementationsAnnotatedBy(Implementable.class).
+     *           allowMutableTargetMappings().build();
+     * </code>
+     * </pre>
+     *
+     * @since 23.0
      */
-    static final HostAccess CONSTRAINED = HostAccess.newBuilder().//
+    public static final HostAccess CONSTRAINED = HostAccess.newBuilder().//
                     allowAccessAnnotatedBy(Export.class).//
                     allowImplementationsAnnotatedBy(Implementable.class).//
-                    allowMutableTargetMappings().build();
+                    allowMutableTargetMappings().name("HostAccess.CONSTRAINED").build();
+
     /**
-     * The host access preset for the {@link SandboxPolicy#ISOLATED} and
-     * {@link SandboxPolicy#UNTRUSTED} sandbox policies. It's applied to a context with
-     * {@code sandbox(ISOLATED)} or {@code sandbox(UNTRUSTED)} policy if the
-     * {@link Context.Builder#allowHostAccess(HostAccess)} was not explicitly set by the embedder.
+     * Predefined host access policy used by Context with an {@link SandboxPolicy#ISOLATED} or
+     * {@link SandboxPolicy#UNTRUSTED} sandbox policies when the host access policy is not
+     * explicitly specified by the embedder.
+     * <p>
+     * Equivalent of using the following builder configuration:
+     *
+     * <pre>
+     * <code>
+     * HostAccess.newBuilder().
+     *           allowAccessAnnotatedBy(Export.class).
+     *           allowImplementationsAnnotatedBy(Implementable.class).
+     *           allowMutableTargetMappings().
+     *           methodScoping(true).build();
+     * </code>
+     * </pre>
+     *
+     * @since 23.0
      */
-    static final HostAccess ISOLATED = HostAccess.newBuilder(CONSTRAINED).//
+    public static final HostAccess ISOLATED = HostAccess.newBuilder(CONSTRAINED).//
                     methodScoping(true).build();
 
     /**

@@ -855,8 +855,6 @@ public class SandboxPolicyTest {
         if (explicitEngine != null) {
             builder.engine(explicitEngine);
         }
-        // Truffle isolate options are still experimental.
-        builder.allowExperimentalOptions(true);
         if (explicitEngine == null && configuration.supportsIsolatedPolicy) {
             builder.option("engine.MaxIsolateMemory", "4GB");
         }

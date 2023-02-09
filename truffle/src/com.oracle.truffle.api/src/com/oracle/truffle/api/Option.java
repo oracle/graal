@@ -183,9 +183,14 @@ public @interface Option {
     String usageSyntax() default "";
 
     /**
-     * Specifies the minimal sandbox policy required for this option to be used. Options
+     * Specifies the maximum sandbox policy in which the option can be used. The option can be used
+     * for an engine/context with the specified sandbox policy or a weaker one. For example, if an
+     * option specifies {@code ISOLATED} policy, it can be used for an engine/context configured
+     * with sandbox policy {@code TRUSTED}, {@code CONSTRAINED} or {@code ISOLATED}. But it cannot
+     * be used for an engine/context configured with the {@code UNTRUSTED} sandbox policy.
      *
-     * @return
+     * @see SandboxPolicy
+     * @since 23.0
      */
     SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
 

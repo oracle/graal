@@ -77,7 +77,6 @@ import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
@@ -544,7 +543,11 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
-         * Sets the sandbox policy for a give context.
+         * Sets a code sandbox policy to an engine. By default, the engine's sandbox policy is
+         * {@link SandboxPolicy#TRUSTED}, there are no restrictions to the engine configuration.
+         *
+         * @see SandboxPolicy
+         * @since 23.0
          */
         public Builder sandbox(SandboxPolicy policy) {
             validateSandboxPolicy(this.sandboxPolicy, policy);

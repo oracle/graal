@@ -1682,6 +1682,13 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
+        /**
+         * Sets a code sandbox policy to a context. By default, the context's sandbox policy is
+         * {@link SandboxPolicy#TRUSTED}, there are no restrictions to the context configuration.
+         *
+         * @see SandboxPolicy
+         * @since 23.0
+         */
         public Builder sandbox(SandboxPolicy policy) {
             Engine.validateSandboxPolicy(this.sandboxPolicy, policy);
             this.sandboxPolicy = policy;
