@@ -136,7 +136,7 @@ public final class TruffleStackTrace extends Exception {
     private final int lazyFrames;
 
     // contains host exception frames
-    private Exception materializedHostException;
+    private Throwable materializedHostException;
 
     private TruffleStackTrace(List<TruffleStackTraceElement> frames, int lazyFrames) {
         this.frames = frames;
@@ -339,8 +339,10 @@ public final class TruffleStackTrace extends Exception {
         TruffleStackTrace fullStackTrace = new TruffleStackTrace(frames, lazyFrames);
         // capture host stack trace for guest language exceptions;
         // internal and host language exceptions already have a stack trace attached.
-        if (isTruffleException && !LanguageAccessor.HOST.isHostException(throwable) && hasEmptyStackTrace(throwable)) {
-            fullStackTrace.materializeHostException();
+        if (isTruffleException) {
+            if (!LanguageAccessor.HOST.isHostException(throwable) && hasEmptyStackTrace(throwable)) {
+                fullStackTrace.materializeHostException();
+            }
         }
         lazy.stackTrace = fullStackTrace;
         return fullStackTrace;

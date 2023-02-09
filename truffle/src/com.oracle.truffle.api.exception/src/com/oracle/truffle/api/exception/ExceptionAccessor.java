@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,12 @@
  */
 package com.oracle.truffle.api.exception;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.function.Function;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -54,10 +60,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.Collections;
-import java.util.List;
 
 final class ExceptionAccessor extends Accessor {
+
+    static final ExceptionAccessor ACCESSOR = new ExceptionAccessor();
 
     private ExceptionAccessor() {
     }
@@ -144,15 +150,82 @@ final class ExceptionAccessor extends Accessor {
         @Override
         @TruffleBoundary
         public Object getExceptionStackTrace(Object receiver) {
-            List<TruffleStackTraceElement> stack = TruffleStackTrace.getStackTrace((Throwable) receiver);
+            Throwable throwable = (Throwable) receiver;
+            List<TruffleStackTraceElement> stack = TruffleStackTrace.getStackTrace(throwable);
             if (stack == null) {
                 stack = Collections.emptyList();
             }
-            Object[] items = new Object[stack.size()];
-            for (int i = 0; i < items.length; i++) {
-                items[i] = stack.get(i).getGuestObject();
+            boolean hasGuestToHostCalls = false;
+            boolean inHost = true;
+            for (TruffleStackTraceElement element : stack) {
+                if (ExceptionAccessor.ACCESSOR.hostSupport().isGuestToHostRootNode(element.getTarget().getRootNode())) {
+                    hasGuestToHostCalls = true;
+                    break;
+                } else {
+                    inHost = false;
+                }
+            }
+            Object[] items;
+            if (hasGuestToHostCalls) {
+                // If we have guest to host calls, we need to merge in the host frames.
+                items = mergeHostGuestFrames(throwable, stack, inHost);
+            } else {
+                // If there are no guest to host calls, there is no need for any extra processing.
+                items = new Object[stack.size()];
+                for (int i = 0; i < items.length; i++) {
+                    items[i] = stack.get(i).getGuestObject();
+                }
             }
             return new InteropList(items);
+        }
+
+        private static Object[] mergeHostGuestFrames(Throwable throwable, List<TruffleStackTraceElement> guestStack, boolean inHost) {
+            StackTraceElement[] hostStack = null;
+            if (ACCESSOR.hostSupport().isHostException(throwable)) {
+                Throwable original = (Throwable) ACCESSOR.hostSupport().unboxDisconnectedHostObject(throwable);
+                hostStack = original.getStackTrace();
+            } else if (throwable instanceof AbstractTruffleException) {
+                Throwable lazyStackTrace = ((AbstractTruffleException) throwable).getLazyStackTrace();
+                if (lazyStackTrace != null) {
+                    hostStack = ACCESSOR.languageSupport().getInternalStackTraceElements(lazyStackTrace);
+                }
+            } else {
+                // Internal error.
+                hostStack = throwable.getStackTrace();
+            }
+            if (hostStack == null) {
+                // protect against getStackTrace() returning null
+                hostStack = new StackTraceElement[0];
+            }
+
+            Object polyglotEngine = ACCESSOR.engineSupport().getCurrentPolyglotEngine();
+            Iterator<TruffleStackTraceElement> guestStackIterator = guestStack.iterator();
+            Iterator<Object> mergedElements = ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine, hostStack, guestStackIterator, inHost,
+                            new Function<StackTraceElement, Object>() {
+                                @Override
+                                public Object apply(StackTraceElement element) {
+                                    if (!guestStackIterator.hasNext()) {
+                                        // omit trailing host frames
+                                        return null;
+                                    }
+                                    return new HostStackTraceElementObject(element);
+                                }
+                            },
+                            new Function<TruffleStackTraceElement, Object>() {
+                                @Override
+                                public Object apply(TruffleStackTraceElement element) {
+                                    if (ExceptionAccessor.ACCESSOR.hostSupport().isGuestToHostRootNode(element.getTarget().getRootNode())) {
+                                        return null;
+                                    }
+                                    return element.getGuestObject();
+                                }
+                            });
+
+            List<Object> elementsList = new ArrayList<>();
+            while (mergedElements.hasNext()) {
+                elementsList.add(mergedElements.next());
+            }
+            return elementsList.toArray();
         }
 
         @Override

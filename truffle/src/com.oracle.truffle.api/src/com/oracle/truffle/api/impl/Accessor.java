@@ -636,7 +636,7 @@ public abstract class Accessor {
 
         public abstract void resume(Object polyglotContext, Future<Void> pauseFuture);
 
-        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object instrumentEnv, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
+        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
                         Function<StackTraceElement, T> hostFrameConvertor,
                         Function<G, T> guestFrameConvertor);
 
@@ -747,6 +747,8 @@ public abstract class Accessor {
         public abstract Thread createInstrumentSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup);
 
         public abstract Thread createLanguageSystemThread(Object polyglotLanguageContext, Runnable runnable, ThreadGroup threadGroup);
+
+        public abstract Object getEngineFromPolyglotObject(Object polyglotObject);
 
         public abstract SandboxPolicy getContextSandboxPolicy(Object polyglotLanguageContext);
 
