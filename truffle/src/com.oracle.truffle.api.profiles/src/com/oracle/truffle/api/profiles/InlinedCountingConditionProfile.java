@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.dsl.InlineSupport.IntField;
 import com.oracle.truffle.api.dsl.InlineSupport.RequiredField;
@@ -121,7 +122,7 @@ public final class InlinedCountingConditionProfile extends InlinedProfile {
                 // Make this branch fold during PE
                 val = true;
             }
-            if (CompilerDirectives.inInterpreter()) {
+            if (HostCompilerDirectives.inInterpreterFastPath()) {
                 if (t < MAX_VALUE) {
                     trueCount.set(node, t + 1);
                 }
@@ -134,7 +135,7 @@ public final class InlinedCountingConditionProfile extends InlinedProfile {
                 // Make this branch fold during PE
                 val = false;
             }
-            if (CompilerDirectives.inInterpreter()) {
+            if (HostCompilerDirectives.inInterpreterFastPath()) {
                 if (f < MAX_VALUE) {
                     falseCount.set(node, f + 1);
                 }
