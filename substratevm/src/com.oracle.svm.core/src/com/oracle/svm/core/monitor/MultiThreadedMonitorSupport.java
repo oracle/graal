@@ -250,7 +250,11 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     private static void slowPathMonitorExit(Object obj) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            singleton().monitorExit(obj, MonitorInflationCause.MONITOR_ENTER);
+            /*
+             * Monitor inflation cannot happen here because Graal enforces structured locking and
+             * unlocking, see comment below.
+             */
+            singleton().monitorExit(obj, MonitorInflationCause.VM_INTERNAL);
 
         } catch (OutOfMemoryError ex) {
             /*

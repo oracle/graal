@@ -47,8 +47,7 @@ import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.lang.VirtualThread", onlyWith = LoomJDK.class)
 public final class Target_java_lang_VirtualThread {
-    @Alias
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     private static boolean notifyJvmtiEvents;
 
     // Checkstyle: stop

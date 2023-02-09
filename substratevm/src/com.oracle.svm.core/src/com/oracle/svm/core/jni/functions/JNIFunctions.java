@@ -1025,7 +1025,8 @@ public final class JNIFunctions {
         } catch (Throwable t) {
             try {
                 if (acquired) {
-                    MonitorSupport.singleton().monitorExit(obj, MonitorInflationCause.JNI_ENTER);
+                    /* The thread acquired the monitor, so monitor inflation can't happen here. */
+                    MonitorSupport.singleton().monitorExit(obj, MonitorInflationCause.VM_INTERNAL);
                 }
                 if (pinned) {
                     VirtualThreads.singleton().unpinCurrent();
