@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.api.test.host;
 
+import static org.hamcrest.CoreMatchers.both;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -68,6 +70,7 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.management.ExecutionEvent;
 import org.graalvm.polyglot.management.ExecutionListener;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -103,7 +106,8 @@ public class HostExceptionTest {
     ByteArrayOutputStream outStream = new ByteArrayOutputStream();
     private Env env;
     private Class<? extends Throwable> expectedException;
-    private Consumer<Throwable> customExceptionVerfier;
+    private Consumer<Throwable> hostExceptionVerifier = this::verifyHostException;
+    private Consumer<Throwable> customExceptionVerifier;
     private boolean checkHostExceptionElements;
 
     private static final String INSTRUMENTATION_TEST_LANGUAGE = "instrumentation-test-language";
@@ -173,7 +177,7 @@ public class HostExceptionTest {
             context.leave();
         }
         context.close();
-        customExceptionVerfier = null;
+        customExceptionVerifier = null;
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -518,7 +522,7 @@ public class HostExceptionTest {
     public void testHostExceptionIsHostSymbol() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
         expectedException = RuntimeException.class;
-        customExceptionVerfier = (t) -> {
+        customExceptionVerifier = (t) -> {
             assertFalse(env.isHostSymbol(t));
         };
         Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
@@ -562,7 +566,7 @@ public class HostExceptionTest {
         Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
         Value runner = context.eval(ProxyLanguage.ID, RUNNER);
 
-        customExceptionVerfier = (hostEx) -> {
+        customExceptionVerifier = (hostEx) -> {
             assertTrue(INTEROP.isException(hostEx));
             try {
                 assertTrue("should have exception cause", INTEROP.hasExceptionCause(hostEx));
@@ -613,7 +617,7 @@ public class HostExceptionTest {
         Value throwException = context.eval(ProxyLanguage.ID, THROW_EXCEPTION);
         Value rethrower = context.eval(ProxyLanguage.ID, RETHROWER);
 
-        customExceptionVerfier = (hostEx) -> {
+        customExceptionVerifier = (hostEx) -> {
             assertTrue(INTEROP.isException(hostEx));
             try {
                 assertTrue("should have exception cause", INTEROP.hasExceptionCause(hostEx));
@@ -673,6 +677,65 @@ public class HostExceptionTest {
         assertThat(polyglotException.getPolyglotStackTrace().iterator().next().getRootName(), containsString("newExceptionWithCause"));
     }
 
+    private static Value hostApply(Value[] args) {
+        return args[0].execute((Object[]) Arrays.copyOfRange(args, 1, args.length));
+    }
+
+    @FunctionalInterface
+    public interface VarArgsFunction {
+        Value apply(Value... args);
+    }
+
+    @Test
+    public void testMixedHostAndGuestStackTrace() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        expectedException = NoSuchElementException.class;
+        String expectedMessage = "oh";
+
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
+        Value runner = context.eval(ProxyLanguage.ID, RUNNER);
+        Runnable hostThrower = () -> {
+            throw newExceptionWithCause(expectedMessage);
+        };
+        ProxyExecutable proxyRunner = HostExceptionTest::hostApply;
+        VarArgsFunction hostRunner = HostExceptionTest::hostApply;
+
+        customExceptionVerifier = (hostEx) -> {
+            assertEquals(List.of(expectedException.getSimpleName() + ": " + expectedMessage,
+                            RUNNER,
+                            RUNNER,
+                            RUNNER,
+                            CATCHER),
+                            formatInteropExceptionStackTrace(hostEx, true));
+
+            Iterator<String> it = formatInteropExceptionStackTrace(hostEx, false).stream().filter(s -> !s.startsWith(Value.class.getName())).iterator();
+            List.of(equalTo(expectedException.getSimpleName() + ": " + expectedMessage),
+                            both(containsString(HostExceptionTest.class.getName())).and(containsString("newExceptionWithCause")),
+                            containsString("lambda"),
+                            equalTo(RUNNER),
+                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
+                            equalTo(RUNNER),
+                            both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
+                            equalTo(RUNNER),
+                            equalTo(CATCHER)).forEach(matcher -> {
+                                assertThat(it.next(), matcher);
+                            });
+        };
+
+        Value result = catcher.execute(runner, hostRunner, runner, proxyRunner, runner, hostThrower);
+        assertHostException(result, expectedException);
+
+        PolyglotException polyglotException = result.as(PolyglotException.class);
+        assertEquals(expectedMessage, polyglotException.getMessage());
+        List<String> expectedStack = List.of(
+                        RUNNER,
+                        RUNNER,
+                        RUNNER,
+                        CATCHER);
+        assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
+        assertThat(polyglotException.getPolyglotStackTrace().iterator().next().getRootName(), containsString("newExceptionWithCause"));
+    }
+
     private static void assertHostException(Value result, Class<? extends Throwable> expectedException) {
         assertTrue(result.toString(), result.isException());
         assertTrue(result.toString(), result.isHostObject());
@@ -695,6 +758,10 @@ public class HostExceptionTest {
     }
 
     private static List<String> formatInteropExceptionStackTrace(Object exception) {
+        return formatInteropExceptionStackTrace(exception, true);
+    }
+
+    private static List<String> formatInteropExceptionStackTrace(Object exception, boolean skipHostFrames) {
         assertTrue(INTEROP.isException(exception));
         try {
             List<String> lines = new ArrayList<>();
@@ -725,14 +792,16 @@ public class HostExceptionTest {
                         name = "Unnamed";
                     }
 
-                    if (name.contains(".")) {
-                        // skip host frames
+                    boolean isHostFrame = name.contains(".");
+                    if (skipHostFrames && isHostFrame) {
                         continue;
                     }
 
                     lines.add(name);
 
-                    assertTrue("Missing source location for stack trace element: " + name, INTEROP.hasSourceLocation(stackTraceElement));
+                    if (!isHostFrame) {
+                        assertTrue("Missing source location for stack trace element: " + name, INTEROP.hasSourceLocation(stackTraceElement));
+                    }
                 }
             }
             return lines;
@@ -757,10 +826,6 @@ public class HostExceptionTest {
 
         CatcherObject(CallTarget callTarget) {
             this.callTarget = callTarget;
-        }
-
-        static boolean isInstance(TruffleObject obj) {
-            return obj instanceof CatcherObject;
         }
 
         @SuppressWarnings("static-method")
@@ -805,7 +870,7 @@ public class HostExceptionTest {
                 Object result = interop.execute(thrower, args);
                 if (expectedException != null) {
                     shouldHaveThrown(expectedException);
-                } else if (customExceptionVerfier != null) {
+                } else if (customExceptionVerifier != null) {
                     shouldHaveThrown(Throwable.class);
                 }
                 return result;
@@ -820,8 +885,7 @@ public class HostExceptionTest {
         }
     }
 
-    @TruffleBoundary
-    Object checkAndUnwrapException(Throwable ex) {
+    private void verifyHostException(Throwable ex) {
         assertTrue(env.isHostObject(ex));
         assertNotNull("Unexpected exception: " + ex, expectedException);
         assertThat(env.asHostObject(ex), instanceOf(expectedException));
@@ -831,8 +895,15 @@ public class HostExceptionTest {
         } catch (UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
-        if (customExceptionVerfier != null) {
-            customExceptionVerfier.accept(ex);
+    }
+
+    @TruffleBoundary
+    Object checkAndUnwrapException(Throwable ex) {
+        if (hostExceptionVerifier != null) {
+            hostExceptionVerifier.accept(ex);
+        }
+        if (customExceptionVerifier != null) {
+            customExceptionVerifier.accept(ex);
         }
         return ex;
     }
