@@ -310,21 +310,27 @@ public class LayoutEncoding {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent a GC moving the object or interfering with its identity hash state.", callerMustBe = true)
     public static UnsignedWord getSizeFromObject(Object obj) {
-        return getSizeFromObject(obj, false);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getSizeFromObject(Object obj, boolean addOptionalIdHashField) {
-        boolean withOptionalIdHashField = addOptionalIdHashField ||
-                        (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && checkOptionalIdentityHashFieldUninterruptibly(obj));
+        boolean withOptionalIdHashField = !ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && checkOptionalIdentityHashField(obj);
         return getSizeFromObjectInline(obj, withOptionalIdHashField);
     }
 
-    @Uninterruptible(reason = "Prevent a GC moving the object or interfering with its identity hash state.")
-    private static boolean checkOptionalIdentityHashFieldUninterruptibly(Object obj) {
-        return checkOptionalIdentityHashField(obj);
+    public static UnsignedWord getSizeFromObjectAddOptionalIdHashField(Object obj) {
+        return getSizeFromObjectInline(obj, true);
+    }
+
+    /**
+     * Returns the size of the object in the instant of the call, which can have already become
+     * stale after returning. This can be useful for diagnostic output.
+     */
+    @Uninterruptible(reason = "Caller is aware the value can be stale, but required by callee.")
+    public static UnsignedWord getMomentarySizeFromObject(Object obj) {
+        return getSizeFromObject(obj);
+    }
+
+    public static UnsignedWord getSizeFromObjectInGC(Object obj) {
+        return getSizeFromObjectInlineInGC(obj);
     }
 
     @AlwaysInline("GC performance")
@@ -339,7 +345,7 @@ public class LayoutEncoding {
         return getSizeFromObjectInline(obj, withOptionalIdHashField);
     }
 
-    @AlwaysInline("GC performance")
+    @AlwaysInline("Actual inlining decided by callers.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord getSizeFromObjectInline(Object obj, boolean withOptionalIdHashField) {
         DynamicHub hub = KnownIntrinsics.readHub(obj);
@@ -359,15 +365,20 @@ public class LayoutEncoding {
         return oh.hasOptionalIdentityHashField(header);
     }
 
-    /** Returns the end of the Object when the call started, e.g., for logging. */
-    public static Pointer getObjectEnd(Object obj) {
-        UnsignedWord size = getSizeFromObject(obj);
-        return Word.objectToUntrackedPointer(obj).add(size);
+    public static Pointer getObjectEndInGC(Object obj) {
+        return getObjectEndInlineInGC(obj);
     }
 
     @AlwaysInline("GC performance")
     public static Pointer getObjectEndInlineInGC(Object obj) {
-        UnsignedWord size = getSizeFromObjectInlineInGC(obj);
+        UnsignedWord size = getSizeFromObjectInlineInGC(obj, false);
+        return Word.objectToUntrackedPointer(obj).add(size);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static Pointer getImageHeapObjectEnd(Object obj) {
+        // Image heap objects never move and always have an identity hash code field.
+        UnsignedWord size = getSizeFromObjectInline(obj, true);
         return Word.objectToUntrackedPointer(obj).add(size);
     }
 

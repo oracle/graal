@@ -101,7 +101,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
             // Promote the Object if necessary, making it at least grey, and ...
             Object obj = p.toObject();
-            assert innerOffset < LayoutEncoding.getSizeFromObject(obj).rawValue();
+            assert innerOffset < LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
             Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
             if (copy != obj) {
                 // ... update the reference to point to the copy, making the reference black.

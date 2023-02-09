@@ -325,7 +325,7 @@ public class HeapDumpUtils {
             if (obj == null) {
                 result = 0;
             } else {
-                final UnsignedWord objectSize = LayoutEncoding.getSizeFromObject(obj);
+                final UnsignedWord objectSize = LayoutEncoding.getMomentarySizeFromObject(obj);
                 result = objectSize.rawValue();
             }
             return result;

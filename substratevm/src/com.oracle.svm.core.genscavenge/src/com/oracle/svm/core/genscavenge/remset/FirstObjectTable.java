@@ -239,7 +239,7 @@ final class FirstObjectTable {
         // If the object starts before the memory for this index, skip over it.
         if (firstObject.belowThan(indexedMemoryStart)) {
             Object crossingObject = firstObject.toObject();
-            result = LayoutEncoding.getObjectEnd(crossingObject);
+            result = LayoutEncoding.getObjectEndInGC(crossingObject);
         } else {
             assert firstObject.equal(indexedMemoryStart) : "preciseFirstPointer.equal(indexedMemoryStart)";
             result = indexedMemoryStart;
@@ -308,7 +308,7 @@ final class FirstObjectTable {
             }
 
             Object obj = objStart.toObject();
-            Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
+            Pointer objEnd = LayoutEncoding.getObjectEndInGC(obj);
             if (!entryStart.belowThan(objEnd)) {
                 Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object is not crossing nor starting at a card boundary:  obj: ").zhex(objStart)
                                 .string(" - ").zhex(objEnd).string(", chunk: ").zhex(objectsStart).string(" - ").zhex(objectsLimit).newline();
