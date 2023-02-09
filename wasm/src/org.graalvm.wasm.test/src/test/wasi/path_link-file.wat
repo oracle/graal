@@ -39,16 +39,37 @@
 ;; SOFTWARE.
 ;;
 (module
-    (type (;0;) (func (param i32 i32) (result i32)))
-    (type (;1;) (func (result i32)))
-    (import "wasi_snapshot_preview1" "random_get" (func $__wasi_random_get (type 0)))
-    (memory (;0;) 4)
+    (import "wasi_snapshot_preview1" "path_link" (func $path_link (param i32 i32 i32 i32 i32 i32 i32) (result i32)))
+    (import "wasi_snapshot_preview1" "path_unlink_file" (func $path_unlink_file (param i32 i32 i32) (result i32)))
+    (memory 1)
+    (data (i32.const 0) "file.txt")
+    (data (i32.const 8) "link")
     (export "memory" (memory 0))
-    (func (export "_main") (type 1)
+    (func (export "_main") (result i32) (local $ret i32)
+        ;; Create a hard link
+        (call $path_link
+            (i32.const 3) ;; pre-opeend "test" directory fd
+            (i32.const 0) ;; lookup flags
+            (i32.const 0) ;; pointer to "file.txt"
+            (i32.const 8) ;; pointer length
+            (i32.const 3) ;; pre-opened "test" directory fd
+            (i32.const 8) ;; pointer to "link"
+            (i32.const 4) ;; pointer length
+        )
+
+        local.tee $ret
         i32.const 0
-        i32.const 4
-        call $__wasi_random_get
-        drop
-        i32.const 0
+        i32.ne
+        if
+            local.get $ret
+            return
+        end
+
+        ;; Remove hard link
+        (call $path_unlink_file
+            (i32.const 3) ;; pre-opened "test" directory fd
+            (i32.const 8) ;; pointer to "link"
+            (i32.const 4) ;; path length
+        )
     )
 )

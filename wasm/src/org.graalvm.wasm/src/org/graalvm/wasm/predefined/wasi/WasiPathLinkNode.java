@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,58 +45,34 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
-import org.graalvm.wasm.predefined.wasi.types.Clockid;
+import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+public class WasiPathLinkNode extends WasmBuiltinRootNode {
 
-public final class WasiClockTimeGetNode extends WasmBuiltinRootNode {
-
-    public WasiClockTimeGetNode(WasmLanguage language, WasmInstance module) {
-        super(language, module);
+    public WasiPathLinkNode(WasmLanguage language, WasmInstance instance) {
+        super(language, instance);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        assert args.length == 3;
-
-        // TODO(mbovel): handle args[1] "precision"
-        return clockTimeGet((int) args[0], (int) args[2]);
+        return pathLink(context, (int) args[0], (int) args[1], (int) args[2], (int) args[3], (int) args[4], (int) args[5], (int) args[6]);
     }
 
     @TruffleBoundary
-    private Object clockTimeGet(int clockIdValue, int resultAddress) {
-        final Clockid clockId = Clockid.values()[clockIdValue];
-        switch (clockId) {
-            case Realtime:
-                memory().store_i64(this, resultAddress, realtimeNow());
-                break;
-            case Monotonic:
-            case ProcessCputimeId:
-            case ThreadCputimeId:
-                throw unimplementedClock(clockId);
+    private int pathLink(WasmContext context, int oldFd, int oldFlags, int oldPathAddress, int oldPathLength, int newFd, int newPathAddress, int newPathLength) {
+        final Fd oldHandle = context.fdManager().get(oldFd);
+        final Fd newHandle = context.fdManager().get(newFd);
+        if (oldHandle == null || newHandle == null) {
+            return Errno.Badf.ordinal();
         }
-        return Errno.Success.ordinal();
-    }
-
-    @TruffleBoundary
-    public static long realtimeNow() {
-        return ChronoUnit.NANOS.between(Instant.EPOCH, Instant.now());
-    }
-
-    @TruffleBoundary
-    private static WasmException unimplementedClock(final Clockid clockId) {
-        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unimplemented ClockID: " + clockId.name());
+        return oldHandle.pathLink(this, memory(), oldFlags, oldPathAddress, oldPathLength, newHandle, newPathAddress, newPathLength).ordinal();
     }
 
     @Override
     public String builtinNodeName() {
-        return "__wasi_clock_time_get";
+        return "__wasi_path_link";
     }
-
 }

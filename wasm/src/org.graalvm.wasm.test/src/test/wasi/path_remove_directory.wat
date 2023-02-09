@@ -39,16 +39,51 @@
 ;; SOFTWARE.
 ;;
 (module
-    (type (;0;) (func (param i32 i32) (result i32)))
-    (type (;1;) (func (result i32)))
-    (import "wasi_snapshot_preview1" "random_get" (func $__wasi_random_get (type 0)))
-    (memory (;0;) 4)
+    (import "wasi_snapshot_preview1" "path_filestat_get" (func $path_filestat_get (param i32 i32 i32 i32 i32) (result i32)))
+    (import "wasi_snapshot_preview1" "path_remove_directory" (func $path_rem_dir (param i32 i32 i32) (result i32)))
+    (memory 1)
+    (data (i32.const 0) "file.txt")
     (export "memory" (memory 0))
-    (func (export "_main") (type 1)
+    (func (export "_main") (result i32) (local $ret i32)
+        ;; Remove dir
+        (call $path_rem_dir
+            (i32.const 3) ;; pre-opened "test" directory fd
+            (i32.const 0) ;; pointer to path "file.txt"
+            (i32.const 8) ;; path length
+        )
+
+        local.tee $ret
+
+        i32.eqz
+        if
+            i32.const 1
+            return
+        end
+
+         ;; Check that file still exist
+        (call $path_filestat_get
+            (i32.const 3) ;; pre-opened "test" directory fd
+            (i32.const 0) ;; lookupflags
+            (i32.const 0) ;; pointer to path "file.txt"
+            (i32.const 8) ;; path length
+            (i32.const 5) ;; filestat address
+        )
+        local.tee $ret
+
         i32.const 0
-        i32.const 4
-        call $__wasi_random_get
-        drop
+        i32.ne
+        if
+            local.get $ret
+            return
+        end
+
+        ;; Clear filestat entry
+        (memory.fill
+            (i32.const 5) ;; start offset
+            (i32.const 0) ;; value
+            (i32.const 64) ;; length
+        )
+
         i32.const 0
     )
 )

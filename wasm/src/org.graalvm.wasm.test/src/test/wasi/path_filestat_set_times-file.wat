@@ -39,16 +39,70 @@
 ;; SOFTWARE.
 ;;
 (module
-    (type (;0;) (func (param i32 i32) (result i32)))
-    (type (;1;) (func (result i32)))
-    (import "wasi_snapshot_preview1" "random_get" (func $__wasi_random_get (type 0)))
-    (memory (;0;) 4)
+    (import "wasi_snapshot_preview1" "path_filestat_get" (func $path_filestat_get (param i32 i32 i32 i32 i32) (result i32)))
+    (import "wasi_snapshot_preview1" "path_filestat_set_times" (func $path_filestat_set_times (param i32 i32 i32 i32 i64 i64 i32) (result i32)))
+    (memory 1)
+    (data (i32.const 0) "file.txt")
     (export "memory" (memory 0))
-    (func (export "_main") (type 1)
+    (func (export "_main") (result i32) (local $ret i32)
+
+        ;; set times
+        (call $path_filestat_set_times
+            (i32.const 3) ;; pre-opened "test" directory fd
+            (i32.const 0) ;; lookup flags
+            (i32.const 0) ;; pointer to file "file.txt"
+            (i32.const 8) ;; path length
+            (i64.const 1675928482000000000) ;; Thursday, February 9, 2023 7:41:22 AM
+            (i64.const 1675928482000000000) ;; Thursday, February 9, 2023 7:41:22 AM
+            (i32.const 5) ;; fst flags
+        )
+
+        local.tee $ret
         i32.const 0
-        i32.const 4
-        call $__wasi_random_get
-        drop
+        i32.ne
+        if
+            local.get $ret
+            return
+        end
+
+        ;; Check that times were set correctly
+        (call $path_filestat_get
+            (i32.const 3) ;; pre-opened "test" directory fd
+            (i32.const 0) ;; lookupflags
+            (i32.const 0) ;; pointer to path "file.txt"
+            (i32.const 8) ;; path length
+            (i32.const 8) ;; filestat address
+        )
+
+        local.tee $ret
+        i32.const 0
+        i32.ne
+
+        i32.const 8
+        i64.load offset=40
+        i64.const 1675928482000000000
+        i64.ne
+
+        i32.const 8
+        i64.load offset=48
+        i64.const 1675928482000000000
+        i64.ne
+
+        i32.or
+        i32.or
+        if
+            i32.const 1
+            return
+        end
+
+
+        ;; Clear filestat entry
+        (memory.fill
+            (i32.const 8) ;; start offset
+            (i32.const 0) ;; value
+            (i32.const 64) ;; length
+        )
+
         i32.const 0
     )
 )
