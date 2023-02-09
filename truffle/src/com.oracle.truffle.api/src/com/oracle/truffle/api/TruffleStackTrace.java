@@ -452,15 +452,14 @@ public final class TruffleStackTrace extends Exception {
                 lazy = new LazyStackTrace();
                 LanguageAccessor.EXCEPTIONS.setLazyStackTrace(throwable, lazy);
             }
-            return lazy;
         } else {
             lazy = findImpl(throwable);
             if (lazy == null) {
+                lazy = new LazyStackTrace();
                 Throwable insertCause = findInsertCause(throwable);
-                if (insertCause == null) {
-                    return null;
+                if (insertCause != null) {
+                    insert(insertCause, lazy);
                 }
-                insert(insertCause, lazy = new LazyStackTrace());
             }
         }
         return lazy;
