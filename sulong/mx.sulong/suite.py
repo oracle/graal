@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.14.13",
+  "mxversion": "6.15.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -900,6 +900,15 @@ suite = {
           "results" : ["native"],
           "cmakeConfig" : {
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+          },
+        },
+        "linux-musl" : {
+          "ninja_targets" : ["cxxabi"],
+          "ninja_install_targets" : ["install-cxxabi"],
+          "results" : ["native"],
+          "cmakeConfig" : {
+            "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+            "LIBCXX_HAS_MUSL_LIBC" : "YES",
           },
         },
         "darwin" : {
