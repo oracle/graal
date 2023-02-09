@@ -43,7 +43,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String newStyleClasspathOptionName = "--class-path";
 
     static final String addModulesOption = "--add-modules";
-    private static final String addModulesErrorMessage = " requires modules to be specified";
+    static final String limitModulesOption = "--limit-modules";
+    private static final String moduleSetModifierOptionErrorMessage = " requires modules to be specified";
 
     static final String ADD_ENV_VAR_OPTION = "-E";
 
@@ -97,10 +98,19 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 String addModulesArgs = args.poll();
                 if (addModulesArgs == null) {
-                    NativeImage.showError(headArg + addModulesErrorMessage);
+                    NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
                 }
                 nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
                 nativeImage.addAddedModules(addModulesArgs);
+                return true;
+            case limitModulesOption:
+                args.poll();
+                String limitModulesArgs = args.poll();
+                if (limitModulesArgs == null) {
+                    NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
+                }
+                nativeImage.addImageBuilderJavaArgs(limitModulesOption, limitModulesArgs);
+                nativeImage.addLimitedModules(limitModulesArgs);
                 return true;
             case "-jar":
                 args.poll();
@@ -189,10 +199,20 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             args.poll();
             String addModulesArgs = headArg.substring(addModulesOption.length() + 1);
             if (addModulesArgs.isEmpty()) {
-                NativeImage.showError(headArg + addModulesErrorMessage);
+                NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
             }
             nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
             nativeImage.addAddedModules(addModulesArgs);
+            return true;
+        }
+        if (headArg.startsWith(limitModulesOption + "=")) {
+            args.poll();
+            String limitModulesArgs = headArg.substring(limitModulesOption.length() + 1);
+            if (limitModulesArgs.isEmpty()) {
+                NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
+            }
+            nativeImage.addImageBuilderJavaArgs(limitModulesOption, limitModulesArgs);
+            nativeImage.addLimitedModules(limitModulesArgs);
             return true;
         }
         if (headArg.startsWith("@") && !disableAtFiles) {
