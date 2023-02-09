@@ -187,6 +187,22 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         }
     }
 
+    public StaticObject getThreadGroup(StaticObject thread) {
+        if (getJavaVersion().java19OrLater()) {
+            int state = getState(thread);
+            if (state == State.TERMINATED.value) {
+                return StaticObject.NULL;
+            }
+            if (meta.java_lang_BaseVirtualThread.isAssignableFrom(thread.getKlass())) {
+                return meta.java_lang_Thread$Constants_VTHREAD_GROUP.getObject(meta.java_lang_Thread$Constants.getStatics());
+            }
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
+            return meta.java_lang_Thread$FieldHolder_group.getObject(holder);
+        } else {
+            return meta.java_lang_Thread_threadGroup.getObject(thread);
+        }
+    }
+
     @SuppressWarnings("unused")
     private int updateState(StaticObject self, State state) {
         int old = getState(self);

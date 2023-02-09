@@ -261,6 +261,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getStackTrace = StaticSymbols.putName("getStackTrace");
         public static final Symbol<Name> group = StaticSymbols.putName("group");
         public static final Symbol<Name> holder = StaticSymbols.putName("holder");
+        public static final Symbol<Name> VTHREAD_GROUP = StaticSymbols.putName("VTHREAD_GROUP");
         public static final Symbol<Name> inheritedAccessControlContext = StaticSymbols.putName("inheritedAccessControlContext");
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
         public static final Symbol<Name> parkBlocker = StaticSymbols.putName("parkBlocker");
@@ -699,7 +700,10 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> java_lang_Thread = StaticSymbols.putType("Ljava/lang/Thread;");
         public static final Symbol<Type> java_lang_Thread_FieldHolder = StaticSymbols.putType("Ljava/lang/Thread$FieldHolder;");
+        public static final Symbol<Type> java_lang_Thread_Constants = StaticSymbols.putType("Ljava/lang/Thread$Constants;");
         public static final Symbol<Type> java_lang_ThreadGroup = StaticSymbols.putType("Ljava/lang/ThreadGroup;");
+        public static final Symbol<Type> java_lang_BaseVirtualThread = StaticSymbols.putType("Ljava/lang/BaseVirtualThread;");
+
         public static final Symbol<Type> java_lang_Runnable = StaticSymbols.putType("Ljava/lang/Runnable;");
 
         public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType("Lsun/misc/VM;");
