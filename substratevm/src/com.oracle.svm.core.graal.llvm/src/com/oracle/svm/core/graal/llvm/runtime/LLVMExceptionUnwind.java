@@ -82,6 +82,7 @@ public class LLVMExceptionUnwind {
      * NodeLLVMBuilder.emitReadExceptionObject).
      */
     @CEntryPoint(include = IncludeForLLVMOnly.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @Uninterruptible(reason = "Must not execute a recurring callback before returning", calleeMustBe = false)
     @SuppressWarnings("unused")
     public static int personality(int version, int action, IsolateThread thread, _Unwind_Exception unwindException, _Unwind_Context context) {
         Pointer ip = getIP(context);
