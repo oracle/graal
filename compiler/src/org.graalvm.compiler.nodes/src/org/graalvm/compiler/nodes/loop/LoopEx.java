@@ -70,7 +70,6 @@ import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.debug.NeverStripMineNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
@@ -404,7 +403,7 @@ public class LoopEx {
         Queue<Block> work = new LinkedList<>();
         ControlFlowGraph cfg = loopsData().getCFG();
         NodeBitMap visited = cfg.graph.createNodeBitMap();
-        HIRBlock firstSuccBlock = cfg.blockFor(branch);
+        Block firstSuccBlock = cfg.blockFor(branch);
         work.add(firstSuccBlock);
         while (!work.isEmpty()) {
             Block b = work.remove();
