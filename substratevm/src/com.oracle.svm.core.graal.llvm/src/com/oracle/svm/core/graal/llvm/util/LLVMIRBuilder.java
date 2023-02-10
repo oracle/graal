@@ -729,7 +729,8 @@ public class LLVMIRBuilder implements AutoCloseable {
 
         public enum Type {
             Output("="),
-            Input("");
+            Input(""),
+            Clobber("~");
 
             private String repr;
 

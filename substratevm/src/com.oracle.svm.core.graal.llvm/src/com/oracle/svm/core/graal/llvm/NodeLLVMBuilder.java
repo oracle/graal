@@ -190,6 +190,10 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             builder.buildStackmap(builder.constantLong(startPatchpointID));
             gen.getCompilationResult().recordInfopoint(NumUtil.safeToInt(startPatchpointID), null, InfopointReason.METHOD_START);
 
+            if (gen.isEntryPoint() && SubstrateOptions.SpawnIsolates.getValue()) {
+                gen.clobberRegister(ReservedRegisters.singleton().getHeapBaseRegister().name);
+            }
+
             for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
                 LLVMValueRef paramValue = builder.getFunctionParam(param.index());
                 setResult(param, paramValue);

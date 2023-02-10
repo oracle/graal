@@ -38,8 +38,8 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMRelocationIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSymbolIteratorRef;
@@ -77,6 +77,11 @@ public interface LLVMTargetSpecific {
      * Snippet that adds two registers and save the result in one of them.
      */
     String getAddInlineAssembly(String outputRegisterName, String inputRegisterName);
+
+    /**
+     * Snippet representing a nop instruction.
+     */
+    String getNopInlineAssembly();
 
     /**
      * Name of the architecture to be passed to the LLVM compiler.
@@ -186,6 +191,11 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
             }
 
             @Override
+            public String getNopInlineAssembly() {
+                return "nop";
+            }
+
+            @Override
             public String getLLVMArchName() {
                 return "x86-64";
             }
@@ -279,6 +289,11 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
                 return "ADD " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+            }
+
+            @Override
+            public String getNopInlineAssembly() {
+                return "NOP";
             }
 
             @Override
@@ -379,6 +394,11 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
                 return "add " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+            }
+
+            @Override
+            public String getNopInlineAssembly() {
+                return "nop";
             }
 
             @Override
