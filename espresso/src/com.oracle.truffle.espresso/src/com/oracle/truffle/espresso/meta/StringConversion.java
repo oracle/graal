@@ -39,11 +39,17 @@ public abstract class StringConversion {
         static final long hostHashOffset;
         static final long hostCoderOffset;
 
+        @SuppressWarnings("deprecation")
+        private static long getStringFieldOffset(String name) throws NoSuchFieldException {
+            // TODO replace with TruffleString?
+            return UNSAFE.objectFieldOffset(String.class.getDeclaredField(name));
+        }
+
         static {
             try {
-                hostValueOffset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("value"));
-                hostHashOffset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("hash"));
-                hostCoderOffset = UNSAFE.objectFieldOffset(String.class.getDeclaredField("coder"));
+                hostValueOffset = getStringFieldOffset("value");
+                hostHashOffset = getStringFieldOffset("hash");
+                hostCoderOffset = getStringFieldOffset("coder");
             } catch (NoSuchFieldException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }

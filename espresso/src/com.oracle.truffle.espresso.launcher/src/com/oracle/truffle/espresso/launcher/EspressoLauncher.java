@@ -229,6 +229,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
 
                 case "-client":
                 case "-server":
+                case "-truffle":
                 case "-d64":
                 case "-Xdebug": // only for backward compatibility
                     // ignore
@@ -512,7 +513,14 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 } else {
                     // > Java 8
                     version = context.getBindings("java").getMember("java.lang.VersionProps");
-                    version.invokeMember("print", /* print to stderr = */false);
+                    if (version.hasMember("print/(Z)V")) {
+                        Value printMethod = version.getMember("print/(Z)V");
+                        printMethod.execute(/* print to stderr = */false);
+                    } else {
+                        // print is probably private
+                        // fallback until we have an embedded API to call private members
+                        printVersionFallback(context);
+                    }
                 }
                 if (versionAction == VersionAction.PrintAndExit) {
                     throw exit(0);
@@ -557,6 +565,41 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 }
             }
         }
+    }
+
+    private void printVersionFallback(Context context) {
+        // See java.lang.VersionProps.print
+        Value system = context.getBindings("java").getMember("java.lang.System");
+        String javaVersion = system.invokeMember("getProperty", "java.version").asString();
+        String javaVersionDate = system.invokeMember("getProperty", "java.version.date").asString();
+        String debugLevel = system.invokeMember("getProperty", "jdk.debug", "release").asString();
+        String vendorVersion = system.invokeMember("getProperty", "java.vendor.version").asString();
+        String javaRuntimeName = system.invokeMember("getProperty", "java.runtime.name").asString();
+        String javaRuntimeVersion = system.invokeMember("getProperty", "java.runtime.version").asString();
+        boolean isLTS = javaRuntimeVersion.contains("LTS");
+        String javaVMName = system.invokeMember("getProperty", "java.vm.name").asString();
+        String javaVMVersion = system.invokeMember("getProperty", "java.vm.version").asString();
+        String javVMInfo = system.invokeMember("getProperty", "java.vm.info").asString();
+        String launcherName = "espresso";
+
+        /* First line: platform version. */
+        /* Use a format more in line with GNU conventions */
+        getOutput().println(launcherName + " " + javaVersion + " " + javaVersionDate + (isLTS ? " LTS" : ""));
+
+        /* Second line: runtime version (ie, libraries). */
+        if ("release".equals(debugLevel)) {
+            /* Do not show debug level "release" builds */
+            debugLevel = "";
+        } else {
+            debugLevel = debugLevel + " ";
+        }
+
+        vendorVersion = vendorVersion.isEmpty() ? "" : " " + vendorVersion;
+
+        getOutput().println(javaRuntimeName + vendorVersion + " (" + debugLevel + "build " + javaRuntimeVersion + ")");
+
+        /* Third line: JVM information. */
+        getOutput().println(javaVMName + vendorVersion + " (" + debugLevel + "build " + javaVMVersion + ", " + javVMInfo + ")");
     }
 
     private static void handleMainUncaught(Context context, PolyglotException e) {
