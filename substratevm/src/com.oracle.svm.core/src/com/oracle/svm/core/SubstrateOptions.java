@@ -659,8 +659,17 @@ public class SubstrateOptions {
         }
     }
 
-    @Option(help = "Strip debug info from the binary.")//
-    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(true);
+    @Option(help = "Use a separate file for debug info.")//
+    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN, SubstrateOptions::validateStripDebugInfo);
+
+    private static void validateStripDebugInfo(HostedOptionKey<Boolean> optionKey) {
+        if (OS.getCurrent() == OS.DARWIN && optionKey.getValue()) {
+            System.err.printf("Warning: Using %s not supported on macOS%n", SubstrateOptionsParser.commandArgument(SubstrateOptions.StripDebugInfo, "+"));
+        }
+        if (OS.getCurrent() == OS.WINDOWS && !optionKey.getValue()) {
+            System.err.printf("Warning: Using %s not supported on Windows: debug info is always generated in a separate file%n", SubstrateOptionsParser.commandArgument(optionKey, "-"));
+        }
+    }
 
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
     public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
