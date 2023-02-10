@@ -94,6 +94,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
         int hashcode = (int) (rawPointerValue ^ (rawPointerValue >>> 32));
         symbol.setHash(hashcode);
         symbol.setBytes(null);
+        symbol.setSerialized(false);
 
         mutex.lockNoTransition();
         try {
@@ -145,42 +146,50 @@ public class JfrSymbolRepository implements JfrConstantPool {
     @Override
     public int write(JfrChunkWriter writer, boolean flush) {
         JfrSymbolHashtable table = getTable(!flush);
+        int count = 0;
         // compute byte arrays
         JfrSymbol[] entries = table.getTable();
         for (int i = 0; i < entries.length; i++) {
             JfrSymbol entry = entries[i];
             if (entry.isNonNull()) {
                 while (entry.isNonNull()) {
-                    entry.setBytes(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                    if (!entry.getSerialized()) {
+                        entry.setBytes(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                        count++;
+                    }
                     entry = entry.getNext();
                 }
             }
         }
-        return doWrite(writer, flush, table);
+        return doWrite(writer, flush, table, count);
     }
 
     @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
-    private int doWrite(JfrChunkWriter writer, boolean flush, JfrSymbolHashtable table) {
-        maybeLock(flush); // *** locking is needed so that other thread's concurrent additions don't
-                          // get cleared
+    private int doWrite(JfrChunkWriter writer, boolean flush, JfrSymbolHashtable table, int count) {
+        maybeLock(flush);
         try {
-            if (table.getSize() == 0) {
+            if (count == 0) {
                 return EMPTY;
             }
             writer.writeCompressedLong(JfrType.Symbol.getId());
-            writer.writeCompressedLong(table.getSize());
+            writer.writeCompressedLong(count);
 
             JfrSymbol[] entries = table.getTable();
             for (int i = 0; i < entries.length; i++) {
                 JfrSymbol entry = entries[i];
                 if (entry.isNonNull()) {
                     while (entry.isNonNull()) {
-                        writeSymbol(writer, entry);
+                        if (!entry.getSerialized() && entry.getBytes() != null) {
+                            writeSymbol(writer, entry);
+                        }
                         entry = entry.getNext();
                     }
                 }
             }
-            table.clear(); // *** should be cleared only after epoch change
+            if (!flush) {
+                // Should be cleared only after epoch change
+                table.clear();
+            }
             return NON_EMPTY;
         } finally {
             maybeUnlock(flush);
@@ -188,14 +197,8 @@ public class JfrSymbolRepository implements JfrConstantPool {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) { // *** only write if
-                                                                               // not serialized
-                                                                               // before. Set
-                                                                               // serialized
+    private static void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) {
         byte[] value = symbol.getBytes();
-        if (value == null) {
-            return;
-        }
         writer.writeCompressedLong(symbol.getId());
         writer.writeByte(JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
 
@@ -204,6 +207,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
         }
         writer.writeCompressedInt(value.length);
         writer.writeBytes(value);
+        symbol.setSerialized(true);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -216,7 +220,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
     }
 
     @RawStructure
-    private interface JfrSymbol extends UninterruptibleEntry { // *** add field for isSerialized?
+    private interface JfrSymbol extends UninterruptibleEntry {
         @RawField
         long getId();
 
@@ -244,6 +248,10 @@ public class JfrSymbolRepository implements JfrConstantPool {
 
         @RawField
         void setReplaceDotWithSlash(boolean value);
+        @RawField
+        boolean getSerialized();
+        @RawField
+        void setSerialized(boolean serialized);
     }
 
     private static class JfrSymbolHashtable extends AbstractUninterruptibleHashtable {
