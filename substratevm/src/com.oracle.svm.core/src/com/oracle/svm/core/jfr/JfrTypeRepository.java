@@ -41,13 +41,13 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 
 /**
- * Repository that collects and writes used classes, packages, modules, and classloaders.
- * Only one thread should ever access this repository at a time. It is only used during flushes and chunk rotations.
- * This means that the maps in this repository will be entirely used and cleared with respect to the current epoch before they
- * are used for the subsequent epoch.
+ * Repository that collects and writes used classes, packages, modules, and classloaders. Only one
+ * thread should ever access this repository at a time. It is only used during flushes and chunk
+ * rotations. This means that the maps in this repository will be entirely used and cleared with
+ * respect to the current epoch before they are used for the subsequent epoch.
  *
- * The "old" maps hold records with respect to and entire epoch,
- * while the "new" maps are with respect to the current flush / chunk rotation.
+ * The "old" maps hold records with respect to and entire epoch, while the "new" maps are with
+ * respect to the current flush / chunk rotation.
  */
 public class JfrTypeRepository implements JfrConstantPool {
     private static final Set<Class<?>> oldClasses = new HashSet<>();
@@ -61,6 +61,7 @@ public class JfrTypeRepository implements JfrConstantPool {
     private static long currentPackageId = 0;
     private static long currentModuleId = 0;
     private static long currentClassLoaderId = 0;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTypeRepository() {
     }
@@ -71,7 +72,7 @@ public class JfrTypeRepository implements JfrConstantPool {
     }
 
     @Override
-    public  int write(JfrChunkWriter writer, boolean flush) {
+    public int write(JfrChunkWriter writer, boolean flush) {
         // Visit all used classes, and collect their packages, modules, classloaders and possibly
         // referenced classes.
         collectTypeInfo(flush);
@@ -168,7 +169,7 @@ public class JfrTypeRepository implements JfrConstantPool {
 
         for (Map.Entry<String, PackageInfo> pkgInfo : newPackages.entrySet()) {
             writePackage(writer, pkgInfo.getKey(), pkgInfo.getValue(), flush);
-            oldPackages.put(pkgInfo.getKey(),pkgInfo.getValue());
+            oldPackages.put(pkgInfo.getKey(), pkgInfo.getValue());
         }
         return NON_EMPTY;
     }
@@ -290,16 +291,15 @@ public class JfrTypeRepository implements JfrConstantPool {
     }
 
     static boolean addClass(Class<?> clazz) {
-        if (isClassVisited(clazz)){
+        if (isClassVisited(clazz)) {
             return false;
         }
         return newClasses.add(clazz);
     }
 
-    static boolean isClassVisited(Class<?> clazz){
+    static boolean isClassVisited(Class<?> clazz) {
         return newClasses.contains(clazz) || oldClasses.contains(clazz);
     }
-
 
     static boolean addPackage(Package pkg, Module module) {
         if (!isPackageVisited(pkg)) {
@@ -313,10 +313,9 @@ public class JfrTypeRepository implements JfrConstantPool {
         }
     }
 
-    static boolean isPackageVisited(Package pkg){
+    static boolean isPackageVisited(Package pkg) {
         return oldPackages.containsKey(pkg.getName()) || newPackages.containsKey(pkg.getName());
     }
-
 
     static long getPackageId(Package pkg) {
         if (pkg != null) {
@@ -337,7 +336,8 @@ public class JfrTypeRepository implements JfrConstantPool {
             return false;
         }
     }
-    static boolean isModuleVisited(Module module){
+
+    static boolean isModuleVisited(Module module) {
         return newModules.containsKey(module) || oldModules.containsKey(module);
     }
 
@@ -361,7 +361,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         }
     }
 
-    static boolean isClassLoaderVisited(ClassLoader classLoader){
+    static boolean isClassLoaderVisited(ClassLoader classLoader) {
         return oldClassLoaders.containsKey(classLoader) || newClassLoaders.containsKey(classLoader);
     }
 
@@ -382,6 +382,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         newClassLoaders.clear();
         newClasses.clear();
     }
+
     private static void clearEpochChange() {
         clearFlush();
         oldClasses.clear();

@@ -248,8 +248,10 @@ public class JfrSymbolRepository implements JfrConstantPool {
 
         @RawField
         void setReplaceDotWithSlash(boolean value);
+
         @RawField
         boolean getSerialized();
+
         @RawField
         void setSerialized(boolean serialized);
     }

@@ -104,6 +104,7 @@ public class JfrMethodRepository implements JfrConstantPool {
 
         /* The buffer may have been replaced with a new one. */
         epochData.methodBuffer = data.getJfrBuffer();
+        epochData.unflushedMethodCount++;
         return methodId;
     }
 
@@ -127,7 +128,7 @@ public class JfrMethodRepository implements JfrConstantPool {
         maybeLock(flush);
         try {
             JfrMethodEpochData epochData = getEpochData(!flush);
-            int count = writeMethods(writer, epochData, flush);
+            int count = writeMethods(writer, epochData);
             if (!flush) {
                 epochData.clear();
             }
@@ -138,16 +139,17 @@ public class JfrMethodRepository implements JfrConstantPool {
     }
 
     @Uninterruptible(reason = "May write current epoch data.")
-    private static int writeMethods(JfrChunkWriter writer, JfrMethodEpochData epochData, boolean flush) {
-        int numberOfMethods = epochData.visitedMethods.getSize();
+    private static int writeMethods(JfrChunkWriter writer, JfrMethodEpochData epochData) {
+        int numberOfMethods = epochData.unflushedMethodCount;
         if (numberOfMethods == 0) {
             return EMPTY;
         }
 
         writer.writeCompressedLong(JfrType.Method.getId());
         writer.writeCompressedInt(numberOfMethods);
-        writer.write(epochData.methodBuffer, !flush);
+        writer.write(epochData.methodBuffer);
 
+        epochData.unflushedMethodCount = 0;
         return NON_EMPTY;
     }
 
@@ -160,10 +162,12 @@ public class JfrMethodRepository implements JfrConstantPool {
     private static class JfrMethodEpochData {
         private JfrBuffer methodBuffer;
         private final JfrVisitedTable visitedMethods;
+        private int unflushedMethodCount;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         JfrMethodEpochData() {
             this.visitedMethods = new JfrVisitedTable();
+            this.unflushedMethodCount = 0;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -181,6 +185,7 @@ public class JfrMethodRepository implements JfrConstantPool {
             if (methodBuffer.isNonNull()) {
                 JfrBufferAccess.reinitialize(methodBuffer);
             }
+            unflushedMethodCount = 0;
         }
     }
 }

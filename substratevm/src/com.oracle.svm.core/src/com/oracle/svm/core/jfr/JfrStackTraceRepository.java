@@ -250,7 +250,7 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         maybeLock(flush);
         try {
             JfrStackTraceEpochData epochData = getEpochData(!flush);
-            int count = writeStackTraces(writer, epochData, flush);
+            int count = writeStackTraces(writer, epochData);
             if (!flush) {
                 epochData.clear();
             }
@@ -261,15 +261,15 @@ public class JfrStackTraceRepository implements JfrConstantPool {
     }
 
     @Uninterruptible(reason = "May write current epoch data.")
-    private static int writeStackTraces(JfrChunkWriter writer, JfrStackTraceEpochData epochData, boolean flush) {
+    private static int writeStackTraces(JfrChunkWriter writer, JfrStackTraceEpochData epochData) {
         if (epochData.numberOfSerializedStackTraces == 0) {
             return EMPTY;
         }
 
         writer.writeCompressedLong(JfrType.StackTrace.getId());
         writer.writeCompressedInt(epochData.numberOfSerializedStackTraces);
-        writer.write(epochData.stackTraceBuffer, !flush);
-
+        writer.write(epochData.stackTraceBuffer);
+        epochData.numberOfSerializedStackTraces = 0;
         return NON_EMPTY;
     }
 
