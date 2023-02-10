@@ -58,6 +58,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -787,6 +788,7 @@ public class FallbackTest extends AbstractPolyglotTest {
             return "s0";
         }
 
+        @Idempotent
         static boolean staticGuard() {
             return false;
         }

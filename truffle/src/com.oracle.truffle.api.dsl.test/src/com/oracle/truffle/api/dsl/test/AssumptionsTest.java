@@ -819,7 +819,7 @@ public class AssumptionsTest {
         @ExpectError("It is discouraged to use the assumptions property with a specialization that cannot have multiple specialization instances%")
         @Specialization(assumptions = "assumption")
         public boolean s0(Object arg,
-                        @Cached(value = "NEVER_VALID", neverDefault = true) Assumption assumption) {
+                        @Cached("NEVER_VALID") Assumption assumption) {
             return false;
         }
 

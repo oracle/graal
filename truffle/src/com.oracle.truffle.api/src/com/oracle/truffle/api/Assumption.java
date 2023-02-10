@@ -107,6 +107,7 @@ public interface Assumption {
      * @return a boolean value indicating the validity of the assumption
      * @since 0.8 or earlier
      */
+    // @NonIdempotent
     boolean isValid();
 
     /**
@@ -139,6 +140,7 @@ public interface Assumption {
      *
      * @since 19.0
      */
+    // @NonIdempotent
     static boolean isValidAssumption(Assumption assumption) {
         return assumption != null && assumption.isValid();
     }
@@ -152,6 +154,7 @@ public interface Assumption {
      * @since 19.0
      */
     @ExplodeLoop
+    // @NonIdempotent
     static boolean isValidAssumption(Assumption[] assumptions) {
         CompilerAsserts.partialEvaluationConstant(assumptions);
         if (assumptions == null) {

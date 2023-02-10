@@ -43,6 +43,7 @@ package com.oracle.truffle.api.dsl.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CodeFormatTestFactory.LineWrappingTestFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
@@ -63,10 +64,12 @@ public class CodeFormatTest {
         LineWrappingTest() {
         }
 
+        @Idempotent
         protected static boolean guardWithaReeeeeeeeaaaaaaaaaaalllllllllyyyyyyyyLLLLLLLLLLLLLoooooooonnnnnnngggggggName1() {
             return true;
         }
 
+        @Idempotent
         protected static boolean guardWithaReeeeeeeeaaaaaaaaaaalllllllllyyyyyyyyLLLLLLLLLLLLLoooooooonnnnnnngggggggName2() {
             return true;
         }

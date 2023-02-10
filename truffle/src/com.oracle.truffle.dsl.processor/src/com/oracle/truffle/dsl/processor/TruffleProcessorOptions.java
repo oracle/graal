@@ -76,7 +76,6 @@ public class TruffleProcessorOptions {
     private static final String CacheSharingWarningsEnabledOptionName = "cacheSharingWarningsEnabled";
     private static final String StateBitWidth = "StateBitWidth";
     private static final String PrintTimings = "PrintTimings";
-    private static final String EmitWarningForNewFastPathGuards = "EmitWarningForNewFastPathGuards";
 
     private static String getOption(ProcessingEnvironment env, String key) {
         String value = env.getOptions().get(key);
@@ -84,10 +83,6 @@ public class TruffleProcessorOptions {
             return value;
         }
         return System.getProperty(key);
-    }
-
-    public static boolean emitWarningForSlowPathGuards(ProcessingEnvironment env) {
-        return Boolean.parseBoolean(getOption(env, OptionsPrefix + EmitWarningForNewFastPathGuards));
     }
 
     public static Boolean generateSpecializationStatistics(ProcessingEnvironment env) {
@@ -171,7 +166,6 @@ public class TruffleProcessorOptions {
         result.add(OptionsPrefix + SuppressAllWarnings);
         result.add(OptionsPrefix + SuppressWarnings);
         result.add(OptionsPrefix + PrintTimings);
-        result.add(OptionsPrefix + EmitWarningForNewFastPathGuards);
         return result;
     }
 }

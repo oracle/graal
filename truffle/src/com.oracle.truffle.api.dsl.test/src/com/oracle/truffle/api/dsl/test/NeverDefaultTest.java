@@ -59,6 +59,7 @@ import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Introspection;
@@ -832,6 +833,7 @@ public class NeverDefaultTest extends AbstractPolyglotTest {
     abstract static class FallbackWithCacheClass extends Node {
         abstract boolean execute(Object obj);
 
+        @Idempotent
         static boolean myGuard(Object obj) {
             return !(obj instanceof Integer);
         }

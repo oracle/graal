@@ -47,7 +47,6 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -450,62 +449,49 @@ public final class SpecializationData extends TemplateMethod {
         }
     }
 
-    /**
-     * Returns <code>true</code> if a guard is guaranteed constant <code>true</code> after it was
-     * true once in the slow-path, else <code>false</code>.
-     */
-    public boolean isGuardTrivialTrueInFastPath(DSLExpression expression) {
-        Object constant = expression.resolveConstant();
-        // simple constant true can fold in the fast-path
-        if (constant instanceof Boolean && (boolean) constant) {
-            return true;
-        }
-        /*
-         * If a dynamic parameter is bound an expression is never trivially true in the fast-path.
-         */
+    public enum Idempotence {
+
+        IDEMPOTENT,
+
+        NON_IDEMPOTENT,
+
+        UNKNOWN
+
+    }
+
+    public Idempotence getIdempotence(DSLExpression expression) {
         if (isDynamicParameterBound(expression, true)) {
-            return false;
+            return Idempotence.NON_IDEMPOTENT;
         }
 
-        AtomicBoolean sideEffect = new AtomicBoolean();
+        IdempotentenceVisitor visitor = new IdempotentenceVisitor();
+        expression.accept(visitor);
+        return visitor.current;
+    }
+
+    public Set<ExecutableElement> getBoundMethods(DSLExpression expression) {
+        var foundMethods = new LinkedHashSet<ExecutableElement>();
         expression.accept(new AbstractDSLExpressionVisitor() {
             @Override
             public void visitCall(Call n) {
-                /*
-                 * If we see a call to a method an expression is sensitive to side-effects.
-                 */
-                sideEffect.set(true);
+                foundMethods.add(n.getResolvedMethod());
             }
 
             @Override
             public void visitVariable(Variable n) {
                 VariableElement var = n.getResolvedVariable();
                 if (n.getReceiver() == null) {
-                    /*
-                     * Directly bound variable that is not dynamic. The DSL ensures such reads are
-                     * not side-effecting in the fast-path there. They are effectively final fields.
-                     */
                     Parameter p = findByVariable(var);
-                    if (p != null && p.isBind()) {
-                        sideEffect.set(true);
-                    }
-                } else {
-                    if (!var.getModifiers().contains(Modifier.FINAL)) {
-                        /*
-                         * If we see a non-final read an expression is sensitive to side-effects.
-                         */
-                        sideEffect.set(true);
+                    if (p != null) {
+                        CacheExpression cache = findCache(p);
+                        if (cache != null && cache.isAlwaysInitialized()) {
+                            foundMethods.addAll(getBoundMethods(cache.getDefaultExpression()));
+                        }
                     }
                 }
             }
         });
-
-        if (!sideEffect.get()) {
-            return true;
-        }
-
-        return false;
-
+        return foundMethods;
     }
 
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
@@ -945,6 +931,70 @@ public final class SpecializationData extends TemplateMethod {
             }
         }
         return null;
+    }
+
+    private final class IdempotentenceVisitor extends AbstractDSLExpressionVisitor {
+
+        Idempotence current = Idempotence.IDEMPOTENT;
+
+        @Override
+        public void visitCall(Call n) {
+            if (current == Idempotence.NON_IDEMPOTENT) {
+                // if one method is known to be non-idempotent all of them are
+                return;
+            }
+
+            Boolean idempotent = ElementUtils.isIdempotent(n.getResolvedMethod());
+            if (idempotent == null) {
+                current = Idempotence.UNKNOWN;
+            } else if (idempotent != null && !idempotent) {
+                current = Idempotence.NON_IDEMPOTENT;
+            }
+        }
+
+        @Override
+        public void visitVariable(Variable n) {
+            if (current == Idempotence.NON_IDEMPOTENT) {
+                // if one method is known to be non-idempotent all of them are
+                return;
+            }
+
+            VariableElement var = n.getResolvedVariable();
+            if (n.getReceiver() == null) {
+                /*
+                 * Directly bound variable that is not dynamic. The DSL ensures such reads are not
+                 * side-effecting in the fast-path. They can be treated as effectively final field
+                 * reads.
+                 */
+                Parameter p = findByVariable(var);
+                if (p != null) {
+                    CacheExpression cache = findCache(p);
+                    if (cache != null && cache.isAlwaysInitialized()) {
+                        /*
+                         * Bind variables may cause side-effects themselves.
+                         */
+                        Idempotence cacheIdempotent = getIdempotence(cache.getDefaultExpression());
+                        switch (cacheIdempotent) {
+                            case IDEMPOTENT:
+                                break;
+                            case NON_IDEMPOTENT:
+                            case UNKNOWN:
+                                current = cacheIdempotent;
+                                break;
+                            default:
+                                throw new AssertionError();
+                        }
+                    }
+                }
+            } else {
+                if (!var.getModifiers().contains(Modifier.FINAL)) {
+                    /*
+                     * If we see a non-final read an expression is sensitive to side-effects.
+                     */
+                    current = Idempotence.NON_IDEMPOTENT;
+                }
+            }
+        }
     }
 
 }

@@ -148,6 +148,7 @@ import com.oracle.truffle.dsl.processor.model.NodeFieldData;
 import com.oracle.truffle.dsl.processor.model.Parameter;
 import com.oracle.truffle.dsl.processor.model.ParameterSpec;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
+import com.oracle.truffle.dsl.processor.model.SpecializationData.Idempotence;
 import com.oracle.truffle.dsl.processor.model.SpecializationThrowsData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
@@ -418,6 +419,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeAOT(node);
         boolean recommendInline = initializeInlinable(resolver, node);
 
+        initializeFastPathIdempotentGuards(node);
+
         if (mode == ParseMode.DEFAULT) {
             boolean emitWarnings = TruffleProcessorOptions.cacheSharingWarningsEnabled(processingEnv) && //
                             !TruffleProcessorOptions.generateSlowPathOnly(processingEnv);
@@ -439,20 +442,46 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         verifyRecommendationWarnings(node, recommendInline);
 
-        if (TruffleProcessorOptions.emitWarningForSlowPathGuards(processingEnv)) {
-            for (SpecializationData specialization : node.getReachableSpecializations()) {
-                for (GuardExpression guard : specialization.getGuards()) {
-                    if (!specialization.isDynamicParameterBound(guard.getExpression(), true) && !guard.isWeakReferenceGuard() && !FlatNodeGenFactory.guardNeedsNodeStateBit(specialization, guard)) {
-                        if (!specialization.isGuardTrivialTrueInFastPath(guard.getExpression())) {
-                            guard.addWarning("This guard was only executed in slow-path, but is now executed in the fast-path.");
+        return node;
+    }
+
+    private void initializeFastPathIdempotentGuards(NodeData node) {
+        for (SpecializationData specialization : node.getReachableSpecializations()) {
+            for (GuardExpression guard : specialization.getGuards()) {
+                DSLExpression expression = guard.getExpression();
+
+                if (guard.isWeakReferenceGuard() || FlatNodeGenFactory.guardNeedsNodeStateBit(specialization, guard)) {
+                    guard.setFastPathIdempotent(false);
+                    continue;
+                }
+
+                Idempotence idempotence = specialization.getIdempotence(expression);
+                switch (idempotence) {
+                    case IDEMPOTENT:
+                        guard.setFastPathIdempotent(true);
+                        break;
+                    case NON_IDEMPOTENT:
+                        guard.setFastPathIdempotent(false);
+                        break;
+                    case UNKNOWN:
+                        StringBuilder message = new StringBuilder(String.format("The guard '%s' invokes methods that would benefit from the @%s or @%s annotations: %n",
+                                        guard.getExpression().asString(), getSimpleName(types.Idempotent), getSimpleName(types.NonIdempotent)));
+                        for (ExecutableElement method : specialization.getBoundMethods(expression)) {
+                            if (ElementUtils.isIdempotent(method) == null) {
+                                message.append("  - ").append(ElementUtils.getReadableReference(node.getTemplateType(), method)).append(System.lineSeparator());
+                            }
                         }
-                    }
+                        message.append("The DSL will invoke guards always or only in the slow-path during specialization depending these annotations. ");
+                        message.append("To resolve this annotate the methods, remove the guard or suppress the warning.");
+                        specialization.addSuppressableWarning(TruffleSuppressedWarnings.GUARD, message.toString());
+                        guard.setFastPathIdempotent(true);
+                        break;
+                    default:
+                        throw new AssertionError();
 
                 }
             }
         }
-
-        return node;
     }
 
     private DSLExpressionResolver createBaseResolver(NodeData node, List<Element> members) {
@@ -3711,41 +3740,20 @@ public final class NodeParser extends AbstractParser<NodeData> {
          */
         ProcessorContext context = ProcessorContext.getInstance();
         TruffleTypes types = context.getTypes();
-        if (method != null) {
-            TypeMirror enclosingType = method.getEnclosingElement().asType();
-            String simpleName = method.getSimpleName().toString();
-            if (ElementUtils.typeEquals(context.getType(Object.class), enclosingType) &&
-                            (simpleName.equals("getClass") || simpleName.equals("toString"))) {
-                return true;
-            }
-
-            if ((ElementUtils.typeEquals(types.Frame, enclosingType) || ElementUtils.typeEquals(types.VirtualFrame, enclosingType) ||
-                            ElementUtils.typeEquals(types.MaterializedFrame, enclosingType)) && //
-                            (simpleName.equals("getFrameDescriptor") || //
-                                            simpleName.equals("getArguments") || //
-                                            simpleName.equals("materialize"))) {
-                return true;
-            }
-            if ((ElementUtils.typeEquals(types.FrameDescriptor, enclosingType)) && //
-                            (simpleName.equals("getSlotKind") || //
-                                            simpleName.equals("getAuxiliarySlots"))) {
-                return true;
-            }
-
-            if (typeEquals(enclosingType, types.DirectCallNode) && simpleName.equals("create")) {
-                return true;
-            }
-
-            if (typeEquals(enclosingType, types.IndirectCallNode) && simpleName.equals("create")) {
-                return true;
-            }
-
+        if (method != null && types.isBuiltinNeverDefault(method)) {
+            return true;
         }
 
         VariableElement var = expression.resolveVariable();
-        if (var != null && var.getSimpleName().toString().equals("this")) {
-            // this pointer for libraries never null
-            return true;
+        if (var != null) {
+            if (var.getSimpleName().toString().equals("this")) {
+                // this pointer for libraries never null
+                return true;
+            }
+
+            if (types.isBuiltinNeverDefault(var)) {
+                return true;
+            }
         }
 
         /*

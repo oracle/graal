@@ -43,6 +43,21 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-43903 Usages of `@Specialization(assumptions=...)` that do not bind any cached values in the guard now produce a suppressable warning. In most situations, such specializations should be migrated to use a regular guard instead. 
 * GR-43903 Usages of `@Specialization(assumptions=...)` that do not bind any cached values in the guard now produce a suppressable warning. In most situations, such specializations should be migrated to use a regular guard instead. For example, instead of using `@Specialization(assumptions = "assumption")` you might need to be using `@Specialization(guards = "assumption.isValid()")`. 
 * GR-43903 (potentially breaking-change) DSL method guards that do not bind dynamic values are no longer just asserted on the fast-path. Only method guards that can always be guaranteed `true` after a slow-path invocation are asserted. Workarounds that used dynamic values bound to a guard to force its execution on the fast-path can now be removed.  For example, it is now possible to call `Assumption.isValid()` from a bound `@Cached` value in a guard and it will always be called on the fast-path and no longer just asserted. Note that this change may surface new bugs in existing DSL nodes, especially if they never were tested with assertions enabled. We added a new annotation processor option `-Atruffle.dsl.EmitWarningForNewFastPathGuards=true` to list all methods where the behavior changed. Language implementations are recommended check all guards with a behavior change and make sure they are still correct.
+* GR-43903 Usages of `@Specialization(assumptions=...)` that do not bind any cached values in the guard now produce a suppressable warning. In most situations, such specializations should be migrated to use a regular guard instead. For example, instead of using `@Specialization(assumptions = "assumption")` you might need to be using `@Specialization(guards = "assumption.isValid()")`.
+* GR-43903 Added `@Idempotent` and `@NonIdempotent` DSL annotations useful for DSL guard optimizations.
+Guards that only bind idempotent methods and no dynamic values can always be assumed `true` after they were `true` once on the slow-path.
+The generated code leverages this information and asserts instead of executes the guard on the fast-path.
+The DSL now emits warnings with for all guards where specifying the annotations may be beneficial.
+Note that all guards that do not bind dynamic values are assumed idempotent by default for compatibility reasons.
+ 
+ 
+* GR-43903 DSL method guards that do not bind dynamic values are no longer just asserted on the fast-path. 
+
+Workarounds that used dynamic values bound to a guard to force its execution on the fast-path can now be removed.  
+For example, it is now possible to call `Assumption.isValid()` from a bound `@Cached` value in a guard and it will always be called on the fast-path and no longer just asserted. 
+Note that this change may surface new bugs in existing DSL nodes, especially if they never were tested with assertions enabled. 
+We added a new annotation processor option `-Atruffle.dsl.EmitWarningForNewFastPathGuards=true` to list all methods where the behavior changed. 
+Language implementations are recommended check all guards with a behavior change and make sure they are still correct.
 
 ## Version 22.3.0
 

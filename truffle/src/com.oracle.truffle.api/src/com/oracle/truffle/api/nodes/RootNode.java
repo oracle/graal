@@ -553,9 +553,9 @@ public abstract class RootNode extends ExecutableNode {
 
     /**
      * If this root node has a lexical scope parent, this method returns its frame descriptor.
-     * 
+     *
      * As an example, consider the following pseudocode:
-     * 
+     *
      * <pre>
      * def m {
      *   # For the "m" root node:

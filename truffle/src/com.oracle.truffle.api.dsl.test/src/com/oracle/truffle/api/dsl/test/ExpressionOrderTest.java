@@ -46,6 +46,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.test.ExpressionOrderTestFactory.ExpressionOrderTest1NodeGen;
@@ -97,6 +98,7 @@ public class ExpressionOrderTest {
             return 1;
         }
 
+        @Idempotent
         protected boolean cacheGuard1(int value) {
             assertOrder(2);
             Assert.assertEquals(1, value);
@@ -113,6 +115,7 @@ public class ExpressionOrderTest {
             return 2;
         }
 
+        @Idempotent
         protected boolean cacheGuard2(int value) {
             assertOrder(5);
             Assert.assertEquals(2, value);

@@ -200,9 +200,9 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             if (expectedErrors.size() != messages.size()) {
                 ProcessorContext.getInstance().getLog().message(Kind.ERROR, element, null, null, "Error count expected %s but was %s. Expected errors %s but got %s.",
                                 expectedErrors.size(),
-                                foundMessages.size(),
+                                messages.size(),
                                 expectedErrors.toString(),
-                                foundMessages.toString());
+                                messages.toString());
             }
         }
 

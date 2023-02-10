@@ -6817,8 +6817,8 @@ public class FlatNodeGenFactory {
              *
              * (3) The guard needs a state bit and may be partially initialized.
              */
-            if (specialization.isGuardTrivialTrueInFastPath(expression) && !guard.isWeakReferenceGuard() && !guardNeedsNodeStateBit(specialization, guard)) {
-                assertion = CodeTreeBuilder.createBuilder().startAssert().tree(guardExpression).end().build();
+            if (guard.isFastPathIdempotent()) {
+                assertion = CodeTreeBuilder.createBuilder().startAssert().startStaticCall(types.DSLSupport, "assertIdempotence").tree(guardExpression).end().end().build();
             } else {
                 condition.tree(guardExpression);
             }
