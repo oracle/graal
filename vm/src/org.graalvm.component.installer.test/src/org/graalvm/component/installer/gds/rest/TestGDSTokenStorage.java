@@ -25,39 +25,27 @@
 
 package org.graalvm.component.installer.gds.rest;
 
+import org.graalvm.component.installer.CommandInput;
+import static org.graalvm.component.installer.CommonConstants.PATH_GDS_CONFIG;
+import static org.graalvm.component.installer.CommonConstants.PATH_USER_GU;
+import static org.graalvm.component.installer.CommonConstants.SYSPROP_USER_HOME;
 import org.graalvm.component.installer.Feedback;
-import org.graalvm.component.installer.Version;
-import org.graalvm.component.installer.remote.FileDownloader;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.nio.file.Path;
 
 /**
  *
  * @author odouda
  */
-public class GDSFileConnector extends GDSRESTConnector {
-    public GDSFileConnector(String baseURL, Feedback feedback, String productId, Version gvmVersion) {
-        super(baseURL, feedback, productId, gvmVersion);
+class TestGDSTokenStorage extends GDSTokenStorage {
+    static Path testPath = Path.of(System.getProperty(SYSPROP_USER_HOME), PATH_USER_GU, "test" + PATH_GDS_CONFIG);
+
+    TestGDSTokenStorage(Feedback feedback, CommandInput input) {
+        super(feedback, input);
     }
 
     @Override
-    protected Map<String, List<String>> getParams() {
-        return Collections.emptyMap();
-    }
-
-    @Override
-    protected FileDownloader obtain(String endpoint) {
-        return super.obtain("");
-    }
-
-    static final String MOCK_TOKEN_NEW = "newMockToken";
-    String[] verEmInps;
-
-    @Override
-    public String sendVerificationEmail(String email, String licAddr, String oldToken) {
-        verEmInps = new String[]{email, licAddr, oldToken};
-        return oldToken == null ? MOCK_TOKEN_NEW : oldToken;
+    public Path getPropertiesPath() {
+        return testPath;
     }
 
 }
