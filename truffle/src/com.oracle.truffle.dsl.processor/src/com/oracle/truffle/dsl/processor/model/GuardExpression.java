@@ -101,7 +101,7 @@ public final class GuardExpression extends MessageContainer {
 
     public boolean isFastPathIdempotent() {
         if (fastPathIdempotent == null) {
-            throw new AssertionError("Idempotent yet initialized.");
+            throw new AssertionError("Idempotent not yet initialized.");
         }
         return fastPathIdempotent;
     }
