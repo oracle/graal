@@ -168,7 +168,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
-    @Uninterruptible(reason = "Called by an uninterruptible method.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setHeapBase(PointerBase heapBase) {
         if (hasHeapBase()) {
             writeCurrentVMHeapBase(heapBase);
@@ -491,10 +491,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
     private static boolean initiateTearDownIsolateInterruptibly() {
-        return initiateTearDownIsolateInterruptibly0();
-    }
-
-    private static boolean initiateTearDownIsolateInterruptibly0() {
         RuntimeSupport.executeTearDownHooks();
         return PlatformThreads.singleton().tearDown();
     }
@@ -611,10 +607,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
-        logException(exception);
-
-        ImageSingletons.lookup(LogHandler.class).fatalError();
+        reportExceptionInterruptibly(exception);
         return CEntryPointErrors.UNSPECIFIED; // unreachable
+    }
+
+    private static void reportExceptionInterruptibly(Throwable exception) {
+        logException(exception);
+        ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")

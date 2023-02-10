@@ -63,7 +63,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
         table1.teardown();
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code.")
+    @Uninterruptible(reason = "Epoch must not change while in this method.")
     private JfrSymbolHashtable getTable(boolean previousEpoch) {
         boolean epoch = previousEpoch ? JfrTraceIdEpoch.getInstance().previousEpoch() : JfrTraceIdEpoch.getInstance().currentEpoch();
         if (epoch) {

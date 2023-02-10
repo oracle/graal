@@ -63,7 +63,7 @@ final class LoomVirtualThreads implements VirtualThreads {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isVirtual(Thread thread) {
         return Target_java_lang_VirtualThread.class.isInstance(thread);
     }

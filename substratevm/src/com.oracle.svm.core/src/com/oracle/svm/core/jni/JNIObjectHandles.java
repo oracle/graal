@@ -36,9 +36,9 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
@@ -113,27 +113,27 @@ public final class JNIObjectHandles {
     }
 
     @SuppressWarnings("unchecked")
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static ThreadLocalHandles<ObjectHandle> getExistingLocals() {
         return handles.get();
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isInLocalRange(JNIObjectHandle handle) {
         return ThreadLocalHandles.isInRange((ObjectHandle) handle);
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static ObjectHandle decodeLocal(JNIObjectHandle handle) {
         return (ObjectHandle) handle;
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static JNIObjectHandle encodeLocal(ObjectHandle handle) {
         return (JNIObjectHandle) handle;
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> T getObject(JNIObjectHandle handle) {
         if (handle.equal(nullHandle())) {
             return null;
@@ -177,7 +177,7 @@ public final class JNIObjectHandles {
         return JNIObjectRefType.Invalid; // intentionally includes the null handle
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JNIObjectHandle createLocal(Object obj) {
         if (obj == null) {
             return JNIObjectHandles.nullHandle();
@@ -303,7 +303,7 @@ final class JNIGlobalHandles {
     private static final SignedWord MSB = WordFactory.signed(1L << 63);
     private static final ObjectHandlesImpl globalHandles = new ObjectHandlesImpl(JNIObjectHandles.nullHandle().add(1), HANDLE_BITS_MASK, JNIObjectHandles.nullHandle());
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isInRange(JNIObjectHandle handle) {
         return MIN_VALUE.lessOrEqual((SignedWord) handle) && MAX_VALUE.greaterThan((SignedWord) handle);
     }
@@ -390,18 +390,18 @@ final class JNIImageHeapHandles {
         assert ENTIRE_RANGE_MAX.lessThan(JNIGlobalHandles.MIN_VALUE) || ENTIRE_RANGE_MIN.greaterThan(JNIGlobalHandles.MAX_VALUE);
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isInImageHeap(Object target) {
         return target != null && Heap.getHeap().isInImageHeap(target);
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isInRange(JNIObjectHandle handle) {
         SignedWord handleValue = (SignedWord) handle;
         return handleValue.greaterOrEqual(ENTIRE_RANGE_MIN) && handleValue.lessOrEqual(ENTIRE_RANGE_MAX);
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static JNIObjectHandle asLocal(Object target) {
         assert isInImageHeap(target);
         SignedWord base = (SignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());
@@ -428,7 +428,7 @@ final class JNIImageHeapHandles {
         return (JNIObjectHandle) ((SignedWord) handle).and(OBJ_OFFSET_BITS_MASK).add(rangeMin);
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static <T> T getObject(JNIObjectHandle handle) {
         assert isInRange(handle);
         UnsignedWord base = (UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());

@@ -32,6 +32,6 @@ public interface IsolatedCompilationMethod<T extends SharedRuntimeMethod> extend
 
     /** Handle to the method in the client isolate for installing code. */
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     ClientHandle<T> getMirror();
 }

@@ -365,18 +365,6 @@ public final class VMOperationControl {
         }
     }
 
-    /**
-     * This method returns true if the application is currently stopped at a safepoint. This method
-     * always returns false if {@linkplain SubstrateOptions#MultiThreaded} is disabled as no
-     * safepoints are needed in that case.
-     */
-    @Uninterruptible(reason = "called from isolate setup code", mayBeInlined = true)
-    public static boolean isFrozen() {
-        boolean result = Safepoint.Master.singleton().isFrozen();
-        assert !result || MultiThreaded.getValue();
-        return result;
-    }
-
     private static Log log() {
         return SubstrateOptions.TraceVMOperations.getValue() ? Log.log() : Log.noopLog();
     }
@@ -832,7 +820,7 @@ public final class VMOperationControl {
             return head.isNull();
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @Override
         public void push(NativeVMOperationData element) {
             assert element.getNext().isNull() : "must not already be queued";

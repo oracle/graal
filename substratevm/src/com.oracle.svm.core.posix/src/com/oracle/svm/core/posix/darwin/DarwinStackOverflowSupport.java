@@ -62,12 +62,12 @@ final class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
         return lookupStackEnd(WordFactory.zero());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isProtected(int prot) {
         return (prot & (VM_PROT_READ() | VM_PROT_WRITE())) == 0;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord vmComputeStackGuardSize(UnsignedWord stackend) {
         UnsignedWord guardsize = WordFactory.zero();
 

@@ -37,7 +37,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.thread.VMThreads.OSThreadId;
@@ -107,7 +106,6 @@ public class Pthread {
     public static native int pthread_join_no_transition(pthread_t th, WordPointer thread_return);
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static native pthread_t pthread_self();
 
     @CFunction
