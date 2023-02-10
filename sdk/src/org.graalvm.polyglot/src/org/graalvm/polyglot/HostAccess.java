@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,6 @@
  */
 package org.graalvm.polyglot;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.MapCursor;
-
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -63,6 +58,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
 
 /**
  * Represents the host access policy of a polyglot context. The host access policy specifies which
@@ -105,6 +105,7 @@ public final class HostAccess {
     final boolean allowIterableAccess;
     final boolean allowIteratorAccess;
     final boolean allowMapAccess;
+    final boolean allowBigIntegerNumberAccess;
     final boolean allowAccessInheritance;
     private final boolean methodScopingDefault;
     private final MutableTargetMapping[] allowMutableTargetMappings;
@@ -112,7 +113,7 @@ public final class HostAccess {
     private final EconomicSet<Executable> disableMethodScoping;
     volatile Object impl;
 
-    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false, false,
+    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false, false, false,
                     null, false, null, null);
 
     /**
@@ -261,8 +262,9 @@ public final class HostAccess {
                     EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
                     String name,
                     boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess,
-                    boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess, boolean allowAccessInheritance, MutableTargetMapping[] allowMutableTargetMappings,
-                    boolean methodScopingDefault, EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations, EconomicSet<Executable> disableMethodScoping) {
+                    boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess, boolean allowBigIntegerNumberAccess, boolean allowAccessInheritance,
+                    MutableTargetMapping[] allowMutableTargetMappings, boolean methodScopingDefault, EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations,
+                    EconomicSet<Executable> disableMethodScoping) {
         // create defensive copies
         this.accessAnnotations = copySet(annotations, Equivalence.IDENTITY);
         this.excludeTypes = copyMap(excludeTypes, Equivalence.IDENTITY);
@@ -279,6 +281,7 @@ public final class HostAccess {
         this.allowBufferAccess = allowBufferAccess;
         this.allowIterableAccess = allowListAccess || allowIterableAccess;
         this.allowMapAccess = allowMapAccess;
+        this.allowBigIntegerNumberAccess = allowBigIntegerNumberAccess;
         this.allowIteratorAccess = allowListAccess || allowIterableAccess || allowMapAccess || allowIteratorAccess;
         this.allowAccessInheritance = allowAccessInheritance;
         this.allowMutableTargetMappings = allowMutableTargetMappings;
@@ -306,6 +309,7 @@ public final class HostAccess {
                         && allowIterableAccess == other.allowIterableAccess//
                         && allowIteratorAccess == other.allowIteratorAccess//
                         && allowMapAccess == other.allowMapAccess//
+                        && allowBigIntegerNumberAccess == other.allowBigIntegerNumberAccess//
                         && equalsMap(excludeTypes, other.excludeTypes)//
                         && equalsSet(members, other.members)//
                         && equalsSet(implementableAnnotations, other.implementableAnnotations)//
@@ -330,6 +334,7 @@ public final class HostAccess {
                         allowIterableAccess,
                         allowIteratorAccess,
                         allowMapAccess,
+                        allowBigIntegerNumberAccess,
                         hashMap(excludeTypes),
                         hashSet(members),
                         hashSet(implementableAnnotations),
@@ -704,6 +709,7 @@ public final class HostAccess {
         private boolean allowIterableAccess;
         private boolean allowIteratorAccess;
         private boolean allowMapAccess;
+        private boolean allowBigIntegerNumberAccess = true;
         private boolean allowAllImplementations;
         private boolean allowAllClassImplementations;
         private boolean allowAccessInheritance;
@@ -731,6 +737,7 @@ public final class HostAccess {
             this.allowIterableAccess = access.allowIterableAccess;
             this.allowIteratorAccess = access.allowIteratorAccess;
             this.allowMapAccess = access.allowMapAccess;
+            this.allowBigIntegerNumberAccess = access.allowBigIntegerNumberAccess;
             this.allowAllImplementations = access.allowAllInterfaceImplementations;
             this.allowAllClassImplementations = access.allowAllClassImplementations;
             this.allowAccessInheritance = access.allowAccessInheritance;
@@ -971,6 +978,18 @@ public final class HostAccess {
          */
         public Builder allowMapAccess(boolean mapAccess) {
             this.allowMapAccess = mapAccess;
+            return this;
+        }
+
+        /**
+         * Allows the guest application to access {@link java.math.BigInteger BigInteger} as a
+         * {@link Value#isNumber() number}. By default BigInteger number access is allowed.
+         *
+         * @see Value#isNumber()
+         * @since 23.0
+         */
+        public Builder allowBigIntegerNumberAccess(boolean bigIntegerNumberAccess) {
+            this.allowBigIntegerNumberAccess = bigIntegerNumberAccess;
             return this;
         }
 
@@ -1241,7 +1260,8 @@ public final class HostAccess {
         public HostAccess build() {
             return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic,
                             allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess, allowIterableAccess,
-                            allowIteratorAccess, allowMapAccess, allowAccessInheritance, allowMutableTargetMappings, methodScopingDefault, disableMethodScopingAnnotations, disableMethodScoping);
+                            allowIteratorAccess, allowMapAccess, allowBigIntegerNumberAccess, allowAccessInheritance, allowMutableTargetMappings, methodScopingDefault, disableMethodScopingAnnotations,
+                            disableMethodScoping);
         }
     }
 

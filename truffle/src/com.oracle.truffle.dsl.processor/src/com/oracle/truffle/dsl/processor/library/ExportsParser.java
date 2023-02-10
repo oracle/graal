@@ -391,6 +391,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
 
             Set<LibraryMessage> missingAbstractMessage = new LinkedHashSet<>();
+            Set<LibraryMessage> missingAbstractMessageAsWarning = new LinkedHashSet<>();
             for (LibraryMessage message : exportLib.getLibrary().getMethods()) {
                 List<Element> elementsWithSameName = potentiallyMissedOverrides.getOrDefault(message.getName(), Collections.emptyList());
                 if (!elementsWithSameName.isEmpty()) {
@@ -418,20 +419,35 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                     break;
                                 }
                             }
-                        } else {
+                        } else if (message.getAbstractIfExportedAsWarning().isEmpty()) {
                             isAbstract = !exportLib.hasExportDelegation();
+                        } else {
+                            isAbstract = false;
                         }
+
+                        if (!message.getAbstractIfExportedAsWarning().isEmpty()) {
+                            for (LibraryMessage abstractIfExportedAsWarning : message.getAbstractIfExportedAsWarning()) {
+                                if (exportLib.getExportedMessages().containsKey(abstractIfExportedAsWarning.getName())) {
+                                    missingAbstractMessageAsWarning.add(message);
+                                    break;
+                                }
+                            }
+                        }
+
                         if (isAbstract) {
                             missingAbstractMessage.add(message);
                         }
                     }
                 }
             }
-            if (!missingAbstractMessage.isEmpty()) {
+            if (!missingAbstractMessage.isEmpty() || !missingAbstractMessageAsWarning.isEmpty()) {
+                Set<LibraryMessage> missingAbstractMessages = new LinkedHashSet<>(missingAbstractMessage);
+                missingAbstractMessages.addAll(missingAbstractMessageAsWarning);
+
                 StringBuilder msg = new StringBuilder(
-                                String.format("The following message(s) of library %s are abstract and must be exported using:%n",
+                                String.format("The following message(s) of library %s are abstract and should be exported using:%n",
                                                 getSimpleName(exportLib.getLibrary().getTemplateType())));
-                for (LibraryMessage message : missingAbstractMessage) {
+                for (LibraryMessage message : missingAbstractMessages) {
                     msg.append("  ").append(generateExpectedSignature(type, message, exportLib.getExplicitReceiver())).append(" {");
                     if (!ElementUtils.isVoid(message.getExecutable().getReturnType())) {
                         msg.append(" return ").append(ElementUtils.defaultValue(message.getExecutable().getReturnType()));
@@ -439,7 +455,11 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     }
                     msg.append(" }%n");
                 }
-                exportLib.addError(msg.toString());
+                if (!missingAbstractMessage.isEmpty()) {
+                    exportLib.addError(msg.toString());
+                } else {
+                    exportLib.addSuppressableWarning(TruffleSuppressedWarnings.ABSTRACT_LIBRARY_EXPORT, msg.toString());
+                }
             }
         }
 
