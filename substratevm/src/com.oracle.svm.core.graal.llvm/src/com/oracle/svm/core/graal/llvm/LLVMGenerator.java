@@ -1126,6 +1126,16 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         builder.setCallSiteAttribute(call, Attribute.GCLeafFunction);
     }
 
+    public void clobberRegister(String register) {
+        LLVMTypeRef inlineAsmType = builder.functionType(builder.voidType());
+        String asmSnippet = LLVMTargetSpecific.get().getNopInlineAssembly();
+        InlineAssemblyConstraint clobberConstraint = new InlineAssemblyConstraint(Type.Clobber, Location.namedRegister(register));
+
+        LLVMValueRef clobber = builder.buildInlineAsm(inlineAsmType, asmSnippet, true, false, clobberConstraint);
+        LLVMValueRef call = builder.buildCall(clobber);
+        builder.setCallSiteAttribute(call, Attribute.GCLeafFunction);
+    }
+
     /* Unimplemented */
 
     @Override
