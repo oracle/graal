@@ -467,7 +467,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         StringBuilder message = new StringBuilder(String.format("The guard '%s' invokes methods that would benefit from the @%s or @%s annotations: %n",
                                         guard.getExpression().asString(), getSimpleName(types.Idempotent), getSimpleName(types.NonIdempotent)));
                         for (ExecutableElement method : specialization.getBoundMethods(expression)) {
-                            if (ElementUtils.isIdempotent(method) == null) {
+                            if (ElementUtils.getIdempotent(method) == Idempotence.UNKNOWN) {
                                 message.append("  - ").append(ElementUtils.getReadableReference(node.getTemplateType(), method)).append(System.lineSeparator());
                             }
                         }

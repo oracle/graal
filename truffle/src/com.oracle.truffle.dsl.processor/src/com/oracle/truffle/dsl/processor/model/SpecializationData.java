@@ -944,11 +944,9 @@ public final class SpecializationData extends TemplateMethod {
                 return;
             }
 
-            Boolean idempotent = ElementUtils.isIdempotent(n.getResolvedMethod());
-            if (idempotent == null) {
-                current = Idempotence.UNKNOWN;
-            } else if (idempotent != null && !idempotent) {
-                current = Idempotence.NON_IDEMPOTENT;
+            Idempotence idempotent = ElementUtils.getIdempotent(n.getResolvedMethod());
+            if (idempotent == Idempotence.UNKNOWN || idempotent == Idempotence.NON_IDEMPOTENT) {
+                current = idempotent;
             }
         }
 

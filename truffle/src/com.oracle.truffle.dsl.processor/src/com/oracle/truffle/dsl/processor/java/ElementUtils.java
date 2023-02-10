@@ -84,6 +84,7 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.model.SpecializationData.Idempotence;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 
 /**
@@ -1838,23 +1839,23 @@ public class ElementUtils {
         }
     }
 
-    public static Boolean isIdempotent(ExecutableElement method) {
+    public static Idempotence getIdempotent(ExecutableElement method) {
         TruffleTypes types = ProcessorContext.types();
         if (findAnnotationMirror(method, types.Idempotent) != null) {
-            return true;
+            return Idempotence.IDEMPOTENT;
         }
         if (findAnnotationMirror(method, types.NonIdempotent) != null) {
-            return false;
+            return Idempotence.NON_IDEMPOTENT;
         }
 
         if (types.isBuiltinIdempotent(method)) {
-            return true;
+            return Idempotence.IDEMPOTENT;
         }
         if (types.isBuiltinNonIdempotent(method)) {
-            return false;
+            return Idempotence.NON_IDEMPOTENT;
         }
 
-        return null;
+        return Idempotence.UNKNOWN;
     }
 
 }
