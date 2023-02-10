@@ -108,6 +108,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
+    private ResolvedJavaType wrappedWithResolve;
     private final String qualifiedName;
     private final String unqualifiedName;
 
@@ -837,7 +838,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public ResolvedJavaType getWrappedWithResolve() {
-        return universe.substitutions.resolve(wrapped);
+        if (wrappedWithResolve == null) {
+            wrappedWithResolve = universe.substitutions.resolve(wrapped);
+        }
+        return wrappedWithResolve;
     }
 
     @Override
