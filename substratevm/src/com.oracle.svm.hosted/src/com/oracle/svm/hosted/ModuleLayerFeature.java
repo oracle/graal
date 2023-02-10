@@ -173,10 +173,10 @@ public final class ModuleLayerFeature implements InternalFeature {
          */
         Set<String> extraModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
 
-        Set<Module> runtimeImageModules = calculateRootModulesAndUpdateExtraModules(accessImpl, ModuleSupport.nonExplicitModules, extraModules);
-
-        Set<Module> runtimeImageNamedModules = runtimeImageModules
+        Set<Module> runtimeImageNamedModules = accessImpl.getUniverse().getTypes()
                         .stream()
+                        .filter(ModuleLayerFeature::typeIsReachable)
+                        .map(t -> t.getJavaClass().getModule())
                         .filter(Module::isNamed)
                         .collect(Collectors.toSet());
 
@@ -211,7 +211,8 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .sorted(Comparator.comparingInt(ModuleLayerFeatureUtils::distanceFromBootModuleLayer))
                         .collect(Collectors.toList());
 
-        List<ModuleLayer> runtimeModuleLayers = synthesizeRuntimeModuleLayers(accessImpl, reachableModuleLayers, runtimeImageNamedModules, analysisReachableSyntheticModules);
+        Set<String> rootModules = calculateRootModules(accessImpl, extraModules);
+        List<ModuleLayer> runtimeModuleLayers = synthesizeRuntimeModuleLayers(accessImpl, reachableModuleLayers, runtimeImageNamedModules, analysisReachableSyntheticModules, rootModules);
         ModuleLayer runtimeBootLayer = runtimeModuleLayers.get(0);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
 
@@ -220,67 +221,6 @@ public final class ModuleLayerFeature implements InternalFeature {
          * the originals.
          */
         replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, runtimeImageNamedModules);
-    }
-
-    /**
-     * If we are running on module path and if user did not explicitly add special --add-module args
-     * as defined in the nonExplicit list, then the root modules only include reachable modules.
-     * Otherwise, we calculate root modules based on reachable modules and include modules as
-     * specified in the JEP 261 (see <a href="https://openjdk.org/jeps/261"></a>).
-     */
-    private static Set<Module> calculateRootModulesAndUpdateExtraModules(FeatureImpl.AfterAnalysisAccessImpl accessImpl, Collection<String> nonExplicit, Collection<String> extraModules) {
-        AnalysisUniverse universe = accessImpl.getUniverse();
-
-        Stream<Module> rootModules;
-        if (accessImpl.getApplicationClassPath().isEmpty() && nonExplicit.stream().noneMatch(extraModules::contains)) {
-            /*
-             * When running on the module path, reachable modules on the module path are root
-             * modules
-             */
-            rootModules = universe.getTypes()
-                            .stream()
-                            .filter(ModuleLayerFeature::typeIsReachable)
-                            .map(t -> t.getJavaClass().getModule());
-        } else {
-            Optional<Module> javaSeModule = universe.getTypes()
-                            .stream()
-                            .filter(ModuleLayerFeature::typeIsReachable)
-                            .map(t -> t.getJavaClass().getModule())
-                            .filter(m -> m.isNamed() && m.getName().equals("java.se"))
-                            .findFirst();
-            if (javaSeModule.isPresent()) {
-                /*
-                 * java.se module is a root, if it exists.
-                 */
-                rootModules = Stream.of(javaSeModule.get());
-            } else {
-                /*
-                 * If java.se is not present, then:
-                 *
-                 * 1. Every java.* module on the upgrade module path or among the system modules
-                 * that exports at least one package, without qualification, is a root.
-                 *
-                 * 2. Every non-java.* module on the upgrade module path or among the system modules
-                 * that exports at least one package, without qualification, is also a root.
-                 */
-                rootModules = universe.getTypes()
-                                .stream()
-                                .filter(ModuleLayerFeature::typeIsModuleRootOrReachable)
-                                .map(t -> t.getJavaClass().getModule());
-
-                /*
-                 * Also make sure to include modules not seen by the analysis.
-                 */
-                Set<String> extraUndiscoveredModules = ModuleLayer.boot().modules()
-                                .stream()
-                                .filter(ModuleLayerFeature::moduleExportsPackagesUnconditionally)
-                                .map(Module::getName)
-                                .collect(Collectors.toSet());
-                extraModules.addAll(extraUndiscoveredModules);
-            }
-        }
-
-        return rootModules.collect(Collectors.toSet());
     }
 
     /**
@@ -414,7 +354,7 @@ public final class ModuleLayerFeature implements InternalFeature {
     }
 
     private List<ModuleLayer> synthesizeRuntimeModuleLayers(FeatureImpl.AfterAnalysisAccessImpl accessImpl, List<ModuleLayer> hostedModuleLayers, Collection<Module> reachableNamedModules,
-                    Collection<Module> reachableSyntheticModules) {
+                    Collection<Module> reachableSyntheticModules, Collection<String> rootModules) {
         /*
          * Module layer for image build contains modules from the module path that need to be
          * included in the runtime boot module layer. Furthermore, this module layer is not needed
@@ -462,6 +402,10 @@ public final class ModuleLayerFeature implements InternalFeature {
                 reachableModuleNamesForHostedModuleLayer.remove(builderModule.getName());
             }
             reachableModuleNamesForHostedModuleLayer.retainAll(allReachableAndRequiredModuleNames);
+
+            if (hostedLayerIsBootModuleLayer){
+                reachableModuleNamesForHostedModuleLayer.addAll(rootModules);
+            }
 
             Function<String, ClassLoader> clf = name -> moduleLayerFeatureUtils.getClassLoaderForModuleInModuleLayer(hostedModuleLayer, name);
 
