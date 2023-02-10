@@ -50,6 +50,7 @@ import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -79,6 +80,7 @@ import com.oracle.truffle.api.nodes.Node;
  * Examples for idempotent methods are:
  * <ul>
  * <li>{@link LanguageReference#get(Node)}
+ * <li>{@link DirectCallNode#getCallTarget()
  * <li>{@link ContextLocal#get()} if the language uses context policy
  * {@link ContextPolicy#EXCLUSIVE}.
  * </ul>

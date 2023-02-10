@@ -385,6 +385,9 @@ public class TruffleTypes {
     {
         // idempotent
         addMethod(idempotentMethods, TruffleLanguage_LanguageReference, "get");
+        addMethod(idempotentMethods, DirectCallNode, "getCallTarget");
+        addMethod(idempotentMethods, c.getDeclaredType(Object.class), "equals");
+        addMethod(idempotentMethods, c.getDeclaredType(String.class), "equals");
 
         // non-idempotent
         addMethod(nonIdempotentMethods, TruffleLanguage_ContextReference, "get");
