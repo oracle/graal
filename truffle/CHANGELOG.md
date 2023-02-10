@@ -49,6 +49,8 @@ Guards that only bind idempotent methods and no dynamic values can always be ass
 The generated code leverages this information and asserts instead of executes the guard on the fast-path.
 The DSL now emits warnings with for all guards where specifying the annotations may be beneficial.
 Note that all guards that do not bind dynamic values are assumed idempotent by default for compatibility reasons.
+* GR-43903 Usages of `@Specialization(assumptions=...)` that reach a `@Fallback` specialization now produce a suppressable warning. In most situations, such specializations should be migrated to use a regular guard instead. For example, instead of using `@Specialization(assumptions = "assumption")` you might need to be using `@Specialization(guards = "assumption.isValid()")`.
+* GR-43903 Added `@Idempotent` and `@NonIdempotent` DSL annotations useful for DSL guard optimizations. Guards that only bind idempotent methods and no dynamic values can always be assumed `true` after they were `true` once on the slow-path. The generated code leverages this information and asserts instead of executes the guard on the fast-path. The DSL now emits warnings with for all guards where specifying the annotations may be beneficial. Note that all guards that do not bind dynamic values are assumed idempotent by default for compatibility reasons.
  
  
 * GR-43903 DSL method guards that do not bind dynamic values are no longer just asserted on the fast-path. 

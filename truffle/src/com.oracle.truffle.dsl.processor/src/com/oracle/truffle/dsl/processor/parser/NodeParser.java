@@ -1532,6 +1532,22 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
 
         }
+
+        for (SpecializationData specialization : specializations) {
+            if (!specialization.getAssumptionExpressions().isEmpty() && specialization.isReachesFallback()) {
+                specialization.addSuppressableWarning(TruffleSuppressedWarnings.ASSUMPTION,
+                                """
+                                                It is discouraged to use assumptions with a specialization that reaches a @%s specialization.\s\
+                                                Specialization instances get removed if assumptions are no longer valid, which may lead to unexpected @%s invocations.\s\
+                                                This may be fixed by translating the assumption usage to a regular method guard instead.\s\
+                                                Instead of assumptions="a" you may use guards="a.isValid()".\s\
+                                                This problem may also be fixed by adding a new more generic specialization that replaces this specialization.\s\
+                                                """,
+                                getSimpleName(types.Fallback),
+                                getSimpleName(types.Fallback));
+            }
+        }
+
     }
 
     private static void initializeExecutableTypeHierarchy(NodeData node) {
@@ -3025,21 +3041,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
             assumptionId++;
         }
         specialization.setAssumptionExpressions(assumptionExpressions);
-
-        if (!assumptionExpressions.isEmpty() && !specialization.isGuardBindsCache()) {
-            specialization.addSuppressableWarning(TruffleSuppressedWarnings.ASSUMPTION, """
-                            It is discouraged to use the assumptions property with a specialization that cannot have multiple specialization instances.\s\
-                            Note that assumption specializations get removed if the assumption is no longer true.\s\
-                            This rarely makes sense for specializations without multiple instances.\s\
-                            Most often this can be fixed by translating the assumption usage to a regular method guard instead.\s\
-                            So instead of assumptions="a" you may use guards="a.isValid()".\s\
-                            If your specialization should have multiple instances, make sure you bind a cached value in the guard.\s\
-                            """,
-                            getSimpleName(types.Fallback),
-                            getSimpleName(types.Specialization),
-                            getSimpleName(types.Fallback));
-        }
-
     }
 
     private void initializeLimit(SpecializationData specialization, DSLExpressionResolver resolver, boolean uncached) {

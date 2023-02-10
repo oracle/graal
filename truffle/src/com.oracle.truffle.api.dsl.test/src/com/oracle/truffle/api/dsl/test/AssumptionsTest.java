@@ -784,6 +784,7 @@ public class AssumptionsTest {
 
         abstract boolean execute(Object arg);
 
+        @ExpectError("It is discouraged to use assumptions with a specialization that reaches a @Fallback specialization. %")
         @Specialization(guards = {"arg > 1", "arg == cachedArg"}, assumptions = "assumption", limit = "1")
         public boolean s0(int arg,
                         @Cached("arg") int cachedArg,
@@ -816,7 +817,6 @@ public class AssumptionsTest {
 
         abstract boolean execute(Object arg);
 
-        @ExpectError("It is discouraged to use the assumptions property with a specialization that cannot have multiple specialization instances%")
         @Specialization(assumptions = "assumption")
         public boolean s0(Object arg,
                         @Cached("NEVER_VALID") Assumption assumption) {
