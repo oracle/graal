@@ -46,7 +46,7 @@ public abstract class LLVMLookupDispatchTargetSymbolNode extends LLVMExpressionN
         this.function = function;
     }
 
-    @Specialization(guards = {"code != null", "code.isLLVMIRFunction() || code.isIntrinsicFunctionSlowPath()", "function.getFixedCodeAssumption().isValid()"})
+    @Specialization(guards = {"function.getFixedCodeAssumption().isValid()", "code != null", "code.isLLVMIRFunction() || code.isIntrinsicFunctionSlowPath()"})
     protected LLVMFunctionCode getCode(
                     @Bind("function.getFixedCode()") LLVMFunctionCode code) {
         return code;
