@@ -112,13 +112,13 @@ public class JfrBufferNodeLinkedList {
         // TODO: maybe iterate list freeing nodes, just in case.
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Locking with no transition.", callerMustBe = true)
     public JfrBufferNode getAndLockHead() {
         acquireList();
         return head;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Should not be interrupted while flushing.")
     public boolean removeNode(JfrBufferNode node, JfrBufferNode prev) {
         JfrBufferNode next = node.getNext(); // next can never be null
 
@@ -136,7 +136,11 @@ public class JfrBufferNodeLinkedList {
         return true;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    /**
+     * Must be uninterruptible because if this list is acquired and we safepoint for an epoch change
+     * in this method, the thread doing the epoch change will be blocked accessing the list.
+     */
+    @Uninterruptible(reason = "Locking with no transition list must not be acquired entering epoch change.")
     public JfrBufferNode addNode(JfrBuffer buffer, IsolateThread thread) {
         JfrBufferNode newNode = createNode(buffer, thread);
         acquireList();
@@ -151,12 +155,12 @@ public class JfrBufferNodeLinkedList {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Locking with no transition and list must not be acquired entering epoch change.", callerMustBe = true)
     private void acquireList() {
         SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Locking with no transition and list must not be acquired entering epoch change.", callerMustBe = true)
     public void releaseList() {
         SpinLockUtils.unlock(this, LOCK_OFFSET);
     }

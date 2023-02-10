@@ -68,9 +68,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     public static final short JFR_VERSION_MINOR = 0;
     private static final int CHUNK_SIZE_OFFSET = 8;
     private static final int FILE_STATE_OFFSET = 64;
-
-    public static final long METADATA_TYPE_ID = 0;
-    public static final long CONSTANT_POOL_TYPE_ID = 1;
     private static final byte COMPLETE = 0;
     private static final short FLAG_COMPRESSED_INTS = 0b01;
     private static final short FLAG_CHUNK_FINAL = 0b10;
@@ -287,11 +284,11 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         if (lastCheckpointOffset.lessThan(0)) {
             lastCheckpointOffset = start;
         }
-        writeCompressedLong(CONSTANT_POOL_TYPE_ID);
+        writeCompressedLong(JfrReservedEvent.EVENT_CHECKPOINT.getId());
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
         writeCompressedLong(lastCheckpointOffset.subtract(start).rawValue()); // deltaToNext
-        writeCompressedLong(8); // Checkpoint type is "THREADS"
+        writeByte(JfrCheckpointType.Threads.getId());
 
         SignedWord poolCountPos = getFileSupport().position(fd);
         getFileSupport().writeInt(fd, 0); // We'll patch this later.
@@ -315,11 +312,11 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         if (lastCheckpointOffset.lessThan(0)) {
             lastCheckpointOffset = start;
         }
-        writeCompressedLong(CONSTANT_POOL_TYPE_ID);
+        writeCompressedLong(JfrReservedEvent.EVENT_CHECKPOINT.getId());
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
         writeCompressedLong(lastCheckpointOffset.subtract(start).rawValue()); // deltaToNext
-        writeBoolean(true); // flush
+        writeByte(JfrCheckpointType.Flush.getId());
 
         SignedWord poolCountPos = getFileSupport().position(fd);
         getFileSupport().writeInt(fd, 0); // We'll patch this later.
@@ -370,7 +367,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             return;
         }
         SignedWord start = beginEvent();
-        writeCompressedLong(METADATA_TYPE_ID);
+        writeCompressedLong(JfrReservedEvent.EVENT_METADATA.getId());
         writeCompressedLong(JfrTicks.elapsedTicks());
         writeCompressedLong(0); // duration
         writeCompressedLong(metadata.getCurrentMetadataId()); // metadata id
@@ -593,7 +590,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer. Locks linked list with no transition. ")
     private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
 
         boolean firstIteration = true;

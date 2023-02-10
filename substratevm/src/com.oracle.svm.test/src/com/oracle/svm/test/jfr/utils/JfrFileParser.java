@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.util.HashMap;
 
 import com.oracle.svm.core.jfr.JfrChunkWriter;
+import com.oracle.svm.core.jfr.JfrReservedEvent;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.JfrType;
 
@@ -112,7 +113,7 @@ public class JfrFileParser {
     private static void parseMetadataHeader(RecordingInput input, long metadataPosition) throws IOException {
         input.position(metadataPosition); // Seek to starting position of metadata region.
         assertTrue("Metadata size is invalid!", input.readInt() > 0); // Size of metadata.
-        assertEquals(JfrChunkWriter.METADATA_TYPE_ID, input.readLong()); // Metadata region ID.
+        assertEquals(JfrReservedEvent.EVENT_METADATA, input.readLong()); // Metadata region ID.
         assertTrue("Metadata timestamp is invalid!", input.readLong() > 0); // Timestamp.
         input.readLong(); // Duration.
         input.readLong(); // Metadata ID.
@@ -128,7 +129,7 @@ public class JfrFileParser {
         // Size of constant pools.
         assertTrue("Constant pool size is invalid!", input.readInt() > 0);
         // Constant pools region ID.
-        assertEquals(JfrChunkWriter.CONSTANT_POOL_TYPE_ID, input.readLong());
+        assertEquals(JfrReservedEvent.EVENT_CHECKPOINT, input.readLong());
         assertTrue("Constant pool timestamp is invalid!", input.readLong() > 0); // Timestamp.
         input.readLong(); // Duration.
         long deltaNext = input.readLong(); // Offset to a next constant pools region.
