@@ -61,7 +61,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -382,6 +381,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .stream()
                         .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
                         .collect(Collectors.toSet());
+        allReachableAndRequiredModuleNames.removeAll(ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES));
 
         for (ModuleLayer hostedModuleLayer : hostedModuleLayers) {
             if (hostedModuleLayer == moduleLayerForImageBuild) {
@@ -403,7 +403,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
             reachableModuleNamesForHostedModuleLayer.retainAll(allReachableAndRequiredModuleNames);
 
-            if (hostedLayerIsBootModuleLayer){
+            if (hostedLayerIsBootModuleLayer) {
                 reachableModuleNamesForHostedModuleLayer.addAll(rootModules);
             }
 
