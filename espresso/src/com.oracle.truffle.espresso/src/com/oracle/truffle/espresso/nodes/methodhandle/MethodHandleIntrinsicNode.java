@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.nodes.methodhandle;
 
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
@@ -48,6 +49,7 @@ public abstract class MethodHandleIntrinsicNode extends EspressoNode {
         return method;
     }
 
+    @Idempotent
     public boolean inliningEnabled() {
         return getContext().getEspressoEnv().InlineMethodHandle;
     }

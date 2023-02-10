@@ -55,6 +55,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -551,6 +552,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         getDeclaringKlass().protectionDomain());
     }
 
+    @Idempotent
     public int getParameterCount() {
         return Signatures.parameterCount(getParsedSignature());
     }
@@ -1161,6 +1163,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return code;
         }
 
+        @Idempotent
         public Method getMethod() {
             return Method.this;
         }

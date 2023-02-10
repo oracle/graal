@@ -28,6 +28,8 @@ import static java.lang.reflect.Modifier.PUBLIC;
 
 import java.lang.reflect.Modifier;
 
+import com.oracle.truffle.api.dsl.Idempotent;
+
 /**
  * A Java element (i.e., a class, interface, field or method) that is described by a set of Java
  * language {@linkplain #getModifiers() modifiers}.
@@ -138,6 +140,7 @@ public interface ModifiersProvider {
     /**
      * @see Modifier#isAbstract(int)
      */
+    @Idempotent
     default boolean isAbstract() {
         return Modifier.isAbstract(getModifiers());
     }
