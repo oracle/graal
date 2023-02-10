@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
@@ -47,6 +48,7 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
 
     protected final boolean isRecursive;
 
+    @Idempotent
     public abstract long getStructSize();
 
     @Child private LLVMMemMoveNode memMove;

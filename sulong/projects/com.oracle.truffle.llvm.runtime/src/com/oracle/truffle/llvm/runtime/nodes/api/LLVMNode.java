@@ -40,6 +40,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NonIdempotent;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
@@ -202,10 +203,12 @@ public abstract class LLVMNode extends Node {
         return String.valueOf(value);
     }
 
+    @NonIdempotent
     public final boolean isAutoDerefHandle(LLVMNativePointer addr) {
         return isAutoDerefHandle(addr.asNative());
     }
 
+    @NonIdempotent
     public final boolean isAutoDerefHandle(long addr) {
         // checking the bit is cheaper than getting the assumption in interpreted mode
         if (CompilerDirectives.inCompiledCode() && getLanguage().getNoDerefHandleAssumption().isValid()) {

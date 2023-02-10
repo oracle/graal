@@ -49,6 +49,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -818,6 +819,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return cachedCallTargets.computeIfAbsent(key, k -> create.apply(LLVMLanguage.this).getCallTarget());
     }
 
+    @Idempotent
     public static boolean isSingleContext(Node node) {
         return LLVMLanguage.get(node).singleContext;
     }

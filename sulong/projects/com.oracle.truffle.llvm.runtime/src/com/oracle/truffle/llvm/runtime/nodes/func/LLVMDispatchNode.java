@@ -36,6 +36,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
@@ -141,6 +142,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return getShortString("type", "signature");
     }
 
+    @Idempotent
     boolean haveNativeCtxExt() {
         CompilerAsserts.neverPartOfCompilation();
         return getLanguage().lookupContextExtension(NativeContextExtension.class) != null;

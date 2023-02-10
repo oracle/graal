@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.PlatformCapability.OS;
@@ -60,6 +61,7 @@ public abstract class LLVMForeignVirtualSuperElemPtrNode extends LLVMForeignGetS
         return receiver.increment((int) parentOffset);
     }
 
+    @Idempotent
     protected boolean isWindows() {
         return getLanguage().getCapability(PlatformCapability.class).getOS().equals(OS.Windows);
     }
