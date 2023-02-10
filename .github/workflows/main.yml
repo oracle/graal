@@ -107,6 +107,7 @@ jobs:
               GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
+              NATIVE_IMAGES: "graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-ld,lib:llvmvm"
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
@@ -115,7 +116,7 @@ jobs:
               GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
-              NATIVE_IMAGES: "polyglot"
+              NATIVE_IMAGES: "lib:jvmcicompiler,native-image,lib:native-image-agent,lib:native-image-diagnostics-agent,polyglot"
               WITHOUT_VCS: true
     env:
       MX_RUNS_DEBUG: ${{ contains(matrix.env.GATE_TAGS, 'debug') || matrix.env.GATE_TAGS == '' }}
