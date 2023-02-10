@@ -255,7 +255,7 @@ public abstract class InstanceOf extends EspressoNode {
         public boolean doNoImplementors(@SuppressWarnings("unused") Klass maybeSubtype,
                         @SuppressWarnings("unused") @Cached("getNoImplementorsAssumption().getAssumption()") Assumption noImplementors) {
             return false;
-        }
+        } 
 
         protected static boolean checkAssumption(Assumption noImplementors, @SuppressWarnings("unused") Klass maybeSubtype) {
             // GR-43903: prevent the dsl from removing the guard in the fast-path
