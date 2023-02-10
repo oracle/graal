@@ -7,7 +7,7 @@ permalink: /docs/getting-started/macos/
 
 ## Installation on macOS Platforms
 
-Oracle provides GraalVM Enterprise Edition distributions for macOS on AMD64 (Intel) and AArch64 architectures. 
+Oracle provides GraalVM Community Edition distributions for macOS on AMD64 (Intel) and AArch64 architectures. 
 
 GraalVM Community Edition can be installed for a single user and administrator privileges are not required.
 However, if GraalVM is meant to become a default JDK, administrator privileges are required.
