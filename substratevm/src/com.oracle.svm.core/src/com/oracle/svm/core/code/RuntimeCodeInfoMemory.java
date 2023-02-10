@@ -69,6 +69,32 @@ public class RuntimeCodeInfoMemory {
     private NonmovableArray<UntetheredCodeInfo> table;
     private int count;
 
+    private UnsignedWord codeSize;
+    private UnsignedWord codeAndDataMemorySize;
+    private UnsignedWord nativeMetadataSize;
+
+    public record SizeCounters(UnsignedWord codeSize,
+                    UnsignedWord codeAndDataMemorySize,
+                    UnsignedWord nativeMetadataSize) {
+
+    }
+
+    public void clearSizeCounters() {
+        codeSize = WordFactory.zero();
+        codeAndDataMemorySize = WordFactory.zero();
+        nativeMetadataSize = WordFactory.zero();
+    }
+
+    public <T extends CodeInfo> void addToSizeCounters(T codeInfo) {
+        codeSize.add(CodeInfoAccess.getCodeSize(codeInfo));
+        codeAndDataMemorySize.add(CodeInfoAccess.getCodeAndDataMemorySize(codeInfo));
+        nativeMetadataSize.add(CodeInfoAccess.getNativeMetadataSize(codeInfo));
+    }
+
+    public SizeCounters getSizeCounters() {
+        return new SizeCounters(codeSize, codeAndDataMemorySize, nativeMetadataSize);
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     RuntimeCodeInfoMemory() {
         lock = new ReentrantLock();
@@ -83,6 +109,7 @@ public class RuntimeCodeInfoMemory {
         // uninterruptible method that is called below.
         assert !Heap.getHeap().isAllocationDisallowed();
         assert info.isNonNull();
+        addToSizeCounters(info);
         lock.lock();
         try {
             add0(info);

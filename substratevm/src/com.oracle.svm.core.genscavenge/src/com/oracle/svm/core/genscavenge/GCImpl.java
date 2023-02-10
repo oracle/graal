@@ -632,6 +632,7 @@ public final class GCImpl implements GC {
     private void cleanRuntimeCodeCache() {
         Timer cleanRuntimeCodeCacheTimer = timers.cleanRuntimeCodeCache.open();
         try {
+            RuntimeCodeInfoMemory.singleton().clearSizeCounters();
             RuntimeCodeInfoMemory.singleton().walkRuntimeMethodsDuringGC(runtimeCodeCacheCleaner);
         } finally {
             cleanRuntimeCodeCacheTimer.close();
