@@ -382,7 +382,7 @@ public class GDSRESTConnectorTest extends TestBase {
             }
 
             @Override
-            URLConnectionFactory getConnectionFactory() throws MalformedURLException {
+            URLConnectionFactory getConnectionFactory() {
                 return fac;
             }
 

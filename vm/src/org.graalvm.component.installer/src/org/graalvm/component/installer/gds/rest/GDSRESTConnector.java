@@ -38,6 +38,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -88,10 +89,10 @@ class GDSRESTConnector {
         if (baseURL == null || baseURL.isBlank()) {
             throw new IllegalArgumentException("Base URL String can't be empty.");
         }
-        URL url = null;
+        URL url;
         try {
-            url = URI.create(baseURL).toURL();
-        } catch (IllegalArgumentException | MalformedURLException ex) {
+            url = new URI(baseURL).toURL();
+        } catch (URISyntaxException | MalformedURLException ex) {
             throw new IllegalArgumentException("Base URL String must be convertible to URL.");
         }
         this.baseURL = url.toString();
@@ -173,12 +174,11 @@ class GDSRESTConnector {
     public String sendVerificationEmail(String email, String licAddr, String config) {
         assert (SystemUtils.nonBlankString(email) && config == null) || (SystemUtils.nonBlankString(config) && email == null);
         String licID = licAddr.substring(licAddr.lastIndexOf("/") + 1);
-        String acceptLicLink = baseURL + ENDPOINT_LICENSE_ACCEPT;
-        String token = config;
+        String token;
         try {
-            GDSRequester tr = getGDSRequester(acceptLicLink, licID);
+            GDSRequester tr = getGDSRequester(baseURL + ENDPOINT_LICENSE_ACCEPT, licID);
             token = email != null ? tr.obtainConfig(email) : tr.acceptLic(config);
-        } catch (IllegalArgumentException | IOException ex) {
+        } catch (IOException ex) {
             throw feedback.failure("ERR_VerificationEmail", ex, email == null ? feedback.l10n("MSG_YourEmail") : email);
         }
         return token;
@@ -208,8 +208,8 @@ class GDSRESTConnector {
     URL makeArtifactDownloadURL(String id) {
         String url = baseURL + ENDPOINT_ARTIFACTS + id + ENDPOINT_DOWNLOAD;
         try {
-            return URI.create(url).toURL();
-        } catch (IllegalArgumentException | MalformedURLException ex) {
+            return new URI(url).toURL();
+        } catch (URISyntaxException | MalformedURLException ex) {
             feedback.error("ERR_MalformedArtifactUrl", ex, url);
         }
         return null;
@@ -225,7 +225,7 @@ class GDSRESTConnector {
             fillBasics(dn);
             dn.download();
             return dn;
-        } catch (IllegalArgumentException | IOException ex) {
+        } catch (IOException ex) {
             throw feedback.failure("ERR_CouldNotLoadGDS", ex, baseURL, ex.getLocalizedMessage());
         } finally {
             params.clear();
@@ -304,7 +304,7 @@ class GDSRESTConnector {
         }
 
         public String obtainConfig(String email) throws IOException {
-            String config = null;
+            String config;
             URLConnection connector = getConnectionFactory().createConnection(url, createConfigCallBack(Request.GENERATE, email));
             String response = null;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(connector.getInputStream()))) {
@@ -381,9 +381,14 @@ class GDSRESTConnector {
             };
         }
 
-        URLConnectionFactory getConnectionFactory() throws IllegalArgumentException, MalformedURLException {
+        URLConnectionFactory getConnectionFactory() {
             if (factory == null) {
-                factory = new ProxyConnectionFactory(feedback, URI.create(baseURL).toURL());
+                try {
+                    factory = new ProxyConnectionFactory(feedback, URI.create(baseURL).toURL());
+                } catch (MalformedURLException ex) {
+                    // Should not reach here since the creation of the URL is tested in the constructor
+                    throw new IllegalArgumentException(ex);
+                }
             }
             return factory;
         }

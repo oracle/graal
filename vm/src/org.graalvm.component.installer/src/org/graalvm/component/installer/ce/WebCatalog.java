@@ -170,8 +170,8 @@ public class WebCatalog implements SoftwareChannel {
         sb.append(SystemUtils.patternOsArch(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase()));
 
         try {
-            catalogURL = URI.create(urlString).toURL();
-        } catch (IllegalArgumentException | MalformedURLException ex) {
+            catalogURL = new URI(urlString).toURL();
+        } catch (URISyntaxException | MalformedURLException ex) {
             throw feedback.failure("REMOTE_InvalidURL", ex, catalogURL, ex.getLocalizedMessage());
         }
 

@@ -29,6 +29,8 @@ import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
+
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import org.graalvm.component.installer.gds.GdsCommands;
@@ -77,11 +79,11 @@ public class GDSChannelFactory implements SoftwareChannel.Factory {
         URL u;
         try {
             if (rest.startsWith("http") || rest.startsWith("file:") || rest.startsWith("test:")) {
-                u = URI.create(rest).toURL();
+                u = new URI(rest).toURL();
             } else {
-                u = URI.create(PROTOCOL_HTTTPS_PREFIX + rest).toURL();
+                u = new URI(PROTOCOL_HTTTPS_PREFIX + rest).toURL();
             }
-        } catch (IllegalArgumentException | MalformedURLException ex) {
+        } catch (URISyntaxException | MalformedURLException ex) {
             throw output.failure("YUM_InvalidLocation", ex, urlString, ex.getLocalizedMessage());
         }
         GDSChannel ch = new GDSChannel(input, output, input.getLocalRegistry());
