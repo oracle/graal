@@ -154,7 +154,9 @@ public abstract class VMThreads {
      */
     public static final FastThreadLocalWord<UnsignedWord> StackEnd = FastThreadLocalFactory.createWord("VMThreads.StackEnd");
     /**
-     * FIXME add explanation and rename?
+     * Tracks whether this thread was started by the current isolate or if it was an externally
+     * started thread which was attached to the isolate. This distinction determines the teardown
+     * process for the thread.
      */
     private static final FastThreadLocalBytes<Pointer> StartedByCurrentIsolate = FastThreadLocalFactory.createBytes(() -> 1, "VMThreads.StartedByCurrentIsolate");
 
@@ -420,7 +422,6 @@ public abstract class VMThreads {
         }
     }
 
-    // nit clarify this is an external thread
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     private static void detachThreadInSafeContext(IsolateThread thread) {
         PlatformThreads.detachThread(thread);
@@ -498,7 +499,7 @@ public abstract class VMThreads {
      * following tear-down.
      */
     public static void detachAllThreadsExceptCurrentWithoutCleanupForTearDown() {
-        DetachAllThreadsExceptCurrentOperation vmOp = new DetachAllThreadsExceptCurrentOperation();
+        DetachAllExternallyStartedThreadsExceptCurrentOperation vmOp = new DetachAllExternallyStartedThreadsExceptCurrentOperation();
         vmOp.enqueue();
     }
 
@@ -634,10 +635,9 @@ public abstract class VMThreads {
         return false;
     }
 
-    // TODO this name is misleading. It is detachAllExternallyStartedIsolateThreads
-    private static class DetachAllThreadsExceptCurrentOperation extends JavaVMOperation {
-        DetachAllThreadsExceptCurrentOperation() {
-            super(VMOperationInfos.get(DetachAllThreadsExceptCurrentOperation.class, "Detach all threads except current", SystemEffect.SAFEPOINT));
+    private static class DetachAllExternallyStartedThreadsExceptCurrentOperation extends JavaVMOperation {
+        DetachAllExternallyStartedThreadsExceptCurrentOperation() {
+            super(VMOperationInfos.get(DetachAllExternallyStartedThreadsExceptCurrentOperation.class, "Detach all externally started threads except current", SystemEffect.SAFEPOINT));
         }
 
         @Override

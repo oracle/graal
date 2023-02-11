@@ -474,7 +474,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "All code executed after VMThreads#tearDown must be uninterruptible")
     private static int tearDownIsolate() {
         try {
-            if (!tearDownIsolateInterruptibly()) {
+            if (!initiateTearDownIsolateInterruptibly()) {
                 return CEntryPointErrors.UNSPECIFIED;
             }
 
@@ -490,11 +490,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
-    private static boolean tearDownIsolateInterruptibly() {
-        return tearDownIsolateInterruptibly0();
+    private static boolean initiateTearDownIsolateInterruptibly() {
+        return initiateTearDownIsolateInterruptibly0();
     }
 
-    private static boolean tearDownIsolateInterruptibly0() {
+    private static boolean initiateTearDownIsolateInterruptibly0() {
         RuntimeSupport.executeTearDownHooks();
         return PlatformThreads.singleton().tearDown();
     }
