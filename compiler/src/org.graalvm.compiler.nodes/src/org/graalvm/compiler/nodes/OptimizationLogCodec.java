@@ -36,13 +36,13 @@ import org.graalvm.util.CollectionsUtil;
 /**
  * Encodes and decodes the {@link OptimizationLog}.
  *
- * @see CompanionObjectCodec
+ * @see CompanionObjectEncoder
  */
-public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, OptimizationLogCodec.EncodedOptimizationLog> {
+public class OptimizationLogCodec extends CompanionObjectEncoder<OptimizationLog, OptimizationLogCodec.EncodedOptimizationLog> {
     /**
      * An encoded representation of the {@link OptimizationLog}.
      */
-    protected static final class EncodedOptimizationLog implements CompanionObjectCodec.EncodedObject {
+    protected static final class EncodedOptimizationLog implements CompanionObjectEncoder.EncodedObject {
         /**
          * A copy of the original optimization tree.
          */
@@ -54,65 +54,59 @@ public class OptimizationLogCodec extends CompanionObjectCodec<OptimizationLog, 
         private OptimizationLogImpl.OptimizationPhaseNode root;
     }
 
-    private static final class OptimizationLogEncoder implements Encoder<OptimizationLog, EncodedOptimizationLog> {
-        @Override
-        public boolean shouldBeEncoded(OptimizationLog optimizationLog) {
-            return optimizationLog.isOptimizationLogEnabled();
-        }
-
-        @Override
-        public EncodedOptimizationLog prepare(OptimizationLog optimizationLog) {
-            assert shouldBeEncoded(optimizationLog) && optimizationLog instanceof OptimizationLogImpl : "prepare should be called iff there is anything to encode";
-            return new EncodedOptimizationLog();
-        }
-
-        @Override
-        public void encode(EncodedOptimizationLog encodedObject, OptimizationLog optimizationLog, Function<Node, Integer> mapper) {
-            assert encodedObject.optimizationTree == null && encodedObject.root == null && shouldBeEncoded(optimizationLog) && optimizationLog instanceof OptimizationLogImpl
-                            : "encode should be once iff there is anything to encode";
-            OptimizationLogImpl optimizationLogImpl = (OptimizationLogImpl) optimizationLog;
-            Graph original = optimizationLogImpl.getOptimizationTree();
-            encodedObject.optimizationTree = new Graph(original.name, original.getOptions(), original.getDebug(), original.trackNodeSourcePosition());
-            UnmodifiableEconomicMap<Node, Node> duplicates = encodedObject.optimizationTree.addDuplicates(original.getNodes(), original, original.getNodeCount(), (EconomicMap<Node, Node>) null);
-            encodedObject.root = (OptimizationLogImpl.OptimizationPhaseNode) duplicates.get(optimizationLogImpl.findRootPhase());
-        }
-    }
-
-    private static final class OptimizationLogDecoder implements Decoder<OptimizationLog> {
-        @Override
-        public OptimizationLog decode(StructuredGraph graph, Object encodedObject) {
-            if (!graph.getOptimizationLog().isOptimizationLogEnabled()) {
-                return graph.getOptimizationLog();
-            }
-            OptimizationLogImpl optimizationLog = new OptimizationLogImpl(graph);
-            if (encodedObject != null) {
-                EncodedOptimizationLog instance = (EncodedOptimizationLog) encodedObject;
-                assert instance.optimizationTree != null && instance.root != null : "an empty optimization tree should be encoded as null";
-                OptimizationLogImpl.OptimizationPhaseNode rootPhase = optimizationLog.findRootPhase();
-                UnmodifiableEconomicMap<Node, Node> duplicates = optimizationLog.getOptimizationTree().addDuplicates(instance.optimizationTree.getNodes(), instance.optimizationTree,
-                                instance.optimizationTree.getNodeCount(),
-                                (EconomicMap<Node, Node>) null);
-                duplicates.get(instance.root).safeDelete();
-                for (OptimizationLog.OptimizationTreeNode child : instance.root.getChildren()) {
-                    rootPhase.getChildren().add(duplicates.get(child));
-                }
-            }
-            return optimizationLog;
-        }
-
-        @Override
-        public void registerNode(OptimizationLog optimizationLog, Node node, int orderId) {
-
-        }
-    }
-
-    public OptimizationLogCodec() {
-        super(StructuredGraph::getOptimizationLog, new OptimizationLogEncoder());
+    @Override
+    protected OptimizationLog getCompanionObject(StructuredGraph graph) {
+        return graph.getOptimizationLog();
     }
 
     @Override
-    public Decoder<OptimizationLog> singleObjectDecoder() {
-        return new OptimizationLogDecoder();
+    protected boolean shouldBeEncoded(OptimizationLog optimizationLog) {
+        return optimizationLog.isOptimizationLogEnabled();
+    }
+
+    @Override
+    protected EncodedOptimizationLog createInstance(OptimizationLog optimizationLog) {
+        assert shouldBeEncoded(optimizationLog) && optimizationLog instanceof OptimizationLogImpl : "prepare should be called iff there is anything to encode";
+        return new EncodedOptimizationLog();
+    }
+
+    @Override
+    protected void encodeIntoInstance(EncodedOptimizationLog encodedObject, OptimizationLog optimizationLog, Function<Node, Integer> mapper) {
+        assert encodedObject.optimizationTree == null && encodedObject.root == null && shouldBeEncoded(optimizationLog) &&
+                        optimizationLog instanceof OptimizationLogImpl : "encode should be once iff there is anything to encode";
+        OptimizationLogImpl optimizationLogImpl = (OptimizationLogImpl) optimizationLog;
+        Graph original = optimizationLogImpl.getOptimizationTree();
+        encodedObject.optimizationTree = new Graph(original.name, original.getOptions(), original.getDebug(), original.trackNodeSourcePosition());
+        UnmodifiableEconomicMap<Node, Node> duplicates = encodedObject.optimizationTree.addDuplicates(original.getNodes(), original, original.getNodeCount(), (EconomicMap<Node, Node>) null);
+        encodedObject.root = (OptimizationLogImpl.OptimizationPhaseNode) duplicates.get(optimizationLogImpl.findRootPhase());
+    }
+
+    /**
+     * Decodes an encoded optimization log for a given graph if the graph expects a non-null
+     * optimization log. Returns {@code null} otherwise.
+     *
+     * @param graph the graph being decoded
+     * @param encodedObject the encoded optimization log to decode
+     * @return an encoded optimization log or {@code null}
+     */
+    public static OptimizationLog maybeDecode(StructuredGraph graph, Object encodedObject) {
+        if (!graph.getOptimizationLog().isOptimizationLogEnabled()) {
+            return null;
+        }
+        OptimizationLogImpl optimizationLog = new OptimizationLogImpl(graph);
+        if (encodedObject != null) {
+            EncodedOptimizationLog instance = (EncodedOptimizationLog) encodedObject;
+            assert instance.optimizationTree != null && instance.root != null : "an empty optimization tree should be encoded as null";
+            OptimizationLogImpl.OptimizationPhaseNode rootPhase = optimizationLog.findRootPhase();
+            UnmodifiableEconomicMap<Node, Node> duplicates = optimizationLog.getOptimizationTree().addDuplicates(instance.optimizationTree.getNodes(), instance.optimizationTree,
+                            instance.optimizationTree.getNodeCount(),
+                            (EconomicMap<Node, Node>) null);
+            duplicates.get(instance.root).safeDelete();
+            for (OptimizationLog.OptimizationTreeNode child : instance.root.getChildren()) {
+                rootPhase.getChildren().add(duplicates.get(child));
+            }
+        }
+        return optimizationLog;
     }
 
     @Override

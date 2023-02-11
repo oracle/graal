@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.CompanionObjectEncoder;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -186,8 +187,8 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
     /**
      * Tests that the optimization log and inlining log are decoded correctly. The inlining log is
      * enabled automatically by enabling the optimization log. The respective codecs
-     * {@link org.graalvm.compiler.nodes.CompanionObjectCodec#verify verify} that the logs are
-     * correctly decoded, i.e., the decoded logs match what was encoded in the first place.
+     * {@link CompanionObjectEncoder#verify verify} that the logs are correctly decoded, i.e., the
+     * decoded logs match what was encoded in the first place.
      *
      * The test also checks that inlining decisions made in the decoder are properly logged. We
      * compare a decoder that inlines everything with a {@link #parseAndInlineAll parser that

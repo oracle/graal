@@ -32,6 +32,7 @@ import java.util.function.Function;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.util.CollectionsUtil;
 
@@ -80,9 +81,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * transferred} to the callee's inlining log or {@link StructuredGraph#setInliningLog set} as the
  * inlining log of the final decoded {@link StructuredGraph}.
  *
- * @see CompanionObjectCodec
+ * @see CompanionObjectEncoder
  */
-public class InliningLogCodec extends CompanionObjectCodec<InliningLog, InliningLogCodec.EncodedInliningLog> {
+public class InliningLogCodec extends CompanionObjectEncoder<InliningLog, InliningLogCodec.EncodedInliningLog> {
     /**
      * An encoded representation of a {@link InliningLog.Callsite}. The fields match
      * {@link InliningLog.Callsite}, except there is an {@link #invokeOrderId} instead of a
@@ -116,59 +117,74 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
      * An encoded instance of the inlining log. It is not necessary to encode leaf callsites,
      * because they are created on {@link InliningLogDecoder#registerNode registration}.
      */
-    protected static final class EncodedInliningLog implements CompanionObjectCodec.EncodedObject {
+    protected static final class EncodedInliningLog implements CompanionObjectEncoder.EncodedObject {
         private EncodedCallsite root;
     }
 
-    private static final class InliningLogEncoder implements Encoder<InliningLog, EncodedInliningLog> {
-        @Override
-        public boolean shouldBeEncoded(InliningLog inliningLog) {
-            return inliningLog != null;
-        }
-
-        @Override
-        public EncodedInliningLog prepare(InliningLog inliningLog) {
-            assert shouldBeEncoded(inliningLog) : "prepare should be called iff there is anything to encode";
-            return new EncodedInliningLog();
-        }
-
-        @Override
-        public void encode(EncodedInliningLog encodedObject, InliningLog inliningLog, Function<Node, Integer> mapper) {
-            assert shouldBeEncoded(inliningLog) : "encode should be once iff there is anything to encode";
-            EconomicMap<InliningLog.Callsite, EncodedCallsite> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-            encodedObject.root = encodeSubtree(inliningLog.getRootCallsite(), mapper, replacements);
-        }
-
-        private static Integer encodeInvokable(Invokable invokable, Function<Node, Integer> mapper) {
-            if (invokable instanceof Node && ((Node) invokable).isAlive()) {
-                return mapper.apply((Node) invokable);
-            }
-            return null;
-        }
-
-        private static EncodedCallsite encodeSubtree(InliningLog.Callsite replacementSite, Function<Node, Integer> mapper,
-                        EconomicMap<InliningLog.Callsite, EncodedCallsite> mapping) {
-            Integer invokableNode = encodeInvokable(replacementSite.getInvoke(), mapper);
-            EncodedCallsite originalCallsite = replacementSite.getOriginalCallsite() == null ? null : mapping.get(replacementSite.getOriginalCallsite());
-            EncodedCallsite site = new EncodedCallsite(new ArrayList<>(replacementSite.getDecisions()), new ArrayList<>(), replacementSite.getBci(),
-                            originalCallsite, invokableNode, replacementSite.getTarget(), replacementSite.isIndirect(), replacementSite.getTargetTypeProfile());
-            mapping.put(replacementSite, site);
-            for (InliningLog.Callsite replacementChild : replacementSite.getChildren()) {
-                site.children.add(encodeSubtree(replacementChild, mapper, mapping));
-            }
-            return site;
-        }
+    @Override
+    protected InliningLog getCompanionObject(StructuredGraph graph) {
+        return graph.getInliningLog();
     }
 
-    private static final class InliningLogDecoder implements Decoder<InliningLog> {
+    @Override
+    protected boolean shouldBeEncoded(InliningLog inliningLog) {
+        return inliningLog != null;
+    }
+
+    @Override
+    protected EncodedInliningLog createInstance(InliningLog inliningLog) {
+        assert shouldBeEncoded(inliningLog) : "prepare should be called iff there is anything to encode";
+        return new EncodedInliningLog();
+    }
+
+    @Override
+    protected void encodeIntoInstance(EncodedInliningLog encodedObject, InliningLog inliningLog, Function<Node, Integer> mapper) {
+        assert shouldBeEncoded(inliningLog) : "encode should be once iff there is anything to encode";
+        EconomicMap<InliningLog.Callsite, EncodedCallsite> replacements = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        encodedObject.root = encodeSubtree(inliningLog.getRootCallsite(), mapper, replacements);
+    }
+
+    private static Integer encodeInvokable(Invokable invokable, Function<Node, Integer> mapper) {
+        if (invokable instanceof Node && ((Node) invokable).isAlive()) {
+            return mapper.apply((Node) invokable);
+        }
+        return null;
+    }
+
+    private static EncodedCallsite encodeSubtree(InliningLog.Callsite replacementSite, Function<Node, Integer> mapper,
+                    EconomicMap<InliningLog.Callsite, EncodedCallsite> mapping) {
+        Integer invokableNode = encodeInvokable(replacementSite.getInvoke(), mapper);
+        EncodedCallsite originalCallsite = replacementSite.getOriginalCallsite() == null ? null : mapping.get(replacementSite.getOriginalCallsite());
+        EncodedCallsite site = new EncodedCallsite(new ArrayList<>(replacementSite.getDecisions()), new ArrayList<>(), replacementSite.getBci(),
+                        originalCallsite, invokableNode, replacementSite.getTarget(), replacementSite.isIndirect(), replacementSite.getTargetTypeProfile());
+        mapping.put(replacementSite, site);
+        for (InliningLog.Callsite replacementChild : replacementSite.getChildren()) {
+            site.children.add(encodeSubtree(replacementChild, mapper, mapping));
+        }
+        return site;
+    }
+
+    /**
+     * Decodes an inlining log and maps order IDs back to graph nodes. The decoder is stateful and
+     * should be used to decode only one instance of the inlining log.
+     */
+    public static final class InliningLogDecoder {
+        /**
+         * Maps order IDs to decoded callsites.
+         */
         private EconomicMap<Integer, InliningLog.Callsite> orderIdToCallsite;
 
-        @Override
-        public InliningLog decode(StructuredGraph graph, Object encodedObject) {
-            if (graph.getInliningLog() == null) {
-                return null;
-            }
-            assert orderIdToCallsite == null : "decode should be called at most once";
+        private InliningLogDecoder() {
+
+        }
+
+        /**
+         * Decodes the provided encoded object into an inlining log.
+         *
+         * @param encodedObject an encoded inlining log
+         * @return a decoded inlining log
+         */
+        private InliningLog decode(Object encodedObject) {
             orderIdToCallsite = EconomicMap.create();
             InliningLog inliningLog = new InliningLog(null);
             if (encodedObject != null) {
@@ -180,11 +196,16 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
             return inliningLog;
         }
 
-        @Override
+        /**
+         * Registers a newly-created node during decoding. The decoder uses this method to map order
+         * IDs back to graph nodes. The provided inlining log must be the inlining log created by
+         * this instance of the decoder (in the {@link #decode} method).
+         *
+         * @param inliningLog the decoded inlining log created by this decoder
+         * @param node the registered node
+         * @param orderId the order ID of the registered node
+         */
         public void registerNode(InliningLog inliningLog, Node node, int orderId) {
-            if (inliningLog == null) {
-                return;
-            }
             if (!(node instanceof Invokable)) {
                 return;
             }
@@ -218,13 +239,25 @@ public class InliningLogCodec extends CompanionObjectCodec<InliningLog, Inlining
         }
     }
 
-    public InliningLogCodec() {
-        super(StructuredGraph::getInliningLog, new InliningLogEncoder());
-    }
-
-    @Override
-    public Decoder<InliningLog> singleObjectDecoder() {
-        return new InliningLogDecoder();
+    /**
+     * Decodes an encoded inlining log for a given graph if the graph expects a non-null inlining
+     * log. Returns {@code null} otherwise.
+     *
+     * If the graph expects an inlining log, a pair of comprising a stateful decoder and the decoded
+     * inlining log is returned. The decoder should be used to
+     * {@link InliningLogDecoder#registerNode register} all newly-created nodes.
+     *
+     * @param graph the graph being decoded
+     * @param encodedObject the encoded inlining log to decode
+     * @return a pair comprising a decoder and a decoded inlining log or {@code null}
+     */
+    public static Pair<InliningLogDecoder, InliningLog> maybeDecode(StructuredGraph graph, Object encodedObject) {
+        if (graph.getInliningLog() == null) {
+            return null;
+        }
+        InliningLogDecoder decoder = new InliningLogDecoder();
+        InliningLog inliningLog = decoder.decode(encodedObject);
+        return Pair.create(decoder, inliningLog);
     }
 
     @Override

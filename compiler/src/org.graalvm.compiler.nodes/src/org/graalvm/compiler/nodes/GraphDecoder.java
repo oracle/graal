@@ -146,7 +146,7 @@ public class GraphDecoder {
          * to decoded graph nodes. The decoder is also responsible for tracking new callsites in the
          * inlining log. {@code null} if the inlining log is not being decoded.
          */
-        public CompanionObjectCodec.Decoder<InliningLog> inliningLogDecoder;
+        public InliningLogCodec.InliningLogDecoder inliningLogDecoder;
 
         @SuppressWarnings("unchecked")
         protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
@@ -162,12 +162,12 @@ public class GraphDecoder {
                 graph.getGraphState().setGuardsStage((GraphState.GuardsStage) readObject(this));
                 graph.getGraphState().getStageFlags().addAll((EnumSet<StageFlag>) readObject(this));
 
-                CompanionObjectCodec.Decoder<InliningLog> inliningDecoder = new InliningLogCodec().singleObjectDecoder();
-                inliningLog = inliningDecoder.decode(graph, readObject(this));
-                if (inliningLog != null) {
-                    inliningLogDecoder = inliningDecoder;
+                var decoderPair = InliningLogCodec.maybeDecode(graph, readObject(this));
+                if (decoderPair != null) {
+                    inliningLogDecoder = decoderPair.getLeft();
+                    inliningLog = decoderPair.getRight();
                 }
-                optimizationLog = new OptimizationLogCodec().singleObjectDecoder().decode(graph, readObject(this));
+                optimizationLog = OptimizationLogCodec.maybeDecode(graph, readObject(this));
 
                 int nodeCount = reader.getUVInt();
                 if (encodedGraph.nodeStartOffsets == null) {
@@ -210,6 +210,18 @@ public class GraphDecoder {
             return position;
         }
 
+        /**
+         * Sets the {@link #inliningLog} and {@link #optimizationLog} as the logs of the
+         * {@link #graph} if they are non-null.
+         */
+        public void replaceLogsForDecodedGraph() {
+            if (inliningLog != null) {
+                graph.setInliningLog(inliningLog);
+            }
+            if (optimizationLog != null) {
+                graph.setOptimizationLog(optimizationLog);
+            }
+        }
     }
 
     /**
@@ -574,8 +586,7 @@ public class GraphDecoder {
 
     @SuppressWarnings("try")
     protected final void decode(LoopScope initialLoopScope) {
-        graph.setInliningLog(initialLoopScope.methodScope.inliningLog);
-        graph.setOptimizationLog(initialLoopScope.methodScope.optimizationLog);
+        initialLoopScope.methodScope.replaceLogsForDecodedGraph();
         try (InliningLog.UpdateScope updateScope = InliningLog.openDefaultUpdateScope(graph.getInliningLog())) {
             LoopScope loopScope = initialLoopScope;
             /* Process (inlined) methods. */
