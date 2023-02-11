@@ -45,11 +45,13 @@ public class TypeStateUtils {
 
     private static final MethodHandle bitSetArrayAccess;
     private static final MethodHandle wordInUseAccess;
+    private static final MethodHandle sizeIsStickyAccess;
     private static final MethodHandle trimToSizeAccess;
     static {
         try {
             bitSetArrayAccess = MethodHandles.lookup().unreflectGetter(ReflectionUtil.lookupField(BitSet.class, "words"));
             wordInUseAccess = MethodHandles.lookup().unreflectGetter(ReflectionUtil.lookupField(BitSet.class, "wordsInUse"));
+            sizeIsStickyAccess = MethodHandles.lookup().unreflectGetter(ReflectionUtil.lookupField(BitSet.class, "sizeIsSticky"));
             trimToSizeAccess = MethodHandles.lookup().unreflect(ReflectionUtil.lookupMethod(BitSet.class, "trimToSize"));
         } catch (IllegalAccessException t) {
             throw JVMCIError.shouldNotReachHere(t);
@@ -73,7 +75,7 @@ public class TypeStateUtils {
         }
     }
 
-    public static int extractWordsInUseField(BitSet bitSet) {
+    public static int getWordsInUse(BitSet bitSet) {
         try {
             return (int) wordInUseAccess.invokeExact(bitSet);
         } catch (Throwable t) {
@@ -81,13 +83,21 @@ public class TypeStateUtils {
         }
     }
 
+    public static boolean getSizeIsSticky(BitSet bitSet) {
+        try {
+            return (boolean) sizeIsStickyAccess.invokeExact(bitSet);
+        } catch (Throwable t) {
+            throw JVMCIError.shouldNotReachHere(t);
+        }
+    }
+
     public static boolean needsTrim(BitSet bitSet) {
-        int wordsInUse = extractWordsInUseField(bitSet);
+        int wordsInUse = getWordsInUse(bitSet);
         long[] words = extractBitSetField(bitSet);
         return wordsInUse != words.length;
     }
 
-    public static void trimBitSetToSize(BitSet bs) {
+    private static void trimBitSetToSize(BitSet bs) {
         try {
             trimToSizeAccess.invokeExact(bs);
         } catch (Throwable t) {
@@ -384,12 +394,13 @@ public class TypeStateUtils {
         /* The result is a clone of the larger set to avoid expanding it when executing the OR. */
         BitSet bsr;
         if (bs1.size() > bs2.size()) {
-            bsr = (BitSet) bs1.clone();
+            bsr = getClone(bs1);
             bsr.or(bs2);
         } else {
-            bsr = (BitSet) bs2.clone();
+            bsr = getClone(bs2);
             bsr.or(bs1);
         }
+        assert !needsTrim(bsr);
         return bsr;
     }
 
@@ -398,12 +409,14 @@ public class TypeStateUtils {
         BitSet bsr;
         /* For AND is more efficient to clone the smaller bit set as the tail bits are 0. */
         if (bs1.size() < bs2.size()) {
-            bsr = (BitSet) bs1.clone();
+            bsr = getClone(bs1);
             bsr.and(bs2);
         } else {
-            bsr = (BitSet) bs2.clone();
+            bsr = getClone(bs2);
             bsr.and(bs1);
         }
+        /* The result may need a trim after AND. */
+        trimBitSetToSize(bsr);
         return bsr;
     }
 
@@ -413,8 +426,10 @@ public class TypeStateUtils {
      */
     public static BitSet andNot(BitSet bs1, BitSet bs2) {
         /* AND-NOT is not commutative, so we cannot optimize based on set size. */
-        BitSet bsr = (BitSet) bs1.clone();
+        BitSet bsr = getClone(bs1);
         bsr.andNot(bs2);
+        /* The result may need a trim after AND-NOT. */
+        trimBitSetToSize(bsr);
         return bsr;
     }
 
@@ -422,8 +437,10 @@ public class TypeStateUtils {
      * Sets the bit specified by the index to {@code false} without modifying the source.
      */
     public static BitSet clear(BitSet bs1, int bitIndex) {
-        BitSet bsr = (BitSet) bs1.clone();
+        BitSet bsr = getClone(bs1);
         bsr.clear(bitIndex);
+        /* The result may need a trim after a bit is cleared. */
+        trimBitSetToSize(bsr);
         return bsr;
     }
 
@@ -444,7 +461,7 @@ public class TypeStateUtils {
             /* Executing the OR first avoids element by element processing from 0 to bitIndex. */
         } else {
             /* The input set can represent bitIndex without expansion. */
-            bsr = (BitSet) bs1.clone();
+            bsr = getClone(bs1);
             bsr.set(bitIndex);
         }
         assert !needsTrim(bsr);
@@ -459,6 +476,30 @@ public class TypeStateUtils {
         bs.set(index2);
         assert !needsTrim(bs);
         return bs;
+    }
+
+    /**
+     * Make a clone of the input bitSet ensuring the original doesn't get modified in the process.
+     * <p>
+     * We want to keep the original MultiTypeState.typesBitSet effectively immutable, so we use
+     * BitSet.clone() when deriving a new BitSet since the set operations (and, or, etc.) mutate the
+     * original object. No calls to mutating methods are made on it after it is set in the
+     * MultiTypeState, thus we don't need to use any external synchronization.
+     * <p>
+     * BitSet.clone() breaks the informal contract that the clone method should not modify the
+     * original object; it calls trimToSize() before creating a copy, but only if sizeIsSticky is
+     * not set. All the BitSet objects that we create however set sizeIsSticky. We double-check here
+     * that the original bitSet will not be mutated and that the clone will not need to be trimmed.
+     * <p>
+     * Since BitSet is not thread safe mutating it during cloning would be problematic in a
+     * multithreaded environment. If for example you iterate over the bits at the same time as
+     * another thread calls clone() the words[] array can be in an inconsistent state.
+     */
+    private static BitSet getClone(BitSet original) {
+        assert getSizeIsSticky(original);
+        BitSet clone = (BitSet) original.clone();
+        assert !needsTrim(clone);
+        return clone;
     }
 
     public static boolean closeToAllInstantiated(BigBang bb, TypeState state) {
