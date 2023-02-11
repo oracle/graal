@@ -36,6 +36,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -215,11 +216,12 @@ public class OptimizationLogImpl implements OptimizationLog {
 
         private final CharSequence phaseName;
 
-        @Successor private NodeSuccessorList<OptimizationTreeNode> children = null;
+        @Successor private NodeSuccessorList<OptimizationTreeNode> children;
 
         protected OptimizationPhaseNode(CharSequence phaseName) {
             super(TYPE);
             this.phaseName = phaseName;
+            this.children = new NodeSuccessorList<>(this, 0);
         }
 
         /**
@@ -243,12 +245,7 @@ public class OptimizationLogImpl implements OptimizationLog {
          */
         public void addChild(OptimizationTreeNode node) {
             graph().add(node);
-            if (children == null) {
-                children = new NodeSuccessorList<>(this, 1);
-                children.set(0, node);
-            } else {
-                children.add(node);
-            }
+            children.add(node);
         }
 
         @Override
@@ -284,7 +281,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         /**
          * A position of a significant node related to this optimization.
          */
-        private final NodeSourcePosition position;
+        private NodeSourcePosition position;
 
         /**
          * The name of this optimization. Corresponds to the name of the compiler phase or another
@@ -587,41 +584,27 @@ public class OptimizationLogImpl implements OptimizationLog {
 
     @Override
     public void inline(OptimizationLog calleeOptimizationLog, boolean updatePosition, NodeSourcePosition invokePosition) {
-        if (calleeOptimizationLog.isOptimizationLogEnabled()) {
-            assert calleeOptimizationLog instanceof OptimizationLogImpl;
-            inlineSubtree(((OptimizationLogImpl) calleeOptimizationLog).findRootPhase(), updatePosition, invokePosition);
+        if (!optimizationLogEnabled || !calleeOptimizationLog.isOptimizationLogEnabled()) {
+            return;
         }
-    }
-
-    /**
-     * Recursively inlines the optimization subtree given by the {@code node} to the current phase.
-     * The optimization subtree is copied and node source positions may be updated using the
-     * provided position of the invoke that was inlined.
-     *
-     * @param node the root of the optimization subtree to be inlined
-     * @param updatePosition the node source positions should be updated
-     * @param invokePosition the position of the inlined invoke, ignored iff {@code !updatePosition}
-     */
-    @SuppressWarnings("try")
-    private void inlineSubtree(OptimizationTreeNode node, boolean updatePosition, NodeSourcePosition invokePosition) {
-        if (node instanceof OptimizationPhaseNode) {
-            OptimizationPhaseNode phase = (OptimizationPhaseNode) node;
-            try (DebugCloseable c = enterPhase(phase.phaseName)) {
-                if (phase.children != null) {
-                    for (OptimizationTreeNode child : phase.children) {
-                        inlineSubtree(child, updatePosition, invokePosition);
-                    }
+        assert calleeOptimizationLog instanceof OptimizationLogImpl : "an enabled log is an instance of OptimizationLogImpl";
+        OptimizationLogImpl calleeLogImpl = (OptimizationLogImpl) calleeOptimizationLog;
+        Graph calleeTree = calleeLogImpl.optimizationTree;
+        UnmodifiableEconomicMap<Node, Node> duplicates = optimizationTree.addDuplicates(calleeTree.getNodes(), calleeTree, calleeTree.getNodeCount(), (EconomicMap<Node, Node>) null);
+        if (updatePosition) {
+            for (Node duplicate : duplicates.getValues()) {
+                if (!(duplicate instanceof OptimizationNode)) {
+                    continue;
+                }
+                OptimizationNode optimization = (OptimizationNode) duplicate;
+                if (invokePosition != null && optimization.position != null) {
+                    optimization.position = optimization.position.addCaller(invokePosition);
+                } else {
+                    optimization.position = invokePosition;
                 }
             }
-        } else {
-            assert node instanceof OptimizationNode;
-            OptimizationNode optimization = (OptimizationNode) node;
-            NodeSourcePosition position = updatePosition ? invokePosition : optimization.getPosition();
-            if (updatePosition && invokePosition != null && optimization.position != null) {
-                position = optimization.position.addCaller(invokePosition);
-            }
-            currentPhase.addChild(new OptimizationNode(optimization.properties, position, optimization.optimizationName, optimization.eventName));
         }
+        currentPhase.children.add(duplicates.get(calleeLogImpl.findRootPhase()));
     }
 
     @Override
@@ -629,42 +612,17 @@ public class OptimizationLogImpl implements OptimizationLog {
         if (!optimizationLogEnabled) {
             return;
         }
-        currentPhase = new OptimizationPhaseNode(ROOT_PHASE_NAME);
-        optimizationTree = new Graph(optimizationTree.name, optimizationTree.getOptions(), optimizationTree.getDebug(), false);
-        optimizationTree.add(currentPhase);
-        if (!(replacementLog instanceof OptimizationLogImpl)) {
+        optimizationTree = new Graph(optimizationTree.name, optimizationTree.getOptions(), optimizationTree.getDebug(), optimizationTree.trackNodeSourcePosition());
+        if (!replacementLog.isOptimizationLogEnabled()) {
+            currentPhase = new OptimizationPhaseNode(ROOT_PHASE_NAME);
+            optimizationTree.add(currentPhase);
             return;
         }
-        OptimizationPhaseNode root = ((OptimizationLogImpl) replacementLog).findRootPhase();
-        if (root.children == null) {
-            return;
-        }
-        for (OptimizationTreeNode child : root.children) {
-            replaceSubtree(child);
-        }
-    }
-
-    /**
-     * Recursively copies the optimization subtree given by the {@code node} to the current phase.
-     *
-     * @param node the root of the optimization subtree to be copied
-     */
-    @SuppressWarnings("try")
-    private void replaceSubtree(OptimizationTreeNode node) {
-        if (node instanceof OptimizationPhaseNode) {
-            OptimizationPhaseNode phase = (OptimizationPhaseNode) node;
-            try (DebugCloseable c = enterPhase(phase.phaseName)) {
-                if (phase.children != null) {
-                    for (OptimizationTreeNode child : phase.children) {
-                        replaceSubtree(child);
-                    }
-                }
-            }
-        } else {
-            assert node instanceof OptimizationNode;
-            OptimizationNode optimization = (OptimizationNode) node;
-            currentPhase.addChild(new OptimizationNode(optimization.properties, optimization.position, optimization.optimizationName, optimization.eventName));
-        }
+        assert replacementLog instanceof OptimizationLogImpl : "an enabled log is an instance of OptimizationLogImpl";
+        OptimizationLogImpl replacementLogImpl = (OptimizationLogImpl) replacementLog;
+        Graph replacementTree = replacementLogImpl.optimizationTree;
+        UnmodifiableEconomicMap<Node, Node> duplicates = optimizationTree.addDuplicates(replacementTree.getNodes(), replacementTree, replacementTree.getNodeCount(), (EconomicMap<Node, Node>) null);
+        currentPhase = (OptimizationPhaseNode) duplicates.get(replacementLogImpl.findRootPhase());
     }
 
     @Override
