@@ -111,14 +111,18 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
         return Arrays.asList(objects).iterator();
     }
 
-    /** Get the type of the first object group. */
-    public AnalysisType firstType() {
-        return objects[0].type();
+    /**
+     * Get the type of the first object group.
+     */
+    public int firstTypeId() {
+        return objects[0].getTypeId();
     }
 
-    /** Get the type of the last object group. */
-    public AnalysisType lastType() {
-        return objects[objects.length - 1].type();
+    /**
+     * Get the type of the last object group.
+     */
+    public int lastTypeId() {
+        return objects[objects.length - 1].getTypeId();
     }
 
     @Override

@@ -540,9 +540,9 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             return result;
         } else {
             AnalysisObject[] resultObjects;
-            if (s2.exactType().getId() < s1.firstType().getId()) {
+            if (s2.exactType().getId() < s1.firstTypeId()) {
                 resultObjects = TypeStateUtils.concat(so2, so1);
-            } else if (s2.exactType().getId() > s1.lastType().getId()) {
+            } else if (s2.exactType().getId() > s1.lastTypeId()) {
                 resultObjects = TypeStateUtils.concat(so1, so2);
             } else {
 
@@ -599,7 +599,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
         /* Speculate that s1 and s2 are distinct sets. */
 
-        if (s1.lastType().getId() < s2.firstType().getId()) {
+        if (s1.lastTypeId() < s2.firstTypeId()) {
             /* Speculate that objects in s2 follow after objects in s1. */
 
             /* Concatenate the objects. */
@@ -613,7 +613,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
 
-        } else if (s2.lastType().getId() < s1.firstType().getId()) {
+        } else if (s2.lastTypeId() < s1.firstTypeId()) {
             /* Speculate that objects in s1 follow after objects in s2. */
 
             /* Concatenate the objects. */
