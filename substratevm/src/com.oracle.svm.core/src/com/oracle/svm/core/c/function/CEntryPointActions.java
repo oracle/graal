@@ -62,8 +62,9 @@ public final class CEntryPointActions {
      * context. If the thread has already been attached, this does not cause the operation to fail.
      *
      * @param isolate an existing isolate.
-     * @param startedByIsolate Whether the current thread has been launched directly by the isolate,
-     *            which makes the isolate responsible for cleanups when the thread detaches.
+     * @param startedByIsolate Whether the current thread has been launched directly by the isolate
+     *            (as opposed to being an externally started thread), which makes the isolate
+     *            responsible for cleanups when the thread detaches.
      * @param ensureJavaThread when set to true, the method ensures that the {@link Thread} object
      *            for the newly attached thread is created. If the parameter is set to false, a
      *            later call to one of the {@link PlatformThreads#ensureCurrentAssigned} methods
