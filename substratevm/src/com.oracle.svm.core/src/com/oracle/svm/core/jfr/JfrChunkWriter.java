@@ -65,7 +65,7 @@ import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     public static final byte[] FILE_MAGIC = {'F', 'L', 'R', '\0'};
     public static final short JFR_VERSION_MAJOR = 2;
-    public static final short JFR_VERSION_MINOR = 0;
+    public static final short JFR_VERSION_MINOR = 1;
     private static final int CHUNK_SIZE_OFFSET = 8;
     private static final int FILE_STATE_OFFSET = 64;
     private static final byte COMPLETE = 0;

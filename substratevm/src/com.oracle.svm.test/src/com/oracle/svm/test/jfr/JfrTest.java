@@ -30,6 +30,7 @@ import static org.junit.Assume.assumeTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
@@ -146,6 +147,16 @@ public abstract class JfrTest {
 
     protected List<RecordedEvent> getEvents() throws IOException {
         Path p = makeCopy(ClassUtil.getUnqualifiedName(getClass()));
+        return getEvents0(p);
+    }
+
+    protected List<RecordedEvent> getEvents(Path p) throws IOException {
+        List<RecordedEvent> events = getEvents0(p);
+        Files.deleteIfExists(p);
+        return events;
+    }
+
+    private List<RecordedEvent> getEvents0(Path p) throws IOException {
         List<RecordedEvent> events = RecordingFile.readAllEvents(p);
         Collections.sort(events, new ChronologicalComparator());
         // remove events that are not in the list of tested events

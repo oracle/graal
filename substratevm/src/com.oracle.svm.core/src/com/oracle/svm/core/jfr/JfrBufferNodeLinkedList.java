@@ -164,4 +164,9 @@ public class JfrBufferNodeLinkedList {
     public void releaseList() {
         SpinLockUtils.unlock(this, LOCK_OFFSET);
     }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private boolean isLocked() {
+        return lock == 1;
+    }
 }

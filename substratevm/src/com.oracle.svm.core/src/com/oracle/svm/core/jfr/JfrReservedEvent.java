@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,16 +23,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jfr;
 
-package com.oracle.svm.test.jfr.events;
+public enum JfrReservedEvent {
+    EVENT_METADATA(0),
+    EVENT_CHECKPOINT(1);
 
-import jdk.jfr.*;
+    private final long id;
 
-@Name("com.jfr.Class")
-@Label("Class Event")
-@Description("An event with a class payload")
-@StackTrace(false)
-public class ClassEvent extends Event {
-
-    @Label("Class") public Class<?> clazz;
+    public long getId(){return id;}
+    JfrReservedEvent(long id) {
+        this.id =  id;
+    }
 }

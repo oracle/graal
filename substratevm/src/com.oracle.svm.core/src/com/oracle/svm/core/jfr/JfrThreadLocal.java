@@ -46,8 +46,9 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.thread.Target_java_lang_Thread;
+import com.oracle.svm.core.SubstrateUtil;
 
 import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
 
@@ -80,7 +81,6 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<JfrBufferNode> javaBufferNode = FastThreadLocalFactory.createWord("JfrThreadLocal.javaBufferNode");
     private static final FastThreadLocalWord<JfrBufferNode> nativeBufferNode = FastThreadLocalFactory.createWord("JfrThreadLocal.nativeBufferNode");
     private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord("JfrThreadLocal.dataLost");
-    private static final FastThreadLocalInt excluded = FastThreadLocalFactory.createInt("JfrThreadLocal.excluded");
 
     /* Stacktrace-related thread-locals. */
     private static final FastThreadLocalWord<SamplerBuffer> samplerBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.samplerBuffer");
@@ -300,7 +300,6 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static JfrBuffer flush(JfrBuffer threadLocalBuffer, UnsignedWord uncommitted, int requested) {
         VMError.guarantee(threadLocalBuffer.isNonNull(), "TLB cannot be null if promoting.");
-        VMError.guarantee(!VMOperation.isInProgressAtSafepoint(), "Should not be promoting if at safepoint. ");
 
         // Needed for race between streaming flush and promotion
         acquireBufferWithRetry(threadLocalBuffer);
@@ -372,7 +371,8 @@ public class JfrThreadLocal implements ThreadListener {
             return;
         }
         IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
-        excluded.set(currentIsolateThread, 1);
+        com.oracle.svm.core.thread.Target_java_lang_Thread tjlt = com.oracle.svm.core.SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
+        tjlt.jfrExcluded = true;
 
         if (javaEventWriter.get(currentIsolateThread) != null && JavaVersionUtil.JAVA_SPEC >= 19) {
             javaEventWriter.get(currentIsolateThread).excluded = true;
@@ -383,9 +383,10 @@ public class JfrThreadLocal implements ThreadListener {
         if (!thread.equals(Thread.currentThread())) {
             return;
         }
-        IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
 
-        excluded.set(currentIsolateThread, 0);
+        IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
+        tjlt.jfrExcluded = false;
 
         if (javaEventWriter.get(currentIsolateThread) != null && JavaVersionUtil.JAVA_SPEC >= 19) {
             javaEventWriter.get(currentIsolateThread).excluded = false;
@@ -394,7 +395,8 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public boolean isCurrentThreadExcluded() {
-        return excluded.get() == 1;
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
+        return tjlt.jfrExcluded;
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
