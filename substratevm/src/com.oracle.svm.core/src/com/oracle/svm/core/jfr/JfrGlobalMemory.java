@@ -99,7 +99,7 @@ public class JfrGlobalMemory {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     public boolean write(JfrBuffer threadLocalBuffer, UnsignedWord unflushedSize) {
-        JfrBuffer promotionBuffer = acquirePromotionBuffer(unflushedSize);
+        JfrBuffer promotionBuffer = tryAcquirePromotionBuffer(unflushedSize);
         if (promotionBuffer.isNull()) {
             return false;
         }
@@ -123,7 +123,7 @@ public class JfrGlobalMemory {
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private JfrBuffer acquirePromotionBuffer(UnsignedWord size) {
+    private JfrBuffer tryAcquirePromotionBuffer(UnsignedWord size) {
         assert size.belowOrEqual(WordFactory.unsigned(bufferSize));
         for (int retry = 0; retry < PROMOTION_RETRY_COUNT; retry++) {
             for (int i = 0; i < bufferCount; i++) {

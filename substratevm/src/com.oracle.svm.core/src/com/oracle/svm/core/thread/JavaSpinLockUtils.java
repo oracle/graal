@@ -57,20 +57,20 @@ public class JavaSpinLockUtils {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean tryLock(Object obj, long intFieldOffset, long retries) {
+    public static boolean tryLock(Object obj, long intFieldOffset, int retries) {
         if (tryLock(obj, intFieldOffset)) {
             return true; // fast-path
         }
 
-        long yields = 0;
-        for (long i = 0; i < retries; i++) {
+        int yields = 0;
+        for (int i = 0; i < retries; i++) {
             if (isLocked(obj, intFieldOffset)) {
                 /*
                  * It would be better to take into account if we are on a single-processor machine
                  * where spinning is futile. However, determining that is expensive in itself. We do
                  * use fewer successive spins than the equivalent HotSpot code does (0xFFF).
                  */
-                if ((i & 0xffL) == 0 && VMThreads.singleton().supportsNativeYieldAndSleep()) {
+                if ((i & 0xff) == 0 && VMThreads.singleton().supportsNativeYieldAndSleep()) {
                     if (yields > 5) {
                         VMThreads.singleton().nativeSleep(1);
                     } else {
@@ -90,8 +90,9 @@ public class JavaSpinLockUtils {
 
     @Uninterruptible(reason = "This method does not do a transition, so the whole critical section must be uninterruptible.", callerMustBe = true)
     public static void lockNoTransition(Object obj, long intFieldOffset) {
-        boolean result = tryLock(obj, intFieldOffset, Long.MAX_VALUE);
-        assert result;
+        while (!tryLock(obj, intFieldOffset, Integer.MAX_VALUE)) {
+            // Nothing to do.
+        }
     }
 
     @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)

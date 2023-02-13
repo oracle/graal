@@ -48,7 +48,7 @@ public class NativeSpinLockUtils {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean tryLock(CIntPointer spinLock, long retries) {
+    public static boolean tryLock(CIntPointer spinLock, int retries) {
         return JavaSpinLockUtils.tryLock(null, spinLock.rawValue(), retries);
     }
 
