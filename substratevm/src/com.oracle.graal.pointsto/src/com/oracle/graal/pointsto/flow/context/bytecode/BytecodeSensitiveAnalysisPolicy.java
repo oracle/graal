@@ -77,6 +77,7 @@ import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
@@ -1177,5 +1178,70 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                 }
             }
         }
+    }
+
+    @Override
+    public void processArrayCopyStates(PointsToAnalysis bb, TypeState srcArrayState, TypeState dstArrayState) {
+        /*
+         * The types-objects iterator uses a sliding window to iterate over the objects of a type,
+         * and can quickly skip over the objects of specific types. This iterator is ideal since we
+         * want to quickly skip over the objects in the source whose type is not compatible with the
+         * destination (see AnalysisPolicy.areTypesCompatibleForSystemArraycopy() for details). This
+         * iterator also has the ability to reset back to the beginning of a type's partition, so
+         * after processing all objects in a pair of source-destination compatible types you can
+         * reset the source type partition back to the beginning and look for the next compatible
+         * destination type.
+         * 
+         * Although the resulting code is still quadratic from an algorithmic complexity standpoint,
+         * in practice you can never reach the asymptotic complexity given that in a usual type
+         * hierarchy most types are not compatible with most other types for System.arraycopy().
+         */
+        TypesObjectsIterator srcIterator = new TypesObjectsIterator(srcArrayState);
+        while (srcIterator.hasNextType()) {
+            AnalysisType srcType = srcIterator.nextType();
+            if (!isObjectArrayType(srcType)) {
+                srcIterator.skipObjects(srcType);
+                continue;
+            }
+            srcIterator.memoizePosition();
+            TypesObjectsIterator dstIterator = new TypesObjectsIterator(dstArrayState);
+            while (dstIterator.hasNextType()) {
+                AnalysisType dstType = dstIterator.nextType();
+                if (!isObjectArrayType(dstType)) {
+                    dstIterator.skipObjects(dstType);
+                    continue;
+                }
+                if (areTypesCompatibleForSystemArraycopy(srcType, dstType)) {
+                    srcIterator.reset();
+                    dstIterator.memoizePosition();
+                    while (srcIterator.hasNextObject(srcType)) {
+                        AnalysisObject srcObject = srcIterator.nextObject(srcType);
+                        if (srcObject.isEmptyObjectArrayConstant(bb)) {
+                            continue;
+                        }
+                        var srcArrayElements = srcObject.getArrayElementsFlow(bb, true);
+                        dstIterator.reset();
+                        while (dstIterator.hasNextObject(dstType)) {
+                            AnalysisObject dstObject = dstIterator.nextObject(dstType);
+                            if (dstObject.isEmptyObjectArrayConstant(bb)) {
+                                continue;
+                            }
+                            var dstArrayElements = dstObject.getArrayElementsFlow(bb, true);
+                            srcArrayElements.addUse(bb, dstArrayElements);
+                        }
+                    }
+                } else {
+                    dstIterator.skipObjects(dstType);
+                }
+            }
+        }
+    }
+
+    /*
+     * We ignore non-array types. Sometimes the analysis cannot filter out non-array types flowing
+     * into array copy, however this will fail at runtime.
+     */
+    private static boolean isObjectArrayType(AnalysisType type) {
+        return type.isArray() && type.getComponentType().getJavaKind() == JavaKind.Object;
     }
 }

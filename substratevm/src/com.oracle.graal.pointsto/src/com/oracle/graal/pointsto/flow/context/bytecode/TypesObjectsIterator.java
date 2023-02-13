@@ -38,26 +38,36 @@ import com.oracle.graal.pointsto.util.AnalysisError;
  * for the range of objects corresponding to that type. When only objects, or only types, or only
  * objects of a certain type need to be iterated use the other provided iterators. A correct use of
  * this iterator is as follows:
- *
- * <code>
+ * 
+ * <pre>
  * TypesObjectsIterator toi = state.getTypesObjectsIterator();
- * <p>
- * while(toi.hasNextType()) {
- * AnalysisType t = toi.nextType();
- * // use type here
- * <p>
- * while(toi.hasNextObject(t)) {
- * AnalysisObject o = toi.nextObject(t);
- * // use object here
+ * while (toi.hasNextType()) {
+ *     AnalysisType t = toi.nextType();
+ *     if (processObjectsOf(t)) {
+ *         while (toi.hasNextObject(t)) {
+ *             AnalysisObject o = toi.nextObject(t);
+ *             // process object here
+ *         }
+ *     } else {
+ *         toi.skipObjects(t);
+ *     }
  * }
- * }
- * </code>
+ * </pre>
+ *
+ * If we wanted to optimize {@link TypesObjectsIterator#skipObjects(AnalysisType)} we could keep an
+ * int[] array in {@link ContextSensitiveMultiTypeState}, of size
+ * {@link ContextSensitiveMultiTypeState#typesCount()} and indexed with
+ * {@link TypesObjectsIterator#typeIdx}, that stores the beginning index of the next type partition
+ * in {@link ContextSensitiveMultiTypeState#objects}, however profiling doesn't raise any red flags
+ * for skipObjects (yet).
  */
 final class TypesObjectsIterator {
     private final int typesCount;
     private final AnalysisObject[] objects;
     private int typeIdx = 0;
     private int objectIdx = 0;
+    private int memoizedTypeIdx = 0;
+    private int memoizedObjectIdx = 0;
 
     TypesObjectsIterator(TypeState state) {
         typesCount = state.typesCount();
@@ -93,6 +103,17 @@ final class TypesObjectsIterator {
     }
 
     /**
+     * Skip next objects of the given type. It assumes the objectIdx is already advanced to that
+     * type's partition.
+     */
+    public void skipObjects(AnalysisType type) {
+        while (this.hasNextObject(type)) {
+            // skip the rest of the objects of the same type
+            objectIdx++;
+        }
+    }
+
+    /**
      * Gets the next type.
      */
     public AnalysisType nextType() {
@@ -100,7 +121,7 @@ final class TypesObjectsIterator {
         assert hasNextType();
         /* Increment the type index. */
         typeIdx++;
-        /* Return the type at the 'objectIdx. */
+        /* Return the type at the objectIdx. */
         return objects[objectIdx].type();
     }
 
@@ -112,5 +133,20 @@ final class TypesObjectsIterator {
         assert hasNextObject(type);
         /* Return the next object and increment objectIdx. */
         return objects[objectIdx++];
+    }
+
+    /**
+     * Memoize type and object indexes. This can be used to remember the beginning of a type's
+     * partition during iteration.
+     */
+    public void memoizePosition() {
+        memoizedTypeIdx = typeIdx;
+        memoizedObjectIdx = objectIdx;
+    }
+
+    /** Reset type and object indexes to the memoized position. */
+    public void reset() {
+        typeIdx = memoizedTypeIdx;
+        objectIdx = memoizedObjectIdx;
     }
 }
