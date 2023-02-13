@@ -941,6 +941,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
+        assert other != null : "other is null";
         return wrapped.isAssignableFrom(((AnalysisType) other).getWrappedWithResolve());
     }
 

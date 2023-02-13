@@ -146,6 +146,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.VMConstant;
 
 public class MethodTypeFlowBuilder {
@@ -1610,7 +1611,15 @@ public class MethodTypeFlowBuilder {
             });
 
             ObjectStamp stamp = (ObjectStamp) invoke.stamp(NodeView.DEFAULT);
-            if (stamp.nonNull() && !returnType.equals(stamp.type()) && returnType.isAssignableFrom(stamp.type())) {
+
+            // stamp.type() can return null, and that sometimes means the java.lang.Object class.
+            // Instead of using null to indicate that, actually resolve the java.lang.Object class
+            // and use a proper ResolvedJavaType.
+            final ResolvedJavaType stampType = (stamp.type() == null && !stamp.isExactType())
+                            ? stamp.javaType(bb.getMetaAccess())
+                            : stamp.type();
+
+            if (stamp.nonNull() && !returnType.equals(stampType) && returnType.isAssignableFrom(stampType)) {
                 /*
                  * If the invoke stamp has a more precise type than the return type use that to
                  * filter the returned values. This can happen for example for MacroInvokable nodes
@@ -1620,7 +1629,7 @@ public class MethodTypeFlowBuilder {
                  * filter to avoid loosing precision.
                  */
                 TypeFlowBuilder<?> filterBuilder = TypeFlowBuilder.create(bb, invoke, FilterTypeFlow.class, () -> {
-                    FilterTypeFlow filterFlow = new FilterTypeFlow(invokeLocation, (AnalysisType) stamp.type(), stamp.isExactType(), true, true);
+                    FilterTypeFlow filterFlow = new FilterTypeFlow(invokeLocation, (AnalysisType) stampType, stamp.isExactType(), true, true);
                     flowsGraph.addMiscEntryFlow(filterFlow);
                     return filterFlow;
                 });
