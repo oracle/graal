@@ -398,8 +398,8 @@ local devkits = common_json.devkits;
 
   svm_vm_build_linux_amd64: self.svm_common_linux_amd64 + vm.custom_vm_linux,
 
-  ruby_vm_build_linux: self.svm_common_linux_amd64 + self.sulong_linux + self.truffleruby_linux_amd64 + vm.custom_vm_linux,
-  full_vm_build_linux: self.ruby_vm_build_linux + self.fastr_linux + self.graalpython_linux,
+  ruby_vm_build_linux_amd64: self.svm_common_linux_amd64 + self.sulong_linux + self.truffleruby_linux_amd64 + vm.custom_vm_linux,
+  full_vm_build_linux_amd64: self.ruby_vm_build_linux_amd64 + self.fastr_linux + self.graalpython_linux,
   full_vm_build_linux_aarch64: self.svm_common_linux_aarch64 + self.sulong_linux + self.truffleruby_linux_aarch64 + vm.custom_vm_linux,
 
   ruby_vm_build_darwin_amd64: self.svm_common_darwin_amd64 + self.sulong_darwin_amd64 + self.truffleruby_darwin_amd64 + vm.custom_vm_darwin,
@@ -600,8 +600,8 @@ local devkits = common_json.devkits;
   #
 
   # Linux/AMD64
-  deploy_vm_java17_linux_amd64: vm.vm_java_17_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java17") + {name: 'post-merge-deploy-vm-java17-linux-amd64', diskspace_required: vm.diskspace_required.java17_linux_amd64, notify_groups:: ["deploy"]},
-  deploy_vm_java20_linux_amd64: vm.vm_java_20_llvm + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java20") + {name: 'post-merge-deploy-vm-java20-linux-amd64', diskspace_required: vm.diskspace_required.java20_linux_amd64, notify_groups:: ["deploy"]},
+  deploy_vm_java17_linux_amd64: vm.vm_java_17_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java17") + {name: 'post-merge-deploy-vm-java17-linux-amd64', diskspace_required: vm.diskspace_required.java17_linux_amd64, notify_groups:: ["deploy"]},
+  deploy_vm_java20_linux_amd64: vm.vm_java_20_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java20") + {name: 'post-merge-deploy-vm-java20-linux-amd64', diskspace_required: vm.diskspace_required.java20_linux_amd64, notify_groups:: ["deploy"]},
 
   # Linux/AARCH64
   deploy_vm_java17_linux_aarch64: vm.vm_java_17 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64("java17") + {name: 'daily-deploy-vm-java17-linux-aarch64', notify_groups:: ["deploy"]},
@@ -629,10 +629,10 @@ local devkits = common_json.devkits;
   # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
   #
 
-  deploy_vm_ruby_java17_linux_amd64: vm.vm_java_17 + self.ruby_vm_build_linux + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java17') + {name: 'daily-deploy-vm-ruby-java17-linux-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_ruby_java17_linux_amd64: vm.vm_java_17 + self.ruby_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java17') + {name: 'daily-deploy-vm-ruby-java17-linux-amd64', notify_groups:: ["deploy"]},
   deploy_vm_ruby_java17_darwin_amd64: vm.vm_java_17 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_ruby('darwin', 'amd64', 'java17') + {name: 'daily-deploy-vm-ruby-java17-darwin-amd64', notify_groups:: ["deploy"]},
   deploy_vm_ruby_java17_darwin_aarch64: vm.vm_java_17 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_ruby('darwin', 'aarch64', 'java17') + {name: 'daily-deploy-vm-ruby-java17-darwin-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_ruby_java20_linux_amd64: vm.vm_java_20 + self.ruby_vm_build_linux + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java20') + {name: 'daily-deploy-vm-ruby-java20-linux-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_ruby_java20_linux_amd64: vm.vm_java_20 + self.ruby_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java20') + {name: 'daily-deploy-vm-ruby-java20-linux-amd64', notify_groups:: ["deploy"]},
   deploy_vm_ruby_java20_darwin_amd64: vm.vm_java_20 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_ruby('darwin', 'amd64', 'java20') + {name: 'daily-deploy-vm-ruby-java20-darwin-amd64', notify_groups:: ["deploy"]},
   deploy_vm_ruby_java20_darwin_aarch64: vm.vm_java_20 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_ruby('darwin', 'aarch64', 'java20') + {name: 'daily-deploy-vm-ruby-java20-darwin-aarch64', notify_groups:: ["deploy"]},
 
