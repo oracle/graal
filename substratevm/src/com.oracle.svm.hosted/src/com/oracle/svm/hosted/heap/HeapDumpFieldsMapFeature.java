@@ -135,7 +135,7 @@ class HeapDumpHostedUtils {
         try {
             byte[] buf = name.getBytes("UTF-8");
             for (byte b : buf) {
-                writeBuffer.putU1(b);
+                writeBuffer.putS1(b);
             }
             writeBuffer.putU1(0);
         } catch (UnsupportedEncodingException ex) {
