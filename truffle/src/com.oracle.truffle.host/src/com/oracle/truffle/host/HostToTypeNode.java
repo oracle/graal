@@ -177,7 +177,7 @@ abstract class HostToTypeNode extends Node {
             }
         }
         HostLanguage language = HostLanguage.get(interop);
-        if (HostObject.isJavaInstance(language, targetType, value)) {
+        if (targetType != List.class && HostObject.isJavaInstance(language, targetType, value)) {
             return HostObject.valueOf(language, value);
         }
 
@@ -392,7 +392,7 @@ abstract class HostToTypeNode extends Node {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         assert !interop.isNull(value); // already handled
         Object obj;
-        if (HostObject.isJavaInstance(hostContext.language, targetType, value)) {
+        if (targetType != List.class && HostObject.isJavaInstance(hostContext.language, targetType, value)) {
             obj = HostObject.valueOf(hostContext.language, value);
         } else if (targetType == Object.class) {
             obj = convertToObject(node, hostContext, value, interop);
