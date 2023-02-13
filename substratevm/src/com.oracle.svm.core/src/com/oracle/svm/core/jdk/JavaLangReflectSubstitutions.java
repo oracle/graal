@@ -44,7 +44,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static boolean getBoolean(Object array, int index) {
-        if (array instanceof boolean[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof boolean[]) {
             return ((boolean[]) array)[index];
         }
         throw new IllegalArgumentException();
@@ -52,7 +54,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static void setBoolean(Object array, int index, boolean value) {
-        if (array instanceof boolean[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof boolean[]) {
             ((boolean[]) array)[index] = value;
             return;
         }
@@ -61,7 +65,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static byte getByte(Object array, int index) {
-        if (array instanceof byte[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof byte[]) {
             return ((byte[]) array)[index];
         }
         throw new IllegalArgumentException();
@@ -69,7 +75,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static void setByte(Object array, int index, byte value) {
-        if (array instanceof byte[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof byte[]) {
             ((byte[]) array)[index] = value;
             return;
         } else if (array instanceof short[]) {
@@ -93,7 +101,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static char getChar(Object array, int index) {
-        if (array instanceof char[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof char[]) {
             return ((char[]) array)[index];
         }
         throw new IllegalArgumentException();
@@ -101,7 +111,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static void setChar(Object array, int index, char value) {
-        if (array instanceof char[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof char[]) {
             ((char[]) array)[index] = value;
             return;
         } else if (array instanceof int[]) {
@@ -122,7 +134,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static short getShort(Object array, int index) {
-        if (array instanceof byte[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof byte[]) {
             return ((byte[]) array)[index];
         } else if (array instanceof short[]) {
             return ((short[]) array)[index];
@@ -132,7 +146,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static void setShort(Object array, int index, short value) {
-        if (array instanceof short[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof short[]) {
             ((short[]) array)[index] = value;
             return;
         } else if (array instanceof int[]) {
@@ -153,7 +169,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static int getInt(Object array, int index) {
-        if (array instanceof byte[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof byte[]) {
             return ((byte[]) array)[index];
         } else if (array instanceof short[]) {
             return ((short[]) array)[index];
@@ -167,7 +185,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static void setInt(Object array, int index, int value) {
-        if (array instanceof int[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof int[]) {
             ((int[]) array)[index] = value;
             return;
         } else if (array instanceof long[]) {
@@ -185,7 +205,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static long getLong(Object array, int index) {
-        if (array instanceof byte[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof byte[]) {
             return ((byte[]) array)[index];
         } else if (array instanceof short[]) {
             return ((short[]) array)[index];
@@ -201,7 +223,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static void setLong(Object array, int index, long value) {
-        if (array instanceof long[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof long[]) {
             ((long[]) array)[index] = value;
             return;
         } else if (array instanceof float[]) {
@@ -216,7 +240,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static float getFloat(Object array, int index) {
-        if (array instanceof byte[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof byte[]) {
             return ((byte[]) array)[index];
         } else if (array instanceof short[]) {
             return ((short[]) array)[index];
@@ -234,7 +260,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static void setFloat(Object array, int index, float value) {
-        if (array instanceof float[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof float[]) {
             ((float[]) array)[index] = value;
             return;
         } else if (array instanceof double[]) {
@@ -246,7 +274,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static double getDouble(Object array, int index) {
-        if (array instanceof byte[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof byte[]) {
             return ((byte[]) array)[index];
         } else if (array instanceof short[]) {
             return ((short[]) array)[index];
@@ -266,7 +296,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static void setDouble(Object array, int index, double value) {
-        if (array instanceof double[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof double[]) {
             ((double[]) array)[index] = value;
             return;
         }
@@ -275,7 +307,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static Object get(Object array, int index) {
-        if (array instanceof boolean[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof boolean[]) {
             return ((boolean[]) array)[index];
         } else if (array instanceof byte[]) {
             return ((byte[]) array)[index];
@@ -301,7 +335,9 @@ final class Target_java_lang_reflect_Array {
 
     @Substitute
     private static void set(Object array, int index, Object value) {
-        if (array instanceof boolean[]) {
+        if (array == null) {
+            throw new NullPointerException();
+        } else if (array instanceof boolean[]) {
             if (value instanceof Boolean) {
                 ((boolean[]) array)[index] = ((Boolean) value).booleanValue();
                 return;
@@ -366,8 +402,7 @@ final class Target_java_lang_reflect_Array {
     private static Object multiNewArray(Class<?> componentType, int[] dimensions) {
         if (componentType == null) {
             throw new NullPointerException();
-        }
-        if (dimensions.length == 0 || componentType == void.class) {
+        } else if (dimensions.length == 0 || componentType == void.class) {
             throw new IllegalArgumentException();
         }
         int requestedDimension = dimensions.length;
