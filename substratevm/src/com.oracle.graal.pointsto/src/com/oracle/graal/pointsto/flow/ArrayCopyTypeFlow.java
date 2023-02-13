@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -123,61 +122,7 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     private static void processStates(PointsToAnalysis bb, TypeState srcArrayState, TypeState dstArrayState) {
-        /*
-         * The source and destination array can have reference types which, although must be
-         * compatible, can be different.
-         */
-        for (AnalysisObject srcArrayObject : srcArrayState.objects(bb)) {
-            if (!srcArrayObject.type().isArray()) {
-                /*
-                 * Ignore non-array type. Sometimes the analysis cannot filter out non-array types
-                 * flowing into array copy, however this will fail at runtime.
-                 */
-                continue;
-            }
-            assert srcArrayObject.type().isArray();
-
-            if (srcArrayObject.isPrimitiveArray() || srcArrayObject.isEmptyObjectArrayConstant(bb)) {
-                /* Nothing to read from a primitive array or an empty array constant. */
-                continue;
-            }
-
-            ArrayElementsTypeFlow srcArrayElementsFlow = srcArrayObject.getArrayElementsFlow(bb, false);
-
-            for (AnalysisObject dstArrayObject : dstArrayState.objects(bb)) {
-                if (!dstArrayObject.type().isArray()) {
-                    /* Ignore non-array type. */
-                    continue;
-                }
-
-                assert dstArrayObject.type().isArray();
-
-                if (dstArrayObject.isPrimitiveArray() || dstArrayObject.isEmptyObjectArrayConstant(bb)) {
-                    /* Cannot write to a primitive array or an empty array constant. */
-                    continue;
-                }
-
-                /*
-                 * As far as the ArrayCopyTypeFlow is concerned the source and destination types can
-                 * be compatible or not, where compatibility is defined as: the component of the
-                 * source array can be converted to the component type of the destination array by
-                 * assignment conversion. System.arraycopy() semantics doesn't check the
-                 * compatibility of the source and destination arrays, it instead relies on runtime
-                 * checks of the compatibility of the copied objects and the destination array. For
-                 * example System.arraycopy() can copy from an Object[] to SomeOtherObject[]. In
-                 * this case a check dstArrayObject.type().isAssignableFrom(srcArrayObject.type()
-                 * would fail but it is actually a valid use. That's why ArrayElementsTypeFlow will
-                 * test each individual copied object for compatibility with the defined type of the
-                 * destination array and filter out those not assignable. From System.arraycopy()
-                 * javadoc: "...if any actual component of the source array from position srcPos
-                 * through srcPos+length-1 cannot be converted to the component type of the
-                 * destination array by assignment conversion, an ArrayStoreException is thrown."
-                 */
-
-                ArrayElementsTypeFlow dstArrayElementsFlow = dstArrayObject.getArrayElementsFlow(bb, true);
-                srcArrayElementsFlow.addUse(bb, dstArrayElementsFlow);
-            }
-        }
+        bb.analysisPolicy().processArrayCopyStates(bb, srcArrayState, dstArrayState);
     }
 
     @Override
@@ -195,8 +140,6 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("ArrayCopyTypeFlow<").append(getState()).append(">");
-        return str.toString();
+        return "ArrayCopyTypeFlow<" + getState() + ">";
     }
 }
