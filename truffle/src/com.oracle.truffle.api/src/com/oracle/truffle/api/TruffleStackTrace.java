@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -57,8 +56,6 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
-
-import sun.misc.Unsafe;
 
 /**
  * Represents a guest language stack trace.
@@ -82,53 +79,6 @@ import sun.misc.Unsafe;
  */
 @SuppressWarnings("serial")
 public final class TruffleStackTrace extends Exception {
-
-    private static final long causeFieldIndex;
-    private static final sun.misc.Unsafe UNSAFE;
-
-    private static final int CAUSE_TRAVERSAL_LIMIT = 10;
-
-    static {
-        Unsafe unsafe;
-        try {
-            unsafe = Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-            try {
-                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafeInstance.setAccessible(true);
-                unsafe = (Unsafe) theUnsafeInstance.get(Unsafe.class);
-            } catch (Exception e2) {
-                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
-            }
-        }
-        UNSAFE = unsafe;
-
-        try {
-            Field causeField = Throwable.class.getDeclaredField("cause");
-            causeFieldIndex = ArrayUtils.getObjectFieldOffset(causeField);
-        } catch (NoSuchFieldException | SecurityException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static Throwable getCause(Throwable t) {
-        try {
-            Throwable result = (Throwable) UNSAFE.getObject(t, causeFieldIndex);
-            return result == t ? null : result;
-        } catch (IllegalArgumentException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void initCause(Throwable t, Throwable value) {
-        try {
-            UNSAFE.putObject(t, causeFieldIndex, value);
-        } catch (IllegalArgumentException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException(e);
-        }
-    }
 
     private static final TruffleStackTrace EMPTY = new TruffleStackTrace(Collections.emptyList(), 0);
 
@@ -233,48 +183,12 @@ public final class TruffleStackTrace extends Exception {
 
     private static LazyStackTrace findImpl(Throwable t) {
         assert !(t instanceof ControlFlowException);
-        int traversed = 0;
-        Throwable cause = t;
-        while (cause != null) {
-            if (++traversed > CAUSE_TRAVERSAL_LIMIT) {
-                return null;
-            }
-            Throwable innerCause = getCause(cause);
-            if (innerCause == null) {
-                return null;
-            }
-            cause = innerCause;
-            if (cause instanceof LazyStackTrace) {
-                return ((LazyStackTrace) cause);
+        for (Throwable suppressed : t.getSuppressed()) {
+            if (suppressed instanceof LazyStackTrace) {
+                return (LazyStackTrace) suppressed;
             }
         }
         return null;
-    }
-
-    private static Throwable findInsertCause(Throwable t) {
-        Throwable lastException = t;
-        int traversed = 0;
-        while (lastException != null) {
-            if (++traversed > CAUSE_TRAVERSAL_LIMIT) {
-                return null;
-            }
-            Throwable innerCause = getCause(lastException);
-            if (innerCause == null) {
-                break;
-            }
-            lastException = innerCause;
-        }
-        return lastException;
-    }
-
-    private static void insert(Throwable t, LazyStackTrace trace) {
-        if (getCause(t) != null) {
-            CompilerDirectives.transferToInterpreter();
-            // if the cause is initialized to null we have no chance of attaching guest language
-            // stack traces
-        } else {
-            initCause(t, trace);
-        }
     }
 
     /**
@@ -457,6 +371,7 @@ public final class TruffleStackTrace extends Exception {
         appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit);
     }
 
+    @TruffleBoundary
     static LazyStackTrace getOrCreateLazyStackTrace(Throwable throwable) {
         LazyStackTrace lazy;
         if (LanguageAccessor.EXCEPTIONS.isException(throwable)) {
@@ -469,10 +384,7 @@ public final class TruffleStackTrace extends Exception {
             lazy = findImpl(throwable);
             if (lazy == null) {
                 lazy = new LazyStackTrace();
-                Throwable insertCause = findInsertCause(throwable);
-                if (insertCause != null) {
-                    insert(insertCause, lazy);
-                }
+                throwable.addSuppressed(lazy);
             }
         }
         return lazy;
