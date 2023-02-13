@@ -2425,7 +2425,7 @@ final class HostObject implements TruffleObject {
     boolean hasExceptionCause() {
         if (isException()) {
             Throwable cause = ((Throwable) obj).getCause();
-            if (cause != null && !HostAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
+            if (cause != null) {
                 return true;
             }
         }
@@ -2440,7 +2440,7 @@ final class HostObject implements TruffleObject {
             if (cause != null) {
                 if (cause instanceof AbstractTruffleException) {
                     return cause;
-                } else if (!HostAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
+                } else {
                     return HostException.wrap(cause, context);
                 }
             }
