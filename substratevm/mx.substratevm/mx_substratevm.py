@@ -917,7 +917,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     stability="earlyadopter",
     jlink=False,
-    installable=True,
+    installable=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -932,7 +932,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=[],
     builder_jar_distributions=['substratevm:SVM_LIBFFI'],
     support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
-    installable=True,
+    installable=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -944,7 +944,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     support_distributions=['substratevm:SVM_STATIC_LIBRARIES_SUPPORT'],
-    installable=True,
+    installable=False,
 ))
 
 def _native_image_launcher_main_class():
@@ -1023,7 +1023,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         ),
     ],
     provided_executables=['bin/<cmd:rebuild-images>'],
-    installable=True,
+    installable=False,
     stability="earlyadopter",
     jlink=False,
 ))
@@ -1038,7 +1038,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     support_distributions=['substratevm:NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT'],
-    installable=True,
+    installable=False,
     priority=1,
     stability="earlyadopter",
     jlink=False,
@@ -1223,7 +1223,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     jlink=False,
     installable_id='native-image',
-    installable=True,
+    installable=False,
     priority=10,
 ))
 
