@@ -49,7 +49,7 @@ final class Target_java_lang_Module {
         if (resName.startsWith("/")) {
             resName = resName.substring(1);
         }
-        Object res = Resources.get(name, resName, true);
+        Object res = Resources.singleton().get(name, resName, true);
         return res == null ? null : new ByteArrayInputStream(((ResourceStorageEntry) res).getData().get(0));
     }
 

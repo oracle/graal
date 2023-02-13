@@ -80,6 +80,6 @@ final class Target_java_net_URLClassLoader {
 
     @Substitute
     public InputStream getResourceAsStream(String name) throws IOException {
-        return Resources.createInputStream(name);
+        return Resources.singleton().createInputStream(name);
     }
 }

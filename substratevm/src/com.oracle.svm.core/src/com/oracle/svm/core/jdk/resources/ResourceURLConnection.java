@@ -58,7 +58,7 @@ public final class ResourceURLConnection extends URLConnection {
             throw new IllegalArgumentException("Empty URL path not allowed in " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " URL");
         }
         String resourceName = urlPath.substring(1);
-        Object entry = Resources.get(hostNameOrNull, resourceName, true);
+        Object entry = Resources.singleton().get(hostNameOrNull, resourceName, true);
         if (entry != null) {
             List<byte[]> bytes = ((ResourceStorageEntry) entry).getData();
             String urlRef = url.getRef();

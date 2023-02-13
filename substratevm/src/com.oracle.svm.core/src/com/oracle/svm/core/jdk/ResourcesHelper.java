@@ -61,7 +61,7 @@ public class ResourcesHelper {
     }
 
     public static <T> Enumeration<T> nameToResources(String resourceName) {
-        Enumeration<URL> urls = Resources.createURLs(resourceName);
+        Enumeration<URL> urls = Resources.singleton().createURLs(resourceName);
         List<T> resourceURLs = new ArrayList<>();
         while (urls.hasMoreElements()) {
             resourceURLs.add(urlToResource(resourceName, urls.nextElement()));
@@ -70,11 +70,11 @@ public class ResourcesHelper {
     }
 
     public static URL nameToResourceURL(String resourceName) {
-        return Resources.createURL(resourceName);
+        return Resources.singleton().createURL(resourceName);
     }
 
     public static URL nameToResourceURL(String moduleName, String resourceName) {
-        return Resources.createURL(moduleName, resourceName);
+        return Resources.singleton().createURL(moduleName, resourceName);
     }
 
     public static InputStream nameToResourceInputStream(String resourceName) throws IOException {
@@ -83,7 +83,7 @@ public class ResourcesHelper {
     }
 
     public static List<URL> nameToResourceListURLs(String resourcesName) {
-        Enumeration<URL> urls = Resources.createURLs(resourcesName);
+        Enumeration<URL> urls = Resources.singleton().createURLs(resourcesName);
         List<URL> resourceURLs = new ArrayList<>();
         while (urls.hasMoreElements()) {
             resourceURLs.add(urls.nextElement());

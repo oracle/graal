@@ -142,7 +142,7 @@ public final class ResourcesFeature implements InternalFeature {
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
             var moduleName = module.isNamed() ? module.getName() : null;
-            Resources.registerResource(moduleName, resourcePath, resourceContent);
+            Resources.singleton().registerResource(moduleName, resourcePath, resourceContent);
         }
 
         @Override
@@ -301,12 +301,12 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void registerNegativeQuery(String moduleName, String resourceName) {
-            Resources.registerNegativeQuery(moduleName, resourceName);
+            Resources.singleton().registerNegativeQuery(moduleName, resourceName);
         }
 
         @Override
         public void registerIOException(String moduleName, String resourceName, IOException e) {
-            Resources.registerIOException(moduleName, resourceName, e);
+            Resources.singleton().registerIOException(moduleName, resourceName, e);
         }
 
         private void collectModuleName(String moduleName) {
@@ -328,11 +328,11 @@ public final class ResourcesFeature implements InternalFeature {
         DuringAnalysisAccessImpl duringAnalysisAccess = ((DuringAnalysisAccessImpl) access);
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
         for (ResourcePattern resourcePattern : includePatterns) {
-            Resources.registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern);
+            Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern);
         }
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
         for (ResourcePattern resourcePattern : excludePatterns) {
-            Resources.registerExcludePattern(resourcePattern.moduleName, resourcePattern.pattern);
+            Resources.singleton().registerExcludePattern(resourcePattern.moduleName, resourcePattern.pattern);
         }
         DebugContext debugContext = duringAnalysisAccess.getDebugContext();
         ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, includedResourcesModules, duringAnalysisAccess.bb.getHeartbeatCallback());
@@ -411,7 +411,7 @@ public final class ResourcesFeature implements InternalFeature {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, resourceName);
-            Resources.registerResource(moduleName, resourceName, resourceStream, fromJar);
+            Resources.singleton().registerResource(moduleName, resourceName, resourceStream, fromJar);
         }
     }
 
@@ -420,7 +420,7 @@ public final class ResourcesFeature implements InternalFeature {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, moduleName, dir);
-            Resources.registerDirectoryResource(moduleName, dir, content, fromJar);
+            Resources.singleton().registerDirectoryResource(moduleName, dir, content, fromJar);
         }
     }
 }

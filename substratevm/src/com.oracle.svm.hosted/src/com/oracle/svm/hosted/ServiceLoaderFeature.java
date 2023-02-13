@@ -258,7 +258,7 @@ public class ServiceLoaderFeature implements InternalFeature {
              * No service implementations registered in the resources. Since we check all classes
              * that the static analysis finds, this case is very likely.
              */
-            Resources.registerNegativeQuery(null, serviceResourceLocation);
+            Resources.singleton().registerNegativeQuery(null, serviceResourceLocation);
             return false;
         }
 
@@ -359,7 +359,7 @@ public class ServiceLoaderFeature implements InternalFeature {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             debugContext.log("ServiceLoaderFeature: registerResource: %s", serviceResourceLocation);
         }
-        Resources.registerResource(null, serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)), false);
+        Resources.singleton().registerResource(null, serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)), false);
 
         /* Ensure that the static analysis runs again for the new implementation classes. */
         access.requireAnalysisIteration();

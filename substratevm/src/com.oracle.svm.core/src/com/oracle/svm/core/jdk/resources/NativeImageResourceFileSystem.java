@@ -663,7 +663,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
             if (entry != Resources.NEGATIVE_QUERY && !((ResourceStorageEntry) entry).isDirectory()) {
                 IndexNode newIndexNode = new IndexNode(name, false, true);
                 // Mark the resources as accessible from null module because it is dropped
-                Resources.registerNegativeQueryRuntime(stringName);
+                Resources.singleton().registerNegativeQueryRuntime(stringName);
                 inodes.put(newIndexNode, newIndexNode);
             }
         }

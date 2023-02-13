@@ -36,7 +36,6 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import jdk.internal.loader.ClassLoaderValue;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -51,6 +50,8 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.internal.loader.ClassLoaderValue;
 
 @TargetClass(className = "jdk.internal.loader.Resource")
 @SuppressWarnings("unused")
@@ -108,12 +109,12 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     public InputStream getResourceAsStream(String name) {
-        return Resources.createInputStream(name);
+        return Resources.singleton().createInputStream(name);
     }
 
     @Substitute
     public static InputStream getSystemResourceAsStream(String name) {
-        return Resources.createInputStream(name);
+        return Resources.singleton().createInputStream(name);
     }
 
     @Substitute

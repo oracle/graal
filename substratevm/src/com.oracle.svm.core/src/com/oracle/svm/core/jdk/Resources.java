@@ -78,7 +78,19 @@ public final class Resources {
     private final List<Pair<String, Pattern>> includePatterns = new ArrayList<>();
     private final List<Pair<String, Pattern>> excludePatterns = new ArrayList<>();
 
+    /**
+     * The object used to mark a resource as reachable according to the metadata. It can be obtained
+     * when accessing the {@link Resources#resources} map, and it means that even though the
+     * resource was correctly specified in the configuration, accessing it will return null.
+     */
     public static final Object NEGATIVE_QUERY = new Object();
+
+    /**
+     * The object used to detect that the resource is not reachable according to the metadata. It
+     * can be returned by the {@link Resources#get} method if the resource was not correctly
+     * specified in the configuration, but we do not want to throw directly (for example when we try
+     * to check all the modules for a resource).
+     */
     private static final Object MISSING_METADATA = new Object();
 
     /**
@@ -107,73 +119,72 @@ public final class Resources {
         }
     }
 
-    private static void updateTimeStamp() {
-        if (singleton().lastModifiedTime == INVALID_TIMESTAMP) {
-            singleton().lastModifiedTime = new Date().getTime();
+    private void updateTimeStamp() {
+        if (lastModifiedTime == INVALID_TIMESTAMP) {
+            lastModifiedTime = new Date().getTime();
         }
     }
 
-    private static Object addEntry(String moduleName, String resourceName, Object newEntry, EconomicMap<Pair<String, String>, Object> resources) {
-        Pair<String, String> key = Pair.create(moduleName, resourceName);
-        Object entry = resources.get(key);
-        if (entry == null || entry == NEGATIVE_QUERY) {
-            entry = newEntry;
-            updateTimeStamp();
-            resources.put(key, newEntry);
-        }
-        return entry;
-    }
-
-    private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
-        var resources = singleton().resources;
+    private Object addEntry(String moduleName, String resourceName, Object newEntry, boolean isDirectory, boolean fromJar) {
         synchronized (resources) {
-            Object entry = addEntry(moduleName, resourceName, new ResourceStorageEntry(isDirectory, fromJar), resources);
-            ((ResourceStorageEntry) entry).getData().add(data);
+            Pair<String, String> key = Pair.create(moduleName, resourceName);
+            Object entry = resources.get(key);
+            if (entry == null || entry == NEGATIVE_QUERY) {
+                entry = newEntry == null ? new ResourceStorageEntry(isDirectory, fromJar) : newEntry;
+                updateTimeStamp();
+                resources.put(key, entry);
+            }
+            return entry;
         }
+    }
+
+    private void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
+        Object entry = addEntry(moduleName, resourceName, null, isDirectory, fromJar);
+        ((ResourceStorageEntry) entry).getData().add(data);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerResource(String resourceName, InputStream is) {
-        registerResource(null, resourceName, is, true);
+        singleton().registerResource(null, resourceName, is, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String resourceName, InputStream is, boolean fromJar) {
+    public void registerResource(String resourceName, InputStream is, boolean fromJar) {
         registerResource(null, resourceName, is, fromJar);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String moduleName, String resourceName, InputStream is) {
+    public void registerResource(String moduleName, String resourceName, InputStream is) {
         registerResource(moduleName, resourceName, is, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String moduleName, String resourceName, byte[] resourceContent) {
+    public void registerResource(String moduleName, String resourceName, byte[] resourceContent) {
         addEntry(moduleName, resourceName, false, resourceContent, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String moduleName, String resourceName, InputStream is, boolean fromJar) {
+    public void registerResource(String moduleName, String resourceName, InputStream is, boolean fromJar) {
         addEntry(moduleName, resourceName, false, inputStreamToByteArray(is), fromJar);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerDirectoryResource(String resourceDirName, String content) {
+    public void registerDirectoryResource(String resourceDirName, String content) {
         registerDirectoryResource(null, resourceDirName, content, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerDirectoryResource(String resourceDirName, String content, boolean fromJar) {
+    public void registerDirectoryResource(String resourceDirName, String content, boolean fromJar) {
         registerDirectoryResource(null, resourceDirName, content, fromJar);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerDirectoryResource(String moduleName, String resourceDirName, String content) {
+    public void registerDirectoryResource(String moduleName, String resourceDirName, String content) {
         registerDirectoryResource(moduleName, resourceDirName, content, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerDirectoryResource(String moduleName, String resourceDirName, String content, boolean fromJar) {
+    public void registerDirectoryResource(String moduleName, String resourceDirName, String content, boolean fromJar) {
         /*
          * A directory content represents the names of all files and subdirectories located in the
          * specified directory, separated with new line delimiter and joined into one string which
@@ -183,41 +194,34 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerIOException(String resourceName, IOException e) {
+    public void registerIOException(String resourceName, IOException e) {
         registerIOException(null, resourceName, e);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerIOException(String moduleName, String resourceName, IOException e) {
+    public void registerIOException(String moduleName, String resourceName, IOException e) {
         Pair<String, String> key = Pair.create(moduleName, resourceName);
-        var resources = singleton().resources;
         synchronized (resources) {
             updateTimeStamp();
             resources.put(key, e);
         }
     }
 
-    public static void registerNegativeQueryRuntime(String resourceName) {
-        var resources = singleton().resources;
-        synchronized (resources) {
-            addEntry(null, resourceName, NEGATIVE_QUERY, resources);
-        }
+    public void registerNegativeQueryRuntime(String resourceName) {
+        addEntry(null, resourceName, NEGATIVE_QUERY, false, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerNegativeQuery(String resourceName) {
+    public void registerNegativeQuery(String resourceName) {
         registerNegativeQuery(null, resourceName);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerNegativeQuery(String moduleName, String resourceName) {
-        var resources = singleton().resources;
-        synchronized (resources) {
-            addEntry(moduleName, resourceName, NEGATIVE_QUERY, resources);
-        }
+    public void registerNegativeQuery(String moduleName, String resourceName) {
+        addEntry(moduleName, resourceName, NEGATIVE_QUERY, false, false);
     }
 
-    private static void registerPattern(List<Pair<String, Pattern>> patterns, String module, Pattern pattern) {
+    private void registerPattern(List<Pair<String, Pattern>> patterns, String module, Pattern pattern) {
         synchronized (patterns) {
             updateTimeStamp();
             patterns.add(Pair.create(module, pattern));
@@ -225,23 +229,23 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerIncludePattern(Pattern pattern) {
+    public void registerIncludePattern(Pattern pattern) {
         registerIncludePattern(null, pattern);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerIncludePattern(String module, Pattern pattern) {
-        registerPattern(singleton().includePatterns, module, pattern);
+    public void registerIncludePattern(String module, Pattern pattern) {
+        registerPattern(includePatterns, module, pattern);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerExcludePattern(Pattern pattern) {
+    public void registerExcludePattern(Pattern pattern) {
         registerExcludePattern(null, pattern);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerExcludePattern(String module, Pattern pattern) {
-        registerPattern(singleton().excludePatterns, module, pattern);
+    public void registerExcludePattern(String module, Pattern pattern) {
+        registerPattern(excludePatterns, module, pattern);
     }
 
     /**
@@ -265,7 +269,7 @@ public final class Resources {
         return resourceName.equals(canonicalResourceName) || removeTrailingSlash(resourceName).equals(canonicalResourceName);
     }
 
-    public static Object get(String name, boolean throwOnMissing) {
+    public Object get(String name, boolean throwOnMissing) {
         return get(null, name, throwOnMissing);
     }
 
@@ -275,22 +279,22 @@ public final class Resources {
      * {@link MissingResourceMetadataException}. This is needed because different modules can be
      * tried on the same resource name, causing an unexpected exception if we throw directly.
      */
-    public static Object get(String moduleName, String resourceName, boolean throwOnMissing) {
+    public Object get(String moduleName, String resourceName, boolean throwOnMissing) {
         String canonicalResourceName = toCanonicalForm(resourceName);
-        Object entry = singleton().resources.get(Pair.create(moduleName, canonicalResourceName));
+        Object entry = resources.get(Pair.create(moduleName, canonicalResourceName));
         if (entry == null) {
             if (MissingResourceMetadataException.Options.ThrowMissingMetadataExceptions.getValue()) {
-                for (Pair<String, Pattern> pattern : singleton().excludePatterns) {
+                for (Pair<String, Pattern> pattern : excludePatterns) {
                     if (Objects.equals(moduleName, pattern.getLeft()) && (pattern.getRight().matcher(resourceName).matches() || pattern.getRight().matcher(canonicalResourceName).matches())) {
-                        return missingMetaData(resourceName, throwOnMissing);
+                        return missingMetadata(resourceName, throwOnMissing);
                     }
                 }
-                for (Pair<String, Pattern> pattern : singleton().includePatterns) {
+                for (Pair<String, Pattern> pattern : includePatterns) {
                     if (Objects.equals(moduleName, pattern.getLeft()) && (pattern.getRight().matcher(resourceName).matches() || pattern.getRight().matcher(canonicalResourceName).matches())) {
                         return null;
                     }
                 }
-                return missingMetaData(resourceName, throwOnMissing);
+                return missingMetadata(resourceName, throwOnMissing);
             } else {
                 return null;
             }
@@ -319,7 +323,7 @@ public final class Resources {
         return resourceStorageEntry;
     }
 
-    private static Object missingMetaData(String resourceName, boolean throwOnMissing) {
+    private static Object missingMetadata(String resourceName, boolean throwOnMissing) {
         if (throwOnMissing) {
             throw MissingResourceMetadataException.missingResource(resourceName);
         } else {
@@ -337,11 +341,11 @@ public final class Resources {
         }
     }
 
-    public static URL createURL(String resourceName) {
+    public URL createURL(String resourceName) {
         return createURL(null, resourceName);
     }
 
-    public static URL createURL(String moduleName, String resourceName) {
+    public URL createURL(String moduleName, String resourceName) {
         if (resourceName == null) {
             return null;
         }
@@ -350,17 +354,17 @@ public final class Resources {
         return urls.hasMoreElements() ? urls.nextElement() : null;
     }
 
-    public static InputStream createInputStream(String resourceName) {
+    public InputStream createInputStream(String resourceName) {
         return createInputStream(null, resourceName);
     }
 
     /* Avoid pulling in the URL class when only an InputStream is needed. */
-    public static InputStream createInputStream(String moduleName, String resourceName) {
+    public InputStream createInputStream(String moduleName, String resourceName) {
         if (resourceName == null) {
             return null;
         }
 
-        Object entry = Resources.get(moduleName, resourceName, false);
+        Object entry = get(moduleName, resourceName, false);
         boolean isInMetadata = entry != MISSING_METADATA;
         if (moduleName == null && (entry == MISSING_METADATA || entry == null)) {
             /*
@@ -368,7 +372,7 @@ public final class Resources {
              * to search for the resource in all modules in the image.
              */
             for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
-                entry = Resources.get(module.getName(), resourceName, false);
+                entry = get(module.getName(), resourceName, false);
                 if (entry != MISSING_METADATA) {
                     isInMetadata = true;
                 }
@@ -388,11 +392,11 @@ public final class Resources {
         return data.isEmpty() ? null : new ByteArrayInputStream(data.get(0));
     }
 
-    public static Enumeration<URL> createURLs(String resourceName) {
+    public Enumeration<URL> createURLs(String resourceName) {
         return createURLs(null, resourceName);
     }
 
-    public static Enumeration<URL> createURLs(String moduleName, String resourceName) {
+    public Enumeration<URL> createURLs(String moduleName, String resourceName) {
         if (resourceName == null) {
             return null;
         }
@@ -405,18 +409,18 @@ public final class Resources {
         /* If moduleName was unspecified we have to consider all modules in the image */
         if (moduleName == null) {
             for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
-                Object entry = Resources.get(module.getName(), resourceName, false);
+                Object entry = get(module.getName(), resourceName, false);
                 if (entry == MISSING_METADATA) {
                     continue;
                 }
                 missingMetadata = false;
-                addURLEntries(resourcesURLs, entry, module.getName(), shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
+                addURLEntries(resourcesURLs, (ResourceStorageEntry) entry, module.getName(), shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
             }
         }
-        Object explicitEntry = Resources.get(moduleName, resourceName, false);
+        Object explicitEntry = get(moduleName, resourceName, false);
         if (explicitEntry != MISSING_METADATA) {
             missingMetadata = false;
-            addURLEntries(resourcesURLs, explicitEntry, moduleName, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
+            addURLEntries(resourcesURLs, (ResourceStorageEntry) explicitEntry, moduleName, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
         }
 
         if (missingMetadata) {
@@ -429,11 +433,11 @@ public final class Resources {
         return Collections.enumeration(resourcesURLs);
     }
 
-    private static void addURLEntries(List<URL> resourcesURLs, Object entry, String moduleName, String canonicalResourceName) {
+    private static void addURLEntries(List<URL> resourcesURLs, ResourceStorageEntry entry, String moduleName, String canonicalResourceName) {
         if (entry == null) {
             return;
         }
-        int numberOfResources = ((ResourceStorageEntry) entry).getData().size();
+        int numberOfResources = entry.getData().size();
         for (int index = 0; index < numberOfResources; index++) {
             resourcesURLs.add(createURL(moduleName, canonicalResourceName, index));
         }
