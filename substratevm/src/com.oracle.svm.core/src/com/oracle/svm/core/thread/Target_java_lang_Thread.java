@@ -436,6 +436,13 @@ public final class Target_java_lang_Thread {
      */
     @Substitute
     void interrupt0() {
+        Thread thread = JavaThreads.fromTarget(this);
+
+        // Interrupting a thread that is not alive need not have any effect.
+        if (!PlatformThreads.isAlive(thread)) {
+            return;
+        }
+
         if (JavaVersionUtil.JAVA_SPEC <= 11) {
             interruptedJDK11OrEarlier = true;
         } else {
@@ -450,7 +457,6 @@ public final class Target_java_lang_Thread {
             return;
         }
 
-        Thread thread = JavaThreads.fromTarget(this);
         PlatformThreads.interrupt(thread);
         /*
          * This may unpark the thread unnecessarily (e.g., the interrupt above could have already
