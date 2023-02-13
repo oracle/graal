@@ -286,6 +286,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     // !interop.isNull(value), // redundant
                     // "!isEspressoException(value)", // redundant
     })
+    @TruffleBoundary
     Object doForeignDateTime(Object value, @SuppressWarnings("unused") ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Bind("getMeta()") Meta meta) {
@@ -337,8 +338,8 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Bind("getMeta()") Meta meta) {
         try {
-            LocalTime localTimne = interop.asTime(value);
-            return meta.java_time_LocalTime_of.invokeDirect(null, localTimne.getHour(), localTimne.getMinute(), localTimne.getSecond());
+            LocalTime localTime = interop.asTime(value);
+            return meta.java_time_LocalTime_of.invokeDirect(null, localTime.getHour(), localTime.getMinute(), localTime.getSecond());
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
