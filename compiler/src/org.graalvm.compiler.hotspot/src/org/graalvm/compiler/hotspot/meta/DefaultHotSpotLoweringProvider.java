@@ -69,6 +69,7 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode;
+import org.graalvm.compiler.hotspot.nodes.ExtendSetCurrentThreadNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotCompressionNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
@@ -80,6 +81,7 @@ import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.hotspot.replacements.AssertionSnippets;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
 import org.graalvm.compiler.hotspot.replacements.DigestBaseSnippets;
+import org.graalvm.compiler.hotspot.replacements.ExtendSetCurrentThreadSnippets;
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
@@ -265,6 +267,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     protected ObjectCloneSnippets.Templates objectCloneSnippets;
     protected ForeignCallSnippets.Templates foreignCallSnippets;
     protected RegisterFinalizerSnippets.Templates registerFinalizerSnippets;
+    protected ExtendSetCurrentThreadSnippets.Templates extendSetCurrentThreadSnippets;
 
     protected final Map<Class<? extends Node>, Extension> extensions = new HashMap<>();
 
@@ -317,6 +320,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         registerFinalizerSnippets = new RegisterFinalizerSnippets.Templates(options, providers);
         objectSnippets = new ObjectSnippets.Templates(options, providers);
         unsafeSnippets = new UnsafeSnippets.Templates(options, providers);
+        extendSetCurrentThreadSnippets = new ExtendSetCurrentThreadSnippets.Templates(options, providers);
 
         replacements.registerSnippetTemplateCache(new DigestBaseSnippets.Templates(options, providers));
 
@@ -510,6 +514,10 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof IntegerDivRemNode) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
                 lowerIntegerDivRem((IntegerDivRemNode) n, tool);
+            }
+        } else if (n instanceof ExtendSetCurrentThreadNode) {
+            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                extendSetCurrentThreadSnippets.lower((ExtendSetCurrentThreadNode) n, registers, tool);
             }
         } else {
             return false;

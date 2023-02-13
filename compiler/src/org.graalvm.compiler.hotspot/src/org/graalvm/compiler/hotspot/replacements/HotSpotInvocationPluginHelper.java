@@ -47,6 +47,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
+import org.graalvm.compiler.hotspot.nodes.ExtendSetCurrentThreadNode;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
@@ -236,7 +237,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         ValueNode threadObjectHandle = readLocation(javaThread, HotSpotVMConfigField.JAVA_THREAD_THREAD_OBJECT, StampFactory.forKind(getWordKind()));
         AddressNode handleAddress = b.add(OffsetAddressNode.create(threadObjectHandle));
         b.add(new WriteNode(handleAddress, HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION, thread, BarrierType.NONE, MemoryOrderMode.PLAIN));
-        // TODO (GR-42398) add JFR notification for setCurrentThread
+        b.add(new ExtendSetCurrentThreadNode(thread));
     }
 
     private AddressNode scopedValueCacheHelper() {

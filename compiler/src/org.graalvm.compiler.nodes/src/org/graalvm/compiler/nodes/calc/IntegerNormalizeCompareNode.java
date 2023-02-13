@@ -25,11 +25,11 @@
 package org.graalvm.compiler.nodes.calc;
 
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -44,6 +44,10 @@ public final class IntegerNormalizeCompareNode extends AbstractNormalizeCompareN
     public IntegerNormalizeCompareNode(ValueNode x, ValueNode y, JavaKind kind, boolean unsigned) {
         super(TYPE, kind, x, y);
         this.unsigned = unsigned;
+    }
+
+    public boolean isUnsigned() {
+        return unsigned;
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, boolean unsigned, JavaKind kind, ConstantReflectionProvider constantReflection) {

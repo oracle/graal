@@ -309,6 +309,16 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int threadCarrierThreadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "OopHandle");
     public final int threadScopedValueCacheOffset = getFieldOffset("JavaThread::_scopedValueCache", Integer.class, "OopHandle", -1, JDK >= 20 && (!JVMCI || jvmciGE(JVMCI_23_0_b06)));
 
+    public final int javaLangThreadJFREpochOffset = getFieldValue("java_lang_Thread::_jfr_epoch_offset", Integer.class, "int", -1, JDK >= 21 || (JVMCI && JDK >= 20 && jvmciGE(JVMCI_23_0_b06)));
+    public final int javaLangThreadTIDOffset = getFieldValue("java_lang_Thread::_tid_offset", Integer.class, "int", -1, JDK >= 21 || (JVMCI && JDK >= 20 && jvmciGE(JVMCI_23_0_b06)));
+
+    public final int threadJFRThreadLocalOffset = getFieldOffset("Thread::_jfr_thread_local", Integer.class, "JfrThreadLocal", -1, JDK >= 21 || (JVMCI && JDK >= 20 && jvmciGE(JVMCI_23_0_b06)));
+
+    public final int jfrThreadLocalVthreadIDOffset = getFieldOffset("JfrThreadLocal::_vthread_id", Integer.class, "traceid", -1, JDK >= 21 || (JVMCI && JDK >= 20 && jvmciGE(JVMCI_23_0_b06)));
+    public final int jfrThreadLocalVthreadEpochOffset = getFieldOffset("JfrThreadLocal::_vthread_epoch", Integer.class, "u2", -1, JDK >= 21 || (JVMCI && JDK >= 20 && jvmciGE(JVMCI_23_0_b06)));
+    public final int jfrThreadLocalVthreadExcludedOffset = getFieldOffset("JfrThreadLocal::_vthread_excluded", Integer.class, "bool", -1, JDK >= 21 || (JVMCI && JDK >= 20 && jvmciGE(JVMCI_23_0_b06)));
+    public final int jfrThreadLocalVthreadOffset = getFieldOffset("JfrThreadLocal::_vthread", Integer.class, "bool", -1, JDK >= 21 || (JVMCI && JDK >= 20 && jvmciGE(JVMCI_23_0_b06)));
+
     public final int osThreadOffset = getFieldOffset("JavaThread::_osthread", Integer.class, "OSThread*");
     public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result", Integer.class, "oop");
     public final int jvmciCountersThreadOffset = getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
