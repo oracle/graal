@@ -167,6 +167,32 @@ public class ServiceLoaderFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         serviceProviders = ModuleAccess.lookupServiceProviders(access);
+
+        // Add known service providers that are not found through module lookup.
+        //
+        // Module: java.naming
+        serviceProviders.put("javax.naming.ldap.StartTlsResponse",
+                        Arrays.asList("com.sun.jndi.ldap.ext.StartTlsResponseImpl"));
+        // Module: java.xml
+        serviceProviders.put("javax.xml.datatype.DatatypeFactory",
+                        Arrays.asList("com.sun.org.apache.xerces.internal.jaxp.datatype.DatatypeFactoryImpl"));
+        serviceProviders.put("javax.xml.parsers.DocumentBuilderFactory",
+                        Arrays.asList("com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl"));
+        serviceProviders.put("javax.xml.parsers.SAXParserFactory",
+                        Arrays.asList("com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl"));
+        serviceProviders.put("javax.xml.stream.XMLEventFactory",
+                        Arrays.asList("com.sun.xml.internal.stream.events.XMLEventFactoryImpl"));
+        serviceProviders.put("javax.xml.stream.XMLInputFactory",
+                        Arrays.asList("com.sun.xml.internal.stream.XMLInputFactoryImpl"));
+        serviceProviders.put("javax.xml.stream.XMLOutputFactory",
+                        Arrays.asList("com.sun.xml.internal.stream.XMLOutputFactoryImpl"));
+        serviceProviders.put("javax.xml.transform.TransformerFactory",
+                        Arrays.asList("com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl"));
+        serviceProviders.put("javax.xml.validation.SchemaFactory",
+                        Arrays.asList("com.sun.org.apache.xerces.internal.jaxp.validation.XMLSchemaFactory"));
+        serviceProviders.put("javax.xml.xpath.XPathFactory",
+                        Arrays.asList("com.sun.org.apache.xpath.internal.jaxp.XPathFactoryImpl"));
+
         if (trace) {
             int services = serviceProviders.keySet().size();
             int providers = serviceProviders.values().stream().mapToInt(List::size).sum();
