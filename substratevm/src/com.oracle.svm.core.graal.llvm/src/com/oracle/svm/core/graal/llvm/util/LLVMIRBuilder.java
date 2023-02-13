@@ -58,6 +58,7 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 public class LLVMIRBuilder implements AutoCloseable {
     private static final String DEFAULT_INSTR_NAME = "";
+    private static final LLVMTypeRef[] EMPTY_TYPES = new LLVMTypeRef[0];
 
     private LLVMContextRef context;
     private LLVMBuilderRef builder;
@@ -92,13 +93,17 @@ public class LLVMIRBuilder implements AutoCloseable {
     /* Module */
 
     public byte[] getBitcode() {
-        LLVMMemoryBufferRef buffer = LLVM.LLVMWriteBitcodeToMemoryBuffer(module);
-        BytePointer start = LLVM.LLVMGetBufferStart(buffer);
-        int size = NumUtil.safeToInt(LLVM.LLVMGetBufferSize(buffer));
+        final byte[] bitcode;
+        final LLVMMemoryBufferRef buffer = LLVM.LLVMWriteBitcodeToMemoryBuffer(module);
 
-        byte[] bitcode = new byte[size];
-        start.get(bitcode, 0, size);
-        LLVM.LLVMDisposeMemoryBuffer(buffer);
+        try (BytePointer start = LLVM.LLVMGetBufferStart(buffer)) {
+            final int size = NumUtil.safeToInt(LLVM.LLVMGetBufferSize(buffer));
+
+            bitcode = new byte[size];
+            start.get(bitcode, 0, size);
+        } finally {
+            LLVM.LLVMDisposeMemoryBuffer(buffer);
+        }
         return bitcode;
     }
 
@@ -423,14 +428,20 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public static int countElementTypes(LLVMTypeRef structType) {
+        assert LLVM.LLVMGetTypeKind(structType) == LLVM.LLVMStructTypeKind;
+
         return LLVM.LLVMCountStructElementTypes(structType);
     }
 
     private static LLVMTypeRef getTypeAtIndex(LLVMTypeRef structType, int index) {
+        assert LLVM.LLVMGetTypeKind(structType) == LLVM.LLVMStructTypeKind;
+
         return LLVM.LLVMStructGetTypeAtIndex(structType, index);
     }
 
     private static LLVMTypeRef[] getElementTypes(LLVMTypeRef structType) {
+        assert LLVM.LLVMGetTypeKind(structType) == LLVM.LLVMStructTypeKind;
+
         LLVMTypeRef[] types = new LLVMTypeRef[countElementTypes(structType)];
         for (int i = 0; i < types.length; ++i) {
             types[i] = getTypeAtIndex(structType, i);
@@ -460,6 +471,10 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public static LLVMTypeRef[] getParamTypes(LLVMTypeRef functionType) {
         int numParams = LLVM.LLVMCountParamTypes(functionType);
+        if (numParams == 0) {
+            return EMPTY_TYPES;
+        }
+
         PointerPointer<LLVMTypeRef> argTypesPointer = new PointerPointer<>(numParams);
         LLVM.LLVMGetParamTypes(functionType, argTypesPointer);
         return IntStream.range(0, numParams).mapToObj(i -> argTypesPointer.get(LLVMTypeRef.class, i)).toArray(LLVMTypeRef[]::new);
