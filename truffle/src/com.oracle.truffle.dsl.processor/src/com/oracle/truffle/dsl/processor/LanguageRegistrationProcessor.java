@@ -105,7 +105,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
         }
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
         TypeMirror truffleLang = processingEnv.getTypeUtils().erasure(types.TruffleLanguage);
-        TypeMirror truffleLangProvider = types.TruffleLanguage_Provider;
+        TypeMirror truffleLangProvider = types.TruffleLanguageProvider;
         boolean processingTruffleLanguage;
         if (processingEnv.getTypeUtils().isAssignable(annotatedElement.asType(), truffleLang)) {
             processingTruffleLanguage = true;
@@ -210,7 +210,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
     @Override
     DeclaredType getProviderClass() {
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
-        return types.TruffleLanguage_Provider;
+        return types.TruffleLanguageProvider;
     }
 
     @Override

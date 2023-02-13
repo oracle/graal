@@ -55,6 +55,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.providers.TruffleLanguageProvider;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -297,7 +298,7 @@ final class ObjectSizeCalculator {
 
         assert (!(obj instanceof PolyglotImpl.VMObject) || obj instanceof PolyglotLanguageContext || obj instanceof PolyglotContextImpl) &&
                         !(obj instanceof PolyglotContextConfig) &&
-                        !(obj instanceof TruffleLanguage.Provider) &&
+                        !(obj instanceof TruffleLanguageProvider) &&
                         !(obj instanceof ExecutionEventListener) &&
                         !(obj instanceof ClassValue) &&
                         !(obj instanceof PolyglotWrapper) &&
@@ -345,7 +346,7 @@ final class ObjectSizeCalculator {
                          */
                         (obj instanceof PolyglotImpl.VMObject) ||
                         (obj instanceof PolyglotContextConfig) ||
-                        (obj instanceof TruffleLanguage.Provider) ||
+                        (obj instanceof TruffleLanguageProvider) ||
                         (obj instanceof ExecutionEventListener) ||
                         (obj instanceof ClassValue) ||
                         (obj instanceof PolyglotWrapper) ||

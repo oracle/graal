@@ -133,7 +133,7 @@ public class TruffleTypes {
     public static final String TruffleLanguage_ContextReference_Name = "com.oracle.truffle.api.TruffleLanguage.ContextReference";
     public static final String TruffleLanguage_LanguageReference_Name = "com.oracle.truffle.api.TruffleLanguage.LanguageReference";
     public static final String TruffleLanguage_Name = "com.oracle.truffle.api.TruffleLanguage";
-    public static final String TruffleLanguage_Provider_Name = "com.oracle.truffle.api.TruffleLanguage.Provider";
+    public static final String TruffleLanguageProvider_Name = "com.oracle.truffle.api.providers.TruffleLanguageProvider";
     public static final String TruffleLanguage_Registration_Name = "com.oracle.truffle.api.TruffleLanguage.Registration";
     public static final String TruffleOptions_Name = "com.oracle.truffle.api.TruffleOptions";
     public static final String TruffleOptionDescriptors_Name = "com.oracle.truffle.api.TruffleOptionDescriptors";
@@ -172,7 +172,7 @@ public class TruffleTypes {
     public final DeclaredType TruffleLanguage = c.getDeclaredType(TruffleLanguage_Name);
     public final DeclaredType TruffleLanguage_ContextReference = c.getDeclaredType(TruffleLanguage_ContextReference_Name);
     public final DeclaredType TruffleLanguage_LanguageReference = c.getDeclaredType(TruffleLanguage_LanguageReference_Name);
-    public final DeclaredType TruffleLanguage_Provider = c.getDeclaredType(TruffleLanguage_Provider_Name);
+    public final DeclaredType TruffleLanguageProvider = c.getDeclaredType(TruffleLanguageProvider_Name);
     public final DeclaredType TruffleLanguage_Registration = c.getDeclaredType(TruffleLanguage_Registration_Name);
     public final DeclaredType TruffleOptions = c.getDeclaredType(TruffleOptions_Name);
     public final DeclaredType TruffleOptionDescriptors = c.getDeclaredType(TruffleOptionDescriptors_Name);
@@ -352,7 +352,7 @@ public class TruffleTypes {
     public static final String ProbeNode_Name = "com.oracle.truffle.api.instrumentation.ProbeNode";
     public static final String ProvidedTags_Name = "com.oracle.truffle.api.instrumentation.ProvidedTags";
     public static final String TruffleInstrument_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument";
-    public static final String TruffleInstrument_Provider_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider";
+    public static final String TruffleInstrumentProvider_Name = "com.oracle.truffle.api.instrumentation.providers.TruffleInstrumentProvider";
     public static final String TruffleInstrument_Registration_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration";
 
     /*
@@ -367,7 +367,7 @@ public class TruffleTypes {
     public final DeclaredType ProbeNode = c.getDeclaredTypeOptional(ProbeNode_Name);
     public final DeclaredType ProvidedTags = c.getDeclaredTypeOptional(ProvidedTags_Name);
     public final DeclaredType TruffleInstrument = c.getDeclaredTypeOptional(TruffleInstrument_Name);
-    public final DeclaredType TruffleInstrument_Provider = c.getDeclaredTypeOptional(TruffleInstrument_Provider_Name);
+    public final DeclaredType TruffleInstrumentProvider = c.getDeclaredTypeOptional(TruffleInstrumentProvider_Name);
     public final DeclaredType TruffleInstrument_Registration = c.getDeclaredTypeOptional(TruffleInstrument_Registration_Name);
 
     // OM API

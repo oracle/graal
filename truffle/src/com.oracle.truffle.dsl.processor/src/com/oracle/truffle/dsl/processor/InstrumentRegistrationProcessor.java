@@ -76,7 +76,7 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
         }
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
         TypeMirror truffleInstrument = types.TruffleInstrument;
-        TypeMirror truffleInstrumentProvider = types.TruffleInstrument_Provider;
+        TypeMirror truffleInstrumentProvider = types.TruffleInstrumentProvider;
         boolean processingTruffleInstrument;
         if (processingEnv.getTypeUtils().isAssignable(annotatedElement.asType(), truffleInstrument)) {
             processingTruffleInstrument = true;
@@ -93,7 +93,7 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
     @Override
     DeclaredType getProviderClass() {
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
-        return types.TruffleInstrument_Provider;
+        return types.TruffleInstrumentProvider;
     }
 
     @Override

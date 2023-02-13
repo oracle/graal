@@ -59,6 +59,7 @@ import java.util.function.Supplier;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.instrumentation.providers.TruffleInstrumentProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -158,34 +159,14 @@ final class InstrumentCache {
             if (loader == null || !isValidLoader(loader)) {
                 continue;
             }
-            if (!TruffleOptions.AOT) {
-                // In JDK 9+, the Truffle API packages must be dynamically exported to
-                // a Truffle instrument since the Truffle API module descriptor only
-                // exports the packages to modules known at build time (such as the
-                // Graal module).
-                ModuleUtils.exportTo(loader, null);
+            for (TruffleInstrumentProvider provider : ServiceLoader.load(TruffleInstrumentProvider.class, loader)) {
+                loadInstrumentImpl(provider, loader, list, classNamesUsed);
             }
-            for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class, loader)) {
-                loadInstrumentImpl(provider, list, classNamesUsed);
-            }
-
-            /*
-             * Make sure the builtin debugger instrument is loaded if the service loader does not
-             * pick them up. This may happen on JDK 11 if the loader delegates to the platform class
-             * loader and does see the Truffle module only through the special named module behavior
-             * for the platform class loader. However, while truffle classes are visible, Java
-             * services are not enumerated from there. This is a workaround, that goes around this
-             * problem by hardcoding instruments that are included in the Truffle module. The
-             * behavior is actually beneficial as this also avoids languages to be picked up from
-             * the application classpath.
-             */
-            if (!classNamesUsed.contains(DEBUGGER_CLASS)) {
-                try {
-                    loadInstrumentImpl((TruffleInstrument.Provider) loader.loadClass(DEBUGGER_PROVIDER).getConstructor().newInstance(), list,
-                                    classNamesUsed);
-                } catch (Exception e) {
-                    throw shouldNotReachHere("Failed to discover debugger instrument.", e);
-                }
+            // ServiceLoader does not respect service interface inheritance. We have to load the
+            // languages registered with the deprecated provider interface, even though the
+            // deprecated interface inherits from the new one.
+            for (TruffleInstrumentProvider provider : loadDeprecatedProviders(loader)) {
+                loadInstrumentImpl(provider, loader, list, classNamesUsed);
             }
         }
         Collections.sort(list, new Comparator<InstrumentCache>() {
@@ -197,11 +178,23 @@ final class InstrumentCache {
         return list;
     }
 
-    private static void loadInstrumentImpl(TruffleInstrument.Provider provider, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
-        Registration reg = provider.getClass().getAnnotation(Registration.class);
+    @SuppressWarnings("deprecation")
+    private static Iterable<? extends TruffleInstrumentProvider> loadDeprecatedProviders(ClassLoader loader) {
+        return ServiceLoader.load(TruffleInstrument.Provider.class, loader);
+    }
+
+    private static void loadInstrumentImpl(TruffleInstrumentProvider provider, ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
+        Class<? extends TruffleInstrumentProvider> providerClass = provider.getClass();
+        Module providerModule = providerClass.getModule();
+        if (providerModule.isNamed()) {
+            ModuleUtils.exportTo(null, providerModule);
+        } else {
+            ModuleUtils.exportTo(loader, null);
+        }
+        Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
             PrintStream out = System.err;
-            out.println("Provider " + provider.getClass() + " is missing @Registration annotation.");
+            out.println("Provider " + providerClass + " is missing @Registration annotation.");
             return;
         }
         String className = provider.getInstrumentClassName();
@@ -256,7 +249,7 @@ final class InstrumentCache {
     }
 
     TruffleInstrument loadInstrument() {
-        return provider.create();
+        return (TruffleInstrument) provider.create();
     }
 
     boolean supportsService(Class<?> clazz) {

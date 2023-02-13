@@ -1013,6 +1013,8 @@ suite = {
           "java.sql" # java.sql.date java.sql.Time
         ],
         "exports" : [
+          "com.oracle.truffle.api.providers",
+          "com.oracle.truffle.api.instrumentation.providers",
           # Qualified exports
           "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.api.impl to org.graalvm.locator",
@@ -1023,10 +1025,12 @@ suite = {
           "com.oracle.truffle.api.TruffleRuntimeAccess",
           "java.nio.file.spi.FileTypeDetector",
           "com.oracle.truffle.api.impl.TruffleLocator",
-          "com.oracle.truffle.api.TruffleLanguage.Provider",
-          "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
+          "com.oracle.truffle.api.providers.TruffleLanguageProvider",
+          "com.oracle.truffle.api.instrumentation.providers.TruffleInstrumentProvider",
           "com.oracle.truffle.api.library.DefaultExportProvider",
-          "com.oracle.truffle.api.library.EagerExportProvider"
+          "com.oracle.truffle.api.library.EagerExportProvider",
+          "com.oracle.truffle.api.TruffleLanguage.Provider", # Deprecated
+          "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
         ],
       },
       "moduleInfo:open" : {
@@ -1051,6 +1055,8 @@ suite = {
           "com.oracle.truffle.api.utilities",
           "com.oracle.truffle.api.library",
           "com.oracle.truffle.api.staticobject",
+          "com.oracle.truffle.api.providers",
+          "com.oracle.truffle.api.instrumentation.providers",
 
           # Qualified exports
           "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator",

@@ -58,7 +58,6 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -75,6 +74,7 @@ import java.util.function.Predicate;
 import java.util.logging.Level;
 
 import org.graalvm.home.Version;
+import com.oracle.truffle.api.providers.TruffleLanguageProvider;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -94,7 +94,6 @@ import org.graalvm.polyglot.io.IOAccess;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile.FileSystemContext;
-import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
 import com.oracle.truffle.api.TruffleSafepoint.Interruptible;
@@ -529,36 +528,10 @@ public abstract class TruffleLanguage<C> {
      * {@link Registration} and {@code ProvidedTags} annotations from the {@link TruffleLanguage}.
      *
      * @since 19.3.0
+     * @deprecated Use {@link TruffleLanguageProvider}.
      */
-    public interface Provider {
-
-        /**
-         * Returns the name of a class implementing the {@link TruffleLanguage}.
-         *
-         * @since 19.3.0
-         */
-        String getLanguageClassName();
-
-        /**
-         * Creates a new instance of a {@link TruffleLanguage}.
-         *
-         * @since 19.3.0
-         */
-        TruffleLanguage<?> create();
-
-        /**
-         * Creates file type detectors used by the {@link TruffleLanguage}.
-         *
-         * @since 19.3.0
-         */
-        List<FileTypeDetector> createFileTypeDetectors();
-
-        /**
-         * Returns the class names of provided services.
-         *
-         * @since 19.3.0
-         */
-        Collection<String> getServicesClassNames();
+    @Deprecated
+    public interface Provider extends TruffleLanguageProvider {
     }
 
     /**

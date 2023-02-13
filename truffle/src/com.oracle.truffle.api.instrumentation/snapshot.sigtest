@@ -443,9 +443,8 @@ hcls GuardedExecutableNode,MessageTransportProxy
 
 CLSS public abstract interface static com.oracle.truffle.api.instrumentation.TruffleInstrument$Provider
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
-meth public abstract com.oracle.truffle.api.instrumentation.TruffleInstrument create()
-meth public abstract java.lang.String getInstrumentClassName()
-meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+intf com.oracle.truffle.api.instrumentation.providers.TruffleInstrumentProvider
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.TruffleInstrument$Registration
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
@@ -459,6 +458,11 @@ meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String version()
 meth public abstract !hasdefault java.lang.String website()
 meth public abstract !hasdefault org.graalvm.polyglot.SandboxPolicy sandbox()
+
+CLSS public abstract interface com.oracle.truffle.api.instrumentation.providers.TruffleInstrumentProvider
+meth public abstract com.oracle.truffle.api.instrumentation.TruffleInstrument create()
+meth public abstract java.lang.String getInstrumentClassName()
+meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
 
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()
@@ -507,6 +511,14 @@ meth public abstract !hasdefault java.lang.String shortName()
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
 
 CLSS public abstract interface java.lang.Cloneable
+
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, MODULE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean forRemoval()
+meth public abstract !hasdefault java.lang.String since()
 
 CLSS public abstract interface !annotation java.lang.FunctionalInterface
  anno 0 java.lang.annotation.Documented()

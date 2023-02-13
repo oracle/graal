@@ -133,12 +133,14 @@ import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.providers.TruffleInstrumentProvider;
 import com.oracle.truffle.api.library.DefaultExportProvider;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryExport;
 import com.oracle.truffle.api.library.LibraryFactory;
+
 import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -146,6 +148,7 @@ import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.Profile;
+import com.oracle.truffle.api.providers.TruffleLanguageProvider;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 
@@ -296,12 +299,26 @@ public final class TruffleBaseFeature implements InternalFeature {
         RuntimeClassInitialization.initializeAtBuildTime("com.oracle.graalvm.locator",
                         "Truffle classes are always initialized at build time");
 
-        for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class)) {
+        for (TruffleLanguageProvider provider : ServiceLoader.load(TruffleLanguageProvider.class)) {
             RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
         }
-        for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class)) {
+        // ServiceLoader does not respect service interface inheritance. We have to load the
+        // languages registered with the deprecated provider interface, even though the
+        // deprecated interface inherits from the new one.
+        for (TruffleLanguageProvider provider : loadDeprecatedLanguageProviders()) {
             RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
         }
+
+        for (TruffleInstrumentProvider provider : ServiceLoader.load(TruffleInstrumentProvider.class)) {
+            RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
+        }
+        // ServiceLoader does not respect service interface inheritance. We have to load the
+        // languages registered with the deprecated provider interface, even though the
+        // deprecated interface inherits from the new one.
+        for (TruffleInstrumentProvider provider : loadDeprecatedInstrumentProviders()) {
+            RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
+        }
+
         initializeTruffleReflectively(imageClassLoader);
         initializeHomeFinder();
         needsAllEncodings = invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getNeedsAllEncodings",
@@ -315,6 +332,16 @@ public final class TruffleBaseFeature implements InternalFeature {
         invokeStaticMethod("com.oracle.truffle.api.TruffleLogger$LoggerCache", "getInstance", Collections.emptyList());
 
         profilingEnabled = false;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Iterable<? extends TruffleLanguageProvider> loadDeprecatedLanguageProviders() {
+        return ServiceLoader.load(TruffleLanguage.Provider.class);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Iterable<? extends TruffleInstrumentProvider> loadDeprecatedInstrumentProviders() {
+        return ServiceLoader.load(TruffleInstrument.Provider.class);
     }
 
     public void setProfilingEnabled(boolean profilingEnabled) {

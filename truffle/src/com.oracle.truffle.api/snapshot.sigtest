@@ -574,10 +574,8 @@ hfds argumentNames,disposed,source
 
 CLSS public abstract interface static com.oracle.truffle.api.TruffleLanguage$Provider
  outer com.oracle.truffle.api.TruffleLanguage
-meth public abstract com.oracle.truffle.api.TruffleLanguage<?> create()
-meth public abstract java.lang.String getLanguageClassName()
-meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
-meth public abstract java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+intf com.oracle.truffle.api.providers.TruffleLanguageProvider
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.TruffleLanguage$Registration
  outer com.oracle.truffle.api.TruffleLanguage
@@ -1282,6 +1280,12 @@ cons public init(java.lang.Object)
 meth public java.lang.Object getResult()
 supr com.oracle.truffle.api.nodes.SlowPathException
 hfds result,serialVersionUID
+
+CLSS public abstract interface com.oracle.truffle.api.providers.TruffleLanguageProvider
+meth public abstract com.oracle.truffle.api.TruffleLanguage<?> create()
+meth public abstract java.lang.String getLanguageClassName()
+meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
+meth public abstract java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
 
 CLSS public abstract com.oracle.truffle.api.source.Source
 fld public final static java.lang.CharSequence CONTENT_NONE

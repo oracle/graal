@@ -73,6 +73,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.providers.TruffleLanguageProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -102,7 +103,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final boolean needsAllEncodings;
     private final Set<String> services;
     private final ContextPolicy contextPolicy;
-    private final TruffleLanguage.Provider provider;
+    private final TruffleLanguageProvider provider;
     private final String website;
     private final SandboxPolicy sandboxPolicy;
     private volatile List<FileTypeDetector> fileTypeDetectors;
@@ -236,16 +237,14 @@ final class LanguageCache implements Comparable<LanguageCache> {
             if (loader == null || !isValidLoader(loader)) {
                 continue;
             }
-            if (!TruffleOptions.AOT) {
-                /*
-                 * In JDK 9+, the Truffle API packages must be dynamically exported to a Truffle
-                 * language since the Truffle API module descriptor only exports the packages to
-                 * modules known at build time (such as the Graal module).
-                 */
-                ModuleUtils.exportTo(loader, null);
+            for (TruffleLanguageProvider provider : ServiceLoader.load(TruffleLanguageProvider.class, loader)) {
+                loadLanguageImpl(provider, loader, caches);
             }
-            for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class, loader)) {
-                loadLanguageImpl(provider, caches);
+            // ServiceLoader does not respect service interface inheritance. We have to load the
+            // languages registered with the deprecated provider interface, even though the
+            // deprecated interface inherits from the new one.
+            for (TruffleLanguageProvider provider : loadDeprecatedProviders(loader)) {
+                loadLanguageImpl(provider, loader, caches);
             }
         }
         Map<String, LanguageCache> cacheToId = new LinkedHashMap<>();
@@ -271,6 +270,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return cacheToId;
     }
 
+    @SuppressWarnings("deprecation")
+    private static Iterable<? extends TruffleLanguageProvider> loadDeprecatedProviders(ClassLoader loader) {
+        return ServiceLoader.load(TruffleLanguage.Provider.class, loader);
+    }
+
     private static boolean hasSameCodeSource(LanguageCache first, LanguageCache second) {
         assert first.provider != null && second.provider != null : "Must not be called for host language cache";
         return first.provider.getClass() == second.provider.getClass();
@@ -285,11 +289,18 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
     }
 
-    private static void loadLanguageImpl(TruffleLanguage.Provider provider, List<LanguageCache> into) {
-        Registration reg = provider.getClass().getAnnotation(Registration.class);
+    private static void loadLanguageImpl(TruffleLanguageProvider provider, ClassLoader loader, List<LanguageCache> into) {
+        Class<? extends TruffleLanguageProvider> providerClass = provider.getClass();
+        Module providerModule = providerClass.getModule();
+        if (providerModule.isNamed()) {
+            ModuleUtils.exportTo(null, providerModule);
+        } else {
+            ModuleUtils.exportTo(loader, null);
+        }
+        Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
             PrintStream out = System.err;
-            out.println("Provider " + provider.getClass() + " is missing @Registration annotation.");
+            out.println("Provider " + providerClass + " is missing @Registration annotation.");
             return;
         }
         String className = provider.getLanguageClassName();
@@ -313,7 +324,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
         String languageHome = getLanguageHomeImpl(id);
         if (languageHome == null) {
-            URL url = provider.getClass().getClassLoader().getResource(className.replace('.', '/') + ".class");
+            URL url = providerClass.getClassLoader().getResource(className.replace('.', '/') + ".class");
             if (url != null) {
                 try {
                     languageHome = getLanguageHomeFromURLConnection(id, url.openConnection());
@@ -564,7 +575,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     TruffleLanguage<?> loadLanguage() {
-        return provider.create();
+        return (TruffleLanguage<?>) provider.create();
     }
 
     @SuppressWarnings("unchecked")
@@ -596,10 +607,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return services.contains(clazz.getName()) || services.contains(clazz.getCanonicalName());
     }
 
+    @SuppressWarnings("unchecked")
     List<? extends FileTypeDetector> getFileTypeDetectors() {
         List<FileTypeDetector> result = fileTypeDetectors;
         if (result == null) {
-            result = provider.createFileTypeDetectors();
+            result = (List<FileTypeDetector>) provider.createFileTypeDetectors();
             fileTypeDetectors = result;
         }
         return result;
