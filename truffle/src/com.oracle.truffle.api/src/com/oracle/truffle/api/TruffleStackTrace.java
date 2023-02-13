@@ -284,6 +284,10 @@ public final class TruffleStackTrace extends Exception {
 
     static final class LazyStackTrace extends Throwable {
 
+        LazyStackTrace() {
+            super(null, null, false, false);
+        }
+
         /**
          * The root of a linked list of pieces of information about the stack trace of the
          * exception. Only used, i.e., non-null, as long as the exception wasn't queried for the
@@ -301,20 +305,8 @@ public final class TruffleStackTrace extends Exception {
          */
         public int frameCount;
 
-        @SuppressWarnings("sync-override")
-        @Override
-        public Throwable fillInStackTrace() {
-            return null;
-        }
-
         public TruffleStackTrace getInternalStackTrace() {
             return stackTrace;
-        }
-
-        @SuppressWarnings("sync-override")
-        @Override
-        public Throwable initCause(Throwable cause) {
-            throw new IllegalAccessError("cannot change cause of AbstractTruffleException stacktrace");
         }
 
         @Override
