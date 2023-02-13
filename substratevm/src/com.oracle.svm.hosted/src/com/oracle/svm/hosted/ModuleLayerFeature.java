@@ -287,7 +287,7 @@ public final class ModuleLayerFeature implements InternalFeature {
 
         // --limit-modules
         if (!limitModules.isEmpty()) {
-            finder = moduleLayerFeatureUtils.invokeModuleBootstrapLimitModules(finder, limitModules, roots);
+            finder = moduleLayerFeatureUtils.invokeModuleBootstrapLimitFinder(finder, limitModules, roots);
         }
 
         // If there is no initial module specified then assume that the initial
@@ -331,19 +331,6 @@ public final class ModuleLayerFeature implements InternalFeature {
         return t.isReachable() && !t.isArray();
     }
 
-    private static boolean typeIsModuleRootOrReachable(AnalysisType t) {
-        if (typeIsReachable(t)) {
-            return true;
-        }
-
-        Module m = t.getJavaClass().getModule();
-        return moduleExportsPackagesUnconditionally(m);
-    }
-
-    private static boolean moduleExportsPackagesUnconditionally(Module m) {
-        return m.isNamed() && m.getPackages().stream().anyMatch(m::isExported);
-    }
-
     /*
      * Creates a stream of module names that are reachable from a given module through "requires"
      */
@@ -377,11 +364,12 @@ public final class ModuleLayerFeature implements InternalFeature {
         /*
          * Include explicitly required modules that are not necessarily reachable
          */
+        Set<String> limitModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
         Set<String> allReachableAndRequiredModuleNames = reachableNamedModules
                         .stream()
+                        .filter(m -> limitModules.isEmpty() || limitModules.contains(m.getName()))
                         .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
                         .collect(Collectors.toSet());
-        allReachableAndRequiredModuleNames.removeAll(ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES));
 
         for (ModuleLayer hostedModuleLayer : hostedModuleLayers) {
             if (hostedModuleLayer == moduleLayerForImageBuild) {
@@ -1024,7 +1012,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
         }
 
-        ModuleFinder invokeModuleBootstrapLimitModules(ModuleFinder finder, Set<String> roots, Set<String> otherModules) {
+        ModuleFinder invokeModuleBootstrapLimitFinder(ModuleFinder finder, Set<String> roots, Set<String> otherModules) {
             try {
                 return (ModuleFinder) moduleBootstrapLimitFinderMethod.invoke(null, finder, roots, otherModules);
             } catch (ReflectiveOperationException e) {
