@@ -41,6 +41,9 @@
 package com.oracle.truffle.nfi.backend.panama;
 
 
+import java.lang.foreign.Addressable;
+import java.lang.foreign.MemoryAddress;
+import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.ref.Reference;
 
@@ -123,8 +126,8 @@ abstract class FunctionExecuteNode extends Node {
         @Override
         public abstract Object execute(VirtualFrame frame);
 
-        long getAddress(VirtualFrame frame) {
-            return (long) frame.getArguments()[0];
+        MemoryAddress getAddress(VirtualFrame frame) {
+            return MemoryAddress.ofLong((long) frame.getArguments()[0]);
         }
 
         Object[] getArgs(VirtualFrame frame) {
@@ -135,13 +138,37 @@ abstract class FunctionExecuteNode extends Node {
             return (PanamaSignature) frame.getArguments()[2];
         }
 
+        @Specialization(guards = {"address == getAddress(frame)"}, limit = "3")
+        @ExplodeLoop
+        public Object doSameAddress(VirtualFrame frame, // TODO refactor to cache createDowncallHandle ret in CachedInfo
+                             @Cached("getAddress(frame)") MemoryAddress address,
+                             @Cached("getSig(frame)") PanamaSignature signature,
+                             @Cached("signature.createDowncallHandle(address)") MethodHandle downcallHandle) {
+            Object[] args = getArgs(frame);
+
+            if (args.length != argNodes.length) {
+                throw silenceException(RuntimeException.class, ArityException.create(argNodes.length, argNodes.length, args.length));
+            }
+
+            try {
+                PanamaType[] types = signatureInfo.getArgTypes();
+                assert argNodes.length == types.length;
+
+                for (int i = 0; i < argNodes.length; i++) {
+                    args[i] = argNodes[i].execute(args[i]);
+                }
+            } catch (UnsupportedTypeException ex) {
+                throw silenceException(RuntimeException.class, ex);
+            }
+
+            return signatureInfo.execute(signature, args, downcallHandle);
+        }
+
         @Specialization
         @ExplodeLoop
-        public Object doCall(VirtualFrame frame,
-                             @Cached("getAddress(frame)") long address,
-                             @Cached("getSig(frame)") PanamaSignature signature,
-                             @Cached("signature.createDowncallHandle(address)") MethodHandle handle) {
-
+        public Object doGeneric(VirtualFrame frame,
+                             @Cached("getAddress(frame)") MemoryAddress address,
+                             @Cached("getSig(frame)") PanamaSignature signature) {
             Object[] args = getArgs(frame);
 
             if (args.length != argNodes.length) {
@@ -159,7 +186,7 @@ abstract class FunctionExecuteNode extends Node {
                 throw silenceException(RuntimeException.class, ex);
             }
 
-            return signatureInfo.execute(signature, PanamaNFIContext.get(this), args, handle);
+            return signatureInfo.execute(signature, args, address);
         }
 
         @SuppressWarnings({"unchecked"})

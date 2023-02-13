@@ -46,9 +46,12 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
 
+import java.lang.foreign.MemorySession;
+
 class PanamaNFIContext {
 
     final PanamaNFILanguage language;
+    MemorySession memorySession;
     @CompilationFinal Env env;
 
     PanamaNFIContext(PanamaNFILanguage language, Env env) {
@@ -57,6 +60,7 @@ class PanamaNFIContext {
     }
 
     void initialize() {
+        memorySession = MemorySession.openConfined();
     }
 
     void patchEnv(Env env) {
@@ -64,6 +68,11 @@ class PanamaNFIContext {
     }
 
     void dispose() {
+        memorySession.close();
+    }
+
+    MemorySession getMemorySession() {
+        return memorySession;
     }
 
     @TruffleBoundary

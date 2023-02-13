@@ -68,6 +68,8 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory
 import com.oracle.truffle.nfi.backend.panama.PanamaClosure.MonomorphicClosureInfo;
 import com.oracle.truffle.nfi.backend.panama.PanamaClosure.PolymorphicClosureInfo;
 
+import java.lang.foreign.Addressable;
+import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 
@@ -80,32 +82,25 @@ import java.lang.foreign.MemorySession;
 final class PanamaSignature {
 
     @TruffleBoundary
-    public static PanamaSignature create(PanamaNFIContext context, CachedSignatureInfo info, PanamaType retType, PanamaType[] argTypes, MethodType downcallType, MethodType upcallType) {
-        // create Function descriptor
-        return new PanamaSignature(info.functionDescriptor, downcallType, upcallType, info);
+    public static PanamaSignature create(PanamaNFIContext context, CachedSignatureInfo info, MethodType downcallType, MethodType upcallType) {
+        return new PanamaSignature(info.functionDescriptor, downcallType, upcallType, info, context.getMemorySession());
     }
 
     private final FunctionDescriptor functionDescriptor;
 
+    final MemorySession memorySession;
     final CachedSignatureInfo signatureInfo;
 
     private final MethodType downcallType;
     private final MethodType upcallType;
 
-    @CompilationFinal private MethodHandle uncachedUpcallHandle;
-
-    PanamaSignature(FunctionDescriptor functionDescriptor, MethodType downcallType, MethodType upcallType, CachedSignatureInfo signatureInfo) {
+    PanamaSignature(FunctionDescriptor functionDescriptor, MethodType downcallType, MethodType upcallType, CachedSignatureInfo signatureInfo, MemorySession session) {
         this.functionDescriptor = functionDescriptor;
         this.downcallType = downcallType;
         this.upcallType = upcallType;
 
         this.signatureInfo = signatureInfo;
-    }
-
-    MethodHandle createDowncallHandle(long functionPointer) {
-        return Linker.nativeLinker().downcallHandle(MemoryAddress.ofLong(functionPointer), functionDescriptor)
-                        .asSpreader(Object[].class, downcallType.parameterCount())
-                        .asType(MethodType.methodType(Object.class, Object[].class));
+        this.memorySession = session;
     }
 
     @ExportMessage
@@ -153,10 +148,6 @@ final class PanamaSignature {
         }
     }
 
-    boolean checkUpcallMethodHandle(MethodHandle handle) {
-        return handle.type() == upcallType;
-    }
-
     MethodType getUpcallMethodType() {
         return upcallType;
     }
@@ -164,7 +155,8 @@ final class PanamaSignature {
     @TruffleBoundary
     MemoryAddress bind(MethodHandle cachedHandle, Object receiver) {
         MethodHandle bound = cachedHandle.bindTo(receiver);
-        return Linker.nativeLinker().upcallStub(bound, functionDescriptor, MemorySession.global() /* TODO */).address();
+        MemorySession session = PanamaNFIContext.get(null).getMemorySession();
+        return Linker.nativeLinker().upcallStub(bound, functionDescriptor, session).address();
     }
 
     @ExportMessage
@@ -280,7 +272,7 @@ final class PanamaSignature {
                        @SuppressWarnings("unused") @Cached("builder.descriptor") FunctionDescriptor functionDescriptor,
                        @Cached("prepareSignatureInfo(cachedRetType, cachedState, functionDescriptor)") CachedSignatureInfo cachedSignatureInfo) {
 
-                return create(PanamaNFIContext.get(self), cachedSignatureInfo, cachedRetType, cachedSignatureInfo.argTypes, builder.downcallType, builder.upcallType);
+                return create(PanamaNFIContext.get(self), cachedSignatureInfo, builder.downcallType, builder.upcallType);
             }
 
             @Specialization(replaces = "doCached")
@@ -288,7 +280,7 @@ final class PanamaSignature {
                             @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self) {
                 CachedSignatureInfo sigInfo = prepareSignatureInfo(builder.retType, builder.argsState, builder.descriptor);
 
-                return create(PanamaNFIContext.get(self), sigInfo, builder.retType, builder.argTypes.getFinalArray(), builder.downcallType, builder.upcallType);
+                return create(PanamaNFIContext.get(self), sigInfo, builder.downcallType, builder.upcallType);
             }
         }
     }
@@ -302,7 +294,21 @@ final class PanamaSignature {
             argTypes[i] = curState.lastArg;
             curState = curState.prev;
         }
-        return new CachedSignatureInfo(PanamaNFILanguage.get(null), retType, argTypes, functionDescriptor);
+        MethodHandle downcallHandle = createDynamicDowncallHandle(functionDescriptor);
+        return new CachedSignatureInfo(PanamaNFILanguage.get(null), retType, argTypes, functionDescriptor, downcallHandle);
+    }
+
+    MethodHandle createDowncallHandle(Addressable address) {
+        return Linker.nativeLinker().downcallHandle(address, functionDescriptor)
+                .asSpreader(Object[].class, downcallType.parameterCount())
+                .asType(MethodType.methodType(Object.class, Object[].class));
+    }
+
+    static MethodHandle createDynamicDowncallHandle(FunctionDescriptor descriptor) {
+        int parameterCount = Linker.downcallType(descriptor).parameterCount();
+        return Linker.nativeLinker().downcallHandle(descriptor)
+                .asSpreader(Object[].class, parameterCount)
+                .asType(MethodType.methodType(Object.class, new Class[]{Addressable.class, Object[].class}));
     }
 
     static final class ArgsState {
@@ -327,15 +333,17 @@ final class PanamaSignature {
 
 
     static final class CachedSignatureInfo {
-        final PanamaType retType;
+        PanamaType retType;
         final PanamaType[] argTypes;
         final FunctionDescriptor functionDescriptor;
         final CallTarget callTarget;
+        final MethodHandle downcallHandle;
 
-        CachedSignatureInfo(PanamaNFILanguage language, PanamaType retType, PanamaType[] argTypes, FunctionDescriptor functionDescriptor) {
+        CachedSignatureInfo(PanamaNFILanguage language, PanamaType retType, PanamaType[] argTypes, FunctionDescriptor functionDescriptor, MethodHandle downcallHandle) {
             this.retType = retType;
             this.argTypes = argTypes;
             this.functionDescriptor = functionDescriptor;
+            this.downcallHandle = downcallHandle;
             this.callTarget = SignatureExecuteNodeGen.create(language, this).getCallTarget();
         }
 
@@ -349,15 +357,41 @@ final class PanamaSignature {
 
         FunctionDescriptor getFunctionDescriptor() { return functionDescriptor; }
 
-        Object execute(PanamaSignature signature, PanamaNFIContext ctx, Object[] args, MethodHandle handle) {
+        Object execute(PanamaSignature signature, Object[] args, Addressable address) {  // TODO remove ctx
             assert signature.signatureInfo == this;
             CompilerAsserts.partialEvaluationConstant(retType);
 
             try {
-                Object result = (Object) handle.invokeExact(args);
+                Object result = (Object) downcallHandle.invokeExact(address, args);
                 if (result == null) {
                     if (retType.type == NativeSimpleType.VOID) {
+                        return NativePointer.NULL; //TODO
+                    } else {
                         return NativePointer.NULL;
+                    }
+                } else if (retType.type == NativeSimpleType.STRING) {
+                    MemoryAddress test = (MemoryAddress) result;
+                    return new NativeString(test.toRawLongValue());
+                } else if (retType.type == NativeSimpleType.POINTER) {
+                    return NativePointer.create((long) result);
+                } else {
+                    return result;
+                }
+            } catch (Throwable t) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalStateException(t);
+            }
+        }
+
+        Object execute(PanamaSignature signature, Object[] args, MethodHandle handle) {  // TODO remove ctx
+            assert signature.signatureInfo == this;
+            CompilerAsserts.partialEvaluationConstant(retType);
+
+            try {
+                Object result = handle.invokeExact(args);
+                if (result == null) {
+                    if (retType.type == NativeSimpleType.VOID) {
+                        return NativePointer.NULL; //TODO
                     } else {
                         return NativePointer.NULL;
                     }

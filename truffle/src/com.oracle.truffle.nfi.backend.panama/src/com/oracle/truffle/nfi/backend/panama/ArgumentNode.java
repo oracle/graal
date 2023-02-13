@@ -8,6 +8,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 
 import java.lang.foreign.MemoryAddress;
 import java.lang.foreign.MemorySession;
@@ -205,8 +206,9 @@ abstract class ArgumentNode extends Node {
         @Specialization(limit = "3")
         MemoryAddress doConvert(Object value,
                                 @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
+            PanamaNFIContext ctx = PanamaNFIContext.get(this);
             try {
-                return MemorySession.global().allocateUtf8String(interop.asString(value)).address(); // TODO: remove global
+                return ctx.getMemorySession().allocateUtf8String(interop.asString(value)).address();
             } catch (UnsupportedMessageException ex) {
                 throw UnsupportedTypeException.create(new Object[]{value});
             }
