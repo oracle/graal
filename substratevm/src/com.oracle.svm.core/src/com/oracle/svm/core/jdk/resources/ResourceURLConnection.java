@@ -39,6 +39,7 @@ import com.oracle.svm.core.jdk.Resources;
 public final class ResourceURLConnection extends URLConnection {
 
     private byte[] data;
+    private String contentType;
 
     public ResourceURLConnection(URL url) {
         super(url);
@@ -80,6 +81,23 @@ public final class ResourceURLConnection extends URLConnection {
         } else {
             this.data = null;
         }
+
+        // Try to determine the content type from the data itself, if possible.
+        if (data != null) {
+            try {
+                contentType = guessContentTypeFromStream(new ByteArrayInputStream(data));
+            } catch (IOException ignored) {
+            }
+        }
+
+        // Otherwise, try to determine the content type from the file name, if possible.
+        if (contentType == null && !url.getPath().isEmpty()) {
+            contentType = guessContentTypeFromName(url.getPath());
+        }
+
+        if (contentType == null) {
+            contentType = "unknown/unknown";
+        }
     }
 
     @Override
@@ -113,5 +131,15 @@ public final class ResourceURLConnection extends URLConnection {
          */
         connect();
         return Resources.singleton().getLastModifiedTime();
+    }
+
+    @Override
+    public String getContentType() {
+        /*
+         * Operations that depend on being connected will implicitly perform the connection, if
+         * necessary.
+         */
+        connect();
+        return contentType;
     }
 }
