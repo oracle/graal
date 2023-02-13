@@ -22,6 +22,13 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -77,6 +84,38 @@ public abstract class ToEspressoNode extends EspressoNode {
     static boolean isStringCompatible(Meta meta, Klass klass) {
         // Accept String superclasses and superinterfaces.
         return klass.isAssignableFrom(meta.java_lang_String);
+    }
+
+    static boolean isZonedDateTime(Meta meta, Klass klass) {
+        return meta.java_time_ZonedDateTime.equals(klass);
+    }
+
+    static boolean isLocalDate(Meta meta, Klass klass) {
+        return meta.java_time_LocalDate.equals(klass);
+    }
+
+    static boolean isLocalTime(Meta meta, Klass klass) {
+        return meta.java_time_LocalTime.equals(klass);
+    }
+
+    static boolean isLocalDateTime(Meta meta, Klass klass) {
+        return meta.java_time_LocalDateTime.equals(klass);
+    }
+
+    static boolean isInstant(Meta meta, Klass klass) {
+        return meta.java_time_Instant.equals(klass);
+    }
+
+    static boolean isDate(Meta meta, Klass klass) {
+        return meta.java_util_Date.equals(klass);
+    }
+
+    static boolean isZoneId(Meta meta, Klass klass) {
+        return meta.java_time_ZoneId.equals(klass);
+    }
+
+    static boolean isDuration(Meta meta, Klass klass) {
+        return meta.java_time_Duration.equals(klass);
     }
 
     static boolean isByteArray(Meta meta, Klass klass) {
@@ -232,6 +271,168 @@ public abstract class ToEspressoNode extends EspressoNode {
         try {
             String hostString = interop.asString(value);
             return meta.toGuestString(hostString);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+        }
+    }
+
+    @Specialization(guards = {
+                    "isZonedDateTime(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isInstant(value)",
+                    "interop.isTimeZone(value)",
+                    "!isHostString(value)",
+                    // !interop.isNull(value), // redundant
+                    // "!isEspressoException(value)", // redundant
+    })
+    Object doForeignDateTime(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        try {
+            Instant instant = interop.asInstant(value);
+
+            ZonedDateTime zonedDateTime = instant.atZone(interop.asTimeZone(value));
+            String zoneId = zonedDateTime.getZone().getId();
+
+            StaticObject guestInstant = (StaticObject) meta.java_time_Instant_ofEpochSecond.invokeDirect(null, instant.getEpochSecond(), (long) instant.getNano());
+            StaticObject guestZoneID = (StaticObject) meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString(zoneId));
+
+            return meta.java_time_ZonedDateTime_ofInstant.invokeDirect(null, guestInstant, guestZoneID);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+        }
+    }
+
+    @Specialization(guards = {
+                    "isLocalDate(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isDate(value)",
+                    "!isHostString(value)",
+                    // !interop.isNull(value), // redundant
+                    // "!isEspressoException(value)", // redundant
+    })
+    Object doForeignLocalDate(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        try {
+            LocalDate localDate = interop.asDate(value);
+            return meta.java_time_LocalDate_of.invokeDirect(null, localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+        }
+    }
+
+    @Specialization(guards = {
+                    "isLocalTime(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isTime(value)",
+                    "!isHostString(value)",
+                    // !interop.isNull(value), // redundant
+                    // "!isEspressoException(value)", // redundant
+    })
+    Object doForeignLocalTime(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        try {
+            LocalTime localTimne = interop.asTime(value);
+            return meta.java_time_LocalTime_of.invokeDirect(null, localTimne.getHour(), localTimne.getMinute(), localTimne.getSecond());
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+        }
+    }
+
+    @Specialization(guards = {
+                    "isLocalDateTime(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isTime(value)",
+                    "interop.isDate(value)",
+                    "!isHostString(value)",
+                    // !interop.isNull(value), // redundant
+                    // "!isEspressoException(value)", // redundant
+    })
+    Object doForeignLocalDateTime(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        return meta.java_time_LocalDateTime_of.invokeDirect(null,
+                        doForeignLocalDate(value, meta.java_time_LocalDate, interop, meta),
+                        doForeignLocalTime(value, meta.java_time_LocalTime, interop, meta));
+    }
+
+    @Specialization(guards = {
+            "isInstant(meta, klass)",
+            "!isStaticObject(value)",
+            "interop.isInstant(value)",
+            "!isHostString(value)",
+            // !interop.isNull(value), // redundant
+            // "!isEspressoException(value)", // redundant
+    })
+    Object doForeignInstant(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                         @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                         @Bind("getMeta()") Meta meta) {
+        try {
+            Instant instant = interop.asInstant(value);
+            return meta.java_time_Instant_ofEpochSecond.invokeDirect(null, instant.getEpochSecond(), (long) instant.getNano());
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+        }
+    }
+
+    @Specialization(guards = {
+            "isDate(meta, klass)",
+            "!isStaticObject(value)",
+            "interop.isInstant(value)",
+            "!isHostString(value)",
+            // !interop.isNull(value), // redundant
+            // "!isEspressoException(value)", // redundant
+    })
+    Object doForeignDate(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                              @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                              @Bind("getMeta()") Meta meta) {
+        return meta.java_util_Date_from.invokeDirect(null, doForeignInstant(value, meta.java_time_Instant, interop, meta));
+    }
+
+    @Specialization(guards = {
+            "isZoneId(meta, klass)",
+            "!isStaticObject(value)",
+            "interop.isTimeZone(value)",
+            "!isHostString(value)",
+            // !interop.isNull(value), // redundant
+            // "!isEspressoException(value)", // redundant
+    })
+    Object doForeignZoneId(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                         @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                         @Bind("getMeta()") Meta meta) {
+        try {
+            ZoneId zoneId = interop.asTimeZone(value);
+            return meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString(zoneId.getId()));
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+        }
+    }
+
+    @Specialization(guards = {
+            "isDuration(meta, klass)",
+            "!isStaticObject(value)",
+            "interop.isDuration(value)",
+            "!isHostString(value)",
+            // !interop.isNull(value), // redundant
+            // "!isEspressoException(value)", // redundant
+    })
+    Object doForeignDuration(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                           @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                           @Bind("getMeta()") Meta meta) {
+        try {
+            Duration duration = interop.asDuration(value);
+            StaticObject guestDuration = meta.getAllocator().createNew(meta.java_time_Duration);
+            meta.java_time_Duration_seconds.setLong(guestDuration, duration.getSeconds());
+            meta.java_time_Duration_nanos.setInt(guestDuration, duration.getNano());
+            return guestDuration;
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
