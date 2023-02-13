@@ -40,6 +40,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-25539 Added `InteropLibrary#fitsInBigInteger()` and `InteropLibrary#asBigInteger()` to access interop values that fit into `java.math.BigInteger` without loss of precision. A warning is produced for objects that export the `isNumber` interop message and don't export the new big integer messages.
 * GR-25539 Added `DebugValue#fitsInBigInteger()` and `DebugValue#asBigInteger()`.
 * GR-25539 Added `GenerateLibrary.Abstract#ifExportedAsWarning()` to specify a library message to be abstract only if another message is exported. A warning is produced that prompts the user to export the message.
+* GR-43663 Added RootNode#computeSize as a way for languages to specify an approximate size of a RootNode when number of AST nodes cannot be used (e.g. for bytecode interpreters).
 
 ## Version 22.3.0
 
