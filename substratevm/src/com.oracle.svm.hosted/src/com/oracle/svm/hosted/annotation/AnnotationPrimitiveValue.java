@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.annotation;
 
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -35,10 +36,19 @@ public final class AnnotationPrimitiveValue extends AnnotationMemberValue {
     private final Object value;
 
     static AnnotationPrimitiveValue extract(ByteBuffer buf, ConstantPool cp, char tag, boolean skip) {
-        int constIndex = buf.getShort() & 0xFFFF;
+        int constIndex = 0;
+        try {
+            constIndex = buf.getShort() & 0xFFFF;
+        } catch (BufferUnderflowException e) {
+            if (!skip) {
+                throw e;
+            }
+        }
+
         if (skip) {
             return null;
         }
+
         Object value;
         switch (tag) {
             case 'B':

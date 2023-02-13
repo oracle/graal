@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.annotation;
 
 import java.lang.annotation.Annotation;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
@@ -34,7 +35,17 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public abstract class AnnotationMemberValue {
     static AnnotationMemberValue extract(ByteBuffer buf, ConstantPool cp, Class<?> container, boolean skip) {
-        char tag = (char) buf.get();
+        final char tag;
+        try {
+            tag = (char) buf.get();
+        } catch (BufferUnderflowException e) {
+            if (skip) {
+                return null;
+            } else {
+                throw e;
+            }
+        }
+
         switch (tag) {
             case 'e':
                 return AnnotationEnumValue.extract(buf, cp, container, skip);

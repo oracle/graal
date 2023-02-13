@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.debug.GraalError;
@@ -84,8 +85,16 @@ public class AnnotationMetadata {
     }
 
     static String extractString(ByteBuffer buf, ConstantPool cp, boolean skip) {
-        int index = buf.getShort() & 0xFFFF;
-        return skip ? null : cp.getUTF8At(index);
+        int index = 0;
+        try {
+            index = buf.getShort();
+        } catch (BufferUnderflowException e) {
+            if (!skip) {
+                throw e;
+            }
+        }
+
+        return skip ? null : cp.getUTF8At(index & 0xFFFF);
     }
 
     static Object checkResult(Object value, Class<?> expectedType) {
