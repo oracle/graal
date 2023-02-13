@@ -787,10 +787,73 @@ public final class JavaAWTSubstitutions {
 
     @TargetClass(className = "java.awt.AWTEvent", onlyWith = IsHeadless.class)
     static final class Target_java_awt_AWTEvent {
+        @Substitute
+        private static void initIDs() {
+        }
 
         @Substitute
         private void nativeSetSource(Target_java_awt_peer_ComponentPeer peer) {
             throw new UnsupportedOperationException();
+        }
+    }
+
+    @TargetClass(className = "java.awt.Checkbox", onlyWith = IsHeadless.class)
+    static final class Target_java_awt_Checkbox {
+        @Substitute
+        private static void initIDs() {
+        }
+    }
+
+    @TargetClass(className = "java.awt.Component", onlyWith = IsHeadless.class)
+    static final class Target_java_awt_Component {
+        @Substitute
+        private static void initIDs() {
+        }
+    }
+
+    @TargetClass(className = "java.awt.Container", onlyWith = IsHeadless.class)
+    static final class Target_java_awt_Container {
+        @Substitute
+        private static void initIDs() {
+        }
+    }
+
+    @TargetClass(className = "java.awt.Cursor", onlyWith = IsHeadless.class)
+    static final class Target_java_awt_Cursor {
+        @Substitute
+        private static void initIDs() {
+        }
+
+        @Substitute
+        private static void finalizeImpl(long pData) {
+        }
+    }
+
+    @TargetClass(className = "java.awt.Event", onlyWith = IsHeadless.class)
+    static final class Target_java_awt_Event {
+        @Substitute
+        private static void initIDs() {
+        }
+    }
+
+    @TargetClass(className = "java.awt.event.InputEvent", onlyWith = IsHeadless.class)
+    static final class Target_java_awt_event_InputEvent {
+        @Substitute
+        private static void initIDs() {
+        }
+    }
+
+    @TargetClass(className = "java.awt.event.KeyEvent", onlyWith = IsHeadless.class)
+    static final class Target_java_awt_event_KeyEvent {
+        @Substitute
+        private static void initIDs() {
+        }
+    }
+
+    @TargetClass(className = "java.awt.Insets", onlyWith = IsHeadless.class)
+    static final class Target_java_awt_Insets {
+        @Substitute
+        private static void initIDs() {
         }
     }
 
