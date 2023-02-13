@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -190,6 +190,12 @@ public abstract class DebugInfoBase {
      */
     private int oopAlignShift;
     /**
+     *
+     * The compilation directory in which to look for source files as a {@link String}.
+     */
+    private String cachePath;
+
+    /**
      * The type entry for java.lang.Class.
      */
     private ClassEntry hubClassEntry;
@@ -258,8 +264,11 @@ public abstract class DebugInfoBase {
         /* Reference alignment must be 8 bytes. */
         assert oopAlignment == 8;
 
-        /* Ensure we have a null string in the string section. */
+        cachePath = debugInfoProvider.getCachePath() != null ? debugInfoProvider.getCachePath().toString() : "";
+
+        /* Ensure we have a null string and the cache path in the string section. */
         stringTable.uniqueDebugString("");
+        stringTable.uniqueDebugString(cachePath);
 
         /* Create all the types. */
         debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
@@ -272,8 +281,7 @@ public abstract class DebugInfoBase {
             debugContext.log(DebugContext.INFO_LEVEL, "Register %s type %s ", typeKind.toString(), typeName);
             String fileName = debugTypeInfo.fileName();
             Path filePath = debugTypeInfo.filePath();
-            Path cachePath = debugTypeInfo.cachePath();
-            addTypeEntry(idType, typeName, fileName, filePath, cachePath, byteSize, typeKind);
+            addTypeEntry(idType, typeName, fileName, filePath, byteSize, typeKind);
         }));
 
         /* Now we can cross reference static and instance field details. */
@@ -324,11 +332,11 @@ public abstract class DebugInfoBase {
         }));
     }
 
-    private TypeEntry createTypeEntry(String typeName, String fileName, Path filePath, Path cachePath, int size, DebugTypeKind typeKind) {
+    private TypeEntry createTypeEntry(String typeName, String fileName, Path filePath, int size, DebugTypeKind typeKind) {
         TypeEntry typeEntry = null;
         switch (typeKind) {
             case INSTANCE: {
-                FileEntry fileEntry = addFileEntry(fileName, filePath, cachePath);
+                FileEntry fileEntry = addFileEntry(fileName, filePath);
                 typeEntry = new ClassEntry(typeName, fileEntry, size);
                 if (typeEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME)) {
                     hubClassEntry = (ClassEntry) typeEntry;
@@ -336,12 +344,12 @@ public abstract class DebugInfoBase {
                 break;
             }
             case INTERFACE: {
-                FileEntry fileEntry = addFileEntry(fileName, filePath, cachePath);
+                FileEntry fileEntry = addFileEntry(fileName, filePath);
                 typeEntry = new InterfaceClassEntry(typeName, fileEntry, size);
                 break;
             }
             case ENUM: {
-                FileEntry fileEntry = addFileEntry(fileName, filePath, cachePath);
+                FileEntry fileEntry = addFileEntry(fileName, filePath);
                 typeEntry = new EnumClassEntry(typeName, fileEntry, size);
                 break;
             }
@@ -364,10 +372,10 @@ public abstract class DebugInfoBase {
         return typeEntry;
     }
 
-    private TypeEntry addTypeEntry(ResolvedJavaType idType, String typeName, String fileName, Path filePath, Path cachePath, int size, DebugTypeKind typeKind) {
+    private TypeEntry addTypeEntry(ResolvedJavaType idType, String typeName, String fileName, Path filePath, int size, DebugTypeKind typeKind) {
         TypeEntry typeEntry = (idType != null ? typesIndex.get(idType) : null);
         if (typeEntry == null) {
-            typeEntry = createTypeEntry(typeName, fileName, filePath, cachePath, size, typeKind);
+            typeEntry = createTypeEntry(typeName, fileName, filePath, size, typeKind);
             types.add(typeEntry);
             if (idType != null) {
                 typesIndex.put(idType, typeEntry);
@@ -482,7 +490,7 @@ public abstract class DebugInfoBase {
         instanceClassesIndex.put(idType, classEntry);
     }
 
-    private FileEntry addFileEntry(String fileName, Path filePath, Path cachePath) {
+    private FileEntry addFileEntry(String fileName, Path filePath) {
         assert fileName != null;
         Path fileAsPath;
         if (filePath != null) {
@@ -495,8 +503,8 @@ public abstract class DebugInfoBase {
             DirEntry dirEntry = ensureDirEntry(filePath);
             /* Ensure file and cachepath are added to the debug_str section. */
             uniqueDebugString(fileName);
-            uniqueDebugString(cachePath.toString());
-            fileEntry = new FileEntry(fileName, dirEntry, cachePath);
+            uniqueDebugString(cachePath);
+            fileEntry = new FileEntry(fileName, dirEntry);
             files.add(fileEntry);
             /* Index the file entry by file path. */
             filesIndex.put(fileAsPath, fileEntry);
@@ -522,7 +530,7 @@ public abstract class DebugInfoBase {
         /* Reuse any existing entry. */
         FileEntry fileEntry = findFile(fileAsPath);
         if (fileEntry == null) {
-            fileEntry = addFileEntry(fileName, filePath, debugFileInfo.cachePath());
+            fileEntry = addFileEntry(fileName, filePath);
         }
         return fileEntry;
     }
@@ -636,6 +644,10 @@ public abstract class DebugInfoBase {
 
     public int oopAlignShift() {
         return oopAlignShift;
+    }
+
+    public String getCachePath() {
+        return cachePath;
     }
 
     public boolean isHubClassEntry(ClassEntry classEntry) {

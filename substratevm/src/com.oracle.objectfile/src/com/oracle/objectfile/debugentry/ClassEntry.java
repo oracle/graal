@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,7 +26,6 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -310,16 +309,6 @@ public class ClassEntry extends StructureTypeEntry {
 
     public boolean hasDeoptCompiledEntries() {
         return deoptCompiledEntries != null;
-    }
-
-    public String getCachePath() {
-        if (fileEntry != null) {
-            Path cachePath = fileEntry.getCachePath();
-            if (cachePath != null) {
-                return cachePath.toString();
-            }
-        }
-        return "";
     }
 
     private void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
