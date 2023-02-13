@@ -65,6 +65,37 @@ class ReflectionProcessor extends AbstractProcessor {
         String function = (String) entry.get("function");
         List<?> args = (List<?>) entry.get("args");
         ResourceConfiguration resourceConfiguration = configurationSet.getResourceConfiguration();
+
+        final String clazz = (String) entry.get("class");
+
+        if ("jdk.internal.jimage.BasicImageReader".equals(clazz) ||
+                        "jdk.internal.jimage.ImageReader$SharedImageReader".equals(clazz)) {
+            // BasicImageReader and all derived classes.
+            if ("findLocation".equals(function)) {
+                switch (args.size()) {
+                    // jdk.internal.jimage.ImageLocation
+                    // jdk.internal.jimage.BasicImageReader.findLocation(java.lang.String name);
+                    case 1: {
+                        final String resourceName = (String) args.get(0);
+                        final String regex = Pattern.quote(resourceName);
+                        resourceConfiguration.addResourcePattern(condition, regex);
+                        return;
+                    }
+
+                    // jdk.internal.jimage.ImageLocation
+                    // jdk.internal.jimage.BasicImageReader.findLocation(
+                    // java.lang.String module, java.lang.String name);
+                    case 2: {
+                        final String moduleName = (String) args.get(0);
+                        final String resourceName = (String) args.get(1);
+                        final String regex = moduleName + ":" + Pattern.quote(resourceName);
+                        resourceConfiguration.addResourcePattern(condition, regex);
+                        return;
+                    }
+                }
+            }
+        }
+
         switch (function) {
             // These are called via java.lang.Class or via the class loader hierarchy, so we would
             // always filter based on the caller class.
@@ -107,7 +138,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 }
             }
         }
-        String clazz = (String) entry.get("class");
+
         if (advisor.shouldIgnore(lazyValue(clazz), lazyValue(callerClass))) {
             return;
         }
