@@ -413,6 +413,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 if (error != CEntryPointErrors.NO_ERROR) {
                     return error;
                 }
+                RuntimeSupport.executeAfterThreadAttachHooks();
             } else {
                 writeCurrentVMThread(thread);
                 if (ensuringJavaThread && !PlatformThreads.isCurrentAssigned()) {
@@ -465,6 +466,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             IsolateThread thread = CurrentIsolate.getCurrentThread();
             result = runtimeCall(DETACH_THREAD_MT, thread);
         }
+
         /*
          * Note that we do not reset the fixed registers used for the thread and isolate to null:
          * Since these values are not copied to different registers when they are used, we need to
@@ -477,6 +479,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Thread state going away.")
     private static int detachThreadMT(IsolateThread currentThread) {
         try {
+            RuntimeSupport.executeBeforeThreadDetachHooks();
             VMThreads.singleton().detachThread(currentThread);
         } catch (Throwable t) {
             return CEntryPointErrors.UNCAUGHT_EXCEPTION;

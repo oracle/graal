@@ -54,6 +54,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SafepointBeginEvent;
@@ -410,6 +411,8 @@ public final class Safepoint {
             return;
         }
         VMError.guarantee(StatusSupport.isStatusJava(), "Attempting to do a safepoint check when not in Java mode");
+
+        RuntimeSupport.executeSlowPathSafepointCheckHooks();
 
         try {
             /*
