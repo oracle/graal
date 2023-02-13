@@ -80,3 +80,25 @@ class CompletableFutureFeature implements InternalFeature {
         RuntimeClassInitialization.initializeAtRunTime(CompletableFutureFieldHolder.class);
     }
 }
+
+@TargetClass(value = java.util.concurrent.SubmissionPublisher.class, innerClass = "ThreadPerTaskExecutor")
+final class Target_java_util_concurrent_SubmissionPublisher_ThreadPerTaskExecutor {
+}
+
+@TargetClass(java.util.concurrent.SubmissionPublisher.class)
+final class Target_java_util_concurrent_SubmissionPublisher {
+
+    @Alias
+    @InjectAccessors(SubmissionPublisherAsyncPoolAccessor.class) //
+    private static Executor ASYNC_POOL;
+}
+
+class SubmissionPublisherAsyncPoolAccessor {
+    static Executor get() {
+        if (ForkJoinPool.getCommonPoolParallelism() > 1) {
+            return ForkJoinPoolCommonAccessor.get();
+        } else {
+            return SubstrateUtil.cast(new Target_java_util_concurrent_SubmissionPublisher_ThreadPerTaskExecutor(), Executor.class);
+        }
+    }
+}
