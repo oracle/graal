@@ -25,9 +25,9 @@
 package com.oracle.svm.core.jfr;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -35,15 +35,13 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
  * Used to access the raw memory of a {@link JfrBuffer}.
  */
 public final class JfrBufferAccess {
-    private static final int ACQUIRED = 1;
-    private static final int NOT_ACQUIRED = 0;
-
     private JfrBufferAccess() {
     }
 
@@ -65,6 +63,7 @@ public final class JfrBufferAccess {
         if (result.isNonNull()) {
             result.setSize(dataSize);
             result.setBufferType(bufferType);
+            NativeSpinLockUtils.initialize(ptrToLock(result));
             reinitialize(result);
         }
         return result;
@@ -84,21 +83,21 @@ public final class JfrBufferAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isAcquired(JfrBuffer buffer) {
+    public static boolean isLocked(JfrBuffer buffer) {
         assert buffer.isNonNull();
-        return buffer.getAcquired() == ACQUIRED;
+        return NativeSpinLockUtils.isLocked(ptrToLock(buffer));
     }
 
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
-    public static boolean acquire(JfrBuffer buffer) {
+    public static boolean tryLock(JfrBuffer buffer) {
         assert buffer.isNonNull();
-        return ((Pointer) buffer).logicCompareAndSwapInt(JfrBuffer.offsetOfAcquired(), NOT_ACQUIRED, ACQUIRED, NamedLocationIdentity.OFF_HEAP_LOCATION);
+        return NativeSpinLockUtils.tryLock(ptrToLock(buffer));
     }
 
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
-    public static void release(JfrBuffer buffer) {
-        assert buffer.isNonNull() && buffer.getAcquired() == ACQUIRED;
-        buffer.setAcquired(NOT_ACQUIRED);
+    public static void unlock(JfrBuffer buffer) {
+        assert buffer.isNonNull() && isLocked(buffer);
+        NativeSpinLockUtils.unlock(ptrToLock(buffer));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -160,5 +159,10 @@ public final class JfrBufferAccess {
         return buffer.getPos().aboveOrEqual(start) && buffer.getPos().belowOrEqual(end) &&
                         buffer.getTop().aboveOrEqual(start) && buffer.getTop().belowOrEqual(end) &&
                         buffer.getTop().belowOrEqual(buffer.getPos());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static CIntPointer ptrToLock(JfrBuffer buffer) {
+        return (CIntPointer) ((Pointer) buffer).add(JfrBuffer.offsetOfLocked());
     }
 }

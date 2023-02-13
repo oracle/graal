@@ -681,12 +681,17 @@ public class SubstrateJVM {
             SubstrateJVM.get().recording = false;
             JfrExecutionSampler.singleton().update();
 
-            /* Free all JFR-related buffers (no further JFR events may be triggered). */
+            /* No further JFR events are emitted, so free all JFR-related buffers. */
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
-                JfrThreadLocal.stopRecording(isolateThread, false);
+                JfrThreadLocal.stopRecording(isolateThread);
             }
 
+            /*
+             * If JFR recording is restarted later on, then it needs to start with a clean state.
+             * Therefore, we clear all data that is still pending.
+             */
             SubstrateJVM.getSamplerBufferPool().teardown();
+            SubstrateJVM.getGlobalMemory().clear();
         }
     }
 }
