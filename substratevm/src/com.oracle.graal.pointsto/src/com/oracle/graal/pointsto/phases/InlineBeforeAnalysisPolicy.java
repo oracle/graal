@@ -65,6 +65,14 @@ public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Sco
         return false;
     }
 
+    protected boolean tryInvocationPlugins() {
+        /*
+         * If an invocation plugin was unable to be used during bytecode parsing, then it will be
+         * retried during graph decoding. In the default case this should not happen.
+         */
+        return false;
+    }
+
     protected S createRootScope() {
         return null;
     }
