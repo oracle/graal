@@ -448,7 +448,7 @@ public final class Encodings {
 
         public static final class Latin1 extends Encoding {
 
-            private TruffleString.Encoding tsEncoding;
+            private final TruffleString.Encoding tsEncoding;
 
             private Latin1(TruffleString.Encoding tsEncoding) {
                 this.tsEncoding = tsEncoding;
