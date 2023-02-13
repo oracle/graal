@@ -338,6 +338,8 @@ public abstract class NonSnippetLowerings {
                     reportError.setNext(graph.add(new LoweredDeadEndNode()));
                 }
 
+                final JavaKind wordKind = FrameAccess.getWordKind();
+
                 LoadHubNode hub = null;
                 CallTargetNode loweredCallTarget;
                 if (invokeKind.isDirect() || implementations.length == 1) {
@@ -371,14 +373,14 @@ public abstract class NonSnippetLowerings {
                          */
                         JavaConstant codeInfo = SubstrateObjectConstant.forObject(CodeInfoTable.getImageCodeCache());
                         ValueNode codeInfoConstant = ConstantNode.forConstant(codeInfo, tool.getMetaAccess(), graph);
-                        ValueNode codeStartFieldOffset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), knownOffsets.getImageCodeInfoCodeStartOffset(), graph);
+                        ValueNode codeStartFieldOffset = ConstantNode.forIntegerKind(wordKind, knownOffsets.getImageCodeInfoCodeStartOffset(), graph);
                         AddressNode codeStartField = graph.unique(new OffsetAddressNode(codeInfoConstant, codeStartFieldOffset));
                         /*
                          * Uses ANY_LOCATION because runtime-compiled code can be persisted and
                          * loaded in a process where image code is located elsewhere.
                          */
                         ReadNode codeStart = graph.add(new ReadNode(codeStartField, LocationIdentity.ANY_LOCATION, FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
-                        ValueNode offset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), targetMethod.getCodeOffsetInImage(), graph);
+                        ValueNode offset = ConstantNode.forIntegerKind(wordKind, targetMethod.getCodeOffsetInImage(), graph);
                         AddressNode address = graph.unique(new OffsetAddressNode(codeStart, offset));
 
                         loweredCallTarget = graph.add(new IndirectCallTargetNode(
@@ -401,7 +403,7 @@ public abstract class NonSnippetLowerings {
                     int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex());
 
                     hub = graph.unique(new LoadHubNode(runtimeConfig.getProviders().getStampProvider(), graph.addOrUnique(PiNode.create(receiver, nullCheck))));
-                    AddressNode address = graph.unique(new OffsetAddressNode(hub, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), vtableEntryOffset, graph)));
+                    AddressNode address = graph.unique(new OffsetAddressNode(hub, ConstantNode.forIntegerKind(wordKind, vtableEntryOffset, graph)));
                     ReadNode entry = graph.add(new ReadNode(address, SubstrateBackend.getVTableIdentity(), FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
                     loweredCallTarget = graph.add(
                                     new IndirectCallTargetNode(entry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind));
