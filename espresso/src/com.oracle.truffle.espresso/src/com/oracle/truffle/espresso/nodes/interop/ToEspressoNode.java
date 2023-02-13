@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -363,16 +363,16 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
-            "isInstant(meta, klass)",
-            "!isStaticObject(value)",
-            "interop.isInstant(value)",
-            "!isHostString(value)",
-            // !interop.isNull(value), // redundant
-            // "!isEspressoException(value)", // redundant
+                    "isInstant(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isInstant(value)",
+                    "!isHostString(value)",
+                    // !interop.isNull(value), // redundant
+                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignInstant(Object value, @SuppressWarnings("unused") ObjectKlass klass,
-                         @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                         @Bind("getMeta()") Meta meta) {
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
         try {
             Instant instant = interop.asInstant(value);
             return meta.java_time_Instant_ofEpochSecond.invokeDirect(null, instant.getEpochSecond(), (long) instant.getNano());
@@ -383,30 +383,30 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
-            "isDate(meta, klass)",
-            "!isStaticObject(value)",
-            "interop.isInstant(value)",
-            "!isHostString(value)",
-            // !interop.isNull(value), // redundant
-            // "!isEspressoException(value)", // redundant
+                    "isDate(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isInstant(value)",
+                    "!isHostString(value)",
+                    // !interop.isNull(value), // redundant
+                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignDate(Object value, @SuppressWarnings("unused") ObjectKlass klass,
-                              @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                              @Bind("getMeta()") Meta meta) {
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
         return meta.java_util_Date_from.invokeDirect(null, doForeignInstant(value, meta.java_time_Instant, interop, meta));
     }
 
     @Specialization(guards = {
-            "isZoneId(meta, klass)",
-            "!isStaticObject(value)",
-            "interop.isTimeZone(value)",
-            "!isHostString(value)",
-            // !interop.isNull(value), // redundant
-            // "!isEspressoException(value)", // redundant
+                    "isZoneId(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isTimeZone(value)",
+                    "!isHostString(value)",
+                    // !interop.isNull(value), // redundant
+                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignZoneId(Object value, @SuppressWarnings("unused") ObjectKlass klass,
-                         @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                         @Bind("getMeta()") Meta meta) {
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
         try {
             ZoneId zoneId = interop.asTimeZone(value);
             return meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString(zoneId.getId()));
@@ -417,16 +417,16 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
-            "isDuration(meta, klass)",
-            "!isStaticObject(value)",
-            "interop.isDuration(value)",
-            "!isHostString(value)",
-            // !interop.isNull(value), // redundant
-            // "!isEspressoException(value)", // redundant
+                    "isDuration(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isDuration(value)",
+                    "!isHostString(value)",
+                    // !interop.isNull(value), // redundant
+                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignDuration(Object value, @SuppressWarnings("unused") ObjectKlass klass,
-                           @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                           @Bind("getMeta()") Meta meta) {
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
         try {
             Duration duration = interop.asDuration(value);
             StaticObject guestDuration = meta.getAllocator().createNew(meta.java_time_Duration);
