@@ -8,10 +8,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 
 import java.lang.foreign.MemoryAddress;
-import java.lang.foreign.MemorySession;
 
 abstract class ArgumentNode extends Node {
     final PanamaType type;
@@ -29,13 +27,8 @@ abstract class ArgumentNode extends Node {
         }
 
         @Specialization(limit = "3")
-        Object doConvert(Object value,
-                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
+        Object doConvert(@SuppressWarnings("unused") Object value) {
             return null;
-        }
-
-        Object toJava() {
-            return NativePointer.NULL;
         }
     }
 
@@ -96,7 +89,7 @@ abstract class ArgumentNode extends Node {
             super(type);
         }
 
-        @Specialization(limit = "3") //, rewriteOn = UnsupportedTypeException.class)
+        @Specialization(limit = "3")
         long doConvert(Object value,
                        @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             try {
@@ -105,14 +98,6 @@ abstract class ArgumentNode extends Node {
                 throw UnsupportedTypeException.create(new Object[]{value});
             }
         }
-//        @Specialization(limit = "3", replaces = "doConvert")
-//        Object nullConvert(Object value,
-//                           @CachedLibrary("value") InteropLibrary interop) {
-//            if (interop.isNull(value)) {
-//                return null;
-//            }
-//            throw CompilerDirectives.shouldNotReachHere();
-//        }
     }
 
     static abstract class ToPointerNode extends ArgumentNode {
