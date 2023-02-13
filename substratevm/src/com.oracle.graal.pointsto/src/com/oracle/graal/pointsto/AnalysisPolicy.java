@@ -70,6 +70,7 @@ public abstract class AnalysisPolicy {
     protected final int maxHeapContextDepth;
     protected final boolean limitObjectArrayLength;
     protected final int maxObjectSetSize;
+    protected final boolean hybridStaticContext;
 
     public AnalysisPolicy(OptionValues options) {
         this.options = options;
@@ -82,7 +83,7 @@ public abstract class AnalysisPolicy {
         maxHeapContextDepth = PointstoOptions.MaxHeapContextDepth.getValue(options);
         limitObjectArrayLength = PointstoOptions.LimitObjectArrayLength.getValue(options);
         maxObjectSetSize = PointstoOptions.MaxObjectSetSize.getValue(options);
-
+        hybridStaticContext = PointstoOptions.HybridStaticContext.getValue(options);
     }
 
     public abstract boolean isContextSensitiveAnalysis();
@@ -113,6 +114,10 @@ public abstract class AnalysisPolicy {
 
     public int maxObjectSetSize() {
         return maxObjectSetSize;
+    }
+
+    public boolean useHybridStaticContext() {
+        return hybridStaticContext;
     }
 
     public abstract MethodTypeFlow createMethodTypeFlow(PointsToAnalysisMethod method);
