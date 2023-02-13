@@ -33,8 +33,8 @@ The `TruffleObject`s and AST nodes introduced by TRegex are grouped under a new 
 The javadoc of [RegexLanguage](./src/com.oracle.truffle.regex/src/com/oracle/truffle/regex/RegexLanguage.java) contains pointers on how to use the TRegex API.
 
 For an example of how to integrate TRegex into a language implementation, you can check out Graal JavaScript.
-Setting up the engine is done in [JSContext#getRegexEngine](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.runtime/src/com/oracle/truffle/js/runtime/JSContext.java), compilation requests to the engine are sent from [RegexCompilerInterface#compile](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.runtime/src/com/oracle/truffle/js/runtime/RegexCompilerInterface.java) and the compiled regular expression is executed in [JSRegExpExecBuiltinNode](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.builtins/src/com/oracle/truffle/js/builtins/helper/JSRegExpExecIntlNode.java).
-The [TRegexUtil](https://github.com/graalvm/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.runtime/src/com/oracle/truffle/js/runtime/util/TRegexUtil.java) class also shows how to write interop access wrappers for the methods and properties of the `TruffleLanguage` objects.
+Compilation requests to TRegex are sent from [RegexCompilerInterface#compile](https://github.com/oracle/graaljs/blob/master/graal-js/src/com.oracle.truffle.js/src/com/oracle/truffle/js/runtime/RegexCompilerInterface.java) and the compiled regular expressions are executed in [JSRegExpExecBuiltinNode](https://github.com/oracle/graaljs/blob/master/graal-js/src/com.oracle.truffle.js/src/com/oracle/truffle/js/builtins/helper/JSRegExpExecIntlNode.java).
+The [TRegexUtil](https://github.com/oracle/graaljs/blob/master/graal-js/src/com.oracle.truffle.js/src/com/oracle/truffle/js/runtime/util/TRegexUtil.java) class also shows how to write interop access wrappers for the methods and properties of the `TruffleLanguage` objects.
 
 ## Feature Support
 
