@@ -65,7 +65,7 @@ public class GDSTokenStorage {
         propertiesPath = Path.of(System.getProperty(SYSPROP_USER_HOME), PATH_USER_GU, PATH_GDS_CONFIG);
     }
 
-    public Path getPropertiesPath() {
+    Path getPropertiesPath() {
         return propertiesPath;
     }
 
@@ -77,19 +77,19 @@ public class GDSTokenStorage {
         if (properties != null) {
             return properties;
         }
-        return properties = load(getPropertiesPath(), feedback);
+        return properties = load(getPropertiesPath());
     }
 
-    private static Properties load(Path propertiesPath, Feedback feedback) {
-        Properties properties = new Properties();
-        if (Files.exists(propertiesPath)) {
-            try (InputStream is = Files.newInputStream(propertiesPath)) {
-                properties.load(is);
+    private Properties load(Path propsPath) {
+        Properties props = new Properties();
+        if (Files.exists(propsPath)) {
+            try (InputStream is = Files.newInputStream(propsPath)) {
+                props.load(is);
             } catch (IllegalArgumentException | IOException ex) {
-                feedback.error("ERR_CouldNotLoadToken", ex, propertiesPath, ex.getLocalizedMessage());
+                feedback.error("ERR_CouldNotLoadToken", ex, propsPath, ex.getLocalizedMessage());
             }
         }
-        return properties;
+        return props;
     }
 
     public String getToken() {
@@ -117,7 +117,7 @@ public class GDSTokenStorage {
         if (!SystemUtils.nonBlankString(userFile)) {
             return null;
         }
-        return load(SystemUtils.fromUserString(userFile), feedback).getProperty(GRAAL_EE_DOWNLOAD_TOKEN);
+        return load(SystemUtils.fromUserString(userFile)).getProperty(GRAAL_EE_DOWNLOAD_TOKEN);
     }
 
     private String getCmdFile() {

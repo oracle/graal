@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.threads.EspressoThreadRegistry.getThreadId;
+
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -131,7 +133,7 @@ public final class Target_java_lang_Thread {
                 context.getLogger().fine(() -> {
                     String guestName = threadAccess.getThreadName(self);
                     long guestId = threadAccess.getThreadId(self);
-                    return String.format("Thread.start0: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
+                    return String.format("Thread.start0: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), getThreadId(hostThread), guestName, guestId);
                 });
                 hostThread.start();
             } else {

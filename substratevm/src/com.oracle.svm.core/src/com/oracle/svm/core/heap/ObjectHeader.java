@@ -29,7 +29,6 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -62,11 +61,14 @@ public abstract class ObjectHeader {
     public abstract Word encodeAsUnmanagedObjectHeader(DynamicHub hub);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract DynamicHub dynamicHubFromObjectHeader(UnsignedWord header);
+    public abstract DynamicHub dynamicHubFromObjectHeader(Word header);
 
     public static DynamicHub readDynamicHubFromObject(Object o) {
         return KnownIntrinsics.readHub(o);
     }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract Word readHeaderFromPointer(Pointer ptr);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract DynamicHub readDynamicHubFromPointer(Pointer ptr);
@@ -75,7 +77,7 @@ public abstract class ObjectHeader {
     public abstract Pointer readPotentialDynamicHubFromPointer(Pointer ptr);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract void initializeHeaderOfNewObject(Pointer objectPointer, Word objectHeader);
+    public abstract void initializeHeaderOfNewObject(Pointer ptr, Word header);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean pointsToObjectHeader(Pointer ptr) {
@@ -86,6 +88,15 @@ public abstract class ObjectHeader {
         }
         return false;
     }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract boolean hasOptionalIdentityHashField(Word header);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract boolean hasIdentityHashFromAddress(Word header);
+
+    @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.", callerMustBe = true)
+    public abstract void setIdentityHashFromAddress(Pointer ptr, Word currentHeader);
 
     @Fold
     protected static int getCompressionShift() {

@@ -24,11 +24,9 @@
  */
 package com.oracle.svm.core.hub;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -37,7 +35,10 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
@@ -124,7 +125,7 @@ public class LayoutEncoding {
         guaranteeEncoding(type, false, isHybrid(encoding), "Instance type encoding denotes a hybrid");
         guaranteeEncoding(type, false, isObjectArray(encoding) || isArrayLikeWithObjectElements(encoding), "Instance type encoding denotes an object array");
         guaranteeEncoding(type, false, isPrimitiveArray(encoding) || isArrayLikeWithPrimitiveElements(encoding), "Instance type encoding denotes a primitive array");
-        guaranteeEncoding(type, true, getPureInstanceSize(encoding).equal(WordFactory.unsigned(size)), "Instance type encoding size matches type size");
+        guaranteeEncoding(type, true, getPureInstanceAllocationSize(encoding).equal(WordFactory.unsigned(size)), "Instance type encoding size matches type size");
         return encoding;
     }
 
@@ -183,10 +184,30 @@ public class LayoutEncoding {
         return encoding > LAST_SPECIAL_VALUE;
     }
 
-    /** Determines the size of a pure instance object (i.e. not a hybrid object or array). */
+    /**
+     * Determines the size of a pure instance object (i.e. not a hybrid object or array) at
+     * allocation, that is, without an identity hash code field if such a field is optional.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getPureInstanceSize(int encoding) {
+    public static UnsignedWord getPureInstanceAllocationSize(int encoding) {
         return WordFactory.unsigned(encoding);
+    }
+
+    /**
+     * Determines the size of a pure instance object (i.e. not a hybrid object or array) with or
+     * without an identity hash code field (if such a field is optional).
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getPureInstanceSize(DynamicHub hub, boolean withOptionalIdHashField) {
+        UnsignedWord size = getPureInstanceAllocationSize(hub.getLayoutEncoding());
+        ObjectLayout ol = ConfigurationValues.getObjectLayout();
+        if (withOptionalIdHashField && !ol.hasFixedIdentityHashField()) {
+            int afterIdHashField = hub.getOptionalIdentityHashOffset() + Integer.BYTES;
+            if (size.belowThan(afterIdHashField)) { // fits in a gap between fields
+                size = WordFactory.unsigned(ol.alignUp(afterIdHashField));
+            }
+        }
+        return size;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -253,38 +274,112 @@ public class LayoutEncoding {
         return getArrayBaseOffset(encoding).add(WordFactory.unsigned(index).shiftLeft(getArrayIndexShift(encoding)));
     }
 
+    /**
+     * Determines the size of an array at allocation, that is, without an identity hash code field
+     * if such a field is optional.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getArraySize(int encoding, int length) {
-        int alignmentMask = getAlignmentMask();
-        return getArrayElementOffset(encoding, length).add(alignmentMask).and(~alignmentMask);
+    public static UnsignedWord getArrayAllocationSize(int encoding, int length) {
+        return getArraySize(encoding, length, false);
+    }
+
+    /**
+     * Determines the size of an array with or without an identity hash code field, if such a field
+     * is optional.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getArraySize(int encoding, int length, boolean withOptionalIdHashField) {
+        long unalignedSize = getArrayElementOffset(encoding, length).rawValue();
+        long totalSize = ConfigurationValues.getObjectLayout().computeArrayTotalSize(unalignedSize, withOptionalIdHashField);
+        return WordFactory.unsigned(totalSize);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getSizeFromObject(Object obj) {
-        return getSizeFromObjectInline(obj);
-    }
-
-    @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getSizeFromObjectInline(Object obj) {
-        int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
+    public static int getOptionalIdentityHashOffset(Object obj) {
+        ObjectLayout ol = ConfigurationValues.getObjectLayout();
+        if (ol.hasFixedIdentityHashField()) {
+            return ol.getFixedIdentityHashOffset();
+        }
+        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        int encoding = hub.getLayoutEncoding();
         if (isArrayLike(encoding)) {
-            return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
+            long unalignedSize = getArrayElementOffset(encoding, ArrayLengthNode.arrayLength(obj)).rawValue();
+            return (int) ol.getArrayOptionalIdentityHashOffset(unalignedSize);
         } else {
-            return getPureInstanceSize(encoding);
+            return hub.getOptionalIdentityHashOffset();
         }
     }
 
-    /** Returns the end of the Object when the call started, e.g., for logging. */
-    public static Pointer getObjectEnd(Object obj) {
-        return getObjectEndInline(obj);
+    @Uninterruptible(reason = "Prevent a GC moving the object or interfering with its identity hash state.", callerMustBe = true)
+    public static UnsignedWord getSizeFromObject(Object obj) {
+        boolean withOptionalIdHashField = !ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && checkOptionalIdentityHashField(obj);
+        return getSizeFromObjectInline(obj, withOptionalIdHashField);
+    }
+
+    public static UnsignedWord getSizeFromObjectAddOptionalIdHashField(Object obj) {
+        return getSizeFromObjectInline(obj, true);
+    }
+
+    /**
+     * Returns the size of the object in the instant of the call, which can have already become
+     * stale after returning. This can be useful for diagnostic output.
+     */
+    @Uninterruptible(reason = "Caller is aware the value can be stale, but required by callee.")
+    public static UnsignedWord getMomentarySizeFromObject(Object obj) {
+        return getSizeFromObject(obj);
+    }
+
+    public static UnsignedWord getSizeFromObjectInGC(Object obj) {
+        return getSizeFromObjectInlineInGC(obj);
     }
 
     @AlwaysInline("GC performance")
-    public static Pointer getObjectEndInline(Object obj) {
-        final Pointer objStart = Word.objectToUntrackedPointer(obj);
-        final UnsignedWord objSize = getSizeFromObjectInline(obj);
-        return objStart.add(objSize);
+    public static UnsignedWord getSizeFromObjectInlineInGC(Object obj) {
+        return getSizeFromObjectInlineInGC(obj, false);
+    }
+
+    @AlwaysInline("GC performance")
+    public static UnsignedWord getSizeFromObjectInlineInGC(Object obj, boolean addOptionalIdHashField) {
+        boolean withOptionalIdHashField = addOptionalIdHashField ||
+                        (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && checkOptionalIdentityHashField(obj));
+        return getSizeFromObjectInline(obj, withOptionalIdHashField);
+    }
+
+    @AlwaysInline("Actual inlining decided by callers.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static UnsignedWord getSizeFromObjectInline(Object obj, boolean withOptionalIdHashField) {
+        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        int encoding = hub.getLayoutEncoding();
+        if (isArrayLike(encoding)) {
+            return getArraySize(encoding, ArrayLengthNode.arrayLength(obj), withOptionalIdHashField);
+        } else {
+            return getPureInstanceSize(hub, withOptionalIdHashField);
+        }
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean checkOptionalIdentityHashField(Object obj) {
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word header = oh.readHeaderFromPointer(Word.objectToUntrackedPointer(obj));
+        return oh.hasOptionalIdentityHashField(header);
+    }
+
+    public static Pointer getObjectEndInGC(Object obj) {
+        return getObjectEndInlineInGC(obj);
+    }
+
+    @AlwaysInline("GC performance")
+    public static Pointer getObjectEndInlineInGC(Object obj) {
+        UnsignedWord size = getSizeFromObjectInlineInGC(obj, false);
+        return Word.objectToUntrackedPointer(obj).add(size);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static Pointer getImageHeapObjectEnd(Object obj) {
+        // Image heap objects never move and always have an identity hash code field.
+        UnsignedWord size = getSizeFromObjectInline(obj, true);
+        return Word.objectToUntrackedPointer(obj).add(size);
     }
 
     public static boolean isArray(Object obj) {
@@ -295,10 +390,5 @@ public class LayoutEncoding {
     public static boolean isArrayLike(Object obj) {
         final int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         return isArrayLike(encoding);
-    }
-
-    @Fold
-    protected static int getAlignmentMask() {
-        return ImageSingletons.lookup(ObjectLayout.class).getAlignment() - 1;
     }
 }

@@ -85,7 +85,7 @@ final class AlignedChunkRememberedSet {
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer startOffset = Word.objectToUntrackedPointer(obj).subtract(objectsStart);
-        Pointer endOffset = LayoutEncoding.getObjectEnd(obj).subtract(objectsStart);
+        Pointer endOffset = LayoutEncoding.getObjectEndInGC(obj).subtract(objectsStart);
         FirstObjectTable.setTableForObject(fotStart, startOffset, endOffset);
         ObjectHeaderImpl.setRememberedSetBit(obj);
     }
@@ -101,7 +101,7 @@ final class AlignedChunkRememberedSet {
         while (offset.belowThan(top)) {
             Object obj = offset.toObject();
             enableRememberedSetForObject(chunk, obj);
-            offset = offset.add(LayoutEncoding.getSizeFromObject(obj));
+            offset = offset.add(LayoutEncoding.getSizeFromObjectInGC(obj));
         }
     }
 
@@ -145,7 +145,7 @@ final class AlignedChunkRememberedSet {
                 while (ptr.belowThan(walkLimit)) {
                     Object obj = ptr.toObject();
                     visitor.visitObjectInline(obj);
-                    ptr = LayoutEncoding.getObjectEndInline(obj);
+                    ptr = LayoutEncoding.getObjectEndInlineInGC(obj);
                 }
             }
         }

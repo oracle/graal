@@ -64,10 +64,10 @@ jobs:
               GATE_TAGS: "build,bootstraplite"
               PRIMARY: "compiler"
           # /espresso
-          # - env:
-          #     JDK_VERSION: "17" # espresso does not support JDK20 yet
-          #     GATE_TAGS: "style,fullbuild"
-          #     PRIMARY: "espresso"
+          - env:
+              JDK_VERSION: "20"
+              GATE_TAGS: "style,fullbuild"
+              PRIMARY: "espresso"
           # /substratevm
           - env:
               JDK_VERSION: "20"

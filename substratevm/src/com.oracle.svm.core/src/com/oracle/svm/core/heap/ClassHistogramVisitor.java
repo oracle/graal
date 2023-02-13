@@ -47,7 +47,7 @@ public class ClassHistogramVisitor implements ObjectVisitor {
             return false;
         }
         entry.instanceCount++;
-        entry.instanceSpace += LayoutEncoding.getSizeFromObject(o).rawValue();
+        entry.instanceSpace += LayoutEncoding.getMomentarySizeFromObject(o).rawValue();
         return true;
     }
 

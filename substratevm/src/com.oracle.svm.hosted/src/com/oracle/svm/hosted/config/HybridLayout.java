@@ -95,8 +95,12 @@ public class HybridLayout<T> {
         return getArrayBaseOffset() + ((long) index) * layout.sizeInBytes(getArrayElementStorageKind());
     }
 
-    public long getTotalSize(int length) {
-        return layout.alignUp(getArrayElementOffset(length));
+    public long getTotalSize(int length, boolean withOptionalIdHashField) {
+        return layout.computeArrayTotalSize(getArrayElementOffset(length), withOptionalIdHashField);
+    }
+
+    public long getOptionalIdentityHashOffset(int length) {
+        return layout.getArrayOptionalIdentityHashOffset(getArrayElementOffset(length));
     }
 
     public HostedField getArrayField() {

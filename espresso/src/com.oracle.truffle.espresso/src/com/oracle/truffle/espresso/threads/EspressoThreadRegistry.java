@@ -49,6 +49,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
     private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Object activeThreadLock = new Object() {
     };
+    private final AtomicLong nextThreadId = new AtomicLong(2);
 
     public EspressoThreadRegistry(EspressoContext context) {
         super(context);
@@ -97,7 +98,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
 
     private void registerMainThread(Thread thread, StaticObject guest) {
         synchronized (activeThreadLock) {
-            mainThreadId = thread.getId();
+            mainThreadId = getThreadId(thread);
             guestMainThread = guest;
         }
         activeThreads.add(guest);
@@ -124,7 +125,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
                 synchronized (activeThreadLock) {
                     if (finalizerThreadId == -1) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        finalizerThreadId = host.getId();
+                        finalizerThreadId = getThreadId(host);
                         guestFinalizerThread = guest;
                         return;
                     }
@@ -136,14 +137,14 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
                 synchronized (activeThreadLock) {
                     if (referenceHandlerThreadId == -1) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        referenceHandlerThreadId = host.getId();
+                        referenceHandlerThreadId = getThreadId(host);
                         guestReferenceHandlerThread = guest;
                         return;
                     }
                 }
             }
         }
-        pushThread(Math.toIntExact(host.getId()), guest);
+        pushThread(Math.toIntExact(getThreadId(host)), guest);
         if (host == Thread.currentThread()) {
             getContext().registerCurrentThread(guest);
         }
@@ -166,7 +167,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             return String.format("unregisterThread([GUEST:%s, %d])", guestName, guestId);
         });
         Thread hostThread = getThreadAccess().getHost(thread);
-        int id = Math.toIntExact(hostThread.getId());
+        int id = Math.toIntExact(getThreadId(hostThread));
         synchronized (activeThreadLock) {
             if (id == mainThreadId) {
                 mainThreadId = -1;
@@ -215,7 +216,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
      * @return The guest thread corresponding to the given thread.
      */
     public StaticObject getGuestThreadFromHost(Thread host) {
-        int id = (int) host.getId();
+        int id = Math.toIntExact(getThreadId(host));
         if (id == mainThreadId) {
             return guestMainThread;
         }
@@ -289,7 +290,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             logger.fine(() -> {
                 String guestName = getThreadAccess().getThreadName(guestThread);
                 long guestId = getThreadAccess().getThreadId(guestThread);
-                return String.format("createGuestThreadFromHost: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
+                return String.format("createGuestThreadFromHost: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), getThreadId(hostThread), guestName, guestId);
             });
 
             return guestThread;
@@ -327,7 +328,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         logger.fine(() -> {
             String guestName = getThreadAccess().getThreadName(mainThread);
             long guestId = getThreadAccess().getThreadId(mainThread);
-            return String.format("createMainThread: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
+            return String.format("createMainThread: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), getThreadId(hostThread), guestName, guestId);
         });
     }
 
@@ -382,7 +383,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
                 StaticObject guestThread = (StaticObject) oldThreads[i];
                 if (getThreadAccess().isAlive(guestThread)) {
                     Thread hostThread = getThreadAccess().getHost(guestThread);
-                    int hostID = (int) hostThread.getId();
+                    int hostID = Math.toIntExact(getThreadId(hostThread));
                     if (hostID < minID) {
                         minID = hostID;
                     }
@@ -408,7 +409,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         int newOffset = minID - 1;
         newThreads[0] = newOffset;
         for (StaticObject guestThread : toRelocate) {
-            int hostId = (int) getThreadAccess().getHost(guestThread).getId();
+            int hostId = Math.toIntExact(getThreadId(getThreadAccess().getHost(guestThread)));
             newThreads[hostId - newOffset] = guestThread;
         }
         newThreads[id - newOffset] = self;
@@ -418,5 +419,15 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
     // Thread management helpers
     private static int getThreadIndex(int id, Object[] threads) {
         return id - (int) threads[0];
+    }
+
+    @SuppressWarnings("deprecation")
+    public static long getThreadId(Thread thread) {
+        // TODO use thread.threadId() when source compliance is >=19
+        return thread.getId();
+    }
+
+    public long nextThreadId() {
+        return nextThreadId.getAndIncrement();
     }
 }

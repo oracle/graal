@@ -1769,7 +1769,7 @@ public class NativeImageGenerator {
             } else if (LayoutEncoding.isAbstract(le)) {
                 System.out.print("abstract  ");
             } else if (LayoutEncoding.isPureInstance(le)) {
-                System.out.format("instance size %d  ", LayoutEncoding.getPureInstanceSize(le).rawValue());
+                System.out.format("instance size %d  ", LayoutEncoding.getPureInstanceAllocationSize(le).rawValue());
             } else if (LayoutEncoding.isArrayLike(le)) {
                 String arrayType = LayoutEncoding.isHybrid(le) ? "hybrid" : "array";
                 String elements = LayoutEncoding.isArrayLikeWithPrimitiveElements(le) ? "primitives" : "objects";

@@ -150,7 +150,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
         } else if (displacement <= 0) {
             /* Trying to read before the object, or the hub. No need to look into the object. */
             return null;
-        } else if (WordFactory.unsigned(displacement + bits / 8).aboveThan(LayoutEncoding.getSizeFromObject(baseObject))) {
+        } else if (WordFactory.unsigned(displacement + bits / 8).aboveThan(LayoutEncoding.getMomentarySizeFromObject(baseObject))) {
             /* Trying to read after the end of the object. */
             return null;
         }

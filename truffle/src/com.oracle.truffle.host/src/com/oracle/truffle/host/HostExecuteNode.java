@@ -43,6 +43,7 @@ package com.oracle.truffle.host;
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Type;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -396,8 +397,8 @@ abstract class HostExecuteNode extends Node {
             TypeCheckNode argType;
             if (arg == null) {
                 argType = NullCheckNode.INSTANCE;
-            } else if (multiple && HostToTypeNode.isPrimitiveTarget(targetType)) {
-                argType = createPrimitiveTargetCheck(applicable, selected, arg, targetType, i, priority, varArgs);
+            } else if (multiple && HostToTypeNode.isPrimitiveOrBigIntegerTarget(context, targetType)) {
+                argType = createPrimitiveTargetCheck(applicable, selected, arg, targetType, i, priority, varArgs, context);
             } else if (arg instanceof HostObject) {
                 argType = new JavaObjectType(((HostObject) arg).getObjectClass());
             } else {
@@ -418,7 +419,8 @@ abstract class HostExecuteNode extends Node {
         assert checkArgTypes(args, cachedArgTypes, InteropLibrary.getFactory().getUncached(), context, false) : Arrays.toString(cachedArgTypes);
     }
 
-    private static TypeCheckNode createPrimitiveTargetCheck(List<SingleMethod> applicable, SingleMethod selected, Object arg, Class<?> targetType, int parameterIndex, int priority, boolean varArgs) {
+    private static TypeCheckNode createPrimitiveTargetCheck(List<SingleMethod> applicable, SingleMethod selected, Object arg, Class<?> targetType, int parameterIndex, int priority, boolean varArgs,
+                    HostContext context) {
         Class<?> currentTargetType = targetType;
 
         Collection<Class<?>> otherPossibleTypes = new ArrayList<>();
@@ -442,7 +444,7 @@ abstract class HostExecuteNode extends Node {
              * param type, we must not guard against the other param type, and we do not have to as
              * this overload was better fit regardless.
              */
-            if ((HostToTypeNode.isPrimitiveTarget(paramType) || HostToTypeNode.isPrimitiveTarget(targetType)) &&
+            if ((HostToTypeNode.isPrimitiveOrBigIntegerTarget(context, paramType) || HostToTypeNode.isPrimitiveOrBigIntegerTarget(context, targetType)) &&
                             isAssignableFrom(targetType, paramType) && !isSubtypeOf(arg, paramType)) {
                 otherPossibleTypes.add(paramType);
             }
@@ -792,6 +794,9 @@ abstract class HostExecuteNode extends Node {
             return true;
         } else if (toAsPrimitive == null && fromAsPrimitive != null && toType.isAssignableFrom(primitiveTypeToBoxedType(fromAsPrimitive))) {
             // primitive|boxed <: Number et al
+            return true;
+        } else if (toAsPrimitive == null && fromAsPrimitive != null && toType == BigInteger.class && Number.class.isAssignableFrom(primitiveTypeToBoxedType(fromAsPrimitive))) {
+            // primitive|boxed <: BigInteger
             return true;
         }
         return false;

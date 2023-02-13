@@ -236,7 +236,7 @@ public final class ThreadLocalAllocation {
             AlignedHeader newTlab = HeapImpl.getChunkProvider().produceAlignedChunk();
             return allocateInstanceInNewTlab(hub, newTlab);
         } finally {
-            ObjectAllocationInNewTLABEvent.emit(startTicks, hub, LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding()), HeapParameters.getAlignedHeapChunkSize());
+            ObjectAllocationInNewTLABEvent.emit(startTicks, hub, LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()), HeapParameters.getAlignedHeapChunkSize());
             DeoptTester.enableDeoptTesting();
         }
     }
@@ -268,7 +268,7 @@ public final class ThreadLocalAllocation {
             }
 
             DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
-            UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
+            UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hub.getLayoutEncoding(), length);
             /*
              * Check if the array is too big. This is an optimistic check because the heap probably
              * has other objects in it, and the next collection could throw an OutOfMemoryError if
@@ -322,7 +322,7 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private static Object allocateInstanceInNewTlab(DynamicHub hub, AlignedHeader newTlabChunk) {
-        UnsignedWord size = LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding());
+        UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
         Pointer memory = allocateRawMemoryInNewTlab(size, newTlabChunk);
         return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), false, FillContent.WITH_ZEROES, true);
     }

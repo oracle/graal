@@ -92,6 +92,7 @@ public final class FinalizationSupport {
         return NEW_ESPRESSO_FINAL_REFERENCE != null;
     }
 
+    @SuppressWarnings("deprecation")
     private static void setAccessible(AccessibleObject target, boolean value) throws Throwable {
         if (EspressoOptions.UnsafeOverride) {
             /*
