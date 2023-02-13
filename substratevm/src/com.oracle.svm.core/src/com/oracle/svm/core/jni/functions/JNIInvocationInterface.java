@@ -266,7 +266,7 @@ public final class JNIInvocationInterface {
      */
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveDetachThreadEpilogue.class)
-    static int DetachCurrentThread(JNIJavaVM vm) {
+    static int DetachCurrentThread(@SuppressWarnings("unused") JNIJavaVM vm) {
         int result = JNIErrors.JNI_OK();
         // JNI specification requires releasing all owned monitors
         Support.releaseCurrentThreadOwnedMonitors();
