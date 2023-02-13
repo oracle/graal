@@ -386,7 +386,8 @@ class GDSRESTConnector {
                 try {
                     factory = new ProxyConnectionFactory(feedback, URI.create(baseURL).toURL());
                 } catch (MalformedURLException ex) {
-                    // Should not reach here since the creation of the URL is tested in the constructor
+                    // Should not reach here since the creation of the URL is tested in the
+                    // constructor
                     throw new IllegalArgumentException(ex);
                 }
             }
