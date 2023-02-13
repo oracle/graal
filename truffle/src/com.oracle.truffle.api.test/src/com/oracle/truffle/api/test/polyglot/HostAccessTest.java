@@ -2396,6 +2396,45 @@ public class HostAccessTest extends AbstractHostAccessTest {
         }
     }
 
+    public final class WorkWithArray {
+        WorkWithArray() {
+        }
+
+        public List<String> stringsAsList() {
+            return Arrays.asList("Hello", "World");
+        }
+
+        public String[] stringsAsArray() {
+            return Arrays.asList("Hello", "World").toArray(String[]::new);
+        }
+
+        public String concatenate(List<Value> values) {
+            StringBuilder sb = new StringBuilder();
+            for (Value val : values) {
+                sb.append(val.toString());
+            }
+            return sb.toString();
+        }
+    }
+
+    private void checkListOfValue(String factoryName) throws Exception {
+        setupEnv(HostAccess.newBuilder(HostAccess.ALL).build());
+        Value workWithArray = context.asValue(new WorkWithArray());
+        Value strings = workWithArray.invokeMember(factoryName);
+        Value text = workWithArray.invokeMember("concatenate", strings);
+        assertEquals("Converted to string", "HelloWorld", text.asString());
+    }
+
+    @Test
+    public void testListOfValueAndRawList() throws Exception {
+        checkListOfValue("stringsAsList");
+    }
+
+    @Test
+    public void testListOfValueAndRawArray() throws Exception {
+        checkListOfValue("stringsAsArray");
+    }
+
     public void testMutableObjectMappingDisabled(MutableTargetMapping mapping) {
         MutableTargetMapping[] allowed = new MutableTargetMapping[MutableTargetMapping.values().length - 1];
         int i = 0;
