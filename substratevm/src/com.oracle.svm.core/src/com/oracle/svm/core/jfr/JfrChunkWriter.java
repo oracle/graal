@@ -587,7 +587,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             }
             write(buffer);
             JfrBufferAccess.reinitialize(buffer);
-            JfrBufferAccess.release(buffer);
+            JfrBufferAccess.unlock(buffer);
         }
     }
 

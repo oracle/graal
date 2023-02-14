@@ -37,7 +37,7 @@ public class JfrMonitorInflationCauseSerializer implements JfrConstantPool {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
+    public int write(JfrChunkWriter writer, boolean flush) {
         writer.writeCompressedLong(JfrType.MonitorInflationCause.getId());
 
         MonitorInflationCause[] inflationCauses = MonitorInflationCause.values();

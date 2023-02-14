@@ -37,8 +37,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.word.PointerBase;
-import com.oracle.svm.core.thread.SpinLockUtils;
-
+import com.oracle.svm.core.thread.JavaSpinLockUtils;
 public class JfrBufferNodeLinkedList {
     @RawStructure
     public interface JfrBufferNode extends PointerBase {
@@ -65,7 +64,6 @@ public class JfrBufferNodeLinkedList {
 
         @RawField
         void setAlive(boolean alive);
-
     }
 
     private static final long LOCK_OFFSET;
@@ -157,12 +155,12 @@ public class JfrBufferNodeLinkedList {
 
     @Uninterruptible(reason = "Locking with no transition and list must not be acquired entering epoch change.", callerMustBe = true)
     private void acquireList() {
-        SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
+        JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
     }
 
     @Uninterruptible(reason = "Locking with no transition and list must not be acquired entering epoch change.", callerMustBe = true)
     public void releaseList() {
-        SpinLockUtils.unlock(this, LOCK_OFFSET);
+        JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

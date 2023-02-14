@@ -134,24 +134,24 @@ public class JfrThreadLocal implements ThreadListener {
     public static void stopRecording(IsolateThread isolateThread) {
         /* Flush event buffers. From this point onwards, no further JFR events may be emitted. */
 
-        if (flushBuffers) {
-            JfrBufferNode jbn = javaBufferNode.get(isolateThread);
-            JfrBufferNode nbn = nativeBufferNode.get(isolateThread);
 
-            if (jbn.isNonNull()) {
-                JfrBuffer jb = jbn.getValue();
-                assert jb.isNonNull() && jbn.getAlive();
-                flush(jb, WordFactory.unsigned(0), 0);
-                jbn.setAlive(false);
+        JfrBufferNode jbn = javaBufferNode.get(isolateThread);
+        JfrBufferNode nbn = nativeBufferNode.get(isolateThread);
 
-            }
-            if (nbn.isNonNull()) {
-                JfrBuffer nb = nbn.getValue();
-                assert nb.isNonNull() && nbn.getAlive();
-                flush(nb, WordFactory.unsigned(0), 0);
-                nbn.setAlive(false);
-            }
+        if (jbn.isNonNull()) {
+            JfrBuffer jb = jbn.getValue();
+            assert jb.isNonNull() && jbn.getAlive();
+            flush(jb, WordFactory.unsigned(0), 0);
+            jbn.setAlive(false);
+
         }
+        if (nbn.isNonNull()) {
+            JfrBuffer nb = nbn.getValue();
+            assert nb.isNonNull() && nbn.getAlive();
+            flush(nb, WordFactory.unsigned(0), 0);
+            nbn.setAlive(false);
+        }
+
 
         /* Clear event-related thread-locals. */
         dataLost.set(isolateThread, WordFactory.unsigned(0));
@@ -288,7 +288,7 @@ public class JfrThreadLocal implements ThreadListener {
             }
             return true;
         } finally {
-            JfrBufferAccess.release(threadLocalBuffer);
+            JfrBufferAccess.unlock(threadLocalBuffer);
         }
     }
 
@@ -322,7 +322,7 @@ public class JfrThreadLocal implements ThreadListener {
 
             return WordFactory.nullPointer();
         } finally {
-            JfrBufferAccess.release(threadLocalBuffer);
+            JfrBufferAccess.unlock(threadLocalBuffer);
         }
     }
 

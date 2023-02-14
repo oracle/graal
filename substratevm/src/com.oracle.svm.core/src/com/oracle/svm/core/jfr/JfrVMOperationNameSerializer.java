@@ -35,7 +35,7 @@ public class JfrVMOperationNameSerializer implements JfrConstantPool {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
+    public int write(JfrChunkWriter writer, boolean flush) {
         String[] vmOperationNames = VMOperationInfos.getNames();
         assert vmOperationNames.length > 0;
         writer.writeCompressedLong(JfrType.VMOperation.getId());

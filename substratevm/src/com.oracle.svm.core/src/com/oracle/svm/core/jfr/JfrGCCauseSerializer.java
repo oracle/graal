@@ -35,7 +35,7 @@ public class JfrGCCauseSerializer implements JfrConstantPool {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
+    public int write(JfrChunkWriter writer, boolean flush) {
         // GCCauses has null entries
         GCCause[] causes = GCCause.getGCCauses();
         int nonNullItems = 0;
