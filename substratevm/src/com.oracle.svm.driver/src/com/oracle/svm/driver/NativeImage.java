@@ -1136,10 +1136,12 @@ public class NativeImage {
                 imageNamePathParent = imagePath.resolve(imageNamePathParent);
             }
             if (!Files.isDirectory(imageNamePathParent)) {
-                throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed.");
+                throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed. " +
+                                "Create the missing directory if want the image to be written to that location.");
             }
             if (!Files.isWritable(imageNamePathParent)) {
-                throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible.");
+                throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible. " +
+                                "Ensure the directory has write access or specify image path with write access.");
             }
             imagePath = imageNamePathParent;
             /* Update arguments passed to builder */
