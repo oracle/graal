@@ -23,7 +23,6 @@ import com.oracle.truffle.nfi.backend.panama.PanamaClosureFactory.CallClosureNod
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 import java.lang.foreign.MemoryAddress;
-import java.lang.foreign.MemorySession;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -66,7 +65,7 @@ final class PanamaClosure implements TruffleObject {
             CompilerAsserts.neverPartOfCompilation();
             PanamaNFILanguage lang = PanamaNFILanguage.get(null);
             PanamaType retType = signatureInfo.getRetType();
-            // TODO
+            // TODO implement other return types
             if (retType.type == NativeSimpleType.STRING) {
                 return StringRetClosureRootNode.createInfo(lang, signatureInfo, executable);
             } else if (retType.type == NativeSimpleType.VOID) {
@@ -142,7 +141,7 @@ final class PanamaClosure implements TruffleObject {
         }
     }
 
-    @NodeChild(value = "receiver", type = ClosureArgumentNode.class) // TODO remove and get from frame
+    @NodeChild(value = "receiver", type = ClosureArgumentNode.class)
     abstract static class CallClosureNode extends Node {
 
         protected abstract Object execute(VirtualFrame frame);
@@ -179,6 +178,7 @@ final class PanamaClosure implements TruffleObject {
 
         @Child CallClosureNode callClosure;
         @Child private InteropLibrary interopLibrary;
+        @Child ArgumentNode toJavaRet;
 
         static MonomorphicClosureInfo createInfo(PanamaNFILanguage lang, CachedSignatureInfo signatureInfo, Object receiver) {
             ClosureArgumentNode recvNode = new ConstArgumentNode(receiver);
@@ -195,6 +195,7 @@ final class PanamaClosure implements TruffleObject {
         private StringRetClosureRootNode(PanamaNFILanguage lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
             super(lang);
             callClosure = CallClosureNodeGen.create(signature, receiver);
+            toJavaRet = signature.retType.createArgumentNode();
             interopLibrary = InteropLibrary.getFactory().createDispatched(4);
         }
 
@@ -204,15 +205,17 @@ final class PanamaClosure implements TruffleObject {
             if (interopLibrary.isNull(ret)) {
                 return null;
             }
-            return MemorySession.global().allocateUtf8String((String) ret).address();
+            try {
+                return toJavaRet.execute(ret);
+            } catch (UnsupportedTypeException e) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
         }
     }
-
 
     private static final class VoidRetClosureRootNode extends PanamaClosureRootNode {
 
         @Child CallClosureNode callClosure;
-        @Child private InteropLibrary interopLibrary;
 
         static MonomorphicClosureInfo createInfo(PanamaNFILanguage lang, CachedSignatureInfo signatureInfo, Object receiver) {
             ClosureArgumentNode recvNode = new ConstArgumentNode(receiver);
@@ -229,7 +232,6 @@ final class PanamaClosure implements TruffleObject {
         private VoidRetClosureRootNode(PanamaNFILanguage lang, CachedSignatureInfo signature, ClosureArgumentNode receiver) {
             super(lang);
             callClosure = CallClosureNodeGen.create(signature, receiver);
-            interopLibrary = InteropLibrary.getFactory().createDispatched(4);
         }
 
         @Override

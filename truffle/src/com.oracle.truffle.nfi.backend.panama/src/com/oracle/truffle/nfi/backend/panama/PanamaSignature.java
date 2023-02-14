@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -346,14 +345,10 @@ final class PanamaSignature {
             try {
                 Object result = (Object) downcallHandle.invokeExact(address, args);
                 if (result == null) {
-                    if (retType.type == NativeSimpleType.VOID) {
-                        return NativePointer.NULL; //TODO
-                    } else {
-                        return NativePointer.NULL;
-                    }
+                    return NativePointer.NULL;
                 } else if (retType.type == NativeSimpleType.STRING) {
-                    MemoryAddress test = (MemoryAddress) result;
-                    return new NativeString(test.toRawLongValue());
+                    long pointer = ((MemoryAddress) result).toRawLongValue();
+                    return new NativeString(pointer);
                 } else if (retType.type == NativeSimpleType.POINTER) {
                     return NativePointer.create((long) result);
                 } else {
