@@ -872,7 +872,9 @@ suite = {
     "com.oracle.truffle.llvm.libraries.bitcode.libcxx" : {
       "subDir" : "projects",
       "vpath" : True,
-      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/runtimes",
+      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>",
+      "cmakeSubdir" : "runtimes",
+      "symlinkSource" : True,
       "class" : "CMakeNinjaProject",
       "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
       # NinjaBuildTask uses only 1 job otherwise
