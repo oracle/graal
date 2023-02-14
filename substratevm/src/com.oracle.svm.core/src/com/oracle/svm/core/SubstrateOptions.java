@@ -664,10 +664,10 @@ public class SubstrateOptions {
 
     private static void validateStripDebugInfo(HostedOptionKey<Boolean> optionKey) {
         if (OS.getCurrent() == OS.DARWIN && optionKey.getValue()) {
-            System.err.printf("Warning: Using %s not supported on macOS%n", SubstrateOptionsParser.commandArgument(SubstrateOptions.StripDebugInfo, "+"));
+            System.out.printf("Warning: Using %s not supported on macOS%n", SubstrateOptionsParser.commandArgument(SubstrateOptions.StripDebugInfo, "+"));
         }
         if (OS.getCurrent() == OS.WINDOWS && !optionKey.getValue()) {
-            System.err.printf("Warning: Using %s not supported on Windows: debug info is always generated in a separate file%n", SubstrateOptionsParser.commandArgument(optionKey, "-"));
+            System.out.printf("Warning: Using %s not supported on Windows: debug info is always generated in a separate file%n", SubstrateOptionsParser.commandArgument(optionKey, "-"));
         }
     }
 
