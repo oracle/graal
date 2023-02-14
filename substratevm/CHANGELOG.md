@@ -17,7 +17,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-42964) Deprecate `--enable-monitoring` without an argument. The option will no longer default to `all` in a future release. Instead, please always explicitly specify the list of monitoring features to be enabled (for example, `--enable-monitoring=heapdump,jfr,jvmstat`").
 * (GR-19890) Native Image now sets up build environments for Windows users automatically. Running in an x64 Native Tools Command Prompt is no longer a requirement.
 * (GR-43410) Added support for the JFR event `ExecutionSample`.
-* (GR-44058) Red Hat added support for the JFR event `ObjectAllocationInNewTLAB`.
+* (GR-44058) (GR-44087) Red Hat added support for the JFR events `ObjectAllocationInNewTLAB` and `JavaMonitorInflate`.
 * (GR-42467) The search path for `System.loadLibrary()` by default includes the directory containing the native image.
 
 ## Version 22.3.0

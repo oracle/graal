@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +23,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.jfr;
 
-/**
- * Maps JFR types against their IDs in the JDK.
- */
-public enum JfrType {
-    Class("java.lang.Class"),
-    String("java.lang.String"),
-    Thread("java.lang.Thread"),
-    ThreadState("jdk.types.ThreadState"),
-    ThreadGroup("jdk.types.ThreadGroup"),
-    StackTrace("jdk.types.StackTrace"),
-    ClassLoader("jdk.types.ClassLoader"),
-    Method("jdk.types.Method"),
-    Symbol("jdk.types.Symbol"),
-    Module("jdk.types.Module"),
-    Package("jdk.types.Package"),
-    FrameType("jdk.types.FrameType"),
-    GCCause("jdk.types.GCCause"),
-    GCName("jdk.types.GCName"),
-    VMOperation("jdk.types.VMOperationType"),
-    MonitorInflationCause("jdk.types.InflateCause");
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    private final long id;
+import com.oracle.svm.core.monitor.MonitorInflationCause;
 
-    JfrType(String name) {
-        this.id = JfrMetadataTypeLibrary.lookupType(name);
+public class JfrMonitorInflationCauseSerializer implements JfrConstantPool {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrMonitorInflationCauseSerializer() {
     }
 
-    public long getId() {
-        return id;
+    @Override
+    public int write(JfrChunkWriter writer) {
+        writer.writeCompressedLong(JfrType.MonitorInflationCause.getId());
+
+        MonitorInflationCause[] inflationCauses = MonitorInflationCause.values();
+        writer.writeCompressedLong(inflationCauses.length);
+        for (int i = 0; i < inflationCauses.length; i++) {
+            writer.writeCompressedInt(i);
+            writer.writeString(inflationCauses[i].getText());
+        }
+
+        return NON_EMPTY;
     }
 }
