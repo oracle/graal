@@ -56,8 +56,6 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
-import java.lang.foreign.Linker;
-import java.lang.foreign.MemorySession;
 import java.lang.foreign.SymbolLookup;
 
 @ExportLibrary(NFIBackendLibrary.class)
@@ -93,7 +91,8 @@ final class PanamaNFIBackend implements NFIBackend {
 
         @TruffleBoundary
         private SymbolLookup doLoad() {
-            return SymbolLookup.libraryLookup(name, MemorySession.global() /* TODO */);
+            PanamaNFIContext ctx = PanamaNFIContext.get(this);
+            return SymbolLookup.libraryLookup(name, ctx.getMemorySession());
         }
 
         @Override
