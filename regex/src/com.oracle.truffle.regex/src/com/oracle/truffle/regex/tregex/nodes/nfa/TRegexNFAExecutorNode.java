@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -153,6 +154,8 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         while (true) {
             if (dfaGeneratorBailedOut) {
                 locals.incLoopCount(this);
+            } else {
+                CompilerAsserts.neverPartOfCompilation("NFA executor should have been replaced with DFA executor before compilation");
             }
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();

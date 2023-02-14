@@ -151,7 +151,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     @Override
     public boolean isTrivial() {
-        return !isSimpleCG() && !isGenericCG() && getNumberOfTransitions() < TRegexOptions.TRegexMaxTransitionsInTrivialExecutor;
+        return getNumberOfTransitions() < (isGenericCG() ? (TRegexOptions.TRegexMaxTransitionsInTrivialExecutor * 3) / 4 : TRegexOptions.TRegexMaxTransitionsInTrivialExecutor);
     }
 
     public boolean isBackward() {

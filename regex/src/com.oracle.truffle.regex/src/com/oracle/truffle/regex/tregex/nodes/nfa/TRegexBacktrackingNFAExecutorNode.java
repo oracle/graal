@@ -216,11 +216,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         return isFlagSet(FLAG_FORWARD);
     }
 
-    @Override
-    public boolean isTrivial() {
-        return false;
-    }
-
     /**
      * Should a backreference to an unmatched capture group succeed or fail?
      */

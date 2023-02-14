@@ -108,11 +108,6 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexBacktracker
     }
 
     @Override
-    public boolean isTrivial() {
-        return getNumberOfTransitions() < TRegexOptions.TRegexMaxTransitionsInTrivialExecutor;
-    }
-
-    @Override
     public boolean writesCaptureGroups() {
         return false;
     }

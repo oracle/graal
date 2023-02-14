@@ -48,6 +48,7 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 @GenerateWrapper
@@ -101,7 +102,9 @@ public abstract class TRegexExecutorBaseNode extends Node implements Instrumenta
 
     public abstract boolean isForward();
 
-    public abstract boolean isTrivial();
+    public boolean isTrivial() {
+        return getNumberOfTransitions() < TRegexOptions.TRegexMaxTransitionsInTrivialExecutor;
+    }
 
     /**
      * Returns {@code true} if this executor may write any new capture group boundaries.
