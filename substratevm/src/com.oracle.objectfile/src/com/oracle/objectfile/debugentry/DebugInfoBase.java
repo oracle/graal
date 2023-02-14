@@ -264,11 +264,13 @@ public abstract class DebugInfoBase {
         /* Reference alignment must be 8 bytes. */
         assert oopAlignment == 8;
 
-        cachePath = debugInfoProvider.getCachePath() != null ? debugInfoProvider.getCachePath().toString() : "";
-
-        /* Ensure we have a null string and the cache path in the string section. */
-        stringTable.uniqueDebugString("");
-        stringTable.uniqueDebugString(cachePath);
+        /* Ensure we have a null string and cachePath in the string section. */
+        String uniqueNullString = stringTable.uniqueDebugString("");
+        if (debugInfoProvider.getCachePath() != null) {
+            cachePath = stringTable.uniqueDebugString(debugInfoProvider.getCachePath().toString());
+        } else {
+            cachePath = uniqueNullString; // fall back to null string
+        }
 
         /* Create all the types. */
         debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
