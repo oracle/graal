@@ -349,7 +349,11 @@ public final class TruffleStackTrace extends Exception {
 
     private static void innerAddStackFrameInfo(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
         if (!LanguageAccessor.EXCEPTIONS.isException(t)) {
-            // capture as much information as possible for host and internal errors
+            /*
+             * Capture as much information as possible for internal errors. This branch should not
+             * be reached by host exceptions as they should have already been wrapped in a
+             * HostException in the guest-to-host call root node.
+             */
             fillIn(t);
             return;
         }
