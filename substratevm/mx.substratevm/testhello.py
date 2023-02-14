@@ -184,8 +184,8 @@ def test():
     # disable printing of address symbols
     execute("set print symbol off")
 
-    hub_ref_size = int(execute("printf \"%d\", sizeof('java.lang.Object'::__hub__)"))
-    fixed_idhash_field = (hub_ref_size > 4)
+    exec_string = execute("ptype _objhdr")
+    fixed_idhash_field = "int idHash;" in exec_string
 
     # Print DefaultGreeter and check the modifiers of its methods and fields
     exec_string = execute("ptype 'hello.Hello$DefaultGreeter'")
