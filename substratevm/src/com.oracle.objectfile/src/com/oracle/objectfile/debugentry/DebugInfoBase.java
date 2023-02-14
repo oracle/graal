@@ -107,32 +107,32 @@ public abstract class DebugInfoBase {
      * A table listing all known strings, some of which may be marked for insertion into the
      * debug_str section.
      */
-    private StringTable stringTable = new StringTable();
+    private final StringTable stringTable = new StringTable();
     /**
      * Index of all dirs in which files are found to reside either as part of substrate/compiler or
      * user code.
      */
-    private EconomicMap<Path, DirEntry> dirsIndex = EconomicMap.create();
+    private final EconomicMap<Path, DirEntry> dirsIndex = EconomicMap.create();
 
     /**
      * List of all types present in the native image including instance classes, array classes,
      * primitive types and the one-off Java header struct.
      */
-    private List<TypeEntry> types = new ArrayList<>();
+    private final List<TypeEntry> types = new ArrayList<>();
     /**
      * Index of already seen types keyed by the unique, associated, identifying ResolvedJavaType or,
      * in the single special case of the TypeEntry for the Java header structure, by key null.
      */
-    private Map<ResolvedJavaType, TypeEntry> typesIndex = new HashMap<>();
+    private final Map<ResolvedJavaType, TypeEntry> typesIndex = new HashMap<>();
     /**
      * List of all instance classes found in debug info. These classes do not necessarily have top
      * level or inline compiled methods. This list includes interfaces and enum types.
      */
-    private List<ClassEntry> instanceClasses = new ArrayList<>();
+    private final List<ClassEntry> instanceClasses = new ArrayList<>();
     /**
      * Index of already seen classes.
      */
-    private EconomicMap<ResolvedJavaType, ClassEntry> instanceClassesIndex = EconomicMap.create();
+    private final EconomicMap<ResolvedJavaType, ClassEntry> instanceClassesIndex = EconomicMap.create();
     /**
      * Handle on type entry for header structure.
      */
@@ -144,21 +144,21 @@ public abstract class DebugInfoBase {
     /**
      * List of of files which contain primary or secondary ranges.
      */
-    private List<FileEntry> files = new ArrayList<>();
+    private final List<FileEntry> files = new ArrayList<>();
     /**
      * Index of files which contain primary or secondary ranges keyed by path.
      */
-    private EconomicMap<Path, FileEntry> filesIndex = EconomicMap.create();
+    private final EconomicMap<Path, FileEntry> filesIndex = EconomicMap.create();
 
     /**
      * List of all loaders associated with classes included in the image.
      */
-    private List<LoaderEntry> loaders = new ArrayList<>();
+    private final List<LoaderEntry> loaders = new ArrayList<>();
 
     /**
      * Index of all loaders associated with classes included in the image.
      */
-    private EconomicMap<String, LoaderEntry> loaderIndex = EconomicMap.create();
+    private final EconomicMap<String, LoaderEntry> loaderIndex = EconomicMap.create();
 
     /**
      * Flag set to true if heap references are stored as addresses relative to a heap base register

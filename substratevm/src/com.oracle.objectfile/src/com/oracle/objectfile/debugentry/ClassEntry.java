@@ -59,7 +59,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Details of this class's interfaces.
      */
-    protected List<InterfaceClassEntry> interfaces;
+    protected final List<InterfaceClassEntry> interfaces = new ArrayList<>();
     /**
      * Details of the associated file.
      */
@@ -71,17 +71,17 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Details of methods located in this instance.
      */
-    protected List<MethodEntry> methods;
+    protected final List<MethodEntry> methods = new ArrayList<>();
     /**
      * An index of all currently known methods keyed by the unique, associated, identifying
      * ResolvedJavaMethod.
      */
-    private EconomicMap<ResolvedJavaMethod, MethodEntry> methodsIndex;
+    private final EconomicMap<ResolvedJavaMethod, MethodEntry> methodsIndex = EconomicMap.create();
     /**
      * A list recording details of all normal compiled methods included in this class sorted by
      * ascending address range. Note that the associated address ranges are disjoint and contiguous.
      */
-    private List<CompiledMethodEntry> normalCompiledEntries;
+    private final List<CompiledMethodEntry> normalCompiledEntries = new ArrayList<>();
     /**
      * A list recording details of all deopt fallback compiled methods included in this class sorted
      * by ascending address range. Note that the associated address ranges are disjoint, contiguous
@@ -92,39 +92,30 @@ public class ClassEntry extends StructureTypeEntry {
      * An index identifying ranges for compiled method which have already been encountered, whether
      * normal or deopt fallback methods.
      */
-    private EconomicMap<Range, CompiledMethodEntry> compiledMethodIndex;
+    private final EconomicMap<Range, CompiledMethodEntry> compiledMethodIndex = EconomicMap.create();
     /**
      * An index of all primary and secondary files referenced from this class's compilation unit.
      */
-    private EconomicMap<FileEntry, Integer> localFilesIndex;
+    private final EconomicMap<FileEntry, Integer> localFilesIndex = EconomicMap.create();
     /**
      * A list of the same files.
      */
-    private List<FileEntry> localFiles;
+    private final List<FileEntry> localFiles = new ArrayList<>();
     /**
      * An index of all primary and secondary dirs referenced from this class's compilation unit.
      */
-    private EconomicMap<DirEntry, Integer> localDirsIndex;
+    private final EconomicMap<DirEntry, Integer> localDirsIndex = EconomicMap.create();
     /**
      * A list of the same dirs.
      */
-    private List<DirEntry> localDirs;
+    private final List<DirEntry> localDirs = new ArrayList<>();
 
     public ClassEntry(String className, FileEntry fileEntry, int size) {
         super(className, size);
-        this.interfaces = new ArrayList<>();
         this.fileEntry = fileEntry;
         this.loader = null;
-        this.methods = new ArrayList<>();
-        this.methodsIndex = EconomicMap.create();
-        this.normalCompiledEntries = new ArrayList<>();
         // deopt methods list is created on demand
         this.deoptCompiledEntries = null;
-        this.compiledMethodIndex = EconomicMap.create();
-        this.localFiles = new ArrayList<>();
-        this.localFilesIndex = EconomicMap.create();
-        this.localDirs = new ArrayList<>();
-        this.localDirsIndex = EconomicMap.create();
         if (fileEntry != null) {
             localFiles.add(fileEntry);
             localFilesIndex.put(fileEntry, localFiles.size());
