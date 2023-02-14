@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,8 @@ import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.meta.Constant;
+
+import java.util.Set;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements ArithmeticOperation, ArithmeticLIRLowerable, Canonicalizable.Binary<ValueNode> {
@@ -132,6 +134,37 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         return getArithmeticOp().foldStamp(stampX, stampY);
     }
 
+    public static ValueNode binaryIntegerOp(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view, BinaryOp<?> op) {
+        if (IntegerStamp.OPS.getAdd().equals(op)) {
+            return add(graph, v1, v2, view);
+        } else if (IntegerStamp.OPS.getSub().equals(op)) {
+            return sub(graph, v1, v2, view);
+        } else if (IntegerStamp.OPS.getMul().equals(op)) {
+            return mul(graph, v1, v2, view);
+        } else if (IntegerStamp.OPS.getRem().equals(op)) {
+            return rem(graph, v1, v2, view);
+        } else if (IntegerStamp.OPS.getAnd().equals(op)) {
+            return and(graph, v1, v2, view);
+        } else if (IntegerStamp.OPS.getOr().equals(op)) {
+            return or(graph, v1, v2, view);
+        } else if (IntegerStamp.OPS.getXor().equals(op)) {
+            return xor(graph, v1, v2, view);
+        } else if (IntegerStamp.OPS.getMax().equals(op)) {
+            return max(graph, v1, v2, view);
+        } else if (IntegerStamp.OPS.getMin().equals(op)) {
+            return min(graph, v1, v2, view);
+        } else if (IntegerStamp.OPS.getUMax().equals(op)) {
+            return umax(graph, v1, v2, view);
+        } else if (IntegerStamp.OPS.getUMin().equals(op)) {
+            return umin(graph, v1, v2, view);
+        } else if (Set.of(IntegerStamp.OPS.getBinaryOps()).contains(op)) {
+            GraalError.unimplemented(String.format("creating %s via BinaryArithmeticNode#binaryIntegerOp is not implemented yet", op));
+        } else {
+            GraalError.shouldNotReachHere(String.format("%s is not a binary operation!", op));
+        }
+        return null;
+    }
+
     public static ValueNode add(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
         return graph.addOrUniqueWithInputs(AddNode.create(v1, v2, view));
     }
@@ -142,6 +175,18 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
 
     public static ValueNode add(ValueNode v1, ValueNode v2) {
         return add(v1, v2, NodeView.DEFAULT);
+    }
+
+    public static ValueNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(SubNode.create(v1, v2, view));
+    }
+
+    public static ValueNode sub(ValueNode v1, ValueNode v2, NodeView view) {
+        return SubNode.create(v1, v2, view);
+    }
+
+    public static ValueNode sub(ValueNode v1, ValueNode v2) {
+        return sub(v1, v2, NodeView.DEFAULT);
     }
 
     public static ValueNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
@@ -156,16 +201,136 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         return mul(v1, v2, NodeView.DEFAULT);
     }
 
-    public static ValueNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
-        return graph.addOrUniqueWithInputs(SubNode.create(v1, v2, view));
+    public static ValueNode rem(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(RemNode.create(v1, v2, view));
     }
 
-    public static ValueNode sub(ValueNode v1, ValueNode v2, NodeView view) {
-        return SubNode.create(v1, v2, view);
+    public static ValueNode rem(ValueNode v1, ValueNode v2, NodeView view) {
+        return RemNode.create(v1, v2, view);
     }
 
-    public static ValueNode sub(ValueNode v1, ValueNode v2) {
-        return sub(v1, v2, NodeView.DEFAULT);
+    public static ValueNode rem(ValueNode v1, ValueNode v2) {
+        return rem(v1, v2, NodeView.DEFAULT);
+    }
+
+    public static ValueNode and(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(AndNode.create(v1, v2, view));
+    }
+
+    public static ValueNode and(ValueNode v1, ValueNode v2, NodeView view) {
+        return AndNode.create(v1, v2, view);
+    }
+
+    public static ValueNode and(ValueNode v1, ValueNode v2) {
+        return and(v1, v2, NodeView.DEFAULT);
+    }
+
+    public static ValueNode or(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(OrNode.create(v1, v2, view));
+    }
+
+    public static ValueNode or(ValueNode v1, ValueNode v2, NodeView view) {
+        return OrNode.create(v1, v2, view);
+    }
+
+    public static ValueNode or(ValueNode v1, ValueNode v2) {
+        return or(v1, v2, NodeView.DEFAULT);
+    }
+
+    public static ValueNode xor(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(XorNode.create(v1, v2, view));
+    }
+
+    public static ValueNode xor(ValueNode v1, ValueNode v2, NodeView view) {
+        return XorNode.create(v1, v2, view);
+    }
+
+    public static ValueNode xor(ValueNode v1, ValueNode v2) {
+        return xor(v1, v2, NodeView.DEFAULT);
+    }
+
+    public static ValueNode max(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(MaxNode.create(v1, v2, view));
+    }
+
+    public static ValueNode max(ValueNode v1, ValueNode v2, NodeView view) {
+        return MaxNode.create(v1, v2, view);
+    }
+
+    public static ValueNode max(ValueNode v1, ValueNode v2) {
+        return max(v1, v2, NodeView.DEFAULT);
+    }
+
+    public static ValueNode min(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(MinNode.create(v1, v2, view));
+    }
+
+    public static ValueNode min(ValueNode v1, ValueNode v2, NodeView view) {
+        return MinNode.create(v1, v2, view);
+    }
+
+    public static ValueNode min(ValueNode v1, ValueNode v2) {
+        return min(v1, v2, NodeView.DEFAULT);
+    }
+
+    public static ValueNode umax(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(UnsignedMaxNode.create(v1, v2, view));
+    }
+
+    public static ValueNode umax(ValueNode v1, ValueNode v2, NodeView view) {
+        return UnsignedMaxNode.create(v1, v2, view);
+    }
+
+    public static ValueNode umax(ValueNode v1, ValueNode v2) {
+        return umax(v1, v2, NodeView.DEFAULT);
+    }
+
+    public static ValueNode umin(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(UnsignedMinNode.create(v1, v2, view));
+    }
+
+    public static ValueNode umin(ValueNode v1, ValueNode v2, NodeView view) {
+        return UnsignedMinNode.create(v1, v2, view);
+    }
+
+    public static ValueNode umin(ValueNode v1, ValueNode v2) {
+        return umin(v1, v2, NodeView.DEFAULT);
+    }
+
+    public static ValueNode shl(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(LeftShiftNode.create(v1, v2, view));
+    }
+
+    public static ValueNode shl(ValueNode v1, ValueNode v2, NodeView view) {
+        return LeftShiftNode.create(v1, v2, view);
+    }
+
+    public static ValueNode shl(ValueNode v1, ValueNode v2) {
+        return shl(v1, v2, NodeView.DEFAULT);
+    }
+
+    public static ValueNode shr(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(RightShiftNode.create(v1, v2, view));
+    }
+
+    public static ValueNode shr(ValueNode v1, ValueNode v2, NodeView view) {
+        return RightShiftNode.create(v1, v2, view);
+    }
+
+    public static ValueNode shr(ValueNode v1, ValueNode v2) {
+        return shr(v1, v2, NodeView.DEFAULT);
+    }
+
+    public static ValueNode ushr(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
+        return graph.addOrUniqueWithInputs(UnsignedRightShiftNode.create(v1, v2, view));
+    }
+
+    public static ValueNode ushr(ValueNode v1, ValueNode v2, NodeView view) {
+        return UnsignedRightShiftNode.create(v1, v2, view);
+    }
+
+    public static ValueNode ushr(ValueNode v1, ValueNode v2) {
+        return ushr(v1, v2, NodeView.DEFAULT);
     }
 
     public static ValueNode branchlessMin(ValueNode v1, ValueNode v2, NodeView view) {
