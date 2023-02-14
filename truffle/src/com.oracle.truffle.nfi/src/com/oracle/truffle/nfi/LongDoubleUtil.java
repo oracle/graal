@@ -607,7 +607,7 @@ final class LongDoubleUtil {
             }
         }
 
-        @ExportMessage static boolean fitsInBigInteger(@SuppressWarnings("unused") @CachedLibrary("this.buffer") InteropLibrary interop) {
+        @ExportMessage static boolean fitsInBigInteger(@SuppressWarnings("unused") FP128Buffer receiver) {
             return false;
         }
 
