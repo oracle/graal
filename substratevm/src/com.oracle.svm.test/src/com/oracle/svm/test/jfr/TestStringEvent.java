@@ -33,7 +33,7 @@ import com.oracle.svm.test.jfr.events.StringEvent;
 public class TestStringEvent extends JfrTest {
     @Override
     public String[] getTestedEvents() {
-        return new String[]{StringEvent.class.getName()};
+        return new String[]{"com.jfr.String"};
     }
 
     @Test
