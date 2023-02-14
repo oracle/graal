@@ -117,7 +117,7 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
          * the invoke location, otherwise just reuse the caller context.
          */
 
-        if (!PointstoOptions.HybridStaticContext.getValue(bb.getOptions())) {
+        if (!bb.analysisPolicy().useHybridStaticContext()) {
             return callerContext;
         }
 
