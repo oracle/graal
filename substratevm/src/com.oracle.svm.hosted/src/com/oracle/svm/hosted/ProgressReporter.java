@@ -701,15 +701,9 @@ public class ProgressReporter {
 
     private static Path reportImageBuildStatistics(String imageName, BigBang bb) {
         Consumer<PrintWriter> statsReporter = ImageSingletons.lookup(ImageBuildStatistics.class).getReporter();
-        String description = "image build statistics";
-        if (ImageBuildStatistics.Options.ImageBuildStatisticsFile.hasBeenSet(bb.getOptions())) {
-            final File file = new File(ImageBuildStatistics.Options.ImageBuildStatisticsFile.getValue(bb.getOptions()));
-            return com.oracle.graal.pointsto.reports.ReportUtils.report(description, file.getAbsoluteFile().toPath(), statsReporter, false);
-        } else {
-            String name = "image_build_statistics_" + com.oracle.graal.pointsto.reports.ReportUtils.extractImageName(imageName);
-            String path = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
-            return com.oracle.graal.pointsto.reports.ReportUtils.report(description, path, name, "json", statsReporter, false);
-        }
+        String name = "image_build_statistics_" + com.oracle.graal.pointsto.reports.ReportUtils.extractImageName(imageName);
+        String path = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
+        return com.oracle.graal.pointsto.reports.ReportUtils.report("image build statistics", path, name, "json", statsReporter, false);
     }
 
     private void printResourceStatistics() {

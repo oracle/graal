@@ -819,8 +819,8 @@ public class SubstrateOptions {
     public static class ReportingSupport {
         String reportsPath;
 
-        public ReportingSupport(String reportingPath) {
-            this.reportsPath = reportingPath;
+        public ReportingSupport(Path reportingPath) {
+            this.reportsPath = reportingPath.toString();
         }
     }
 
