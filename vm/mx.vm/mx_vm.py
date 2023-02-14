@@ -163,7 +163,7 @@ llvm_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm
 
 # pylint: disable=line-too-long
 ce_components_minimal = ['bgu', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'jss', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'tfl', 'tflm']
-ce_components = ce_components_minimal + ['bnative-image', 'bnative-image-configure', 'ni', 'nic', 'nil', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmnfi', 'svmsl']
+ce_components = ce_components_minimal + ['bnative-image-configure', 'ni', 'nic', 'nil', 'svm', 'svmnfi', 'svmsl']
 ce_win_complete_components = ['bgu', 'bnative-image-configure', 'bpolyglot', 'cmp', 'cov', 'dap', 'ejvm', 'gu', 'gvm', 'gwa', 'icu4j', 'ins', 'insight', 'insightheap', 'java', 'js', 'jss', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'ni', 'nic', 'nil', 'njs', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svmsl', 'tfl', 'tflm', 'vvm']
 ce_aarch64_complete_components = ce_win_complete_components + ['pyn', 'pynl', 'rby', 'rbyl', 'svml']
 ce_complete_components = ce_aarch64_complete_components + ['ellvm', 'R', 'bRMain']
@@ -172,10 +172,10 @@ ce_darwin_aarch64_complete_components.remove('gwa')  # GR-39032
 ce_darwin_aarch64_complete_components.remove('svml') # GR-34811 / GR-40147
 ce_ruby_components = ['cmp', 'cov', 'dap', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'rby', 'rbyl', 'rgx', 'sdk', 'tfl', 'tflm']
 ce_python_components = llvm_components + ['bgu', 'sllvmvm', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'jss', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'spolyglot', 'tfl', 'tflm']
-ce_fastr_components = ce_components + llvm_components + ['R', 'bRMain', 'llrn', 'llp', 'sllvmvm', 'llrc', 'llrl']
+ce_fastr_components = ce_components + llvm_components + ['sllvmvm', 'llp', 'bnative-image', 'snative-image-agent', 'R', 'bRMain', 'bnative-image-configure', 'llrc', 'snative-image-diagnostics-agent', 'llrn', 'llrl']
 ce_no_native_components = ['bgu', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'jss', 'lsp', 'nfi-libffi', 'nfi', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'tfl', 'tflm', 'libpoly', 'poly']
 
-mx_sdk_vm.register_vm_config('ce', ['bgu', 'bnative-image-configure', 'insight', 'insightheap', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'icu4j', 'ins', 'jss', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'ni', 'nic', 'nil', 'poly', 'bpolyglot', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'svm', 'svmnfi', 'svmsl', 'tfl', 'tflm'], _suite, env_file='ce-win')
+mx_sdk_vm.register_vm_config('ce', ce_components + llvm_components, _suite, env_file='ce-win')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-aarch64')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-darwin')
 mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-darwin-aarch64')
