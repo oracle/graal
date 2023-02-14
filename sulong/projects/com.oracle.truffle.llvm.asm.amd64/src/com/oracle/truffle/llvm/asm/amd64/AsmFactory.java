@@ -649,10 +649,6 @@ public class AsmFactory {
                 out = LLVMAMD64GetFlagNodeGen.create(getFlag(LLVMAMD64Flags.SF));
                 dstType = PrimitiveType.I8;
                 break;
-            case "fstcw":
-                out = LLVMSimpleLiteralNodeFactory.LLVMI16LiteralNodeGen.create((short) 0x037F);
-                dstType = PrimitiveType.I16;
-                break;
             case "rdrand":
                 switch (getPrimitiveType(dstType)) {
                     case I16:
@@ -773,7 +769,7 @@ public class AsmFactory {
             case "fstcw":
             case "fnstcw": {
                 assert getPrimitiveType(dstType) == PrimitiveKind.I16;
-                statements.add(getOperandStore(dstType, operand, LLVMI16LiteralNodeGen.create((short) 0)));
+                statements.add(getOperandStore(dstType, operand, LLVMI16LiteralNodeGen.create((short) 0x037F)));
                 return;
             }
             default:
