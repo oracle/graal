@@ -1140,7 +1140,7 @@ public class NativeImage {
             }
             if (!Files.isDirectory(imageNamePathParent)) {
                 throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed. " +
-                                "Create the missing directory if want the image to be written to that location.");
+                                "Create the missing directory if you want the image to be written to that location.");
             }
             if (!Files.isWritable(imageNamePathParent)) {
                 throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible. " +
