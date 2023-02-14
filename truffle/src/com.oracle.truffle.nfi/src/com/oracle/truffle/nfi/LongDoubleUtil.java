@@ -607,7 +607,9 @@ final class LongDoubleUtil {
             }
         }
 
-        @ExportMessage static boolean fitsInBigInteger() { return false; }
+        @ExportMessage static boolean fitsInBigInteger(@SuppressWarnings("unused") @CachedLibrary("this.buffer") InteropLibrary interop) {
+            return false;
+        }
 
         @ExportMessage
         boolean fitsInFloat(@CachedLibrary("this.buffer") InteropLibrary interop) {
