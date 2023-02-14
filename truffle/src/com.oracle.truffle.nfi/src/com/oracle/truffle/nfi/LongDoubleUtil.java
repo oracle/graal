@@ -607,6 +607,8 @@ final class LongDoubleUtil {
             }
         }
 
+        @ExportMessage boolean fitsInBigInteger() { return false; }
+
         @ExportMessage
         boolean fitsInFloat(@CachedLibrary("this.buffer") InteropLibrary interop) {
             if (fitsInDouble()) {
@@ -692,6 +694,8 @@ final class LongDoubleUtil {
                 throw UnsupportedMessageException.create();
             }
         }
+
+        @ExportMessage BigInteger asBigInteger() throws UnsupportedMessageException { return null; }
 
         @ExportMessage
         float asFloat(@CachedLibrary("this.buffer") InteropLibrary interop) throws UnsupportedMessageException {
