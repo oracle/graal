@@ -33,6 +33,7 @@ import java.util.List;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommandTestBase;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.CommonConstants;
 import static org.graalvm.component.installer.CommonConstants.CAP_JAVA_VERSION;
@@ -58,7 +59,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URI;
 import java.net.MalformedURLException;
 import java.net.URL;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -198,7 +198,7 @@ public class GDSChannelTest extends CommandTestBase {
     @Test
     public void testInterceptDownloadException() throws Exception {
         String mockUrlString = "http://some.mock.url/";
-        URL url = URI.create(mockUrlString).toURL();
+        URL url = SystemUtils.toURL(mockUrlString);
         channel.setIndexURL(url);
         IOException ioExc = new IOException("some Exception.");
         FileDownloader fd = new FileDownloader("something", url, this);

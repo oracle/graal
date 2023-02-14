@@ -37,8 +37,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -89,10 +87,10 @@ class GDSRESTConnector {
         if (baseURL == null || baseURL.isBlank()) {
             throw new IllegalArgumentException("Base URL String can't be empty.");
         }
-        URL url;
+        URL url = null;
         try {
-            url = new URI(baseURL).toURL();
-        } catch (URISyntaxException | MalformedURLException ex) {
+            url = SystemUtils.toURL(baseURL);
+        } catch (MalformedURLException ex) {
             throw new IllegalArgumentException("Base URL String must be convertible to URL.");
         }
         this.baseURL = url.toString();
@@ -174,9 +172,10 @@ class GDSRESTConnector {
     public String sendVerificationEmail(String email, String licAddr, String config) {
         assert (SystemUtils.nonBlankString(email) && config == null) || (SystemUtils.nonBlankString(config) && email == null);
         String licID = licAddr.substring(licAddr.lastIndexOf("/") + 1);
-        String token;
+        String acceptLicLink = baseURL + ENDPOINT_LICENSE_ACCEPT;
+        String token = config;
         try {
-            GDSRequester tr = getGDSRequester(baseURL + ENDPOINT_LICENSE_ACCEPT, licID);
+            GDSRequester tr = getGDSRequester(acceptLicLink, licID);
             token = email != null ? tr.obtainConfig(email) : tr.acceptLic(config);
         } catch (IOException ex) {
             throw feedback.failure("ERR_VerificationEmail", ex, email == null ? feedback.l10n("MSG_YourEmail") : email);
@@ -208,8 +207,8 @@ class GDSRESTConnector {
     URL makeArtifactDownloadURL(String id) {
         String url = baseURL + ENDPOINT_ARTIFACTS + id + ENDPOINT_DOWNLOAD;
         try {
-            return new URI(url).toURL();
-        } catch (URISyntaxException | MalformedURLException ex) {
+            return SystemUtils.toURL(url);
+        } catch (MalformedURLException ex) {
             feedback.error("ERR_MalformedArtifactUrl", ex, url);
         }
         return null;
@@ -220,7 +219,7 @@ class GDSRESTConnector {
         try {
             FileDownloader dn = new FileDownloader(
                             feedback.l10n("OLDS_ReleaseFile"),
-                            URI.create(SystemUtils.buildUrlStringWithParameters(baseURL + endpoint, getParams())).toURL(),
+                            SystemUtils.toURL(SystemUtils.buildUrlStringWithParameters(baseURL + endpoint, getParams())),
                             feedback);
             fillBasics(dn);
             dn.download();
@@ -275,8 +274,8 @@ class GDSRESTConnector {
         fd.addRequestHeader(HEADER_ENCODING, HEADER_VAL_GZIP);
     }
 
-    GDSRequester getGDSRequester(String acceptLicLink, String licID) throws IllegalArgumentException, MalformedURLException {
-        return new GDSRequester(URI.create(acceptLicLink).toURL(), licID);
+    GDSRequester getGDSRequester(String acceptLicLink, String licID) throws MalformedURLException {
+        return new GDSRequester(SystemUtils.toURL(acceptLicLink), licID);
     }
 
     class GDSRequester {
@@ -304,7 +303,7 @@ class GDSRESTConnector {
         }
 
         public String obtainConfig(String email) throws IOException {
-            String config;
+            String config = null;
             URLConnection connector = getConnectionFactory().createConnection(url, createConfigCallBack(Request.GENERATE, email));
             String response = null;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(connector.getInputStream()))) {
@@ -381,15 +380,9 @@ class GDSRESTConnector {
             };
         }
 
-        URLConnectionFactory getConnectionFactory() {
+        URLConnectionFactory getConnectionFactory() throws MalformedURLException {
             if (factory == null) {
-                try {
-                    factory = new ProxyConnectionFactory(feedback, URI.create(baseURL).toURL());
-                } catch (MalformedURLException ex) {
-                    // Should not reach here since the creation of the URL is tested in the
-                    // constructor
-                    throw new IllegalArgumentException(ex);
-                }
+                factory = new ProxyConnectionFactory(feedback, SystemUtils.toURL(baseURL));
             }
             return factory;
         }

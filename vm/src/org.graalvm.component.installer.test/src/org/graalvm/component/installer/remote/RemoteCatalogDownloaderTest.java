@@ -26,7 +26,6 @@ package org.graalvm.component.installer.remote;
 
 import java.io.IOException;
 import java.net.ConnectException;
-import java.net.URI;
 import java.net.URL;
 import java.util.Collection;
 import java.util.Iterator;
@@ -41,6 +40,7 @@ import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.MockURLConnection;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -68,7 +68,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadCatalogBadGraalVersion() throws Exception {
         URL clu = getClass().getResource("catalog.properties");
-        URL u = URI.create("test://graalvm.io/download/truffleruby.zip").toURL();
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
         Handler.bind(u.toString(),
                         clu);
 
@@ -81,7 +81,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadCatalogCorrupted() throws Exception {
         URL clu = getClass().getResource("catalogCorrupted.properties");
-        URL u = URI.create("test://graalvm.io/download/truffleruby.zip").toURL();
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
         Handler.bind(u.toString(),
                         clu);
 
@@ -93,7 +93,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
 
     private void loadRegistry() throws Exception {
         URL clu = getClass().getResource("catalog.properties");
-        URL u = URI.create("test://graalvm.io/download/truffleruby.zip").toURL();
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
         Handler.bind(u.toString(),
                         clu);
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
@@ -119,7 +119,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadCorruptedCatalog() throws Exception {
         URL clu = getClass().getResource("catalogCorrupted.properties");
-        URL u = URI.create("test://graalvm.io/download/truffleruby.zip").toURL();
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
         Handler.bind(u.toString(),
                         clu);
 
@@ -132,7 +132,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Test
     public void testCannotConnectCatalog() throws Exception {
         URL clu = getClass().getResource("catalogCorrupted.properties");
-        URL u = URI.create("test://graalvm.io/download/truffleruby.zip").toURL();
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
         Handler.bind(u.toString(),
                         new MockURLConnection(clu.openConnection(), u, new ConnectException()));
 
@@ -146,8 +146,8 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
 
     private void setupJoinedCatalog(String firstPart) throws IOException {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0.0");
-        URL u1 = URI.create("test://graalvm.io/catalog1.properties").toURL();
-        URL u2 = URI.create("test://graalvm.io/catalog2.properties").toURL();
+        URL u1 = SystemUtils.toURL("test://graalvm.io/catalog1.properties");
+        URL u2 = SystemUtils.toURL("test://graalvm.io/catalog2.properties");
 
         URL clu1 = getClass().getResource(firstPart);
         URL clu2 = getClass().getResource("catalogMultiPart2.properties");
@@ -243,7 +243,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         ComponentStorage store = d.getStorage();
         Set<String> ids = store.listComponentIDs();
         assertTrue(ids.contains("ruby"));
-        assertTrue(Handler.isVisited(URI.create(single).toURL()));
+        assertTrue(Handler.isVisited(SystemUtils.toURL(single)));
     }
 
     @Test

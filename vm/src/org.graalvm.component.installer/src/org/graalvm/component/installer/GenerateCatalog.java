@@ -30,8 +30,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -113,7 +111,7 @@ public final class GenerateCatalog {
 
     private Map<String, GraalVersion> graalVMReleases = new LinkedHashMap<>();
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws IOException {
         new GenerateCatalog(args).run();
         System.exit(0);
     }
@@ -191,7 +189,7 @@ public final class GenerateCatalog {
 
     private Path pathBase = null;
 
-    public void run() throws Exception {
+    public void run() throws IOException {
         readCommandLine();
         downloadFiles();
         generateCatalog();
@@ -201,7 +199,7 @@ public final class GenerateCatalog {
         System.out.println(catalogContents);
     }
 
-    private void readCommandLine() throws URISyntaxException, IOException {
+    private void readCommandLine() throws IOException {
         SimpleGetopt getopt = new SimpleGetopt(OPTIONS) {
             @Override
             public RuntimeException err(String messageKey, Object... args) {
@@ -279,8 +277,8 @@ public final class GenerateCatalog {
                 if (!f.exists()) {
                     f = null;
                     u = spec;
-                    // create an URI, just to fail fast, if URI is wrong:
-                    URL check = new URI(spec).toURL();
+                    // create a URL, just to fail fast, if the URL is wrong:
+                    URL check = SystemUtils.toURL(spec);
                     // ... and use it somehow, so ECJ does not fail the gate.
                     assert check.toString() != null;
                 }
@@ -299,15 +297,15 @@ public final class GenerateCatalog {
         componentSpecs.add(spc);
     }
 
-    private URL createURL(String spec) throws URISyntaxException, MalformedURLException {
+    private URL createURL(String spec) throws MalformedURLException {
         if (urlPrefix != null) {
-            return new URI(urlPrefix).resolve(spec).toURL();
+            return SystemUtils.toURL(urlPrefix, spec);
         } else {
-            return new URI(spec).toURL();
+            return SystemUtils.toURL(spec);
         }
     }
 
-    private void downloadFiles() throws URISyntaxException, IOException {
+    private void downloadFiles() throws IOException {
         for (Spec spec : componentSpecs) {
             if (spec.f == null) {
                 FileDownloader dn = new FileDownloader(spec.u, createURL(spec.u), env);

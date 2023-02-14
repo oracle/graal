@@ -830,18 +830,70 @@ public class SystemUtils {
      */
     public static boolean isRemotePath(String pathOrURL) {
         try {
-            URL u = new URI(pathOrURL).toURL();
+            URL u = toURL(pathOrURL);
             String proto = u.getProtocol();
             if ("file".equals(proto)) { // NOI18N
                 throw new IllegalArgumentException("Absolute file:// URLs are not permitted.");
             } else {
                 return true;
             }
-        } catch (IllegalArgumentException | URISyntaxException | MalformedURLException ex) {
+        } catch (IOException ex) {
             // expected
         }
         // will fail with an exception if the relative path contains bad chars or traverses up
         fromCommonRelative(pathOrURL);
         return false;
+    }
+
+    /**
+     * Creates a {@link URI} from a string and converts it to a {@link URL}. Works around the
+     * deprecation of {@code new URL(String)} in Java 20.
+     *
+     * @param url the string to be parsed into a URL
+     * @return a url
+     * @throws MalformedURLException wrapper for thrown exceptions
+     */
+    public static URL toURL(String url) throws MalformedURLException {
+        try {
+            return new URI(url).toURL();
+        } catch (URISyntaxException | IllegalArgumentException ex) {
+            throw (MalformedURLException) new MalformedURLException().initCause(ex);
+        }
+    }
+
+    /**
+     * Creates a {@link URI} from a first string, resolves the second string against it, and
+     * converts the result to a {@link URL}. Works around the deprecation of {@code new URL(String)}
+     * in Java 20.
+     *
+     * @param context the string to be parsed into a URL
+     * @param spec the string to be parsed into a URL in the context of {@code context}
+     * @return a url
+     * @throws MalformedURLException wrapper for thrown exceptions
+     */
+    public static URL toURL(String context, String spec) throws MalformedURLException {
+        try {
+            return new URI(context).resolve(spec).toURL();
+        } catch (URISyntaxException | IllegalArgumentException ex) {
+            throw (MalformedURLException) new MalformedURLException().initCause(ex);
+        }
+    }
+
+    /**
+     * Converts the given {@link URL} to a {@link URI}, resolves the given string against it, and
+     * converts the result to a {@link URL}. Works around the deprecation of
+     * {@code new URL(URL, String)} in Java 20.
+     *
+     * @param context the URL to be converted to a URI
+     * @param spec the string to be resolved
+     * @return a url
+     * @throws MalformedURLException wrapper for thrown exceptions
+     */
+    public static URL toURL(URL context, String spec) throws MalformedURLException {
+        try {
+            return context.toURI().resolve(spec).toURL();
+        } catch (URISyntaxException | IllegalArgumentException ex) {
+            throw (MalformedURLException) new MalformedURLException().initCause(ex);
+        }
     }
 }

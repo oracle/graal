@@ -32,8 +32,6 @@ import java.io.OutputStream;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -378,8 +376,8 @@ public class DirectoryStorage implements ManagementStorage {
         String u = loaded.getProperty(CommonConstants.BUNDLE_ORIGIN_URL);
         if (u != null) {
             try {
-                ci.setRemoteURL(new URI(u).toURL());
-            } catch (URISyntaxException | MalformedURLException ex) {
+                ci.setRemoteURL(SystemUtils.toURL(u));
+            } catch (MalformedURLException ex) {
                 // ignore
             }
         }

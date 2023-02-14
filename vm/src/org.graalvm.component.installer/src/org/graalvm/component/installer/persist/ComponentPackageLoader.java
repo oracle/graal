@@ -31,7 +31,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
-import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -317,7 +316,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
             desc = remote;
         }
         try {
-            URL u = URI.create(remote).toURL();
+            URL u = SystemUtils.toURL(remote);
             FileDownloader dn = createFileDownloader(u, feedback.l10n("LICENSE_RemoteLicenseDescription", desc));
             dn.download();
             String s = String.join("\n", Files.readAllLines(dn.getLocalFile().toPath()));

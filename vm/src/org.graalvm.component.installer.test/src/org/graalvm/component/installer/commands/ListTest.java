@@ -32,7 +32,6 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -46,6 +45,7 @@ import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
 import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENTS;
 import org.graalvm.component.installer.MemoryFeedback;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -75,7 +75,7 @@ public class ListTest extends CommandTestBase {
                         this, getLocalRegistry(), catalogContents,
                         "linux_amd64",
                         Version.fromString("1.0.0-rc3-dev"),
-                        URI.create("http://go.to/graalvm").toURL());
+                        SystemUtils.toURL("http://go.to/graalvm"));
         this.registry = new CatalogContents(this, remoteStorage, localRegistry);
     }
 
@@ -217,7 +217,7 @@ public class ListTest extends CommandTestBase {
                         this, getLocalRegistry(), catalogContents,
                         "linux_amd64",
                         v,
-                        URI.create("http://go.to/graalvm").toURL());
+                        SystemUtils.toURL("http://go.to/graalvm"));
         this.registry = new CatalogContents(this, remoteStorage, localRegistry);
 
         AvailableCommand inst = new AvailableCommand() {

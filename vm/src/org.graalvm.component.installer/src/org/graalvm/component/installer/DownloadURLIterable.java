@@ -27,8 +27,6 @@ package org.graalvm.component.installer;
 import org.graalvm.component.installer.remote.RemoteComponentParam;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.Iterator;
@@ -69,8 +67,8 @@ public class DownloadURLIterable extends AbstractIterable {
             String s = input.nextParameter();
             URL u;
             try {
-                u = new URI(s).toURL();
-            } catch (URISyntaxException | MalformedURLException ex) {
+                u = SystemUtils.toURL(s);
+            } catch (MalformedURLException ex) {
                 throw feedback.failure("URL_InvalidDownloadURL", ex, s, ex.getLocalizedMessage());
             }
             boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;

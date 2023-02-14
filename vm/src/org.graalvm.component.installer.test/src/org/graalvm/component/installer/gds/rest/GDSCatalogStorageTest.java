@@ -26,12 +26,12 @@
 package org.graalvm.component.installer.gds.rest;
 
 import org.graalvm.component.installer.CommandTestBase;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import java.io.IOException;
-import java.net.URI;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -53,7 +53,7 @@ public class GDSCatalogStorageTest extends CommandTestBase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        mockUrl = URI.create(MOCK_URL).toURL();
+        mockUrl = SystemUtils.toURL(MOCK_URL);
     }
 
     @Test

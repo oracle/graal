@@ -47,7 +47,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -254,7 +253,7 @@ public class GDSRESTConnectorTest extends TestBase {
 
     @Test
     public void testFillBasics() throws MalformedURLException {
-        FileDownloader fd = new FileDownloader(TEST_ID, URI.create(testURL).toURL(), this);
+        FileDownloader fd = new FileDownloader(TEST_ID, SystemUtils.toURL(testURL), this);
         testConnector.fillBasics(fd);
         Map<String, String> header = fd.getRequestHeaders();
         assertEquals(GDSRESTConnector.HEADER_VAL_GZIP, header.get(GDSRESTConnector.HEADER_ENCODING));
@@ -371,7 +370,7 @@ public class GDSRESTConnectorTest extends TestBase {
 
         @Override
         GDSRequester getGDSRequester(String acceptLicLink, String licID) throws MalformedURLException {
-            return new TestGDSRequester(URI.create(acceptLicLink).toURL(), licID);
+            return new TestGDSRequester(SystemUtils.toURL(acceptLicLink), licID);
         }
 
         final class TestGDSRequester extends GDSRESTConnector.GDSRequester {
@@ -382,7 +381,7 @@ public class GDSRESTConnectorTest extends TestBase {
             }
 
             @Override
-            URLConnectionFactory getConnectionFactory() {
+            URLConnectionFactory getConnectionFactory() throws MalformedURLException {
                 return fac;
             }
 
