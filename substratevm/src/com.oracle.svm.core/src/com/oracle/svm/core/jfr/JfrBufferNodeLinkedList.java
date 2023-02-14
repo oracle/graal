@@ -38,6 +38,15 @@ import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
+
+/**
+ * JfrBufferNodeLinkedList is a singly linked list used to store thread local JFR buffers. Threads
+ * shall only add one node to the list. Only the thread performing a flush or epoch change shall
+ * iterate this list and is allowed to remove nodes. There is a list-level lock that is acquired
+ * when adding nodes, and when beginning iteration at the head. Threads may access their own nodes
+ * at any time up until they call JfrBufferNode.setAlive(false). The list lock must not be held at a
+ * safepoint.
+ */
 public class JfrBufferNodeLinkedList {
     @RawStructure
     public interface JfrBufferNode extends PointerBase {
@@ -80,7 +89,7 @@ public class JfrBufferNodeLinkedList {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public boolean isHead(JfrBufferNode node) {
-        return node == head;
+        return node == head || head.isNull();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
@@ -122,7 +131,7 @@ public class JfrBufferNodeLinkedList {
 
         if (isHead(node)) {
             VMError.guarantee(prev.isNull(), "If head, prev should be null ");
-            setHead(next); // head could now be tail if there was only one node in the list
+            setHead(next); // head could now be null if there was only one node in the list
         } else {
             VMError.guarantee(prev.isNonNull(), "If not head, prev should be non-null ");
             prev.setNext(next);

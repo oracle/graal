@@ -134,7 +134,6 @@ public class JfrThreadLocal implements ThreadListener {
     public static void stopRecording(IsolateThread isolateThread) {
         /* Flush event buffers. From this point onwards, no further JFR events may be emitted. */
 
-
         JfrBufferNode jbn = javaBufferNode.get(isolateThread);
         JfrBufferNode nbn = nativeBufferNode.get(isolateThread);
 
@@ -151,7 +150,6 @@ public class JfrThreadLocal implements ThreadListener {
             flush(nb, WordFactory.unsigned(0), 0);
             nbn.setAlive(false);
         }
-
 
         /* Clear event-related thread-locals. */
         dataLost.set(isolateThread, WordFactory.unsigned(0));
@@ -266,8 +264,6 @@ public class JfrThreadLocal implements ThreadListener {
             javaEventWriter.get(thread).notified = true;
         }
     }
-
-
 
     /**
      * This method only copies the JFR buffer's unflushed data to the global buffers. This can be

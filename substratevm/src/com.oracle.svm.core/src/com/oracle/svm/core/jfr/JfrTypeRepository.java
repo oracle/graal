@@ -81,7 +81,6 @@ public class JfrTypeRepository implements JfrConstantPool {
         count += writeModules(writer, flush);
         count += writeClassLoaders(writer, flush);
 
-
         if (flush) {
             clearFlush();
         } else {
@@ -227,7 +226,6 @@ public class JfrTypeRepository implements JfrConstantPool {
             writer.writeCompressedLong(symbolRepo.getSymbolId(cl.getName(), !flush));
         }
     }
-
 
     private static class PackageInfo {
         private final long id;
