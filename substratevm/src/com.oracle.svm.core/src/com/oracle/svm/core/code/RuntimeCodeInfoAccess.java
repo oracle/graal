@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,11 +66,12 @@ public final class RuntimeCodeInfoAccess {
         return cast(info).getCodeObserverHandles();
     }
 
-    public static void initialize(CodeInfo info, Pointer codeStart, int codeSize, int dataOffset, int dataSize, int codeAndDataMemorySize,
+    public static void initialize(CodeInfo info, Pointer codeStart, int entryPointOffset, int codeSize, int dataOffset, int dataSize, int codeAndDataMemorySize,
                     int tier, NonmovableArray<InstalledCodeObserverHandle> observerHandles, boolean allObjectsAreInImageHeap) {
 
         CodeInfoImpl impl = cast(info);
         impl.setCodeStart((CodePointer) codeStart);
+        impl.setCodeEntryPointOffset(WordFactory.unsigned(entryPointOffset));
         impl.setCodeSize(WordFactory.unsigned(codeSize));
         impl.setDataOffset(WordFactory.unsigned(dataOffset));
         impl.setDataSize(WordFactory.unsigned(dataSize));
