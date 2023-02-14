@@ -84,20 +84,25 @@ cat dat/CaseFolding.txt \
 # lowercase characters which are to be considered equal since they have the same
 # Uppercase mapping.
 
-# We do the same here by building up our equivalence relation using the
-# Lowercase mappings and adding to that the same list of exceptions.
+# Instead of relying on a list of exceptions, we generate the equivalence
+# by considering any two characters equivalent if they map to each other or to
+# some common target using either the Lowercase or Uppercase mapping (including
+# complex cases from SpecialCasing.txt).
 
-# We extract the Lowercase mappings from UnicodeData.txt. We filter out the
-# codepoint and the Lowercase mapping, remove any empty fields by collapsing
-# neighboring or terminating semicolons and finally removing any lines consisting
-# of a single codepoint (the case when a character has no cased mappings).
+# We make characters equivalent to their simple Uppercase and Lowercase
+# mappings. We filter out the codepoint and the two character mappings, remove
+# any empty fields by collapsing neighboring or terminating semicolons and
+# finally removing any lines consisting of a single codepoint (the case when a
+# character has no cased mappings).
 cat dat/UnicodeData.txt \
-    | cut -d\; -f1,14 \
+    | cut -d\; -f1,13,14 \
     | sed -e 's/;\+/;/g' \
           -e 's/;$//' \
           -e '/^[^;]*$/d' \
     > dat/PythonSimpleCasing.txt
 
+./generate_special_casing_equivalences.py > dat/PythonExtendedCasing.txt
+
 # We produce the Python case fold table by merging the equivalences due to both
-# the simple case mappings and the exceptions.
-cat dat/PythonSimpleCasing.txt PythonExceptions.txt > dat/PythonFoldTable.txt
+# the simple case mappings and the extended case mappings.
+cat dat/PythonSimpleCasing.txt dat/PythonExtendedCasing.txt > dat/PythonFoldTable.txt
