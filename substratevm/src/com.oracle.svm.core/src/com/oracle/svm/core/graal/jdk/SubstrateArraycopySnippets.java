@@ -100,9 +100,13 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
                 JavaMemoryUtil.copyObjectArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromLayoutEncoding);
                 return;
+            } else if (fromHub == toHub) {
+                boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
+                JavaMemoryUtil.copyObjectArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
+                return;
             } else if (LayoutEncoding.isObjectArray(toHub.getLayoutEncoding())) {
                 boundsCheck(fromArray, fromIndex, toArray, toIndex, length);
-                if (fromHub == toHub || DynamicHub.toClass(toHub).isAssignableFrom(DynamicHub.toClass(fromHub))) {
+                if (DynamicHub.toClass(toHub).isAssignableFrom(DynamicHub.toClass(fromHub))) {
                     JavaMemoryUtil.copyObjectArrayForward(fromArray, fromIndex, toArray, toIndex, length, fromLayoutEncoding);
                 } else {
                     JavaMemoryUtil.copyObjectArrayForwardWithStoreCheck(fromArray, fromIndex, toArray, toIndex, length);
