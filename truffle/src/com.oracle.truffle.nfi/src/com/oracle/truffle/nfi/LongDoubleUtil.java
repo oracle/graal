@@ -607,7 +607,8 @@ final class LongDoubleUtil {
             }
         }
 
-        @ExportMessage static boolean fitsInBigInteger(@SuppressWarnings("unused") FP128Buffer receiver) {
+        @ExportMessage
+        static boolean fitsInBigInteger(@SuppressWarnings("unused") FP128Buffer receiver) {
             return false;
         }
 
@@ -697,13 +698,14 @@ final class LongDoubleUtil {
             }
         }
 
-        @ExportMessage BigInteger asBigInteger(@CachedLibrary("this.buffer") InteropLibrary interop) throws UnsupportedMessageException {
+        @ExportMessage
+        BigInteger asBigInteger(@CachedLibrary("this.buffer") InteropLibrary interop) throws UnsupportedMessageException {
             try {
                 long expSignFraction = interop.readBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, 8);
                 if ((expSignFraction & FP128Number.EXPONENT_MASK) == FP128Number.EXPONENT_MASK) {
                     throw UnsupportedMessageException.create();
                 }
-                } catch (InvalidBufferOffsetException ex) {
+            } catch (InvalidBufferOffsetException ex) {
                 throw UnsupportedMessageException.create();
             }
             return null;
