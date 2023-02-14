@@ -110,7 +110,11 @@ class Checker:
 
 def execute(command):
     print('(gdb) %s'%(command))
-    return gdb.execute(command, to_string=True)
+    try:
+        return gdb.execute(command, to_string=True)
+    except gdb.error as e:
+        print(e)
+        sys.exit(1)
 
 # Configure this gdb session
 
