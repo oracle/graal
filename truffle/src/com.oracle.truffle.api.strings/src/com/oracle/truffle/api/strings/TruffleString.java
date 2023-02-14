@@ -1226,7 +1226,28 @@ public final class TruffleString extends AbstractTruffleString {
                         CodeRange.ASCII, CodeRange.VALID, CodeRange.VALID, CodeRange.VALID, CodeRange.BROKEN};
 
         static CodeRange get(int codeRange) {
-            return CodeRange.values()[TSCodeRange.ordinal(codeRange)];
+            assert TSCodeRange.ordinal(TSCodeRange.get7Bit()) == 0;
+            assert TSCodeRange.ordinal(TSCodeRange.get8Bit()) == 1;
+            assert TSCodeRange.ordinal(TSCodeRange.get16Bit()) == 2;
+            assert TSCodeRange.ordinal(TSCodeRange.getValidFixedWidth()) == 3;
+            assert TSCodeRange.ordinal(TSCodeRange.getValidMultiByte()) == 3;
+            assert TSCodeRange.ordinal(TSCodeRange.getBrokenFixedWidth()) == 4;
+            assert TSCodeRange.ordinal(TSCodeRange.getBrokenMultiByte()) == 4;
+            // using a switch here to make things easier for PE
+            int ordinal = TSCodeRange.ordinal(codeRange);
+            switch (ordinal) {
+                case 0:
+                    return ASCII;
+                case 1:
+                    return LATIN_1;
+                case 2:
+                    return BMP;
+                case 3:
+                    return VALID;
+                default:
+                    assert ordinal == 4;
+                    return BROKEN;
+            }
         }
 
         static CodeRange getByteCodeRange(int codeRange, Encoding encoding) {

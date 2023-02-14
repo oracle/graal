@@ -54,7 +54,6 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexRootNode;
-import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
 
 /**
  * This class wraps {@link TRegexExecutorNode} and specializes on the type of the input strings
