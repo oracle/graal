@@ -604,6 +604,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract RuntimeException hostToGuestException(Object engineReceiver, Throwable throwable);
 
+        public abstract SandboxPolicy getSandboxPolicy(Object engineReceiver);
+
     }
 
     public abstract static class AbstractExceptionDispatch extends AbstractDispatchClass {

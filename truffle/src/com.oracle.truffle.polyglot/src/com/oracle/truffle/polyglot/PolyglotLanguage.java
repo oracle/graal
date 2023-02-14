@@ -311,9 +311,9 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
 
     void validateSandbox(SandboxPolicy sandboxPolicy) {
         SandboxPolicy languageSandboxPolicy = cache.getSandboxPolicy();
-        if (languageSandboxPolicy.ordinal() < sandboxPolicy.ordinal()) {
+        if (sandboxPolicy.isStricterThan(languageSandboxPolicy)) {
             throw PolyglotEngineException.illegalArgument(PolyglotImpl.sandboxPolicyException(sandboxPolicy,
-                            String.format("The language %s requires at most the %s sandbox policy.", getId(), languageSandboxPolicy),
+                            String.format("The language %s can only be used up to the %s sandbox policy.", getId(), languageSandboxPolicy),
                             String.format("do not enable %s language by removing it from a list of permitted languages in the Context.newBuilder(String...)", getId())));
         }
     }

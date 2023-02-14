@@ -1261,7 +1261,7 @@ public abstract class TruffleInstrument {
          * Returns the engine's {@link SandboxPolicy}. An instrument can use the returned sandbox
          * policy to make instrument-specific verifications that the sandbox requirements are met.
          * These verifications should be made as early as possible in the
-         * {@link TruffleInstrument#onCreate(Env)}.
+         * {@link TruffleInstrument#onCreate(Env)} method.
          *
          * @see SandboxPolicy
          * @see TruffleInstrument#onCreate(Env)
@@ -1349,11 +1349,12 @@ public abstract class TruffleInstrument {
         String website() default "";
 
         /**
-         * Specifies the maximum sandbox policy in which the instrument can be used. The instrument
-         * can be used in an engine with the specified sandbox policy or a weaker one. For example,
-         * if an instrument specifies {@code ISOLATED} policy, it can be used in an engine
-         * configured with sandbox policy {@code TRUSTED}, {@code CONSTRAINED} or {@code ISOLATED}.
-         * But it cannot be used in an engine configured with the {@code UNTRUSTED} sandbox policy.
+         * Specifies the most strict sandbox policy in which the instrument can be used. The
+         * instrument can be used in an engine with the specified sandbox policy or a weaker one.
+         * For example, if an instrument specifies {@code ISOLATED} policy, it can be used in an
+         * engine configured with sandbox policy {@code TRUSTED}, {@code CONSTRAINED} or
+         * {@code ISOLATED}. But it cannot be used in an engine configured with the
+         * {@code UNTRUSTED} sandbox policy.
          *
          * @see SandboxPolicy
          * @since 23.0

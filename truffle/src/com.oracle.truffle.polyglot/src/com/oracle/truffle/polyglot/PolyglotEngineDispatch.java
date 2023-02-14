@@ -205,7 +205,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     boolean roots,
                     Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
         PolyglotEngineImpl engine = (PolyglotEngineImpl) engineReceiver;
-        if (engine.sandboxPolicy.ordinal() >= SandboxPolicy.CONSTRAINED.ordinal()) {
+        if (engine.sandboxPolicy.isStricterOrEqual(SandboxPolicy.CONSTRAINED)) {
             throw PolyglotImpl.sandboxPolicyException(engine.sandboxPolicy, "ExecutionListener is attached to an Engine, but execution listeners are not allowed.",
                             "do not attach execution listeners to this engine");
         }
@@ -310,5 +310,10 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     @Override
     public RuntimeException hostToGuestException(Object engineReceiver, Throwable throwable) {
         return PolyglotImpl.hostToGuestException((PolyglotEngineImpl) engineReceiver, throwable);
+    }
+
+    @Override
+    public SandboxPolicy getSandboxPolicy(Object engineReceiver) {
+        return ((PolyglotEngineImpl) engineReceiver).sandboxPolicy;
     }
 }

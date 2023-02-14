@@ -259,10 +259,11 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
 
     private void validateSandbox(SandboxPolicy sandboxPolicy) {
         SandboxPolicy instrumentSandboxPolicy = cache.getSandboxPolicy();
-        if (instrumentSandboxPolicy.ordinal() < sandboxPolicy.ordinal()) {
+        if (sandboxPolicy.isStricterThan(instrumentSandboxPolicy)) {
+            String apiClass = engine.boundEngine ? "Context" : "Engine";
             throw PolyglotEngineException.illegalArgument(PolyglotImpl.sandboxPolicyException(sandboxPolicy,
-                            String.format("The instrument %s requires at most the %s sandbox policy.", getId(), instrumentSandboxPolicy),
-                            String.format("do not enable %s instrument by removing any of the instrument's options from Engine.Builder.option(String,String)", getId())));
+                            String.format("The instrument %s can only be used up to the %s sandbox policy.", getId(), instrumentSandboxPolicy),
+                            String.format("do not enable %s instrument by removing any of the instrument's options from %s.Builder.option(String,String)", getId(), apiClass)));
         }
     }
 }

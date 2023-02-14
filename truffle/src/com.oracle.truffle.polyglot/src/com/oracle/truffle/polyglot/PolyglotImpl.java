@@ -239,7 +239,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                     boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
         PolyglotEngineImpl impl = null;
         try {
-            validateSandbox(sandboxPolicy);
+            validateSandbox(sandboxPolicy, boundEngine);
             if (TruffleOptions.AOT) {
                 EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
             }
@@ -317,14 +317,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
     }
 
-    private void validateSandbox(SandboxPolicy sandboxPolicy) {
+    private void validateSandbox(SandboxPolicy sandboxPolicy, boolean boundEngine) {
         // When The PolyglotImpl is used as a root polyglot it supports at most the CONSTRAINED
         // sandboxing policy . When it's used as a delegate of other polyglot it needs to support
         // all sandboxing policies.
-        if (this == getRootImpl() && sandboxPolicy.ordinal() > SandboxPolicy.CONSTRAINED.ordinal()) {
+        if (this == getRootImpl() && sandboxPolicy.isStricterThan(SandboxPolicy.CONSTRAINED)) {
+            String apiClass = boundEngine ? "Context" : "Engine";
             throw PolyglotEngineException.illegalArgument(sandboxPolicyException(sandboxPolicy,
-                            String.format("The Engine.Builder.sandbox(SandboxPolicy) is set to %s, but the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED.",
-                                            sandboxPolicy),
+                            String.format("The %s.Builder.sandbox(SandboxPolicy) is set to %s, but the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED.",
+                                            apiClass, sandboxPolicy),
                             null));
         }
     }
@@ -793,14 +794,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static IllegalArgumentException sandboxPolicyException(SandboxPolicy sandboxPolicy, String reason, String fix) {
         Objects.requireNonNull(sandboxPolicy);
         Objects.requireNonNull(reason);
-        StringBuilder resolution = new StringBuilder("In order to resolve this");
+        StringBuilder useFix = new StringBuilder();
         if (fix != null) {
-            resolution.append(" ");
-            resolution.append(fix);
-            resolution.append(" or");
+            useFix.append(" ");
+            useFix.append(fix);
+            useFix.append(" or");
         }
-        resolution.append(" switch to a less strict sandbox policy using Context.Builder.sandbox(SandboxPolicy).");
-        String message = String.format("The validation for the given sandbox policy %s failed.%n%s%n%s", sandboxPolicy, reason, resolution);
+        String message = String.format("The validation for the given sandbox policy %s failed. %s " +
+                        "In order to resolve this%s switch to a less strict sandbox policy using Context.Builder.sandbox(SandboxPolicy).",
+                        sandboxPolicy, reason, useFix);
         return new IllegalArgumentException(message);
     }
 

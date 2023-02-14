@@ -172,4 +172,13 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         Object engineReceiver = api.getReceiver(localEngine);
         return dispatch.hostToGuestException(engineReceiver, throwable);
     }
+
+    @Override
+    public SandboxPolicy getSandboxPolicy(Object receiver) {
+        HostEngine engine = (HostEngine) receiver;
+        Engine localEngine = engine.localEngine;
+        AbstractEngineDispatch dispatch = api.getDispatch(localEngine);
+        Object engineReceiver = api.getReceiver(localEngine);
+        return dispatch.getSandboxPolicy(engineReceiver);
+    }
 }

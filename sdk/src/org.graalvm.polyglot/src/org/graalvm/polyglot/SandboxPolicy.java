@@ -46,7 +46,6 @@ import org.graalvm.polyglot.io.MessageTransport;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.function.Predicate;
 
 /**
  * The sandbox policy presets and validates configurations of a {@link Context context} or
@@ -57,21 +56,21 @@ import java.util.function.Predicate;
  *
  * There are four policies to choose from that become strictly more strict:
  * <ul>
- * <li>{@link #TRUSTED} policy intended for fully trusted applications. In this mode access to any
+ * <li>{@link #TRUSTED} policy intended for fully trusted applications. In this mode, access to any
  * resource of the host might be accessible to the guest application. This is the default mode,
  * there are no restrictions to the context or engine configuration.
  * <li>{@link #CONSTRAINED} policy intended for trusted, but potentially buggy applications. In this
- * mode any access to host resources is required to be as restrictive as possible. In this mode the
- * memory address space of the guest application is shared and with the host application.
+ * mode, any access to host resources is required to be as restrictive as possible. In this mode,
+ * the guest and host application share a heap and execute on the same underlying virtual machine.
  * <li>{@link #ISOLATED} policy intended for trusted, but applications that might have security
  * vulnerabilities. For example, a script that processes untrusted input. Security vulnerabilities
- * would allow an attacker to compromise the guest application by providing malicious input. The
- * memory address space of the guest application is isolated from the host application in this mode.
+ * would allow an attacker to compromise the guest application by providing malicious input. In this
+ * mode, guest and host application execute on separate virtual machine instances.
  * <li>{@link #UNTRUSTED} policy intended for fully untrusted applications. This assumes that a
- * malicious actor is supplying the guest code itself that is being run. A strong adversarial
- * scenario is the execution of client-side Javascript in the browser that is supplied by an
- * untrusted website. In this mode the sandbox employs additional hardening mechanisms at the
- * compiler and runtime level to mitigate e.g. speculative execution attacks.
+ * potentially malicious actor is supplying the guest code itself that is being run. A strong
+ * adversarial scenario is the execution of client-side Javascript in the browser that is supplied
+ * by an untrusted website. In this mode, the sandbox employs additional hardening mechanisms at the
+ * compiler and runtime level to mitigate e.g. JIT spraying or speculative execution attacks.
  * </ul>
  *
  * It is strongly recommended to not run untrusted code with any other policy than
@@ -80,7 +79,7 @@ import java.util.function.Predicate;
  * <p>
  * <b> Compatibility Notice: </b> The behavior of sandbox policies is subject to incompatible
  * changes for new GraalVM versions. New presets and validations may be added in new GraalVM
- * releases, that may let configurations valid in older versions fail for newer versions. Therefore,
+ * releases that may let configurations valid in older versions fail for newer versions. Therefore,
  * adopting a new GraalVM version with a set sandbox policy might require changes for the embedder.
  * This applies to all policies other than {@link #TRUSTED}. Changes to the policy are announced in
  * the SDK <a href="https://github.com/oracle/graal/blob/master/sdk/CHANGELOG.md">release
@@ -95,7 +94,7 @@ import java.util.function.Predicate;
 public enum SandboxPolicy {
 
     /**
-     * Policy intended for fully trusted applications. In this mode access to any resource of the
+     * Policy intended for fully trusted applications. In this mode, access to any resource of the
      * host might be accessible to the guest application. This is the default mode, there are no
      * restrictions to the context or engine configuration.
      *
@@ -104,9 +103,9 @@ public enum SandboxPolicy {
     TRUSTED,
 
     /**
-     * Policy intended for trusted, but potentially buggy applications. In this mode any access to
-     * host resources is required to be as restrictive as possible. In this mode the memory address
-     * space of the guest application is shared and with the host application.
+     * Policy intended for trusted, but potentially buggy applications. In this mode, any access to
+     * host resources is required to be as restrictive as possible. In this mode, the guest and host
+     * application share a heap and execute on the same underlying virtual machine.
      * <p>
      * The {@code CONSTRAINED} sandbox policy enforces the following context restriction:
      * <ul>
@@ -124,8 +123,6 @@ public enum SandboxPolicy {
      * not be enabled.</li>
      * <li>The {@link Context.Builder#allowEnvironmentAccess(EnvironmentAccess) environment access}
      * must be {@link EnvironmentAccess#NONE}.</li>
-     * <li>The {@link Context.Builder#allowHostClassLookup(Predicate) host class lookup} must use a
-     * class filter.</li>
      * <li>The {@link Context.Builder#useSystemExit(boolean) host System.exit} must not be
      * used.</li>
      * <li>The {@link Context.Builder#allowIO(IOAccess) access to the host file system} must be
@@ -156,8 +153,14 @@ public enum SandboxPolicy {
      * Constrained Context building example:
      * 
      * <pre>
-     * Context context = Context.newBuilder("js").sandbox(SandboxPolicy.CONSTRAINED).allowHostClassLookup(null).in(InputStream.nullInputStream()).out(new FileOutputStream("context.stdout")).err(
-     *                 new FileOutputStream("context.stderr")).build();
+     * try (Context context = Context.newBuilder("js") //
+     *                 .sandbox(SandboxPolicy.CONSTRAINED) //
+     *                 .in(InputStream.nullInputStream()) //
+     *                 .out(new FileOutputStream("context.stdout")) //
+     *                 .err(new FileOutputStream("context.stderr")) //
+     *                 .build()) {
+     *     context.eval(source);
+     * }
      * </pre>
      * </p>
      *
@@ -168,13 +171,14 @@ public enum SandboxPolicy {
     /**
      * Policy intended for trusted, but applications that might have security vulnerabilities. For
      * example, a script that processes untrusted input. Security vulnerabilities would allow an
-     * attacker to compromise the guest application by providing malicious input. The memory address
-     * space of the guest application is isolated from the host application in this mode.
+     * attacker to compromise the guest application by providing malicious input. In this mode,
+     * guest and host application execute on separate virtual machine instances.
      * <p>
      * In addition to the {@link #CONSTRAINED} restrictions, the {@code ISOLATED} sandbox policy
      * adds the following constraints:
      * <ul>
-     * <li>The {@code engine.SpawnIsolate} option is preset if it has not been explicitly set.</li>
+     * <li>The {@code engine.SpawnIsolate} option is preset to <code>true</code> if it has not been
+     * explicitly set.</li>
      * <li>The {@code engine.MaxIsolateMemory} option must be set.</li>
      * <li>If {@link HostAccess} is not specified, the {@link HostAccess#ISOLATED} is used.</li>
      * Otherwise, the specified {@link HostAccess} must meet all the constraints of the
@@ -184,16 +188,17 @@ public enum SandboxPolicy {
      * </p>
      * <p>
      * Isolated Context building example:
-     * 
+     *
      * <pre>
-     * Context context = Context.newBuilder("js")
-     *     .sandbox(SandboxPolicy.ISOLATED)
-     *     .allowHostClassLookup(null)
-     *     .in(InputStream.nullInputStream())
-     *     .out(new FileOutputStream("context.stdout"))
-     *     .err(new FileOutputStream("context.stderr"))
-     *     .option("engine.MaxIsolateMemory", "1GB")
-     *     .build()
+     * try (Context context = Context.newBuilder("js") //
+     *                 .sandbox(SandboxPolicy.ISOLATED)  //
+     *                 .in(InputStream.nullInputStream())  //
+     *                 .out(new FileOutputStream("context.stdout"))  //
+     *                 .err(new FileOutputStream("context.stderr"))  //
+     *                 .option("engine.MaxIsolateMemory", "1GB")  //
+     *                 .build()) {
+     *     context.eval(source);
+     * }
      * </pre>
      * </p>
      *
@@ -205,7 +210,7 @@ public enum SandboxPolicy {
      * Policy intended for fully untrusted applications. This assumes that a malicious actor is
      * supplying the guest code itself that is being run. A strong adversarial scenario is the
      * execution of client-side Javascript in the browser that is supplied by an untrusted website.
-     * In this mode the sandbox employs additional hardening mechanisms at the compiler and runtime
+     * In this mode, the sandbox employs additional hardening mechanisms at the compiler and runtime
      * level to mitigate e.g. speculative execution attacks.
      * <p>
      * In addition to the {@link #ISOLATED} constraints, the {@code UNTRUSTED} sandbox policy adds
@@ -220,24 +225,43 @@ public enum SandboxPolicy {
      * </p>
      * <p>
      * Untrusted Context building example:
-     * 
+     *
      * <pre>
-     * Context context = Context.newBuilder("js")
-     *     .sandbox(SandboxPolicy.UNTRUSTED)
-     *     .allowHostClassLookup(null)
-     *     .in(InputStream.nullInputStream())
-     *     .out(new FileOutputStream("context.stdout"))
-     *     .err(new FileOutputStream("context.stderr"))
-     *     .option("engine.MaxIsolateMemory", "1GB")
-     *     .option("sandbox.MaxCPUTime", "10s")
-     *     .option("sandbox.MaxASTDepth", "100")
-     *     .option("sandbox.MaxStackFrames", "10")
-     *     .option("sandbox.MaxThreads", "1")
-     *     .build()
+     * try (Context context = Context.newBuilder("js") //
+     *                 .sandbox(SandboxPolicy.UNTRUSTED) //
+     *                 .in(InputStream.nullInputStream()) //
+     *                 .out(new FileOutputStream("context.stdout")) //
+     *                 .err(new FileOutputStream("context.stderr")) //
+     *                 .option("engine.MaxIsolateMemory", "1GB") //
+     *                 .option("sandbox.MaxCPUTime", "10s") //
+     *                 .option("sandbox.MaxASTDepth", "100") //
+     *                 .option("sandbox.MaxStackFrames", "10") //
+     *                 .option("sandbox.MaxThreads", "1") //
+     *                 .build()) {
+     *     context.eval(source);
+     * }
      * </pre>
      * </p>
      *
      * @since 23.0
      */
-    UNTRUSTED
+    UNTRUSTED;
+
+    /**
+     * Tests whether this {@link SandboxPolicy} is stricter than {@code other}.
+     *
+     * @since 23.0
+     */
+    public boolean isStricterThan(SandboxPolicy other) {
+        return this.ordinal() > other.ordinal();
+    }
+
+    /**
+     * Tests whether this {@link SandboxPolicy} is stricter or equal to {@code other}.
+     *
+     * @since 23.0
+     */
+    public boolean isStricterOrEqual(SandboxPolicy other) {
+        return this.ordinal() >= other.ordinal();
+    }
 }

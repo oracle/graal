@@ -396,7 +396,7 @@ public final class Engine implements AutoCloseable {
 
     static void validateSandboxPolicy(SandboxPolicy previous, SandboxPolicy policy) {
         Objects.requireNonNull(policy, "The set policy must not be null.");
-        if (previous.ordinal() > policy.ordinal()) {
+        if (previous != null && previous.isStricterThan(policy)) {
             throw new IllegalArgumentException(
                             String.format("The sandbox policy %s was set for this builder and the newly set policy %s is less restrictive than the previous policy. " +
                                             "Only equal or more strict policies are allowed. ",
@@ -676,24 +676,29 @@ public final class Engine implements AutoCloseable {
                 return;
             }
             if (permittedLanguages.length == 0) {
-                throw throwSandboxException(sandboxPolicy, "Engine.Builder does not have a list of permitted languages.",
-                                "create an Engine.Builder with a list of permitted languages, for example, Engine.newBuilder(\"js\")");
+                String apiClass = boundEngine ? "Context" : "Engine";
+                throw throwSandboxException(sandboxPolicy, String.format("%s.Builder does not have a list of permitted languages.", apiClass),
+                                String.format("create an %s.Builder with a list of permitted languages, for example, %s.newBuilder(\"js\")", apiClass, apiClass));
             }
             if (isSystemStream(in)) {
-                throw throwSandboxException(sandboxPolicy, "Engine.Builder uses the standard input stream, but the input must be redirected.",
-                                "set Engine.Builder.in(InputStream)");
+                String apiClass = boundEngine ? "Context" : "Engine";
+                throw throwSandboxException(sandboxPolicy, String.format("%s.Builder uses the standard input stream, but the input must be redirected.", apiClass),
+                                String.format("set %s.Builder.in(InputStream)", apiClass));
             }
             if (isSystemStream(out)) {
-                throw throwSandboxException(sandboxPolicy, "Engine.Builder uses the standard output stream, but the output must be redirected.",
-                                "set Engine.Builder.out(OutputStream)");
+                String apiClass = boundEngine ? "Context" : "Engine";
+                throw throwSandboxException(sandboxPolicy, String.format("%s.Builder uses the standard output stream, but the output must be redirected.", apiClass),
+                                String.format("set %s.Builder.out(OutputStream)", apiClass));
             }
             if (isSystemStream(err)) {
-                throw throwSandboxException(sandboxPolicy, "Engine.Builder uses the standard error stream, but the error output must be redirected.",
-                                "set Engine.Builder.err(OutputStream)");
+                String apiClass = boundEngine ? "Context" : "Engine";
+                throw throwSandboxException(sandboxPolicy, String.format("%s.Builder uses the standard error stream, but the error output must be redirected.", apiClass),
+                                String.format("set %s.Builder.err(OutputStream)", apiClass));
             }
             if (messageTransport != null) {
-                throw throwSandboxException(sandboxPolicy, "Engine.Builder.serverTransport(MessageTransport) is set, but must not be set.",
-                                "do not set Engine.Builder.serverTransport(MessageTransport)");
+                String apiClass = boundEngine ? "Context" : "Engine";
+                throw throwSandboxException(sandboxPolicy, String.format("%s.Builder.serverTransport(MessageTransport) is set, but must not be set.", apiClass),
+                                String.format("do not set %s.Builder.serverTransport(MessageTransport)", apiClass));
             }
         }
 
@@ -701,8 +706,9 @@ public final class Engine implements AutoCloseable {
             Objects.requireNonNull(sandboxPolicy);
             Objects.requireNonNull(reason);
             Objects.requireNonNull(fix);
-            String message = String.format("The validation for the given sandbox policy %s failed.%n%s%n" +
-                            "In order to resolve this %s or switch to a less strict sandbox policy using Engine.Builder.sandbox(SandboxPolicy).", sandboxPolicy, reason, fix);
+            String message = String.format("The validation for the given sandbox policy %s failed. %s " +
+                            "In order to resolve this %s or switch to a less strict sandbox policy using %s.Builder.sandbox(SandboxPolicy).",
+                            sandboxPolicy, reason, fix, boundEngine ? "Context" : "Engine");
             throw new IllegalArgumentException(message);
         }
     }

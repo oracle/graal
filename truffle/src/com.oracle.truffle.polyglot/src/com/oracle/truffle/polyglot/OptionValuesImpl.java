@@ -139,11 +139,10 @@ final class OptionValuesImpl implements OptionValues {
         OptionDescriptor descriptor = findDescriptor(engine, key, allowExperimentalOptions);
         if (sandboxPolicy != SandboxPolicy.TRUSTED) {
             SandboxPolicy optionSandboxPolicy = descriptors instanceof TruffleOptionDescriptors ? ((TruffleOptionDescriptors) descriptors).getSandboxPolicy(key) : SandboxPolicy.TRUSTED;
-            if (optionSandboxPolicy.ordinal() < sandboxPolicy.ordinal()) {
-                String optionValue = unparsedValues != null ? unparsedValues.get(descriptor.getKey()) : String.valueOf(values.get(descriptor.getKey()));
+            if (sandboxPolicy.isStricterThan(optionSandboxPolicy)) {
                 throw PolyglotEngineException.illegalArgument(PolyglotImpl.sandboxPolicyException(sandboxPolicy,
-                                String.format("The option %s requires at most the %s sandbox policy.", descriptor.getName(), optionSandboxPolicy),
-                                String.format("do not set the %s option by removing Context.Builder.option(\"%s\", \"%s\")", descriptor.getName(), descriptor.getName(), optionValue)));
+                                String.format("The option %s can only be used up to the %s sandbox policy.", descriptor.getName(), optionSandboxPolicy),
+                                String.format("do not set the %s option by removing Context.Builder.option(\"%s\", \"%s\")", descriptor.getName(), descriptor.getName(), value)));
             }
         }
         OptionKey<?> optionKey = descriptor.getKey();

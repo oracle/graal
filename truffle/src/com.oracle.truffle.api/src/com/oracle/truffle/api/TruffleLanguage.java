@@ -504,11 +504,11 @@ public abstract class TruffleLanguage<C> {
         String website() default "";
 
         /**
-         * Specifies the maximum sandbox policy in which the language can be used. The language can
-         * be used in a context with the specified sandbox policy or a weaker one. For example, if a
-         * language specifies {@code ISOLATED} policy, it can be used in a context configured with
-         * sandbox policy {@code TRUSTED}, {@code CONSTRAINED} or {@code ISOLATED}. But it cannot be
-         * used in a context configured with the {@code UNTRUSTED} sandbox policy.
+         * Specifies the most strict sandbox policy in which the language can be used. The language
+         * can be used in a context with the specified sandbox policy or a weaker one. For example,
+         * if a language specifies {@code ISOLATED} policy, it can be used in a context configured
+         * with sandbox policy {@code TRUSTED}, {@code CONSTRAINED} or {@code ISOLATED}. But it
+         * cannot be used in a context configured with the {@code UNTRUSTED} sandbox policy.
          *
          * @see SandboxPolicy
          * @since 23.0
@@ -3519,7 +3519,7 @@ public abstract class TruffleLanguage<C> {
          * Returns the context's {@link SandboxPolicy}. A language can use the returned sandbox
          * policy to make language-specific verifications that the sandbox requirements are met.
          * These verifications should be made as early as possible in the
-         * {@link TruffleLanguage#createContext(Env)}.
+         * {@link TruffleLanguage#createContext(Env)} method.
          *
          * @see SandboxPolicy
          * @see TruffleLanguage#createContext(Env)

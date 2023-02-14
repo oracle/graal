@@ -1658,13 +1658,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         boolean replayEvents;
         boolean contextAddedToEngine;
         try {
-            if (contextSandboxPolicy.ordinal() != sandboxPolicy.ordinal()) {
-                throw PolyglotEngineException.illegalArgument(PolyglotImpl.sandboxPolicyException(contextSandboxPolicy,
-                                String.format("The engine and context must have the same SandboxPolicy. The Engine.Builder.sandbox(SandboxPolicy) is set to %s, while the Context.Builder.sandbox(SandboxPolicy) is set to %s.",
-                                                sandboxPolicy, contextSandboxPolicy),
-                                String.format("set Engine.Builder.sandbox(SandboxPolicy) to SandboxPolicy.%s or set Context.Builder.sandbox(SandboxPolicy) to SandboxPolicy.%s", contextSandboxPolicy,
-                                                sandboxPolicy)));
-            }
+            assert sandboxPolicy == contextSandboxPolicy : "Engine and context must have the same SandboxPolicy.";
             synchronized (this.lock) {
                 checkState();
                 if (boundEngine && !contexts.isEmpty()) {

@@ -438,6 +438,8 @@ fld public final static org.graalvm.polyglot.SandboxPolicy CONSTRAINED
 fld public final static org.graalvm.polyglot.SandboxPolicy ISOLATED
 fld public final static org.graalvm.polyglot.SandboxPolicy TRUSTED
 fld public final static org.graalvm.polyglot.SandboxPolicy UNTRUSTED
+meth public boolean isStricterOrEqual(org.graalvm.polyglot.SandboxPolicy)
+meth public boolean isStricterThan(org.graalvm.polyglot.SandboxPolicy)
 meth public static org.graalvm.polyglot.SandboxPolicy valueOf(java.lang.String)
 meth public static org.graalvm.polyglot.SandboxPolicy[] values()
 supr java.lang.Enum<org.graalvm.polyglot.SandboxPolicy>
