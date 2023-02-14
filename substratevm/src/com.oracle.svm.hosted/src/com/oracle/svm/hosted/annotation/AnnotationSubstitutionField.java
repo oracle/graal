@@ -140,7 +140,7 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
     }
 
     @Override
-    public boolean allowConstantFolding() {
+    public boolean isValueAvailableBeforeAnalysis() {
         return true;
     }
 

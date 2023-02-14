@@ -30,7 +30,6 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
@@ -258,7 +257,7 @@ public final class HeapVerifier {
             return false;
         }
 
-        UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(ptr);
+        Word header = ObjectHeaderImpl.getObjectHeaderImpl().readHeaderFromPointer(ptr);
         if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
             Log.log().string("Object ").zhex(ptr).string(" has a zapped header: ").zhex(header).newline();
             return false;

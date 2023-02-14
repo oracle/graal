@@ -35,24 +35,28 @@ public class HostedMuslLibC extends MuslLibC implements HostedLibCBase {
     @Override
     public List<String> getAdditionalQueryCodeCompilerOptions() {
         /* Avoid the dependency to muslc for builds cross compiling to muslc. */
-        return Collections.singletonList("--static");
+        return isCrossCompiling()
+                        ? Collections.singletonList("--static")
+                        : Collections.emptyList();
     }
 
     @Override
     public String getTargetCompiler() {
-        return "x86_64-linux-musl-gcc";
+        return isCrossCompiling() ? "x86_64-linux-musl-gcc" : "gcc";
     }
 
     @Override
     public boolean requiresLibCSpecificStaticJDKLibraries() {
-        return true;
+        return isCrossCompiling();
     }
 
     @Override
     public void checkIfLibCSupported() {
-        if (!SubstrateOptions.StaticExecutable.getValue()) {
-            System.err.println("Warning: Cross-compiling a musl-based native-image that is not an executable is an experimental feature!" +
-                            "If omitting --static wasn't the intention, then --static should be used when compiling with --libc=musl");
+        if (isCrossCompiling()) {
+            if (!SubstrateOptions.StaticExecutable.getValue()) {
+                System.err.println("Warning: Cross-compiling a musl-based native-image that is not an executable is an experimental feature!" +
+                                "If omitting --static wasn't the intention, then --static should be used when compiling with --libc=musl");
+            }
         }
     }
 
@@ -62,5 +66,9 @@ public class HostedMuslLibC extends MuslLibC implements HostedLibCBase {
             return List.of();
         }
         return List.of("-no-pie");
+    }
+
+    private static boolean isCrossCompiling() {
+        return !"musl".equals(System.getProperty("substratevm.HostLibC"));
     }
 }

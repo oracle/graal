@@ -126,12 +126,12 @@ public class JfrThreadLocal implements ThreadListener {
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
         if (SubstrateJVM.get().isRecording()) {
             ThreadEndEvent.emit(javaThread);
-            stopRecording(isolateThread, true);
+            stopRecording(isolateThread);
         }
     }
 
     @Uninterruptible(reason = "Accesses various JFR buffers.")
-    public static void stopRecording(IsolateThread isolateThread, boolean flushBuffers) {
+    public static void stopRecording(IsolateThread isolateThread) {
         /* Flush event buffers. From this point onwards, no further JFR events may be emitted. */
 
         if (flushBuffers) {
@@ -267,12 +267,7 @@ public class JfrThreadLocal implements ThreadListener {
         }
     }
 
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void acquireBufferWithRetry(JfrBuffer buffer) {
-        while (!JfrBufferAccess.acquire(buffer)) {
 
-        }
-    }
 
     /**
      * This method only copies the JFR buffer's unflushed data to the global buffers. This can be
@@ -281,7 +276,7 @@ public class JfrThreadLocal implements ThreadListener {
      */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static boolean flushNoReset(JfrBuffer threadLocalBuffer) {
-        acquireBufferWithRetry(threadLocalBuffer);
+        JfrBufferAccess.tryLock(threadLocalBuffer, Integer.MAX_VALUE);
         try {
             UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
             if (unflushedSize.aboveThan(0)) {
@@ -302,7 +297,7 @@ public class JfrThreadLocal implements ThreadListener {
         VMError.guarantee(threadLocalBuffer.isNonNull(), "TLB cannot be null if promoting.");
 
         // Needed for race between streaming flush and promotion
-        acquireBufferWithRetry(threadLocalBuffer);
+        JfrBufferAccess.tryLock(threadLocalBuffer, Integer.MAX_VALUE);
         try {
             UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
             if (unflushedSize.aboveThan(0)) {

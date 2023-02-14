@@ -67,7 +67,7 @@ public class AnnotatedField implements ReadableJavaField, OriginalFieldProvider,
     }
 
     @Override
-    public boolean allowConstantFolding() {
+    public boolean isValueAvailableBeforeAnalysis() {
         /*
          * We assume that fields for which this class is used always have altered behavior for which
          * constant folding is not valid.

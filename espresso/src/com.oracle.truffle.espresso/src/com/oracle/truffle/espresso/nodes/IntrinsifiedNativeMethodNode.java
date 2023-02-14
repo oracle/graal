@@ -40,6 +40,11 @@ final class IntrinsifiedNativeMethodNode extends EspressoInstrumentableRootNodeI
     }
 
     @Override
+    void beforeInstumentation(VirtualFrame frame) {
+        // no op
+    }
+
+    @Override
     Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         Method method = getMethodVersion().getMethod();

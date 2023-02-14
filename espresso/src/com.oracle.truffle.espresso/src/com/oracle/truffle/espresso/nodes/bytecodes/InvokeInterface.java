@@ -163,7 +163,7 @@ public abstract class InvokeInterface extends EspressoNode {
 
     static Method.MethodVersion methodLookup(Method resolutionSeed, Klass receiverKlass) {
         assert !receiverKlass.isArray();
-        if (resolutionSeed.isRemovedByRedefition()) {
+        if (resolutionSeed.isRemovedByRedefinition()) {
             /*
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop

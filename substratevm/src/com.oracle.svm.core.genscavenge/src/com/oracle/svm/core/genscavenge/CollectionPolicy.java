@@ -32,6 +32,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.ReflectionUtil;
 
 /** The interface for a garbage collection policy. All sizes are in bytes. */
 public interface CollectionPolicy {
@@ -53,21 +54,27 @@ public interface CollectionPolicy {
     @Platforms(Platform.HOSTED_ONLY.class)
     static CollectionPolicy getInitialPolicy() {
         String name = getInitialPolicyName();
+        Class<? extends CollectionPolicy> clazz = getPolicyClass(name);
+        return ReflectionUtil.newInstance(clazz);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static Class<? extends CollectionPolicy> getPolicyClass(String name) {
         switch (name) {
             case "Adaptive":
-                return new AdaptiveCollectionPolicy();
+                return AdaptiveCollectionPolicy.class;
             case "AggressiveShrink":
-                return new AggressiveShrinkCollectionPolicy();
+                return AggressiveShrinkCollectionPolicy.class;
             case "Proportionate":
-                return new ProportionateSpacesPolicy();
+                return ProportionateSpacesPolicy.class;
             case "BySpaceAndTime":
-                return new BasicCollectionPolicies.BySpaceAndTime();
+                return BasicCollectionPolicies.BySpaceAndTime.class;
             case "OnlyCompletely":
-                return new BasicCollectionPolicies.OnlyCompletely();
+                return BasicCollectionPolicies.OnlyCompletely.class;
             case "OnlyIncrementally":
-                return new BasicCollectionPolicies.OnlyIncrementally();
+                return BasicCollectionPolicies.OnlyIncrementally.class;
             case "NeverCollect":
-                return new BasicCollectionPolicies.NeverCollect();
+                return BasicCollectionPolicies.NeverCollect.class;
         }
         throw UserError.abort("Policy %s does not exist.", name);
     }
@@ -75,10 +82,10 @@ public interface CollectionPolicy {
     @Platforms(Platform.HOSTED_ONLY.class)
     static int getMaxSurvivorSpaces(Integer userValue) {
         String name = getInitialPolicyName();
-        if ("Adaptive".equals(name) || "Proportionate".equals(name)) {
-            return AbstractCollectionPolicy.getMaxSurvivorSpaces(userValue);
+        if (BasicCollectionPolicies.BasicPolicy.class.isAssignableFrom(getPolicyClass(name))) {
+            return BasicCollectionPolicies.getMaxSurvivorSpaces(userValue);
         }
-        return BasicCollectionPolicies.getMaxSurvivorSpaces(userValue);
+        return AbstractCollectionPolicy.getMaxSurvivorSpaces(userValue);
     }
 
     static boolean shouldCollectYoungGenSeparately(boolean defaultValue) {

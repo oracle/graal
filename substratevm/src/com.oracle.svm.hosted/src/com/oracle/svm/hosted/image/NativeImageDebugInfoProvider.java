@@ -44,7 +44,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.UniqueShortNameProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -61,6 +60,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.code.CompilationResultFrameTree.Builder;
 import com.oracle.svm.core.code.CompilationResultFrameTree.CallNode;
 import com.oracle.svm.core.code.CompilationResultFrameTree.FrameNode;
@@ -351,10 +351,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
                 Path filePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
-                if (filePath == null && hostedType instanceof HostedInstanceClass) {
+                if (filePath == null && (hostedType instanceof HostedInstanceClass || hostedType instanceof HostedInterface)) {
                     // conjure up an appropriate, unique file name to keep tools happy
                     // even though we cannot find a corresponding source
-                    filePath = fullFilePathFromClassName((HostedInstanceClass) hostedType);
+                    filePath = fullFilePathFromClassName(hostedType);
                 }
                 fullFilePath = filePath;
             } catch (Throwable e) {
@@ -426,7 +426,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    private static Path fullFilePathFromClassName(HostedInstanceClass hostedInstanceClass) {
+    private static Path fullFilePathFromClassName(HostedType hostedInstanceClass) {
         String[] elements = hostedInstanceClass.toJavaName().split("\\.");
         int count = elements.length;
         String name = elements[count - 1];
@@ -642,16 +642,21 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         List<DebugTypeInfo> infos = new LinkedList<>();
         int hubOffset = getObjectLayout().getHubOffset();
         int hubFieldSize = referenceSize;
-        int idHashOffset = getObjectLayout().getIdentityHashCodeOffset();
+        int objHeaderSize = hubOffset + hubFieldSize;
+
         int idHashSize = getObjectLayout().sizeInBytes(JavaKind.Int);
-        int objHeaderSize = getObjectLayout().getMinimumInstanceObjectSize();
+        int fixedIdHashOffset = -1;
+        if (getObjectLayout().hasFixedIdentityHashField()) {
+            fixedIdHashOffset = getObjectLayout().getFixedIdentityHashOffset();
+            objHeaderSize = Math.max(objHeaderSize, fixedIdHashOffset + idHashSize);
+        }
 
         /* We need array headers for all Java kinds */
 
         NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", objHeaderSize);
         objHeader.addField("hub", hubType, hubOffset, hubFieldSize);
-        if (idHashOffset > 0) {
-            objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), idHashOffset, idHashSize);
+        if (fixedIdHashOffset >= 0) {
+            objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), fixedIdHashOffset, idHashSize);
         }
         infos.add(objHeader);
 

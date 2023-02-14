@@ -345,7 +345,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             if (cachedVersion) {
                 // call uncached version for the interpreter version.
                 // no need to check the state there.
-                builder.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
+                builder.startIf().startStaticCall(types.HostCompilerDirectives, "inInterpreterFastPath").end().end().startBlock();
                 builder.startReturn().startCall(name).string(LOCAL_VALUE).end().end();
                 builder.end();
             }

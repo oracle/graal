@@ -917,7 +917,7 @@ public class NativeImageGenerator {
                 ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(aMetaAccess);
                 bb = createBigBang(options, target, aUniverse, analysisExecutor, loader.watchdog::recordActivity, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
-                                annotationSubstitutions, aForeignCalls, classInitializationSupport, originalProviders, platformConfig);
+                                annotationSubstitutions, aForeignCalls, originalProviders, platformConfig);
                 aUniverse.setBigBang(bb);
 
                 /* Create the HeapScanner and install it into the universe. */
@@ -1129,9 +1129,9 @@ public class NativeImageGenerator {
     public static Inflation createBigBang(OptionValues options, TargetDescription target, AnalysisUniverse aUniverse, ForkJoinPool analysisExecutor,
                     Runnable heartbeatCallback, AnalysisMetaAccess aMetaAccess, AnalysisConstantReflectionProvider aConstantReflection, WordTypes aWordTypes,
                     SnippetReflectionProvider aSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForeignCallsProvider aForeignCalls,
-                    ClassInitializationSupport classInitializationSupport, Providers originalProviders, SubstratePlatformConfigurationProvider platformConfig) {
+                    Providers originalProviders, SubstratePlatformConfigurationProvider platformConfig) {
         assert aUniverse != null : "Analysis universe must be initialized.";
-        AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aUniverse, aMetaAccess, aConstantReflection, classInitializationSupport);
+        AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aMetaAccess, (SVMHost) aUniverse.hostVM());
         /*
          * Install all snippets so that the types, methods, and fields used in the snippets get
          * added to the universe.
@@ -1769,7 +1769,7 @@ public class NativeImageGenerator {
             } else if (LayoutEncoding.isAbstract(le)) {
                 System.out.print("abstract  ");
             } else if (LayoutEncoding.isPureInstance(le)) {
-                System.out.format("instance size %d  ", LayoutEncoding.getPureInstanceSize(le).rawValue());
+                System.out.format("instance size %d  ", LayoutEncoding.getPureInstanceAllocationSize(le).rawValue());
             } else if (LayoutEncoding.isArrayLike(le)) {
                 String arrayType = LayoutEncoding.isHybrid(le) ? "hybrid" : "array";
                 String elements = LayoutEncoding.isArrayLikeWithPrimitiveElements(le) ? "primitives" : "objects";

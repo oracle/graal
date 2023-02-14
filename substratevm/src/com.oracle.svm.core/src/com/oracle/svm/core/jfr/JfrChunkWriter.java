@@ -150,7 +150,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
     public boolean write(JfrBuffer buffer, boolean increaseTop) {
-        assert JfrBufferAccess.isAcquired(buffer) || VMOperation.isInProgressAtSafepoint() || buffer.getBufferType() == JfrBufferType.C_HEAP;
+        assert JfrBufferAccess.isLocked(buffer) || VMOperation.isInProgressAtSafepoint() || buffer.getBufferType() == JfrBufferType.C_HEAP;
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
             return false;
@@ -536,6 +536,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
              * *not* reinitialize the thread-local buffers as the individual threads will handle
              * space reclamation on their own time.
              */
+
             flushStorage(true);
 
             JfrTraceIdEpoch.getInstance().changeEpoch();
@@ -581,7 +582,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         JfrBuffers buffers = globalMemory.getBuffers();
         for (int i = 0; i < globalMemory.getBufferCount(); i++) {
             JfrBuffer buffer = buffers.addressOf(i).read();
-            if (!JfrBufferAccess.acquire(buffer)) { // one attempt
+            if (!JfrBufferAccess.tryLock(buffer)) { // one attempt
                 continue;
             }
             write(buffer);

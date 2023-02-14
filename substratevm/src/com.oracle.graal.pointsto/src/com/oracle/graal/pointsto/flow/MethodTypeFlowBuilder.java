@@ -161,6 +161,7 @@ public class MethodTypeFlowBuilder {
     private final boolean newFlowsGraph;
 
     protected final TypeFlowGraphBuilder typeFlowGraphBuilder;
+    protected List<TypeFlow<?>> postInitFlows = List.of();
 
     public MethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, GraphKind graphKind) {
         this.bb = bb;
@@ -555,8 +556,8 @@ public class MethodTypeFlowBuilder {
         // Propagate the type flows through the method's graph
         new NodeIterator(graph.start(), typeFlows).apply();
 
-        /* Prune the method graph. Eliminate nodes with no uses. */
-        typeFlowGraphBuilder.build();
+        /* Prune the method graph. Eliminate nodes with no uses. Collect flows that need init. */
+        postInitFlows = typeFlowGraphBuilder.build();
 
         /*
          * Make sure that all existing InstanceOfNodes are registered even when only used as an

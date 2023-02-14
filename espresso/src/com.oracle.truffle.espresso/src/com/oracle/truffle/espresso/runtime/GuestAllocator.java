@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -50,6 +51,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.vm.VM;
 
 /**
  * Class responsible for creating guest objects in Espresso. a helper class {@link AllocationChecks}
@@ -274,7 +276,28 @@ public final class GuestAllocator implements LanguageAccess {
         assert meta.polyglot != null;
         assert interopLibrary.isException(foreignObject);
         assert !(foreignObject instanceof StaticObject);
-        return createForeign(getLanguage(), meta.polyglot.ForeignException, foreignObject, interopLibrary);
+
+        StaticObject foreignException = createNew(meta.polyglot.ForeignException);
+        meta.HIDDEN_FRAMES.setHiddenObject(foreignException, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
+
+        StaticObject foreignWrapper = createForeign(getLanguage(), meta.java_lang_Object, foreignObject, interopLibrary);
+        meta.java_lang_Throwable_backtrace.setObject(foreignException, foreignWrapper);
+
+        if (meta.getJavaVersion().java9OrLater()) {
+            try {
+                if (interopLibrary.hasExceptionStackTrace(foreignObject)) {
+                    Object exceptionStackTrace = interopLibrary.getExceptionStackTrace(foreignObject);
+                    if (interopLibrary.hasArrayElements(exceptionStackTrace)) {
+                        int depth = (int) interopLibrary.getArraySize(exceptionStackTrace);
+                        meta.java_lang_Throwable_depth.setInt(foreignException, depth);
+                    }
+                }
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+        return foreignException;
     }
 
     /**

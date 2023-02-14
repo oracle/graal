@@ -31,9 +31,15 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.IdentityHashCodeSnippets;
 import org.graalvm.compiler.word.ObjectAccess;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.SignedWord;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -43,6 +49,13 @@ import jdk.internal.misc.Unsafe;
 
 public final class IdentityHashCodeSupport {
     public static final LocationIdentity IDENTITY_HASHCODE_LOCATION = NamedLocationIdentity.mutable("identityHashCode");
+
+    /**
+     * Location representing the {@linkplain Heap#getIdentityHashSalt salt values used for the
+     * identity hash code of objects}. These values change between collections, so this location
+     * must be killed at safepoint checks and allocation slow-paths.
+     */
+    public static final LocationIdentity IDENTITY_HASHCODE_SALT_LOCATION = NamedLocationIdentity.mutable("identityHashCodeSalt");
 
     private static final FastThreadLocalObject<SplittableRandom> hashCodeGeneratorTL = FastThreadLocalFactory.createObject(SplittableRandom.class, "IdentityHashCodeSupport.hashCodeGeneratorTL");
 
@@ -55,22 +68,39 @@ public final class IdentityHashCodeSupport {
     }
 
     public static IdentityHashCodeSnippets.Templates createSnippetTemplates(OptionValues options, Providers providers) {
-        return new IdentityHashCodeSnippets.Templates(new SubstrateIdentityHashCodeSnippets(), options, providers, IDENTITY_HASHCODE_LOCATION);
+        return SubstrateIdentityHashCodeSnippets.createTemplates(options, providers);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     public static int generateIdentityHashCode(Object obj) {
-
-        // generate a new hashcode and try to store it into the object
-        int newHashCode = generateHashCode();
-        if (!Unsafe.getUnsafe().compareAndSetInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), 0, newHashCode)) {
-            newHashCode = ObjectAccess.readInt(obj, ConfigurationValues.getObjectLayout().getIdentityHashCodeOffset(), IDENTITY_HASHCODE_LOCATION);
+        ObjectLayout ol = ConfigurationValues.getObjectLayout();
+        VMError.guarantee(ol.hasFixedIdentityHashField(), "Snippet must handle other cases");
+        int newHashCode = generateRandomHashCode();
+        if (!Unsafe.getUnsafe().compareAndSetInt(obj, ol.getFixedIdentityHashOffset(), 0, newHashCode)) {
+            newHashCode = ObjectAccess.readInt(obj, ol.getFixedIdentityHashOffset(), IDENTITY_HASHCODE_LOCATION);
         }
         VMError.guarantee(newHashCode != 0, "Missing identity hash code");
         return newHashCode;
     }
 
-    private static int generateHashCode() {
+    @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.")
+    public static int computeHashCodeFromAddress(Object obj) {
+        Word address = Word.objectToUntrackedPointer(obj);
+        long salt = Heap.getHeap().getIdentityHashSalt(obj);
+        SignedWord salted = WordFactory.signed(salt).xor(address);
+        int hash = mix32(salted.rawValue()) >>> 1; // shift: ensure positive, same as on HotSpot
+        return (hash == 0) ? 1 : hash; // ensure nonzero
+    }
+
+    /** Avalanching bit mixer, from {@link SplittableRandom}. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static int mix32(long a) {
+        long z = a;
+        z = (z ^ (z >>> 33)) * 0x62a9d9ed799705f5L;
+        return (int) (((z ^ (z >>> 28)) * 0xcb24d0a5c88c35b3L) >>> 32);
+    }
+
+    private static int generateRandomHashCode() {
         SplittableRandom hashCodeGenerator = hashCodeGeneratorTL.get();
         if (hashCodeGenerator == null) {
             /*

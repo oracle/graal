@@ -65,6 +65,31 @@ public final class HostCompilerDirectives {
     }
 
     /**
+     *
+     * Indicates whether a branch is executed only in the interpreter. In addition to
+     * {@link CompilerDirectives#inInterpreter()}, this method instructs the host compiler to treat
+     * the positive branch as frequently executed code of high importance. Branches protected by
+     * this method should be treated as if they were runtime compiled code paths, even if they may
+     * never actually be compiled. This means that slow-paths must be protected using either
+     * {@link CompilerDirectives#transferToInterpreterAndInvalidate()} or {@link TruffleBoundary}.
+     * <p>
+     * A common use case for this directive is in counting condition profiles, where counters must
+     * be protected by {@link CompilerDirectives#inInterpreter()} but also need to be optimized as
+     * fast-path by the host compiler. Without this directive, the host compiler may treat the
+     * branch as a slow-path branch.
+     *
+     * @return {@code true} if executed in the interpreter, {@code false} in compiled code.
+     * @since 23.0
+     */
+    public static boolean inInterpreterFastPath() {
+        /*
+         * The inInterpreter call here must stay to ensure guest and host compilation correctness.
+         * The TruffleHostInliningPhase depends directly on this method call.
+         */
+        return CompilerDirectives.inInterpreter();
+    }
+
+    /**
      * Marks a method that is an implementation of a Truffle interpreter, and which should receive
      * additional optimization budget.
      * <p>
@@ -133,4 +158,5 @@ public final class HostCompilerDirectives {
     @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
     public @interface InliningCutoff {
     }
+
 }

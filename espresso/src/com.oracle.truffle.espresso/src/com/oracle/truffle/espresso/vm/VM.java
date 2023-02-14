@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,6 +56,7 @@ import java.util.Properties;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.IntFunction;
 
 import org.graalvm.collections.EconomicMap;
@@ -70,12 +71,14 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
@@ -127,7 +130,6 @@ import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
-import com.oracle.truffle.espresso.overlay.ReferenceSupport;
 import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.Classpath;
@@ -153,8 +155,6 @@ import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
 import com.oracle.truffle.espresso.vm.structs.Structs;
 import com.oracle.truffle.espresso.vm.structs.StructsAccess;
-
-import sun.misc.Unsafe;
 
 /**
  * Espresso implementation of the VM interface (libjvm).
@@ -590,16 +590,26 @@ public final class VM extends NativeEnv {
         return Double.isNaN(d);
     }
 
+    private static final class LongCASProbe {
+        static final boolean HOST_SUPPORTS_LONG_CAS;
+        @SuppressWarnings("unused") volatile long foo;
+        static {
+            AtomicLongFieldUpdater<LongCASProbe> updater = AtomicLongFieldUpdater.newUpdater(LongCASProbe.class, "foo");
+            String updaterName = updater.getClass().getSimpleName();
+            if ("CASUpdater".equals(updaterName)) {
+                HOST_SUPPORTS_LONG_CAS = true;
+            } else if ("LockedUpdater".equals(updaterName)) {
+                HOST_SUPPORTS_LONG_CAS = false;
+            } else {
+                throw EspressoError.shouldNotReachHere("Unknown host long updater: " + updaterName);
+            }
+        }
+    }
+
     @VmImpl
     @TruffleBoundary
     public static boolean JVM_SupportsCX8() {
-        try {
-            java.lang.reflect.Field field = AtomicLong.class.getDeclaredField("VM_SUPPORTS_LONG_CAS");
-            Unsafe unsafe = UnsafeAccess.get();
-            return unsafe.getBoolean(unsafe.staticFieldBase(field), unsafe.staticFieldOffset(field));
-        } catch (NoSuchFieldException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
+        return LongCASProbe.HOST_SUPPORTS_LONG_CAS;
     }
 
     @VmImpl(isJni = true)
@@ -1525,7 +1535,7 @@ public final class VM extends NativeEnv {
         JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(jni(), argsPtr);
         StaticObject group = null;
         String name = null;
-        if (JniVersion.isSupported(attachArgs.version(), getContext().getJavaVersion())) {
+        if (JVM_IsSupportedJNIVersion(attachArgs.version())) {
             group = attachArgs.group();
             name = NativeUtils.fromUTF8Ptr(attachArgs.name());
         } else {
@@ -1533,7 +1543,7 @@ public final class VM extends NativeEnv {
         }
         StaticObject thread = getContext().createThread(Thread.currentThread(), group, name);
         if (daemon) {
-            getMeta().java_lang_Thread_daemon.set(thread, true);
+            getContext().getThreadAccess().setDaemon(thread, true);
         }
         return JNI_OK;
     }
@@ -1637,7 +1647,7 @@ public final class VM extends NativeEnv {
                 return JNI_EVERSION;
             }
         }
-        if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
+        if (JVM_IsSupportedJNIVersion(version)) {
             StaticObject currentThread = getContext().getCurrentThread();
             if (currentThread == null) {
                 return JNI_EDETACHED;
@@ -1662,7 +1672,21 @@ public final class VM extends NativeEnv {
 
     // region exceptions
 
-    public static class StackElement {
+    public interface StackElement {
+        Method getMethod();
+
+        boolean hasInfo();
+
+        String getDeclaringClassName();
+
+        String getMethodName();
+
+        int getLineNumber();
+
+        String getFileName();
+    }
+
+    public static class EspressoStackElement implements StackElement {
         /**
          * @see StackTraceElement#isNativeMethod()
          */
@@ -1675,22 +1699,90 @@ public final class VM extends NativeEnv {
         private final Method m;
         private final int bci;
 
-        public StackElement(Method m, int bci) {
+        public EspressoStackElement(Method m, int bci) {
             this.m = m;
             this.bci = bci;
         }
 
+        @Override
         public Method getMethod() {
             return m;
         }
 
-        public int getBCI() {
-            return bci;
+        @Override
+        public boolean hasInfo() {
+            return m != null;
+        }
+
+        @Override
+        public String getDeclaringClassName() {
+            return MetaUtil.internalNameToJava(m.getDeclaringKlass().getTypeAsString(), true, true);
+        }
+
+        @Override
+        public String getMethodName() {
+            return m.getNameAsString();
+        }
+
+        @Override
+        public int getLineNumber() {
+            return m.bciToLineNumber(bci);
+        }
+
+        @Override
+        public String getFileName() {
+            return m.getDeclaringKlass().getSourceFile();
+        }
+    }
+
+    public static class ForeignStackElement implements StackElement {
+
+        private final String declaringClassName;
+        private final String methodName;
+        private final String fileName;
+        private final int lineNumber;
+
+        public ForeignStackElement(String declaringClassName, String methodName, String fileName, int lineNumber) {
+            this.declaringClassName = declaringClassName;
+            this.methodName = methodName;
+            this.fileName = fileName;
+            this.lineNumber = lineNumber;
+        }
+
+        @Override
+        public Method getMethod() {
+            return null;
+        }
+
+        @Override
+        public boolean hasInfo() {
+            return true;
+        }
+
+        @Override
+        public String getDeclaringClassName() {
+            return declaringClassName;
+        }
+
+        @Override
+        public String getMethodName() {
+            return methodName;
+        }
+
+        @Override
+        public int getLineNumber() {
+            return lineNumber;
+        }
+
+        @Override
+        public String getFileName() {
+            return fileName;
         }
     }
 
     public static class StackTrace {
         public static final StackTrace EMPTY_STACK_TRACE = new StackTrace(0);
+        public static final StackTrace FOREIGN_MARKER_STACK_TRACE = new StackTrace(0);
 
         public StackElement[] trace;
         public int size;
@@ -1751,24 +1843,21 @@ public final class VM extends NativeEnv {
             throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
         }
         StackElement stackElement = frames.trace[index];
-        Method method = stackElement.getMethod();
-        if (method == null) {
+        if (!stackElement.hasInfo()) {
             return StaticObject.NULL;
         }
-        int bci = stackElement.getBCI();
 
         String result = "unknown source";
-        ObjectKlass declaringKlass = method.getDeclaringKlass();
-        String source = declaringKlass.getSourceFile();
+        String source = stackElement.getFileName();
         if (source != null) {
             result = source;
         }
         getMeta().java_lang_StackTraceElement_init.invokeDirect(
                         /* this */ ste,
-                        /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(declaringKlass.getType().toString(), true, true)),
-                        /* methodName */ meta.toGuestString(method.getName()),
+                        /* declaringClass */ meta.toGuestString(stackElement.getDeclaringClassName()),
+                        /* methodName */ meta.toGuestString(stackElement.getMethodName()),
                         /* fileName */ meta.toGuestString(result),
-                        /* lineNumber */ method.bciToLineNumber(bci));
+                        /* lineNumber */ stackElement.getLineNumber());
 
         return ste;
     }
@@ -2218,7 +2307,8 @@ public final class VM extends NativeEnv {
 
     @VmImpl
     public boolean JVM_IsSupportedJNIVersion(int version) {
-        return JniVersion.isSupported(version, getJavaVersion());
+        JniVersion jniVersion = JniVersion.decodeVersion(version);
+        return jniVersion != null && jniVersion.getJavaVersion().compareTo(getJavaVersion()) <= 0;
     }
 
     @VmImpl
@@ -3052,40 +3142,43 @@ public final class VM extends NativeEnv {
     private static @JavaType(java.lang.reflect.Method.class) StaticObject getGuestReflectiveMethodRoot(@JavaType(java.lang.reflect.Method.class) StaticObject seed, Meta meta) {
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Method);
         StaticObject curMethod = seed;
-        Method target = null;
-        while (target == null) {
-            target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
-            if (target == null) {
-                curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
+        while (curMethod != null && StaticObject.notNull(curMethod)) {
+            Method target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
+            if (target != null) {
+                return curMethod;
             }
+            curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
         }
-        return curMethod;
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Could not find HIDDEN_METHOD_KEY");
     }
 
     private static @JavaType(java.lang.reflect.Field.class) StaticObject getGuestReflectiveFieldRoot(@JavaType(java.lang.reflect.Field.class) StaticObject seed, Meta meta) {
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Field);
         StaticObject curField = seed;
-        Field target = null;
-        while (target == null) {
-            target = (Field) meta.HIDDEN_FIELD_KEY.getHiddenObject(curField);
-            if (target == null) {
-                curField = meta.java_lang_reflect_Field_root.getObject(curField);
+        while (curField != null && StaticObject.notNull(curField)) {
+            Field target = (Field) meta.HIDDEN_FIELD_KEY.getHiddenObject(curField);
+            if (target != null) {
+                return curField;
             }
+            curField = meta.java_lang_reflect_Field_root.getObject(curField);
         }
-        return curField;
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Could not find HIDDEN_FIELD_KEY");
     }
 
     private static @JavaType(java.lang.reflect.Constructor.class) StaticObject getGuestReflectiveConstructorRoot(@JavaType(java.lang.reflect.Constructor.class) StaticObject seed, Meta meta) {
         assert InterpreterToVM.instanceOf(seed, meta.java_lang_reflect_Constructor);
         StaticObject curConstructor = seed;
-        Method target = null;
-        while (target == null) {
-            target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curConstructor);
-            if (target == null) {
-                curConstructor = meta.java_lang_reflect_Constructor_root.getObject(curConstructor);
+        while (curConstructor != null && StaticObject.notNull(curConstructor)) {
+            Method target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curConstructor);
+            if (target != null) {
+                return curConstructor;
             }
+            curConstructor = meta.java_lang_reflect_Constructor_root.getObject(curConstructor);
         }
-        return curConstructor;
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Could not find HIDDEN_CONSTRUCTOR_KEY");
     }
 
     @VmImpl(isJni = true)
@@ -3537,23 +3630,40 @@ public final class VM extends NativeEnv {
             getMeta().throwNullPointerException();
         }
         EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
-        assert host instanceof Reference;
+        if (host == null) {
+            // reference was cleared
+            return StaticObject.isNull(object);
+        }
+        assert host instanceof Reference : host;
         // Call host's refersTo. Not available in 8 or 11.
-        return ReferenceSupport.phantomReferenceRefersTo((Reference) host, object);
+        return ((Reference<StaticObject>) host).refersTo(object);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     @VmImpl(isJni = true)
     public boolean JVM_ReferenceRefersTo(@JavaType(Reference.class) StaticObject ref, @JavaType(Object.class) StaticObject object,
-                    @Inject SubstitutionProfiler profiler) {
+                    @Inject SubstitutionProfiler profiler, @Inject Meta meta, @Inject EspressoLanguage language) {
         if (StaticObject.isNull(ref)) {
             profiler.profile(0);
             getMeta().throwNullPointerException();
         }
-        EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
-        assert host instanceof Reference;
-        // Call host's refersTo. Not available in 8 or 11.
-        return ReferenceSupport.referenceRefersTo((Reference) host, object);
+
+        if (InterpreterToVM.instanceOf(ref, meta.java_lang_ref_WeakReference) //
+                        || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_SoftReference) //
+                        || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_PhantomReference) //
+                        || InterpreterToVM.instanceOf(ref, meta.java_lang_ref_FinalReference)) {
+            EspressoReference host = (EspressoReference) getMeta().HIDDEN_HOST_REFERENCE.getHiddenObject(ref);
+            if (host == null) {
+                // reference was cleared
+                return StaticObject.isNull(object);
+            }
+            assert host instanceof Reference : host;
+            // Call host's refersTo. Not available in 8 or 11.
+            return ((Reference<StaticObject>) host).refersTo(object);
+        } else {
+            StaticObject referent = (StaticObject) meta.java_lang_ref_Reference_referent.get(ref);
+            return InterpreterToVM.referenceIdentityEqual(referent, object, language);
+        }
     }
 
     @VmImpl(isJni = true)
@@ -3684,21 +3794,52 @@ public final class VM extends NativeEnv {
             throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "uninitialized StackFrameInfo !");
         }
         int bci = meta.java_lang_StackFrameInfo_bci.getInt(info);
-        fillInElement(element, new VM.StackElement(m, bci), getMeta().java_lang_Class_getName);
+        fillInElement(element, new VM.EspressoStackElement(m, bci), getMeta().java_lang_Class_getName);
     }
 
     @VmImpl(isJni = true)
-    public void JVM_InitStackTraceElementArray(@JavaType(StackTraceElement[].class) StaticObject elements, @JavaType(Throwable.class) StaticObject throwable,
+    public void JVM_InitStackTraceElementArray(@JavaType(StackTraceElement[].class) StaticObject elements, @JavaType(Object.class) StaticObject throwableOrBacktrace,
                     @Inject EspressoLanguage language,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
-        if (StaticObject.isNull(elements) || StaticObject.isNull(throwable)) {
+        if (StaticObject.isNull(elements) || StaticObject.isNull(throwableOrBacktrace)) {
             profiler.profile(0);
             throw meta.throwNullPointerException();
         }
         assert elements.isArray();
-        VM.StackTrace stackTrace = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwable);
-        if (stackTrace != null) {
+
+        StaticObject foreignWrapper = null;
+        VM.StackTrace stackTrace = null;
+        if (throwableOrBacktrace.isForeignObject()) {
+            // foreign object wrapper passed as backtrace directly
+            foreignWrapper = throwableOrBacktrace;
+        } else { // check for foreign marker stack trace
+            stackTrace = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwableOrBacktrace);
+            if (stackTrace == StackTrace.FOREIGN_MARKER_STACK_TRACE) {
+                foreignWrapper = meta.java_lang_Throwable_backtrace.getObject(throwableOrBacktrace);
+            }
+        }
+        if (foreignWrapper != null) {
+            AbstractTruffleException foreignException = (AbstractTruffleException) foreignWrapper.rawForeignObject(language);
+            InteropLibrary interop = InteropLibrary.getUncached();
+            try {
+                Object exceptionStackTrace = interop.getExceptionStackTrace(foreignException);
+                int stackSize = (int) interop.getArraySize(exceptionStackTrace);
+                if (elements.length(language) != stackSize) {
+                    profiler.profile(1);
+                    throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
+                }
+                for (int i = 0; i < stackSize; i++) {
+                    if (StaticObject.isNull(elements.get(language, i))) {
+                        profiler.profile(2);
+                        throw meta.throwNullPointerException();
+                    }
+                    fillInForeignElement(elements, language, interop, exceptionStackTrace, i);
+                }
+            } catch (InteropException e) {
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            }
+        } else if (stackTrace != null) {
             if (elements.length(language) != stackTrace.size) {
                 profiler.profile(1);
                 throw meta.throwException(meta.java_lang_IndexOutOfBoundsException);
@@ -3713,63 +3854,113 @@ public final class VM extends NativeEnv {
         }
     }
 
+    @TruffleBoundary
+    private void fillInForeignElement(StaticObject elements, EspressoLanguage language, InteropLibrary interop, Object exceptionStackTrace, int i)
+                    throws UnsupportedMessageException, InvalidArrayIndexException {
+        Object foreignElement = interop.readArrayElement(exceptionStackTrace, i);
+
+        String languageId = "java";
+        String fileName = "<unknown>";
+        int lineNumber = EspressoStackElement.NATIVE_BCI;
+        if (interop.hasSourceLocation(foreignElement)) {
+            SourceSection sourceLocation = interop.getSourceLocation(foreignElement);
+            fileName = sourceLocation.getSource().getName();
+            if (sourceLocation.hasLines()) {
+                lineNumber = sourceLocation.getStartLine();
+            }
+            languageId = sourceLocation.getSource().getLanguage();
+        }
+
+        String declaringClassName = languageId.equals("java") ? "" : "<" + languageId + ">";
+        if (interop.hasDeclaringMetaObject(foreignElement)) {
+            Object declaringMetaObject = interop.getDeclaringMetaObject(foreignElement);
+            declaringClassName += interop.asString(interop.getMetaQualifiedName(declaringMetaObject));
+        }
+
+        String methodName = "<unknownForeignMethod>";
+        if (interop.hasExecutableName(foreignElement)) {
+            methodName = interop.asString(interop.getExecutableName(foreignElement));
+        }
+
+        ForeignStackElement foreignStackElement = new ForeignStackElement(declaringClassName, methodName, fileName, lineNumber);
+        fillInElement(elements.get(language, i), foreignStackElement, getMeta().java_lang_Class_getName);
+    }
+
     private void fillInElement(@JavaType(StackTraceElement.class) StaticObject ste, VM.StackElement element,
                     Method classGetName) {
         Method m = element.getMethod();
-        ObjectKlass k = m.getDeclaringKlass();
-        StaticObject guestClass = k.mirror();
-        StaticObject loader = k.getDefiningClassLoader();
-        ModuleEntry module = k.module();
 
-        // Fill in class name
-        getMeta().java_lang_StackTraceElement_declaringClass.setObject(ste, classGetName.invokeDirect(guestClass));
-        getMeta().java_lang_StackTraceElement_declaringClassObject.setObject(ste, guestClass);
+        if (m != null) {
+            // espresso frame
+            ObjectKlass k = m.getDeclaringKlass();
+            StaticObject guestClass = k.mirror();
+            StaticObject loader = k.getDefiningClassLoader();
+            ModuleEntry module = k.module();
 
-        // Fill in loader name
-        if (!StaticObject.isNull(loader)) {
-            StaticObject loaderName = getMeta().java_lang_ClassLoader_name.getObject(loader);
+            // Fill in class name
+            getMeta().java_lang_StackTraceElement_declaringClass.setObject(ste, classGetName.invokeDirect(guestClass));
+            getMeta().java_lang_StackTraceElement_declaringClassObject.setObject(ste, guestClass);
+
+            // Fill in loader name
             if (!StaticObject.isNull(loader)) {
-                getMeta().java_lang_StackTraceElement_classLoaderName.setObject(ste, loaderName);
+                StaticObject loaderName = getMeta().java_lang_ClassLoader_name.getObject(loader);
+                if (!StaticObject.isNull(loader)) {
+                    getMeta().java_lang_StackTraceElement_classLoaderName.setObject(ste, loaderName);
+                }
             }
-        }
 
+            // Fill in module
+            if (module.isNamed()) {
+                getMeta().java_lang_StackTraceElement_moduleName.setObject(ste, getMeta().toGuestString(module.getName()));
+                // TODO: module version
+            }
+        } else { // foreign frame
+            // Fill in class name
+            getMeta().java_lang_StackTraceElement_declaringClass.setObject(ste, getMeta().toGuestString(element.getDeclaringClassName()));
+            getMeta().java_lang_StackTraceElement_declaringClassObject.setObject(ste, getMeta().java_lang_Object.mirror());
+        }
         // Fill in method name
-        Symbol<Name> mname = m.getName();
-        getMeta().java_lang_StackTraceElement_methodName.setObject(ste, getMeta().toGuestString(mname));
-
-        // Fill in module
-        if (module.isNamed()) {
-            getMeta().java_lang_StackTraceElement_moduleName.setObject(ste, getMeta().toGuestString(module.getName()));
-            // TODO: module version
-        }
+        getMeta().java_lang_StackTraceElement_methodName.setObject(ste, getMeta().toGuestString(element.getMethodName()));
 
         // Fill in source information
-        getMeta().java_lang_StackTraceElement_fileName.setObject(ste, getMeta().toGuestString(k.getSourceFile()));
-        getMeta().java_lang_StackTraceElement_lineNumber.setInt(ste, m.bciToLineNumber(element.getBCI()));
+        getMeta().java_lang_StackTraceElement_fileName.setObject(ste, getMeta().toGuestString(element.getFileName()));
+        getMeta().java_lang_StackTraceElement_lineNumber.setInt(ste, element.getLineNumber());
     }
 
-    private void checkStackWalkArguments(EspressoLanguage language, int batchSize, int startIndex, @JavaType(Object[].class) StaticObject frames) {
+    private static void checkStackWalkArguments(EspressoLanguage language, int batchSize, int startIndex, @JavaType(Object[].class) StaticObject frames, Meta meta) {
         if (StaticObject.isNull(frames)) {
-            Meta meta = getMeta();
             throw meta.throwNullPointerException();
         }
         assert frames.isArray();
         int limit = startIndex + batchSize;
         if (frames.length(language) < limit) {
-            Meta meta = getMeta();
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Not enough space in buffers");
         }
     }
 
     @VmImpl(isJni = true)
-    @TruffleBoundary
     public @JavaType(Object.class) StaticObject JVM_CallStackWalk(
                     @JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
                     int batchSize, int startIndex,
                     @JavaType(Object[].class) StaticObject frames,
                     @Inject EspressoLanguage language,
                     @Inject Meta meta) {
-        checkStackWalkArguments(language, batchSize, startIndex, frames);
+        return JVM_CallStackWalk19(stackStream, mode, skipframes, StaticObject.NULL, StaticObject.NULL, batchSize, startIndex, frames, language, meta);
+    }
+
+    @TruffleBoundary
+    public @JavaType(Object.class) StaticObject JVM_CallStackWalk19(
+                    @JavaType(internalName = "Ljava/lang/StackStreamFactory;") StaticObject stackStream, long mode, int skipframes,
+                    @JavaType(internalName = "Ljdk/internal/vm/ContinuationScope;") StaticObject contScope,
+                    @JavaType(internalName = "Ljdk/internal/vm/Continuation;") StaticObject cont,
+                    int batchSize, int startIndex,
+                    @JavaType(Object[].class) StaticObject frames,
+                    @Inject EspressoLanguage language,
+                    @Inject Meta meta) {
+        if (!StaticObject.isNull(contScope) && !StaticObject.isNull(cont)) {
+            throw EspressoError.unimplemented("virtual thread support");
+        }
+        checkStackWalkArguments(language, batchSize, startIndex, frames, meta);
         return getStackWalk().fetchFirstBatch(stackStream, mode, skipframes, batchSize, startIndex, frames, meta);
     }
 
@@ -3781,7 +3972,7 @@ public final class VM extends NativeEnv {
                     @JavaType(Object[].class) StaticObject frames,
                     @Inject EspressoLanguage language,
                     @Inject Meta meta) {
-        checkStackWalkArguments(language, batchSize, startIndex, frames);
+        checkStackWalkArguments(language, batchSize, startIndex, frames, meta);
         return getStackWalk().fetchNextBatch(stackStream, mode, anchor, batchSize, startIndex, frames, meta);
     }
 

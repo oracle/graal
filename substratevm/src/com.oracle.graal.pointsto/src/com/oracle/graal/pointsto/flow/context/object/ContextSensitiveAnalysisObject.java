@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
@@ -52,7 +51,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
 
     public ContextSensitiveAnalysisObject(AnalysisUniverse universe, AnalysisType type, AnalysisObjectKind kind) {
         super(universe, type, kind);
-        assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(universe.hostVM().options());
+        assert universe.analysisPolicy().allocationSiteSensitiveHeap();
     }
 
     /** The object has been in contact with an context insensitive object in an union operation. */
@@ -121,7 +120,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
     @Override
     public ArrayElementsTypeFlow getArrayElementsFlow(PointsToAnalysis bb, boolean isStore) {
         assert type.isArray();
-        assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions());
+        assert bb.analysisPolicy().allocationSiteSensitiveHeap();
 
         return isStore ? arrayElementsTypeStore.writeFlow() : arrayElementsTypeStore.readFlow();
     }
@@ -129,7 +128,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
     /** Returns the filter field flow corresponding to an unsafe accessed field. */
     @Override
     public FieldFilterTypeFlow getInstanceFieldFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
-        assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed() && PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions());
+        assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed() && bb.analysisPolicy().allocationSiteSensitiveHeap();
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
 
@@ -146,7 +145,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
 
     @Override
     public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field, boolean isStore) {
-        assert !Modifier.isStatic(field.getModifiers()) && PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions());
+        assert !Modifier.isStatic(field.getModifiers()) && bb.analysisPolicy().allocationSiteSensitiveHeap();
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
 

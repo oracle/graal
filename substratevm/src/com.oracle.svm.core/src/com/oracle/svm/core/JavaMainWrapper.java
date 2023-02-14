@@ -66,6 +66,8 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jni.JNIJavaVMList;
+import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -162,6 +164,9 @@ public class JavaMainWrapper {
             }
 
             ThreadListenerSupport.get().beforeThreadRun();
+
+            // Ensure that native code using JNI_GetCreatedJavaVMs finds this isolate.
+            JNIJavaVMList.addJavaVM(JNIFunctionTables.singleton().getGlobalJavaVM());
 
             /*
              * Invoke the application's main method. Invoking the main method via a method handle

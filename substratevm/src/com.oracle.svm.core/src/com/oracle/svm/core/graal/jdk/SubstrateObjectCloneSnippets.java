@@ -156,7 +156,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
 
         // copy remaining non-object data
         int endOffset = isArrayLike ? LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding)
-                        : UnsignedUtils.safeToInt(LayoutEncoding.getPureInstanceSize(layoutEncoding));
+                        : UnsignedUtils.safeToInt(LayoutEncoding.getPureInstanceAllocationSize(layoutEncoding));
         int primitiveDataSize = endOffset - curOffset;
         assert primitiveDataSize >= 0;
         assert curOffset >= 0;

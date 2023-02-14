@@ -29,9 +29,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -41,20 +42,30 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @Platforms(Platform.HOSTED_ONLY.class)
 public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvider {
 
-    protected final ClassInitializationSupport classInitializationSupport;
     protected final UniverseMetaAccess metaAccess;
     protected final SVMHost hostVM;
 
-    public SharedConstantFieldProvider(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, SVMHost hostVM) {
+    public SharedConstantFieldProvider(MetaAccessProvider metaAccess, SVMHost hostVM) {
         super(metaAccess);
-        this.classInitializationSupport = classInitializationSupport;
         this.metaAccess = (UniverseMetaAccess) metaAccess;
         this.hostVM = hostVM;
     }
 
     @Override
+    public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> analysisTool) {
+        if (asAnalysisField(field).getWrapped() instanceof ReadableJavaField readableField) {
+            if (!readableField.isValueAvailable()) {
+                return null;
+            }
+        }
+        return super.readConstantField(field, analysisTool);
+    }
+
+    protected abstract AnalysisField asAnalysisField(ResolvedJavaField field);
+
+    @Override
     public boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        if (classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+        if (!field.getDeclaringClass().isInitialized()) {
             return false;
         }
         if (hostVM.preventConstantFolding(field)) {

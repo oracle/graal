@@ -751,6 +751,12 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     /**
+     * Marker method to be called before performing a frame transfer.
+     */
+    void startOSRTransfer() {
+    }
+
+    /**
      * This method is used to transfer a static slot from a source frame to a target frame before or
      * after OSR. This method must exclusively be used inside
      * {@code BytecodeOSRMetadata#transferIndexedFrameSlot}. It is necessary to support static
