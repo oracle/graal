@@ -7,7 +7,7 @@ permalink: /docs/getting-started/macos/
 
 ## Installation on macOS Platforms
 
-Oracle provides GraalVM Community Edition distributions for macOS on AMD64 (Intel) and AArch64 architectures. 
+Oracle provides GraalVM Community Edition for macOS on AMD64 (Intel) and AArch64 architectures. 
 
 GraalVM Community Edition can be installed for a single user and administrator privileges are not required.
 However, if GraalVM is meant to become a default JDK, administrator privileges are required.
@@ -22,7 +22,7 @@ Follow these steps to install GraalVM Community on the macOS operating system:
 
 2. Unzip the archive.
     ```shell
-    tar -xzf graalvm-ce-java<version>-darwin-amd64-<version>.tar.gz
+    tar -xzf graalvm-ce-java<version>-darwin-<architecture>-<version>.tar.gz
     ```
     Alternatively, open the file in Finder.
     > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
@@ -37,7 +37,7 @@ Follow these steps to install GraalVM Community on the macOS operating system:
 
 To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
 
-4. There can be multiple JDKs installed on the machine. The next  step is to configure the runtime environment:
+4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
   - Point the `PATH` environment variable to the GraalVM `bin` directory:
     ```shell
     export PATH=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home/bin:$PATH

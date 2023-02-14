@@ -5,7 +5,7 @@ permalink: /getting-started/installation-macos/
 
 # Installation on macOS Platforms
 
-Oracle provides GraalVM Enterprise Edition distributions for macOS on AMD64 (Intel) and AArch64 architectures. 
+Oracle provides GraalVM Enterprise Edition for macOS on AMD64 (Intel) and AArch64 architectures. 
 
 GraalVM Enterprise can be installed for a single user and administrator privileges are not required. However, if GraalVM Enterprise is meant to become a default JDK, administrator privileges are required.
 
@@ -20,11 +20,11 @@ Follow these steps to install Oracle GraalVM Enterprise Edition on the macOS ope
 
 3. Click on the **GraalVM Enterprise JDK** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
 
-4. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-darwin-amd64-<version>.tar.gz**.
+4. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-darwin-<architecture>-<version>.tar.gz**.
 
 5. Unzip the archive:
    ```shell
-   tar -xzf graalvm-ee-java<version>-darwin-amd64-<version>.tar.gz
+   tar -xzf graalvm-ee-java<version>-darwin-<architecture>-<version>.tar.gz
    ```
    Alternatively, open the file in Finder.
    > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
