@@ -525,7 +525,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t:
             phaseplan_fuzz_jtt_tests([], extraVMarguments=_remove_empty_entries(extraVMarguments), extraUnitTestArguments=_remove_empty_entries(extraUnitTestArguments))
 
-def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
+def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task_report_component='compiler'):
     # run DaCapo benchmarks #
     #########################
 
@@ -549,11 +549,11 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     dacapo_gate_iterations.update({'tradesoap': -1})
     for name in dacapo_suite.benchmarkList(bmSuiteArgs):
         iterations = dacapo_gate_iterations.get(name, -1)
-        with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=True) as t:
+        with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
             if t: _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # ensure we can also run on C2
-    with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t:
             # Strip JVMCI args from C2 execution which uses -XX:-EnableJVMCI
             c2BenchVmArgs = [a for a in benchVmArgs if 'JVMCI' not in a]
@@ -567,13 +567,13 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     }
     for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
         iterations = scala_dacapo_gate_iterations.get(name, -1)
-        with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=True) as t:
+        with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
             if t: _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
     # run benchmark with non default setup #
     ########################################
     # ensure -Xbatch still works
-    with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t: _gate_dacapo('pmd', 1, benchVmArgs + ['-Xbatch'])
 
     # Ensure benchmark counters still work but omit this test on
@@ -583,7 +583,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     out = mx.OutputCapture()
     mx.run([jdk.java, '-version'], err=subprocess.STDOUT, out=out)
     if 'fastdebug' not in out.data and '-XX:+UseJVMCINativeLibrary' not in (extraVMarguments or []):
-        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test, report=True) as t:
+        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test, report=task_report_component) as t:
             if t:
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
@@ -604,11 +604,11 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
                     os.remove(logFile)
 
     # ensure -Xcomp still works
-    with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
     # ensure -XX:+PreserveFramePointer  still works
-    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 graal_unit_test_runs = [
@@ -647,7 +647,7 @@ graal_bootstrap_tests = [
 
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument, args.extra_unittest_argument)
-    compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
+    compiler_gate_benchmark_runner(tasks, args.extra_vm_argument, task_report_component='compiler')
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
