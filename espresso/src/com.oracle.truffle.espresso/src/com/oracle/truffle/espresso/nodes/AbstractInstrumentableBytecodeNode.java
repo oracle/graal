@@ -95,7 +95,7 @@ abstract class AbstractInstrumentableBytecodeNode extends EspressoInstrumentable
             localCount += method.getParameterCount();
 
             Klass[] parameters = (Klass[]) method.getParameters();
-            Utf8ConstantTable utf8Constants = getContext().getLanguage().getUtf8ConstantTable();
+            Utf8ConstantTable utf8Constants = method.getLanguage().getUtf8ConstantTable();
             int startslot = 0;
 
             if (hasReceiver) {
