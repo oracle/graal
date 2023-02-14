@@ -1008,12 +1008,15 @@ public class NativeImage {
                         .collect(Collectors.joining(",", oHCLibraryPath, ""));
         imageBuilderArgs.add(0, clibrariesBuilderArg);
 
+        String printFlagsDummyImage = "dummy-image-";
         if (printFlagsOptionQuery != null) {
             addPlainImageBuilderArg(NativeImage.oH + enablePrintFlags + "=" + printFlagsOptionQuery);
             addPlainImageBuilderArg(NativeImage.oR + enablePrintFlags + "=" + printFlagsOptionQuery);
+            addPlainImageBuilderArg(oHName + printFlagsDummyImage + "printFlagsOptionQuery");
         } else if (printFlagsWithExtraHelpOptionQuery != null) {
             addPlainImageBuilderArg(NativeImage.oH + enablePrintFlagsWithExtraHelp + "=" + printFlagsWithExtraHelpOptionQuery);
             addPlainImageBuilderArg(NativeImage.oR + enablePrintFlagsWithExtraHelp + "=" + printFlagsWithExtraHelpOptionQuery);
+            addPlainImageBuilderArg(oHName + printFlagsDummyImage + "printFlagsWithExtraHelpOptionQuery");
         }
 
         if (shouldAddCWDToCP()) {
