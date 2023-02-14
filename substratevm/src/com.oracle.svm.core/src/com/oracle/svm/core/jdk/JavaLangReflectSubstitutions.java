@@ -32,6 +32,7 @@ import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -360,6 +361,25 @@ final class Target_java_lang_reflect_Array {
             }
         }
         throw new IllegalArgumentException();
+    }
+
+    @Alias
+    private static native Object newArray(Class<?> componentType, int length);
+
+    @Substitute
+    public static Object newInstance(Class<?> componentType, int length) {
+        if (componentType == null) {
+            throw new NullPointerException();
+        }
+        if (componentType.equals(void.class) ||
+                        (componentType.isArray() && SubstrateUtil.arrayTypeDimension(componentType) >= 255)) {
+            throw new IllegalArgumentException();
+        }
+        if (length < 0) {
+            throw new NegativeArraySizeException();
+        }
+
+        return newArray(componentType, length);
     }
 
     @Substitute
