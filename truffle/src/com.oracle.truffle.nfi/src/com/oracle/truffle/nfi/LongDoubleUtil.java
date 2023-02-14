@@ -607,7 +607,7 @@ final class LongDoubleUtil {
             }
         }
 
-        @ExportMessage boolean fitsInBigInteger() { return false; }
+        @ExportMessage static boolean fitsInBigInteger() { return false; }
 
         @ExportMessage
         boolean fitsInFloat(@CachedLibrary("this.buffer") InteropLibrary interop) {
@@ -695,7 +695,17 @@ final class LongDoubleUtil {
             }
         }
 
-        @ExportMessage BigInteger asBigInteger() throws UnsupportedMessageException { return null; }
+        @ExportMessage BigInteger asBigInteger(@CachedLibrary("this.buffer") InteropLibrary interop) throws UnsupportedMessageException {
+            try {
+                long expSignFraction = interop.readBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, 8);
+                if ((expSignFraction & FP128Number.EXPONENT_MASK) == FP128Number.EXPONENT_MASK) {
+                    throw UnsupportedMessageException.create();
+                }
+                } catch (InvalidBufferOffsetException ex) {
+                throw UnsupportedMessageException.create();
+            }
+            return null;
+        }
 
         @ExportMessage
         float asFloat(@CachedLibrary("this.buffer") InteropLibrary interop) throws UnsupportedMessageException {
