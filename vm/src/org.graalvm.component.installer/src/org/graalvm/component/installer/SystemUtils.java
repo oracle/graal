@@ -837,7 +837,7 @@ public class SystemUtils {
             } else {
                 return true;
             }
-        } catch (IOException ex) {
+        } catch (MalformedURLException ex) {
             // expected
         }
         // will fail with an exception if the relative path contains bad chars or traverses up
