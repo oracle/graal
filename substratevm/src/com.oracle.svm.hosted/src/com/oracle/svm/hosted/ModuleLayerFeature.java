@@ -67,7 +67,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.BootModuleLayerSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -166,12 +165,6 @@ public final class ModuleLayerFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
 
-        /*
-         * Parse explicitly added modules via --add-modules. This is done early as this information
-         * is required when filtering the analysis reachable module set.
-         */
-        Set<String> extraModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
-
         Set<Module> runtimeImageNamedModules = accessImpl.getUniverse().getTypes()
                         .stream()
                         .filter(ModuleLayerFeature::typeIsReachable)
@@ -180,9 +173,10 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .collect(Collectors.toSet());
 
         /*
-         * Include the rest of the extra modules that might not have been included by the above
-         * process.
+         * Parse explicitly added modules via --add-modules. This is done early as this information
+         * is required when filtering the analysis reachable module set.
          */
+        Set<String> extraModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
         extraModules.addAll(ImageSingletons.lookup(ResourcesFeature.class).includedResourcesModules);
         extraModules.stream().filter(Predicate.not(ModuleSupport.nonExplicitModules::contains)).forEach(moduleName -> {
             Optional<?> module = accessImpl.imageClassLoader.findModule(moduleName);
@@ -223,13 +217,17 @@ public final class ModuleLayerFeature implements InternalFeature {
     }
 
     /**
-     * See jdk.internal.module.ModuleBootstrap#boot2() method for more details.
+     * This method is a custom version of jdk.internal.module.ModuleBootstrap#boot2() used to
+     * compute the root module set that should be seen at image runtime. It reuses the same methods
+     * as the original (via reflective invokes).
      */
     private Set<String> calculateRootModules(FeatureImpl.AfterAnalysisAccessImpl accessImpl, Collection<String> extraModules) {
         String mainModule = moduleLayerFeatureUtils.getMainModuleName();
         List<Path> appModulePath = accessImpl.imageClassLoader.applicationModulePath();
-        boolean haveAppModulePath = appModulePath.size() > 1;   // SVM library-support is on the app
-                                                                // module path
+        String upgradeModulePath = System.getProperty("jdk.module.upgrade.path");
+        boolean haveUpgradeModulePath = upgradeModulePath != null && !upgradeModulePath.isEmpty();
+        boolean haveSVMLibrarySupportOnAppModulePath = appModulePath.stream().anyMatch(p -> p.endsWith("/lib/svm/library-support.jar"));
+        boolean haveAppModulePath = (!appModulePath.isEmpty() && !haveSVMLibrarySupportOnAppModulePath) || haveUpgradeModulePath;
         Set<String> limitModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
 
         Object systemModules = null;
@@ -239,15 +237,16 @@ public final class ModuleLayerFeature implements InternalFeature {
             systemModules = moduleLayerFeatureUtils.invokeSystemModuleFinderSystemModules(mainModule);
         }
         if (systemModules == null) {
-            // all system modules are observable
             systemModules = moduleLayerFeatureUtils.invokeSystemModuleFinderAllSystemModules();
         }
         if (systemModules != null) {
-            // images build
             systemModuleFinder = moduleLayerFeatureUtils.invokeSystemModuleFinderOf(systemModules);
         } else {
-            // exploded build or testing
-            throw UserError.abort("Exploded builds are not supported.");
+            systemModuleFinder = SystemModuleFinders.ofSystem();
+        }
+
+        if (haveUpgradeModulePath) {
+            systemModuleFinder = ModuleFinder.compose(accessImpl.imageClassLoader.classLoaderSupport.upgradeAndSystemModuleFinder, systemModuleFinder);
         }
 
         ModuleFinder appModulePathFinder = null;
@@ -257,15 +256,12 @@ public final class ModuleLayerFeature implements InternalFeature {
 
         ModuleFinder finder = haveAppModulePath ? ModuleFinder.compose(systemModuleFinder, appModulePathFinder) : systemModuleFinder;
 
-        // The root modules to resolve
         Set<String> roots = new HashSet<>();
 
-        // Launcher -m option to specify the main/initial module
         if (mainModule != null) {
             roots.add(mainModule);
         }
 
-        // Additional module(s) specified by --add-modules
         boolean addAllDefaultModules = false;
         boolean addAllSystemModules = false;
         boolean addAllApplicationModules = false;
@@ -285,42 +281,31 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
         }
 
-        // --limit-modules
         if (!limitModules.isEmpty()) {
             finder = moduleLayerFeatureUtils.invokeModuleBootstrapLimitFinder(finder, limitModules, roots);
         }
 
-        // If there is no initial module specified then assume that the initial
-        // module is the unnamed module of the application class loader. This
-        // is implemented by resolving all observable modules that export an
-        // API. Modules that have the DO_NOT_RESOLVE_BY_DEFAULT bit set in
-        // their ModuleResolution attribute flags are excluded from the
-        // default set of roots.
         if (mainModule == null || addAllDefaultModules) {
             roots.addAll(moduleLayerFeatureUtils.invokeDefaultRootsComputeMethod(systemModuleFinder, finder));
         }
 
-        // If `--add-modules ALL-SYSTEM` is specified then all observable system
-        // modules will be resolved.
         if (addAllSystemModules) {
-            ModuleFinder f = finder;  // observable modules
+            ModuleFinder f = finder;
             systemModuleFinder.findAll()
                             .stream()
                             .map(ModuleReference::descriptor)
                             .map(ModuleDescriptor::name)
-                            .filter(mn -> f.find(mn).isPresent())  // observable
+                            .filter(mn -> f.find(mn).isPresent())
                             .forEach(roots::add);
         }
 
-        // If `--add-modules ALL-MODULE-PATH` is specified then all observable
-        // modules on the application module path will be resolved.
         if (appModulePathFinder != null && addAllApplicationModules) {
-            ModuleFinder f = finder;  // observable modules
+            ModuleFinder f = finder;
             appModulePathFinder.findAll()
                             .stream()
                             .map(ModuleReference::descriptor)
                             .map(ModuleDescriptor::name)
-                            .filter(mn -> f.find(mn).isPresent())  // observable
+                            .filter(mn -> f.find(mn).isPresent())
                             .forEach(roots::add);
         }
 
@@ -364,10 +349,8 @@ public final class ModuleLayerFeature implements InternalFeature {
         /*
          * Include explicitly required modules that are not necessarily reachable
          */
-        Set<String> limitModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
         Set<String> allReachableAndRequiredModuleNames = reachableNamedModules
                         .stream()
-                        .filter(m -> limitModules.isEmpty() || limitModules.contains(m.getName()))
                         .flatMap(ModuleLayerFeature::extractRequiredModuleNames)
                         .collect(Collectors.toSet());
 
@@ -389,7 +372,12 @@ public final class ModuleLayerFeature implements InternalFeature {
                 assert builderModule != null;
                 reachableModuleNamesForHostedModuleLayer.remove(builderModule.getName());
             }
-            reachableModuleNamesForHostedModuleLayer.retainAll(allReachableAndRequiredModuleNames);
+            Set<String> limitModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
+            if (limitModules.isEmpty()) {
+                reachableModuleNamesForHostedModuleLayer.retainAll(allReachableAndRequiredModuleNames);
+            } else {
+                reachableModuleNamesForHostedModuleLayer.retainAll(rootModules);
+            }
 
             if (hostedLayerIsBootModuleLayer) {
                 reachableModuleNamesForHostedModuleLayer.addAll(rootModules);
