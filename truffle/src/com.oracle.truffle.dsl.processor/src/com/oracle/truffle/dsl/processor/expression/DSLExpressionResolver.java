@@ -188,12 +188,27 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         lazyProcess();
         List<ExecutableElement> methodsWithName = this.methods.get(searchName);
         ExecutableElement foundWithName = null;
+        ExecutableElement found = null;
+        List<ExecutableElement> overloads = null;
         if (methodsWithName != null) {
             for (ExecutableElement method : methodsWithName) {
                 if (matchExecutable(searchName, searchParameters, method) && ElementUtils.isVisible(accessType, method)) {
-                    return method;
+                    if (found == null) {
+                        found = method;
+                    } else {
+                        if (overloads == null) {
+                            overloads = new ArrayList<>();
+                            overloads.add(found);
+                        }
+                        overloads.add(method);
+                    }
                 }
                 foundWithName = method;
+            }
+            if (overloads != null) {
+                return selectOverload(overloads, searchParameters);
+            } else if (found != null) {
+                return found;
             }
         }
         if (parent != null) {
@@ -236,6 +251,20 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
             parameterIndex++;
         }
         return true;
+    }
+
+    private static ExecutableElement selectOverload(List<ExecutableElement> overloads, List<TypeMirror> searchParameters) {
+        method: for (ExecutableElement method : overloads) {
+            for (int i = 0; i < searchParameters.size(); i++) {
+                TypeMirror searchParameter = searchParameters.get(i);
+                TypeMirror actualParameter = method.getParameters().get(i).asType();
+                if (!ElementUtils.typeEquals(searchParameter, actualParameter)) {
+                    continue method;
+                }
+            }
+            return method;
+        }
+        return overloads.get(0);
     }
 
     private VariableElement resolveVariable(Variable variable) {

@@ -58,6 +58,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -90,7 +91,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "truffle-assumption"})
 public class FallbackTest extends AbstractPolyglotTest {
 
     private static final Object UNKNOWN_OBJECT = new Object() {
@@ -787,6 +788,7 @@ public class FallbackTest extends AbstractPolyglotTest {
             return "s0";
         }
 
+        @Idempotent
         static boolean staticGuard() {
             return false;
         }
@@ -964,7 +966,6 @@ public class FallbackTest extends AbstractPolyglotTest {
                 }
             }
         }
-
     }
 
 }

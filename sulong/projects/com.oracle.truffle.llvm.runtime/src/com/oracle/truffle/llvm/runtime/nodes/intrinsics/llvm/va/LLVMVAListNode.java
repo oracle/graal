@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -79,7 +79,7 @@ public abstract class LLVMVAListNode extends LLVMExpressionNode {
         return allocatesVAListPointer;
     }
 
-    @Specialization(assumptions = "getAssumption()")
+    @Specialization(guards = "getAssumption().isValid()")
     public LLVMManagedPointer createVAList(VirtualFrame frame,
                     @Cached("createAllocaNode()") LLVMExpressionNode allocaNode) {
         // allocaNode == null indicates that no native stack is supported

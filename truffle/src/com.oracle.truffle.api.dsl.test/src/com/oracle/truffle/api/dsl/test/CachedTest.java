@@ -59,6 +59,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -323,6 +324,7 @@ public class CachedTest {
             return cachedValue;
         }
 
+        @Idempotent
         static boolean someMethod(int value) {
             invocations++;
             return true;
@@ -368,6 +370,7 @@ public class CachedTest {
             return cachedValue;
         }
 
+        @Idempotent
         static boolean cachedMethod(int value) {
             cachedMethodInvocations++;
             return true;
@@ -758,6 +761,7 @@ public class CachedTest {
     @NodeChild
     static class ConstantValueNode extends Node {
 
+        @Idempotent
         public int execute() {
             return 1;
         }

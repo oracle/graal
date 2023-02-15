@@ -102,4 +102,18 @@ public abstract class DSLSupport {
         return o;
     }
 
+    /**
+     * Helper method for DSL generated code to assert idempotence.
+     *
+     * @see Idempotent
+     * @see NonIdempotent
+     * @since 23.0
+     */
+    public static boolean assertIdempotence(boolean guardValue) {
+        if (!guardValue) {
+            throw new AssertionError("A guard was assumed idempotent, but returned a different value for a consecutive execution.");
+        }
+        return true;
+    }
+
 }

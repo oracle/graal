@@ -46,6 +46,7 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.NegatedGuardsTestFactory.NegatedGuardNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
@@ -62,6 +63,7 @@ public class NegatedGuardsTest {
 
     abstract static class NegatedGuardNode extends ValueNode {
 
+        @Idempotent
         static boolean guard() {
             return true;
         }

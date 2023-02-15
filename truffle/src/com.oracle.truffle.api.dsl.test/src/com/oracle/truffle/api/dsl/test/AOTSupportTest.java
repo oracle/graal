@@ -337,6 +337,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
             return arg;
         }
 
+        @SuppressWarnings("truffle-assumption")
         @Specialization(guards = "arg == 6", assumptions = "createAssumption()")
         int assumptionUsage(int arg) {
             return arg;
@@ -560,6 +561,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
                 return arg;
             }
 
+            @SuppressWarnings("truffle-assumption")
             @Specialization(guards = "arg == 6", assumptions = "createAssumption()")
             static int assumptionUsage(AOTInitializable receiver, int arg) {
                 return arg;
