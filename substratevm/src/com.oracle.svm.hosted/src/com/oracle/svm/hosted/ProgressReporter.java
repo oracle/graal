@@ -26,7 +26,6 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.hosted.ProgressReporterJsonHelper.UNAVAILABLE_METRIC;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -701,9 +700,8 @@ public class ProgressReporter {
 
     private static Path reportImageBuildStatistics(String imageName, BigBang bb) {
         Consumer<PrintWriter> statsReporter = ImageSingletons.lookup(ImageBuildStatistics.class).getReporter();
-        String name = "image_build_statistics_" + com.oracle.graal.pointsto.reports.ReportUtils.extractImageName(imageName);
-        String path = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
-        return com.oracle.graal.pointsto.reports.ReportUtils.report("image build statistics", path, name, "json", statsReporter, false);
+        Path reportsPath = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve("reports");
+        return ReportUtils.report("image build statistics", reportsPath.toString(), "``image_build_statistics``", "json", statsReporter, false);
     }
 
     private void printResourceStatistics() {
