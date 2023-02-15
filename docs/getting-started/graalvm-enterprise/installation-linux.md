@@ -14,7 +14,7 @@ This distribution can be installed on Oracle Linux and Red Hat Enterprise Linux(
 Follow these steps to install Oracle GraalVM Enterprise Edition on the Linux operating system:
 
 1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
-2. Select the preferable GraalVM Enterprise version in the Release Version dropdown,  **11**, **17** or **19** for the Java version, **Linux** for the operating system, and **amd64** or **aarch64** for the architecture.
+2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **11**, **17** or **19** for the Java version, **Linux** for the operating system, and **amd64** or **aarch64** for the architecture.
 3. Click on the **GraalVM Enterprise JDK** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
 4. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-linux-<architecture>-<version>.tar.gz**.
 5. Change directory to the location where you want to install GraalVM Enterprise, then move the _.tar.gz_ file to that directory.
