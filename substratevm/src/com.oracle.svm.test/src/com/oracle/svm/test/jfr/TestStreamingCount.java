@@ -45,7 +45,7 @@ import jdk.jfr.consumer.RecordedEvent;
 /**
  * Check to make sure 1. All events are accounted for when using streaming (even when there are very
  * many events generated). This test also forces a chunk rotation after the first flush as a sanity
- * check for potential flush/rotatin clashes.
+ * check for potential flush/rotation clashes.
  */
 
 public class TestStreamingCount extends StreamingTest {

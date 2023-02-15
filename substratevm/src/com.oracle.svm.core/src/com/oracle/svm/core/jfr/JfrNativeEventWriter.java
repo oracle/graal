@@ -262,8 +262,8 @@ public final class JfrNativeEventWriter {
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void hardReset(JfrNativeEventWriterData data) {
         JfrBuffer buffer = data.getJfrBuffer();
-        data.setStartPos(buffer.getPos());
-        data.setCurrentPos(buffer.getPos());
+        data.setStartPos(buffer.getCommittedPos());
+        data.setCurrentPos(buffer.getCommittedPos());
         data.setEndPos(JfrBufferAccess.getDataEnd(buffer));
     }
 
@@ -324,8 +324,8 @@ public final class JfrNativeEventWriter {
 
             // Copy all unflushed data (no matter if committed or uncommitted) from the old buffer
             // to the new buffer.
-            UnmanagedMemoryUtil.copy(oldBuffer.getTop(), result.getPos(), totalUsedBytes);
-            JfrBufferAccess.increasePos(result, unflushedSize);
+            UnmanagedMemoryUtil.copy(oldBuffer.getFlushedPos(), result.getCommittedPos(), totalUsedBytes);
+            JfrBufferAccess.increaseCommittedPos(result, unflushedSize);
 
             JfrBufferAccess.free(oldBuffer);
 
@@ -335,9 +335,9 @@ public final class JfrNativeEventWriter {
             // Reuse the existing buffer because enough data was already flushed in the meanwhile.
             // For that, copy all unflushed data (no matter if committed or uncommitted) to the
             // beginning of the buffer.
-            UnmanagedMemoryUtil.copy(oldBuffer.getTop(), JfrBufferAccess.getDataStart(oldBuffer), totalUsedBytes);
+            UnmanagedMemoryUtil.copy(oldBuffer.getFlushedPos(), JfrBufferAccess.getDataStart(oldBuffer), totalUsedBytes);
             JfrBufferAccess.reinitialize(oldBuffer);
-            JfrBufferAccess.increasePos(oldBuffer, unflushedSize);
+            JfrBufferAccess.increaseCommittedPos(oldBuffer, unflushedSize);
             return oldBuffer;
         }
     }
@@ -361,11 +361,11 @@ public final class JfrNativeEventWriter {
         assert isValid(data);
 
         JfrBuffer buffer = data.getJfrBuffer();
-        assert buffer.getPos().equal(data.getStartPos());
+        assert buffer.getCommittedPos().equal(data.getStartPos());
         assert JfrBufferAccess.getDataEnd(data.getJfrBuffer()).equal(data.getEndPos());
 
         Pointer newPosition = data.getCurrentPos();
-        buffer.setPos(newPosition);
+        buffer.setCommittedPos(newPosition);
         data.setStartPos(newPosition);
     }
 

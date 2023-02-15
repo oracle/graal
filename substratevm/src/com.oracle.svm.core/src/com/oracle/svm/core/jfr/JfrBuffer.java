@@ -33,6 +33,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.nativeimage.IsolateThread;
 
 /**
  * A {@link JfrBuffer} is a block of native memory (either thread-local or global) into which JFR
@@ -57,16 +58,16 @@ public interface JfrBuffer extends PointerBase {
      * Returns the committed position. Any data before this position is valid event data.
      */
     @RawField
-    Pointer getPos();
+    Pointer getCommittedPos();
 
     /**
      * Sets the committed position.
      */
     @RawField
-    void setPos(Pointer value);
+    void setCommittedPos(Pointer value);
 
     @RawFieldOffset
-    static int offsetOfPos() {
+    static int offsetOfCommittedPos() {
         throw VMError.unimplemented(); // replaced
     }
 
@@ -75,13 +76,13 @@ public interface JfrBuffer extends PointerBase {
      * some other buffer or to the disk.
      */
     @RawField
-    Pointer getTop();
+    Pointer getFlushedPos();
 
     /**
      * Sets the position of unflushed data.
      */
     @RawField
-    void setTop(Pointer value);
+    void setFlushedPos(Pointer value);
 
     @RawField
     int getLocked();
@@ -104,4 +105,9 @@ public interface JfrBuffer extends PointerBase {
     @RawField
     @PinnedObjectField
     void setBufferType(JfrBufferType bufferType);
+    @RawField
+    void setLockOwner(IsolateThread thread);
+
+    @RawField
+    IsolateThread getLockOwner();
 }

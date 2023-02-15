@@ -482,16 +482,16 @@ public class SubstrateJVM {
         if (newBuffer.isNull()) {
             // The flush failed for some reason, so mark the EventWriter as invalid for this write
             // attempt.
-            JfrEventWriterAccess.setStartPosition(writer, oldBuffer.getPos().rawValue());
-            JfrEventWriterAccess.setCurrentPosition(writer, oldBuffer.getPos().rawValue());
+            JfrEventWriterAccess.setStartPosition(writer, oldBuffer.getCommittedPos().rawValue());
+            JfrEventWriterAccess.setCurrentPosition(writer, oldBuffer.getCommittedPos().rawValue());
             JfrEventWriterAccess.setValid(writer, false);
         } else {
             // Update the EventWriter so that it uses the correct buffer and positions.
-            Pointer newCurrentPos = newBuffer.getPos().add(uncommittedSize);
-            JfrEventWriterAccess.setStartPosition(writer, newBuffer.getPos().rawValue());
+            Pointer newCurrentPos = newBuffer.getCommittedPos().add(uncommittedSize);
+            JfrEventWriterAccess.setStartPosition(writer, newBuffer.getCommittedPos().rawValue());
             JfrEventWriterAccess.setCurrentPosition(writer, newCurrentPos.rawValue());
             if (newBuffer.notEqual(oldBuffer)) {
-                JfrEventWriterAccess.setStartPositionAddress(writer, JfrBufferAccess.getAddressOfPos(newBuffer).rawValue());
+                JfrEventWriterAccess.setStartPositionAddress(writer, JfrBufferAccess.getAddressOfCommittedPos(newBuffer).rawValue());
                 JfrEventWriterAccess.setMaxPosition(writer, JfrBufferAccess.getDataEnd(newBuffer).rawValue());
             }
         }

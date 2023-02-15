@@ -44,8 +44,8 @@ public final class JfrNativeEventWriterDataAccess {
         if (buffer.isNonNull()) {
             assert JfrBufferAccess.verify(buffer);
             data.setJfrBuffer(buffer);
-            data.setStartPos(buffer.getPos());
-            data.setCurrentPos(buffer.getPos());
+            data.setStartPos(buffer.getCommittedPos());
+            data.setCurrentPos(buffer.getCommittedPos());
             data.setEndPos(JfrBufferAccess.getDataEnd(buffer));
         } else {
             data.setJfrBuffer(WordFactory.nullPointer());
@@ -76,7 +76,7 @@ public final class JfrNativeEventWriterDataAccess {
         Pointer dataStart = JfrBufferAccess.getDataStart(buffer);
         Pointer dataEnd = JfrBufferAccess.getDataEnd(buffer);
 
-        return data.getStartPos() == buffer.getPos() &&
+        return data.getStartPos() == buffer.getCommittedPos() &&
                         (data.getEndPos() == dataEnd || data.getEndPos().isNull()) &&
                         data.getCurrentPos().aboveOrEqual(dataStart) && data.getCurrentPos().belowOrEqual(dataEnd) && data.getCurrentPos().aboveOrEqual(data.getStartPos());
     }

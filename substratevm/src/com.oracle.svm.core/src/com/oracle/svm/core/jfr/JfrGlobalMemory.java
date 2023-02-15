@@ -65,7 +65,7 @@ public class JfrGlobalMemory {
             buffers.addressOf(i).write(buffer);
         }
     }
-
+    @Uninterruptible(reason = "Locks without transition.")
     public void clear() {
         assert VMOperation.isInProgressAtSafepoint();
 
@@ -108,13 +108,13 @@ public class JfrGlobalMemory {
         try {
             // Copy all committed but not yet flushed memory to the promotion buffer.
             assert JfrBufferAccess.getAvailableSize(promotionBuffer).aboveOrEqual(unflushedSize);
-            UnmanagedMemoryUtil.copy(threadLocalBuffer.getTop(), promotionBuffer.getPos(), unflushedSize);
-            JfrBufferAccess.increasePos(promotionBuffer, unflushedSize);
+            UnmanagedMemoryUtil.copy(threadLocalBuffer.getFlushedPos(), promotionBuffer.getCommittedPos(), unflushedSize);
+            JfrBufferAccess.increaseCommittedPos(promotionBuffer, unflushedSize);
             shouldSignal = recorderThread.shouldSignal(promotionBuffer);
         } finally {
             releasePromotionBuffer(promotionBuffer);
         }
-        JfrBufferAccess.increaseTop(threadLocalBuffer, unflushedSize);
+        JfrBufferAccess.increaseFlushedPos(threadLocalBuffer, unflushedSize);
         // Notify the thread that writes the global memory to disk.
         // If we're flushing, the global buffers are about to get persisted anyway
         if (shouldSignal && !doingFlush) {

@@ -193,9 +193,9 @@ public class JfrThreadLocal implements ThreadListener {
         }
 
         assert JfrBufferAccess.isEmpty(buffer) : "a fresh JFR buffer must be empty";
-        long startPos = buffer.getPos().rawValue();
+        long startPos = buffer.getCommittedPos().rawValue();
         long maxPos = JfrBufferAccess.getDataEnd(buffer).rawValue();
-        long addressOfPos = JfrBufferAccess.getAddressOfPos(buffer).rawValue();
+        long addressOfPos = JfrBufferAccess.getAddressOfCommittedPos(buffer).rawValue();
         long jfrThreadId = SubstrateJVM.getCurrentThreadId();
         Target_jdk_jfr_internal_EventWriter result;
         if (JavaVersionUtil.JAVA_SPEC >= 19) {
@@ -308,7 +308,7 @@ public class JfrThreadLocal implements ThreadListener {
             if (uncommitted.aboveThan(0)) {
                 /* Copy all uncommitted memory to the start of the thread local buffer. */
                 assert JfrBufferAccess.getDataStart(threadLocalBuffer).add(uncommitted).belowOrEqual(JfrBufferAccess.getDataEnd(threadLocalBuffer));
-                UnmanagedMemoryUtil.copy(threadLocalBuffer.getPos(), JfrBufferAccess.getDataStart(threadLocalBuffer), uncommitted);
+                UnmanagedMemoryUtil.copy(threadLocalBuffer.getCommittedPos(), JfrBufferAccess.getDataStart(threadLocalBuffer), uncommitted);
             }
             JfrBufferAccess.reinitialize(threadLocalBuffer);
             assert JfrBufferAccess.getUnflushedSize(threadLocalBuffer).equal(0);

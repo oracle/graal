@@ -149,16 +149,16 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
-    public boolean write(JfrBuffer buffer, boolean increaseTop) {
+    public boolean write(JfrBuffer buffer, boolean increaseFlushedPos) {
         assert JfrBufferAccess.isLocked(buffer) || VMOperation.isInProgressAtSafepoint() || buffer.getBufferType() == JfrBufferType.C_HEAP;
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
             return false;
         }
 
-        boolean success = getFileSupport().write(fd, buffer.getTop(), unflushedSize);
-        if (increaseTop) {
-            JfrBufferAccess.increaseTop(buffer, unflushedSize);
+        boolean success = getFileSupport().write(fd, buffer.getFlushedPos(), unflushedSize);
+        if (increaseFlushedPos) {
+            JfrBufferAccess.increaseFlushedPos(buffer, unflushedSize);
         }
         if (!success) {
             // We lost some data because the write failed.

@@ -105,7 +105,6 @@ public class TestStreamingBasic extends StreamingTest {
             try {
                 if (flushes == 0) {
                     Stressor.execute(THREADS, r);
-                    // at this point all expected events should be generated
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -124,10 +123,10 @@ public class TestStreamingBasic extends StreamingTest {
         }
         int flushCount = flushes;
         /*
-         * At this point we can expect to have found all the events after the 2 flushes Scenario:
-         * Next flush is occurring while emittedEvents.get() is incremented up to EXPECTED_EVENTS
-         * and therefore doesn't contain all the events. But the flush after the next one must
-         * contain all remaining events.
+         * At this point we can expect to have found all the events after the next 2 flushes.
+         * Scenario: A flush is occurring while emittedEvents.get() is incremented up to be
+         * EXPECTED_EVENTS and therefore doesn't contain all the events. But the flush after the
+         * next one must contain all remaining events.
          */
         while (remainingStringEventsInStream.get() > 0) {
             assertFalse("Not all expected monitor wait events were found in the JFR stream. Remaining:" + remainingStringEventsInStream.get(),
