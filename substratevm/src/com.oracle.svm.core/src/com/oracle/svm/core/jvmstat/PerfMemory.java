@@ -202,7 +202,9 @@ public class PerfMemory {
             overflowMemory = null;
         }
 
-        memoryProvider.teardown();
+        if (memoryProvider != null) {
+            memoryProvider.teardown();
+        }
         releasePerfDataFile();
     }
 
