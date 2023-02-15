@@ -164,7 +164,7 @@ local devkits = common_json.devkits;
   },
 
   # GRAALPYTHON
-  graalpython_linux: self.sulong_linux + {
+  graalpython_linux_amd64: self.sulong_linux + {
     packages+: {
       libffi: '>=3.2.1',
       bzip2: '>=1.0.6',
@@ -396,7 +396,7 @@ local devkits = common_json.devkits;
   deploy_sdk_components_dry_run(os):          [$.mx_vm_installables + self.maven_deploy_sdk_components_dry_run, $.mx_vm_installables + self.artifact_deploy_sdk_components_dry_run(os)],
 
   ruby_vm_build_linux_amd64: self.svm_common_linux_amd64 + self.sulong_linux + self.truffleruby_linux_amd64 + vm.custom_vm_linux,
-  full_vm_build_linux_amd64: self.ruby_vm_build_linux_amd64 + self.fastr_linux + self.graalpython_linux,
+  full_vm_build_linux_amd64: self.ruby_vm_build_linux_amd64 + self.fastr_linux + self.graalpython_linux_amd64,
   full_vm_build_linux_aarch64: self.svm_common_linux_aarch64 + self.sulong_linux + self.truffleruby_linux_aarch64 + vm.custom_vm_linux,
 
   ruby_vm_build_darwin_amd64: self.svm_common_darwin_amd64 + self.sulong_darwin_amd64 + self.truffleruby_darwin_amd64 + vm.custom_vm_darwin,
