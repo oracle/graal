@@ -402,10 +402,15 @@ local devkits = common_json.devkits;
   ruby_vm_build_darwin_amd64:   self.svm_common_darwin_amd64   + self.sulong_darwin_amd64   + self.truffleruby_darwin_amd64   + vm.custom_vm_darwin,
   ruby_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong_darwin_aarch64 + self.truffleruby_darwin_aarch64 + vm.custom_vm_darwin,
 
-  full_vm_build_linux_amd64:    self.ruby_vm_build_linux_amd64    + self.graalpython_linux_amd64   + self.fastr_linux,
-  full_vm_build_linux_aarch64:  self.ruby_vm_build_linux_aarch64  + self.graalpython_linux_aarch64,
-  full_vm_build_darwin_amd64:   self.ruby_vm_build_darwin_amd64   + self.graalpython_darwin_amd64  + self.fastr_darwin,
-  full_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64 + self.graalpython_darwin_aarch64,
+  ruby_python_vm_build_linux_amd64:    self.ruby_vm_build_linux_amd64    + self.graalpython_linux_amd64,
+  ruby_python_vm_build_linux_aarch64:  self.ruby_vm_build_linux_aarch64  + self.graalpython_linux_aarch64,
+  ruby_python_vm_build_darwin_amd64:   self.ruby_vm_build_darwin_amd64   + self.graalpython_darwin_amd64,
+  ruby_python_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64 + self.graalpython_darwin_aarch64,
+
+  full_vm_build_linux_amd64:    self.ruby_python_vm_build_linux_amd64    + self.fastr_linux,
+  full_vm_build_linux_aarch64:  self.ruby_python_vm_build_linux_aarch64,
+  full_vm_build_darwin_amd64:   self.ruby_python_vm_build_darwin_amd64   + self.fastr_darwin,
+  full_vm_build_darwin_aarch64: self.ruby_python_vm_build_darwin_aarch64,
 
   # for cases where a maven package is not easily accessible
   maven_download_unix: {
