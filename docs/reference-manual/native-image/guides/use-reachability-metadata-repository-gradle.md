@@ -25,8 +25,6 @@ The goal is to show users the difference, and prove how using shared metadata ca
 
 We recommend that you follow the instructions and create the application step-by-step. Alternatively, you can go right to the [completed example](https://github.com/graalvm/native-build-tools/tree/master/samples/metadata-repo-integration).
 
-> You must have [GraalVM installed with Native Image support](../README.md#install-native-image). 
-
 ## Prepare a Demo Application
 
 1. Create a new Java project with **Gradle** in your favorite IDE, called "H2Example", in the `org.graalvm.example` package.

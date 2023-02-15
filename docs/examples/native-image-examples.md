@@ -41,12 +41,7 @@ Here you will also find a more sophisticated example displaying GraalVM's abilit
     ```
     Note that your paths are likely to be different depending on the download location.
 
-3. Install [Native Image](../reference-manual/native-image/README.md/#install-native-image) support by running:
-    ```bash
-    gu install native-image
-    ```
-
-4. Then execute:
+3. Then execute:
     ```shell
     ./build.sh
     ```

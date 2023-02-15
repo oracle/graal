@@ -19,6 +19,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-43410) Added support for the JFR event `ExecutionSample`.
 * (GR-44058) (GR-44087) Red Hat added support for the JFR events `ObjectAllocationInNewTLAB` and `JavaMonitorInflate`.
 * (GR-42467) The search path for `System.loadLibrary()` by default includes the directory containing the native image.
+* (GR-44216) Native Image is now shipped as part of the GraalVM JDK and thus no longer needs to be installed via `gu install native-image`.
 
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.
