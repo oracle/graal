@@ -18,7 +18,7 @@ Note that in macOS, the JDK installation path is: `/Library/Java/JavaVirtualMach
 
 Follow these steps to install GraalVM Community on the macOS operating system:
 
-1. Navigate to [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select **11** or **17** for the Java version, **macOS** for the operating system,**amd64** or **aarch64** for the architecture and download it.
+1. Navigate to [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select **11**, **17** or **19** for the Java version, **macOS** for the operating system,**amd64** or **aarch64** for the architecture and download it.
 
 2. Unzip the archive.
     ```shell

@@ -16,7 +16,7 @@ Follow these steps to install Oracle GraalVM Enterprise Edition on the macOS ope
 
 1. Navigate to[ Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
 
-2. Select **11** or **17** for the Java version, **macOS** for the operating system and **amd64** or **aarch64** for the architecture.
+2. Select **11**, **17** or **19** for the Java version, **macOS** for the operating system and **amd64** or **aarch64** for the architecture.
 
 3. Click on the **GraalVM Enterprise JDK** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
 
