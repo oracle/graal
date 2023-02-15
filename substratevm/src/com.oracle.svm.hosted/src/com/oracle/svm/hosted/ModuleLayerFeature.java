@@ -53,6 +53,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.util.UserError;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -141,6 +142,16 @@ public final class ModuleLayerFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(BootModuleLayerSupport.class, new BootModuleLayerSupport());
+
+        List<Module> bootLayerAutomaticModules = ModuleLayer.boot().modules()
+                        .stream()
+                        .filter(m -> m.isNamed() && m.getDescriptor().isAutomatic())
+                        .toList();
+        if (!bootLayerAutomaticModules.isEmpty()) {
+            throw UserError.abort("Detected automatic module(s) on the module-path of the image builder: " +
+                            bootLayerAutomaticModules.stream().map(Module::toString).collect(Collectors.joining(", ")) +
+                            ".\nExtending the image builder with automatic modules is not supported. This is probably caused by specifying a JAR on the module-path. Please ensure that only proper modules are placed on the module-path.");
+        }
     }
 
     @Override
