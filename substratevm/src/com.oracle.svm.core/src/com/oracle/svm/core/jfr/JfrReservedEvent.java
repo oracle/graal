@@ -31,8 +31,11 @@ public enum JfrReservedEvent {
 
     private final long id;
 
-    public long getId(){return id;}
+    public long getId() {
+        return id;
+    }
+
     JfrReservedEvent(long id) {
-        this.id =  id;
+        this.id = id;
     }
 }

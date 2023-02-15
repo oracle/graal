@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Class to help run multiple threads executing some task
+ * Class to help run multiple threads executing some task.
  */
 public class Stressor {
     public static void execute(int numberOfThreads, Runnable task) throws Exception {

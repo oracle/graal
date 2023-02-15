@@ -31,7 +31,10 @@ public enum JfrCheckpointType {
 
     private final byte id;
 
-    public byte getId(){return id;}
+    public byte getId() {
+        return id;
+    }
+
     JfrCheckpointType(int id) {
         this.id = (byte) id;
     }

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,9 @@ package com.oracle.svm.test.jfr;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import jdk.jfr.consumer.*;
+import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedThread;
+import jdk.jfr.consumer.RecordedClass;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -42,14 +44,13 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Check to make sure
- * 1. The events that are emitted are found in the stream
- * 2. The resulting JFR dump is readable and events can be read that match the events that were streamed.
+ * Check to make sure 1. The events that are emitted are found in the stream 2. The resulting JFR
+ * dump is readable and events can be read that match the events that were streamed.
  */
 public class TestStreamingBasic extends StreamingTest {
     private static final int MILLIS = 20;
     private static final int THREADS = 3;
-    private static final int EXPECTED_EVENTS=THREADS*2;
+    private static final int EXPECTED_EVENTS = THREADS * 2;
     final Helper helper = new Helper();
     private AtomicLong remainingStringEventsInStream = new AtomicLong(EXPECTED_EVENTS);
     volatile int flushes = 0;
@@ -64,9 +65,9 @@ public class TestStreamingBasic extends StreamingTest {
     public void validateEvents() throws Throwable {
         List<RecordedEvent> events = getEvents(dumpLocation);
         for (RecordedEvent event : events) {
-            String eventThread = event.<RecordedThread>getValue("eventThread").getJavaName();
-            if (event.<RecordedClass>getValue("monitorClass").getName().equals(Helper.class.getName()) && event.getDuration().toMillis() >= MILLIS-1) {
-                if(!streamEvents.contains(eventThread)){
+            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+            if (event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName()) && event.getDuration().toMillis() >= MILLIS - 1) {
+                if (!streamEvents.contains(eventThread)) {
                     continue;
                 }
                 streamEvents.remove(eventThread);
@@ -87,13 +88,13 @@ public class TestStreamingBasic extends StreamingTest {
         };
 
         var rs = createStream();
-        rs.enable("jdk.JavaMonitorWait").withThreshold(Duration.ofMillis(MILLIS-1)).withStackTrace();
+        rs.enable("jdk.JavaMonitorWait").withThreshold(Duration.ofMillis(MILLIS - 1)).withStackTrace();
         rs.onEvent("jdk.JavaMonitorWait", event -> {
             String thread = event.getThread("eventThread").getJavaName();
-            if(!event.getClass("monitorClass").getName().equals(Helper.class.getName())){
+            if (!event.getClass("monitorClass").getName().equals(Helper.class.getName())) {
                 return;
             }
-            if(streamEvents.contains(thread)) {
+            if (streamEvents.contains(thread)) {
                 return;
             }
             streamEvents.add(thread);
@@ -102,7 +103,7 @@ public class TestStreamingBasic extends StreamingTest {
 
         rs.onFlush(() -> {
             try {
-                if (flushes==0) {
+                if (flushes == 0) {
                     Stressor.execute(THREADS, r);
                     // at this point all expected events should be generated
                 }
@@ -117,24 +118,24 @@ public class TestStreamingBasic extends StreamingTest {
         rs.startAsync();
         Stressor.execute(THREADS, r);
 
-
         // Wait until all events have been emitted.
         while (emittedEvents.get() < EXPECTED_EVENTS) {
             Thread.sleep(10);
         }
         int flushCount = flushes;
-        /* At this point we can expect to have found all the events after the 2 flushes
-           Scenario: Next flush is occurring while emittedEvents.get() is incremented up to EXPECTED_EVENTS
-           and therefore doesn't contain all the events. But the flush after the next one must contain
-           all remaining events.
+        /*
+         * At this point we can expect to have found all the events after the 2 flushes Scenario:
+         * Next flush is occurring while emittedEvents.get() is incremented up to EXPECTED_EVENTS
+         * and therefore doesn't contain all the events. But the flush after the next one must
+         * contain all remaining events.
          */
         while (remainingStringEventsInStream.get() > 0) {
-            assertFalse ("Not all expected monitor wait events were found in the JFR stream. Remaining:" + remainingStringEventsInStream.get(),
-                    flushes > (flushCount + 1) && remainingStringEventsInStream.get() > 0);
+            assertFalse("Not all expected monitor wait events were found in the JFR stream. Remaining:" + remainingStringEventsInStream.get(),
+                            flushes > (flushCount + 1) && remainingStringEventsInStream.get() > 0);
         }
 
         File directory = new File(".");
-        dumpLocation = new File(directory.getAbsolutePath(),"TestStreaming.jfr").toPath();
+        dumpLocation = new File(directory.getAbsolutePath(), "TestStreaming.jfr").toPath();
         rs.dump(dumpLocation);
 
         closeStream();

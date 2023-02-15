@@ -30,7 +30,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import org.junit.Assert;
 
@@ -147,11 +149,23 @@ public class JfrFileParser {
         }
     }
 
+    /**
+     * Must verify constant pools in order that they were written because event streaming can write
+     * pools before the chunk is finished. This means that a given pool may reference constants from
+     * another pool written previously (within the same chunk).
+     */
     private static void verifyConstantPools(RecordingInput input, long constantPoolPosition) throws IOException {
+        List<Long> poolPositions = new ArrayList<>();
         long deltaNext;
         long currentConstantPoolPosition = constantPoolPosition;
         do {
+            poolPositions.add(currentConstantPoolPosition);
             deltaNext = parseConstantPoolHeader(input, currentConstantPoolPosition);
+            currentConstantPoolPosition += deltaNext;
+        } while (deltaNext != 0);
+
+        for (int j = poolPositions.size() - 1; j > 0; j--) {
+            parseConstantPoolHeader(input, poolPositions.get(j));
             long numberOfCPs = input.readInt();
             for (int i = 0; i < numberOfCPs; i++) {
                 ConstantPoolParser constantPoolParser = supportedConstantPools.get(input.readLong());
@@ -159,8 +173,7 @@ public class JfrFileParser {
                 constantPoolParser.parse(input);
             }
             compareFoundAndExpectedIds();
-            currentConstantPoolPosition += deltaNext;
-        } while (deltaNext != 0);
+        }
     }
 
     public static void parse(Recording recording) throws IOException {

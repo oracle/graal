@@ -78,6 +78,7 @@ public class TestJfrBufferNodeLinkedList {
         assertTrue("Could not remove all nodes", node.isNull());
         list.teardown();
     }
+
     private void addNodes(JfrBufferNodeLinkedList list, int nodeCount) {
         for (int i = 0; i < nodeCount; i++) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(32), JfrBufferType.THREAD_LOCAL_NATIVE);

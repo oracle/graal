@@ -27,24 +27,17 @@
 package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.time.Duration;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
 
 import com.oracle.svm.test.jfr.events.ClassEvent;
-import com.oracle.svm.test.jfr.events.EndStreamEvent;
 import com.oracle.svm.test.jfr.events.IntegerEvent;
 import com.oracle.svm.test.jfr.events.StringEvent;
-
-import jdk.jfr.consumer.RecordedEvent;
-import jdk.jfr.consumer.RecordingStream;
 
 /**
  * This test induces repeated chunk rotations and spawns several threads that create java and native

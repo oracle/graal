@@ -27,12 +27,10 @@
 package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.time.Duration;
+
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -41,9 +39,8 @@ import org.junit.Test;
 import com.oracle.svm.test.jfr.events.StringEvent;
 import com.oracle.svm.test.jfr.events.IntegerEvent;
 import com.oracle.svm.test.jfr.events.ClassEvent;
-import com.oracle.svm.test.jfr.events.EndStreamEvent;
 
-import jdk.jfr.consumer.*;
+import jdk.jfr.consumer.RecordedEvent;
 
 /**
  * Check to make sure 1. All events are accounted for when using streaming (even when there are very
