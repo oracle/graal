@@ -700,7 +700,7 @@ public class ProgressReporter {
     private static Path reportImageBuildStatistics() {
         Consumer<PrintWriter> statsReporter = ImageSingletons.lookup(ImageBuildStatistics.class).getReporter();
         Path reportsPath = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve("reports");
-        return ReportUtils.report("image build statistics", reportsPath.toString(), "``image_build_statistics``", "json", statsReporter, false);
+        return ReportUtils.report("image build statistics", reportsPath.resolve("image_build_statistics.json"), statsReporter, false);
     }
 
     private void printResourceStatistics() {
