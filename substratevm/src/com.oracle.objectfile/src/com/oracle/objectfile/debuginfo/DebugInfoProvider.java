@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -83,12 +83,6 @@ public interface DebugInfoProvider {
          *         name or {@code null} if the element is in the empty package.
          */
         Path filePath();
-
-        /**
-         * @return a relative path to the source cache containing the cached source file of a file
-         *         element or {@code null} if sources are not available.
-         */
-        Path cachePath();
     }
 
     public interface DebugTypeInfo extends DebugFileInfo {
@@ -423,4 +417,6 @@ public interface DebugInfoProvider {
 
     @SuppressWarnings("unused")
     Stream<DebugDataInfo> dataInfoProvider();
+
+    Path getCachePath();
 }

@@ -336,12 +336,12 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * n.b. this collection includes entries for the structure types used to define the object and
      * array headers which do not have an associated TypeEntry.
      */
-    private EconomicMap<TypeEntry, DwarfTypeProperties> typePropertiesIndex;
+    private final EconomicMap<TypeEntry, DwarfTypeProperties> typePropertiesIndex = EconomicMap.create();
 
     /**
      * A collection of method properties associated with each generated method record.
      */
-    private EconomicMap<MethodEntry, DwarfMethodProperties> methodPropertiesIndex;
+    private final EconomicMap<MethodEntry, DwarfMethodProperties> methodPropertiesIndex = EconomicMap.create();
 
     /**
      * A collection of local variable properties associated with a generated method record,
@@ -349,12 +349,12 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * range).
      */
 
-    private EconomicMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex;
+    private final EconomicMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex = EconomicMap.create();
 
     /**
      * A collection of local variable properties associated with an inlined subrange.
      */
-    private EconomicMap<Range, DwarfLocalProperties> rangeLocalPropertiesIndex;
+    private final EconomicMap<Range, DwarfLocalProperties> rangeLocalPropertiesIndex = EconomicMap.create();
 
     public DwarfDebugInfo(ELFMachine elfMachine, ByteOrder byteOrder) {
         super(byteOrder);
@@ -375,10 +375,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
             this.heapbaseRegister = rheapbase_x86;
             this.threadRegister = rthread_x86;
         }
-        typePropertiesIndex = EconomicMap.create();
-        methodPropertiesIndex = EconomicMap.create();
-        methodLocalPropertiesIndex = EconomicMap.create();
-        rangeLocalPropertiesIndex = EconomicMap.create();
     }
 
     public DwarfStrSectionImpl getStrSectionImpl() {
