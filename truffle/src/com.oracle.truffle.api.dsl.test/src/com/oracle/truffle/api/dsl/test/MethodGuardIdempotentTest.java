@@ -329,4 +329,33 @@ public class MethodGuardIdempotentTest {
 
     }
 
+    @SuppressWarnings("unused")
+    abstract static class MethodOverloadIdempotentNode extends SlowPathListenerNode {
+
+        static final TestObject VALUE = null;
+
+        abstract String execute(TestObject arg);
+
+        // no warning here: guard(TestObject arg) should get selected by overload.
+        @Specialization(guards = {"guard(VALUE)"})
+        public String s0(TestObject arg) {
+            return "s0";
+        }
+
+        public static boolean guard(Object arg) {
+            return arg == null;
+        }
+
+        @NonIdempotent
+        public static boolean guard(TestObject arg) {
+            return arg == null;
+        }
+
+        @Specialization
+        public String s1(TestObject arg) {
+            return "s1";
+        }
+
+    }
+
 }
