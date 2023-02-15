@@ -41,6 +41,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.api.HostVM;
@@ -57,6 +58,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -282,7 +284,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     @Override
-    public HostedProviders getProviders() {
+    public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
+        // by default nothing is needed
         return providers;
     }
 
@@ -304,6 +307,11 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     @Override
     public final ConstantReflectionProvider getConstantReflectionProvider() {
         return providers.getConstantReflection();
+    }
+
+    @Override
+    public WordTypes getWordTypes() {
+        return providers.getWordTypes();
     }
 
     @Override

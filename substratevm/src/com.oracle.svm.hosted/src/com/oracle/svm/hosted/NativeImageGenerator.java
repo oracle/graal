@@ -167,6 +167,7 @@ import com.oracle.graal.reachability.ReachabilityAnalysisFactory;
 import com.oracle.graal.reachability.ReachabilityMethodProcessingHandler;
 import com.oracle.graal.reachability.ReachabilityObjectScanner;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.BuildPhaseProvider;
@@ -626,7 +627,7 @@ public class NativeImageGenerator {
                 BuildPhaseProvider.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
-                runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess, bb.getProviders(), classInitializationSupport,
+                runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess, bb.getProviders(MultiMethod.ORIGINAL_METHOD), classInitializationSupport,
                                 GraalAccess.getOriginalProviders().getLoopsDataProvider(), platformConfig).build();
 
                 registerGraphBuilderPlugins(featureHandler, runtimeConfiguration, (HostedProviders) runtimeConfiguration.getProviders(), bb.getMetaAccess(), aUniverse,
@@ -676,7 +677,7 @@ public class NativeImageGenerator {
             CompileQueue compileQueue;
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtimeConfiguration, DeoptTester.enabled(),
-                                bb.getProviders().getSnippetReflection(), compilationExecutor);
+                                bb.getSnippetReflectionProvider(), compilationExecutor);
                 if (ImageSingletons.contains(RuntimeCompilationSupport.class)) {
                     ImageSingletons.lookup(RuntimeCompilationSupport.class).onCompileQueueCreation(hUniverse, compileQueue);
                 }

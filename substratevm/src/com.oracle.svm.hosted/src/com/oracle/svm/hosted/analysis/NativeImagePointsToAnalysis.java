@@ -42,6 +42,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.HostedConfiguration;
@@ -210,5 +211,10 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         }
         /* Not matching method found at all. */
         return AbstractMethodError.class;
+    }
+
+    @Override
+    public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
+        return getHostVM().getHostedProviders(providers, key);
     }
 }

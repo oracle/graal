@@ -149,13 +149,13 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         if (!methodTypeFlow.flowsGraphCreated()) {
             return StaticAnalysisResults.NO_RESULTS;
         }
-        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).build();
+        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
         StructuredGraph graph = method.decodeAnalyzedGraph(debug, methodTypeFlow.getMethodFlowsGraph().getNodeFlows().getKeys());
         if (graph != null) {
             graph.resetDebug(debug);
             try (DebugContext.Scope s = debug.scope("StrengthenGraphs", graph);
                             DebugContext.Activation a = debug.activate()) {
-                new AnalysisStrengthenGraphsPhase(method, graph).apply(graph, bb.getProviders());
+                new AnalysisStrengthenGraphsPhase(method, graph).apply(graph, bb.getProviders(method));
             } catch (Throwable ex) {
                 debug.handle(ex);
             }
@@ -244,6 +244,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         private final TypeFlow<?>[] parameterFlows;
         private final NodeMap<TypeFlow<?>> nodeFlows;
 
+        private final boolean allowConstantFolding;
+
         StrengthenSimplifier(PointsToAnalysisMethod method, StructuredGraph graph) {
             this.graph = graph;
             this.methodFlow = method.getTypeFlow();
@@ -258,6 +260,12 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 assert nodeFlows.get(node) == null : "overwriting existing entry for " + node;
                 nodeFlows.put(node, cursor.getValue());
             }
+
+            /*
+             * Currently constant folding is only enabled for original methods. More work is needed
+             * to support it within deoptimization targets and runtime-compiled methods.
+             */
+            this.allowConstantFolding = method.isOriginalMethod() && strengthenGraphWithConstants;
         }
 
         private TypeFlow<?> getNodeFlow(Node node) {
@@ -639,7 +647,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
             TypeState nodeTypeState = methodFlow.foldTypeFlow(pta, nodeFlow);
 
-            if (strengthenGraphWithConstants && !nodeTypeState.canBeNull()) {
+            if (allowConstantFolding && !nodeTypeState.canBeNull()) {
                 JavaConstant constantValue = nodeTypeState.asConstant();
                 if (constantValue instanceof ImageHeapConstant) {
                     /*

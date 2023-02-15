@@ -33,6 +33,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -43,6 +44,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -69,7 +71,11 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
 
     OptionValues getOptions();
 
-    HostedProviders getProviders();
+    default HostedProviders getProviders(AnalysisMethod method) {
+        return getProviders(method.getMultiMethodKey());
+    }
+
+    HostedProviders getProviders(MultiMethod.MultiMethodKey key);
 
     List<DebugHandlersFactory> getDebugHandlerFactories();
 
@@ -81,6 +87,8 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     ConstantReflectionProvider getConstantReflectionProvider();
 
     SnippetReflectionProvider getSnippetReflectionProvider();
+
+    WordTypes getWordTypes();
 
     DebugContext getDebug();
 

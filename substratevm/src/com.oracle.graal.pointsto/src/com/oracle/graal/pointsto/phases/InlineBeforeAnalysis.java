@@ -61,7 +61,7 @@ public class InlineBeforeAnalysis {
     @SuppressWarnings("try")
     public static StructuredGraph decodeGraph(BigBang bb, AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
         DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
-        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).description(description).build();
+        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).description(description).build();
 
         StructuredGraph result = new StructuredGraph.Builder(bb.getOptions(), debug, bb.getHostVM().allowAssumptions(method))
                         .method(method)
@@ -72,7 +72,8 @@ public class InlineBeforeAnalysis {
         try (DebugContext.Scope s = debug.scope("InlineBeforeAnalysis", result)) {
 
             if (bb.strengthenGraalGraphs() && Options.InlineBeforeAnalysis.getValue(bb.getOptions())) {
-                InlineBeforeAnalysisGraphDecoder<?> decoder = new InlineBeforeAnalysisGraphDecoder<>(bb, bb.getHostVM().inlineBeforeAnalysisPolicy(method.getMultiMethodKey()), result);
+                InlineBeforeAnalysisGraphDecoder<?> decoder = new InlineBeforeAnalysisGraphDecoder<>(bb, bb.getHostVM().inlineBeforeAnalysisPolicy(method.getMultiMethodKey()), result,
+                                bb.getProviders(method));
                 decoder.decode(method);
             } else {
                 /*

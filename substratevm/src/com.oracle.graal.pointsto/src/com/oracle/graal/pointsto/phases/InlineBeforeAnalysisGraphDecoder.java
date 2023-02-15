@@ -49,6 +49,7 @@ import org.graalvm.compiler.replacements.PEGraphDecoder;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.HostedProviders;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -85,9 +86,9 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
     protected final BigBang bb;
     protected final InlineBeforeAnalysisPolicy<S> policy;
 
-    protected InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph) {
-        super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, bb.getProviders(), null,
-                        bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins(),
+    protected InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph, HostedProviders providers) {
+        super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, providers, null,
+                        providers.getGraphBuilderPlugins().getInvocationPlugins(),
                         new InlineInvokePlugin[]{new InlineBeforeAnalysisInlineInvokePlugin(policy)},
                         null, policy.nodePlugins, null, null,
                         new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false);

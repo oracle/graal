@@ -554,7 +554,7 @@ public class SVMHost extends HostVM {
             }
 
             if (parseOnce) {
-                new ImplicitAssertionsPhase().apply(graph, bb.getProviders());
+                new ImplicitAssertionsPhase().apply(graph, bb.getProviders(method));
                 UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
 
                 optimizeAfterParsing(bb, method, graph);
@@ -562,7 +562,7 @@ public class SVMHost extends HostVM {
                  * Do a complete Canonicalizer run once before graph encoding, to clean up any
                  * leftover uncanonicalized nodes.
                  */
-                CanonicalizerPhase.create().apply(graph, bb.getProviders());
+                CanonicalizerPhase.create().apply(graph, bb.getProviders(method));
             }
 
             super.methodAfterParsingHook(bb, method, graph);
@@ -570,12 +570,16 @@ public class SVMHost extends HostVM {
     }
 
     protected void optimizeAfterParsing(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions()) && !method.isDeoptTarget()) {
-            /*
-             * Deoptimization Targets cannot have virtual objects in frame states.
-             */
-            new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
-            new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, bb.getProviders());
+        if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions())) {
+            if (method.isOriginalMethod()) {
+                /*
+                 * Deoptimization Targets cannot have virtual objects in frame states.
+                 *
+                 * Also, more work is needed to enable PEA in Runtime Compiled Methods.
+                 */
+                new BoxNodeIdentityPhase().apply(graph, bb.getProviders(method));
+                new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, bb.getProviders(method));
+            }
         }
     }
 
@@ -667,7 +671,7 @@ public class SVMHost extends HostVM {
              */
             classInitializerSideEffect.put(method, true);
         } else if (n instanceof EnsureClassInitializedNode) {
-            ResolvedJavaType type = ((EnsureClassInitializedNode) n).constantTypeOrNull(bb.getProviders());
+            ResolvedJavaType type = ((EnsureClassInitializedNode) n).constantTypeOrNull(bb.getProviders(method));
             if (type != null) {
                 initializedClasses.computeIfAbsent(method, k -> new HashSet<>()).add((AnalysisType) type);
             } else {
@@ -882,6 +886,16 @@ public class SVMHost extends HostVM {
             }
         }
         return super.allowAssumptions(method);
+    }
+
+    public HostedProviders getHostedProviders(HostedProviders defaultHostedProviders, MultiMethod.MultiMethodKey key) {
+        if (ImageSingletons.contains(SVMParsingSupport.class)) {
+            HostedProviders result = ImageSingletons.lookup(SVMParsingSupport.class).getHostedProviders(key);
+            if (result != null) {
+                return result;
+            }
+        }
+        return defaultHostedProviders;
     }
 
     @Override

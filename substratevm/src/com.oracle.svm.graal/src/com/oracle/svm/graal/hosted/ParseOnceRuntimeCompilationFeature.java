@@ -40,9 +40,11 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
@@ -79,6 +81,7 @@ import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -89,9 +92,9 @@ import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
-import com.oracle.svm.hosted.RuntimeCompilationSupport;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.RuntimeCompilationSupport;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
@@ -260,6 +263,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     private Set<RuntimeCompiledMethod> runtimeCompilations = null;
     private Map<RuntimeCompilationCandidate, CallTreeNode> runtimeCandidateCallTree = null;
     private Map<AnalysisMethod, CallTreeNode> runtimeCompiledMethodCallTree = null;
+    private HostedProviders analysisProviders = null;
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -282,6 +286,14 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess c) {
         beforeAnalysisHelper(c);
+    }
+
+    @Override
+    public void initializeAnalysisProviders(BigBang bb, Function<ConstantFieldProvider, ConstantFieldProvider> generator) {
+        HostedProviders defaultProviders = bb.getProviders(ORIGINAL_METHOD);
+        HostedProviders customHostedProviders = (HostedProviders) defaultProviders.copyWith(generator.apply(defaultProviders.getConstantFieldProvider()));
+        customHostedProviders.setGraphBuilderPlugins(hostedProviders.getGraphBuilderPlugins());
+        analysisProviders = customHostedProviders;
     }
 
     boolean newRuntimeMethodsSeen = false;
@@ -658,6 +670,16 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     }
 
     private class RuntimeCompilationParsingSupport implements SVMParsingSupport {
+
+        @Override
+        public HostedProviders getHostedProviders(MultiMethod.MultiMethodKey key) {
+            if (key == RUNTIME_COMPILED_METHOD) {
+                assert analysisProviders != null;
+                return analysisProviders;
+            }
+            return null;
+        }
+
         @Override
         public boolean allowAssumptions(AnalysisMethod method) {
             return method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
@@ -677,7 +699,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
             boolean parsed = false;
 
-            StructuredGraph graph = method.buildGraph(debug, method, hostedProviders, GraphProvider.Purpose.PREPARE_RUNTIME_COMPILATION);
+            StructuredGraph graph = method.buildGraph(debug, method, analysisProviders, GraphProvider.Purpose.PREPARE_RUNTIME_COMPILATION);
             if (graph == null) {
                 if (!method.hasBytecodes()) {
                     recordFailed(method);
@@ -696,7 +718,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                 if (parsed) {
                     // enable this logging to get log output in compilation passes
                     try (Indent indent2 = debug.logAndIndent("parse graph phases")) {
-                        new RuntimeGraphBuilderPhase(hostedProviders, graphBuilderConfig, optimisticOpts, null, hostedProviders.getWordTypes(), (SVMHost) bb.getHostVM()).apply(graph);
+                        new RuntimeGraphBuilderPhase(analysisProviders, graphBuilderConfig, optimisticOpts, null, analysisProviders.getWordTypes(), (SVMHost) bb.getHostVM()).apply(graph);
                     } catch (PermanentBailoutException ex) {
                         bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
                         recordFailed(method);
@@ -719,11 +741,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                 }
 
                 CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-                canonicalizer.apply(graph, hostedProviders);
+                canonicalizer.apply(graph, analysisProviders);
                 if (deoptimizeOnExceptionPredicate != null) {
                     new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
                 }
-                new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, hostedProviders);
+                new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, analysisProviders);
 
             } catch (Throwable ex) {
                 debug.handle(ex);
