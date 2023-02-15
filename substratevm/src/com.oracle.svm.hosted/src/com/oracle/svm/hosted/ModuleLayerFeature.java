@@ -798,7 +798,8 @@ public final class ModuleLayerFeature implements InternalFeature {
 
             /*
              * Setup readability and exports/opens. This part is unchanged, save for field setters
-             * and VM update removals
+             * and VM update removals. Exports, reads, and opens collections are tightly packed as
+             * they aren't likely to grow after the initial setup.
              */
             for (ResolvedModule resolvedModule : cf.modules()) {
                 ModuleReference mref = resolvedModule.reference();
@@ -808,7 +809,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                 Module m = nameToModule.get(mn);
                 assert m != null;
 
-                Set<Module> reads = new HashSet<>();
+                Set<Module> reads = new HashSet<>(resolvedModule.reads().size());
                 for (ResolvedModule other : resolvedModule.reads()) {
                     Module m2 = nameToModule.get(other.name());
                     reads.add(m2);
@@ -821,7 +822,7 @@ public final class ModuleLayerFeature implements InternalFeature {
 
                 if (!descriptor.isOpen() && !descriptor.isAutomatic()) {
                     if (descriptor.opens().isEmpty()) {
-                        Map<String, Set<Module>> exportedPackages = new HashMap<>();
+                        Map<String, Set<Module>> exportedPackages = new HashMap<>(m.getDescriptor().exports().size());
                         for (ModuleDescriptor.Exports exports : m.getDescriptor().exports()) {
                             String source = exports.source();
                             if (exports.isQualified()) {
@@ -841,8 +842,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                         }
                         moduleExportedPackagesField.set(m, exportedPackages);
                     } else {
-                        Map<String, Set<Module>> openPackages = new HashMap<>();
-                        Map<String, Set<Module>> exportedPackages = new HashMap<>();
+                        Map<String, Set<Module>> openPackages = new HashMap<>(descriptor.opens().size());
                         for (ModuleDescriptor.Opens opens : descriptor.opens()) {
                             String source = opens.source();
                             if (opens.isQualified()) {
@@ -861,6 +861,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                             }
                         }
 
+                        Map<String, Set<Module>> exportedPackages = new HashMap<>(descriptor.exports().size());
                         for (ModuleDescriptor.Exports exports : descriptor.exports()) {
                             String source = exports.source();
                             Set<Module> openToTargets = openPackages.get(source);
