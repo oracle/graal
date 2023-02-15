@@ -32,6 +32,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -57,7 +58,7 @@ public class VMMutex {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMMutex() {
-        this.name = "unspecified";
+        this.name = CIsolateDataFactory.getUnspecifiedSuffix();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
