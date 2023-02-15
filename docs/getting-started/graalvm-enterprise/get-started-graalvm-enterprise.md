@@ -285,7 +285,7 @@ More details can be found in the [WebAssembly reference manual](../../reference-
 
 ## Native Image
 
-With GraalVM [Native Image](../../reference-manual/native-image/README.md) Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and a smaller footprint for your application.
+With [Native Image](../../reference-manual/native-image/README.md) Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and a smaller footprint for your application.
 
 The `HelloWorld` example from above is used here to demonstrate how to generate a native executable:
 ```java
