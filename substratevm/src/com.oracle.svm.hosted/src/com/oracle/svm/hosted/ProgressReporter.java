@@ -60,7 +60,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -675,7 +674,7 @@ public class ProgressReporter {
             artifacts.add(ArtifactType.BUILD_INFO, jsonHelper.printToFile());
         }
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
-            artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics(imageName, generator.getBigbang()));
+            artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics());
         }
         BuildArtifactsExporter.run(imageName, artifacts, generator.getBuildArtifacts());
     }
@@ -698,7 +697,7 @@ public class ProgressReporter {
         });
     }
 
-    private static Path reportImageBuildStatistics(String imageName, BigBang bb) {
+    private static Path reportImageBuildStatistics() {
         Consumer<PrintWriter> statsReporter = ImageSingletons.lookup(ImageBuildStatistics.class).getReporter();
         Path reportsPath = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve("reports");
         return ReportUtils.report("image build statistics", reportsPath.toString(), "``image_build_statistics``", "json", statsReporter, false);
