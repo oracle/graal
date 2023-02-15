@@ -405,6 +405,11 @@ public class UninterruptibleUtils {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static long min(long a, long b) {
+            return (a <= b) ? a : b;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int max(int a, int b) {
             return (a >= b) ? a : b;
         }

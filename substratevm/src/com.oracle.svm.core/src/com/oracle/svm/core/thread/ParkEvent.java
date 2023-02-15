@@ -78,7 +78,11 @@ public abstract class ParkEvent {
         if (!isAbsolute && time == 0) {
             condWait();
         } else if (time > 0) {
-            condTimedWait(TimeUtils.durationNanos(isAbsolute, time));
+            long nanos = time;
+            if (isAbsolute) {
+                nanos = Math.max(0, TimeUtils.millisToNanos(time - System.currentTimeMillis()));
+            }
+            condTimedWait(nanos);
         }
     }
 

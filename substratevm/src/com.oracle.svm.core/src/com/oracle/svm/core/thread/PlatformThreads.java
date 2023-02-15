@@ -871,24 +871,29 @@ public abstract class PlatformThreads {
         parkCurrentPlatformOrCarrierThread(false, 0);
     }
 
-    /** Interruptibly park the current thread, indefinitely or with a timeout. */
+    /**
+     * Interruptibly park the current thread, indefinitely or with a timeout (see
+     * {@link ParkEvent#park}).
+     */
     static void parkCurrentPlatformOrCarrierThread(boolean isAbsolute, long time) {
         VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.parkCurrentPlatformOrCarrierThread: Should not park when it is not okay to block.]");
 
-        if (time < 0 || (isAbsolute && time == 0)) {
-            return; // don't wait at all
-        }
-        boolean timed = (time != 0);
-
-        Thread thread = currentThread.get();
-        if (JavaThreads.isInterrupted(thread)) { // avoid state changes and synchronization
-            return;
-        }
-
+        /* Try to consume a pending unpark. */
         ParkEvent parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
         if (parkEvent.tryFastPark()) {
             return;
         }
+
+        Thread thread = currentThread.get();
+        if (JavaThreads.isInterrupted(thread)) {
+            return;
+        }
+
+        if (time < 0 || (isAbsolute && time == 0)) {
+            return;
+        }
+
+        boolean timed = (time != 0);
         int oldStatus = getThreadStatus(thread);
         int newStatus = MonitorSupport.singleton().getParkedThreadStatus(currentThread.get(), timed);
         setThreadStatus(thread, newStatus);

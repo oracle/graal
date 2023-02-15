@@ -51,7 +51,6 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ParkEvent;
 import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
@@ -199,8 +198,7 @@ class WindowsParkEvent extends ParkEvent {
     private WinBase.HANDLE eventHandle;
 
     WindowsParkEvent() {
-        /* Create an auto-reset event. */
-        eventHandle = SynchAPI.CreateEventA(WordFactory.nullPointer(), 0, 0, WordFactory.nullPointer());
+        eventHandle = SynchAPI.CreateEventA(WordFactory.nullPointer(), 1, 0, WordFactory.nullPointer());
         VMError.guarantee(eventHandle.rawValue() != 0, "CreateEventA failed");
     }
 
@@ -216,38 +214,37 @@ class WindowsParkEvent extends ParkEvent {
     }
 
     @Override
-    protected void condWait() {
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        try {
-            int status = SynchAPI.WaitForSingleObject(eventHandle, SynchAPI.INFINITE());
-            if (status != SynchAPI.WAIT_OBJECT_0()) {
-                Log.log().newline().string("WindowsParkEvent.condWait failed, status returned:  ").hex(status);
-                Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
-                throw VMError.shouldNotReachHere("WaitForSingleObject failed");
-            }
-        } finally {
-            StackOverflowCheck.singleton().protectYellowZone();
-        }
-    }
+    protected void park(boolean isAbsolute, long time) {
+        assert time >= 0 && !(isAbsolute && time == 0) : "must not be called otherwise";
 
-    @Override
-    protected void condTimedWait(long durationNanos) {
+        int millis;
+        if (time == 0) {
+            millis = SynchAPI.INFINITE();
+        } else if (isAbsolute) {
+            millis = time - System.currentTimeMillis();
+            if (millis <= 0) {
+                /* Already elapsed. */
+                return;
+            }
+        } else {
+            /* Coarsen from nanos to millis. */
+            millis = TimeUtils.divideNanosToMillis(time);
+            if (millis == 0) {
+                /* Wait for the minimal time. */
+                millis = 1;
+            }
+        }
+
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            final int maxTimeout = 0x10_000_000;
-            long durationMillis = Math.max(0, TimeUtils.roundUpNanosToMillis(durationNanos));
-            do { // at least once to consume potential unpark
-                int timeout = (durationMillis < maxTimeout) ? (int) durationMillis : maxTimeout;
-                int status = SynchAPI.WaitForSingleObject(eventHandle, timeout);
-                if (status == SynchAPI.WAIT_OBJECT_0()) {
-                    break; // unparked
-                } else if (status != SynchAPI.WAIT_TIMEOUT()) {
-                    Log.log().newline().string("WindowsParkEvent.condTimedWait failed, status returned:  ").hex(status);
-                    Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
-                    throw VMError.shouldNotReachHere("WaitForSingleObject failed");
-                }
-                durationMillis -= timeout;
-            } while (durationMillis > 0);
+            int status = SynchAPI.WaitForSingleObject(eventHandle, millis);
+            if (status == SynchAPI.WAIT_OBJECT_0()) {
+                /* There was already a notification pending. */
+                SynchAPI.ResetEvent(eventHandle);
+            } else if (status == SynchAPI.WAIT_TIMEOUT()) {
+                SynchAPI.WaitForSingleObject(eventHandle, millis);
+                SynchAPI.ResetEvent(eventHandle);
+            }
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }

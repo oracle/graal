@@ -25,6 +25,7 @@
 package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -43,6 +44,14 @@ import org.graalvm.word.PointerBase;
  */
 @CContext(PosixDirectives.class)
 public class Time {
+    @CConstant
+    public static native int CLOCK_MONOTONIC();
+
+    @CConstant
+    public static native int CLOCK_REALTIME();
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native int clock_gettime(int clock_id, timespec tp);
 
     @CStruct(addStructKeyword = true)
     public interface timeval extends PointerBase {

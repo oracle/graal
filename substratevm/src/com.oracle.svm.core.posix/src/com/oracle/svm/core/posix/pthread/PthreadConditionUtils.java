@@ -26,12 +26,13 @@ package com.oracle.svm.core.posix.pthread;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Time;
-import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.util.TimeUtils;
 
@@ -39,6 +40,8 @@ import com.oracle.svm.core.util.TimeUtils;
  * Timing convenience methods.
  */
 public class PthreadConditionUtils {
+    /* Used to prevent overflows. This limits timeouts to approx. 3.17 years. */
+    private static final int MAX_SECS = 100_000_000;
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static int initCondition(Pthread.pthread_cond_t cond) {
@@ -63,55 +66,90 @@ public class PthreadConditionUtils {
         return Pthread.pthread_cond_init(cond, attr);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void getAbsoluteTimeNanos(timespec result) {
-        /*
-         * We need the real-time clock to compute absolute deadlines when a conditional wait should
-         * return, but calling System.currentTimeMillis reduces the resolution too much.
-         */
-        if (Platform.includedIn(Platform.LINUX.class)) {
-            /*
-             * Linux is easy, we can just access the clock that we registered as the attribute when
-             * the condition was created.
-             */
-            LinuxTime.clock_gettime(LinuxTime.CLOCK_MONOTONIC(), result);
-
-        } else {
-            /*
-             * The best we can do on other platforms like Darwin is to scale the
-             * microsecond-granularity without prior rounding to milliseconds.
-             */
-            Time.timeval tv = StackValue.get(Time.timeval.class);
-            Time.NoTransitions.gettimeofday(tv, WordFactory.nullPointer());
-            result.set_tv_sec(tv.tv_sec());
-            result.set_tv_nsec(TimeUtils.microsToNanos(tv.tv_usec()));
-        }
-    }
-
     /** Turn a duration in nanoseconds into a deadline in a Time.timespec. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void durationNanosToDeadlineTimespec(long durationNanos, Time.timespec result) {
-        timespec currentTimespec = StackValue.get(timespec.class);
-        getAbsoluteTimeNanos(currentTimespec);
-
-        assert durationNanos >= 0;
-        long sec = TimeUtils.addOrMaxValue(currentTimespec.tv_sec(), TimeUtils.divideNanosToSeconds(durationNanos));
-        long nsec = currentTimespec.tv_nsec() + TimeUtils.remainderNanosToSeconds(durationNanos);
-        if (nsec >= TimeUtils.nanosPerSecond) {
-            sec = TimeUtils.addOrMaxValue(sec, 1);
-            nsec -= TimeUtils.nanosPerSecond;
-        }
-        assert nsec < TimeUtils.nanosPerSecond;
-
-        result.set_tv_sec(sec);
-        result.set_tv_nsec(nsec);
+    public static void fillTimespec(Time.timespec result, long durationNanos) {
+        fillTimespec(result, durationNanos, false);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static long deadlineTimespecToDurationNanos(Time.timespec deadlineTimespec) {
-        timespec currentTimespec = StackValue.get(timespec.class);
-        getAbsoluteTimeNanos(currentTimespec);
+    /**
+     * The arguments are treated similarly to {@link jdk.internal.misc.Unsafe#park(boolean, long)}:
+     * <ul>
+     * <li>{@code !isAbsolute}: {@code time} is a relative delay in nanoseconds.</li>
+     * <li>{@code isAbsolute}: {@code time} is a deadline in milliseconds since the Epoch (see
+     * {@link System#currentTimeMillis()}.</li>
+     * </ul>
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void fillTimespec(Time.timespec result, long time, boolean isAbsolute) {
+        assert time > 0 : "must not be called otherwise";
 
-        return TimeUtils.addOrMaxValue(deadlineTimespec.tv_nsec() - currentTimespec.tv_nsec(), TimeUtils.secondsToNanos((deadlineTimespec.tv_sec() - currentTimespec.tv_sec())));
+        int clock = Time.CLOCK_MONOTONIC();
+        if (isAbsolute) {
+            clock = Time.CLOCK_REALTIME();
+        }
+
+        Time.timespec now = StackValue.get(Time.timespec.class);
+        int status = Time.clock_gettime(clock, now);
+        PosixUtils.checkStatusIs0(status, "PosixPlatformThreads.toAbsTime: clock_gettime failed.");
+        if (!isAbsolute) {
+            calcRelTime(result, time, now);
+        } else {
+            unpackAbsTime(result, time, now);
+        }
+
+        assert result.tv_sec() >= 0 : "tv_sec < 0";
+        assert result.tv_sec() <= now.tv_sec() + MAX_SECS : "tv_sec > max_secs";
+        assert result.tv_nsec() >= 0 : "tv_nsec < 0";
+        assert result.tv_nsec() < TimeUtils.nanosPerSecond : "tv_nsec >= nanosPerSecond";
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void calcRelTime(Time.timespec absTime, long timeoutNanos, Time.timespec now) {
+        long seconds = timeoutNanos / TimeUtils.nanosPerSecond;
+        long nanos = timeoutNanos % TimeUtils.nanosPerSecond;
+
+        if (seconds >= MAX_SECS) {
+            absTime.set_tv_sec(now.tv_sec() + MAX_SECS);
+            absTime.set_tv_nsec(0);
+        } else {
+            absTime.set_tv_sec(now.tv_sec() + seconds);
+            nanos += now.tv_nsec();
+            if (nanos >= TimeUtils.nanosPerSecond) {
+                absTime.set_tv_sec(absTime.tv_sec() + 1);
+                nanos -= TimeUtils.nanosPerSecond;
+            }
+            absTime.set_tv_nsec(nanos);
+        }
+    }
+
+    /**
+     * Unpack the deadlineMillis in milliseconds since the epoch, into the given timespec. The
+     * current time in seconds is also passed in to enforce an upper bound.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void unpackAbsTime(Time.timespec absTime, long deadlineMillis, Time.timespec now) {
+        long seconds = deadlineMillis / TimeUtils.millisPerSecond;
+        long millis = deadlineMillis % TimeUtils.millisPerSecond;
+
+        long maxSecs = now.tv_sec() + MAX_SECS;
+        if (seconds >= maxSecs) {
+            absTime.set_tv_sec(maxSecs);
+            absTime.set_tv_nsec(0);
+        } else {
+            absTime.set_tv_sec(seconds);
+            absTime.set_tv_nsec(millis * TimeUtils.nanosPerMilli);
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long remainingNanos(Time.timespec deadlineTimespec) {
+        Time.timespec now = UnsafeStackValue.get(Time.timespec.class);
+        Time.clock_gettime(Time.CLOCK_MONOTONIC(), now);
+
+        long seconds = deadlineTimespec.tv_sec() - now.tv_sec();
+        long nanos = deadlineTimespec.tv_nsec() - now.tv_nsec();
+        long remaining = TimeUtils.secondsToNanos(seconds) - nanos;
+        return UninterruptibleUtils.Math.max(0, remaining);
     }
 }

@@ -76,7 +76,6 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ParkEvent;
 import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -353,36 +352,38 @@ final class PosixParkEvent extends ParkEvent {
 
     @Override
     protected void park(boolean isAbsolute, long time) {
-        if (time < 0 || (isAbsolute && time == 0)) {
-            return; // don't wait at all
-        }
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
+            assert !(time < 0 || (isAbsolute && time == 0)) : "must not be called otherwise";
+
             int status = Pthread.pthread_mutex_trylock_no_transition(mutex);
             if (status == Errno.EBUSY()) {
-                return; // can only mean another thread is unparking us: don't wait
+                /* Most likely, another thread is unparking us, so don't wait. */
+                return;
             }
             PosixUtils.checkStatusIs0(status, "park: mutex trylock");
+
             try {
                 if (event == 0) {
                     assert !parked;
                     parked = true;
-                    if (!isAbsolute && time == 0) {
+
+                    if (time == 0) {
+                        assert !isAbsolute : "waiting would be unnecessary otherwise";
                         status = Pthread.pthread_cond_wait(cond, mutex);
                         PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
                     } else {
-                        long durationNanos = TimeUtils.durationNanos(isAbsolute, time);
-                        Time.timespec deadlineTimespec = UnsafeStackValue.get(Time.timespec.class);
-                        PthreadConditionUtils.durationNanosToDeadlineTimespec(durationNanos, deadlineTimespec);
+                        Time.timespec deadline = UnsafeStackValue.get(Time.timespec.class);
+                        PthreadConditionUtils.fillTimespec(deadline, time, isAbsolute);
 
-                        status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
+                        status = Pthread.pthread_cond_timedwait(cond, mutex, deadline);
                         if (status != 0 && status != Errno.ETIMEDOUT()) {
                             Log.log().newline()
-                                            .string("[PosixParkEvent.park(durationNanos: ").signed(durationNanos).string("): Should not reach here.")
+                                            .string("[PosixParkEvent.park(time: ").signed(time).string(", isAbsolute: ").bool(isAbsolute).string("): Should not reach here.")
                                             .string("  mutex: ").hex(mutex)
                                             .string("  cond: ").hex(cond)
-                                            .string("  deadlineTimeSpec.tv_sec: ").signed(deadlineTimespec.tv_sec())
-                                            .string("  deadlineTimespec.tv_nsec: ").signed(deadlineTimespec.tv_nsec())
+                                            .string("  deadline.tv_sec: ").signed(deadline.tv_sec())
+                                            .string("  deadline.tv_nsec: ").signed(deadline.tv_nsec())
                                             .string("  status: ").signed(status).string(" ").string(Errno.strerror(status))
                                             .string("]").newline();
                             PosixUtils.checkStatusIs0(status, "park(boolean, long): condition variable timed wait");
@@ -391,12 +392,12 @@ final class PosixParkEvent extends ParkEvent {
                     parked = false;
                 }
                 event = 0;
-
             } finally {
                 PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park: mutex unlock");
-
-                // Paranoia to ensure our locked and lock-free paths interact
-                // correctly with each other and Java-level accesses.
+                /*
+                 * Paranoia to ensure our locked and lock-free paths interact correctly with each
+                 * other and Java-level accesses.
+                 */
                 U.fullFence();
             }
         } finally {
