@@ -116,14 +116,14 @@ local jdks = common_json.jdks;
   },
 
   local builds = [
-    utils.add_gate_predicate(self.vm_java_17 + vm_common.gate_vm_linux_amd64 + {
+    utils.add_gate_predicate(self.vm_java_20 + vm_common.gate_vm_linux_amd64 + {
      run: [
        ['mx', 'build'],
        ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-linux-amd64',
     }, ['sdk', 'truffle', 'vm']),
-    utils.add_gate_predicate(self.vm_java_17 + common_json.devkits['windows-jdk17'] + vm_common.gate_vm_windows_amd64 + {
+    utils.add_gate_predicate(self.vm_java_20 + common_json.devkits['windows-jdk20'] + vm_common.gate_vm_windows_amd64 + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],

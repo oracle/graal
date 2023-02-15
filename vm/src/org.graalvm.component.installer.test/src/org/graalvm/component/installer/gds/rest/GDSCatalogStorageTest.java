@@ -26,6 +26,7 @@
 package org.graalvm.component.installer.gds.rest;
 
 import org.graalvm.component.installer.CommandTestBase;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import static org.junit.Assert.assertEquals;
@@ -52,7 +53,7 @@ public class GDSCatalogStorageTest extends CommandTestBase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        mockUrl = new URL(MOCK_URL);
+        mockUrl = SystemUtils.toURL(MOCK_URL);
     }
 
     @Test

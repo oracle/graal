@@ -33,6 +33,7 @@ import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -62,7 +63,7 @@ public class CatalogCompatTest extends CommandTestBase {
 
     void setupCatalogFormat1(String res) throws Exception {
         URL clu = getClass().getResource(res);
-        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
         Handler.bind(u.toString(),
                         clu);
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, u);

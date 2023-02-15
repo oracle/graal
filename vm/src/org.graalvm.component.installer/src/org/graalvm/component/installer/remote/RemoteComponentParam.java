@@ -316,7 +316,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
             desc = remote;
         }
         try {
-            URL u = new URL(remote);
+            URL u = SystemUtils.toURL(remote);
             FileDownloader dn = createFileDownloader(u, feedback.l10n("LICENSE_RemoteLicenseDescription", desc), false);
             dn.download();
             String s = String.join("\n", Files.readAllLines(dn.getLocalFile().toPath()));

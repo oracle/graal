@@ -277,8 +277,8 @@ public final class GenerateCatalog {
                 if (!f.exists()) {
                     f = null;
                     u = spec;
-                    // create an URI, just to fail fast, if URI is wrong:
-                    URL check = new URL(spec);
+                    // create a URL, just to fail fast, if the URL is wrong:
+                    URL check = SystemUtils.toURL(spec);
                     // ... and use it somehow, so ECJ does not fail the gate.
                     assert check.toString() != null;
                 }
@@ -299,9 +299,9 @@ public final class GenerateCatalog {
 
     private URL createURL(String spec) throws MalformedURLException {
         if (urlPrefix != null) {
-            return new URL(new URL(urlPrefix), spec);
+            return SystemUtils.toURL(urlPrefix, spec);
         } else {
-            return new URL(spec);
+            return SystemUtils.toURL(spec);
         }
     }
 
