@@ -203,6 +203,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String compilationDirectory = dwarfSections.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
+        /*
+         * Using zero as a fallback lineIndex is potentially dangerous, but probably harmless,
+         * because it will point at some arbitrary data in the lines data.
+         */
         final int lineIndex = 0;
         log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
         pos = writeAttrData4(lineIndex, buffer, pos);
@@ -1222,6 +1226,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String compilationDirectory = dwarfSections.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
+        /*
+         * Using zero as a fallback lineIndex is potentially dangerous, but probably harmless,
+         * because it will point at some arbitrary data in the lines data.
+         */
         final int lineIndex = 0;
         log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
         pos = writeAttrData4(lineIndex, buffer, pos);
