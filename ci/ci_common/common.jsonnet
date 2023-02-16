@@ -119,11 +119,11 @@ local add_jdk_version(name) =
   for name in std.objectFieldsAll(jdks)
 } + {
   # Aliases to edition specific labsjdks
-  labsjdk17::            self["labsjdk-ee-17"],
+  labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
   labsjdk19::            self["labsjdk-" + repo_config.graalvm_edition + "-19"],
-  labsjdk17Debug::       self["labsjdk-ee-17Debug"],
+  labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
   labsjdk19Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-19Debug"],
-  labsjdk17LLVM::        self["labsjdk-ee-17-llvm"],
+  labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
   labsjdk19LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-19-llvm"],
 
   labsjdk20::            self["labsjdk-" + repo_config.graalvm_edition + "-20"],
