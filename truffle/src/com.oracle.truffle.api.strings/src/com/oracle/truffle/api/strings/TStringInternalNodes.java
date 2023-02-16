@@ -1558,7 +1558,7 @@ final class TStringInternalNodes {
         static String createJavaString(Node node, AbstractTruffleString a, Object arrayA,
                         @Cached InlinedConditionProfile reuseProfile) {
             assert TSCodeRange.is7Or8Bit(a.codeRange()) || TSCodeRange.isPrecise(a.codeRange());
-            assert isUTF16Compatible(a, a.codeRange());
+            assert a.isLooselyCompatibleTo(Encoding.UTF_16);
             final int stride = Stride.fromCodeRangeUTF16(a.codeRange());
             final byte[] bytes;
             if (reuseProfile.profile(node, a instanceof TruffleString && arrayA instanceof byte[] && a.length() << a.stride() == ((byte[]) arrayA).length && a.stride() == stride)) {
@@ -1573,9 +1573,6 @@ final class TStringInternalNodes {
             return TStringUnsafe.createJavaString(bytes, stride);
         }
 
-        private static boolean isUTF16Compatible(AbstractTruffleString a, int codeRange) {
-            return a.isCompatibleTo(Encoding.UTF_16) || a instanceof MutableTruffleString && TSCodeRange.isMoreRestrictiveThan(codeRange, Encoding.UTF_16.maxCompatibleCodeRange);
-        }
     }
 
     abstract static class TransCodeNode extends AbstractInternalNode {
