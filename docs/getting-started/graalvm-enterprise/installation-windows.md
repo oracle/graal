@@ -9,28 +9,33 @@ You can install Oracle GraalVM Enterprise Edition on the Windows operating syste
 Follow these steps:
 
 1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
-2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **11** or **17** for the Java version, and **Windows** for the operating system.
+
+2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **11**, **17** or **19** for the Java version, and **Windows** for the operating system.
+
 3. Click on the **GraalVM Enterprise JDK** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
-4. When the download button becomes active, press it to start downloading graalvm-ee-java<version>-windows-amd64-<version>.zip.
+
+4. When the download button becomes active, press it to start downloading.
+
 5. Change the directory to the location where you want to install GraalVM Enterprise, then move the _.zip_ archive to it.
+
 6. Unzip the archive to your file system.
+
 7. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line work the same way for Windows 8 and 10.
   - Point the `PATH` environment variable to the GraalVM Enterprise `bin` directory:
-  ```shell
-  setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
-  ```
+    ```shell
+    setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
+    ```
   - Set the `JAVA_HOME` environment variable to resolve to the GraalVM Enterprise installation directory:
-  ```shell
-  setx /M JAVA_HOME "C:\Progra~1\Java\<graalvm>"
-  ```
+    ```shell
+    setx /M JAVA_HOME "C:\Progra~1\Java\<graalvm>"
+    ```
   Note that the `/M` flag, equivalent to `-m`, requires elevated user privileges.
 
-8. Restart Command Prompt to reload the environment variables. Then use the
-following command to check whether the variables were set correctly:
-```shell
-echo %PATH%
-echo %JAVA_HOME%
-```
+8. Restart Command Prompt to reload the environment variables. Then use the following command to check whether the variables were set correctly:
+    ```shell
+    echo %PATH%
+    echo %JAVA_HOME%
+    ```
 
 Alternatively, you can set up environment variables through a Windows GUI:
 
