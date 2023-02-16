@@ -38,7 +38,7 @@ For more information, check the [Oracle Technology Network License Agreement for
 
 The following table lists supported and experimental features in GraalVM Enterprise Edition 22.3 by platform.
 
-| Feature         | Linux AMD64   | Linux AArch64   | macOS AMD64   | Windows AMD64 |
+| Feature         | Linux AMD64   | Linux AArch64 | macOS AMD64   | Windows AMD64 |
 |-----------------|---------------|---------------|---------------|---------------|
 | Native Image    | supported     | supported     | supported     | supported     |
 | LLVM runtime    | supported     | supported     | supported     | experimental  |
