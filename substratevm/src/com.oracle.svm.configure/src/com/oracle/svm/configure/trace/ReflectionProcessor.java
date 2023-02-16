@@ -81,6 +81,25 @@ class ReflectionProcessor extends AbstractProcessor {
             case "getSystemResourceAsStream":
             case "getResources":
             case "getSystemResources":
+            case "newInputStream":
+            case "newOutputStream":
+            case "newByteChannel":
+            case "newDirectoryStream":
+            case "createDirectory":
+            case "createDirectories":
+            case "delete":
+            case "deleteIfExists":
+            case "copy":
+            case "move":
+            case "getFileStore":
+            case "readAttributes":
+            case "setAttribute":
+            case "isAccessible":
+            case "walkFileTree":
+            case "walk":
+            case "find":
+            case "lines":
+            case "open":
                 String literal = singleElement(args);
                 String regex = Pattern.quote(literal);
                 resourceConfiguration.addResourcePattern(condition, regex);

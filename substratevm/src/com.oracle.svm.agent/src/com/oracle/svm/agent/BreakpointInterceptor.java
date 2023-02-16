@@ -663,6 +663,30 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    private static boolean handleFiles(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle name = getObjectArgument(thread, 0);
+        return handleFiles(jni, bp, state, callerClass, name);
+    }
+
+    private static boolean handleFilesWithDestination(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle source = getObjectArgument(thread, 0);
+        JNIObjectHandle destination = getObjectArgument(thread, 1);
+        handleFiles(jni, bp, state, callerClass, source);
+        handleFiles(jni, bp, state, callerClass, destination);
+        return true;
+    }
+
+    private static boolean handleFiles(JNIEnvironment jni, Breakpoint bp, InterceptedState state, JNIObjectHandle callerClass, JNIObjectHandle argument) {
+        JNIObjectHandle name = Support.callObjectMethod(jni, argument, agent.handles().javaNioFilePathToString);
+        String resource = fromJniString(jni, name);
+        assert resource != null;
+        resource = resource.charAt(0) == '/' ? resource.substring(1) : resource;
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(), resource);
+        return true;
+    }
+
     private static boolean newProxyInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle classLoader = getObjectArgument(thread, 0);
@@ -1679,6 +1703,35 @@ final class BreakpointInterceptor {
                      * NOTE: get(System)ResourceAsStream() generallys call get(System)Resource(), no
                      * additional breakpoints necessary
                      */
+
+                    brk("java/nio/file/Files", "newInputStream", "(Ljava/nio/file/Path;[Ljava/nio/file/OpenOption;)Ljava/io/InputStream;", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "newOutputStream", "(Ljava/nio/file/Path;[Ljava/nio/file/OpenOption;)Ljava/io/OutputStream;", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "newByteChannel", "(Ljava/nio/file/Path;Ljava/util/Set;[Ljava/nio/file/attribute/FileAttribute;)Ljava/nio/channels/SeekableByteChannel;",
+                                    BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "newDirectoryStream", "(Ljava/nio/file/Path;)Ljava/nio/file/DirectoryStream;", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "newDirectoryStream", "(Ljava/nio/file/Path;Ljava/lang/String;)Ljava/nio/file/DirectoryStream;", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "newDirectoryStream", "(Ljava/nio/file/Path;Ljava/nio/file/DirectoryStream$Filter;)Ljava/nio/file/DirectoryStream;", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "createDirectory", "(Ljava/nio/file/Path;[Ljava/nio/file/attribute/FileAttribute;)Ljava/nio/file/Path;", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "createDirectories", "(Ljava/nio/file/Path;[Ljava/nio/file/attribute/FileAttribute;)Ljava/nio/file/Path;", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "delete", "(Ljava/nio/file/Path;)V", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "deleteIfExists", "(Ljava/nio/file/Path;)Z", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "copy", "(Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;", BreakpointInterceptor::handleFilesWithDestination),
+                    brk("java/nio/file/Files", "move", "(Ljava/nio/file/Path;Ljava/nio/file/Path;[Ljava/nio/file/CopyOption;)Ljava/nio/file/Path;", BreakpointInterceptor::handleFilesWithDestination),
+                    brk("java/nio/file/Files", "getFileStore", "(Ljava/nio/file/Path;)Ljava/nio/file/FileStore;", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "readAttributes", "(Ljava/nio/file/Path;Ljava/lang/Class;[Ljava/nio/file/LinkOption;)Ljava/nio/file/attribute/BasicFileAttributes;",
+                                    BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "readAttributes", "(Ljava/nio/file/Path;Ljava/lang/String;[Ljava/nio/file/LinkOption;)Ljava/util/Map;", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "setAttribute", "(Ljava/nio/file/Path;Ljava/lang/String;Ljava/lang/Object;[Ljava/nio/file/LinkOption;)Ljava/nio/file/Path;",
+                                    BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "isAccessible", "(Ljava/nio/file/Path;[Ljava/nio/file/AccessMode;)Z", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "walkFileTree", "(Ljava/nio/file/Path;Ljava/util/Set;ILjava/nio/file/FileVisitor;)Ljava/nio/file/Path;", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "walk", "(Ljava/nio/file/Path;I[Ljava/nio/file/FileVisitOption;)Ljava/util/stream/Stream;", BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "find", "(Ljava/nio/file/Path;ILjava/util/function/BiPredicate;[Ljava/nio/file/FileVisitOption;)Ljava/util/stream/Stream;",
+                                    BreakpointInterceptor::handleFiles),
+                    brk("java/nio/file/Files", "lines", "(Ljava/nio/file/Path;Ljava/nio/charset/Charset;)Ljava/util/stream/Stream;", BreakpointInterceptor::handleFiles),
+
+                    brk("java/nio/channels/FileChannel", "open", "(Ljava/nio/file/Path;Ljava/util/Set;[Ljava/nio/file/attribute/FileAttribute;)Ljava/nio/channels/FileChannel;",
+                                    BreakpointInterceptor::handleFiles),
 
                     brk("java/lang/reflect/Proxy", "getProxyClass", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;)Ljava/lang/Class;", BreakpointInterceptor::getProxyClass),
                     brk("java/lang/reflect/Proxy", "newProxyInstance",

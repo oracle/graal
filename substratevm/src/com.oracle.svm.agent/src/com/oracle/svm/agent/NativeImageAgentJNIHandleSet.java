@@ -84,6 +84,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     final JNIFieldId javaLangInvokeSerializedLambdaCapturingClass;
 
+    final JNIObjectHandle javaNioFilePath;
+    final JNIMethodId javaNioFilePathToString;
+
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
         javaLangClass = newClassGlobalRef(env, "java/lang/Class");
@@ -120,6 +123,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
         JNIObjectHandle serializedLambda = findClass(env, "java/lang/invoke/SerializedLambda");
         javaLangInvokeSerializedLambdaCapturingClass = getFieldId(env, serializedLambda, "capturingClass", "Ljava/lang/Class;", false);
+
+        javaNioFilePath = newClassGlobalRef(env, "java/nio/file/Path");
+        javaNioFilePathToString = getMethodId(env, javaNioFilePath, "toString", "()Ljava/lang/String;", false);
     }
 
     JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {
