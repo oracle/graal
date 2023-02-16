@@ -57,7 +57,7 @@ class Checker:
         self.name = name
         if not isinstance(regexps, list):
             regexps = [regexps]
-        self.rexps = [re.compile(regexp) for regexp in regexps]
+        self.rexps = [re.compile(r) for r in regexps if r is not None]
 
     # Check that successive lines of a gdb command's output text
     # match the corresponding regexp patterns provided when this
@@ -180,6 +180,9 @@ def test():
     # disable printing of address symbols
     execute("set print symbol off")
 
+    hub_ref_size = int(execute("printf \"%d\", sizeof('java.lang.Object'::__hub__)"))
+    fixed_idhash_field = (hub_ref_size > 4)
+
     # Print DefaultGreeter and check the modifiers of its methods and fields
     exec_string = execute("ptype 'hello.Hello$DefaultGreeter'")
     rexp = [r"type = class hello\.Hello\$DefaultGreeter : public hello\.Hello\$Greeter {",
@@ -241,7 +244,7 @@ def test():
                 r"%s<java.lang.Object> = {"%(spaces_pattern),
                 r"%s<_objhdr> = {"%(spaces_pattern),
                 r"%shub = %s,"%(spaces_pattern, address_pattern),
-                r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                 r"%s}, <No data fields>}, "%(spaces_pattern),
                 r"%smembers of java\.lang\.String\[\]:"%(spaces_pattern),
                 r"%slen = 0x0,"%(spaces_pattern),
@@ -260,7 +263,7 @@ def test():
                     r"%s<java.lang.Object> = {"%(spaces_pattern),
                     r"%s<_objhdr> = {"%(spaces_pattern),
                     r"%shub = %s,"%(spaces_pattern, address_pattern),
-                    r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                    r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                     r"%s}, <No data fields>},"%(spaces_pattern),
                     r"%smembers of java\.lang\.Class:"%(spaces_pattern),
                     r"%sname = %s,"%(spaces_pattern, address_pattern),
@@ -270,7 +273,7 @@ def test():
                     r"%s<java.lang.Object> = {"%(spaces_pattern),
                     r"%s<_objhdr> = {"%(spaces_pattern),
                     r"%shub = %s,"%(spaces_pattern, address_pattern),
-                    r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                    r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                     r"%s}, <No data fields>},"%(spaces_pattern),
                     r"%smembers of java\.lang\.Class:"%(spaces_pattern),
                     r"%sname = %s,"%(spaces_pattern, address_pattern),
@@ -310,7 +313,7 @@ def test():
                 r"%s<java.lang.Object> = {"%(spaces_pattern),
                 r"%s<_objhdr> = {"%(spaces_pattern),
                 r"%shub = %s,"%(spaces_pattern, address_pattern),
-                r"%sidHash = %s"%(spaces_pattern, address_pattern),
+                r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                 r"%s}, <No data fields>},"%(spaces_pattern),
                 r"%smembers of java\.lang\.Class:"%(spaces_pattern),
                 r"%sname = %s,"%(spaces_pattern, address_pattern),
@@ -426,12 +429,12 @@ def test():
     if isolates:
         rexp = [r"type = struct _objhdr {",
                 r"%s_z_\.java\.lang\.Class \*hub;"%(spaces_pattern),
-                r"%sint idHash;"%(spaces_pattern),
+                r"%sint idHash;"%(spaces_pattern) if fixed_idhash_field else None,
                 r"}"]
     else:
         rexp = [r"type = struct _objhdr {",
                 r"%sjava\.lang\.Class \*hub;"%(spaces_pattern),
-                r"%sint idHash;"%(spaces_pattern),
+                r"%sint idHash;"%(spaces_pattern) if fixed_idhash_field else None,
                 r"}"]
 
     checker = Checker('ptype _objhdr', rexp)
@@ -785,7 +788,10 @@ def test():
     # through the instructions until we find and execute the first instruction
     # that adjusts the stack pointer register, which concludes the prologue.
     if arch == "aarch64":
-        instruction_adjusts_sp_register_pattern = r"%s sp%s"%(wildcard_pattern, wildcard_pattern)
+        # on aarch64 the stack build sequence requires both a stack extend and
+        # then a save of sp to fp. therefore, match the second instruction,
+        # which is expected to be a store pair (stp).
+        instruction_adjusts_sp_register_pattern = r"%sstp%sx%s, x%s, \[sp,"%(wildcard_pattern, spaces_pattern, digits_pattern, digits_pattern)
     else:
         instruction_adjusts_sp_register_pattern = r"%s,%%rsp"%(wildcard_pattern)
     instruction_adjusts_sp_register_regex = re.compile(instruction_adjusts_sp_register_pattern)
@@ -801,15 +807,6 @@ def test():
             break
         if num_stepis >= max_num_stepis:
             print("method prologue is unexpectedly long, did not reach end after %s stepis" % num_stepis)
-            sys.exit(1)
-    if arch == "aarch64":
-        # on aarch64 the stack build sequence requires both a stack extend and
-        # then a save of sp to fp. therefore, step into one more instruction.
-        exec_string = execute("x/i $pc")
-        print(exec_string)
-        execute("stepi")
-        if "sp" not in exec_string:
-            print("failed to reach method prologue, last instruction was expected to modify sp register but did not")
             sys.exit(1)
     
     exec_string = execute("info args")

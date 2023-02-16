@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
     @Override
     protected void onCreate(TruffleInstrument.Env instrumentEnv) {
         assert controller == null;
-        controller = new DebuggerController(this);
+        controller = new DebuggerController(this, instrumentEnv.getLogger(ID));
         this.env = instrumentEnv;
         this.env.registerService(controller);
         this.env.getInstrumenter().attachContextsListener(controller, false);
@@ -213,7 +213,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         return context;
     }
 
-    TruffleInstrument.Env getEnv() {
-        return env;
+    boolean isVMThread(Thread thread) {
+        return connection.isDebuggerThread(thread);
     }
 }

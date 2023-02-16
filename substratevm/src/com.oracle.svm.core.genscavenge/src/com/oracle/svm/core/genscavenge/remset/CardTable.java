@@ -169,7 +169,7 @@ final class CardTable {
                     success &= verifyReferent(ref, cardTableStart, objectsStart);
                 }
             }
-            curPtr = LayoutEncoding.getObjectEnd(obj);
+            curPtr = LayoutEncoding.getObjectEndInGC(obj);
         }
         return success;
     }

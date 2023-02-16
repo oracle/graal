@@ -77,6 +77,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
@@ -117,6 +119,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     /**
      * The name of the class this hub is representing, as defined in {@link Class#getName()}.
+     *
+     * Even though the field is only assinged in the constructor, it cannot be final: The
+     * substitution system does not allow a final field when the target class has a field with the
+     * same name. And using a different field name fails for various other reasons that are too
+     * complicated to fix. Therefore, we ensure early constant folding using an invocation plugin
+     * for the getName() method.
      */
     private String name;
 
@@ -166,6 +174,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * table.
      */
     private short monitorOffset;
+
+    private short optionalIdentityHashOffset;
 
     /**
      * Bit-set for various boolean flags, to reduce size of instances. It is important that this
@@ -398,14 +408,21 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(int layoutEncoding, int typeID, int monitorOffset, short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots,
-                    CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance) {
+    public void setData(int layoutEncoding, int typeID, int monitorOffset, int optionalIdentityHashOffset, short typeCheckStart, short typeCheckRange, short typeCheckSlot,
+                    short[] typeCheckSlots, CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance) {
         assert this.vtable == null : "Initialization must be called only once";
         assert !(!isInstantiated && canInstantiateAsInstance);
+        if (LayoutEncoding.isPureInstance(layoutEncoding)) {
+            ObjectLayout ol = ConfigurationValues.getObjectLayout();
+            assert ol.hasFixedIdentityHashField() ? (optionalIdentityHashOffset == ol.getFixedIdentityHashOffset()) : (optionalIdentityHashOffset > 0);
+        } else {
+            assert optionalIdentityHashOffset == -1;
+        }
 
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
         this.monitorOffset = NumUtil.safeToShort(monitorOffset);
+        this.optionalIdentityHashOffset = NumUtil.safeToShort(optionalIdentityHashOffset);
         this.typeCheckStart = typeCheckStart;
         this.typeCheckRange = typeCheckRange;
         this.typeCheckSlot = typeCheckSlot;
@@ -565,6 +582,15 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     public int getMonitorOffset() {
         return monitorOffset;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    int getOptionalIdentityHashOffset() {
+        ObjectLayout ol = ConfigurationValues.getObjectLayout();
+        if (ol.hasFixedIdentityHashField()) { // enable elimination of our field
+            return ol.getFixedIdentityHashOffset();
+        }
+        return optionalIdentityHashOffset;
     }
 
     public DynamicHub getSuperHub() {
@@ -1243,7 +1269,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute //
     public String methodToString(String nameArg, Class<?>[] argTypes) {
-        return describeMethod(name + "." + nameArg + "(", argTypes, ")");
+        return describeMethod(getName() + "." + nameArg + "(", argTypes, ")");
     }
 
     private static String describeMethod(String prefix, Class<?>[] argTypes, String suffix) {

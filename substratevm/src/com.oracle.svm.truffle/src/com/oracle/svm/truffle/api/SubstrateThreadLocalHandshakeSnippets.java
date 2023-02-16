@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
-import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.GC_LOCATIONS;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.util.Arrays;
@@ -77,8 +77,8 @@ public final class SubstrateThreadLocalHandshakeSnippets extends SubstrateTempla
     }
 
     private static LocationIdentity[] getPollKilledLocations() {
-        int newLength = TLAB_LOCATIONS.length + 1;
-        LocationIdentity[] locations = Arrays.copyOf(TLAB_LOCATIONS, newLength);
+        int newLength = GC_LOCATIONS.length + 1;
+        LocationIdentity[] locations = Arrays.copyOf(GC_LOCATIONS, newLength);
         locations[newLength - 1] = SubstrateThreadLocalHandshake.PENDING.getLocationIdentity();
         return locations;
     }

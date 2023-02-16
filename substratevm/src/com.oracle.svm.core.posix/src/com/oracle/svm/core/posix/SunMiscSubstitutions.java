@@ -408,7 +408,7 @@ final class IgnoreSIGPIPEStartupHook implements RuntimeSupport.Hook {
      */
     @Override
     public void execute(boolean isFirstIsolate) {
-        if (isFirstIsolate) {
+        if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue()) {
             final SignalDispatcher signalResult = PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPIPE.getCValue(), NOOP_SIGNAL_HANDLER.getFunctionPointer());
             VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
         }

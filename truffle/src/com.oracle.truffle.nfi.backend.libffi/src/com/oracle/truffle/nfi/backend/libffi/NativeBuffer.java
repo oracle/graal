@@ -102,7 +102,7 @@ abstract class NativeBuffer implements TruffleObject {
         @ExportMessage
         byte readBufferByte(long offset,
                         @Shared("exception") @Cached BranchProfile exception) throws InvalidBufferOffsetException {
-            if (Long.compareUnsigned(offset, content.length) < 0) {
+            if (Long.compareUnsigned(offset, content.length) >= 0) {
                 exception.enter();
                 throw InvalidBufferOffsetException.create(offset, content.length);
             }

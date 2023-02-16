@@ -35,6 +35,7 @@ import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -53,6 +54,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Threading;
 import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.CHeader;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -2415,5 +2417,56 @@ public final class PolyglotNativeAPI {
         CallbackException(String message) {
             super(message);
         }
+    }
+
+    @CEntryPoint(name = "poly_context_builder_timezone", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Sets timezone for a <code>poly_context_builder</code>.",
+                    "",
+                    "@param context_builder that is modified.",
+                    "@param zone_utf8 id of a timezone to be set via ZoneId.of().",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#timeZone-java.time.ZoneId-",
+                    "@since 23.0",
+    })
+    public static PolyglotStatus poly_context_builder_timezone(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, @CConst CCharPointer zone_utf8) {
+        resetErrorState();
+        nullCheck(context_builder, "context_builder");
+        nullCheck(zone_utf8, "zone_utf8");
+
+        String zoneString = CTypeConversion.utf8ToJavaString(zone_utf8);
+        Context.Builder contextBuilder = fetchHandle(context_builder);
+        contextBuilder.timeZone(ZoneId.of(zoneString));
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_vmruntime_initialize", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Initializes the VM: Runs all startup hooks that were registered during image building.",
+                    "",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/VMRuntime.html#initialize--",
+                    "@since 23.0",
+    })
+    public static PolyglotStatus poly_vmruntime_initialize(PolyglotIsolateThread thread) {
+        resetErrorState();
+
+        VMRuntime.initialize();
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_vmruntime_shutdown", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Shuts down the VM: Runs all shutdown hooks and waits for all finalization to complete.",
+                    "",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/VMRuntime.html#shutdown--",
+                    "@since 23.0",
+    })
+    public static PolyglotStatus poly_vmruntime_shutdown(PolyglotIsolateThread thread) {
+        resetErrorState();
+
+        VMRuntime.shutdown();
+        return poly_ok;
     }
 }

@@ -265,10 +265,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
         int status = Pthread.pthread_join_no_transition((Pthread.pthread_t) threadHandle, threadExitStatus);
-        if (status != 0) {
-            return false;
-        }
-        return true;
+        return status == 0;
     }
 
     @Override

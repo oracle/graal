@@ -233,7 +233,7 @@ If you use the Micronaut framework to create your Java project, you can build a 
 ### Building Native Images on Windows
 
 To use Native Image on Windows, you need Visual Studio Build Tools with Windows SDK installed. 
-The `native-image` builder only works when it is executed from the **x64 Native Tools Command Prompt**. Check [this link](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311) for more details.
+Check out [our blog post on GraalVM for Windows](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311) for more details.
 
 For Windows users, the extension provides a pre-configured x64 command prompt using Microsoft Developer Tools. Assuming you already have Visual Studio Build Tools with Windows SDK, GraalVM with Native Image installed, and opened your Java project in VS Code.
 

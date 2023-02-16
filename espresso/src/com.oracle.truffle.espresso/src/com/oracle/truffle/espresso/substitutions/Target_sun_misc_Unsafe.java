@@ -29,7 +29,6 @@ import java.security.ProtectionDomain;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.LockSupport;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -41,8 +40,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -73,7 +70,6 @@ public final class Target_sun_misc_Unsafe {
 
     /** The value of {@code addressSize()}. */
     public static final int ADDRESS_SIZE;
-    private static final long PARK_BLOCKER_OFFSET;
 
     private static final int SAFETY_FIELD_OFFSET = 123456789;
     private static final int SAFETY_STATIC_FIELD_OFFSET = 3456789;
@@ -84,11 +80,6 @@ public final class Target_sun_misc_Unsafe {
 
     static {
         Unsafe unsafe = UnsafeAccess.get();
-        try {
-            PARK_BLOCKER_OFFSET = unsafe.objectFieldOffset(Thread.class.getDeclaredField("parkBlocker"));
-        } catch (NoSuchFieldException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
         ADDRESS_SIZE = unsafe.addressSize();
     }
 
@@ -570,20 +561,10 @@ public final class Target_sun_misc_Unsafe {
         if (parkReturnCondition(thread, meta)) {
             return;
         }
-        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        Thread hostThread = Thread.currentThread();
-        Object blocker = LockSupport.getBlocker(hostThread);
         State state = time > 0 ? State.TIMED_WAITING : State.WAITING;
         try (Transition transition = Transition.transition(context, state)) {
-            Field parkBlocker = meta.java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
-            StaticObject guestBlocker = parkBlocker.getObject(thread);
-            // LockSupport.park(/* guest blocker */);
-            if (!StaticObject.isNull(guestBlocker)) {
-                unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, guestBlocker);
-            }
             parkImpl(isAbsolute, time, thread, meta);
         }
-        unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, blocker);
     }
 
     private static void parkImpl(boolean isAbsolute, long time, StaticObject thread, Meta meta) {

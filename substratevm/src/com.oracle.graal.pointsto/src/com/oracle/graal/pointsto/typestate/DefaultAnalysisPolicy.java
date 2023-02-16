@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -456,4 +457,47 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         }
     }
 
+    @Override
+    public void processArrayCopyStates(PointsToAnalysis bb, TypeState srcArrayState, TypeState dstArrayState) {
+        /* In the default configuration, when array aliasing is enabled, this method is not used. */
+        assert !bb.analysisPolicy().aliasArrayTypeFlows();
+
+        /*
+         * The source and destination array can have reference types which, although must be
+         * compatible, can be different.
+         */
+        for (AnalysisObject srcArrayObject : srcArrayState.objects(bb)) {
+            if (!srcArrayObject.type().isArray()) {
+                /*
+                 * Ignore non-array type. Sometimes the analysis cannot filter out non-array types
+                 * flowing into array copy, however this will fail at runtime.
+                 */
+                continue;
+            }
+
+            if (srcArrayObject.isPrimitiveArray() || srcArrayObject.isEmptyObjectArrayConstant(bb)) {
+                /* Nothing to read from a primitive array or an empty array constant. */
+                continue;
+            }
+
+            ArrayElementsTypeFlow srcArrayElementsFlow = srcArrayObject.getArrayElementsFlow(bb, false);
+
+            for (AnalysisObject dstArrayObject : dstArrayState.objects(bb)) {
+                if (!dstArrayObject.type().isArray()) {
+                    /* Ignore non-array type. */
+                    continue;
+                }
+
+                if (dstArrayObject.isPrimitiveArray() || dstArrayObject.isEmptyObjectArrayConstant(bb)) {
+                    /* Cannot write to a primitive array or an empty array constant. */
+                    continue;
+                }
+
+                if (areTypesCompatibleForSystemArraycopy(srcArrayObject.type(), dstArrayObject.type())) {
+                    ArrayElementsTypeFlow dstArrayElementsFlow = dstArrayObject.getArrayElementsFlow(bb, true);
+                    srcArrayElementsFlow.addUse(bb, dstArrayElementsFlow);
+                }
+            }
+        }
+    }
 }

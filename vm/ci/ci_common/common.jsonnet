@@ -464,53 +464,28 @@ local devkits = common_json.devkits;
   patch_env(os, arch, java_version):
     # linux
     if (os == 'linux') then
-      if (arch == 'amd64') then
-        if (java_version == 'java11') then [
-          # default
-        ] else if (java_version == 'java17') then [
-          # default
-        ] else if (java_version == 'java19') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-19'],
-        ] else error "java_version not found: " + java_version
-      else if (arch == 'aarch64') then
-        if (java_version == 'java11') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-aarch64'],
-        ] else if (java_version == 'java17') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-aarch64'],
-        ] else if (java_version == 'java19') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-aarch64-19'],
-        ] else error "java_version not found: " + java_version
+      if (arch == 'amd64') then [
+        # default
+      ]
+      else if (arch == 'aarch64') then [
+        ['set-export', 'VM_ENV', '${VM_ENV}-aarch64'],
+      ]
       else error "arch not found: " + arch
     # darwin
     else if (os == 'darwin') then
-      if (arch == 'amd64') then
-        if (java_version == 'java11') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin'],
-        ] else if (java_version == 'java17') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin'],
-        ] else if (java_version == 'java19') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin-19'],
-        ] else error "java_version not found: " + java_version
-      else if (arch == 'aarch64') then
+      if (arch == 'amd64') then [
+        ['set-export', 'VM_ENV', '${VM_ENV}-darwin'],
+      ]
+      else if (arch == 'aarch64') then [
         # GR-34811: `ce-darwin-aarch64` can be removed once svml builds
-        if (java_version == 'java11') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
-        ] else if (java_version == 'java17') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
-        ] else if (java_version == 'java19') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64-19'],
-        ] else error "java_version not found: " + java_version
+        ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
+      ]
       else error "arch not found: " + arch
     # windows
     else if (os == 'windows') then
-      if (arch == 'amd64') then
-        if (java_version == 'java11') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-win'],
-        ] else if (java_version == 'java17') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-win'],
-        ] else if (java_version == 'java19') then [
-          ['set-export', 'VM_ENV', '${VM_ENV}-win-19'],
-        ] else error "java_version not found: " + java_version
+      if (arch == 'amd64') then [
+        ['set-export', 'VM_ENV', '${VM_ENV}-win'],
+      ]
       else error "arch not found: " + arch
     else error "os not found: " + os,
 

@@ -30,6 +30,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
@@ -61,7 +62,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
         if (CompilerDirectives.hasNextTier()) {
             incrementCallCount();
         }
-        if (CompilerDirectives.inInterpreter()) {
+        if (HostCompilerDirectives.inInterpreterFastPath()) {
             target = onInterpreterCall(target);
         }
         try {

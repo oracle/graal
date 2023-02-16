@@ -812,7 +812,7 @@ public final class ClassRedefinition {
     public Method handleRemovedMethod(Method resolutionSeed, Klass accessingKlass) {
         // wait for potential ongoing redefinition to complete
         check();
-        Method replacementMethod = accessingKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
+        Method replacementMethod = accessingKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature());
         Meta meta = resolutionSeed.getMeta();
         if (replacementMethod == null) {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,

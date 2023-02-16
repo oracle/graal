@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -211,6 +211,8 @@ public class NativeImage {
     final APIOptionHandler apiOptionHandler;
 
     public static final String oH = "-H:";
+    static final String oHEnabled = oH + "+";
+    static final String oHDisabled = oH + "-";
     static final String oR = "-R:";
 
     final String enablePrintFlags = CommonOptions.PrintFlags.getName();
@@ -225,6 +227,14 @@ public class NativeImage {
         return oH + option.getName() + "@" + origin + "=";
     }
 
+    private static String oHEnabled(OptionKey<Boolean> option) {
+        return oHEnabled + option.getName();
+    }
+
+    private static String oHDisabled(OptionKey<Boolean> option) {
+        return oHDisabled + option.getName();
+    }
+
     private static <T> String oR(OptionKey<T> option) {
         return oR + option.getName() + "=";
     }
@@ -233,7 +243,10 @@ public class NativeImage {
     final String oHClass = oH(SubstrateOptions.Class);
     final String oHName = oH(SubstrateOptions.Name);
     final String oHPath = oH(SubstrateOptions.Path);
-    final String oHEnableSharedLibraryFlag = oH + "+" + SubstrateOptions.SharedLibrary.getName();
+    final String oHEnableSharedLibraryFlag = oHEnabled(SubstrateOptions.SharedLibrary);
+    final String oHEnableBuildOutputColorful = oHEnabled(SubstrateOptions.BuildOutputColorful);
+    final String oHEnableBuildOutputProgress = oHEnabled(SubstrateOptions.BuildOutputProgress);
+    final String oHEnableBuildOutputLinks = oHEnabled(SubstrateOptions.BuildOutputLinks);
     final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
     final String oHFallbackThreshold = oH(SubstrateOptions.FallbackThreshold);
     final String oHFallbackExecutorJavaArg = oH(FallbackExecutor.Options.FallbackExecutorJavaArg);
@@ -656,8 +669,8 @@ public class NativeImage {
             buildArgs.add(fallbackExecutorJavaArg);
         }
 
-        buildArgs.add(oH + "+" + SubstrateOptions.BuildOutputSilent.getName());
-        buildArgs.add(oH + "+" + SubstrateOptions.ParseRuntimeOptions.getName());
+        buildArgs.add(oHEnabled(SubstrateOptions.BuildOutputSilent));
+        buildArgs.add(oHEnabled(SubstrateOptions.ParseRuntimeOptions));
         Path imagePathPath;
         try {
             imagePathPath = canonicalize(imagePath);
@@ -688,7 +701,7 @@ public class NativeImage {
          * The fallback image on purpose captures the Java home directory used for image generation,
          * see field FallbackExecutor.buildTimeJavaHome
          */
-        buildArgs.add(oH + "-" + SubstrateOptions.DetectUserDirectoriesInImageHeap.getName());
+        buildArgs.add(oHDisabled(SubstrateOptions.DetectUserDirectoriesInImageHeap));
 
         buildArgs.add(FallbackExecutor.class.getName());
         buildArgs.add(imageName);
@@ -804,7 +817,11 @@ public class NativeImage {
         if (!"0".equals(xmxVal)) {
             addImageBuilderJavaArgs(oXmx + xmxVal);
         }
-        /* Prevent JVM that runs the image builder to steal focus */
+
+        /* Let builder exit on first OutOfMemoryError. */
+        addImageBuilderJavaArgs("-XX:+ExitOnOutOfMemoryError");
+
+        /* Prevent JVM that runs the image builder to steal focus. */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.vendor=" + graalvmVendor);
@@ -991,12 +1008,15 @@ public class NativeImage {
                         .collect(Collectors.joining(",", oHCLibraryPath, ""));
         imageBuilderArgs.add(0, clibrariesBuilderArg);
 
+        String printFlagsDummyImage = "dummy-image-";
         if (printFlagsOptionQuery != null) {
             addPlainImageBuilderArg(NativeImage.oH + enablePrintFlags + "=" + printFlagsOptionQuery);
             addPlainImageBuilderArg(NativeImage.oR + enablePrintFlags + "=" + printFlagsOptionQuery);
+            addPlainImageBuilderArg(oHName + printFlagsDummyImage + "printFlagsOptionQuery");
         } else if (printFlagsWithExtraHelpOptionQuery != null) {
             addPlainImageBuilderArg(NativeImage.oH + enablePrintFlagsWithExtraHelp + "=" + printFlagsWithExtraHelpOptionQuery);
             addPlainImageBuilderArg(NativeImage.oR + enablePrintFlagsWithExtraHelp + "=" + printFlagsWithExtraHelpOptionQuery);
+            addPlainImageBuilderArg(oHName + printFlagsDummyImage + "printFlagsWithExtraHelpOptionQuery");
         }
 
         if (shouldAddCWDToCP()) {
@@ -1119,10 +1139,12 @@ public class NativeImage {
                 imageNamePathParent = imagePath.resolve(imageNamePathParent);
             }
             if (!Files.isDirectory(imageNamePathParent)) {
-                throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed.");
+                throw NativeImage.showError("Writing image to non-existent directory " + imageNamePathParent + " is not allowed. " +
+                                "Create the missing directory if you want the image to be written to that location.");
             }
             if (!Files.isWritable(imageNamePathParent)) {
-                throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible.");
+                throw NativeImage.showError("Writing image to directory without write access " + imageNamePathParent + " is not possible. " +
+                                "Ensure the directory has write access or specify image path with write access.");
             }
             imagePath = imageNamePathParent;
             /* Update arguments passed to builder */
@@ -1173,8 +1195,16 @@ public class NativeImage {
             imageBuilderJavaArgs.add(DefaultOptionHandler.addModulesOption + "=ALL-DEFAULT");
         }
 
+        boolean useColorfulOutput = configureBuildOutput();
+
         List<String> finalImageBuilderJavaArgs = Stream.concat(config.getBuilderJavaArgs().stream(), imageBuilderJavaArgs.stream()).collect(Collectors.toList());
-        return buildImage(finalImageBuilderJavaArgs, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
+        try {
+            return buildImage(finalImageBuilderJavaArgs, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
+        } finally {
+            if (useColorfulOutput) {
+                performANSIReset();
+            }
+        }
     }
 
     private static void updateArgumentEntryValue(List<String> argList, ArgumentEntry listEntry, String newValue) {
@@ -1185,7 +1215,7 @@ public class NativeImage {
 
     private static String getLocationAgnosticArgPrefix(String argPrefix) {
         VMError.guarantee(argPrefix.startsWith(oH) && argPrefix.endsWith("="), "argPrefix has to be a hosted option that ends with \"=\"");
-        return "^" + argPrefix.substring(0, argPrefix.length() - 1) + "(@[^=]*)?" + argPrefix.substring(argPrefix.length() - 1);
+        return "^" + argPrefix.substring(0, argPrefix.length() - 1) + "(@[^=]*)?=";
     }
 
     private static String getHostedOptionFinalArgumentValue(List<String> args, String argPrefix) {
@@ -1220,6 +1250,19 @@ public class NativeImage {
             this.index = index;
             this.value = value;
         }
+    }
+
+    private static Boolean getHostedOptionFinalBooleanArgumentValue(List<String> args, OptionKey<Boolean> option) {
+        String locationAgnosticBooleanPattern = "^" + oH + "[+-]" + option.getName() + "(@[^=]*)?$";
+        Pattern pattern = Pattern.compile(locationAgnosticBooleanPattern);
+        Boolean result = null;
+        for (String arg : args) {
+            Matcher matcher = pattern.matcher(arg);
+            if (matcher.find()) {
+                result = arg.startsWith(oHEnabled); // otherwise must start with "-H:-"
+            }
+        }
+        return result;
     }
 
     private boolean shouldAddCWDToCP() {
@@ -1424,6 +1467,9 @@ public class NativeImage {
             ProcessBuilder pb = new ProcessBuilder();
             pb.command(command);
             pb.environment().put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
+            if (OS.getCurrent() == OS.WINDOWS) {
+                WindowsBuildEnvironmentUtil.propagateEnv(pb.environment());
+            }
             sanitizeJVMEnvironment(pb.environment());
             p = pb.inheritIO().start();
             imageBuilderPid = p.pid();
@@ -1515,7 +1561,7 @@ public class NativeImage {
                         break;
                     case BUILDER_ERROR:
                         /* Exit, builder has handled error reporting. */
-                        System.exit(ExitStatus.BUILDER_ERROR.getValue());
+                        System.exit(exitStatusCode);
                         break;
                     case FALLBACK_IMAGE:
                         nativeImage.showMessage("Generating fallback image...");
@@ -1524,6 +1570,10 @@ public class NativeImage {
                                         "' is a fallback image that requires a JDK for execution " +
                                         "(use --" + SubstrateOptions.OptionNameNoFallback +
                                         " to suppress fallback image generation and to print more detailed information why a fallback image was necessary).");
+                        break;
+                    case OUT_OF_MEMORY:
+                        nativeImage.showOutOfMemoryWarning();
+                        System.exit(exitStatusCode);
                         break;
                     default:
                         String message = String.format("Image build request for '%s' (pid: %d, path: %s) failed with exit status %d",
@@ -1838,8 +1888,25 @@ public class NativeImage {
         }, message);
     }
 
+    void showOutOfMemoryWarning() {
+        String lastMaxHeapValue = null;
+        for (String arg : imageBuilderJavaArgs) {
+            if (arg.startsWith(oXmx)) {
+                lastMaxHeapValue = arg.substring(oXmx.length());
+            }
+        }
+        String maxHeapText = lastMaxHeapValue == null ? "" : " (The maximum heap size of the process was set to '" + lastMaxHeapValue + "'.)";
+        String additionalAction = lastMaxHeapValue == null ? "" : " or increase the maximum heap size using the '" + oXmx + "' option";
+        showMessage(String.format("The Native Image build process ran out of memory.%s%nPlease make sure your build system has more memory available%s.",
+                        maxHeapText, additionalAction));
+    }
+
     public static void showWarning(String message) {
         show(System.err::println, "Warning: " + message);
+    }
+
+    void performANSIReset() {
+        showMessagePart("\033[0m");
     }
 
     @SuppressWarnings("serial")
@@ -1931,6 +1998,46 @@ public class NativeImage {
             return maxXmx;
         }
         return Long.toUnsignedString(memMax);
+    }
+
+    private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
+    private static final boolean IS_DUMB_TERM = isDumbTerm();
+
+    private static boolean isDumbTerm() {
+        String term = System.getenv().getOrDefault("TERM", "");
+        return term.isEmpty() || term.equals("dumb") || term.equals("unknown");
+    }
+
+    private static boolean hasColorSupport() {
+        return !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS &&
+                        System.getenv("NO_COLOR") == null /* https://no-color.org/ */;
+    }
+
+    private static boolean hasProgressSupport(List<String> imageBuilderArgs) {
+        return !IS_DUMB_TERM && !IS_CI &&
+                        /*
+                         * When DebugOptions.Log is used, progress cannot be reported as logging
+                         * works around NativeImageSystemIOWrappers to access stdio handles.
+                         */
+                        getHostedOptionArgumentValues(imageBuilderArgs, oH + "Log=").isEmpty();
+    }
+
+    private boolean configureBuildOutput() {
+        boolean useColorfulOutput = false;
+        Boolean buildOutputColorfulValue = getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputColorful);
+        if (buildOutputColorfulValue != null) {
+            useColorfulOutput = buildOutputColorfulValue; // use value set by user
+        } else if (hasColorSupport()) {
+            useColorfulOutput = true;
+            addPlainImageBuilderArg(oHEnableBuildOutputColorful);
+        }
+        if (getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputProgress) == null && hasProgressSupport(imageBuilderArgs)) {
+            addPlainImageBuilderArg(oHEnableBuildOutputProgress);
+        }
+        if (getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputLinks) == null && buildOutputColorfulValue == null && useColorfulOutput) {
+            addPlainImageBuilderArg(oHEnableBuildOutputLinks);
+        }
+        return useColorfulOutput;
     }
 
     static Map<String, String> loadProperties(Path propertiesPath) {

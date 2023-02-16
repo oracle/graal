@@ -108,6 +108,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
+    private ResolvedJavaType wrappedWithResolve;
+    private final String qualifiedName;
+    private final String unqualifiedName;
 
     @SuppressWarnings("unused") private volatile Object isInHeap;
     @SuppressWarnings("unused") private volatile Object isAllocated;
@@ -210,6 +213,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
         this.wrapped = javaType;
+        qualifiedName = wrapped.toJavaName(true);
+        unqualifiedName = wrapped.toJavaName(false);
+
         isArray = wrapped.isArray();
         isJavaLangObject = wrapped.isJavaLangObject();
         this.storageKind = storageKind;
@@ -832,7 +838,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public ResolvedJavaType getWrappedWithResolve() {
-        return universe.substitutions.resolve(wrapped);
+        if (wrappedWithResolve == null) {
+            wrappedWithResolve = universe.substitutions.resolve(wrapped);
+        }
+        return wrappedWithResolve;
     }
 
     @Override
@@ -843,6 +852,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public final String getName() {
         return wrapped.getName();
+    }
+
+    @Override
+    public String toJavaName() {
+        return qualifiedName;
+    }
+
+    @Override
+    public String toJavaName(boolean qualified) {
+        return qualified ? qualifiedName : unqualifiedName;
     }
 
     @Override
@@ -1145,7 +1164,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public String toString() {
-        return "AnalysisType<" + toJavaName(true) + ", allocated: " + isAllocated + ", inHeap: " + isInHeap + ", reachable: " + isReachable + ">";
+        return "AnalysisType<" + unqualifiedName + " -> " + wrapped.toString() + ", allocated: " + (isAllocated != null) +
+                        ", inHeap: " + (isInHeap != null) + ", reachable: " + (isReachable != null) + ">";
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <graalvm/llvm/polyglot.h>
+#include "common.h"
+
 void __sulong_destructor_functions() {
 }
 
@@ -36,4 +39,9 @@ void __sulong_print_stacktrace() {
 
 int __sulong_should_print_stacktrace_on_abort() {
     return 0;
+}
+
+void *_graalvm_llvm_va_arg(void *valist, polyglot_typeid type) {
+    should_not_reach();
+    return NULL;
 }

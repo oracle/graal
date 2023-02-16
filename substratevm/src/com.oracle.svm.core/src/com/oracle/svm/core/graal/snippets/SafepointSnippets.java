@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.GC_LOCATIONS;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -79,8 +79,8 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
     }
 
     private static LocationIdentity[] getKilledLocations() {
-        int newLength = TLAB_LOCATIONS.length + 1;
-        LocationIdentity[] locations = Arrays.copyOf(TLAB_LOCATIONS, newLength);
+        int newLength = GC_LOCATIONS.length + 1;
+        LocationIdentity[] locations = Arrays.copyOf(GC_LOCATIONS, newLength);
         locations[newLength - 1] = Safepoint.getThreadLocalSafepointRequestedLocationIdentity();
         return locations;
     }

@@ -182,7 +182,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
         return libraryPath.toString();
     }
 
-    private static String toJavaString(WCharPointer wcString, int length) {
+    static String toJavaString(WCharPointer wcString, int length) {
         return asCharBuffer(wcString, length).toString();
     }
 

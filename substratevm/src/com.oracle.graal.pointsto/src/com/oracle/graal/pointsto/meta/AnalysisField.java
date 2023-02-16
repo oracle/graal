@@ -393,10 +393,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return writtenBy.keySet();
     }
 
-    private boolean isAccessedSet() {
-        return AtomicUtils.isSet(this, isAccessedUpdater);
-    }
-
     /**
      * Returns true if the field is reachable. Fields that are read or manually registered as
      * reachable are always reachable. For fields that are write-only, more cases need to be
@@ -417,24 +413,12 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
                         (AtomicUtils.isSet(this, isWrittenUpdater) && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object));
     }
 
-    private boolean isReadSet() {
-        return AtomicUtils.isSet(this, isReadUpdater);
-    }
-
     public boolean isRead() {
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isReadUpdater);
     }
 
-    private boolean isWrittenSet() {
-        return AtomicUtils.isSet(this, isWrittenUpdater);
-    }
-
     public boolean isWritten() {
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isWrittenUpdater);
-    }
-
-    private boolean isFoldedSet() {
-        return AtomicUtils.isSet(this, isFoldedUpdater);
     }
 
     public boolean isFolded() {
@@ -517,7 +501,8 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @Override
     public String toString() {
-        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessedSet() + " reads: " + isReadSet() + " written: " + isWrittenSet() + " folded: " + isFoldedSet() + ">";
+        return "AnalysisField<" + format("%h.%n") + " -> " + wrapped.toString() + ", accessed: " + (isAccessed != null) +
+                        ", read: " + (isRead != null) + ", written: " + (isWritten != null) + ", folded: " + (isFolded != null) + ">";
     }
 
     public void markAsUsedInComparison() {

@@ -1410,8 +1410,9 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
 
         staticlib_path = ['lib', 'static', mx.get_os() + '-' + mx.get_arch()]
         if mx.is_linux():
+            libc = mx.get_os_variant()
             # Assume we are running under glibc by default for now.
-            staticlib_path = staticlib_path + ['glibc']
+            staticlib_path = staticlib_path + [libc if libc else 'glibc']
         # Allow older labsjdk versions to work
         if not exists(join(mx_compiler.jdk.home, *staticlib_path)):
             staticlib_path = ['lib']
@@ -1721,6 +1722,10 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             '-Dgraalvm.ForcePolyglotInvalid=true', # use PolyglotInvalid PolyglotImpl fallback (when --tool:truffle is not used)
             '-Dgraalvm.locatorDisabled=true',
         ]
+        if mx.get_os() == 'linux':
+            libc = mx.get_os_variant() if mx.get_os_variant() else 'glibc'
+            graal_compiler_flags_base.append('-Dsubstratevm.HostLibC=' + libc)
+
         for key in graal_compiler_flags_map:
             graal_compiler_flags_map[key] = graal_compiler_flags_base + graal_compiler_flags_map[key]
 

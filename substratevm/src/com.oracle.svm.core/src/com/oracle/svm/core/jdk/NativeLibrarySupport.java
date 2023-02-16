@@ -35,12 +35,17 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport.NativeLibrary;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport.NativeLibrary;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 @AutomaticallyRegisteredImageSingleton
 public final class NativeLibrarySupport {
@@ -62,7 +67,10 @@ public final class NativeLibrarySupport {
 
     private final Deque<NativeLibrary> currentLoadContext = new ArrayDeque<>();
 
-    private String[] paths;
+    /** The path of the directory containing the native image. */
+    private String sysPath;
+    /** Paths derived from the {@code java.library.path} system property. */
+    private String[] usrPaths;
 
     private LibraryInitializer libraryInitializer;
 
@@ -97,17 +105,25 @@ public final class NativeLibrarySupport {
         if (loadLibrary0(new File(name), true)) {
             return;
         }
-        String libname = System.mapLibraryName(name);
-        if (paths == null) {
+        if (usrPaths == null) {
+            /*
+             * Note that `sysPath` will be `null` if we fail to get the image directory in which
+             * case we effectively fall back to using only `usrPaths`.
+             */
+            sysPath = getImageDirectory();
             String[] tokens = SubstrateUtil.split(System.getProperty("java.library.path", ""), File.pathSeparator);
             for (int i = 0; i < tokens.length; i++) {
                 if (tokens[i].isEmpty()) {
                     tokens[i] = ".";
                 }
             }
-            paths = tokens;
+            usrPaths = tokens;
         }
-        for (String path : paths) {
+        String libname = System.mapLibraryName(name);
+        if (sysPath != null && loadLibrary0(new File(sysPath, libname), false)) {
+            return;
+        }
+        for (String path : usrPaths) {
             File libpath = new File(path, libname);
             if (loadLibrary0(libpath, false)) {
                 return;
@@ -118,6 +134,20 @@ public final class NativeLibrarySupport {
             }
         }
         throw new UnsatisfiedLinkError("no " + name + " in java.library.path");
+    }
+
+    /** Returns the directory containing the native image, or {@code null}. */
+    @NeverInline("Reads the return address.")
+    private static String getImageDirectory() {
+        /*
+         * While one might expect code for shared libraries to work for executables as well, this is
+         * not necessarily the case. For example, `dladdr` on Linux returns `argv[0]` for
+         * executables, which is completely useless when running an executable from `$PATH`, since
+         * then `argv[0]` contains only the name of the executable.
+         */
+        String image = !SubstrateOptions.SharedLibrary.getValue() ? ProcessProperties.getExecutableName()
+                        : ImageSingletons.lookup(ProcessPropertiesSupport.class).getObjectFile(KnownIntrinsics.readReturnAddress());
+        return image != null ? new File(image).getParent() : null;
     }
 
     private boolean loadLibrary0(File file, boolean asBuiltin) {

@@ -33,6 +33,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -40,10 +43,10 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
@@ -135,29 +138,41 @@ public final class VMOperationControl {
         control.dedicatedVMOperationThread.waitUntilStarted();
     }
 
+    @Uninterruptible(reason = "Executed during teardown after VMThreads#threadExit")
     public static void shutdownAndDetachVMOperationThread() {
         assert useDedicatedVMOperationThread();
 
-        StopVMOperationThread vmOp = new StopVMOperationThread();
-        vmOp.enqueue();
+        int size = SizeOf.get(NativeVMOperationData.class);
+        NativeVMOperationData data = StackValue.get(size);
+        UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
+        NativeStopVMOperationThread operation = get().stopVMOperationThreadOperation;
+        data.setNativeVMOperation(operation);
+        /*
+         * Note we don't call enqueueFromNonJavaThread b/c this thread still has characteristics of
+         * a Java thread even though VMTheads#threadExit has already been called.
+         */
+        get().mainQueues.enqueueUninterruptibly(operation, data);
 
         waitUntilVMOperationThreadDetached();
         assert get().mainQueues.isEmpty();
     }
 
-    private static class StopVMOperationThread extends JavaVMOperation {
-        StopVMOperationThread() {
-            super(VMOperationInfos.get(StopVMOperationThread.class, "Stop VM operation thread", VMOperation.SystemEffect.NONE));
+    private final NativeStopVMOperationThread stopVMOperationThreadOperation = new NativeStopVMOperationThread();
+
+    private static class NativeStopVMOperationThread extends NativeVMOperation {
+        NativeStopVMOperationThread() {
+            super(VMOperationInfos.get(NativeStopVMOperationThread.class, "Stop VM operation thread", VMOperation.SystemEffect.NONE));
         }
 
         @Override
-        protected void operate() {
-            VMOperationControl.get().dedicatedVMOperationThread.shutdown();
+        @Uninterruptible(reason = "Executed during teardown after VMThreads#exit")
+        protected void operate(NativeVMOperationData data) {
+            VMOperationControl.get().dedicatedVMOperationThread.stopped = true;
         }
     }
 
-    @RestrictHeapAccess(access = Access.NO_ALLOCATION, reason = "Called during teardown")
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
+    @Uninterruptible(reason = "Executed during teardown after VMThreads#threadExit")
     private static void waitUntilVMOperationThreadDetached() {
         CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
         waitUntilVMOperationThreadDetachedInNative();
@@ -280,7 +295,7 @@ public final class VMOperationControl {
             if (!MultiThreaded.getValue()) {
                 // no safepoint is needed, so we can always directly execute the operation
                 assert !useDedicatedVMOperationThread();
-                markAsQueued(operation, data);
+                operation.markAsQueued(data);
                 try {
                     operation.execute(data);
                 } finally {
@@ -317,15 +332,8 @@ public final class VMOperationControl {
         mainQueues.enqueueUninterruptibly(operation, data);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static void markAsQueued(VMOperation operation, NativeVMOperationData data) {
-        operation.setFinished(data, false);
-        operation.setQueuingThread(data, CurrentIsolate.getCurrentThread());
-    }
-
     private static void markAsFinished(VMOperation operation, NativeVMOperationData data, VMCondition operationFinished) {
-        operation.setQueuingThread(data, WordFactory.nullPointer());
-        operation.setFinished(data, true);
+        operation.markAsFinished(data);
         if (operationFinished != null) {
             operationFinished.broadcast();
         }
@@ -440,11 +448,6 @@ public final class VMOperationControl {
         public boolean isRunning() {
             return isolateThread.isNonNull() && !stopped;
         }
-
-        void shutdown() {
-            VMOperation.guaranteeInProgress("must only be called from a VM operation");
-            this.stopped = true;
-        }
     }
 
     private static final class WorkQueues {
@@ -475,6 +478,7 @@ public final class VMOperationControl {
             this.operationFinished = createCondition();
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean isEmpty() {
             return nativeNonSafepointOperations.isEmpty() && nativeSafepointOperations.isEmpty() && javaNonSafepointOperations.isEmpty() && javaSafepointOperations.isEmpty();
         }
@@ -552,7 +556,7 @@ public final class VMOperationControl {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private void enqueue(NativeVMOperation operation, NativeVMOperationData data) {
             assert operation == data.getNativeVMOperation();
-            markAsQueued(operation, data);
+            operation.markAsQueued(data);
             if (operation.getCausesSafepoint()) {
                 nativeSafepointOperations.push(data);
             } else {
@@ -561,7 +565,7 @@ public final class VMOperationControl {
         }
 
         private void enqueue(JavaVMOperation operation, NativeVMOperationData data) {
-            markAsQueued(operation, data);
+            operation.markAsQueued(data);
             if (operation.getCausesSafepoint()) {
                 javaSafepointOperations.push(operation);
             } else {
@@ -728,6 +732,7 @@ public final class VMOperationControl {
             this.name = name;
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         abstract boolean isEmpty();
 
         abstract void push(T element);
@@ -752,6 +757,7 @@ public final class VMOperationControl {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean isEmpty() {
             return head == null;
         }
@@ -822,6 +828,7 @@ public final class VMOperationControl {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean isEmpty() {
             return head.isNull();
         }

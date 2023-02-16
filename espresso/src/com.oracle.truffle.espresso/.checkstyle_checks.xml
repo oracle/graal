@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE module PUBLIC "-//Puppy Crawl//DTD Check Configuration 1.3//EN" "http://www.puppycrawl.com/dtds/configuration_1_3.dtd">
+<!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN" "https://checkstyle.org/dtds/configuration_1_3.dtd">
 
 <!--
     This configuration file was written by the eclipse-cs plugin configuration editor
@@ -11,11 +11,7 @@
 <module name="Checker">
   <property name="severity" value="error"/>
   <module name="TreeWalker">
-    <module name="AvoidStarImport">
-      <property name="allowClassImports" value="false"/>
-      <property name="allowStaticMemberImports" value="false"/>
-    </module>
-    <property name="tabWidth" value="4"/>
+    <module name="AvoidStarImport"/>
     <module name="JavadocStyle">
       <property name="checkHtml" value="false"/>
     </module>
@@ -24,9 +20,7 @@
     <module name="MemberName">
       <property name="format" value="^(([a-z][a-zA-Z0-9]*$)|(_[A-Z][a-zA-Z0-9]*_[a-z][a-zA-Z0-9]*$))"/>
     </module>
-    <module name="MethodName">
-      <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
-    </module>
+    <module name="MethodName"/>
     <module name="PackageName"/>
     <module name="ParameterName"/>
     <module name="TypeName">
@@ -34,15 +28,14 @@
     </module>
     <module name="RedundantImport"/>
     <module name="UnusedImports"/>
-    <module name="LineLength">
-      <property name="max" value="250"/>
-    </module>
     <module name="MethodParamPad"/>
     <module name="NoWhitespaceAfter">
       <property name="tokens" value="ARRAY_INIT,BNOT,DEC,DOT,INC,LNOT,UNARY_MINUS,UNARY_PLUS"/>
     </module>
     <module name="NoWhitespaceBefore">
       <property name="tokens" value="SEMI,POST_DEC,POST_INC"/>
+      <property name="allowLineBreaks" value="true"/>
+      <property name="tokens" value="DOT"/>
     </module>
     <module name="ParenPad"/>
     <module name="TypecastParenPad">
@@ -133,7 +126,7 @@
       <property name="format" value="[^\x00-\x7F]"/>
       <property name="message" value="Only use ASCII characters."/>
     </module>
-     <module name="RegexpSinglelineJava">
+    <module name="RegexpSinglelineJava">
       <property name="format" value="new (Hashtable|Vector|Stack|StringBuffer)[^\w]"/>
       <property name="message" value="Don't use old synchronized collection classes"/>
     </module>
@@ -193,6 +186,22 @@
       <property name="onCommentFormat" value="CheckStyle: stop generated"/>
       <property name="checkFormat" value=".*Name|.*LineLength|.*Header"/>
     </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: stop"/>
+      <property name="onCommentFormat" value="Checkstyle: resume"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="@formatter:off"/>
+      <property name="onCommentFormat" value="@formatter:on"/>
+    </module>
+    <module name="Regexp">
+      <property name="format" value="[^/](?i)master|(?i)slave|(?i)whitelist|(?i)blacklist|(?i)whitehat|(?i)blackhat|(?i)grandfather"/>
+      <message key="illegal.regexp" value="Avoid insensitive term matched by {0}." />
+      <property name="illegalPattern" value="true"/>
+    </module>
+  </module>
+  <module name="LineLength">
+    <property name="max" value="250"/>
   </module>
   <module name="RegexpHeader">
     <property name="header" value="/\*\n \* Copyright \(c\) 20[0-9][0-9], 20[0-9][0-9], Oracle and/or its affiliates\. All rights reserved\.\n \* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER\.\n \*\n \* This code is free software; you can redistribute it and/or modify it\n \* under the terms of the GNU General Public License version 2 only, as\n \* published by the Free Software Foundation\.\n \*\n \* This code is distributed in the hope that it will be useful, but WITHOUT\n \* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n \* FITNESS FOR A PARTICULAR PURPOSE\.  See the GNU General Public License\n \* version 2 for more details \(a copy is included in the LICENSE file that\n \* accompanied this code\)\.\n \*\n \* You should have received a copy of the GNU General Public License version\n \* 2 along with this work; if not, write to the Free Software Foundation,\n \* Inc\., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA\.\n \*\n \* Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA\n \* or visit www\.oracle\.com if you need additional information or have any\n \* questions\.\n \*/\n"/>
@@ -218,10 +227,9 @@
     <property name="format" value="com\.oracle\.truffle\.object\.DebugCounter"/>
     <property name="fileExtensions" value="java"/>
     <property name="message" value="com.oracle.truffle.object.DebugCounter is forbidden, use com.oracle.truffle.espresso.perf.DebugCounter instead."/>
-  </module>  
+  </module>
   <module name="SuppressWithPlainTextCommentFilter">
-    <property name="offCommentFormat" value="Checkstyle: stop"/>
-    <property name="onCommentFormat" value="Checkstyle: resume"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable all checks"/>
+    <property name="offCommentFormat" value="// @formatter:off"/>
+    <property name="onCommentFormat" value="// @formatter:on"/>
   </module>
 </module>

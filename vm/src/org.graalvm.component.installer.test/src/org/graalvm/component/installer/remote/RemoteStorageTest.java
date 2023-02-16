@@ -268,8 +268,8 @@ public class RemoteStorageTest extends TestBase {
 
     }
 
-    private void setSelector(String os, String arch) {
-        String s = SystemUtils.patternOsName(os) + "_" + SystemUtils.patternOsArch(arch);
+    private void setSelector(String os, String variant, String arch) {
+        String s = SystemUtils.patternOsName(os, variant) + "_" + SystemUtils.patternOsArch(arch);
         graalSelector = s;
     }
 
@@ -302,22 +302,30 @@ public class RemoteStorageTest extends TestBase {
     public void testMixedLinuxArchitetures() throws Exception {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
         // selector is opposite to what's in the catalog file.
-        setSelector("linux", "x86_64");
+        setSelector("linux", null, "x86_64");
+        forceLoadCatalog("catalogWithDifferentOsArch.properties");
+        assertAllComponentsLoaded();
+
+        setSelector("linux", "musl", "x86_64");
         forceLoadCatalog("catalogWithDifferentOsArch.properties");
         assertAllComponentsLoaded();
 
         graalVersion = "0.34-dev";
-        setSelector("Linux", "amd64");
+        setSelector("Linux", null, "amd64");
+        forceLoadCatalog("catalogWithDifferentOsArch.properties");
+        assertAllComponentsLoaded();
+
+        setSelector("Linux", "musl", "amd64");
         forceLoadCatalog("catalogWithDifferentOsArch.properties");
         assertAllComponentsLoaded();
 
         graalVersion = "0.35-dev";
-        setSelector("Darwin", "amd64");
+        setSelector("Darwin", null, "amd64");
         forceLoadCatalog("catalogWithDifferentOsArch.properties");
         assertAllComponentsLoaded();
 
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.35-dev");
-        setSelector("macos", "x86_64");
+        setSelector("macos", null, "x86_64");
         forceLoadCatalog("catalogWithDifferentOsArch.properties");
         assertAllComponentsLoaded();
     }
