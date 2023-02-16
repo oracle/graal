@@ -296,6 +296,10 @@ local devkits = common_json.devkits;
     targets+: ['daily'],
   },
 
+  daily_vm_windows_amd64: self.vm_windows + {
+    targets+: ['daily'],
+  },
+
   daily_vm_windows_jdk17: self.vm_windows_jdk17 + {
     targets+: ['daily'],
   },
