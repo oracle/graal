@@ -184,7 +184,11 @@ public class NativeImageOptions {
     @Option(help = "Print unsafe operation offset warnings.)")//
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
 
-    // Inspired by HotSpot's hs_err_<pid>.log files and for build-time errors (err_b).
+    /**
+     * Inspired by HotSpot's hs_err_<pid>.log files and for build-time errors (err_b).
+     *
+     * Keep in sync with the {@code catch_files} array in {@code ci/common.jsonnet}.
+     */
     private static final String DEFAULT_ERROR_FILE_NAME = "svm_err_b_%t_pid%p.md";
 
     public static final Path getErrorFilePath(OptionValues hostedOptionValues) {

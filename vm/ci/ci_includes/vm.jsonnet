@@ -1,13 +1,10 @@
 local utils = import '../../../ci/ci_common/common-utils.libsonnet';
-local composable = utils.composable;
 local vm_common = import '../ci_common/common.jsonnet';
 local vm_common_bench = import '../ci_common/common-bench.jsonnet';
 local vm = import 'vm.jsonnet';
 local vm_bench = import 'vm-bench.jsonnet';
 local vm_native = import 'vm-native.jsonnet';
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
-local common_json = composable(import '../../../common.json');
-local jdks = common_json.jdks;
 
 {
   vm_java_17:: graal_common.labsjdk17 + vm_common.vm_env_mixin('17'),
@@ -46,8 +43,8 @@ local jdks = common_json.jdks;
 
   maven_17_20:: {
     downloads+: {
-      JAVA_HOME: jdks['labsjdk-ce-17'],
-      EXTRA_JAVA_HOMES: jdks['labsjdk-ce-20'],
+      JAVA_HOME: graal_common.jdks_data['labsjdk-ce-17'],
+      EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-ce-20'],
     },
     mx_cmd_base:: ['mx', '--dynamicimports', '/tools,/compiler,/graal-js,/espresso,/substratevm', '--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
     build:: self.mx_cmd_base + ['build'],
@@ -124,7 +121,7 @@ local jdks = common_json.jdks;
      ],
      name: 'gate-vm-unittest-linux-amd64',
     }, ['sdk', 'truffle', 'vm']),
-    utils.add_gate_predicate(self.vm_java_20 + common_json.devkits['windows-jdk20'] + vm_common.gate_vm_windows_amd64 + {
+    utils.add_gate_predicate(self.vm_java_20 + graal_common.devkits['windows-jdk20'] + vm_common.gate_vm_windows_amd64 + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],

@@ -95,7 +95,7 @@ public final class DebugContext implements AutoCloseable {
      * The regular expression for matching the message derived from
      * {@link #DUMP_FILE_MESSAGE_FORMAT}.
      *
-     * Keep in sync with the {@code catch_files} array in {@code common.json}.
+     * Keep in sync with the {@code catch_files} array in {@code ci/common.jsonnet}.
      */
     public static final String DUMP_FILE_MESSAGE_REGEXP = "Dumping debug output to '(?<filename>[^']+)'";
 

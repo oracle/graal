@@ -1,7 +1,5 @@
 {
-  local graal_common = import '../../common.json',
   local common = import 'ci_common/common.jsonnet',
-  local jdks = graal_common.jdks,
 
   suite_name: 'espresso',
 

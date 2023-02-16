@@ -43,7 +43,7 @@ import mx_sdk_vm
 
 import mx
 import mx_gate
-from mx_gate import Task, Tags
+from mx_gate import Task
 from mx import SafeDirectoryUpdater
 
 import mx_unittest
@@ -419,51 +419,7 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
         mx.abort("Gate for scala-dacapo benchmark '{}' failed!".format(name))
     return exit_code, suite, results
 
-def get_catch_files_and_common_path():
-    common_path = join(dirname(_suite.dir), 'common.json')
-    if not exists(common_path):
-        mx.abort('Required file does not exist: {}'.format(common_path))
-    with open(common_path) as common_file:
-        common_cfg = json.load(common_file)
-    catch_files = common_cfg.get('catch_files')
-    if catch_files is None:
-        mx.abort('Could not find catch_files attribute in {}'.format(common_path))
-    return catch_files, common_path
-
-def find_field_value(source_path, field_name):
-    decl = field_name + ' = "'
-    with open(source_path) as fp:
-        for line in fp.readlines():
-            index = line.find(decl)
-            if index != -1:
-                start_index = index + len(decl)
-                end_index = line.find('"', start_index)
-                return line[start_index:end_index]
-    mx.abort('Could not find value of ' + field_name + ' in ' + source_path)
-
-def _check_catch_files():
-    """
-    Verifies that there is a "catch_files" array in common.json at the root of
-    the repository containing this suite and that the array contains elements
-    matching DebugContext.DUMP_FILE_MESSAGE_REGEXP and
-    StandardPathUtilitiesProvider.DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP.
-    """
-    catch_files_fields = (
-        ('DebugContext', 'DUMP_FILE_MESSAGE_REGEXP'),
-        ('StandardPathUtilitiesProvider', 'DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP')
-    )
-
-    catch_files, common_path = get_catch_files_and_common_path()
-    for class_name, field_name in catch_files_fields:
-        source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.debug', 'src', 'org', 'graalvm', 'compiler', 'debug', class_name + '.java')
-        regexp = find_field_value(source_path, field_name).replace('(?<', '(?P<') # Convert from Java style regexp to Python style
-        if regexp not in catch_files:
-            mx.abort('Could not find catch_files entry in {} matching "{}"'.format(common_path, regexp))
-
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
-    with Task('CheckCatchFiles', tasks, tags=[Tags.style]) as t:
-        if t: _check_catch_files()
-
     with Task('JDK_java_base_test', tasks, tags=['javabasetest'], report=True) as t:
         if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
 

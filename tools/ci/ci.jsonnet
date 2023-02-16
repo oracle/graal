@@ -1,11 +1,9 @@
 {
-  local common_json = import '../../common.json',
   local common = import '../../ci/ci_common/common.jsonnet',
-  local composable = (import '../../ci/ci_common/common-utils.libsonnet').composable,
   local top_level_ci = (import '../../ci/ci_common/common-utils.libsonnet').top_level_ci,
-  local devkits = composable(common_json.devkits),
+  local devkits = common.devkits,
 
-  local tools_common = composable(common_json.deps.common) + common.mx + {
+  local tools_common = {
     setup+: [
       ["cd", "./tools"],
     ],
@@ -23,7 +21,7 @@
     }
   },
 
-  local tools_gate = gate_guard + tools_common + common.eclipse + common.jdt + {
+  local tools_gate = gate_guard + tools_common + common.deps.eclipse + common.deps.jdt + {
     name: 'gate-tools-oraclejdk' + self.jdk_version + '-' + self.os + '-' + self.arch,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets: ["gate"],
@@ -59,7 +57,7 @@
     "com.oracle.truffle.tools"
   ],
 
-  local tools_coverage_weekly = tools_common + common.eclipse + common.jdt + {
+  local tools_coverage_weekly = tools_common + common.deps.eclipse + common.deps.jdt + {
     name: "weekly-tools-coverage",
     run: [
       ["mx"] + coverage_whitelisting + [

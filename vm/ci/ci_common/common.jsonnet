@@ -1,9 +1,7 @@
-local composable = (import '../../../ci/ci_common/common-utils.libsonnet').composable;
 local vm = import '../ci_includes/vm.jsonnet';
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local repo_config = import '../../../repo-configuration.libsonnet';
-local common_json = composable(import '../../../common.json');
-local devkits = common_json.devkits;
+local devkits = graal_common.devkits;
 
 {
   verify_name(build): {
@@ -63,29 +61,29 @@ local devkits = common_json.devkits;
 
   js_windows_jdk17: self.js_windows_common + {
     setup+: [
-      # Keep in sync with the 'devkits' object defined in the top level common.json file.
+      # Keep in sync with the 'devkits' object defined in ci/common.jsonnet.
       ['set-export', 'DEVKIT_VERSION', '2019'],
     ],
   },
 
   js_windows_jdk20: self.js_windows_common + {
     setup+: [
-      # Keep in sync with the 'devkits' object defined in the top level common.json file.
+      # Keep in sync with the 'devkits' object defined in ci/common.jsonnet.
       ['set-export', 'DEVKIT_VERSION', '2022'],
     ],
   },
 
   # SULONG
-  sulong_linux: common_json.sulong.deps.common + common_json.sulong.deps.linux,
-  sulong_darwin_amd64: common_json.sulong.deps.common + common_json.sulong.deps.darwin_amd64,
-  sulong_darwin_aarch64: common_json.sulong.deps.common + common_json.sulong.deps.darwin_aarch64,
-  sulong_windows: common_json.sulong.deps.common + common_json.sulong.deps.windows,
+  sulong_linux: graal_common.deps.sulong,
+  sulong_darwin_amd64: graal_common.deps.sulong,
+  sulong_darwin_aarch64: graal_common.deps.sulong,
+  sulong_windows: graal_common.deps.sulong,
 
   # TRUFFLERUBY, needs OpenSSL 1.0.2+, so OracleLinux 7+
-  truffleruby_linux_amd64: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux,
-  truffleruby_linux_aarch64: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux,
-  truffleruby_darwin_amd64: self.sulong_darwin_amd64 + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
-  truffleruby_darwin_aarch64: self.sulong_darwin_aarch64 + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
+  truffleruby_linux_amd64: graal_common.deps.sulong + graal_common.deps.truffleruby,
+  truffleruby_linux_aarch64: graal_common.deps.sulong + graal_common.deps.truffleruby,
+  truffleruby_darwin_amd64: graal_common.deps.sulong + graal_common.deps.truffleruby,
+  truffleruby_darwin_aarch64: graal_common.deps.sulong + graal_common.deps.truffleruby,
 
   # FASTR
   # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
@@ -164,7 +162,7 @@ local devkits = common_json.devkits;
 
   graalpython_darwin_aarch64: self.sulong_darwin_aarch64 + {},
 
-  vm_linux_amd64: self.common_vm_linux + graal_common.linux_amd64 + graal_common.svm_deps.linux_amd64 {
+  vm_linux_amd64: self.common_vm_linux + graal_common.linux_amd64 + graal_common.deps.svm {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
   },
 
@@ -363,11 +361,11 @@ local devkits = common_json.devkits;
   mx_vm_common: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}'] + self.mx_vm_cmd_suffix,
   mx_vm_installables: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
 
-  svm_common_linux_amd64:        { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.linux_amd64,
-  svm_common_linux_aarch64:      { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.linux_aarch64,
-  svm_common_darwin_amd64:       { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.darwin_amd64,
-  svm_common_darwin_aarch64:     { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.darwin_aarch64,
-  svm_common_windows_amd64(jdk): { environment+: graal_common.svm_deps.common.environment, logs+: graal_common.svm_deps.common.logs} + graal_common.svm_deps.windows       + common_json.devkits["windows-jdk" + jdk],
+  svm_common_linux_amd64:        graal_common.deps.svm,
+  svm_common_linux_aarch64:      graal_common.deps.svm,
+  svm_common_darwin_amd64:       graal_common.deps.svm,
+  svm_common_darwin_aarch64:     graal_common.deps.svm,
+  svm_common_windows_amd64(jdk): graal_common.deps.svm + graal_common.devkits["windows-jdk" + jdk],
 
   maven_deploy_sdk:                     ['--suite', 'sdk', 'maven-deploy', '--validate', 'none', '--all-distribution-types', '--with-suite-revisions-metadata'],
   deploy_artifacts_sdk(os, base_dist_name=null): (if base_dist_name != null then ['--base-dist-name=' + base_dist_name] else []) + ['--suite', 'sdk', 'deploy-artifacts', '--uploader', if os == 'windows' then 'artifact_uploader.cmd' else 'artifact_uploader'],
@@ -635,7 +633,7 @@ local devkits = common_json.devkits;
     #
     # Gates
     #
-    vm.vm_java_20 + common_json.downloads.eclipse + common_json.downloads.jdt + self.gate_vm_linux_amd64 + {
+    vm.vm_java_20 + graal_common.deps.eclipse + graal_common.deps.jdt + self.gate_vm_linux_amd64 + {
      run: [
        ['mx', 'gate', '-B=--force-deprecation-as-warning', '--tags', 'style,fullbuild'],
      ],
