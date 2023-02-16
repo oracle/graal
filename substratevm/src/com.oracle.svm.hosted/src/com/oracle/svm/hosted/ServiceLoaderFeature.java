@@ -100,9 +100,6 @@ public class ServiceLoaderFeature implements InternalFeature {
         @Option(help = "Automatically register services for run-time lookup using ServiceLoader", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> UseServiceLoaderFeature = new HostedOptionKey<>(true);
 
-        @Option(help = "When enabled, each service loader resource and class will be printed out to standard output", type = OptionType.Debug) //
-        public static final HostedOptionKey<Boolean> TraceServiceLoaderFeature = new HostedOptionKey<>(false);
-
         @Option(help = "Comma-separated list of services that should be excluded", type = OptionType.Expert) //
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ServiceLoaderFeatureExcludeServices = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
@@ -151,8 +148,6 @@ public class ServiceLoaderFeature implements InternalFeature {
      */
     private Map<String, List<String>> serviceProviders;
 
-    private final boolean trace = Options.TraceServiceLoaderFeature.getValue();
-
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return Options.UseServiceLoaderFeature.getValue();
@@ -167,11 +162,13 @@ public class ServiceLoaderFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         serviceProviders = ModuleAccess.lookupServiceProviders(access);
-        if (trace) {
-            int services = serviceProviders.keySet().size();
-            int providers = serviceProviders.values().stream().mapToInt(List::size).sum();
-            System.out.println("ServiceLoaderFeature: Discovered " + services + " with " + providers + " service providers registered using modules");
+        var debugContext = ((FeatureImpl.BeforeAnalysisAccessImpl) access).debugContext;
+        try (DebugContext.Scope s = debugContext.scope("ServiceLoaderFeature")) {
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ServiceLoaderFeature: Discovered %d with %d service providers registered using modules",
+                            serviceProviders.keySet().size(),
+                            serviceProviders.values().stream().mapToInt(List::size).sum());
         }
+
     }
 
     @SuppressWarnings("try")
@@ -196,6 +193,8 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     @SuppressWarnings("try")
     private boolean handleType(AnalysisType type, DuringAnalysisAccessImpl access) {
+        DebugContext debugContext = access.debugContext;
+
         if (!type.isReachable() || type.isArray()) {
             /*
              * Type is not seen as used yet by the static analysis. Note that a constant class
@@ -213,8 +212,8 @@ public class ServiceLoaderFeature implements InternalFeature {
         String serviceResourceLocation = LOCATION_PREFIX + serviceClassName;
 
         if (servicesToSkip.contains(serviceClassName)) {
-            if (trace) {
-                System.out.println("ServiceLoaderFeature: Skipping service " + serviceClassName);
+            try (DebugContext.Scope s = debugContext.scope("ServiceLoaderFeature")) {
+                debugContext.log(DebugContext.VERBOSE_LEVEL, "ServiceLoaderFeature: Skipping service %s", serviceClassName);
             }
             return false;
         }
@@ -247,8 +246,8 @@ public class ServiceLoaderFeature implements InternalFeature {
 
         List<String> providers = serviceProviders.get(serviceClassName);
         if (providers != null) {
-            if (trace) {
-                System.out.println("ServiceLoaderFeature: found service declared using java modules: " + serviceClassName + " with providers: " + providers);
+            try (DebugContext.Scope s = debugContext.scope("ServiceLoaderFeature")) {
+                debugContext.log(DebugContext.VERBOSE_LEVEL, "ServiceLoaderFeature: found service declared using java modules: %s with providers: %s", serviceClassName, providers);
             }
             implementationClassNames.addAll(providers);
         }
@@ -261,8 +260,8 @@ public class ServiceLoaderFeature implements InternalFeature {
             return false;
         }
 
-        if (trace) {
-            System.out.println("ServiceLoaderFeature: processing service class " + serviceClassName);
+        try (DebugContext.Scope s = debugContext.scope("ServiceLoaderFeature")) {
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ServiceLoaderFeature: processing service class %s", serviceClassName);
         }
 
         StringBuilder newResourceValue = new StringBuilder(1024);
@@ -275,35 +274,35 @@ public class ServiceLoaderFeature implements InternalFeature {
                  * service implementations using the naming convention: they have "hotspot" in the
                  * package name.
                  */
-                if (trace) {
-                    System.out.println("  IGNORING HotSpot-specific implementation class: " + implementationClassName);
+                try (DebugContext.Scope s = debugContext.scope("ServiceLoaderFeature")) {
+                    debugContext.log(DebugContext.VERBOSE_LEVEL, "  ignoring HotSpot-specific implementation class: %s", implementationClassName);
                 }
                 continue;
             }
 
             if (serviceProvidersToSkip.contains(implementationClassName)) {
-                if (trace) {
-                    System.out.println("  ignoring implementation class: " + implementationClassName);
+                try (DebugContext.Scope s = debugContext.scope("ServiceLoaderFeature")) {
+                    debugContext.log(DebugContext.VERBOSE_LEVEL, "  ignoring implementation class: %s", implementationClassName);
                 }
                 continue;
             }
 
-            if (trace) {
-                System.out.println("  adding implementation class: " + implementationClassName);
+            try (DebugContext.Scope s = debugContext.scope("ServiceLoaderFeature")) {
+                debugContext.log(DebugContext.VERBOSE_LEVEL, "  adding implementation class: %s", implementationClassName);
             }
 
             Class<?> implementationClass = access.findClassByName(implementationClassName);
             if (implementationClass == null) {
-                if (trace) {
-                    System.out.println("Could not find registered service implementation class `" + implementationClassName + "` for service `" + serviceClassName + "`");
+                try (DebugContext.Scope s = debugContext.scope("ServiceLoaderFeature")) {
+                    debugContext.log(DebugContext.VERBOSE_LEVEL, "Could not find registered service implementation class `%s` for service `%s`", implementationClassName, serviceClassName);
                 }
                 continue;
             }
             try {
                 access.getMetaAccess().lookupJavaType(implementationClass);
             } catch (UnsupportedFeatureException ex) {
-                if (trace) {
-                    System.out.println("  cannot resolve: " + ex.getMessage());
+                try (DebugContext.Scope s = debugContext.scope("ServiceLoaderFeature")) {
+                    debugContext.log(DebugContext.VERBOSE_LEVEL, "  cannot resolve: %s", ex.getMessage());
                 }
                 continue;
             }
@@ -325,8 +324,8 @@ public class ServiceLoaderFeature implements InternalFeature {
                  */
                 nullaryConstructor = implementationClass.getDeclaredConstructor();
             } catch (ReflectiveOperationException | NoClassDefFoundError ex) {
-                if (trace) {
-                    System.out.println("  cannot resolve a nullary constructor for " + implementationClassName + ": " + ex.getMessage());
+                try (DebugContext.Scope s = debugContext.scope("ServiceLoaderFeature")) {
+                    debugContext.log(DebugContext.VERBOSE_LEVEL, "  cannot resolve a nullary constructor for %s: %s", implementationClassName, ex.getMessage());
                 }
                 continue;
             }
@@ -334,8 +333,8 @@ public class ServiceLoaderFeature implements InternalFeature {
             /* Allow Class.forName at run time for the service implementation. */
             RuntimeReflection.register(implementationClass);
             if (implementationClass.isArray() || implementationClass.isInterface() || Modifier.isAbstract(implementationClass.getModifiers())) {
-                if (trace) {
-                    System.out.println("  Warning: class cannot be instantiated (fail lazy): " + implementationClassName);
+                try (DebugContext.Scope s = debugContext.scope("ServiceLoaderFeature")) {
+                    debugContext.log(DebugContext.VERBOSE_LEVEL, "  Warning: class cannot be instantiated (fail lazy): %s", implementationClassName);
                 }
                 /*
                  * The class cannot be instantiated. However since java.util.ServiceLoader.stream()
@@ -354,7 +353,6 @@ public class ServiceLoaderFeature implements InternalFeature {
 
         }
 
-        DebugContext debugContext = access.getDebugContext();
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             debugContext.log("ServiceLoaderFeature: registerResource: %s", serviceResourceLocation);
         }
