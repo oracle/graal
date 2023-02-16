@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.charset;
 
 import java.util.Arrays;
+import java.util.Calendar;
 
 public class UnicodeGeneralCategoriesGenerator {
 
@@ -58,7 +59,7 @@ public class UnicodeGeneralCategoriesGenerator {
                         {"gc=C", "Cc", "Cf", "Cs", "Co", "Cn"}
         };
         System.out.println(String.format("/*\n" +
-                        " * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.\n" +
+                        " * Copyright (c) 2019, %d, Oracle and/or its affiliates. All rights reserved.\n" +
                         " * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.\n" +
                         " *\n" +
                         " * The Universal Permissive License (UPL), Version 1.0\n" +
@@ -112,7 +113,7 @@ public class UnicodeGeneralCategoriesGenerator {
                         "        return GENERAL_CATEGORIES.get(name);\n" +
                         "    }\n" +
                         "\n" +
-                        "    static {", generalCategories.length));
+                        "    static {", Calendar.getInstance().get(Calendar.YEAR), generalCategories.length));
         for (String[] category : generalCategories) {
             String name = category[0];
             String[] props = Arrays.copyOfRange(category, 1, category.length);
