@@ -185,7 +185,7 @@ public final class Support {
     }
 
     public static JNIObjectHandle getObjectArgument(JNIObjectHandle thread, int slot) {
-        assert thread.notEqual(nullHandle()) : "JDK-8292657: must not use NULL for the current thread because it does not apply to virtual threads on JDK 19";
+        assert thread.notEqual(nullHandle()) || jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19 : "JDK-8292657";
         WordPointer handlePtr = StackValue.get(WordPointer.class);
         if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), thread, 0, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
             return nullHandle();
@@ -198,7 +198,7 @@ public final class Support {
      * for instance methods, not static methods.
      */
     public static JNIObjectHandle getReceiver(JNIObjectHandle thread) {
-        assert thread.notEqual(nullHandle()) : "JDK-8292657: must not use NULL for the current thread because it does not apply to virtual threads on JDK 19";
+        assert thread.notEqual(nullHandle()) || jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19 : "JDK-8292657";
         WordPointer handlePtr = StackValue.get(WordPointer.class);
         JvmtiError result = jvmtiFunctions().GetLocalInstance().invoke(jvmtiEnv(), thread, 0, handlePtr);
         if (result != JvmtiError.JVMTI_ERROR_NONE) {
