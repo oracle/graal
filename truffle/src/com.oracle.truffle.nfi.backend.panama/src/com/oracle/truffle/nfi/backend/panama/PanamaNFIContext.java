@@ -60,7 +60,7 @@ class PanamaNFIContext {
     }
 
     void initialize() {
-        memorySession = MemorySession.openConfined();
+        memorySession = MemorySession.openShared();
     }
 
     void patchEnv(Env env) {
