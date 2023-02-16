@@ -664,16 +664,16 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         @Override
-        public Object parseGraph(BigBang bb, AnalysisMethod method, DebugContext debug) {
+        public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
             // want to have a couple more checks here that are in DeoptimizationUtils
             if (method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD) {
-                return parseRuntimeCompiledMethod(bb, method, debug);
+                return parseRuntimeCompiledMethod(bb, debug, method);
             }
             return HostVM.PARSING_UNHANDLED;
         }
 
         @SuppressWarnings("try")
-        private Object parseRuntimeCompiledMethod(BigBang bb, AnalysisMethod method, DebugContext debug) {
+        private Object parseRuntimeCompiledMethod(BigBang bb, DebugContext debug, AnalysisMethod method) {
 
             boolean parsed = false;
 

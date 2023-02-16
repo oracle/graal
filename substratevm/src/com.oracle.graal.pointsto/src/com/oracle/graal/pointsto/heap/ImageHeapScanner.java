@@ -155,8 +155,9 @@ public abstract class ImageHeapScanner {
          * reachability status. The field value is processed when a field is marked as reachable, in
          * onFieldValueReachable().
          */
-        TypeData data = new TypeData(type.getStaticFields().length);
-        for (ResolvedJavaField javaField : type.getStaticFields()) {
+        ResolvedJavaField[] staticFields = type.getStaticFields();
+        TypeData data = new TypeData(staticFields.length);
+        for (ResolvedJavaField javaField : staticFields) {
             AnalysisField field = (AnalysisField) javaField;
             ValueSupplier<JavaConstant> rawFieldValue = readHostedFieldValue(field, null);
             data.setFieldTask(field, new AnalysisFuture<>(() -> {
@@ -363,8 +364,9 @@ public abstract class ImageHeapScanner {
              */
             /* We are about to query the type's fields, the type must be marked as reachable. */
             markTypeInstantiated(type, reason);
-            newImageHeapConstant = new ImageHeapInstance(type, constant, type.getInstanceFields(true).length);
-            for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
+            ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
+            newImageHeapConstant = new ImageHeapInstance(type, constant, instanceFields.length);
+            for (ResolvedJavaField javaField : instanceFields) {
                 AnalysisField field = (AnalysisField) javaField;
                 ValueSupplier<JavaConstant> rawFieldValue;
                 try {

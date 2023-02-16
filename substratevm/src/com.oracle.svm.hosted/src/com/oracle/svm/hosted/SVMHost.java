@@ -857,11 +857,11 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public Object parseGraph(BigBang bb, AnalysisMethod method, DebugContext debug) {
+    public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
         if (ImageSingletons.contains(SVMParsingSupport.class)) {
-            return ImageSingletons.lookup(SVMParsingSupport.class).parseGraph(bb, method, debug);
+            return ImageSingletons.lookup(SVMParsingSupport.class).parseGraph(bb, debug, method);
         } else {
-            return super.parseGraph(bb, method, debug);
+            return super.parseGraph(bb, debug, method);
         }
     }
 

@@ -37,7 +37,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
  */
 public interface SVMParsingSupport {
 
-    Object parseGraph(BigBang bb, AnalysisMethod method, DebugContext debug);
+    Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method);
 
     boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph);
 

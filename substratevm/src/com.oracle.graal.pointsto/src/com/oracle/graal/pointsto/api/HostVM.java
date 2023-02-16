@@ -265,7 +265,7 @@ public abstract class HostVM {
      *         {@link StructuredGraph} when a custom parsing routine has been performed.
      */
     @SuppressWarnings("unused")
-    public Object parseGraph(BigBang bb, AnalysisMethod method, DebugContext debug) {
+    public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
         return PARSING_UNHANDLED;
     }
 
