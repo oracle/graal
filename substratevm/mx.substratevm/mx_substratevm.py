@@ -1471,9 +1471,19 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
             else:
                 mx.abort('gen_fallbacks not supported on ' + sys.platform)
 
+            seen_gnu_property_type_5_warnings = False
+            def suppress_gnu_property_type_5_warnings(line):
+                nonlocal seen_gnu_property_type_5_warnings
+                if 'unsupported GNU_PROPERTY_TYPE (5)' not in line:
+                    mx.log_error(line.rstrip())
+                elif not seen_gnu_property_type_5_warnings:
+                    mx.log_error(line.rstrip())
+                    mx.log_error('(suppressing all further warnings about "unsupported GNU_PROPERTY_TYPE (5)")')
+                    seen_gnu_property_type_5_warnings = True
+
             for staticlib_path in self.staticlibs:
                 mx.logv('Collect from : ' + staticlib_path)
-                mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'))
+                mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'), err=suppress_gnu_property_type_5_warnings)
 
             if len(symbols) == 0:
                 mx.abort('Could not find any unresolved JVM_* symbols in static JDK libraries')
