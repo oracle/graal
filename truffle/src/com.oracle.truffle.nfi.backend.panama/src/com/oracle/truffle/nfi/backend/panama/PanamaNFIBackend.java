@@ -43,6 +43,7 @@ package com.oracle.truffle.nfi.backend.panama;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -56,6 +57,8 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
+import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadDefaultNodeGen;
+import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadLibraryNodeGen;
 import java.lang.foreign.SymbolLookup;
 
 @ExportLibrary(NFIBackendLibrary.class)
@@ -72,15 +75,15 @@ final class PanamaNFIBackend implements NFIBackend {
     public CallTarget parse(NativeLibraryDescriptor descriptor) {
         RootNode ret;
         if (descriptor.isDefaultLibrary()) {
-            ret = new LoadDefaultNode(language);
+            ret = LoadDefaultNodeGen.create(language);
         } else {
             // TODO: flags
-            ret = new LoadLibraryNode(language, descriptor.getFilename());
+            ret = LoadLibraryNodeGen.create(language, descriptor.getFilename());
         }
         return ret.getCallTarget();
     }
 
-    private static class LoadLibraryNode extends RootNode {
+    static abstract class LoadLibraryNode extends RootNode {
 
         private final String name;
 
@@ -96,19 +99,37 @@ final class PanamaNFIBackend implements NFIBackend {
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public abstract Object execute(VirtualFrame frame);
+
+        @Specialization
+        public Object loadLibrary(@SuppressWarnings("unused") VirtualFrame frame,
+                                  @CachedLibrary("this") NFIBackendLibrary self,
+                                  @Cached BranchProfile error) {
+            if (!PanamaNFIContext.get(self).env.isNativeAccessAllowed()) {
+                error.enter();
+                throw new NFIError("Access to native code is not allowed by the host environment.", self);
+            }
             return PanamaLibrary.create(doLoad());
         }
     }
 
-    private static class LoadDefaultNode extends RootNode {
+    static abstract class LoadDefaultNode extends RootNode {
 
         protected LoadDefaultNode(PanamaNFILanguage language) {
             super(language);
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public abstract Object execute(VirtualFrame frame);
+
+        @Specialization
+        public Object loadDefault(@SuppressWarnings("unused") VirtualFrame frame,
+            @CachedLibrary("this") NFIBackendLibrary self,
+            @Cached BranchProfile error) {
+            if (!PanamaNFIContext.get(self).env.isNativeAccessAllowed()) {
+                error.enter();
+                throw new NFIError("Access to native code is not allowed by the host environment.", self);
+            }
             return PanamaLibrary.createDefault();
         }
     }
