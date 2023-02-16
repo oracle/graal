@@ -964,20 +964,22 @@ final class TStringInternalNodes {
 
         @Children IndexOfCodePointSet.IndexOfNode[] indexOfNodes;
         final Encoding encoding;
+        final boolean isUTF16Or32;
 
         IndexOfCodePointSetNode(IndexOfCodePointSet.IndexOfNode[] indexOfNodes, Encoding encoding) {
             this.indexOfNodes = insert(indexOfNodes);
             this.encoding = encoding;
+            this.isUTF16Or32 = isUTF16Or32(encoding);
         }
 
         abstract int execute(Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex);
 
-        @Specialization(guards = "!isUTF16Or32(encoding)")
+        @Specialization(guards = "!isUTF16Or32")
         int stride0(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int codeRangeA, int fromIndex, int toIndex) {
             return doIndexOf(arrayA, offsetA, lengthA, 0, codeRangeA, fromIndex, toIndex);
         }
 
-        @Specialization(guards = {"isUTF16Or32(encoding)", "strideA == cachedStride"}, limit = "POSSIBLE_STRIDE_VALUES")
+        @Specialization(guards = {"isUTF16Or32", "strideA == cachedStride"}, limit = "POSSIBLE_STRIDE_VALUES")
         int dynamicStride(Object arrayA, int offsetA, int lengthA, @SuppressWarnings("unused") int strideA, int codeRangeA, int fromIndex, int toIndex,
                         @Cached(value = "strideA", allowUncached = true) int cachedStride) {
             return doIndexOf(arrayA, offsetA, lengthA, cachedStride, codeRangeA, fromIndex, toIndex);

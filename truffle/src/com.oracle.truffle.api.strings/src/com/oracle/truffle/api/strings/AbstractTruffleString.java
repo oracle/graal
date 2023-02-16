@@ -424,11 +424,11 @@ public abstract class AbstractTruffleString {
         }
     }
 
-    boolean isLooselyCompatibleTo(Encoding expectedEncoding) {
+    final boolean isLooselyCompatibleTo(Encoding expectedEncoding) {
         return isLooselyCompatibleTo(expectedEncoding.id, expectedEncoding.maxCompatibleCodeRange, codeRange());
     }
 
-    boolean isLooselyCompatibleTo(int expectedEncoding, int maxCompatibleCodeRange, int codeRangeA) {
+    final boolean isLooselyCompatibleTo(int expectedEncoding, int maxCompatibleCodeRange, int codeRangeA) {
         return encoding() == expectedEncoding || TSCodeRange.isMoreRestrictiveThan(codeRangeA, maxCompatibleCodeRange);
     }
 

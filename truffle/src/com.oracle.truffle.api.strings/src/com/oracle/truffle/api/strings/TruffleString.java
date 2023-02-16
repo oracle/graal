@@ -230,10 +230,6 @@ public final class TruffleString extends AbstractTruffleString {
         return true;
     }
 
-    boolean isLooselyCompatibleTo(Encoding expectedEncoding) {
-        return isLooselyCompatibleTo(expectedEncoding.id, expectedEncoding.maxCompatibleCodeRange, codeRange());
-    }
-
     boolean isCacheHead() {
         assert ((flags() & FLAG_CACHE_HEAD) != 0) == (flags() < 0);
         return flags() < 0;
