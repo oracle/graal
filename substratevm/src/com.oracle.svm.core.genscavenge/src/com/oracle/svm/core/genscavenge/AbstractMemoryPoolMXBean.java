@@ -30,21 +30,23 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
+import java.util.Arrays;
 
 import com.oracle.svm.core.heap.MXBeanBase;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import sun.management.Util;
 
+@Platforms(Platform.HOSTED_ONLY.class)
 public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements MemoryPoolMXBean {
 
     protected final String name;
     protected final String[] managerNames;
-    protected final String objectName;
     protected final GCAccounting gcAccounting;
 
     protected AbstractMemoryPoolMXBean(String name, String... managerNames) {
         this.name = name;
-        this.managerNames = managerNames.clone();
-        this.objectName = ManagementFactory.MEMORY_POOL_MXBEAN_DOMAIN_TYPE + ",name=" + name;
+        this.managerNames = managerNames;
         this.gcAccounting = GCImpl.getGCImpl().getAccounting();
     }
 
@@ -55,12 +57,12 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
 
     @Override
     public String[] getMemoryManagerNames() {
-        return managerNames.clone();
+        return Arrays.copyOf(managerNames, managerNames.length);
     }
 
     @Override
     public ObjectName getObjectName() {
-        return Util.newObjectName(objectName);
+        return Util.newObjectName(ManagementFactory.MEMORY_POOL_MXBEAN_DOMAIN_TYPE + ",name=" + name);
     }
 
     @Override
