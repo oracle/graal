@@ -25,12 +25,15 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.Uninterruptible;
+
 public enum JfrReservedEvent {
     EVENT_METADATA(0),
     EVENT_CHECKPOINT(1);
 
     private final long id;
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getId() {
         return id;
     }

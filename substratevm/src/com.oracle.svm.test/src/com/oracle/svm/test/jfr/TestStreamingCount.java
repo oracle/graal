@@ -67,11 +67,7 @@ public class TestStreamingCount extends StreamingTest {
         // Tally up a selection of the events in the dump as a quick check they match the expected
         // number.
         List<RecordedEvent> events = getEvents(dumpLocation);
-        int count = 0;
-        for (RecordedEvent event : events) {
-            count++;
-        }
-        if (count != EXPECTED_EVENTS) {
+        if (events.size() != EXPECTED_EVENTS) {
             throw new Exception("Not all expected events were found in the JFR file");
         }
     }

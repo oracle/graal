@@ -25,12 +25,15 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.Uninterruptible;
+
 public enum JfrCheckpointType {
     Flush(1),
     Threads(8);
 
     private final byte id;
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public byte getId() {
         return id;
     }

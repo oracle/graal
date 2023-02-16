@@ -346,7 +346,7 @@ public class SubstrateJVM {
             if (recording) {
                 boolean existingFile = chunkWriter.hasOpenFile();
                 if (existingFile) {
-                    chunkWriter.closeFile(threadRepo);
+                    chunkWriter.closeFile();
                 }
                 if (file != null) {
                     chunkWriter.openFile(file);
@@ -507,7 +507,7 @@ public class SubstrateJVM {
             if (recording) {
                 boolean existingFile = chunkWriter.hasOpenFile();
                 if (existingFile) {
-                    chunkWriter.flush(threadRepo);
+                    chunkWriter.flush();
                 }
             }
         } finally {

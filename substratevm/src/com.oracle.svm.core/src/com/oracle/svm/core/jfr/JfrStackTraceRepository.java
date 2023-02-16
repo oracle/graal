@@ -230,14 +230,14 @@ public class JfrStackTraceRepository implements JfrConstantPool {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Locking without transition.")
     private void maybeLock(boolean flush) {
         if (flush) {
             mutex.lockNoTransition();
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Locking without transition.")
     private void maybeUnlock(boolean flush) {
         if (flush) {
             mutex.unlock();

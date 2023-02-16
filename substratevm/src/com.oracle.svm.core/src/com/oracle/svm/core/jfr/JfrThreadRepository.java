@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.WordFactory;
+import org.graalvm.word.SignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
@@ -127,7 +128,6 @@ public final class JfrThreadRepository implements JfrConstantPool {
         // Maybe during writing, the thread buffer was replaced with a new (larger) one, so we
         // need to update the repository pointer as well.
         epochData.threadBuffer = data.getJfrBuffer();
-        epochData.isDirty = true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
@@ -188,14 +188,14 @@ public final class JfrThreadRepository implements JfrConstantPool {
         return epoch ? epochData0 : epochData1;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Locking without transition.")
     private void maybeLock(boolean flush) {
         if (flush) {
             mutex.lockNoTransition();
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Locking without transition.")
     private void maybeUnlock(boolean flush) {
         if (flush) {
             mutex.unlock();
@@ -206,27 +206,32 @@ public final class JfrThreadRepository implements JfrConstantPool {
     @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
     public int write(JfrChunkWriter writer, boolean flush) {
         JfrThreadEpochData epochData = getEpochData(!flush);
+        int count = writeThreads(writer, epochData);
+        count += writeThreadGroups(writer, epochData);
+
+        /*
+         * Thread repository epoch data may be cleared after a flush because threads are only
+         * registered once with fixed IDs. There is no need to do a lookup in this repo for a
+         * thread's ID.
+         */
+        epochData.clear();
+        return count;
+    }
+
+    @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
+    public SignedWord maybeWrite(JfrChunkWriter writer, boolean flush) {
+
+        JfrThreadEpochData epochData = getEpochData(!flush);
         maybeLock(flush);
         try {
-            int count = writeThreads(writer, epochData);
-            count += writeThreadGroups(writer, epochData);
+            if (epochData.visitedThreads.getSize() == 0) {
+                return WordFactory.nullPointer();
+            }
+            return writer.writeThreadCheckpointEvent(this, flush);
 
-            /*
-             * Thread repository epoch data may be cleared after a flush because threads are only
-             * registered once with fixed IDs. There is no need to do a lookup in this repo for a
-             * thread's ID.
-             */
-            epochData.clear();
-
-            return count;
         } finally {
             maybeUnlock(flush);
         }
-    }
-
-    public boolean isDirty(boolean flush) {
-        JfrThreadEpochData epochData = getEpochData(!flush);
-        return epochData.isDirty;
     }
 
     @Uninterruptible(reason = "May write current epoch data.")
@@ -271,7 +276,6 @@ public final class JfrThreadRepository implements JfrConstantPool {
 
         private JfrBuffer threadBuffer;
         private JfrBuffer threadGroupBuffer;
-        private boolean isDirty = false;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         JfrThreadEpochData() {
@@ -286,7 +290,6 @@ public final class JfrThreadRepository implements JfrConstantPool {
 
             JfrBufferAccess.reinitialize(threadBuffer);
             JfrBufferAccess.reinitialize(threadGroupBuffer);
-            isDirty = false;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

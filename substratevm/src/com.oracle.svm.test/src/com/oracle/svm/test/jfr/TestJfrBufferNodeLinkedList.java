@@ -73,13 +73,13 @@ public class TestJfrBufferNodeLinkedList {
         cleanUpList(list);
     }
 
-    private void cleanUpList(JfrBufferNodeLinkedList list) {
+    private static void cleanUpList(JfrBufferNodeLinkedList list) {
         JfrBufferNode node = removeAllNodes(list);
         assertTrue("Could not remove all nodes", node.isNull());
         list.teardown();
     }
 
-    private void addNodes(JfrBufferNodeLinkedList list, int nodeCount) {
+    private static void addNodes(JfrBufferNodeLinkedList list, int nodeCount) {
         for (int i = 0; i < nodeCount; i++) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(32), JfrBufferType.THREAD_LOCAL_NATIVE);
             list.addNode(buffer, CurrentIsolate.getCurrentThread());
@@ -87,7 +87,7 @@ public class TestJfrBufferNodeLinkedList {
     }
 
     @Uninterruptible(reason = "Locking with no transition.")
-    private int countNodes(JfrBufferNodeLinkedList list) {
+    private static int countNodes(JfrBufferNodeLinkedList list) {
         int count = 0;
         JfrBufferNode node = list.getAndLockHead();
         while (node.isNonNull()) {
@@ -100,14 +100,12 @@ public class TestJfrBufferNodeLinkedList {
     }
 
     @Uninterruptible(reason = "Locking with no transition.")
-    private JfrBufferNode removeAllNodes(JfrBufferNodeLinkedList list) {
+    private static JfrBufferNode removeAllNodes(JfrBufferNodeLinkedList list) {
         // Try removing the nodes
-        JfrBufferNode node;
-        JfrBufferNode prev = WordFactory.nullPointer();
-        node = list.getAndLockHead();
+        JfrBufferNode node = list.getAndLockHead();
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();
-            list.removeNode(node, prev);
+            list.removeNode(node, WordFactory.nullPointer());
             node = next;
         }
         list.releaseList();
@@ -115,7 +113,7 @@ public class TestJfrBufferNodeLinkedList {
     }
 
     @Uninterruptible(reason = "Locking with no transition.")
-    private void removeNthNode(JfrBufferNodeLinkedList list, int target) {
+    private static void removeNthNode(JfrBufferNodeLinkedList list, int target) {
         JfrBufferNode node;
         JfrBufferNode prev = WordFactory.nullPointer();
         node = list.getAndLockHead();

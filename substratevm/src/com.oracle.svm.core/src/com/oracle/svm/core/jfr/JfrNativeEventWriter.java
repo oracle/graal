@@ -324,7 +324,7 @@ public final class JfrNativeEventWriter {
 
             // Copy all unflushed data (no matter if committed or uncommitted) from the old buffer
             // to the new buffer.
-            UnmanagedMemoryUtil.copy(oldBuffer.getFlushedPos(), result.getCommittedPos(), totalUsedBytes);
+            UnmanagedMemoryUtil.copy(JfrBufferAccess.getFlushedPos(oldBuffer), result.getCommittedPos(), totalUsedBytes);
             JfrBufferAccess.increaseCommittedPos(result, unflushedSize);
 
             JfrBufferAccess.free(oldBuffer);
@@ -335,7 +335,7 @@ public final class JfrNativeEventWriter {
             // Reuse the existing buffer because enough data was already flushed in the meanwhile.
             // For that, copy all unflushed data (no matter if committed or uncommitted) to the
             // beginning of the buffer.
-            UnmanagedMemoryUtil.copy(oldBuffer.getFlushedPos(), JfrBufferAccess.getDataStart(oldBuffer), totalUsedBytes);
+            UnmanagedMemoryUtil.copy(JfrBufferAccess.getFlushedPos(oldBuffer), JfrBufferAccess.getDataStart(oldBuffer), totalUsedBytes);
             JfrBufferAccess.reinitialize(oldBuffer);
             JfrBufferAccess.increaseCommittedPos(oldBuffer, unflushedSize);
             return oldBuffer;

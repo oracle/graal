@@ -66,7 +66,7 @@ public class TestStreamingBasic extends StreamingTest {
         List<RecordedEvent> events = getEvents(dumpLocation);
         for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
-            if (event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName()) && event.getDuration().toMillis() >= MILLIS - 1) {
+            if (event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
                 if (!streamEvents.contains(eventThread)) {
                     continue;
                 }

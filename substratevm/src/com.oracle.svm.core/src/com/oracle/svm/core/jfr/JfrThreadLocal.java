@@ -46,10 +46,9 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.SubstrateUtil;
-
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
 
 /**
@@ -92,13 +91,11 @@ public class JfrThreadLocal implements ThreadListener {
     private long threadLocalBufferSize;
 
     @Fold
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static JfrBufferNodeLinkedList getNativeBufferList() {
         return nativeBufferList;
     }
 
     @Fold
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static JfrBufferNodeLinkedList getJavaBufferList() {
         return javaBufferList;
     }
@@ -290,7 +287,7 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static JfrBuffer flush(JfrBuffer threadLocalBuffer, UnsignedWord uncommitted, int requested) {
-        VMError.guarantee(threadLocalBuffer.isNonNull(), "TLB cannot be null if promoting.");
+        assert threadLocalBuffer.isNonNull();
 
         // Needed for race between streaming flush and promotion
         JfrBufferAccess.tryLock(threadLocalBuffer, Integer.MAX_VALUE);
@@ -362,10 +359,10 @@ public class JfrThreadLocal implements ThreadListener {
             return;
         }
         IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
-        com.oracle.svm.core.thread.Target_java_lang_Thread tjlt = com.oracle.svm.core.SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
         tjlt.jfrExcluded = true;
 
-        if (javaEventWriter.get(currentIsolateThread) != null && JavaVersionUtil.JAVA_SPEC >= 19) {
+        if (javaEventWriter.get(currentIsolateThread) != null && !JavaThreads.isVirtual(thread)) {
             javaEventWriter.get(currentIsolateThread).excluded = true;
         }
     }
@@ -379,7 +376,7 @@ public class JfrThreadLocal implements ThreadListener {
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
         tjlt.jfrExcluded = false;
 
-        if (javaEventWriter.get(currentIsolateThread) != null && JavaVersionUtil.JAVA_SPEC >= 19) {
+        if (javaEventWriter.get(currentIsolateThread) != null && !JavaThreads.isVirtual(thread)) {
             javaEventWriter.get(currentIsolateThread).excluded = false;
         }
     }
@@ -435,6 +432,5 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static SamplerSampleWriterData getSamplerWriterData() {
         return samplerWriterData.get();
-
     }
 }

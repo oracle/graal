@@ -108,7 +108,7 @@ public class JfrGlobalMemory {
         try {
             // Copy all committed but not yet flushed memory to the promotion buffer.
             assert JfrBufferAccess.getAvailableSize(promotionBuffer).aboveOrEqual(unflushedSize);
-            UnmanagedMemoryUtil.copy(threadLocalBuffer.getFlushedPos(), promotionBuffer.getCommittedPos(), unflushedSize);
+            UnmanagedMemoryUtil.copy(JfrBufferAccess.getFlushedPos(threadLocalBuffer), promotionBuffer.getCommittedPos(), unflushedSize);
             JfrBufferAccess.increaseCommittedPos(promotionBuffer, unflushedSize);
             shouldSignal = recorderThread.shouldSignal(promotionBuffer);
         } finally {

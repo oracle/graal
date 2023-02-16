@@ -44,7 +44,7 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceId;
  * rotations. This means that the maps in this repository will be entirely used and cleared with
  * respect to the current epoch before they are used for the subsequent epoch.
  *
- * The "old" maps hold records with respect to and entire epoch, while the "new" maps are with
+ * The "old" maps hold records with respect to an entire epoch, while the "new" maps are with
  * respect to the current flush / chunk rotation.
  */
 public class JfrTypeRepository implements JfrConstantPool {
@@ -90,7 +90,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         return count;
     }
 
-    private void collectTypeInfo(boolean flush) {
+    private static void collectTypeInfo(boolean flush) {
 
         for (Class<?> clazz : Heap.getHeap().getLoadedClasses()) {
             if (flush) {

@@ -77,15 +77,38 @@ public final class JfrBufferAccess {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(buffer);
     }
 
-    @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
+    @Uninterruptible(reason = "Prevent safepoints as those could change the flushed position.")
     public static void reinitialize(JfrBuffer buffer) {
         assert buffer.isNonNull();
-        assert (isLocked(buffer) && buffer.getLockOwner() == CurrentIsolate.getCurrentThread()) ||
-                        (buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_JAVA && buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_NATIVE);
+
         org.graalvm.nativeimage.CurrentIsolate.getCurrentThread();
         Pointer pos = getDataStart(buffer);
         buffer.setCommittedPos(pos);
+        setFlushedPos(buffer, pos);
+    }
+
+    /**
+     * This is a helper method that checks that the thread modifying the flushed pos actually owns
+     * the buffer lock. This is important because there can races between flushing threads and the
+     * thread that owns/created JFR local buffers.
+     */
+    @Uninterruptible(reason = "Changes flushed position.")
+    public static void setFlushedPos(JfrBuffer buffer, Pointer pos) {
+        assert (isLocked(buffer) && buffer.getLockOwner() == CurrentIsolate.getCurrentThread()) ||
+                        (buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_JAVA && buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_NATIVE);
         buffer.setFlushedPos(pos);
+    }
+
+    /**
+     * This is a helper method that checks that the thread modifying the flushed pos actually owns
+     * the buffer lock. This is important because there can races between flushing threads and the
+     * thread that owns/created JFR local buffers.
+     */
+    @Uninterruptible(reason = "Accesses flushed position. Possible race between flushing and working threads.")
+    public static Pointer getFlushedPos(JfrBuffer buffer) {
+        assert (isLocked(buffer) && buffer.getLockOwner() == CurrentIsolate.getCurrentThread()) ||
+                        (buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_JAVA && buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_NATIVE);
+        return buffer.getFlushedPos();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -99,7 +122,7 @@ public final class JfrBufferAccess {
         assert buffer.isNonNull();
         boolean result = NativeSpinLockUtils.tryLock(ptrToLock(buffer));
         if (result) {
-            buffer.setLockOwner(org.graalvm.nativeimage.CurrentIsolate.getCurrentThread());
+            buffer.setLockOwner(CurrentIsolate.getCurrentThread());
         }
         return result;
     }
@@ -109,7 +132,7 @@ public final class JfrBufferAccess {
         assert buffer.isNonNull();
         boolean result = NativeSpinLockUtils.tryLock(ptrToLock(buffer), retries);
         if (result) {
-            buffer.setLockOwner(org.graalvm.nativeimage.CurrentIsolate.getCurrentThread());
+            buffer.setLockOwner(CurrentIsolate.getCurrentThread());
         }
         return result;
     }
@@ -117,8 +140,7 @@ public final class JfrBufferAccess {
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
     public static void unlock(JfrBuffer buffer) {
         assert buffer.isNonNull();
-        assert (isLocked(buffer) && buffer.getLockOwner() == CurrentIsolate.getCurrentThread()) ||
-                        (buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_JAVA && buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_NATIVE);
+        assert (isLocked(buffer) && buffer.getLockOwner() == CurrentIsolate.getCurrentThread());
 
         NativeSpinLockUtils.unlock(ptrToLock(buffer));
     }
@@ -147,10 +169,10 @@ public final class JfrBufferAccess {
         return getDataEnd(buffer).subtract(buffer.getCommittedPos());
     }
 
-    @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.", callerMustBe = true)
+    @Uninterruptible(reason = "Prevent safepoints as those could change the flushed position.", callerMustBe = true)
     public static UnsignedWord getUnflushedSize(JfrBuffer buffer) {
         assert buffer.isNonNull();
-        return buffer.getCommittedPos().subtract(buffer.getFlushedPos());
+        return buffer.getCommittedPos().subtract(getFlushedPos(buffer));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -159,13 +181,10 @@ public final class JfrBufferAccess {
         buffer.setCommittedPos(buffer.getCommittedPos().add(delta));
     }
 
-    @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
+    @Uninterruptible(reason = "Prevent safepoints as those could change the flushed position.")
     public static void increaseFlushedPos(JfrBuffer buffer, UnsignedWord delta) {
         assert buffer.isNonNull();
-        assert (isLocked(buffer) && buffer.getLockOwner() == CurrentIsolate.getCurrentThread()) ||
-                        (buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_JAVA && buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_NATIVE);
-
-        buffer.setFlushedPos(buffer.getFlushedPos().add(delta));
+        setFlushedPos(buffer, getFlushedPos(buffer).add(delta));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -182,6 +201,9 @@ public final class JfrBufferAccess {
 
         Pointer start = getDataStart(buffer);
         Pointer end = getDataEnd(buffer);
+
+        // Don't need to use setFlushedPos and getFlushedPos helpers here because we're just
+        // checking invariants.
         return buffer.getCommittedPos().aboveOrEqual(start) && buffer.getCommittedPos().belowOrEqual(end) &&
                         buffer.getFlushedPos().aboveOrEqual(start) && buffer.getFlushedPos().belowOrEqual(end) &&
                         buffer.getFlushedPos().belowOrEqual(buffer.getCommittedPos());

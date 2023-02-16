@@ -87,17 +87,17 @@ public class JfrBufferNodeLinkedList {
     private volatile int lock;
     private volatile JfrBufferNode head;
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public boolean isHead(JfrBufferNode node) {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private boolean isHead(JfrBufferNode node) {
         return node == head || head.isNull();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void setHead(JfrBufferNode node) {
         head = node;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static JfrBufferNode createNode(JfrBuffer buffer, IsolateThread thread) {
         if (buffer.isNull()) {
             return WordFactory.nullPointer();
@@ -115,8 +115,15 @@ public class JfrBufferNodeLinkedList {
     public JfrBufferNodeLinkedList() {
     }
 
+    @Uninterruptible(reason = "Locking with no transition.")
     public void teardown() {
-        // TODO: maybe iterate list freeing nodes, just in case.
+        JfrBufferNode node = getAndLockHead();
+        while (node.isNonNull()) {
+            JfrBufferNode next = node.getNext();
+            removeNode(node, WordFactory.nullPointer());
+            node = next;
+        }
+        releaseList();
     }
 
     @Uninterruptible(reason = "Locking with no transition.", callerMustBe = true)
@@ -130,14 +137,14 @@ public class JfrBufferNodeLinkedList {
         JfrBufferNode next = node.getNext(); // next can never be null
 
         if (isHead(node)) {
-            VMError.guarantee(prev.isNull(), "If head, prev should be null ");
+            assert prev.isNull();
             setHead(next); // head could now be null if there was only one node in the list
         } else {
-            VMError.guarantee(prev.isNonNull(), "If not head, prev should be non-null ");
+            assert prev.isNonNull();
             prev.setNext(next);
         }
 
-        VMError.guarantee(node.getValue().isNonNull(), "JFR buffer should always exist until removal of respective JfrBufferNodeLinkedList node.");
+        assert node.getValue().isNonNull();
         JfrBufferAccess.free(node.getValue());
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
         return true;
@@ -147,7 +154,7 @@ public class JfrBufferNodeLinkedList {
      * Must be uninterruptible because if this list is acquired and we safepoint for an epoch change
      * in this method, the thread doing the epoch change will be blocked accessing the list.
      */
-    @Uninterruptible(reason = "Locking with no transition list must not be acquired entering epoch change.")
+    @Uninterruptible(reason = "Locking with no transition. List must not be acquired entering epoch change.")
     public JfrBufferNode addNode(JfrBuffer buffer, IsolateThread thread) {
         JfrBufferNode newNode = createNode(buffer, thread);
         acquireList();

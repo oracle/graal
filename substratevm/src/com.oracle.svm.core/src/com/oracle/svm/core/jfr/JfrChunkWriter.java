@@ -27,7 +27,6 @@ package com.oracle.svm.core.jfr;
 import java.nio.charset.StandardCharsets;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.SignedWord;
@@ -46,8 +45,6 @@ import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.locks.VMMutex;
-
-import com.oracle.svm.core.util.VMError;
 
 import com.oracle.svm.core.jfr.JfrBufferNodeLinkedList.JfrBufferNode;
 import static com.oracle.svm.core.jfr.JfrThreadLocal.getJavaBufferList;
@@ -143,12 +140,12 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return true;
     }
 
-    @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
+    @Uninterruptible(reason = "Prevent safepoints as those could change the flushed position.")
     public boolean write(JfrBuffer buffer) {
         return write(buffer, true);
     }
 
-    @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
+    @Uninterruptible(reason = "Prevent safepoints as those could change the flushed position.")
     public boolean write(JfrBuffer buffer, boolean increaseFlushedPos) {
         assert JfrBufferAccess.isLocked(buffer) || VMOperation.isInProgressAtSafepoint() || buffer.getBufferType() == JfrBufferType.C_HEAP;
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
@@ -156,7 +153,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             return false;
         }
 
-        boolean success = getFileSupport().write(fd, buffer.getFlushedPos(), unflushedSize);
+        boolean success = getFileSupport().write(fd, JfrBufferAccess.getFlushedPos(buffer), unflushedSize);
         if (increaseFlushedPos) {
             JfrBufferAccess.increaseFlushedPos(buffer, unflushedSize);
         }
@@ -170,7 +167,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     /**
      * Write all the in-memory data to the file.
      */
-    public void closeFile(JfrThreadRepository threadRepo) {
+    public void closeFile() {
         assert lock.isOwner();
         /*
          * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
@@ -184,9 +181,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          * data structures of the new epoch. This guarantees that the data in the old epoch can be
          * persisted to a file without a safepoint.
          */
-        if (threadRepo.isDirty(false)) {
-            writeThreadCheckpointEvent(threadRepo, false);
-        }
+
+        SubstrateJVM.getThreadRepo().maybeWrite(this, false);
+
         SignedWord constantPoolPosition = writeCheckpointEvent(false);
         writeMetadataEvent();
         patchFileHeader(constantPoolPosition, false);
@@ -197,13 +194,11 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         newChunk = false;
     }
 
-    public void flush(JfrThreadRepository threadRepo) {
+    public void flush() {
         assert lock.isOwner();
         flushStorage(false);
 
-        if (threadRepo.isDirty(true)) {
-            writeThreadCheckpointEvent(threadRepo, true);
-        }
+        SubstrateJVM.getThreadRepo().maybeWrite(this, true);
         SignedWord constantPoolPosition = writeCheckpointEvent(true);
         writeMetadataEvent();
 
@@ -277,7 +272,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return generation++;
     }
 
-    private SignedWord writeThreadCheckpointEvent(JfrConstantPool threadRepo, boolean flush) {
+    /** This is called from JfrThreadRepository only if there is new data to write. */
+    @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this thread constant pool.")
+    public SignedWord writeThreadCheckpointEvent(JfrConstantPool threadRepo, boolean flush) {
 
         SignedWord start = beginEvent();
 
@@ -381,6 +378,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return getFileSupport().isValid(fd) && getFileSupport().size(fd).greaterThan(WordFactory.signed(notificationThreshold));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public SignedWord beginEvent() {
         SignedWord start = getFileSupport().position(fd);
         // Write a placeholder for the size. Will be patched by endEvent,
@@ -388,6 +386,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return start;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void endEvent(SignedWord start) {
         SignedWord end = getFileSupport().position(fd);
         SignedWord writtenBytes = end.subtract(start);
@@ -491,8 +490,20 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int makePaddedInt(long sizeWritten) {
-        return JfrNativeEventWriter.makePaddedInt(NumUtil.safeToInt(sizeWritten));
+        return JfrNativeEventWriter.makePaddedInt(safeToInt(sizeWritten));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int safeToInt(long v) {
+        assert isInt(v);
+        return (int) v;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isInt(long l) {
+        return (int) l == l;
     }
 
     public enum StringEncoding {
@@ -592,7 +603,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer. Locks linked list with no transition. ")
-    private void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
+    private static void traverseList(JfrBufferNodeLinkedList linkedList, boolean java, boolean safepoint) {
 
         boolean firstIteration = true;
         // hold onto lock until done with the head node.
@@ -603,7 +614,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             try {
                 JfrBufferNode next = node.getNext();
                 JfrBuffer buffer = node.getValue();
-                VMError.guarantee(buffer.isNonNull(), "JFR buffer should exist if we have not already removed its respective node.");
+                assert buffer.isNonNull();
 
                 /*
                  * I/O operation may be slow, so this flushes to the global buffers instead of
