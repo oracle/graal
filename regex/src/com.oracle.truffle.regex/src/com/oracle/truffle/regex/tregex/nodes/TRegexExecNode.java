@@ -65,6 +65,8 @@ import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.util.Loggers;
 
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 public class TRegexExecNode extends RegexExecNode implements RegexProfile.TracksRegexProfile {
 
     private static final LazyCaptureGroupRegexSearchNode LAZY_DFA_BAILED_OUT = new LazyCaptureGroupRegexSearchNode(null, null, null, null, null, null, null, null);
@@ -80,6 +82,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     private final boolean regressionTestMode;
     private final boolean backtrackingMode;
     private final boolean sticky;
+    private final ReentrantReadWriteLock nfaLock;
 
     @Child private RunRegexSearchNode runnerNode;
 
@@ -91,6 +94,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         this.regressionTestMode = !backtrackingMode && ast.getOptions().isRegressionTestMode();
         this.sticky = ast.getFlags().isSticky();
         this.runnerNode = insert(nfaNode);
+        this.nfaLock = new ReentrantReadWriteLock();
         if (this.regressionTestMode || !backtrackingMode && ast.getOptions().isGenerateDFAImmediately()) {
             switchToLazyDFA();
         }
@@ -121,13 +125,25 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             }
         }
 
-        final RegexResult result = runnerNode.run(frame, input, fromIndex, inputLength);
-        assert !sticky || source.getOptions().isBooleanMatch() || result == RegexResult.getNoMatchInstance() || RegexResult.RegexResultGetStartNode.getUncached().execute(result, 0) == fromIndex;
-        assert !regressionTestMode || backtrackerProducesSameResult(frame, input, fromIndex, result);
-        assert !regressionTestMode || nfaProducesSameResult(frame, input, fromIndex, result);
-        assert !regressionTestMode || noSimpleCGLazyDFAProducesSameResult(frame, input, fromIndex, result);
-        assert !regressionTestMode || source.getOptions().isBooleanMatch() || eagerAndLazyDFAProduceSameResult(frame, input, fromIndex, result);
-        assert validResult(input, fromIndex, result);
+        boolean nfaCouldSwitchToDFA = CompilerDirectives.inInterpreter() && !backtrackingMode && lazyDFANode == null;
+        if (nfaCouldSwitchToDFA) {
+            nfaLock.readLock().lock();
+        }
+
+        final RegexResult result;
+        try {
+            result = runnerNode.run(frame, input, fromIndex, inputLength);
+            assert !sticky || source.getOptions().isBooleanMatch() || result == RegexResult.getNoMatchInstance() || RegexResult.RegexResultGetStartNode.getUncached().execute(result, 0) == fromIndex;
+            assert !regressionTestMode || backtrackerProducesSameResult(frame, input, fromIndex, result);
+            assert !regressionTestMode || nfaProducesSameResult(frame, input, fromIndex, result);
+            assert !regressionTestMode || noSimpleCGLazyDFAProducesSameResult(frame, input, fromIndex, result);
+            assert !regressionTestMode || source.getOptions().isBooleanMatch() || eagerAndLazyDFAProduceSameResult(frame, input, fromIndex, result);
+            assert validResult(input, fromIndex, result);
+        } finally {
+            if (nfaCouldSwitchToDFA) {
+                nfaLock.readLock().unlock();
+            }
+        }
 
         if (CompilerDirectives.inInterpreter() && !backtrackingMode) {
             RegexProfile profile = getRegexProfile();
@@ -282,7 +298,12 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     }
 
     private synchronized void switchToLazyDFA() {
-        compileLazyDFA();
+        nfaLock.writeLock().lock();
+        try {
+            compileLazyDFA();
+        } finally {
+            nfaLock.writeLock().unlock();
+        }
         if (lazyDFANode != LAZY_DFA_BAILED_OUT) {
             runnerNode = insert(lazyDFANode);
             if (canSwitchToEagerDFA()) {
