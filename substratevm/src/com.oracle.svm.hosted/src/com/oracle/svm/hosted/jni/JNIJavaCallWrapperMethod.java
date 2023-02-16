@@ -162,7 +162,7 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
-        JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
+        JNIGraphKit kit = new JNIGraphKit(debug, providers, method, purpose);
 
         AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) ((metaAccess instanceof AnalysisMetaAccess) ? metaAccess : metaAccess.getWrapped());
         Signature invokeSignature = aMetaAccess.getUniverse().lookup(targetSignature, getDeclaringClass());

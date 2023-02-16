@@ -108,11 +108,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        // Needed to match type flows to invokes so invoked methods can be inlined in runtime
-        // compilations, see GraalFeature.processMethod() and MethodTypeFlowBuilder.uniqueKey()
-        boolean trackNodeSourcePosition = (purpose == Purpose.ANALYSIS);
-
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, trackNodeSourcePosition);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
         CompilationInfo deoptTargetInfo = null;
         if (MultiMethod.isDeoptTarget(method)) {
             if (method instanceof HostedMethod) {

@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.reflect;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
@@ -77,7 +76,7 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeMethod {
      */
     @Override
     public StructuredGraph buildGraph(DebugContext ctx, ResolvedJavaMethod m, HostedProviders providers, Purpose purpose) {
-        ReflectionGraphKit graphKit = new ReflectionGraphKit(ctx, providers, m);
+        ReflectionGraphKit graphKit = new ReflectionGraphKit(ctx, providers, m, purpose);
 
         ValueNode receiver = graphKit.loadLocal(0, JavaKind.Object);
         ValueNode argumentArray = graphKit.loadLocal(1, JavaKind.Object);
@@ -116,7 +115,6 @@ public class ReflectionExpandSignatureMethod extends NonBytecodeMethod {
 
         InvokeWithExceptionNode invoke = graphKit.startInvokeWithException(callTarget, graphKit.getFrameState(), graphKit.bci());
         graphKit.exceptionPart();
-        invoke.setNodeSourcePosition(new NodeSourcePosition(null, m, invoke.bci()));
         graphKit.branchToInvocationTargetException(graphKit.exceptionObject());
         graphKit.endInvokeWithException();
 
