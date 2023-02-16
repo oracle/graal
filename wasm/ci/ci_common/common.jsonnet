@@ -7,17 +7,17 @@ local graal_suite_root = root_ci.graal_suite_root;
 {
   local common = (import "../../../ci/ci_common/common.jsonnet"),
 
-  devkits: common.devkits,
+  devkits:: common.devkits,
 
-  gate: {
+  gate:: {
     targets+: ['gate'],
   },
 
-  bench: {
+  bench:: {
     targets+: ['bench', 'daily'],
   },
 
-  linux_amd64: common.linux_amd64 + {
+  local linux_common = {
     packages+: {
       "01:binutils": '>=2.30',
       gcc: '==8.3.0',
@@ -28,15 +28,27 @@ local graal_suite_root = root_ci.graal_suite_root;
     },
   },
 
-  windows_amd64: common.windows_amd64,
+  linux_amd64:: common.linux_amd64 + linux_common,
+  linux_aarch64:: common.linux_aarch64 + linux_common,
 
-  wabt: {
+  darwin_aarch64:: common.darwin_aarch64,
+  darwin_amd64:: common.darwin_amd64 + {
+    capabilities+: ['darwin_catalina'],
+  },
+
+  local windows_common = {
+    packages+: $.devkits["windows-jdk" + self.jdk_version].packages,
+  },
+
+  windows_amd64:: common.windows_amd64 + windows_common,
+
+  wabt:: {
     downloads+: {
       WABT_DIR: {name: 'wabt', version: '1.0.23', platformspecific: true},
     },
   },
 
-  emsdk: {
+  emsdk:: {
     downloads+: {
       EMSDK_DIR: {name: 'emsdk', version: '1.39.13', platformspecific: true},
     },
@@ -45,7 +57,7 @@ local graal_suite_root = root_ci.graal_suite_root;
     }
   },
 
-  ocamlbuild: {
+  ocamlbuild:: {
     downloads+: {
       OCAML_DIR: {name: 'ocamlbuild', version: '0.14.0', platformspecific: true},
     },
@@ -55,7 +67,7 @@ local graal_suite_root = root_ci.graal_suite_root;
     },
   },
 
-  nodejs: {
+  nodejs:: {
     downloads+: {
       NODE: {name: 'node', version: 'v16.13.2', platformspecific: true},
     },
@@ -65,17 +77,21 @@ local graal_suite_root = root_ci.graal_suite_root;
     },
   },
 
-  local gate_cmd      = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
-  local gate_cmd_full = ['mx', '--strict-compliance', '--dynamicimports', graal_suite_root, 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gate_cmd      = ['mx', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gate_cmd_full = ['mx', '--dynamicimports', graal_suite_root, 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
 
-  setup_common: {
+  common:: {
+    name_suffix:: (if std.objectHasAll(self, 'jdk_version') then '-jdk' + self.jdk_version else '') + '-' + self.os + '-' + self.arch,
+  },
+
+  setup_common:: self.common + {
     setup+: [
       ['cd', wasm_suite_root],
       ['mx', 'sversions'],
     ],
   },
 
-  setup_emsdk: self.setup_common + {
+  setup_emsdk:: self.setup_common + {
     setup+: [
       ['set-export', 'ROOT_DIR', ['pwd']],
       ['set-export', 'EM_CONFIG', '$ROOT_DIR/.emscripten-config'],
@@ -83,32 +99,28 @@ local graal_suite_root = root_ci.graal_suite_root;
     ],
   },
 
-  gate_graalwasm: self.setup_common + {
+  gate_graalwasm:: self.setup_common + {
     run+: [
       gate_cmd,
     ],
     timelimit: '45:00',
   },
 
-  gate_graalwasm_full: {
-    setup+: [
-      ['cd', wasm_suite_root],
-      ['mx', 'sversions'],
-    ],
+  gate_graalwasm_full:: self.setup_common + {
     run+: [
       gate_cmd_full
     ],
     timelimit: '1:00:00',
   },
 
-  gate_graalwasm_emsdk_full: self.setup_emsdk + {
+  gate_graalwasm_emsdk_full:: self.setup_emsdk + {
     run+: [
       gate_cmd_full
     ],
     timelimit: '45:00',
   },
 
-  bench_graalwasm_emsdk_full: self.setup_emsdk + {
+  bench_graalwasm_emsdk_full:: self.setup_emsdk + {
     environment+: {
       BENCH_RESULTS_FILE_PATH : 'bench-results.json',
     },
@@ -129,11 +141,12 @@ local graal_suite_root = root_ci.graal_suite_root;
     timelimit: '1:00:00',
   },
 
-  jdk17_gate_linux_amd64_eclipse_jdt              : common.labsjdk17 + self.gate  + self.linux_amd64  + common.deps.eclipse + common.deps.jdt,
-  jdk17_gate_linux_amd64_wabt                     : common.labsjdk17 + self.gate  + self.linux_amd64   + self.wabt,
-  jdk17_gate_linux_amd64_wabt_emsdk               : common.labsjdk17 + self.gate  + self.linux_amd64   + self.wabt    + self.emsdk,
-  jdk17_gate_linux_amd64_wabt_emsdk_ocamlbuild    : common.labsjdk17 + self.gate  + self.linux_amd64   + self.wabt    + self.emsdk + self.ocamlbuild,
-  jdk17_bench_linux_amd64_wabt_emsdk              : common.labsjdk17 + self.bench + self.linux_amd64   + self.wabt    + self.emsdk,
-  jdk17_bench_linux_amd64_wabt_emsdk_nodejs       : common.labsjdk17 + self.bench + self.linux_amd64   + self.wabt    + self.emsdk + self.nodejs,
-  jdk17_gate_windows_amd64_wabt                   : common.labsjdk17 + self.gate  + self.windows_amd64 + self.wabt,
+  gate_eclipse_jdt              :: self.gate  + common.deps.eclipse + common.deps.jdt,
+  gate_wabt                     :: self.gate  + self.wabt,
+  gate_wabt_emsdk               :: self.gate  + self.wabt    + self.emsdk,
+  gate_wabt_emsdk_ocamlbuild    :: self.gate  + self.wabt    + self.emsdk + self.ocamlbuild,
+
+  bench_wabt_emsdk              :: self.bench + self.wabt    + self.emsdk,
+  bench_wabt_emsdk_nodejs       :: self.bench + self.wabt    + self.emsdk + self.nodejs,
+
 }
