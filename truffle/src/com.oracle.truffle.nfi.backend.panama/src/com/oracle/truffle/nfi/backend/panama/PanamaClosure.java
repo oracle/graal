@@ -48,17 +48,18 @@ final class PanamaClosure implements TruffleObject {
 
     abstract static class CachedClosureInfo {
         final CallTarget closureCallTarget;
+        final MethodHandle handle;
 
-        CachedClosureInfo(RootNode rootNode) {
+        CachedClosureInfo(RootNode rootNode, MethodHandle handle) {
             this.closureCallTarget = rootNode.getCallTarget();
+            this.handle = handle;
         }
     }
 
-    abstract static class MonomorphicClosureInfo extends CachedClosureInfo {
-        public MethodHandle cachedHandle;
+    static class MonomorphicClosureInfo extends CachedClosureInfo {
 
-        private MonomorphicClosureInfo(RootNode rootNode) {
-            super(rootNode);
+        MonomorphicClosureInfo(RootNode rootNode, MethodHandle handle) {
+            super(rootNode, handle);
         }
 
         static MonomorphicClosureInfo create(CachedSignatureInfo signatureInfo, Object executable) {
@@ -76,11 +77,10 @@ final class PanamaClosure implements TruffleObject {
         }
     }
 
-    abstract static class PolymorphicClosureInfo extends CachedClosureInfo {
-        public MethodHandle cachedHandle;
+    static class PolymorphicClosureInfo extends CachedClosureInfo {
 
-        private PolymorphicClosureInfo(RootNode rootNode) {
-            super(rootNode);
+        PolymorphicClosureInfo(RootNode rootNode, MethodHandle handle) {
+            super(rootNode, handle);
         }
 
         static PolymorphicClosureInfo create(CachedSignatureInfo signatureInfo) {
@@ -114,21 +114,19 @@ final class PanamaClosure implements TruffleObject {
         MonomorphicClosureInfo createMonomorphicClosureInfo() {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget upcallTarget = getCallTarget();
-            MonomorphicClosureInfo info = new MonomorphicClosureInfo(this) {};
-            info.cachedHandle = handle_CallTarget_call.bindTo(upcallTarget)
-                    .asCollector(Object[].class, 2).asType(METHOD_TYPE)
-                    .asVarargsCollector(Object[].class);
-            return info;
+            MethodHandle handle = handle_CallTarget_call.bindTo(upcallTarget)
+                            .asCollector(Object[].class, 2).asType(METHOD_TYPE)
+                            .asVarargsCollector(Object[].class);
+            return new MonomorphicClosureInfo(this, handle);
         }
 
         PolymorphicClosureInfo createPolymorphicClosureInfo() {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget upcallTarget = getCallTarget();
-            PolymorphicClosureInfo info = new PolymorphicClosureInfo(this) {};
-            info.cachedHandle = handle_CallTarget_call.bindTo(upcallTarget)
+            MethodHandle handle = handle_CallTarget_call.bindTo(upcallTarget)
                     .asCollector(Object[].class, 2).asType(METHOD_TYPE)
                     .asVarargsCollector(Object[].class);
-            return info;
+            return new PolymorphicClosureInfo(this, handle) {};
         }
 
         static {

@@ -166,7 +166,7 @@ final class PanamaSignature {
             assert signature.signatureInfo == cachedSignatureInfo && executable == cachedExecutable;
             // no need to cache duplicated allocation in the single-context case
             // the NFI frontend is taking care of that already
-            MethodHandle cachedHandle = cachedClosureInfo.cachedHandle.asType(signature.getUpcallMethodType());
+            MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
             MemoryAddress ret = signature.bind(cachedHandle, cachedExecutable);  // TODO check if this can also be cached
             return new PanamaClosure(ret);
         }
@@ -176,7 +176,7 @@ final class PanamaSignature {
                                                @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                                                @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
             assert signature.signatureInfo == cachedSignatureInfo;
-            MethodHandle cachedHandle = cachedClosureInfo.cachedHandle.asType(signature.getUpcallMethodType());
+            MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
             MemoryAddress ret = signature.bind(cachedHandle, executable);
             return new PanamaClosure(ret);
         }
@@ -185,7 +185,7 @@ final class PanamaSignature {
         @Specialization(replaces = "doCachedSignature")
         static PanamaClosure createClosure(PanamaSignature signature, Object executable) {
             PolymorphicClosureInfo cachedClosureInfo = PolymorphicClosureInfo.create(signature.signatureInfo);
-            MethodHandle cachedHandle = cachedClosureInfo.cachedHandle.asType(signature.getUpcallMethodType());
+            MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
             MemoryAddress ret = signature.bind(cachedHandle, executable);
             return new PanamaClosure(ret);
         }
