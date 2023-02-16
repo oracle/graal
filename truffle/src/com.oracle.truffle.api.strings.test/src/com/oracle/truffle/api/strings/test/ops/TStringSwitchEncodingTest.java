@@ -52,8 +52,10 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.strings.AbstractTruffleString;
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringIterator;
 import com.oracle.truffle.api.strings.test.TStringTestBase;
 
 @RunWith(Parameterized.class)
@@ -80,16 +82,40 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
                 return;
             }
             for (TruffleString.Encoding targetEncoding : reducedEncodingSet) {
-                TruffleString b = node.execute(a, targetEncoding);
-                MutableTruffleString bMutable = nodeMutable.execute(a, targetEncoding);
-                if (a instanceof TruffleString && (encoding == targetEncoding || !isDebugStrictEncodingChecks() && codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(targetEncoding))) {
-                    Assert.assertSame(a, b);
-                }
-                if (a instanceof MutableTruffleString && encoding == targetEncoding) {
-                    Assert.assertSame(a, bMutable);
-                }
-                if (isUTF(encoding) && isUTF(targetEncoding) && isValid) {
-                    assertCodePointsEqual(b, targetEncoding, codepoints);
+                boolean bothUTF = isUTF(encoding) && isUTF(targetEncoding);
+                for (TruffleString.SwitchEncodingNode.ErrorHandling errorHandling : bothUTF ? TruffleString.SwitchEncodingNode.ErrorHandling.values()
+                                : new TruffleString.SwitchEncodingNode.ErrorHandling[]{TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE}) {
+                    TruffleString b = node.execute(a, targetEncoding, errorHandling);
+                    MutableTruffleString bMutable = nodeMutable.execute(a, targetEncoding, errorHandling);
+                    if (a instanceof TruffleString &&
+                                    (encoding == targetEncoding || !isDebugStrictEncodingChecks() && codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(targetEncoding))) {
+                        Assert.assertSame(a, b);
+                    }
+                    if (a instanceof MutableTruffleString && encoding == targetEncoding) {
+                        Assert.assertSame(a, bMutable);
+                    }
+                    if (bothUTF) {
+                        for (AbstractTruffleString target : new AbstractTruffleString[]{b, bMutable}) {
+                            if (encoding == targetEncoding || isValid) {
+                                assertCodePointsEqual(target, targetEncoding, codepoints);
+                            } else {
+                                TruffleStringIterator it = target.createCodePointIteratorUncached(targetEncoding);
+                                for (int codepoint : codepoints) {
+                                    int expected = codepoint;
+                                    if (codepoint > Character.MAX_CODE_POINT) {
+                                        expected = 0xfffd;
+                                    } else if (codepoint <= 0xffff && Character.isSurrogate((char) codepoint)) {
+                                        if (errorHandling == TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE) {
+                                            expected = 0xfffd;
+                                        } else if (targetEncoding == TruffleString.Encoding.UTF_8) {
+                                            expected = 0xfffd;
+                                        }
+                                    }
+                                    Assert.assertEquals(expected, it.nextUncached());
+                                }
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -97,6 +123,6 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
 
     @Test
     public void testNull() throws Exception {
-        checkNullSE((s, e) -> node.execute(s, e));
+        checkNullSE((s, e) -> node.execute(s, e, TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE));
     }
 }

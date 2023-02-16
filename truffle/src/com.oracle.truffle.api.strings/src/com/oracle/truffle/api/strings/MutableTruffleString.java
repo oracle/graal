@@ -46,10 +46,13 @@ import static com.oracle.truffle.api.strings.TStringGuards.isStride2;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
 
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -306,8 +309,9 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
         @Specialization
         static MutableTruffleString fromTruffleString(TruffleString a, Encoding expectedEncoding,
-                        @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode) {
-            return createCopying(a, expectedEncoding, copyToByteArrayNode);
+                        @Bind("this") Node node,
+                        @Cached TruffleString.ToIndexableNode toIndexableNode) {
+            return createCopying(node, a, expectedEncoding, toIndexableNode);
         }
 
         /**
@@ -360,8 +364,9 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
         @Specialization(guards = "a.isNative() || a.isImmutable()")
         static MutableTruffleString fromTruffleString(AbstractTruffleString a, Encoding expectedEncoding,
-                        @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode) {
-            return createCopying(a, expectedEncoding, copyToByteArrayNode);
+                        @Bind("this") Node node,
+                        @Cached TruffleString.ToIndexableNode toIndexableNode) {
+            return createCopying(node, a, expectedEncoding, toIndexableNode);
         }
 
         /**
@@ -648,25 +653,41 @@ public final class MutableTruffleString extends AbstractTruffleString {
         /**
          * Returns a version of string {@code a} that is encoded in the given encoding, which may be
          * the string itself or a converted version.
+         *
+         * @since 22.1
+         * @deprecated use
+         *             {@link #execute(AbstractTruffleString, Encoding, TruffleString.SwitchEncodingNode.ErrorHandling)}
+         *             instead.
+         */
+        @Deprecated(since = "23.0")
+        public final MutableTruffleString execute(AbstractTruffleString a, Encoding encoding) {
+            return execute(a, encoding, encoding == Encoding.UTF_16 || encoding == Encoding.UTF_32 ? KEEP_SURROGATES : REPLACE);
+        }
+
+        /**
+         * Returns a version of string {@code a} that is encoded in the given encoding, which may be
+         * the string itself or a converted version.
          * <p>
          * If no lossless conversion is possible, the string is converted on a best-effort basis; no
          * exception is thrown and characters which cannot be mapped in the target encoding are
          * replaced by {@code '\ufffd'} (for UTF-*) or {@code '?'}.
          *
-         * @since 22.1
+         * @since 23.0
          */
-        public abstract MutableTruffleString execute(AbstractTruffleString a, Encoding encoding);
+        public abstract MutableTruffleString execute(AbstractTruffleString a, Encoding encoding, TruffleString.SwitchEncodingNode.ErrorHandling errorHandling);
 
+        @SuppressWarnings("unused")
         @Specialization(guards = "a.isCompatibleToIntl(encoding)")
-        static MutableTruffleString compatibleMutable(MutableTruffleString a, @SuppressWarnings("unused") Encoding encoding) {
+        static MutableTruffleString compatibleMutable(MutableTruffleString a, Encoding encoding, TruffleString.SwitchEncodingNode.ErrorHandling errorHandling) {
             return a;
         }
 
         @Specialization(guards = "!a.isCompatibleToIntl(encoding) || a.isImmutable()")
-        static MutableTruffleString transcodeAndCopy(AbstractTruffleString a, Encoding encoding,
-                        @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+        static MutableTruffleString transcodeAndCopy(AbstractTruffleString a, Encoding encoding, TruffleString.SwitchEncodingNode.ErrorHandling errorHandling,
+                        @Bind("this") Node node,
+                        @Cached TruffleString.InternalSwitchEncodingNode switchEncodingNode,
                         @Cached AsMutableTruffleStringNode asMutableTruffleStringNode) {
-            TruffleString switched = switchEncodingNode.execute(a, encoding);
+            TruffleString switched = switchEncodingNode.execute(node, a, encoding, errorHandling);
             return asMutableTruffleStringNode.execute(switched, encoding);
         }
 
@@ -721,9 +742,14 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
         @Specialization(guards = "!a.isCompatibleToIntl(targetEncoding) || a.isImmutable()")
         static MutableTruffleString reinterpret(AbstractTruffleString a, Encoding expectedEncoding, Encoding targetEncoding,
-                        @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode) {
+                        @Bind("this") Node node,
+                        @Cached TruffleString.ToIndexableNode toIndexableNode) {
             a.checkEncoding(expectedEncoding);
-            return createCopying(a, expectedEncoding, targetEncoding, copyToByteArrayNode);
+            int byteLength = a.byteLength(expectedEncoding);
+            checkByteLength(byteLength, targetEncoding);
+            Object arrayA = toIndexableNode.execute(node, a, a.data());
+            final byte[] array = TStringOps.arraycopyOfWithStride(node, arrayA, a.offset(), a.length(), a.stride(), byteLength >> expectedEncoding.naturalStride, expectedEncoding.naturalStride);
+            return MutableTruffleString.create(array, 0, byteLength >> targetEncoding.naturalStride, targetEncoding);
         }
 
         /**
@@ -829,22 +855,21 @@ public final class MutableTruffleString extends AbstractTruffleString {
         }
     }
 
-    static MutableTruffleString createCopying(AbstractTruffleString a, Encoding encoding,
-                    TruffleString.CopyToByteArrayNode copyToByteArrayNode) {
-        return createCopying(a, encoding, encoding, a.byteLength(encoding), copyToByteArrayNode);
+    static MutableTruffleString createCopying(Node node, AbstractTruffleString a, Encoding encoding, TruffleString.ToIndexableNode toIndexableNode) {
+        return createCopying(node, a, encoding, a.byteLength(encoding), toIndexableNode);
     }
 
-    static MutableTruffleString createCopying(AbstractTruffleString a, Encoding expectedEncoding, Encoding targetEncoding,
-                    TruffleString.CopyToByteArrayNode copyToByteArrayNode) {
+    static MutableTruffleString createCopying(Node node, AbstractTruffleString a, Encoding expectedEncoding, Encoding targetEncoding, TruffleString.ToIndexableNode toIndexableNode) {
         int byteLength = a.byteLength(expectedEncoding);
         checkByteLength(byteLength, targetEncoding);
-        return createCopying(a, expectedEncoding, targetEncoding, byteLength, copyToByteArrayNode);
+        return createCopying(node, a, targetEncoding, byteLength, toIndexableNode);
     }
 
-    static MutableTruffleString createCopying(AbstractTruffleString a, Encoding expectedEncoding, Encoding targetEncoding, int byteLength,
-                    TruffleString.CopyToByteArrayNode copyToByteArrayNode) {
-        final byte[] array = new byte[byteLength];
-        copyToByteArrayNode.execute(a, 0, array, 0, byteLength, expectedEncoding);
-        return MutableTruffleString.create(array, 0, byteLength >> targetEncoding.naturalStride, targetEncoding);
+    static MutableTruffleString createCopying(Node node, AbstractTruffleString a, Encoding targetEncoding, int byteLength, TruffleString.ToIndexableNode toIndexableNode) {
+        int strideB = targetEncoding.naturalStride;
+        int lengthB = byteLength >> strideB;
+        Object arrayA = toIndexableNode.execute(node, a, a.data());
+        final byte[] array = TStringOps.arraycopyOfWithStride(node, arrayA, a.offset(), a.length(), a.stride(), lengthB, strideB);
+        return MutableTruffleString.create(array, 0, lengthB, targetEncoding);
     }
 }

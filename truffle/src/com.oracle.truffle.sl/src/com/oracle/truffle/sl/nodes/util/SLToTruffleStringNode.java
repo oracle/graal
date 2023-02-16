@@ -41,6 +41,7 @@
 package com.oracle.truffle.sl.nodes.util;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -89,7 +90,7 @@ public abstract class SLToTruffleStringNode extends Node {
     protected static TruffleString fromString(String value,
                     // TruffleString nodes cannot be inlined yet
                     @Shared("fromJava") @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {
-        return fromJavaStringNode.execute(value, SLLanguage.STRING_ENCODING);
+        return fromJavaStringNode.execute(value, SLLanguage.STRING_ENCODING, REPLACE);
     }
 
     @Specialization
@@ -113,7 +114,7 @@ public abstract class SLToTruffleStringNode extends Node {
     @TruffleBoundary
     protected static TruffleString fromBigNumber(SLBigInteger value,
                     @Shared("fromJava") @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {
-        return fromJavaStringNode.execute(value.toString(), SLLanguage.STRING_ENCODING);
+        return fromJavaStringNode.execute(value.toString(), SLLanguage.STRING_ENCODING, REPLACE);
     }
 
     @Specialization
@@ -130,9 +131,9 @@ public abstract class SLToTruffleStringNode extends Node {
             if (interop.fitsInLong(value)) {
                 return fromLongNode.execute(interop.asLong(value), SLLanguage.STRING_ENCODING, true);
             } else if (interop.isString(value)) {
-                return fromJavaStringNode.execute(interop.asString(value), SLLanguage.STRING_ENCODING);
+                return fromJavaStringNode.execute(interop.asString(value), SLLanguage.STRING_ENCODING, REPLACE);
             } else if (interop.isNumber(value) && value instanceof SLBigInteger) {
-                return fromJavaStringNode.execute(bigNumberToString((SLBigInteger) value), SLLanguage.STRING_ENCODING);
+                return fromJavaStringNode.execute(bigNumberToString((SLBigInteger) value), SLLanguage.STRING_ENCODING, REPLACE);
             } else if (interop.isNull(value)) {
                 return SLStrings.NULL_LC;
             } else {

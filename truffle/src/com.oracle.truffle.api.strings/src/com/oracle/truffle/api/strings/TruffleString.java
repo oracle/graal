@@ -62,6 +62,8 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isUnsupportedEncoding;
 import static com.oracle.truffle.api.strings.TStringGuards.littleEndian;
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -2028,9 +2030,35 @@ public final class TruffleString extends AbstractTruffleString {
          * possible.
          *
          * @since 22.1
+         * @deprecated use {@link #execute(String, Encoding, SwitchEncodingNode.ErrorHandling)}
+         *             instead.
          */
+        @Deprecated(since = "23.0")
         public final TruffleString execute(String value, Encoding encoding) {
-            return execute(value, 0, value.length(), encoding, false);
+            return execute(value, encoding, encoding == Encoding.UTF_32 ? KEEP_SURROGATES : REPLACE);
+        }
+
+        /**
+         * Creates a {@link TruffleString} from a Java string, re-using its internal byte array if
+         * possible.
+         *
+         * @since 23.0
+         */
+        public final TruffleString execute(String value, Encoding encoding, SwitchEncodingNode.ErrorHandling errorHandling) {
+            return execute(value, 0, value.length(), encoding, false, errorHandling);
+        }
+
+        /**
+         * Creates a {@link TruffleString} from a given region in a Java string.
+         *
+         * @since 22.1
+         * @deprecated use
+         *             {@link #execute(String, int, int, Encoding, boolean, SwitchEncodingNode.ErrorHandling)}
+         *             instead.
+         */
+        @Deprecated(since = "23.0")
+        public final TruffleString execute(String value, int charOffset, int length, Encoding encoding, boolean copy) {
+            return execute(value, charOffset, length, encoding, copy, encoding == Encoding.UTF_32 ? KEEP_SURROGATES : REPLACE);
         }
 
         /**
@@ -2040,12 +2068,12 @@ public final class TruffleString extends AbstractTruffleString {
          * region does not cover the entire string. Note that this will keep the Java string's byte
          * array alive as long as the resulting {@link TruffleString} is alive.
          *
-         * @since 22.1
+         * @since 23.0
          */
-        public abstract TruffleString execute(String value, int charOffset, int length, Encoding encoding, boolean copy);
+        public abstract TruffleString execute(String value, int charOffset, int length, Encoding encoding, boolean copy, SwitchEncodingNode.ErrorHandling errorHandling);
 
         @Specialization
-        final TruffleString doUTF16(String javaString, int charOffset, int length, Encoding encoding, final boolean copy,
+        final TruffleString doUTF16(String javaString, int charOffset, int length, Encoding encoding, final boolean copy, SwitchEncodingNode.ErrorHandling errorHandling,
                         @Cached TStringInternalNodes.FromJavaStringUTF16Node fromJavaStringUTF16Node,
                         @Cached InternalSwitchEncodingNode switchEncodingNode,
                         @Cached InlinedConditionProfile utf16Profile) {
@@ -2056,7 +2084,7 @@ public final class TruffleString extends AbstractTruffleString {
             if (utf16Profile.profile(this, encoding == Encoding.UTF_16)) {
                 return utf16String;
             }
-            return switchEncodingNode.execute(this, utf16String, encoding);
+            return switchEncodingNode.execute(this, utf16String, encoding, errorHandling);
         }
 
         /**
@@ -4793,7 +4821,7 @@ public final class TruffleString extends AbstractTruffleString {
             CompilerAsserts.partialEvaluationConstant(lazy);
             if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
                 b.looseCheckEncoding(expectedEncoding, b.codeRange());
-                return b.switchEncodingUncached(expectedEncoding);
+                return b.switchEncodingUncached(expectedEncoding, REPLACE);
             }
             b.checkEncoding(expectedEncoding);
             return b;
@@ -4805,7 +4833,7 @@ public final class TruffleString extends AbstractTruffleString {
             CompilerAsserts.partialEvaluationConstant(lazy);
             if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
                 b.looseCheckEncoding(expectedEncoding, b.codeRange());
-                return b.switchEncodingUncached(expectedEncoding);
+                return b.switchEncodingUncached(expectedEncoding, REPLACE);
             }
             return attributesNode.execute(this, b, expectedEncoding);
         }
@@ -4815,7 +4843,7 @@ public final class TruffleString extends AbstractTruffleString {
             CompilerAsserts.partialEvaluationConstant(lazy);
             if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
                 a.looseCheckEncoding(expectedEncoding, a.codeRange());
-                return a.switchEncodingUncached(expectedEncoding);
+                return a.switchEncodingUncached(expectedEncoding, REPLACE);
             }
             a.checkEncoding(expectedEncoding);
             return a;
@@ -4828,7 +4856,7 @@ public final class TruffleString extends AbstractTruffleString {
             CompilerAsserts.partialEvaluationConstant(lazy);
             if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
                 a.looseCheckEncoding(expectedEncoding, a.codeRange());
-                return a.switchEncodingUncached(expectedEncoding);
+                return a.switchEncodingUncached(expectedEncoding, REPLACE);
             }
             return attributesNode.execute(node, a, expectedEncoding);
         }
@@ -5808,6 +5836,7 @@ public final class TruffleString extends AbstractTruffleString {
                     return;
                 }
             }
+            assert a.stride() == expectedEncoding.naturalStride;
             final int byteLengthA = a.length() << a.stride();
             boundsCheckRegionI(byteFromIndexA, byteLength, byteLengthA);
             TStringOps.arraycopyWithStride(node,
@@ -5936,7 +5965,7 @@ public final class TruffleString extends AbstractTruffleString {
                 utf16Array = arrayCur;
             } else {
                 assert TSCodeRange.isPrecise(cur.codeRange());
-                TruffleString transCoded = transCodeNode.execute(node, cur, arrayCur, getCodePointLengthNode.execute(node, cur, encodingA), cur.codeRange(), Encoding.UTF_16);
+                TruffleString transCoded = transCodeNode.execute(node, cur, arrayCur, getCodePointLengthNode.execute(node, cur, encodingA), cur.codeRange(), Encoding.UTF_16, KEEP_SURROGATES);
                 if (!transCoded.isCacheHead()) {
                     a.cacheInsert(transCoded);
                 }
@@ -5965,7 +5994,8 @@ public final class TruffleString extends AbstractTruffleString {
                 utf16String = a;
             } else {
                 assert TSCodeRange.isPrecise(a.codeRange());
-                utf16String = transCodeNode.execute(node, a, a.data(), getCodePointLengthNode.execute(node, a, encodingA), a.codeRange(), Encoding.UTF_16);
+                utf16String = transCodeNode.execute(node, a, a.data(), getCodePointLengthNode.execute(node, a, encodingA), a.codeRange(), Encoding.UTF_16,
+                                KEEP_SURROGATES);
             }
             return createJavaStringNode.execute(node, utf16String, utf16String.data());
         }
@@ -6143,7 +6173,31 @@ public final class TruffleString extends AbstractTruffleString {
      */
     public abstract static class SwitchEncodingNode extends AbstractPublicNode {
 
+        public enum ErrorHandling {
+            /**
+             * Replace all invalid codepoints with unicode replacement character {@code 0xfffe} or
+             * ascii {@code '?'}.
+             */
+            REPLACE,
+            /**
+             * Try to keep invalid UTF-16 surrogate values ({@code [0xd800 - 0xdfff]}).
+             */
+            KEEP_SURROGATES
+        }
+
         SwitchEncodingNode() {
+        }
+
+        /**
+         * Returns a version of string {@code a} that is encoded in the given encoding, which may be
+         * the string itself or a converted version.
+         *
+         * @since 22.1
+         * @deprecated use {@link #execute(AbstractTruffleString, Encoding, ErrorHandling)} instead.
+         */
+        @Deprecated(since = "23.0")
+        public final TruffleString execute(AbstractTruffleString a, Encoding encoding) {
+            return execute(a, encoding, encoding == Encoding.UTF_16 || encoding == Encoding.UTF_32 ? KEEP_SURROGATES : REPLACE);
         }
 
         /**
@@ -6158,12 +6212,14 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        public abstract TruffleString execute(AbstractTruffleString a, Encoding encoding);
+        public abstract TruffleString execute(AbstractTruffleString a, Encoding encoding, ErrorHandling errorHandling);
 
         @Specialization
-        final TruffleString switchEncoding(AbstractTruffleString a, Encoding encoding,
+        final TruffleString switchEncoding(AbstractTruffleString a, Encoding encoding, ErrorHandling errorHandling,
                         @Cached InternalSwitchEncodingNode internalNode) {
-            return internalNode.execute(this, a, encoding);
+            // TODO: uncomment once the deprecated execute method is removed
+            // CompilerAsserts.partialEvaluationConstant(errorHandling);
+            return internalNode.execute(this, a, encoding, errorHandling);
         }
 
         /**
@@ -6188,22 +6244,22 @@ public final class TruffleString extends AbstractTruffleString {
 
     abstract static class InternalSwitchEncodingNode extends AbstractInternalNode {
 
-        public abstract TruffleString execute(Node node, AbstractTruffleString a, Encoding targetEncoding);
+        public abstract TruffleString execute(Node node, AbstractTruffleString a, Encoding targetEncoding, SwitchEncodingNode.ErrorHandling errorHandling);
 
         @Specialization(guards = "a.isCompatibleToIntl(targetEncoding)")
-        static TruffleString compatibleImmutable(TruffleString a, @SuppressWarnings("unused") Encoding targetEncoding) {
+        static TruffleString compatibleImmutable(TruffleString a, @SuppressWarnings("unused") Encoding targetEncoding, @SuppressWarnings("unused") SwitchEncodingNode.ErrorHandling errorHandling) {
             assert !a.isJavaString();
             return a;
         }
 
         @Specialization(guards = "a.isCompatibleToIntl(targetEncoding)")
-        static TruffleString compatibleMutable(Node node, MutableTruffleString a, Encoding targetEncoding,
+        static TruffleString compatibleMutable(Node node, MutableTruffleString a, Encoding targetEncoding, @SuppressWarnings("unused") SwitchEncodingNode.ErrorHandling errorHandling,
                         @Cached InternalAsTruffleStringNode asTruffleStringNode) {
             return asTruffleStringNode.execute(node, a, targetEncoding);
         }
 
         @Specialization(guards = "!a.isCompatibleToIntl(targetEncoding)")
-        static TruffleString transCode(Node node, TruffleString a, Encoding targetEncoding,
+        static TruffleString transCode(Node node, TruffleString a, Encoding targetEncoding, SwitchEncodingNode.ErrorHandling errorHandling,
                         @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached InlinedConditionProfile preciseCodeRangeIsCompatibleProfile,
                         @Exclusive @Cached InlinedConditionProfile cacheHit,
@@ -6228,7 +6284,7 @@ public final class TruffleString extends AbstractTruffleString {
                     return cur;
                 }
             }
-            TruffleString transCoded = transCodeNode.execute(node, a, toIndexableNode.execute(node, a, a.data()), a.codePointLength(), preciseCodeRangeA, targetEncoding);
+            TruffleString transCoded = transCodeNode.execute(node, a, toIndexableNode.execute(node, a, a.data()), a.codePointLength(), preciseCodeRangeA, targetEncoding, errorHandling);
             if (!transCoded.isCacheHead()) {
                 a.cacheInsert(transCoded);
             }
@@ -6236,7 +6292,7 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         @Specialization(guards = "!a.isCompatibleToIntl(targetEncoding)")
-        static TruffleString transCodeMutable(Node node, MutableTruffleString a, Encoding targetEncoding,
+        static TruffleString transCodeMutable(Node node, MutableTruffleString a, Encoding targetEncoding, SwitchEncodingNode.ErrorHandling errorHandling,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached @Shared TStringInternalNodes.TransCodeNode transCodeNode,
@@ -6255,7 +6311,7 @@ public final class TruffleString extends AbstractTruffleString {
                                 arrayDst, 0, strideDst, 0, a.length());
                 return createFromByteArray(arrayDst, a.length(), strideDst, targetEncoding, codePointLengthA, codeRangeA);
             } else {
-                return transCodeNode.execute(node, a, a.data(), codePointLengthA, codeRangeA, targetEncoding);
+                return transCodeNode.execute(node, a, a.data(), codePointLengthA, codeRangeA, targetEncoding, errorHandling);
             }
         }
 

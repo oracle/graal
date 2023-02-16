@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.interop;
 
+import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -64,7 +66,7 @@ final class DefaultStringExports {
     @ExportMessage
     static TruffleString asTruffleString(String receiver,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
-        return fromJavaStringNode.execute(receiver, TruffleString.Encoding.UTF_16);
+        return fromJavaStringNode.execute(receiver, TruffleString.Encoding.UTF_16, KEEP_SURROGATES);
     }
 
     /*
