@@ -218,30 +218,53 @@ final class PanamaSignature {
         }
 
         @ExportMessage
-        void setReturnType(Object t) {
-            PanamaType type = (PanamaType) t;
+        static class SetReturnType {
 
-            if (type.nativeLayout == null) {
-                descriptor = descriptor.dropReturnLayout();
-            } else {
-                descriptor = descriptor.changeReturnLayout(type.nativeLayout);
+            @Specialization(guards = {"type == cachedType"})
+            static void doCached(PanamaSignatureBuilder builder, @SuppressWarnings("unused") PanamaType type,
+                                 @Cached("type") PanamaType cachedType) {
+                setReturnType(builder, cachedType);
             }
 
-            retType = type;
-            downcallType = downcallType.changeReturnType(type.javaType);
-            upcallType = upcallType.changeReturnType(type.javaRetType);
+            @Specialization(replaces = "doCached")
+            static void doGeneric(PanamaSignatureBuilder builder, PanamaType type) {
+                setReturnType(builder, type);
+            }
+
+            private static void setReturnType(PanamaSignatureBuilder builder, PanamaType type) {
+                if (type.nativeLayout == null) {
+                    builder.descriptor = builder.descriptor.dropReturnLayout();
+                } else {
+                    builder.descriptor = builder.descriptor.changeReturnLayout(type.nativeLayout);
+                }
+
+                builder.retType = type;
+                builder.downcallType = builder.downcallType.changeReturnType(type.javaType);
+                builder.upcallType = builder.upcallType.changeReturnType(type.javaRetType);
+            }
         }
 
         @ExportMessage
-        void addArgument(Object t) {
-            PanamaType type = (PanamaType) t;
+        static class AddArgument {
 
-            ArgsState newState = argsState.addArg(type);
-            addArg(type, newState);
+            @Specialization(guards = {"builder.argsState == oldState", "type == cachedType"})
+            static void doCached(PanamaSignatureBuilder builder, PanamaType type,
+                             @Cached("type") PanamaType cachedType,
+                             @Cached("builder.argsState") ArgsState oldState,
+                             @Cached("oldState.addArg(cachedType)") ArgsState newState) {
+                assert builder.argsState == oldState && type == cachedType;
+                builder.addArg(cachedType, newState);
 
-            descriptor = descriptor.appendArgumentLayouts(type.nativeLayout);
-            downcallType = downcallType.appendParameterTypes(type.javaType);
-            upcallType = upcallType.appendParameterTypes(type.javaType);
+                builder.descriptor = builder.descriptor.appendArgumentLayouts(type.nativeLayout);
+                builder.downcallType = builder.downcallType.appendParameterTypes(type.javaType);
+                builder.upcallType = builder.upcallType.appendParameterTypes(type.javaType);
+            }
+
+            @Specialization(replaces = "doCached")
+            static void doGeneric(PanamaSignatureBuilder builder, PanamaType type) {
+                ArgsState newState = builder.argsState.addArg(type);
+                builder.addArg(type, newState);
+            }
         }
 
         @ExportMessage
