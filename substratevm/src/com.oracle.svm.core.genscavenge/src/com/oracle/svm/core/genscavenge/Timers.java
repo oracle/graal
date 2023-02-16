@@ -81,7 +81,7 @@ final class Timer implements AutoCloseable {
         if (!wasOpened) {
             /* If a timer was not opened, pretend it was opened at the start of the VM. */
             assert openNanos == 0;
-            openNanos = HeapImpl.getChunkProvider().getFirstAllocationTime();
+            return HeapImpl.getChunkProvider().getFirstAllocationTime();
         }
         return openNanos;
     }
