@@ -342,7 +342,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return !source.getOptions().isBooleanMatch() && lazyDFANode.captureGroupEntryNode != null;
     }
 
-    private void switchToEagerDFA(RegexProfile profile) {
+    private synchronized void switchToEagerDFA(RegexProfile profile) {
         compileEagerDFA();
         if (eagerDFANode != EAGER_DFA_BAILED_OUT) {
             Loggers.LOG_SWITCH_TO_EAGER.fine(() -> "regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
