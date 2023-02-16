@@ -36,16 +36,22 @@ public class AtomicUtils {
 
     public static <T, V> boolean atomicSet(T holder, V value, AtomicReferenceFieldUpdater<T, V> updater) {
         Objects.requireNonNull(value, "The value parameter of AtomicUtils.atomicSet() should not be null.");
-        return updater.compareAndSet(holder, null, value);
+        if (updater.get(holder) == null) {
+            return updater.compareAndSet(holder, null, value);
+        }
+        return false;
     }
 
     public static <T, V> boolean atomicSetAndRun(T holder, V value, AtomicReferenceFieldUpdater<T, V> updater, Runnable task) {
         Objects.requireNonNull(value, "The value parameter of AtomicUtils.atomicSetAndRun() should not be null.");
-        boolean firstAttempt = updater.compareAndSet(holder, null, value);
-        if (firstAttempt) {
-            task.run();
+        if (updater.get(holder) == null) {
+            boolean firstAttempt = updater.compareAndSet(holder, null, value);
+            if (firstAttempt) {
+                task.run();
+            }
+            return firstAttempt;
         }
-        return firstAttempt;
+        return false;
     }
 
     public static <T, V> boolean isSet(T holder, AtomicReferenceFieldUpdater<T, V> updater) {
@@ -54,24 +60,34 @@ public class AtomicUtils {
 
     /**
      * Atomically set the field to 1 if the current value is 0.
+     *
+     * Performing a read before the compare and set is more cache friendly.
      * 
      * @return {@code true} if successful.
      */
     public static <T> boolean atomicMark(T holder, AtomicIntegerFieldUpdater<T> updater) {
-        return updater.compareAndSet(holder, 0, 1);
+        if (updater.get(holder) == 0) {
+            return updater.compareAndSet(holder, 0, 1);
+        }
+        return false;
     }
 
     /**
      * Atomically set the field to 1 if the current value is 0. If successful, execute the task.
      *
+     * Performing a read before the compare and set is more cache friendly.
+     *
      * @return {@code true} if successful.
      */
     public static <T> boolean atomicMarkAndRun(T holder, AtomicIntegerFieldUpdater<T> updater, Runnable task) {
-        boolean firstAttempt = updater.compareAndSet(holder, 0, 1);
-        if (firstAttempt) {
-            task.run();
+        if (updater.get(holder) == 0) {
+            boolean firstAttempt = updater.compareAndSet(holder, 0, 1);
+            if (firstAttempt) {
+                task.run();
+            }
+            return firstAttempt;
         }
-        return firstAttempt;
+        return false;
     }
 
     /**
@@ -83,25 +99,35 @@ public class AtomicUtils {
 
     /**
      * Atomically sets the value to {@code true} if the current value {@code == false}.
-     * 
+     *
+     * Performing a read before the compare and set is more cache friendly.
+     *
      * @return {@code true} if successful.
      */
     public static boolean atomicMark(AtomicBoolean flag) {
-        return flag.compareAndSet(false, true);
+        if (!flag.get()) {
+            return flag.compareAndSet(false, true);
+        }
+        return false;
     }
 
     /**
      * Atomically sets the value to {@code true} if the current value {@code == false}. If
      * successful, execute the task.
      *
+     * Performing a read before the compare and set is more cache friendly.
+     *
      * @return {@code true} if successful.
      */
     public static boolean atomicMarkAndRun(AtomicBoolean flag, Runnable task) {
-        boolean firstAttempt = flag.compareAndSet(false, true);
-        if (firstAttempt) {
-            task.run();
+        if (!flag.get()) {
+            boolean firstAttempt = flag.compareAndSet(false, true);
+            if (firstAttempt) {
+                task.run();
+            }
+            return firstAttempt;
         }
-        return firstAttempt;
+        return false;
     }
 
     /**

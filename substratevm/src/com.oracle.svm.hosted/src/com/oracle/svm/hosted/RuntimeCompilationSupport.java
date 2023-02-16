@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.analysis;
+package com.oracle.svm.hosted;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
+import com.oracle.svm.hosted.code.CompileQueue;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-
-/**
- * {@link com.oracle.graal.pointsto.api.HostVM} methods which may be overwritten by substratevm
- * features.
- */
-public interface SVMParsingSupport {
-
-    Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method);
-
-    boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph);
-
-    boolean allowAssumptions(AnalysisMethod method);
+public interface RuntimeCompilationSupport {
+    void onCompileQueueCreation(HostedUniverse universe, CompileQueue compileQueue);
 }

@@ -78,6 +78,7 @@ import com.oracle.svm.common.meta.MultiMethod;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
@@ -253,7 +254,8 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                 /* The object clones must get field flows of the originals. */
                 for (AnalysisObject originalObject : inputState.objects(type)) {
                     /* Link all the field flows of the original to the clone. */
-                    for (AnalysisField field : type.getInstanceFields(true)) {
+                    for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
+                        AnalysisField field = (AnalysisField) javaField;
                         FieldTypeFlow originalObjectFieldFlow = originalObject.getInstanceFieldFlow(bb, inputFlow, source, field, false);
 
                         for (AnalysisObject cloneObject : cloneState.objects(type)) {
@@ -275,12 +277,12 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
              * used to model context sensitivity and context merging for fields of this
              * context-insensitive object, and the interaction with the fields of context-sensitive
              * objects of the same type.
-             * 
+             *
              * All values written to fields of context-sensitive receivers are also reflected to the
              * context-insensitive receiver *read* flow, but without any context information, such
              * that all the reads from the fields of the context insensitive object reflect all the
              * types written to the context-sensitive ones, but without triggering merging.
-             * 
+             *
              * Once the context-sensitive receiver object is marked as merged, i.e., it looses its
              * context sensitivity, the field flows are routed to the context-insensitive receiver
              * *write* flow, thus triggering their merging. See ContextSensitiveAnalysisObject.

@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
@@ -98,7 +99,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
     @Override
     public boolean allowRuntimeCompilation() {
-        return true;
+        return !SubstrateOptions.parseOnce();
     }
 
     @Override
@@ -117,6 +118,8 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         if (MultiMethod.isDeoptTarget(method)) {
             if (method instanceof HostedMethod) {
                 deoptTargetInfo = ((HostedMethod) method).compilationInfo;
+            } else {
+                throw VMError.unimplemented("Pod support currently does not work with ParseOnceJIT");
             }
         }
 
@@ -197,7 +200,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         return invokeWithDeoptAndExceptionUnwind(kit, deoptTargetInfo, nextDeoptIndex, targetCtor, InvokeKind.Special, invokeArgs);
     }
 
-    /** @see com.oracle.svm.hosted.phases.HostedGraphBuilderPhase */
+    /** @see com.oracle.svm.hosted.phases.SharedGraphBuilderPhase */
     private static int invokeWithDeoptAndExceptionUnwind(HostedGraphKit kit, CompilationInfo deoptTargetInfo, int initialNextDeoptIndex, ResolvedJavaMethod target, InvokeKind invokeKind,
                     ValueNode... args) {
         int bci = kit.bci();
@@ -247,7 +250,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         return nextDeoptIndex;
     }
 
-    /** @see com.oracle.svm.hosted.phases.HostedGraphBuilderPhase */
+    /** @see com.oracle.svm.hosted.phases.SharedGraphBuilderPhase */
     private static int appendDeoptWithExceptionUnwind(HostedGraphKit kit, FrameState state, int exceptionBci, int nextDeoptIndex) {
         var entry = kit.add(new DeoptEntryNode());
         entry.setStateAfter(state.duplicate());
