@@ -44,13 +44,13 @@ Similarly, the equivalent options `-H:OptimizationLog` and `-H:OptimizationLogPa
 The value of the option `-Dgraal.OptimizationLog` specifies where the structured optimization log is printed.
 The accepted values are:
 
-- `Directory` - format the structured optimization as JSON and print it to files a directory. The directory
+- `Directory` - format the structured optimization as JSON and print it to files in a directory. The directory
   is specified by the option `-Dgraal.OptimizationLogPath`. If `OptimizationLogPath` is not set, the target directory is
   `DumpPath/optimization_log` (specified by `-Dgraal.DumpPath`). Directories are created if they do not exist.
 - `Stdout` - print the structured optimization log to the standard output.
 - `Dump` - dump optimization trees for IdealGraphVisualizer according to the `-Dgraal.PrintGraph` option.
 
-Multiple targets can be specified at once by separating them with a comma, e.g., `-Dgraal.OptimizationLog=Stdout,Dump`.
+Multiple targets can be specified together by separating them with a comma, e.g., `-Dgraal.OptimizationLog=Stdout,Dump`.
 The generated files are human-readable but verbose. Therefore, it is best to inspect them with `mx profdiff`. Read
 `Profdiff.md` for more information.
 
@@ -68,7 +68,7 @@ loop.loopBegin().graph().getOptimizationLog()
 
 The `withProperty` and `withLazyProperty` methods return an optimization entry that holds the provided named properties.
 The returned optimization entry can be further extended with more properties, and its `report` method should be called
-afterwards. The value of the property can be any `String`-convertible object. Property keys should be in `camelCase`.
+afterward. The value of the property can be any `String`-convertible object. Property keys should be in `camelCase`.
 
 If the computation of the value is costly, use the `withLazyProperty` method, which accepts a `Supplier<Object>`
 instead. If logging is enabled, the supplier is evaluated immediately. Otherwise, it is never evaluated.
@@ -81,22 +81,22 @@ graph.getOptimizationLog().withLazyProperty("replacedNodeClass", nodeClass::shor
 
 ## Optimization tree
 
-The context of the optimizations is also collected when `-Dgraal.OptimizationLog` is enabled. This is achieved by
+The context of optimizations is also collected when `-Dgraal.OptimizationLog` is enabled. This is achieved by
 notifying the graph's `OptimizationLog` whenever an optimization phase is entered or exited. We establish parent-child
-relationships between optimization phases and optimizations. The result is an optimization tree.
+relationships between the optimization phases and the optimizations. The result is an optimization tree.
 
 We create an artificial `RootPhase`, which is the root of the tree and initially is the *current phase*. When a phase is
 entered, the new phase is a child of the current phase and after that the current phase is set to the newly-entered
 phase. When an optimization is logged via the `report` method, it is attributed to the current phase. When a phase is
 exited, the current phase is updated to the parent of the just exited phase.
 
-The ASCII art below is a snippet of an optimization tree.
+The diagram below is a snippet of an optimization tree.
 
 ```
                                   RootPhase
                     _____________/    |    \_____________
                    /                  |                  \
-                LowTier            MidTier            HighTier
+               HighTier            MidTier             LowTier
            ______/  \___              |                   |
           /             \     CanonicalizerPhase         ...
   LoopPeelingPhase      ...     ___|     |__________
@@ -107,17 +107,118 @@ The ASCII art below is a snippet of an optimization tree.
                                           canonicalNodeClass: Constant}
 ```
 
+When a method is inlined, it may have already gone through some optimization phases. For that reason, the optimization
+tree of the inlinee is copied to the optimization tree of the caller. Therefore, the children of an optimization phase
+that performs inlining may be whole optimization subtrees rooted in a `RootPhase` like in the example below.
+
+```
+                                  RootPhase
+                    _____________/    |    \_____________
+                   /                  |                  \
+               HighTier            MidTier             LowTier
+                   |                  |                   |
+             InliningPhase           ...                 ...
+             ___/    \___
+            /            \
+        RootPhase     RootPhase
+            |             |
+           ...           ...
+```
+
 In reality, however, the trees are significantly larger than in this example. Read `Profdiff.md` to learn how to inspect
-a real tree. The sections below explain the format of a serialized optimization tree, and how to view the tree in IGV.
+a real tree. The sections below explain the format of a serialized optimization tree, and how to view an optimization
+tree in IGV.
 
 ## Inlining tree
 
-`-Dgraal.OptimizationLog` also collects inlining trees. The inlining tree represents the call tree of methods considered
-for inlining in a compilation. The root of the tree is the root-compiled method. Each node of the tree corresponds to
-one method, which may have been inlined or not. We store the result of the decision (i.e., inlined or not) and also the
-reason for this decision. There may be several negative decisions until a method is finally inlined. The children of a
-node are the methods invoked in the method which were considered for inlining. The bci of the callsite is also stored
-for each method in the tree.
+`-Dgraal.OptimizationLog` also collects inlining trees. The inlining tree of a compilation is a call tree with inlining
+decisions. The root of the tree is the root-compiled method. Each node of the tree corresponds to one method, which may
+have been inlined to the caller or not. We store the result of the decision (i.e., inlined or not) and also the reason
+for this decision. There may be several negative decisions until a method is finally inlined. The children of a node are
+the methods invoked in the method represented by the node. The bci of the callsite is also stored for each method in the
+tree.
+
+As an example, consider the following set of methods:
+
+```
+void a() { b(); c(); }
+void b() { }
+void c() { d(); e(); }
+void d() { }
+void e() { }
+```
+
+Inlining everything in a compilation of the method `a()` yields the inlining tree below. The prefixes in parentheses
+mark the *callsite kind* of an inlining-tree node. Callsite kinds will be explained later.
+
+```
+            (root) a()
+         ______/  \____
+       /                \
+(inlined) b()       (inlined) c()
+  at bci 0            at bci 3
+                  ______/  \_____
+                /                 \
+         (inlined) d()        (inlined) e()
+            at bci 0            at bci 3
+```
+
+In the preorder notation used by profdiff, the above inlining tree can be formatted as follows.
+
+```
+(root) a()
+    (inlined) b() at bci 0
+    (inlined) c() at bci 3
+        (inlined) d() at bci 0
+         (inlined) e() at bci 3
+```
+
+Each node except the root represents an invoke node in Graal IR. An invoke node may be deleted as a result of
+optimization. The call target of a callsite may be indirect. An indirect callsite cannot be directly inlined, but it may
+be devirtualized by the compiler. Devirtualized invokes are represented as the children of an indirect callsite in the
+inlining tree.
+
+Using all the properties described above, we classify each inlining-tree node into one of the following callsite kinds:
+
+- `root` - the compiled root method
+- `inlined` - an inlined method
+- `direct` - a direct method invocation, which was not inlined and not deleted
+- `indirect` - an indirect method invocation, which was not inlined and not deleted
+- `deleted` - a deleted method invocation
+- `devirtualized` - an indirect method invocation that was devirtualized to at least one direct call and then deleted
+
+When an invoke node is added to a Graal graph, it represents either a `direct` or an `indirect` callsite. A `direct`
+callsite may be inlined. When an invoke is inlined, it is deleted and the body of the call target is inserted in its
+place. The callsite is then marked `inlined`. Alternatively, a `direct` or an `indirect` callsite may be deleted, for
+example as a result of dead-code elimination. In that case, we mark the callsite `deleted`. Note that the classification
+of a callsite changes during compilation. The inlining tree captures the final state at the end of a compilation.
+
+An `indirect` callsite cannot be directly inlined. If there is only one recorded receiver type for an invoke, the
+compiler might (speculatively) relink the invoke to the recorded receiver, effectively making the call direct and
+inlinable. Such a call would be classified as `inlined` in the inlining tree. As another option, the compiler might
+insert a type switch for the receiver type. Each branch of the switch leads to a direct inlinable call and possibly to a
+virtual call or deoptimization as a fallback. In that case, the invokes created for the branches of the type switch are
+the children of the original invoke in the inlining tree. The original invoke is either marked `indirect` if it is alive
+or `devirtualized` if it is deleted.
+
+As an example of devirtualization, consider the snippet from profdiff below. The call to the `read()` method is
+indirect. The recorded receiver types are `ByteArrayInputStream` and `BufferedInputStream`. Both receiver types
+implement the `read()` method. We can see that the compiler inlined both implementations of `read()`. Read more about
+profdiff and indirect calls in `Profdiff.md`.
+
+```
+(devirtualized) java.io.InputStream.read() at bci 4
+    |_ receiver-type profile
+            97.30% java.io.ByteArrayInputStream -> java.io.ByteArrayInputStream.read()
+             2.70% java.io.BufferedInputStream -> java.io.BufferedInputStream.read()
+    (inlined) java.io.ByteArrayInputStream.read() at bci 4
+    (inlined) java.io.BufferedInputStream.read() at bci 4
+        (inlined) jdk.internal.misc.InternalLock.lock() at bci 11
+            (inlined) java.util.concurrent.locks.ReentrantLock.lock() at bci 4
+                (direct) java.util.concurrent.locks.ReentrantLock$Sync.lock() at bci 4
+        (direct) java.io.BufferedInputStream.implRead() at bci 15
+        (direct) jdk.internal.misc.InternalLock.unlock() at bci 23
+```
 
 ## Example: optimization log of a benchmark
 
@@ -127,7 +228,7 @@ that optimizations can be linked with a source position.
 
 ```sh
 mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$(pwd)/optimization_log
+  -Dgraal.OptimizationLogPath=$PWD/optimization_log
 ```
 
 An equivalent set of commands for Native Image is:
@@ -136,8 +237,9 @@ An equivalent set of commands for Native Image is:
 cd ../vm
 mx --env ni-ce build
 mx --env ni-ce benchmark renaissance-native-image:scrabble -- --jvm=native-image --jvm-config=default-ce \
+  -Dnative-image.benchmark.extra-image-build-argument=-H:+TrackNodeSourcePosition \
   -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLog=Directory \
-  -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLogPath=$(pwd)/optimization_log
+  -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLogPath=$PWD/optimization_log
 ```
 
 Now, we can use `mx profdiff` to explore the compilation units in a human-friendly format.
@@ -164,6 +266,7 @@ compilation unit, after formatting, is the following:
     "inlined": true,
     "reason": null,
     "indirect": false,
+    "alive": false,
     "invokes": [
       {
         "methodName": "java.lang.String.isLatin1()",
@@ -174,6 +277,7 @@ compilation unit, after formatting, is the following:
           "trivial (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=9)"
         ],
         "indirect": false,
+        "alive": false,
         "invokes": null
       },
       {
@@ -185,6 +289,7 @@ compilation unit, after formatting, is the following:
           "relevance-based (relevance=1.000000, probability=0.618846, bonus=1.000000, nodes=27 <= 300.000000)"
         ],
         "indirect": false,
+        "alive": false,
         "invokes": null
       }
     ]
@@ -204,8 +309,9 @@ compilation unit.
 `inliningTree` contains the root of the inlining tree, i.e, the name of the root method matches `methodName`.
 `invokes` are the invoked methods which were considered for inlining. The final result of the inlining decisions is
 reflected by the `inlined` property. Its value equals `true` if the method was inlined, otherwise it is `false`. The
-reasons for the decisions, in their original order, are listed in the `reason` property. Finally, `callsiteBci` is the
-byte code index of the invoke node in the callsite.
+reasons for the decisions, in their original order, are listed in the `reason` property. The property `alive` is `false`
+iff the associated invoke node was deleted during the compilation (e.g. as a result of dead code elimination).
+Finally, `callsiteBci` is the byte code index of the invoke node in the callsite.
 
 The `indirect` property is `true` iff the call is known to be indirect, i.e., it is an invoke through an
 interface or a virtual method call. Indirect calls contain
@@ -222,6 +328,7 @@ indirect call to `Iterator.next()` below.
     "call is indirect."
   ],
   "indirect": true,
+  "alive": false,
   "receiverTypeProfile": {
     "mature": true,
     "profiledTypes": [
@@ -303,14 +410,14 @@ method. In the presence of inlining, the positions are more complex. Consider th
 }
 ```
 
-We can see that the `NodeRemoval` occurred at bci 10 in the inlined `java.lang.StringLatin1.hashCode(byte[])` method,
-which callsite is at bci 27 in the root method. Note that the order of keys is important in this case.
+We can see that a `NodeRemoval` occurred at bci 10 in the inlined `java.lang.StringLatin1.hashCode(byte[])` method,
+whose callsite is at bci 27 in the root method. Note that the order of keys is important in this case.
 
 ## IGV output
 
 Optimization trees can be printed to Ideal Graph Visualizer. First, start an IGV instance. After that, run a benchmark
-with the flag `-Dgraal.OptimizationLog=Dump`. Run it jointly with `-Dgraal.TrackNodeSourcePosition=true`, so
-that optimizations can be linked with a source position.
+with the flag `-Dgraal.OptimizationLog=Dump`. Run it jointly with `-Dgraal.TrackNodeSourcePosition=true`, so that
+optimizations can be linked with a source position.
 
 ```sh
 mx benchmark renaissance:scrabble -- -Dgraal.TrackNodeSourcePosition=true -Dgraal.OptimizationLog=Dump \

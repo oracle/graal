@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1371,6 +1371,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         for (InlineInvokePlugin plugin : inlineInvokePlugins) {
             plugin.notifyAfterInline(inlineMethod);
+        }
+
+        if (methodScope.inliningLog != null) {
+            assert inlineScope.inliningLog != null : "all inlinees should have an inlining log if the root requires it";
+            methodScope.inliningLog.inlineByTransfer(invoke, invokeData.callTarget, inlineScope.inliningLog, "PEGraphDecoder",
+                            "inlined during decoding");
+        }
+        if (methodScope.optimizationLog != null) {
+            assert inlineScope.optimizationLog != null : "all inlinees should have an optimization log if the root requires it";
+            methodScope.optimizationLog.inline(inlineScope.optimizationLog, false, null);
         }
     }
 
