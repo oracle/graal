@@ -1088,7 +1088,7 @@ def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
 class SvmSupport(object):
     def __init__(self):
         self._svm_supported = has_component('svm', stage1=True)
-        self._debug_supported = self._svm_supported
+        self._debug_supported = self._svm_supported and (mx.is_linux() or mx.is_windows() or (mx.is_darwin() and has_component('svmee', stage1=True)))
         self._separate_debuginfo_ext = {
             'linux': '.debug',
             'windows': '.pdb',
@@ -1124,6 +1124,15 @@ class SvmSupport(object):
 
     def is_pgo_supported(self):
         return self._pgo_supported
+
+    def get_debug_flags(self, image_config):
+        assert self.is_debug_supported()
+        flags = ['-g']
+        if mx.is_darwin():
+            flags += ['-H:+UseOldDebugInfo']
+        if self.generate_separate_debug_info(image_config):
+            flags += ['-H:+StripDebugInfo']
+        return flags
 
 
 def _get_svm_support():
@@ -1253,9 +1262,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if _debug_images():
                 build_args += ['-ea', '-O0', '-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols']
             if _get_svm_support().generate_debug_info(image_config):
-                build_args += ['-g']
-                if _get_svm_support().generate_separate_debug_info(image_config):
-                    build_args += ['-H:+StripDebugInfo']
+                build_args += _get_svm_support().get_debug_flags(image_config)
             if getattr(image_config, 'link_at_build_time', True):
                 build_args += ['--link-at-build-time']
 
