@@ -67,11 +67,6 @@ public class TimeUtils {
         return (System.nanoTime() - startNanos);
     }
 
-    /** Milliseconds since a previous {@link System#currentTimeMillis()} call. */
-    public static long milliSecondsSince(long startMillis) {
-        return (System.currentTimeMillis() - startMillis);
-    }
-
     /**
      * Compare two nanosecond times.
      *

@@ -176,7 +176,7 @@ public final class PthreadVMLockSupport extends VMLockSupport {
         }
 
         for (PthreadVMCondition condition : support.conditions) {
-            if (PthreadConditionUtils.initCondition(condition.getStructPointer()) != 0) {
+            if (PthreadConditionUtils.initConditionWithRelativeTime(condition.getStructPointer()) != 0) {
                 return false;
             }
         }
@@ -322,6 +322,7 @@ final class PthreadVMCondition extends VMCondition {
             return 0L;
         }
 
+        long startTime = System.nanoTime();
         Time.timespec absTime = UnsafeStackValue.get(Time.timespec.class);
         PthreadConditionUtils.fillTimespec(absTime, waitNanos);
 
@@ -336,7 +337,7 @@ final class PthreadVMCondition extends VMCondition {
 
         /* Check for other errors from the timed wait. */
         PthreadVMLockSupport.checkResult(timedWaitResult, "PthreadVMLockSupport.block(long): pthread_cond_timedwait");
-        return PthreadConditionUtils.remainingNanos(absTime);
+        return remainingNanos(waitNanos, startTime);
     }
 
     @Override
@@ -346,6 +347,7 @@ final class PthreadVMCondition extends VMCondition {
             return 0L;
         }
 
+        long startTime = System.nanoTime();
         Time.timespec absTime = UnsafeStackValue.get(Time.timespec.class);
         PthreadConditionUtils.fillTimespec(absTime, waitNanos);
 
@@ -360,7 +362,13 @@ final class PthreadVMCondition extends VMCondition {
 
         /* Check for other errors from the timed wait. */
         PthreadVMLockSupport.checkResult(timedWaitResult, "PthreadVMLockSupport.blockNoTransition(long): pthread_cond_timedwait");
-        return PthreadConditionUtils.remainingNanos(absTime);
+        return remainingNanos(waitNanos, startTime);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    private static long remainingNanos(long waitNanos, long startNanos) {
+        long actual = System.nanoTime() - startNanos;
+        return Math.max(0, waitNanos - actual);
     }
 
     @Override

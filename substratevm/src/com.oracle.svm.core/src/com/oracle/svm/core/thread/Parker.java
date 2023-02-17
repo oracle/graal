@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -51,6 +52,14 @@ import com.oracle.svm.core.Uninterruptible;
 public abstract class Parker {
 
     public interface ParkerFactory {
+        @Fold
+        static ParkerFactory singleton() {
+            if (ImageSingletons.contains(ParkEvent.ParkEventFactory.class)) {
+                return ImageSingletons.lookup(ParkEvent.ParkEventFactory.class);
+            }
+            return ImageSingletons.lookup(ParkerFactory.class);
+        }
+
         Parker acquire();
     }
 
@@ -69,6 +78,9 @@ public abstract class Parker {
     }
 
     /**
+     * This method should only be called by
+     * {@link PlatformThreads#parkCurrentPlatformOrCarrierThread} and {@link Thread#sleep}.
+     *
      * Block the calling thread (which must be the owner of this instance) from being scheduled
      * until another thread calls {@link #unpark},
      * <ul>
@@ -89,8 +101,7 @@ public abstract class Parker {
     protected abstract void unpark();
 
     static Parker acquire(boolean isSleepEvent) {
-        ParkerFactory factory = ImageSingletons.lookup(ParkerFactory.class);
-        Parker event = factory.acquire();
+        Parker event = ParkerFactory.singleton().acquire();
         event.isSleepEvent = isSleepEvent;
         return event;
     }

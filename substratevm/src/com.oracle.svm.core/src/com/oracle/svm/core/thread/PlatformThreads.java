@@ -881,8 +881,8 @@ public abstract class PlatformThreads {
         VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.parkCurrentPlatformOrCarrierThread: Should not park when it is not okay to block.]");
 
         /* Try to consume a pending unpark. */
-        Parker parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
-        if (parkEvent.tryFastPark()) {
+        Parker parker = getCurrentThreadData().ensureUnsafeParker();
+        if (parker.tryFastPark()) {
             return;
         }
 
@@ -902,9 +902,9 @@ public abstract class PlatformThreads {
         try {
             /*
              * If another thread interrupted this thread in the meanwhile, then the call below won't
-             * block because Thread.interrupt() modifies the ParkEvent.
+             * block because Thread.interrupt() modifies the Parker.
              */
-            parkEvent.park(isAbsolute, time);
+            parker.park(isAbsolute, time);
         } finally {
             setThreadStatus(thread, oldStatus);
         }
@@ -920,7 +920,7 @@ public abstract class PlatformThreads {
         ThreadData threadData = acquireThreadData(thread);
         if (threadData != null) {
             try {
-                threadData.ensureUnsafeParkEvent().unpark();
+                threadData.ensureUnsafeParker().unpark();
             } finally {
                 threadData.release();
             }
@@ -942,7 +942,7 @@ public abstract class PlatformThreads {
     private static void sleep0(long durationNanos) {
         VMOperationControl.guaranteeOkayToBlock("[PlatformThreads.sleep(long): Should not sleep when it is not okay to block.]");
         Thread thread = currentThread.get();
-        Parker sleepEvent = getCurrentThreadData().ensureSleepParkEvent();
+        Parker sleepEvent = getCurrentThreadData().ensureSleepParker();
         sleepEvent.reset();
 
         /*
@@ -950,7 +950,7 @@ public abstract class PlatformThreads {
          * wakeup in the race. This requires that updates to the event's unparked status and updates
          * to the thread's interrupt status cannot be reordered with regard to each other.
          *
-         * Another important aspect is that the thread must have a sleepParkEvent assigned to it
+         * Another important aspect is that the thread must have a sleepParker assigned to it
          * *before* the interrupted check because if not, the interrupt code will not assign one and
          * the wakeup will be lost.
          */
@@ -967,7 +967,7 @@ public abstract class PlatformThreads {
             while (remainingNanos > 0) {
                 /*
                  * If another thread interrupted this thread in the meanwhile, then the call below
-                 * won't block because Thread.interrupt() modifies the ParkEvent.
+                 * won't block because Thread.interrupt() modifies the Parker.
                  */
                 sleepEvent.park(false, remainingNanos);
                 if (JavaThreads.isInterrupted(thread)) {
@@ -985,12 +985,12 @@ public abstract class PlatformThreads {
      *
      * @see #sleep(long)
      */
-    static void interrupt(Thread thread) {
+    static void interruptSleep(Thread thread) {
         assert !isVirtual(thread);
         ThreadData threadData = acquireThreadData(thread);
         if (threadData != null) {
             try {
-                Parker sleepEvent = threadData.getSleepParkEvent();
+                Parker sleepEvent = threadData.getSleepParker();
                 if (sleepEvent != null) {
                     sleepEvent.unpark();
                 }

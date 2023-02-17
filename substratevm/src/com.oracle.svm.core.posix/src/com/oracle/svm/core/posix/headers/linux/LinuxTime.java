@@ -38,5 +38,8 @@ import com.oracle.svm.core.posix.headers.Time;
 @CContext(PosixDirectives.class)
 public class LinuxTime extends Time {
     @CConstant
+    public static native int CLOCK_MONOTONIC();
+
+    @CConstant
     public static native int CLOCK_THREAD_CPUTIME_ID();
 }

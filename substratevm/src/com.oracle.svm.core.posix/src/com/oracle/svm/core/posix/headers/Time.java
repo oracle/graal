@@ -45,9 +45,6 @@ import org.graalvm.word.PointerBase;
 @CContext(PosixDirectives.class)
 public class Time {
     @CConstant
-    public static native int CLOCK_MONOTONIC();
-
-    @CConstant
     public static native int CLOCK_REALTIME();
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)

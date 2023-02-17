@@ -31,6 +31,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Time;
+import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.util.TimeUtils;
 
 @TargetClass(java.lang.System.class)
@@ -40,7 +41,7 @@ final class Target_java_lang_System_Linux {
     @Uninterruptible(reason = "Does basic math after a simple system call")
     private static long nanoTime() {
         Time.timespec tp = StackValue.get(Time.timespec.class);
-        int status = Time.clock_gettime(Time.CLOCK_MONOTONIC(), tp);
+        int status = Time.clock_gettime(LinuxTime.CLOCK_MONOTONIC(), tp);
         PosixUtils.checkStatusIs0(status, "System.nanoTime(): clock_gettime(CLOCK_MONOTONIC) failed.");
         return tp.tv_sec() * TimeUtils.nanosPerSecond + tp.tv_nsec();
     }

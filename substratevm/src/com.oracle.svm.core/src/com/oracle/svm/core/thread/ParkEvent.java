@@ -40,23 +40,23 @@ public abstract class ParkEvent extends Parker {
             return;
         }
 
-        long remainingNanos = time;
-        if (isAbsolute) {
-            remainingNanos = TimeUtils.millisToNanos(time - System.currentTimeMillis());
-            if (remainingNanos <= 0) {
-                /* Already elapsed. */
-                return;
-            }
+        long remainingNanos = computeRemainingNanos(isAbsolute, time);
+        if (remainingNanos > 0) {
+            condTimedWait(remainingNanos);
         }
-        condTimedWait(remainingNanos);
     }
 
-    /** {@link #park} indefinitely: {@code park(false, 0);}. */
+    private static long computeRemainingNanos(boolean isAbsolute, long time) {
+        if (isAbsolute) {
+            return TimeUtils.millisToNanos(time - System.currentTimeMillis());
+        }
+        /* A relative time is already in nanoseconds. */
+        return time;
+    }
+
+    /** {@link #park} indefinitely. */
     protected abstract void condWait();
 
-    /**
-     * {@link #park} with a duration in nanoseconds:
-     * {@code if(duration > 0) park(false, duration);}.
-     */
+    /** {@link #park} for a duration in nanoseconds. */
     protected abstract void condTimedWait(long durationNanos);
 }

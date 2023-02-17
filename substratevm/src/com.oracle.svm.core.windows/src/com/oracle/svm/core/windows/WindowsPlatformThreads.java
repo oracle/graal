@@ -193,6 +193,7 @@ public final class WindowsPlatformThreads extends PlatformThreads {
  */
 @Platforms(Platform.WINDOWS.class)
 class WindowsParker extends Parker {
+    private static final long MAX_DWORD = (1L << 32) - 1;
 
     /**
      * An opaque handle for an event object from the operating system. Event objects have explicit
@@ -221,7 +222,7 @@ class WindowsParker extends Parker {
     protected void park(boolean isAbsolute, long time) {
         assert time >= 0 && !(isAbsolute && time == 0) : "must not be called otherwise";
 
-        int millis;
+        long millis;
         if (time == 0) {
             millis = SynchAPI.INFINITE();
         } else if (isAbsolute) {
@@ -241,17 +242,27 @@ class WindowsParker extends Parker {
 
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            int status = SynchAPI.WaitForSingleObject(eventHandle, millis);
+            int status = SynchAPI.WaitForSingleObject(eventHandle, 0);
             if (status == SynchAPI.WAIT_OBJECT_0()) {
                 /* There was already a notification pending. */
                 SynchAPI.ResetEvent(eventHandle);
-            } else if (status == SynchAPI.WAIT_TIMEOUT()) {
-                SynchAPI.WaitForSingleObject(eventHandle, millis);
+            } else {
+                status = SynchAPI.WaitForSingleObject(eventHandle, toDword(millis));
                 SynchAPI.ResetEvent(eventHandle);
             }
+            assert status == SynchAPI.WAIT_OBJECT_0() || status == SynchAPI.WAIT_TIMEOUT();
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
+    }
+
+    /* DWORD is an unsigned 32-bit value. */
+    private static int toDword(long value) {
+        assert value >= 0;
+        if (value > MAX_DWORD) {
+            return (int)MAX_DWORD;
+        }
+        return (int) value;
     }
 
     @Override
