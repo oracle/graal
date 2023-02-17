@@ -72,7 +72,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     private static final LazyCaptureGroupRegexSearchNode LAZY_DFA_BAILED_OUT = new LazyCaptureGroupRegexSearchNode(null, null, null, null, null, null, null, null);
     private static final EagerCaptureGroupRegexSearchNode EAGER_DFA_BAILED_OUT = new EagerCaptureGroupRegexSearchNode(null);
 
-    private LazyCaptureGroupRegexSearchNode lazyDFANode;
+    @CompilationFinal private LazyCaptureGroupRegexSearchNode lazyDFANode;
     private LazyCaptureGroupRegexSearchNode regressTestNoSimpleCGLazyDFANode;
     private EagerCaptureGroupRegexSearchNode eagerDFANode;
     private NFARegexSearchNode nfaNode;
@@ -125,7 +125,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             }
         }
 
-        boolean nfaCouldSwitchToDFA = CompilerDirectives.inInterpreter() && !backtrackingMode && lazyDFANode == null;
+        boolean nfaCouldSwitchToDFA = !backtrackingMode && lazyDFANode == null;
         if (nfaCouldSwitchToDFA) {
             nfaLock.readLock().lock();
         }
@@ -323,6 +323,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     private void compileLazyDFA() {
         if (lazyDFANode == null) {
             lazyDFANode = compileLazyDFA(true);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         if (regressionTestMode && lazyDFANode != LAZY_DFA_BAILED_OUT && lazyDFANode.isSimpleCG()) {
             regressTestNoSimpleCGLazyDFANode = compileLazyDFA(false);
