@@ -37,6 +37,5 @@ import jdk.jfr.Event;
 @Description("Signals to end stream")
 @StackTrace(false)
 public class EndStreamEvent extends Event {
-    @Label("Message")
-    public String message;
+    @Label("Message") public String message;
 }

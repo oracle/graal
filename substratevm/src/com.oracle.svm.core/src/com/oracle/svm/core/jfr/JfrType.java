@@ -52,6 +52,7 @@ public enum JfrType {
     JfrType(String name) {
         this.id = JfrMetadataTypeLibrary.lookupType(name);
     }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getId() {
         return id;

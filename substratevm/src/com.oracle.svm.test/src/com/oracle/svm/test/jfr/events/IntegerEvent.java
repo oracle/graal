@@ -38,6 +38,5 @@ import jdk.jfr.Event;
 @StackTrace(true)
 public class IntegerEvent extends Event {
 
-    @Label("Number")
-    public int number;
+    @Label("Number") public int number;
 }

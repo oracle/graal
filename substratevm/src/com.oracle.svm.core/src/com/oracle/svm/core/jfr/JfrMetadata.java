@@ -27,11 +27,13 @@ package com.oracle.svm.core.jfr;
 
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
+
 public class JfrMetadata {
     private volatile long currentMetadataId;
     private volatile byte[] metadataDescriptor;
     private volatile boolean isDirty;
     private SignedWord metadataPosition;
+
     public JfrMetadata(byte[] bytes) {
         metadataDescriptor = bytes;
         currentMetadataId = 0;
@@ -49,9 +51,11 @@ public class JfrMetadata {
         isDirty = false;
         return metadataDescriptor;
     }
+
     public boolean isDirty() {
         return isDirty;
     }
+
     public void setDirty() {
         isDirty = true;
     }

@@ -105,6 +105,7 @@ public interface JfrBuffer extends PointerBase {
     @RawField
     @PinnedObjectField
     void setBufferType(JfrBufferType bufferType);
+
     @RawField
     void setLockOwner(IsolateThread thread);
 
