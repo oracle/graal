@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.typestate;
 
 import java.lang.reflect.Modifier;
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.stream.Stream;
@@ -42,9 +41,6 @@ public abstract class TypeState {
 
     /** TypeState id is only be used for statistics. */
     private int id = -1;
-
-    /** Returns true if the type state contains exact the same types as the bit set. */
-    public abstract boolean hasExactTypes(BitSet typesBitSet);
 
     /** Get the number of types. */
     public abstract int typesCount();
@@ -300,11 +296,6 @@ final class EmptyTypeState extends TypeState {
     }
 
     @Override
-    public boolean hasExactTypes(BitSet typesBitSet) {
-        return typesBitSet.isEmpty();
-    }
-
-    @Override
     public AnalysisType exactType() {
         return null;
     }
@@ -365,11 +356,6 @@ final class NullTypeState extends TypeState {
     static final TypeState SINGLETON = new NullTypeState();
 
     private NullTypeState() {
-    }
-
-    @Override
-    public boolean hasExactTypes(BitSet typesBitSet) {
-        return typesBitSet.isEmpty();
     }
 
     @Override

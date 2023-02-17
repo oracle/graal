@@ -74,11 +74,6 @@ public class MultiTypeState extends TypeState {
     }
 
     @Override
-    public final boolean hasExactTypes(BitSet inputTypesBitSet) {
-        return typesBitSet.equals(inputTypesBitSet);
-    }
-
-    @Override
     public AnalysisType exactType() {
         return null;
     }

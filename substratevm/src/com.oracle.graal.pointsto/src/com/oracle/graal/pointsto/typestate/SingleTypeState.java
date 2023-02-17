@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.typestate;
 
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.Iterator;
 
@@ -81,11 +80,6 @@ public class SingleTypeState extends TypeState {
     @Override
     public final boolean containsType(AnalysisType exactType) {
         return type.equals(exactType);
-    }
-
-    @Override
-    public final boolean hasExactTypes(BitSet inputTypesBitSet) {
-        return inputTypesBitSet.cardinality() == 1 && inputTypesBitSet.get(type.getId());
     }
 
     @Override
