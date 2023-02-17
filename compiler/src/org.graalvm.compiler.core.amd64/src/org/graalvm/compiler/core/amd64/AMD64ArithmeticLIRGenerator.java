@@ -258,7 +258,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         }
     }
 
-
     public static AMD64MOp getMOp(AMD64BinaryArithmetic op, OperandSize size, int constant) {
         AMD64MOp result = null;
         if (constant == 1) {
