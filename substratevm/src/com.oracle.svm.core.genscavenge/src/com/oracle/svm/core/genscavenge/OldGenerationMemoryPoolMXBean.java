@@ -41,6 +41,11 @@ public final class OldGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXBea
     }
 
     @Override
+    void beforeCollection() {
+        updatePeakUsage(gcAccounting.getOldChunkBytesBefore());
+    }
+
+    @Override
     public MemoryUsage getUsage() {
         long used = HeapImpl.getHeapImpl().getOldGeneration().getChunkBytes().rawValue();
         return memoryUsage(used);
@@ -48,13 +53,8 @@ public final class OldGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXBea
 
     @Override
     public MemoryUsage getPeakUsage() {
-        long peak = gcAccounting.getPeakOldChunkBytes().rawValue();
+        long peak = peakUsage.get().rawValue();
         return memoryUsage(peak);
-    }
-
-    @Override
-    public void resetPeakUsage() {
-        gcAccounting.resetPeakOldChunkBytes();
     }
 
     @Override

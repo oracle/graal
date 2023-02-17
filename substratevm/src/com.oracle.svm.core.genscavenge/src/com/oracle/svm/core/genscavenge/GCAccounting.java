@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.util.UnsignedUtils;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -33,6 +31,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.log.Log;
+
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryPoolMXBean;
 
 /**
  * This data is only updated during a GC.
@@ -56,9 +57,6 @@ public final class GCAccounting {
     private UnsignedWord youngChunkBytesAfter = WordFactory.zero();
     private UnsignedWord oldChunkBytesBefore = WordFactory.zero();
     private UnsignedWord oldChunkBytesAfter = WordFactory.zero();
-
-    private final UninterruptibleUtils.AtomicUnsigned peakYoungChunkBytes = new UninterruptibleUtils.AtomicUnsigned();
-    private final UninterruptibleUtils.AtomicUnsigned peakOldChunkBytes = new UninterruptibleUtils.AtomicUnsigned();
 
     /*
      * Bytes allocated in Objects, as opposed to bytes of chunks. These are only maintained if
@@ -109,28 +107,16 @@ public final class GCAccounting {
         return oldChunkBytesAfter;
     }
 
+    UnsignedWord getOldChunkBytesBefore() {
+        return oldChunkBytesBefore;
+    }
+
     UnsignedWord getYoungChunkBytesBefore() {
         return youngChunkBytesBefore;
     }
 
     UnsignedWord getYoungChunkBytesAfter() {
         return youngChunkBytesAfter;
-    }
-
-    UnsignedWord getPeakYoungChunkBytes() {
-        return peakYoungChunkBytes.get();
-    }
-
-    UnsignedWord getPeakOldChunkBytes() {
-        return peakOldChunkBytes.get();
-    }
-
-    void resetPeakYoungChunkBytes() {
-        peakYoungChunkBytes.set(WordFactory.zero());
-    }
-
-    void resetPeakOldChunkBytes() {
-        peakOldChunkBytes.set(WordFactory.zero());
     }
 
     UnsignedWord getLastIncrementalCollectionPromotedChunkBytes() {
@@ -141,17 +127,21 @@ public final class GCAccounting {
         return lastIncrementalCollectionOverflowedSurvivors;
     }
 
+    void notifyMemoryPoolMXBeans() {
+        for (MemoryPoolMXBean bean: ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) {
+            ((AbstractMemoryPoolMXBean)bean).beforeCollection();
+        }
+    }
+
     void beforeCollection(boolean completeCollection) {
         Log trace = Log.noopLog().string("[GCImpl.Accounting.beforeCollection:").newline();
         /* Gather some space statistics. */
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
         youngChunkBytesBefore = youngGen.getChunkBytes();
-        updatePeakValue(peakYoungChunkBytes, youngChunkBytesBefore);
         /* This is called before the collection, so OldSpace is FromSpace. */
         Space oldSpace = heap.getOldGeneration().getFromSpace();
         oldChunkBytesBefore = oldSpace.getChunkBytes();
-        updatePeakValue(peakOldChunkBytes, oldChunkBytesBefore);
         /* Objects are allocated in the young generation. */
         allocatedChunkBytes = allocatedChunkBytes.add(youngGen.getEden().getChunkBytes());
         if (SerialGCOptions.PrintGCSummary.getValue()) {
@@ -163,6 +153,7 @@ public final class GCAccounting {
         if (!completeCollection) {
             lastIncrementalCollectionOverflowedSurvivors = false;
         }
+        notifyMemoryPoolMXBeans();
         trace.string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
                         .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
         trace.string("]").newline();
@@ -227,9 +218,5 @@ public final class GCAccounting {
             UnsignedWord collectedObjectBytes = beforeObjectBytes.subtract(oldObjectBytesAfter).subtract(youngObjectBytesAfter);
             collectedTotalObjectBytes = collectedTotalObjectBytes.add(collectedObjectBytes);
         }
-    }
-
-    private static void updatePeakValue(UninterruptibleUtils.AtomicUnsigned peakValue, UnsignedWord currentValue) {
-        peakValue.set(UnsignedUtils.max(peakValue.get(), currentValue));
     }
 }

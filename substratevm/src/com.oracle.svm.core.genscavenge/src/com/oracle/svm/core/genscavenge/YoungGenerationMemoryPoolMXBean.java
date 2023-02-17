@@ -41,6 +41,11 @@ public final class YoungGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXB
     }
 
     @Override
+    void beforeCollection() {
+        updatePeakUsage(gcAccounting.getYoungChunkBytesBefore());
+    }
+
+    @Override
     public MemoryUsage getUsage() {
         return memoryUsage(getCurrentUsage());
     }
@@ -48,13 +53,8 @@ public final class YoungGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXB
     @Override
     public MemoryUsage getPeakUsage() {
         long current = getCurrentUsage();
-        long peak = gcAccounting.getPeakYoungChunkBytes().rawValue();
+        long peak = peakUsage.get().rawValue();
         return memoryUsage(Math.max(current, peak));
-    }
-
-    @Override
-    public void resetPeakUsage() {
-        gcAccounting.resetPeakYoungChunkBytes();
     }
 
     @Override

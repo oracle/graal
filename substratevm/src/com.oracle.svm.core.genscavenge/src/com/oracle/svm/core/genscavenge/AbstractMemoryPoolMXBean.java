@@ -29,12 +29,15 @@ import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
-import java.lang.management.MemoryUsage;
 import java.util.Arrays;
 
 import com.oracle.svm.core.heap.MXBeanBase;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.util.UnsignedUtils;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 import sun.management.Util;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -43,12 +46,15 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
     protected final String name;
     protected final String[] managerNames;
     protected final GCAccounting gcAccounting;
+    protected final UninterruptibleUtils.AtomicUnsigned peakUsage = new UninterruptibleUtils.AtomicUnsigned();
 
     protected AbstractMemoryPoolMXBean(String name, String... managerNames) {
         this.name = name;
         this.managerNames = managerNames;
         this.gcAccounting = GCImpl.getGCImpl().getAccounting();
     }
+
+    abstract void beforeCollection();
 
     @Override
     public String getName() {
@@ -73,11 +79,6 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
     @Override
     public boolean isValid() {
         return true;
-    }
-
-    @Override
-    public MemoryUsage getCollectionUsage() {
-        return null;
     }
 
     @Override
@@ -128,5 +129,14 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
     @Override
     public long getCollectionUsageThresholdCount() {
         throw new UnsupportedOperationException("Collection usage threshold is not supported");
+    }
+
+    @Override
+    public void resetPeakUsage() {
+        peakUsage.set(WordFactory.zero());
+    }
+
+    void updatePeakUsage(UnsignedWord currentValue) {
+        peakUsage.set(UnsignedUtils.max(peakUsage.get(), currentValue));
     }
 }
