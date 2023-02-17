@@ -60,7 +60,6 @@ import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.monitor.JavaMonitor;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
@@ -73,8 +72,8 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.pthread.PthreadConditionUtils;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.ParkEvent;
-import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
+import com.oracle.svm.core.thread.Parker;
+import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
@@ -277,33 +276,25 @@ public final class PosixPlatformThreads extends PlatformThreads {
 
 @TargetClass(Thread.class)
 final class Target_java_lang_Thread {
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean hasPthreadIdentifier;
 
     /**
      * Every thread started by {@link PosixPlatformThreads#doStartThread} has an opaque pthread_t.
      */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Pthread.pthread_t pthreadIdentifier;
 }
 
 /**
- * {@link PosixParkEvent} is based on HotSpot class {@code Parker} in {@code os_posix.cpp}, as of
- * JDK 19 (git commit hash: f640fc5a1eb876a657d0de011dcd9b9a42b88eec, JDK tag: jdk-19+30).
- * <p>
- * HotSpot has two constructs with a similar purpose: {@code ParkEvent} and {@code Parker}. The
- * latter implements JSR 166 synchronization primitives {@link Unsafe#park} and
- * {@link Unsafe#unpark}, just like we do here, therefore we base this implementation on
- * {@code Parker}. Our implementation of Java object monitors, {@link JavaMonitor}, uses the JSR 166
- * primitives, so it can potentially experience interference from unrelated calls to
- * {@link Unsafe#unpark}. This is a difference to HotSpot's {@code ObjectMonitor}, which uses a
- * separate HotSpot {@code ParkEvent} instance. Another difference is that {@code Parker} and the
- * code below return control to the caller on spurious wakeups, unlike HotSpot's {@code ParkEvent}.
- * This does not affect correctness.
+ * {@link PosixParker} is based on HotSpot class {@code Parker} in {@code os_posix.cpp}, as of JDK
+ * 19 (git commit hash: f640fc5a1eb876a657d0de011dcd9b9a42b88eec, JDK tag: jdk-19+30).
  */
-final class PosixParkEvent extends ParkEvent {
+final class PosixParker extends Parker {
     private static final Unsafe U = Unsafe.getUnsafe();
-    private static final long EVENT_OFFSET = U.objectFieldOffset(PosixParkEvent.class, "event");
+    private static final long EVENT_OFFSET = U.objectFieldOffset(PosixParker.class, "event");
 
     private Pthread.pthread_mutex_t mutex;
     private Pthread.pthread_cond_t cond;
@@ -314,7 +305,7 @@ final class PosixParkEvent extends ParkEvent {
     /** Whether the owner is currently parked. Guarded by {@link #mutex}. */
     private boolean parked = false;
 
-    PosixParkEvent() {
+    PosixParker() {
         // Allocate mutex and condition in a single step so that they are adjacent in memory.
         UnsignedWord mutexSize = SizeOf.unsigned(Pthread.pthread_mutex_t.class);
         Pointer memory = UnmanagedMemory.malloc(mutexSize.add(SizeOf.unsigned(Pthread.pthread_cond_t.class)));
@@ -333,18 +324,6 @@ final class PosixParkEvent extends ParkEvent {
     }
 
     @Override
-    protected void condWait() {
-        park(false, 0);
-    }
-
-    @Override
-    protected void condTimedWait(long durationNanos) {
-        if (durationNanos > 0) {
-            park(false, durationNanos);
-        }
-    }
-
-    @Override
     protected boolean tryFastPark() {
         // We depend on getAndSet having full barrier semantics since we are not locking
         return U.getAndSetInt(this, EVENT_OFFSET, 0) != 0;
@@ -352,10 +331,10 @@ final class PosixParkEvent extends ParkEvent {
 
     @Override
     protected void park(boolean isAbsolute, long time) {
+        assert time >= 0 && !(isAbsolute && time == 0) : "must not be called otherwise";
+
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            assert !(time < 0 || (isAbsolute && time == 0)) : "must not be called otherwise";
-
             int status = Pthread.pthread_mutex_trylock_no_transition(mutex);
             if (status == Errno.EBUSY()) {
                 /* Most likely, another thread is unparking us, so don't wait. */
@@ -444,10 +423,10 @@ final class PosixParkEvent extends ParkEvent {
     }
 }
 
-@AutomaticallyRegisteredImageSingleton(ParkEventFactory.class)
-class PosixParkEventFactory implements ParkEventFactory {
+@AutomaticallyRegisteredImageSingleton(ParkerFactory.class)
+class PosixParkerFactory implements Parker.ParkerFactory {
     @Override
-    public ParkEvent acquire() {
-        return new PosixParkEvent();
+    public Parker acquire() {
+        return new PosixParker();
     }
 }

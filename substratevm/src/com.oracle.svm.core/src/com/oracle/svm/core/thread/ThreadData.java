@@ -58,29 +58,29 @@ public final class ThreadData extends UnacquiredThreadData {
     private boolean detached;
     private long refCount;
 
-    private volatile ParkEvent unsafeParkEvent;
-    private volatile ParkEvent sleepParkEvent;
+    private volatile Parker unsafeParkEvent;
+    private volatile Parker sleepParkEvent;
 
     /**
-     * Returns the {@link ParkEvent} for {@link Thread#sleep}. May return null, if the
-     * {@link ParkEvent} wasn't initialized yet. If this method is called to access the
-     * {@link ParkEvent} of another thread, then the returned value must not be used after
-     * {@link #release() releasing} the {@link ThreadData}.
+     * Returns the {@link Parker} for {@link Thread#sleep}. May return null, if the {@link Parker}
+     * wasn't initialized yet. If this method is called to access the {@link Parker} of another
+     * thread, then the returned value must not be used after {@link #release() releasing} the
+     * {@link ThreadData}.
      */
-    public ParkEvent getSleepParkEvent() {
+    public Parker getSleepParkEvent() {
         assert isForCurrentThread() || refCount > 0;
         return sleepParkEvent;
     }
 
     /**
-     * Returns the {@link ParkEvent} for {@link Unsafe#park} and {@link Unsafe#unpark}. If this
-     * method is called to access the {@link ParkEvent} of another thread, then the returned value
-     * must not be used after {@link #release() releasing} the {@link ThreadData}.
+     * Returns the {@link Parker} for {@link Unsafe#park} and {@link Unsafe#unpark}. If this method
+     * is called to access the {@link Parker} of another thread, then the returned value must not be
+     * used after {@link #release() releasing} the {@link ThreadData}.
      */
-    public ParkEvent ensureUnsafeParkEvent() {
+    public Parker ensureUnsafeParkEvent() {
         assert isForCurrentThread() || refCount > 0;
 
-        ParkEvent existingEvent = unsafeParkEvent;
+        Parker existingEvent = unsafeParkEvent;
         if (existingEvent != null) {
             return existingEvent;
         }
@@ -90,14 +90,14 @@ public final class ThreadData extends UnacquiredThreadData {
     }
 
     /**
-     * Returns the {@link ParkEvent} for {@link Thread#sleep}. If this method is called to access
-     * the {@link ParkEvent} of another thread, then the returned value must not be used after
+     * Returns the {@link Parker} for {@link Thread#sleep}. If this method is called to access the
+     * {@link Parker} of another thread, then the returned value must not be used after
      * {@link #release() releasing} the {@link ThreadData}.
      */
-    public ParkEvent ensureSleepParkEvent() {
+    public Parker ensureSleepParkEvent() {
         assert isForCurrentThread() || refCount > 0;
 
-        ParkEvent existingEvent = sleepParkEvent;
+        Parker existingEvent = sleepParkEvent;
         if (existingEvent != null) {
             return existingEvent;
         }
@@ -179,14 +179,14 @@ public final class ThreadData extends UnacquiredThreadData {
     }
 
     private void initializeParkEvent(long offset, boolean isSleepEvent) {
-        ParkEvent newEvent = ParkEvent.acquire(isSleepEvent);
+        Parker newEvent = Parker.acquire(isSleepEvent);
         if (!tryToStoreParkEvent(offset, newEvent)) {
             newEvent.release();
         }
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private boolean tryToStoreParkEvent(long offset, ParkEvent newEvent) {
+    private boolean tryToStoreParkEvent(long offset, Parker newEvent) {
         JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
             if (UNSAFE.getObject(this, offset) != null) {

@@ -52,8 +52,8 @@ import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.ParkEvent;
-import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
+import com.oracle.svm.core.thread.Parker;
+import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
@@ -187,8 +187,12 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     }
 }
 
+/**
+ * {@link WindowsParker} is based on HotSpot class {@code Parker} in {@code os_windows.cpp}, as of
+ * JDK 19 (git commit hash: 967a28c3d85fdde6d5eb48aa0edd8f7597772469, JDK tag: jdk-19+36).
+ */
 @Platforms(Platform.WINDOWS.class)
-class WindowsParkEvent extends ParkEvent {
+class WindowsParker extends Parker {
 
     /**
      * An opaque handle for an event object from the operating system. Event objects have explicit
@@ -197,7 +201,7 @@ class WindowsParkEvent extends ParkEvent {
      */
     private WinBase.HANDLE eventHandle;
 
-    WindowsParkEvent() {
+    WindowsParker() {
         eventHandle = SynchAPI.CreateEventA(WordFactory.nullPointer(), 1, 0, WordFactory.nullPointer());
         VMError.guarantee(eventHandle.rawValue() != 0, "CreateEventA failed");
     }
@@ -269,11 +273,11 @@ class WindowsParkEvent extends ParkEvent {
     }
 }
 
-@AutomaticallyRegisteredImageSingleton(ParkEventFactory.class)
+@AutomaticallyRegisteredImageSingleton(ParkerFactory.class)
 @Platforms(Platform.WINDOWS.class)
-class WindowsParkEventFactory implements ParkEventFactory {
+class WindowsParkerFactory implements ParkerFactory {
     @Override
-    public ParkEvent acquire() {
-        return new WindowsParkEvent();
+    public Parker acquire() {
+        return new WindowsParker();
     }
 }

@@ -73,8 +73,8 @@ final class DarwinTimeUtil {
     }
 
     /**
-     * Based on the HotSpot implementation in JDK 19+36, revision
-     * 967a28c3d85fdde6d5eb48aa0edd8f7597772469.
+     * Based on HotSpot JDK 19 (git commit hash: 967a28c3d85fdde6d5eb48aa0edd8f7597772469, JDK tag:
+     * jdk-19+36).
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long nanoTime() {

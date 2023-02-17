@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,34 +24,32 @@
  */
 package com.oracle.svm.core.thread;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.TimeUtils;
 
-/**
- * Per-thread blocking support. An instance is owned by at most one thread at a time for blocking
- * itself from scheduling ("parking") by calling {@link #park}. Any other thread may call
- * {@link #unpark} to unblock the owner thread (or make its next attempt to park return instantly).
- *
- * Each thread may own several of these for parking. Instances are usually expensive objects because
- * they encapsulate native resources. Therefore, lazy initialization is used, see
- * {@link ThreadData}.
- */
-public abstract class ParkEvent {
-
-    public interface ParkEventFactory {
-        ParkEvent acquire();
+/** Only used by legacy code. */
+public abstract class ParkEvent extends Parker {
+    public interface ParkEventFactory extends ParkerFactory {
     }
 
-    /** Currently required by legacy code. */
-    protected boolean isSleepEvent;
+    @Override
+    protected void park(boolean isAbsolute, long time) {
+        assert time >= 0;
 
-    protected ParkEvent() {
+        if (time == 0) {
+            condWait();
+            return;
+        }
+
+        long remainingNanos = time;
+        if (isAbsolute) {
+            remainingNanos = TimeUtils.millisToNanos(time - System.currentTimeMillis());
+            if (remainingNanos <= 0) {
+                /* Already elapsed. */
+                return;
+            }
+        }
+        condTimedWait(remainingNanos);
     }
-
-    /** Reset a pending {@link #unpark()} at the time of the call. */
-    protected abstract void reset();
 
     /** {@link #park} indefinitely: {@code park(false, 0);}. */
     protected abstract void condWait();
@@ -61,49 +59,4 @@ public abstract class ParkEvent {
      * {@code if(duration > 0) park(false, duration);}.
      */
     protected abstract void condTimedWait(long durationNanos);
-
-    /**
-     * Block the calling thread (which must be the owner of this instance) from being scheduled
-     * until another thread calls {@link #unpark},
-     * <ul>
-     * <li>{@code !isAbsolute && time == 0}: indefinitely.</li>
-     * <li>{@code !isAbsolute && time > 0}: until {@code time} nanoseconds elapse.</li>
-     * <li>{@code isAbsolute && time > 0}: until a deadline of {@code time} milliseconds from the
-     * Epoch passes (see {@link System#currentTimeMillis()}.</li>
-     * <li>otherwise: return instantly without parking.</li>
-     * </ul>
-     * May also return spuriously instead (for no apparent reason).
-     */
-    protected void park(boolean isAbsolute, long time) {
-        if (!isAbsolute && time == 0) {
-            condWait();
-        } else if (time > 0) {
-            long nanos = time;
-            if (isAbsolute) {
-                nanos = Math.max(0, TimeUtils.millisToNanos(time - System.currentTimeMillis()));
-            }
-            condTimedWait(nanos);
-        }
-    }
-
-    /** Try consuming an unpark without blocking. */
-    protected boolean tryFastPark() {
-        return false;
-    }
-
-    /**
-     * Unblock the owner thread if it parks on this object, or make its next attempt to park on this
-     * object return immediately.
-     */
-    protected abstract void unpark();
-
-    static ParkEvent acquire(boolean isSleepEvent) {
-        ParkEventFactory factory = ImageSingletons.lookup(ParkEventFactory.class);
-        ParkEvent event = factory.acquire();
-        event.isSleepEvent = isSleepEvent;
-        return event;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract void release();
 }
