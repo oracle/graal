@@ -262,7 +262,7 @@ suite = {
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,SDK",
     },
 
