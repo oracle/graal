@@ -64,8 +64,6 @@ local devkits = common_json.devkits;
   js_windows_jdk17: self.js_windows_common + {
     setup+: [
       # Keep in sync with the 'devkits' object defined in the top level common.json file.
-      # When this file has been converted to jsonnet, the value can be computed instead
-      # using Jsonnet std lib functions.
       ['set-export', 'DEVKIT_VERSION', '2019'],
     ],
   },
@@ -73,8 +71,6 @@ local devkits = common_json.devkits;
   js_windows_jdk20: self.js_windows_common + {
     setup+: [
       # Keep in sync with the 'devkits' object defined in the top level common.json file.
-      # When this file has been converted to jsonnet, the value can be computed instead
-      # using Jsonnet std lib functions.
       ['set-export', 'DEVKIT_VERSION', '2022'],
     ],
   },
@@ -82,8 +78,6 @@ local devkits = common_json.devkits;
   js_windows: self.js_windows_common + {
     setup+: [
       # Keep in sync with the 'devkits' object defined in the top level common.json file.
-      # When this file has been converted to jsonnet, the value can be computed instead
-      # using Jsonnet std lib functions.
       ['set-export', 'DEVKIT_VERSION', '2017'],
     ],
   },
