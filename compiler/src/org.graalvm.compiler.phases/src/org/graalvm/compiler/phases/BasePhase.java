@@ -639,7 +639,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
      */
     @Target(value = {ElementType.FIELD})
     @Retention(value = RetentionPolicy.RUNTIME)
-    public static @interface SharedGlobalPhaseState {
+    public @interface SharedGlobalPhaseState {
 
     }
 
