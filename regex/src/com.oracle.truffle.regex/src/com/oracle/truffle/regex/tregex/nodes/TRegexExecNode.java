@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.nodes;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexBodyNode;
@@ -65,6 +66,7 @@ import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.util.Loggers;
 
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TRegexExecNode extends RegexExecNode implements RegexProfile.TracksRegexProfile {
@@ -127,7 +129,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
 
         boolean nfaCouldSwitchToDFA = !backtrackingMode && lazyDFANode == null;
         if (nfaCouldSwitchToDFA) {
-            nfaLock.readLock().lock();
+            lock(nfaLock.readLock());
         }
 
         final RegexResult result;
@@ -141,7 +143,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             assert validResult(input, fromIndex, result);
         } finally {
             if (nfaCouldSwitchToDFA) {
-                nfaLock.readLock().unlock();
+                unlock(nfaLock.readLock());
             }
         }
 
@@ -298,11 +300,11 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     }
 
     private synchronized void switchToLazyDFA() {
-        nfaLock.writeLock().lock();
+        lock(nfaLock.writeLock());
         try {
             compileLazyDFA();
         } finally {
-            nfaLock.writeLock().unlock();
+            unlock(nfaLock.writeLock());
         }
         if (lazyDFANode != LAZY_DFA_BAILED_OUT) {
             runnerNode = insert(lazyDFANode);
@@ -362,6 +364,16 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 eagerDFANode = EAGER_DFA_BAILED_OUT;
             }
         }
+    }
+
+    @TruffleBoundary
+    private void lock(Lock lock) {
+        lock.lock();
+    }
+
+    @TruffleBoundary
+    private void unlock(Lock lock) {
+        lock.unlock();
     }
 
     public TRegexExecutorEntryNode createEntryNode(TRegexExecutorNode executor) {
