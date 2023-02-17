@@ -75,13 +75,6 @@ local devkits = common_json.devkits;
     ],
   },
 
-  js_windows: self.js_windows_common + {
-    setup+: [
-      # Keep in sync with the 'devkits' object defined in the top level common.json file.
-      ['set-export', 'DEVKIT_VERSION', '2017'],
-    ],
-  },
-
   # SULONG
   sulong_linux: common_json.sulong.deps.common + common_json.sulong.deps.linux,
   sulong_darwin_amd64: common_json.sulong.deps.common + common_json.sulong.deps.darwin_amd64,
