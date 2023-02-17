@@ -142,7 +142,7 @@ The first implementation of the fortune application uses the [Jackson JSON parse
 
     The size of the native executable has reduced in size from 17MB to 4.3MB.
 
-    The reduction in size is due to the use of the `--initialize-at-build-time=` argument used with the [Native Image Maven plugin](use-native-image-maven-plugin.md).
+    The reduction in size is due to the use of the `--initialize-at-build-time=` argument used with the [Native Image Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html).
 
 5.  The build created a file named _staticfortune.bgv_. Load it into the GraalVM Dashboard to view the composition of the `staticfortune` native executable. 
 

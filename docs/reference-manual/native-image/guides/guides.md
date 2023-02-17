@@ -26,8 +26,8 @@ Here you will learn how to:
 - [Include Resources in a Native Executable](include-resources.md)
 - [Optimize a Native Executable with Profile-Guided Optimizations](optimize-native-executable-with-pgo.md)
 - [Use GraalVM Dashboard to Optimize the Size of a Native Executable](use-graalvm-dashboard.md)
-- [Use Gradle to Build a Native Executable from a Java Application](use-native-image-gradle-plugin.md)
-- [Use Maven to Build a Native Executable from a Java Application](use-native-image-maven-plugin.md)
+- [Use Gradle to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html)
+- [Use Maven to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/maven-plugin-quickstart.html)
 - [Use Shared Reachability Metadata with Native Image Gradle Plugin](use-reachability-metadata-repository-gradle.md)
 - [Use System Properties in a Native Executable](use-system-properties.md)
 
