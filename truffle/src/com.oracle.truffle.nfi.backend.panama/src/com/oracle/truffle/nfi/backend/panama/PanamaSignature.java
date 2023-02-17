@@ -194,7 +194,6 @@ final class PanamaSignature {
     @ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
     static final class PanamaSignatureBuilder {
 
-        FunctionDescriptor descriptor;
         MethodType downcallType;
         MethodType upcallType;
         PanamaType retType;
@@ -212,36 +211,16 @@ final class PanamaSignature {
         PanamaSignatureBuilder(ArrayBuilderFactory factory) {
             argsState = ArgsState.NO_ARGS;
             argTypes = factory.allocate(FACTORY);
-            descriptor = FunctionDescriptor.ofVoid();
             downcallType = MethodType.methodType(void.class);
             upcallType = MethodType.methodType(void.class, Object.class);
         }
 
         @ExportMessage
-        static class SetReturnType {
-
-            @Specialization(guards = {"type == cachedType"})
-            static void doCached(PanamaSignatureBuilder builder, @SuppressWarnings("unused") PanamaType type,
-                                 @Cached("type") PanamaType cachedType) {
-                setReturnType(builder, cachedType);
-            }
-
-            @Specialization(replaces = "doCached")
-            static void doGeneric(PanamaSignatureBuilder builder, PanamaType type) {
-                setReturnType(builder, type);
-            }
-
-            private static void setReturnType(PanamaSignatureBuilder builder, PanamaType type) {
-                if (type.nativeLayout == null) {
-                    builder.descriptor = builder.descriptor.dropReturnLayout();
-                } else {
-                    builder.descriptor = builder.descriptor.changeReturnLayout(type.nativeLayout);
-                }
-
-                builder.retType = type;
-                builder.downcallType = builder.downcallType.changeReturnType(type.javaType);
-                builder.upcallType = builder.upcallType.changeReturnType(type.javaRetType);
-            }
+        void setReturnType(Object t) {
+            PanamaType type = (PanamaType) t;
+            retType = type;
+            downcallType = downcallType.changeReturnType(type.javaType);
+            upcallType = upcallType.changeReturnType(type.javaRetType);
         }
 
         @ExportMessage
@@ -255,7 +234,6 @@ final class PanamaSignature {
                 assert builder.argsState == oldState && type == cachedType;
                 builder.addArg(cachedType, newState);
 
-                builder.descriptor = builder.descriptor.appendArgumentLayouts(type.nativeLayout);
                 builder.downcallType = builder.downcallType.appendParameterTypes(type.javaType);
                 builder.upcallType = builder.upcallType.appendParameterTypes(type.javaType);
             }
@@ -281,16 +259,14 @@ final class PanamaSignature {
                        @Cached("builder.retType") @SuppressWarnings("unused") PanamaType cachedRetType,
                        @Cached("builder.argsState") @SuppressWarnings("unused") ArgsState cachedState,
                        @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
-                       @SuppressWarnings("unused") @Cached("builder.descriptor") FunctionDescriptor functionDescriptor,
-                       @Cached("prepareSignatureInfo(cachedRetType, cachedState, functionDescriptor)") CachedSignatureInfo cachedSignatureInfo) {
-
+                       @Cached("prepareSignatureInfo(cachedRetType, cachedState)") CachedSignatureInfo cachedSignatureInfo) {
                 return create(PanamaNFIContext.get(self), cachedSignatureInfo, builder.upcallType);
             }
 
             @Specialization(replaces = "doCached")
             static Object doGeneric(PanamaSignatureBuilder builder,
                             @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self) {
-                CachedSignatureInfo sigInfo = prepareSignatureInfo(builder.retType, builder.argsState, builder.descriptor);
+                CachedSignatureInfo sigInfo = prepareSignatureInfo(builder.retType, builder.argsState);
 
                 return create(PanamaNFIContext.get(self), sigInfo, builder.upcallType);
             }
@@ -299,16 +275,31 @@ final class PanamaSignature {
 
     @TruffleBoundary
     @SuppressWarnings("unused")
-    public static CachedSignatureInfo prepareSignatureInfo(PanamaType retType, ArgsState state, FunctionDescriptor functionDescriptor) {
+    public static CachedSignatureInfo prepareSignatureInfo(PanamaType retType, ArgsState state) {
         PanamaType[] argTypes = new PanamaType[state.argCount];
         ArgsState curState = state;
         for (int i = state.argCount - 1; i >= 0; i--) {
             argTypes[i] = curState.lastArg;
             curState = curState.prev;
         }
-        MethodHandle downcallHandle = createDowncallHandle(functionDescriptor);
-        return new CachedSignatureInfo(PanamaNFILanguage.get(null), retType, argTypes, functionDescriptor, downcallHandle);
+        FunctionDescriptor descriptor = createDescriptor(argTypes, retType);
+        MethodHandle downcallHandle = createDowncallHandle(descriptor);
+        return new CachedSignatureInfo(PanamaNFILanguage.get(null), retType, argTypes, descriptor, downcallHandle);
     }
+
+    private static FunctionDescriptor createDescriptor(PanamaType[] argTypes, PanamaType retType) {
+        FunctionDescriptor descriptor = FunctionDescriptor.ofVoid();
+        if (retType.nativeLayout == null) {
+            descriptor = descriptor.dropReturnLayout();
+        } else {
+            descriptor = descriptor.changeReturnLayout(retType.nativeLayout);
+        }
+        for (PanamaType argType : argTypes) {
+            descriptor = descriptor.appendArgumentLayouts(argType.nativeLayout);
+        }
+        return descriptor;
+    }
+
 
     static MethodHandle createDowncallHandle(FunctionDescriptor descriptor) {
         int parameterCount = Linker.downcallType(descriptor).parameterCount();
