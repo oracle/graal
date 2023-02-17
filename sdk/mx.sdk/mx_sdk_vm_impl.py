@@ -1698,7 +1698,11 @@ class GraalVmNativeImage(GraalVmProject, metaclass=ABCMeta):
         if not self.is_native():
             return None
         if _get_svm_support().generate_separate_debug_info(self.native_image_config):
-            return join(self.get_output_base(), self.name, self.native_image_name + _get_svm_support().separate_debuginfo_ext())
+            debug_file_base_name = self.native_image_name
+            if mx.is_windows():
+                assert debug_file_base_name.lower().endswith('.exe') or debug_file_base_name.lower().endswith('.dll')
+                debug_file_base_name = debug_file_base_name[:-4]
+            return join(self.get_output_base(), self.name, debug_file_base_name + _get_svm_support().separate_debuginfo_ext())
         return None
 
     @property
