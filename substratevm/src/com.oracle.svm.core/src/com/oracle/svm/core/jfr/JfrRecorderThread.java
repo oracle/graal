@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import com.oracle.svm.core.util.VMError;
  */
 public class JfrRecorderThread extends Thread {
     private static final int BUFFER_FULL_ENOUGH_PERCENTAGE = 50;
+    private static final boolean CHUNK_ROTATION_MONITOR_PRESENT = (new Target_jdk_jfr_internal_JVM.JvmChunkRotationMonitorAvailable()).getAsBoolean();
 
     private final JfrGlobalMemory globalMemory;
     private final JfrUnlockedChunkWriter unlockedChunkWriter;
@@ -101,8 +102,11 @@ public class JfrRecorderThread extends Thread {
             if (isFullEnough(buffer)) {
                 boolean shouldNotify = persistBuffer(chunkWriter, buffer);
                 if (shouldNotify) {
-                    synchronized (Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE) {
-                        Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE.notifyAll();
+                    Object chunkRotationMonitor = CHUNK_ROTATION_MONITOR_PRESENT
+                                    ? Target_jdk_jfr_internal_JVM.CHUNK_ROTATION_MONITOR
+                                    : Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE;
+                    synchronized (chunkRotationMonitor) {
+                        chunkRotationMonitor.notifyAll();
                     }
                 }
             }
