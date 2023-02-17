@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jfr;
 
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.ProcessProperties;
 
@@ -38,11 +39,11 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.Event;
 import jdk.jfr.internal.JVM;
@@ -52,12 +53,38 @@ import jdk.jfr.internal.LogTag;
 @TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_JVM {
     // Checkstyle: stop
-    @Alias @TargetElement(onlyWith = JDK20OrLater.class) //
+    @Alias @TargetElement(onlyWith = JvmChunkRotationMonitorAvailable.class) //
     static Object CHUNK_ROTATION_MONITOR;
 
-    @Alias @TargetElement(onlyWith = JDK19OrEarlier.class) //
+    @Alias @TargetElement(onlyWith = JvmFileDeltaChangeAvailable.class) //
     static Object FILE_DELTA_CHANGE;
     // Checkstyle: resume
+
+    static class JvmChunkRotationMonitorAvailable extends JvmFieldAvailable {
+        protected JvmChunkRotationMonitorAvailable() {
+            super("CHUNK_ROTATION_MONITOR");
+        }
+    }
+
+    private static class JvmFileDeltaChangeAvailable extends JvmFieldAvailable {
+        protected JvmFileDeltaChangeAvailable() {
+            super("FILE_DELTA_CHANGE");
+        }
+    }
+
+    private abstract static class JvmFieldAvailable implements BooleanSupplier {
+
+        private final String fieldName;
+
+        protected JvmFieldAvailable(String fieldName) {
+            this.fieldName = fieldName;
+        }
+
+        @Override
+        public boolean getAsBoolean() {
+            return ReflectionUtil.lookupField(true, JVM.class, fieldName) != null;
+        }
+    }
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile boolean nativeOK;
