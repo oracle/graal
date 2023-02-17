@@ -85,7 +85,7 @@ public class NodeInliningAndLazyInitExample {
             throw new MyException(message);
         }
 
-        // Some more specializations with large caches that make
+        // For example: some more specializations with large caches that make
         // this node not suitable for inlining
 
     }

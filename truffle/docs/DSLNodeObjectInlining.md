@@ -518,16 +518,17 @@ The DSL validates whether the required fields are matching to the state specific
 
 ### Lazy Initialized Nodes with DSL Inlining
 
-DSL inlining can be used to provide lazy initialization for otherwise cached node that is not needed on all code-paths.
-Consider this example:
+*Full source code of the example: [NodeInliningAndLazyInitExample.java](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl.test/src/com/oracle/truffle/api/dsl/test/examples/NodeInliningAndLazyInitExample.java).*
+
+DSL inlining can be used to provide lazy initialization for otherwise cached node that is only used in code blocks that
+are protected by conditions that trigger rarely. Consider this example:
 ```java
 @GenerateInline(false)
 @GenerateUncached
 public abstract static class RaiseErrorNode extends Node {
     abstract void execute(Object type, String message);
 
-    // Many specializations with large caches that make
-    // this node not suitable for inlining
+    // ...
 }
 
 @GenerateInline(false)
@@ -570,8 +571,15 @@ public abstract static class LazyInitExampleBefore2 extends Node {
 }
 ```
 However `@Child` nodes have some drawbacks. Most notably, the `@Specialization` cannot be `static` and we
-cannot generate uncached variant of the node. With DSL inlining, one can create an inlinable wrapper node
-that initializes the `RaiseErrorNode` on demand:
+cannot generate uncached variant of the node.
+
+With DSL inlining, one should either make the `RaiseErrorNode` inlineable if beneficial, or if it is a node that:
+
+* has a lot of specializations with multiple instances, or
+* cannot currently be inlined, or
+* has a lot of cached fields that cannot be inlined
+
+then one can create an inlinable wrapper node that initializes the `RaiseErrorNode` on demand:
 ```java
 @GenerateInline
 @GenerateUncached
