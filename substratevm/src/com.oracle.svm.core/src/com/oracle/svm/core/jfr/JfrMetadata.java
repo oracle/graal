@@ -25,25 +25,26 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
 public class JfrMetadata {
-    private volatile long currentMetadataId;
+    private UninterruptibleUtils.AtomicLong currentMetadataId;
     private volatile byte[] metadataDescriptor;
     private volatile boolean isDirty;
     private SignedWord metadataPosition;
 
     public JfrMetadata(byte[] bytes) {
         metadataDescriptor = bytes;
-        currentMetadataId = 0;
+        currentMetadataId = new UninterruptibleUtils.AtomicLong(0);
         isDirty = false;
         metadataPosition = WordFactory.signed(-1);
     }
 
     public void setDescriptor(byte[] bytes) {
         metadataDescriptor = bytes;
-        currentMetadataId++;
+        currentMetadataId.incrementAndGet();
         isDirty = true;
     }
 
@@ -69,6 +70,6 @@ public class JfrMetadata {
     }
 
     public long getCurrentMetadataId() {
-        return currentMetadataId;
+        return currentMetadataId.get();
     }
 }
