@@ -32,10 +32,7 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   linux_common:: {
     packages+: {
-      "01:binutils": '>=2.30',
-      gcc: '==8.3.0',
-      'gcc-build-essentials': '==8.3.0', # GCC 4.9.0 fails on cluster
-      make: '>=3.83',
+      devtoolset: "==11", # GCC 11.2, make 4.3, binutils 2.36, valgrind 3.17
       llvm: '==8.0.1',
     },
   },

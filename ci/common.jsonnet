@@ -121,7 +121,7 @@ local common_json = import "../common.json";
 
     graalnodejs:: {
       packages+: if self.os == "linux" then {
-        "00:devtoolset": "==7",
+        "00:devtoolset": "==11",
         cmake: "==3.22.2",
       } else {},
     },
@@ -141,11 +141,8 @@ local common_json = import "../common.json";
         "*.log",
       ],
 
-      packages+: if self.os == "linux" && self.arch == "amd64" && std.objectHas(self, "os_distro") && self.os_distro == "ol" then {
-        "00:devtoolset": "==7",
-        "01:binutils": ">=2.34",
-      } else if self.os == "linux" && self.arch == "aarch64" && std.objectHas(self, "os_distro") && self.os_distro == "ol" then {
-        "00:devtoolset": "==7",
+      packages+: if self.os == "linux" && std.objectHas(self, "os_distro") && self.os_distro == "ol" then {
+        "00:devtoolset": "==11",
       } else {},
     },
   },
