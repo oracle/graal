@@ -269,7 +269,7 @@ final class PanamaSignature {
 
         @ExportMessage
         void makeVarargs() {
-            System.out.println("varargs");
+            throw new UnsupportedOperationException("Cannot make varargs because varargs are not implemented.");
         }
 
         @ExportMessage

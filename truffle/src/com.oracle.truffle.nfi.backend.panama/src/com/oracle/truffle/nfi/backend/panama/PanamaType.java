@@ -41,7 +41,6 @@
 package com.oracle.truffle.nfi.backend.panama;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.StringClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.GenericClosureArgumentNodeGen;
@@ -184,13 +183,6 @@ class PanamaType {
                 throw CompilerDirectives.shouldNotReachHere("Nullable not imple");
             default:
                 throw CompilerDirectives.shouldNotReachHere("Type does not exist.");
-        }
-    }
-
-    static final class EnvType extends PanamaType {
-
-        EnvType(NativeSimpleType type) throws UnsupportedOperationException {
-            super(NativeSimpleType.VOID);
         }
     }
 }

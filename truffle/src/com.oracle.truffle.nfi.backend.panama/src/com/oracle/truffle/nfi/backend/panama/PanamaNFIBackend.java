@@ -60,15 +60,30 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilder
 import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadDefaultNodeGen;
 import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadLibraryNodeGen;
 import java.lang.foreign.SymbolLookup;
+import java.util.EnumMap;
+import java.util.Map;
 
 @ExportLibrary(NFIBackendLibrary.class)
 @SuppressWarnings("static-method")
 final class PanamaNFIBackend implements NFIBackend {
 
     private final PanamaNFILanguage language;
+    private Map<NativeSimpleType, PanamaType> simpleTypes;
 
     PanamaNFIBackend(PanamaNFILanguage language) {
         this.language = language;
+        initializeTypes();
+    }
+
+    private void initializeTypes() {
+        simpleTypes = new EnumMap<>(NativeSimpleType.class);
+        for (NativeSimpleType type : NativeSimpleType.values()) {
+            switch (type) {
+                // TODO implement these types
+                case UINT8, SINT8, FP80, OBJECT, NULLABLE, STRING -> simpleTypes.put(type, null);
+                default -> simpleTypes.put(type, new PanamaType(type));
+            }
+        }
     }
 
     @Override
@@ -136,7 +151,7 @@ final class PanamaNFIBackend implements NFIBackend {
 
     @ExportMessage
     Object getSimpleType(NativeSimpleType type) {
-        return new PanamaType(type);
+        return simpleTypes.get(type);
     }
 
     @ExportMessage
