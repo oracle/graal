@@ -111,7 +111,7 @@ suite = {
             ],
             "javaCompliance" : "8+",
             "checkstyle": "com.oracle.truffle.espresso.polyglot",
-            "checkstyleVersion": "8.36.1",
+            "checkstyleVersion": "10.7.0",
             "license": "UPL",
         },
 
@@ -141,7 +141,7 @@ suite = {
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
-            "checkstyleVersion": "8.36.1",
+            "checkstyleVersion": "10.7.0",
         },
 
         "com.oracle.truffle.espresso.processor": {
