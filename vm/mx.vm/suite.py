@@ -99,7 +99,7 @@ suite = {
             "sourceDirs" : ["src"],
             "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
-            "checkstyleVersion" : "8.36.1",
+            "checkstyleVersion" : "10.7.0",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
                 "truffle:TruffleJSON",
