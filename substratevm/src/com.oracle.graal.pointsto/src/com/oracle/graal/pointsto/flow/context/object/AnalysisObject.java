@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -209,10 +209,6 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         assert !Modifier.isStatic(field.getModifiers()) && field.hasUnsafeFrozenTypeState();
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
         return fieldTypeStore.unsafeWriteSinkFlow(bb);
-    }
-
-    public FieldTypeStore getInstanceFieldTypeStore(PointsToAnalysis bb, AnalysisField field) {
-        return getInstanceFieldTypeStore(bb, null, null, field);
     }
 
     /** Returns the instance field flow corresponding to a filed of the object's type. */

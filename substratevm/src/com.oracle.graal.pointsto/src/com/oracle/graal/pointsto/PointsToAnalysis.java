@@ -258,14 +258,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return metaAccess.lookupJavaType(org.graalvm.compiler.graph.NodeList.class);
     }
 
-    public AnalysisType getThrowableType() {
-        return metaAccess.lookupJavaType(Throwable.class);
-    }
-
-    public AnalysisType getThreadType() {
-        return metaAccess.lookupJavaType(Thread.class);
-    }
-
     public TypeFlow<?> getAllInstantiatedTypeFlow() {
         return objectType.getTypeFlow(this, true);
     }
