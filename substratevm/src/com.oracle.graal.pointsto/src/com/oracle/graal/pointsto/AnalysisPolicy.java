@@ -198,27 +198,15 @@ public abstract class AnalysisPolicy {
 
     public abstract void registerAsImplementationInvoked(InvokeTypeFlow invoke, PointsToAnalysisMethod method);
 
-    @SuppressWarnings("unused")
-    public int makeProperties(BigBang bb, AnalysisObject... objects) {
-        /* The default analysis policy doesn't use properties. */
-        return 0;
-    }
-
-    @SuppressWarnings("unused")
-    public int makePropertiesForUnion(TypeState s1, TypeState s2) {
-        /* The default analysis policy doesn't use properties. */
-        return 0;
-    }
-
     /**
      * Simplifies a type state by replacing all context sensitive objects with context insensitive
      * objects.
      */
     public abstract TypeState forContextInsensitiveTypeState(PointsToAnalysis bb, TypeState state);
 
-    public abstract SingleTypeState singleTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, AnalysisType type, AnalysisObject... objects);
+    public abstract SingleTypeState singleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type, AnalysisObject... objects);
 
-    public abstract MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, BitSet typesBitSet, AnalysisObject... objects);
+    public abstract MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, AnalysisObject... objects);
 
     public abstract TypeState doUnion(PointsToAnalysis bb, SingleTypeState s1, SingleTypeState s2);
 

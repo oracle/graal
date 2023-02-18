@@ -43,24 +43,6 @@ public abstract class TypeState {
     /** TypeState id is only be used for statistics. */
     private int id = -1;
 
-    /** An empty bit array, i.e., not bits set. */
-    public static final int EMPTY_BIT_ARRAY = 0;
-
-    /** A bit array of properties for this type state. */
-    protected final int properties;
-
-    public TypeState(int properties) {
-        this.properties = properties;
-    }
-
-    /* Instance methods. */
-
-    public int getProperties() {
-        return properties;
-    }
-
-    /* Types accessing methods. */
-
     /** Returns true if the type state contains exact the same types as the bit set. */
     public abstract boolean hasExactTypes(BitSet typesBitSet);
 
@@ -188,7 +170,7 @@ public abstract class TypeState {
 
     /** Wraps an analysis object into a non-null type state. */
     public static TypeState forNonNullObject(PointsToAnalysis bb, AnalysisObject object) {
-        return bb.analysisPolicy().singleTypeState(bb, false, bb.analysisPolicy().makeProperties(bb, object), object.type(), object);
+        return bb.analysisPolicy().singleTypeState(bb, false, object.type(), object);
     }
 
     /** Wraps the analysis object corresponding to a JavaConstant into a non-null type state. */
@@ -204,7 +186,7 @@ public abstract class TypeState {
 
     public static SingleTypeState forExactType(PointsToAnalysis bb, AnalysisObject object, boolean canBeNull) {
         assert object.type().isArray() || (object.type().isInstanceClass() && !Modifier.isAbstract(object.type().getModifiers())) : object.type();
-        return bb.analysisPolicy().singleTypeState(bb, canBeNull, bb.analysisPolicy().makeProperties(bb, object), object.type(), object);
+        return bb.analysisPolicy().singleTypeState(bb, canBeNull, object.type(), object);
     }
 
     public static TypeState forType(PointsToAnalysis bb, AnalysisType type, boolean canBeNull) {
@@ -212,7 +194,7 @@ public abstract class TypeState {
     }
 
     public static TypeState forType(PointsToAnalysis bb, AnalysisObject object, boolean canBeNull) {
-        return bb.analysisPolicy().singleTypeState(bb, canBeNull, bb.analysisPolicy().makeProperties(bb, object), object.type(), object);
+        return bb.analysisPolicy().singleTypeState(bb, canBeNull, object.type(), object);
     }
 
     public final TypeState forNonNull(PointsToAnalysis bb) {
@@ -315,7 +297,6 @@ final class EmptyTypeState extends TypeState {
     static final TypeState SINGLETON = new EmptyTypeState();
 
     private EmptyTypeState() {
-        super(EMPTY_BIT_ARRAY);
     }
 
     @Override
@@ -384,7 +365,6 @@ final class NullTypeState extends TypeState {
     static final TypeState SINGLETON = new NullTypeState();
 
     private NullTypeState() {
-        super(EMPTY_BIT_ARRAY);
     }
 
     @Override

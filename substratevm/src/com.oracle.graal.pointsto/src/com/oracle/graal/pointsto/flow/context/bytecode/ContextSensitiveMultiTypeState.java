@@ -43,8 +43,8 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
     protected int[] objectTypeIds;
 
     /** Creates a new type state using the provided types bit set and objects. */
-    public ContextSensitiveMultiTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, BitSet typesBitSet, AnalysisObject... objects) {
-        super(bb, canBeNull, properties, typesBitSet);
+    public ContextSensitiveMultiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, AnalysisObject... objects) {
+        super(bb, canBeNull, typesBitSet);
         this.objects = objects;
         assert typesCount > 1 : "Multi type state with single type.";
         assert objects.length > 1 : "Multi type state with single object.";

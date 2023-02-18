@@ -48,8 +48,7 @@ public class MultiTypeState extends TypeState {
     protected boolean merged;
 
     /** Creates a new type state using the provided types bit set and objects. */
-    public MultiTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, BitSet typesBitSet) {
-        super(properties);
+    public MultiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet) {
         assert !TypeStateUtils.needsTrim(typesBitSet);
         this.typesBitSet = typesBitSet;
         long cardinality = typesBitSet.cardinality();
@@ -63,7 +62,6 @@ public class MultiTypeState extends TypeState {
 
     /** Create a type state with the same content and a reversed canBeNull value. */
     protected MultiTypeState(PointsToAnalysis bb, boolean canBeNull, MultiTypeState other) {
-        super(other.properties);
         this.typesBitSet = other.typesBitSet;
         this.typesCount = other.typesCount;
         this.canBeNull = canBeNull;
