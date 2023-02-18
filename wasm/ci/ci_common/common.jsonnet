@@ -44,7 +44,10 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   wabt:: {
     downloads+: {
-      WABT_DIR: {name: 'wabt', version: '1.0.23', platformspecific: true},
+      WABT_DIR: {name: 'wabt', version: '1.0.32', platformspecific: true},
+    },
+    environment+: {
+      WABT_DIR: '$WABT_DIR/bin',
     },
   },
 
