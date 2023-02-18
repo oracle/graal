@@ -48,22 +48,18 @@ public class MultiTypeState extends TypeState {
     protected boolean merged;
 
     /** Creates a new type state using the provided types bit set and objects. */
-    public MultiTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, BitSet typesBitSet) {
-        super(properties);
+    public MultiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount) {
         assert !TypeStateUtils.needsTrim(typesBitSet);
         this.typesBitSet = typesBitSet;
-        long cardinality = typesBitSet.cardinality();
-        assert cardinality < Integer.MAX_VALUE : "We don't expect so much types.";
-        this.typesCount = (int) cardinality;
+        this.typesCount = typesCount;
         this.canBeNull = canBeNull;
         this.merged = false;
-        assert typesCount > 1 : "Multi type state with single type.";
+        assert this.typesCount > 1 : "Multi type state with single type.";
         PointsToStats.registerTypeState(bb, this);
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
     protected MultiTypeState(PointsToAnalysis bb, boolean canBeNull, MultiTypeState other) {
-        super(other.properties);
         this.typesBitSet = other.typesBitSet;
         this.typesCount = other.typesCount;
         this.canBeNull = canBeNull;
@@ -75,11 +71,6 @@ public class MultiTypeState extends TypeState {
     @Override
     public int objectsCount() {
         return typesCount;
-    }
-
-    @Override
-    public final boolean hasExactTypes(BitSet inputTypesBitSet) {
-        return typesBitSet.equals(inputTypesBitSet);
     }
 
     @Override
