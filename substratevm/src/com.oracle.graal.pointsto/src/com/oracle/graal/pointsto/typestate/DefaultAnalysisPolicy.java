@@ -252,8 +252,8 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, AnalysisObject... objects) {
-        return new MultiTypeState(bb, canBeNull, typesBitSet);
+    public MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount, AnalysisObject... objects) {
+        return new MultiTypeState(bb, canBeNull, typesBitSet, typesCount);
     }
 
     /*
@@ -300,8 +300,8 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
              * types, just construct the types bit set.
              */
             BitSet typesBitSet = TypeStateUtils.newBitSet(s1.exactType().getId(), s2.exactType().getId());
-
-            TypeState result = new MultiTypeState(bb, resultCanBeNull, typesBitSet);
+            assert typesBitSet.cardinality() == 2;
+            TypeState result = new MultiTypeState(bb, resultCanBeNull, typesBitSet, 2);
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
         }
@@ -319,7 +319,9 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             return s1.forCanBeNull(bb, resultCanBeNull);
         } else {
             BitSet typesBitSet = TypeStateUtils.set(s1.typesBitSet(), s2.exactType().getId());
-            MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, typesBitSet);
+            int typesCount = s1.typesCount() + 1;
+            assert typesCount == typesBitSet.cardinality();
+            MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, typesBitSet, typesCount);
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
         }
@@ -347,7 +349,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         /* Logical OR the type bit sets. */
         BitSet resultTypesBitSet = TypeStateUtils.or(s1.typesBitSet(), s2.typesBitSet());
 
-        MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet);
+        MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality());
         assert !result.equals(s1) && !result.equals(s2);
         PointsToStats.registerUnionOperation(bb, s1, s2, result);
         return result;
@@ -391,13 +393,14 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         }
 
         BitSet resultTypesBitSet = TypeStateUtils.and(s1.typesBitSet(), s2.typesBitSet());
-        if (resultTypesBitSet.cardinality() == 0) {
+        int typesCount = resultTypesBitSet.cardinality();
+        if (typesCount == 0) {
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
-        } else if (resultTypesBitSet.cardinality() == 1) {
+        } else if (typesCount == 1) {
             AnalysisType type = bb.getUniverse().getType(resultTypesBitSet.nextSetBit(0));
             return new SingleTypeState(bb, resultCanBeNull, type);
         } else {
-            MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet);
+            MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount);
             assert !result.equals(s1);
             return result;
         }
@@ -410,12 +413,13 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         if (s1.containsType(s2.exactType())) {
             /* s2 is contained in s1, so remove s2's type from s1. */
             BitSet resultTypesBitSet = TypeStateUtils.clear(s1.typesBitSet(), s2.exactType().getId());
-            assert resultTypesBitSet.cardinality() > 0;
-            if (resultTypesBitSet.cardinality() == 1) {
+            int typesCount = resultTypesBitSet.cardinality();
+            assert typesCount > 0;
+            if (typesCount == 1) {
                 AnalysisType type = bb.getUniverse().getType(resultTypesBitSet.nextSetBit(0));
                 return new SingleTypeState(bb, resultCanBeNull, type);
             } else {
-                return new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet);
+                return new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount);
             }
         } else {
             return s1.forCanBeNull(bb, resultCanBeNull);
@@ -447,13 +451,14 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         }
 
         BitSet resultTypesBitSet = TypeStateUtils.andNot(s1.typesBitSet(), s2.typesBitSet());
-        if (resultTypesBitSet.cardinality() == 0) {
+        int typesCount = resultTypesBitSet.cardinality();
+        if (typesCount == 0) {
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
-        } else if (resultTypesBitSet.cardinality() == 1) {
+        } else if (typesCount == 1) {
             AnalysisType type = bb.getUniverse().getType(resultTypesBitSet.nextSetBit(0));
             return new SingleTypeState(bb, resultCanBeNull, type);
         } else {
-            return new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet);
+            return new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount);
         }
     }
 
