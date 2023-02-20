@@ -37,16 +37,23 @@ import java.util.List;
 
 public class MemoryPoolMXBeans {
 
+    private static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";
+    private static final String COMPLETE_SCAVENGER = "complete scavenger";
+    private static final String EPSILON_SCAVENGER = "epsilon scavenger";
+
     private static AbstractMemoryPoolMXBean[] mxBeans;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static List<MemoryPoolMXBean> createMemoryPoolMXBeans() {
         List<MemoryPoolMXBean> beanList;
         if (SubstrateOptions.UseSerialGC.getValue()) {
-            beanList = List.of(new EdenMemoryPoolMXBean(), new SurvivorMemoryPoolMXBean(), new OldGenerationMemoryPoolMXBean());
+            beanList = List.of(
+                    new EdenMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
+                    new SurvivorMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
+                    new OldGenerationMemoryPoolMXBean(COMPLETE_SCAVENGER));
         } else {
             assert SubstrateOptions.UseEpsilonGC.getValue();
-            beanList = List.of(new EpsilonMemoryPoolMXBean());
+            beanList = List.of(new EpsilonMemoryPoolMXBean(EPSILON_SCAVENGER));
         }
         mxBeans = beanList.toArray(AbstractMemoryPoolMXBean[]::new);
         return beanList;
@@ -64,8 +71,8 @@ public class MemoryPoolMXBeans {
     static final class EdenMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public EdenMemoryPoolMXBean() {
-            super("eden space", "young generation scavenger", "complete scavenger");
+        public EdenMemoryPoolMXBean(String... managerNames) {
+            super("eden space", managerNames);
         }
 
         @Override
@@ -106,8 +113,8 @@ public class MemoryPoolMXBeans {
     static final class SurvivorMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public SurvivorMemoryPoolMXBean() {
-            super("survivor space", "young generation scavenger", "complete scavenger");
+        public SurvivorMemoryPoolMXBean(String... managerNames) {
+            super("survivor space", managerNames);
         }
 
         @Override
@@ -142,8 +149,8 @@ public class MemoryPoolMXBeans {
     static final class OldGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public OldGenerationMemoryPoolMXBean() {
-            super("old generation space", "complete scavenger");
+        public OldGenerationMemoryPoolMXBean(String... managerNames) {
+            super("old generation space", managerNames);
         }
 
         @Override
@@ -181,8 +188,8 @@ public class MemoryPoolMXBeans {
         private final long MAX_HEAP_SIZE = GCImpl.getPolicy().getMaximumHeapSize().rawValue();
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public EpsilonMemoryPoolMXBean() {
-            super("epsilon heap", "epsilon scavenger");
+        public EpsilonMemoryPoolMXBean(String... managerNames) {
+            super("epsilon heap", managerNames);
         }
 
         @Override
