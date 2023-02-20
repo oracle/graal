@@ -914,6 +914,8 @@ public class SandboxPolicyTest {
             builder.option("sandbox.MaxASTDepth", "1000");
             builder.option("sandbox.MaxStackFrames", "50");
             builder.option("sandbox.MaxThreads", "1");
+            builder.option("sandbox.MaxOutputStreamSize", "0B");
+            builder.option("sandbox.MaxErrorStreamSize", "0B");
         }
         return builder;
     }

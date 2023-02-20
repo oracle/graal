@@ -37,6 +37,8 @@ The resource limits may be configured using the following options:
 - `--sandbox.ReuseLowMemoryTriggerThreshold=true|false` : Specifies whether an already set heap memory notification limit can be reused for the low memory trigger. When reusing is allowed and the usage threshold or the collection usage threshold of a heap memory pool has already been set, then the value of 'RetainedBytesCheckFactor' is ignored for that memory pool and threshold type and whatever threshold value has already been set is used. Is set to 'false' by default.
 - `--sandbox.TraceLimits=true|false` : Records the maximum amount of resources used during execution, and reports a summary of resource limits to the log file upon application exit. Users may also provide limits to enforce while tracing. This flag can be used to estimate an application's optimal sandbox parameters, either by tracing the limits of a stress test or peak usage.
 - `--sandbox.UseLowMemoryTrigger=true|false` : Specifies whether stopping the world is enabled. When enabled, engines with at least one memory limited execution context are paused when the total number of bytes allocated in the heap for the whole host VM exceeds the specified factor of total heap memory of the host VM. Is set to 'true' by default.
+- `--sandbox.MaxOutputStreamSize=[0, inf)B|KB|MB|GB` : Specifies the maximum size that the guest application can write to stdout during its run. No limit is set by default. Example value: '100MB'.
+- `--sandbox.MaxErrorStreamSize=[0, inf)B|KB|MB|GB` : Specifies the maximum size that the guest application can write to stderr during its run. No limit is set by default. Example value: '100MB'.
 <!-- END: sandbox-options -->
 
 Different configurations may be provided for each polyglot embedding `Context` instance.
@@ -252,6 +254,42 @@ Available units to specify sizes are `B` for bytes, `KB` for kilobytes, `MB` for
 It is not allowed to specify negative values or no size unit with max heap memory options.
 
 Resetting resource limits using `Context.resetLimits` does not affect the heap memory limit.
+
+## Limiting the size of the output written to stdout/stderr
+
+Limits the size of the output that the application writes to standard output or standard error output during runtime.
+If the limit is exceeded, evaluation of the code fails and the context is canceled.
+Limiting the size of the output can serve as protection against denial-of-service attacks that flood the output.
+
+#### Example Usage
+```java
+try (Context context = Context.newBuilder("js")
+                           .option("sandbox.MaxOutputStreamSize", "100KB")
+                       .build()) {
+    context.eval("js", "while(true) { console.log('Log message') };");
+    assert false;
+} catch (PolyglotException e) {
+    // triggered after writing more than 100KB to stdout
+    // context is closed and can no longer be used
+    // error message: Maximum output stream size of 102400 exceeded. Bytes written 102408.
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
+}
+```
+```java
+try (Context context = Context.newBuilder("js")
+                           .option("sandbox.MaxErrorStreamSize", "100KB")
+                       .build()) {
+    context.eval("js", "while(true) { console.error('Error message') };");
+    assert false;
+} catch (PolyglotException e) {
+    // triggered after writing more than 100KB to stderr
+    // context is closed and can no longer be used
+    // error message: Maximum error stream size of 102400 exceeded. Bytes written 102410.
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
+}
+```
 
 ## Determining Sandbox Resource Limits
 
