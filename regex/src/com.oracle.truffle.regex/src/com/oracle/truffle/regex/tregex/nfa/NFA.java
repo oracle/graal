@@ -54,6 +54,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.TBitSet;
+import org.graalvm.collections.EconomicSet;
 
 public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
@@ -109,63 +110,78 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         }
     }
 
-    private static NFAState copyState(NFAState[] stateDedup, NFAStateTransition[] stateTransitionDedup, NFAState original) {
+    private static NFAState copyState(NFAState[] stateIndex, EconomicSet<NFAState> statesToDo, NFAState original) {
         if (original == null) {
             return null;
         }
-        if (stateDedup[original.getId()] == null) {
+        if (stateIndex[original.getId()] == null) {
             NFAState state = new NFAState(original);
-            stateDedup[state.getId()] = state;
-            NFAStateTransition[] successors = state.getSuccessors();
-            for (int i = 0; i < successors.length; i++) {
-                successors[i] = copyStateTransition(stateDedup, stateTransitionDedup, successors[i]);
-            }
-            NFAStateTransition[] predecessors = state.getPredecessors();
-            for (int i = 0; i < predecessors.length; i++) {
-                predecessors[i] = copyStateTransition(stateDedup, stateTransitionDedup, predecessors[i]);
-            }
+            stateIndex[state.getId()] = state;
+            statesToDo.add(state);
         }
-        return stateDedup[original.getId()];
+        return stateIndex[original.getId()];
     }
 
-    private static NFAStateTransition copyStateTransition(NFAState[] stateDedup, NFAStateTransition[] stateTransitionDedup, NFAStateTransition original) {
+    private static NFAStateTransition copyTransition(NFAStateTransition[] transitionIndex, EconomicSet<NFAStateTransition> transitionsToDo, NFAStateTransition original) {
         if (original == null) {
             return null;
         }
-        if (stateTransitionDedup[original.getId()] == null) {
+        if (transitionIndex[original.getId()] == null) {
             NFAStateTransition transition = new NFAStateTransition(original);
-            stateTransitionDedup[original.getId()] = transition;
-            transition.setSource(copyState(stateDedup, stateTransitionDedup, transition.getSource()));
-            transition.setTarget(copyState(stateDedup, stateTransitionDedup, transition.getTarget()));
+            transitionIndex[original.getId()] = transition;
+            transitionsToDo.add(transition);
         }
-        return stateTransitionDedup[original.getId()];
+        return transitionIndex[original.getId()];
     }
 
     public NFA(NFA original) {
-        NFAState[] stateDedup = new NFAState[original.states.length];
-        NFAStateTransition[] stateTransitionDedup = new NFAStateTransition[original.transitions.length];
+        NFAState[] stateIndex = new NFAState[original.states.length];
+        NFAStateTransition[] transitionIndex = new NFAStateTransition[original.transitions.length];
+        EconomicSet<NFAState> statesToDo = EconomicSet.create(original.states.length);
+        EconomicSet<NFAStateTransition> transitionsToDo = EconomicSet.create(original.transitions.length);
         this.ast = original.ast;
         this.preCalculatedResults = original.preCalculatedResults;
         this.states = new NFAState[original.states.length];
         for (int i = 0; i < original.states.length; i++) {
-            this.states[i] = copyState(stateDedup, stateTransitionDedup, original.states[i]);
+            this.states[i] = copyState(stateIndex, statesToDo, original.states[i]);
         }
         this.transitions = new NFAStateTransition[original.transitions.length];
         for (int i = 0; i < original.transitions.length; i++) {
-            this.transitions[i] = copyStateTransition(stateDedup, stateTransitionDedup, original.transitions[i]);
+            this.transitions[i] = copyTransition(transitionIndex, transitionsToDo, original.transitions[i]);
         }
         this.anchoredEntry = new NFAStateTransition[original.anchoredEntry.length];
         for (int i = 0; i < original.anchoredEntry.length; i++) {
-            this.anchoredEntry[i] = copyStateTransition(stateDedup, stateTransitionDedup, original.anchoredEntry[i]);
+            this.anchoredEntry[i] = copyTransition(transitionIndex, transitionsToDo, original.anchoredEntry[i]);
         }
         this.unAnchoredEntry = new NFAStateTransition[original.unAnchoredEntry.length];
         for (int i = 0; i < original.unAnchoredEntry.length; i++) {
-            this.unAnchoredEntry[i] = copyStateTransition(stateDedup, stateTransitionDedup, original.unAnchoredEntry[i]);
+            this.unAnchoredEntry[i] = copyTransition(transitionIndex, transitionsToDo, original.unAnchoredEntry[i]);
         }
-        this.dummyInitialState = copyState(stateDedup, stateTransitionDedup, original.dummyInitialState);
-        this.reverseAnchoredEntry = copyStateTransition(stateDedup, stateTransitionDedup, original.reverseAnchoredEntry);
-        this.reverseUnAnchoredEntry = copyStateTransition(stateDedup, stateTransitionDedup, original.reverseUnAnchoredEntry);
-        this.initialLoopBack = copyStateTransition(stateDedup, stateTransitionDedup, original.initialLoopBack);
+        this.dummyInitialState = copyState(stateIndex, statesToDo, original.dummyInitialState);
+        this.reverseAnchoredEntry = copyTransition(transitionIndex, transitionsToDo, original.reverseAnchoredEntry);
+        this.reverseUnAnchoredEntry = copyTransition(transitionIndex, transitionsToDo, original.reverseUnAnchoredEntry);
+        this.initialLoopBack = copyTransition(transitionIndex, transitionsToDo, original.initialLoopBack);
+
+        while (!statesToDo.isEmpty() || !transitionsToDo.isEmpty()) {
+            if (!statesToDo.isEmpty()) {
+                NFAState state = statesToDo.iterator().next();
+                statesToDo.remove(state);
+                NFAStateTransition[] successors = state.getSuccessors();
+                for (int i = 0; i < successors.length; i++) {
+                    successors[i] = copyTransition(transitionIndex, transitionsToDo, successors[i]);
+                }
+                NFAStateTransition[] predecessors = state.getPredecessors();
+                for (int i = 0; i < predecessors.length; i++) {
+                    predecessors[i] = copyTransition(transitionIndex, transitionsToDo, predecessors[i]);
+                }
+            } else {
+                assert !transitionsToDo.isEmpty();
+                NFAStateTransition transition = transitionsToDo.iterator().next();
+                transitionsToDo.remove(transition);
+                transition.setSource(copyState(stateIndex, statesToDo, transition.getSource()));
+                transition.setTarget(copyState(stateIndex, statesToDo, transition.getTarget()));
+            }
+        }
     }
 
     public NFAState getUnAnchoredInitialState() {

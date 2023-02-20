@@ -114,6 +114,16 @@ public final class NFAStateTransition implements AbstractTransition<NFAState, NF
         return groupBoundaries;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof NFAStateTransition && getId() == ((NFAStateTransition) o).getId();
+    }
+
+    @Override
+    public int hashCode() {
+        return getId();
+    }
+
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
