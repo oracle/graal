@@ -621,7 +621,7 @@ local devkits = common_json.devkits;
   deploy_vm_installable_java20_windows_amd64: vm.vm_java_20 + self.svm_common_windows_amd64("20") + self.js_windows_jdk20 + self.sulong_windows + self.deploy_daily_vm_windows_jdk20 + self.deploy_graalvm_installables_windows_amd64("java20") + self.deploy_build + {name: 'daily-deploy-vm-installable-java20-windows-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
 
   #
-  # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
+  # Deploy the GraalVM Ruby artifact (GraalVM Base + ruby - native image)
   #
 
   deploy_vm_ruby_java17_linux_amd64: vm.vm_java_17 + self.ruby_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java17') + {name: 'daily-deploy-vm-ruby-java17-linux-amd64', notify_groups:: ["deploy"]},
