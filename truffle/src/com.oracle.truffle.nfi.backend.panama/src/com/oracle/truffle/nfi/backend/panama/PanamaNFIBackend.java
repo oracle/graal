@@ -80,7 +80,7 @@ final class PanamaNFIBackend implements NFIBackend {
         for (NativeSimpleType type : NativeSimpleType.values()) {
             switch (type) {
                 // TODO implement these types
-                case UINT8, SINT8, FP80, OBJECT, NULLABLE, STRING -> simpleTypes.put(type, null);
+                case FP80, OBJECT, NULLABLE, STRING -> simpleTypes.put(type, null);
                 default -> simpleTypes.put(type, new PanamaType(type));
             }
         }
@@ -110,7 +110,7 @@ final class PanamaNFIBackend implements NFIBackend {
         @TruffleBoundary
         private SymbolLookup doLoad() {
             PanamaNFIContext ctx = PanamaNFIContext.get(this);
-            return SymbolLookup.libraryLookup(name, ctx.getMemorySession());
+            return SymbolLookup.libraryLookup(name, ctx.getScope());
         }
 
         @Override

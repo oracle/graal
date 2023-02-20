@@ -45,9 +45,8 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.StringClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.GenericClosureArgumentNodeGen;
 
-import java.lang.foreign.Addressable;
-import java.lang.foreign.MemoryAddress;
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
 
@@ -71,7 +70,7 @@ class PanamaType {
                 nativeLayout = ValueLayout.JAVA_BYTE;
                 javaType = byte.class;
                 javaRetType = javaType;
-                throw new UnsupportedOperationException("INT8 has bug in jdk19");
+                break;
             case UINT16:
             case SINT16:
                 nativeLayout = ValueLayout.JAVA_SHORT;
@@ -104,8 +103,8 @@ class PanamaType {
                 javaRetType = javaType;
                 break;
             case STRING:
-                javaType = MemoryAddress.class;
-                javaRetType = Addressable.class;
+                javaType = MemorySegment.class;
+                javaRetType = MemorySegment.class;
                 nativeLayout = ValueLayout.ADDRESS;
                 break;
             case OBJECT:

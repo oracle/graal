@@ -47,7 +47,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
-import java.lang.foreign.MemoryAddress;
+import java.lang.foreign.MemorySegment;
 
 @ExportLibrary(InteropLibrary.class)
 class NativeString implements TruffleObject {
@@ -70,7 +70,7 @@ class NativeString implements TruffleObject {
 
     @ExportMessage
     String asString() {
-        return MemoryAddress.ofLong(this.nativePointer).getUtf8String(0);
+        return MemorySegment.ofAddress(this.nativePointer).getUtf8String(0);
     }
 
     @ExportMessage

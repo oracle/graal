@@ -66,36 +66,35 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayFactory
 import com.oracle.truffle.nfi.backend.panama.PanamaClosure.MonomorphicClosureInfo;
 import com.oracle.truffle.nfi.backend.panama.PanamaClosure.PolymorphicClosureInfo;
 
-import java.lang.foreign.Addressable;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentScope;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 
 import java.lang.foreign.Linker;
 import java.lang.foreign.FunctionDescriptor;
-import java.lang.foreign.MemoryAddress;
-import java.lang.foreign.MemorySession;
 
 @ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = false)
 final class PanamaSignature {
 
     @TruffleBoundary
     public static PanamaSignature create(PanamaNFIContext context, CachedSignatureInfo info, MethodType upcallType) {
-        return new PanamaSignature(info.functionDescriptor, upcallType, info, context.getMemorySession());
+        return new PanamaSignature(info.functionDescriptor, upcallType, info, context.getScope());
     }
 
     private final FunctionDescriptor functionDescriptor;
 
-    final MemorySession memorySession;
+    final SegmentScope scope;
     final CachedSignatureInfo signatureInfo;
 
     private final MethodType upcallType;
 
-    PanamaSignature(FunctionDescriptor functionDescriptor, MethodType upcallType, CachedSignatureInfo signatureInfo, MemorySession session) {
+    PanamaSignature(FunctionDescriptor functionDescriptor, MethodType upcallType, CachedSignatureInfo signatureInfo, SegmentScope scope) {
         this.functionDescriptor = functionDescriptor;
         this.upcallType = upcallType;
 
         this.signatureInfo = signatureInfo;
-        this.memorySession = session;
+        this.scope = scope;
     }
 
     @ExportMessage
@@ -148,10 +147,10 @@ final class PanamaSignature {
     }
 
     @TruffleBoundary
-    MemoryAddress bind(MethodHandle cachedHandle, Object receiver) {
+    MemorySegment bind(MethodHandle cachedHandle, Object receiver) {
         MethodHandle bound = cachedHandle.bindTo(receiver);
-        MemorySession session = PanamaNFIContext.get(null).getMemorySession();
-        return Linker.nativeLinker().upcallStub(bound, functionDescriptor, session).address();
+        SegmentScope scope = PanamaNFIContext.get(null).getScope();
+        return Linker.nativeLinker().upcallStub(bound, functionDescriptor, scope);
     }
 
     @ExportMessage
@@ -167,7 +166,7 @@ final class PanamaSignature {
             // no need to cache duplicated allocation in the single-context case
             // the NFI frontend is taking care of that already
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
-            MemoryAddress ret = signature.bind(cachedHandle, cachedExecutable);  // TODO check if this can also be cached
+            MemorySegment ret = signature.bind(cachedHandle, cachedExecutable);  // TODO check if this can also be cached
             return new PanamaClosure(ret);
         }
 
@@ -177,7 +176,7 @@ final class PanamaSignature {
                                                @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
             assert signature.signatureInfo == cachedSignatureInfo;
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
-            MemoryAddress ret = signature.bind(cachedHandle, executable);
+            MemorySegment ret = signature.bind(cachedHandle, executable);
             return new PanamaClosure(ret);
         }
 
@@ -186,7 +185,7 @@ final class PanamaSignature {
         static PanamaClosure createClosure(PanamaSignature signature, Object executable) {
             PolymorphicClosureInfo cachedClosureInfo = PolymorphicClosureInfo.create(signature.signatureInfo);
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
-            MemoryAddress ret = signature.bind(cachedHandle, executable);
+            MemorySegment ret = signature.bind(cachedHandle, executable);
             return new PanamaClosure(ret);
         }
     }
@@ -302,10 +301,10 @@ final class PanamaSignature {
 
 
     static MethodHandle createDowncallHandle(FunctionDescriptor descriptor) {
-        int parameterCount = Linker.downcallType(descriptor).parameterCount();
+        int parameterCount = descriptor.argumentLayouts().size();
         return Linker.nativeLinker().downcallHandle(descriptor)
                 .asSpreader(Object[].class, parameterCount)
-                .asType(MethodType.methodType(Object.class, new Class[]{Addressable.class, Object[].class}));
+                .asType(MethodType.methodType(Object.class, new Class[]{MemorySegment.class, Object[].class}));
     }
 
     static final class ArgsState {
@@ -352,16 +351,16 @@ final class PanamaSignature {
             return retType;
         }
 
-        Object execute(PanamaSignature signature, Object[] args, Addressable address) {
+        Object execute(PanamaSignature signature, Object[] args, MemorySegment segment) {
             assert signature.signatureInfo == this;
             CompilerAsserts.partialEvaluationConstant(retType);
 
             try {
-                Object result = (Object) downcallHandle.invokeExact(address, args);
+                Object result = (Object) downcallHandle.invokeExact(segment, args);
                 if (result == null) {
                     return NativePointer.NULL;
                 } else if (retType.type == NativeSimpleType.STRING) {
-                    long pointer = ((MemoryAddress) result).toRawLongValue();
+                    long pointer = ((MemorySegment) result).address();
                     return new NativeString(pointer);
                 } else if (retType.type == NativeSimpleType.POINTER) {
                     return NativePointer.create((long) result);

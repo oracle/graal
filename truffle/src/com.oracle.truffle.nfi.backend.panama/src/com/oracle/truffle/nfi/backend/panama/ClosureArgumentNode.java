@@ -46,7 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
-import java.lang.foreign.MemoryAddress;
+import java.lang.foreign.MemorySegment;
 
 abstract class ClosureArgumentNode extends Node {
 
@@ -118,7 +118,7 @@ abstract class ClosureArgumentNode extends Node {
 
         @Fallback
         Object doString(Object arg) {
-            return ((MemoryAddress) arg).getUtf8String(0);
+            return ((MemorySegment) arg).getUtf8String(0);
         }
     }
 }

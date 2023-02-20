@@ -44,14 +44,14 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import java.lang.foreign.MemoryAddress;
+import java.lang.foreign.MemorySegment;
 
 @ExportLibrary(InteropLibrary.class)
 final class PanamaSymbol implements TruffleObject {
 
-    final MemoryAddress symbol;
+    final MemorySegment symbol;
 
-    PanamaSymbol(MemoryAddress symbol) {
+    PanamaSymbol(MemorySegment symbol) {
         this.symbol = symbol;
     }
 
@@ -62,6 +62,6 @@ final class PanamaSymbol implements TruffleObject {
 
     @ExportMessage
     long asPointer() {
-        return symbol.toRawLongValue();
+        return symbol.address();
     }
 }

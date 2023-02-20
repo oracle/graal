@@ -62,7 +62,7 @@ final class PanamaLibrary implements TruffleObject {
 
     private static final EmptyKeysArray KEYS = new EmptyKeysArray();
 
-    protected final SymbolLookup library;
+    private final SymbolLookup library;
 
     static PanamaLibrary createDefault() {
         return new PanamaLibrary(Linker.nativeLinker().defaultLookup());
@@ -97,7 +97,7 @@ final class PanamaLibrary implements TruffleObject {
 
     @TruffleBoundary
     Optional<MemorySegment> doLookup(String name) {
-        return library.lookup(name);
+        return library.find(name);
     }
 
     @ExportMessage
@@ -109,7 +109,7 @@ final class PanamaLibrary implements TruffleObject {
             exception.enter();
             throw UnknownIdentifierException.create(symbol);
         }
-        return new PanamaSymbol(ret.get().address());
+        return new PanamaSymbol(ret.get());
     }
 
     @ExportMessage
