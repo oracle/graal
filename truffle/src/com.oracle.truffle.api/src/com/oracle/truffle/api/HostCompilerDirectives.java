@@ -83,10 +83,9 @@ public final class HostCompilerDirectives {
      */
     public static boolean inInterpreterFastPath() {
         /*
-         * The inInterpreter call here must stay to ensure guest and host compilation correctness.
-         * The TruffleHostInliningPhase depends directly on this method call.
+         * Within guest compilations this returns false.
          */
-        return CompilerDirectives.inInterpreter();
+        return true;
     }
 
     /**
