@@ -68,14 +68,6 @@ public final class NFAStateTransition implements AbstractTransition<NFAState, NF
         this.groupBoundaries = groupBoundaries;
     }
 
-    public NFAStateTransition(NFAStateTransition original) {
-        this.id = original.id;
-        this.source = original.source;
-        this.target = original.target;
-        this.codePointSet = original.codePointSet;
-        this.groupBoundaries = original.groupBoundaries;
-    }
-
     @Override
     public int getId() {
         return id;
@@ -112,6 +104,19 @@ public final class NFAStateTransition implements AbstractTransition<NFAState, NF
      */
     public GroupBoundaries getGroupBoundaries() {
         return groupBoundaries;
+    }
+
+    /**
+     * Creates a (shallow) copy of the {@code original} transition. If this is called as part of a
+     * deep copy of the NFA, the {@link #getSource()} and {@link #getTarget()} have to be updated to
+     * point to states in the copied NFA.
+     */
+    public NFAStateTransition(NFAStateTransition original) {
+        this.id = original.id;
+        this.source = original.source;
+        this.target = original.target;
+        this.codePointSet = original.codePointSet;
+        this.groupBoundaries = original.groupBoundaries;
     }
 
     @Override

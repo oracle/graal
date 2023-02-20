@@ -110,80 +110,6 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         }
     }
 
-    private static NFAState copyState(NFAState[] stateIndex, EconomicSet<NFAState> statesToDo, NFAState original) {
-        if (original == null) {
-            return null;
-        }
-        if (stateIndex[original.getId()] == null) {
-            NFAState state = new NFAState(original);
-            stateIndex[state.getId()] = state;
-            statesToDo.add(state);
-        }
-        return stateIndex[original.getId()];
-    }
-
-    private static NFAStateTransition copyTransition(NFAStateTransition[] transitionIndex, EconomicSet<NFAStateTransition> transitionsToDo, NFAStateTransition original) {
-        if (original == null) {
-            return null;
-        }
-        if (transitionIndex[original.getId()] == null) {
-            NFAStateTransition transition = new NFAStateTransition(original);
-            transitionIndex[original.getId()] = transition;
-            transitionsToDo.add(transition);
-        }
-        return transitionIndex[original.getId()];
-    }
-
-    public NFA(NFA original) {
-        NFAState[] stateIndex = new NFAState[original.states.length];
-        NFAStateTransition[] transitionIndex = new NFAStateTransition[original.transitions.length];
-        EconomicSet<NFAState> statesToDo = EconomicSet.create(original.states.length);
-        EconomicSet<NFAStateTransition> transitionsToDo = EconomicSet.create(original.transitions.length);
-        this.ast = original.ast;
-        this.preCalculatedResults = original.preCalculatedResults;
-        this.states = new NFAState[original.states.length];
-        for (int i = 0; i < original.states.length; i++) {
-            this.states[i] = copyState(stateIndex, statesToDo, original.states[i]);
-        }
-        this.transitions = new NFAStateTransition[original.transitions.length];
-        for (int i = 0; i < original.transitions.length; i++) {
-            this.transitions[i] = copyTransition(transitionIndex, transitionsToDo, original.transitions[i]);
-        }
-        this.anchoredEntry = new NFAStateTransition[original.anchoredEntry.length];
-        for (int i = 0; i < original.anchoredEntry.length; i++) {
-            this.anchoredEntry[i] = copyTransition(transitionIndex, transitionsToDo, original.anchoredEntry[i]);
-        }
-        this.unAnchoredEntry = new NFAStateTransition[original.unAnchoredEntry.length];
-        for (int i = 0; i < original.unAnchoredEntry.length; i++) {
-            this.unAnchoredEntry[i] = copyTransition(transitionIndex, transitionsToDo, original.unAnchoredEntry[i]);
-        }
-        this.dummyInitialState = copyState(stateIndex, statesToDo, original.dummyInitialState);
-        this.reverseAnchoredEntry = copyTransition(transitionIndex, transitionsToDo, original.reverseAnchoredEntry);
-        this.reverseUnAnchoredEntry = copyTransition(transitionIndex, transitionsToDo, original.reverseUnAnchoredEntry);
-        this.initialLoopBack = copyTransition(transitionIndex, transitionsToDo, original.initialLoopBack);
-
-        while (!statesToDo.isEmpty() || !transitionsToDo.isEmpty()) {
-            if (!statesToDo.isEmpty()) {
-                NFAState state = statesToDo.iterator().next();
-                statesToDo.remove(state);
-                NFAStateTransition[] successors = state.getSuccessors();
-                for (int i = 0; i < successors.length; i++) {
-                    successors[i] = copyTransition(transitionIndex, transitionsToDo, successors[i]);
-                }
-                NFAStateTransition[] predecessors = state.getPredecessors();
-                for (int i = 0; i < predecessors.length; i++) {
-                    predecessors[i] = copyTransition(transitionIndex, transitionsToDo, predecessors[i]);
-                }
-            } else {
-                assert !transitionsToDo.isEmpty();
-                NFAStateTransition transition = transitionsToDo.iterator().next();
-                transitionsToDo.remove(transition);
-                transition.setSource(copyState(stateIndex, statesToDo, transition.getSource()));
-                transition.setTarget(copyState(stateIndex, statesToDo, transition.getTarget()));
-            }
-        }
-    }
-
     public NFAState getUnAnchoredInitialState() {
         return unAnchoredEntry[0].getTarget();
     }
@@ -341,6 +267,85 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
             }
         }
         return fixedCodePointWidth;
+    }
+
+    private static NFAState copyState(NFAState[] stateIndex, EconomicSet<NFAState> statesToDo, NFAState original) {
+        if (original == null) {
+            return null;
+        }
+        if (stateIndex[original.getId()] == null) {
+            NFAState state = new NFAState(original);
+            stateIndex[state.getId()] = state;
+            statesToDo.add(state);
+        }
+        return stateIndex[original.getId()];
+    }
+
+    private static NFAStateTransition copyTransition(NFAStateTransition[] transitionIndex, EconomicSet<NFAStateTransition> transitionsToDo, NFAStateTransition original) {
+        if (original == null) {
+            return null;
+        }
+        if (transitionIndex[original.getId()] == null) {
+            NFAStateTransition transition = new NFAStateTransition(original);
+            transitionIndex[original.getId()] = transition;
+            transitionsToDo.add(transition);
+        }
+        return transitionIndex[original.getId()];
+    }
+
+    /**
+     * Creates a deep copy of the {@code original} NFA. The copy is deep insofar as the network of
+     * {@link NFAState} and {@link NFAStateTransition} instances. Any annotations on the states,
+     * transitions or the NFA are shared with the original NFA.
+     */
+    public NFA(NFA original) {
+        NFAState[] stateIndex = new NFAState[original.states.length];
+        NFAStateTransition[] transitionIndex = new NFAStateTransition[original.transitions.length];
+        EconomicSet<NFAState> statesToDo = EconomicSet.create(original.states.length);
+        EconomicSet<NFAStateTransition> transitionsToDo = EconomicSet.create(original.transitions.length);
+        this.ast = original.ast;
+        this.preCalculatedResults = original.preCalculatedResults;
+        this.states = new NFAState[original.states.length];
+        for (int i = 0; i < original.states.length; i++) {
+            this.states[i] = copyState(stateIndex, statesToDo, original.states[i]);
+        }
+        this.transitions = new NFAStateTransition[original.transitions.length];
+        for (int i = 0; i < original.transitions.length; i++) {
+            this.transitions[i] = copyTransition(transitionIndex, transitionsToDo, original.transitions[i]);
+        }
+        this.anchoredEntry = new NFAStateTransition[original.anchoredEntry.length];
+        for (int i = 0; i < original.anchoredEntry.length; i++) {
+            this.anchoredEntry[i] = copyTransition(transitionIndex, transitionsToDo, original.anchoredEntry[i]);
+        }
+        this.unAnchoredEntry = new NFAStateTransition[original.unAnchoredEntry.length];
+        for (int i = 0; i < original.unAnchoredEntry.length; i++) {
+            this.unAnchoredEntry[i] = copyTransition(transitionIndex, transitionsToDo, original.unAnchoredEntry[i]);
+        }
+        this.dummyInitialState = copyState(stateIndex, statesToDo, original.dummyInitialState);
+        this.reverseAnchoredEntry = copyTransition(transitionIndex, transitionsToDo, original.reverseAnchoredEntry);
+        this.reverseUnAnchoredEntry = copyTransition(transitionIndex, transitionsToDo, original.reverseUnAnchoredEntry);
+        this.initialLoopBack = copyTransition(transitionIndex, transitionsToDo, original.initialLoopBack);
+
+        while (!statesToDo.isEmpty() || !transitionsToDo.isEmpty()) {
+            if (!statesToDo.isEmpty()) {
+                NFAState state = statesToDo.iterator().next();
+                statesToDo.remove(state);
+                NFAStateTransition[] successors = state.getSuccessors();
+                for (int i = 0; i < successors.length; i++) {
+                    successors[i] = copyTransition(transitionIndex, transitionsToDo, successors[i]);
+                }
+                NFAStateTransition[] predecessors = state.getPredecessors();
+                for (int i = 0; i < predecessors.length; i++) {
+                    predecessors[i] = copyTransition(transitionIndex, transitionsToDo, predecessors[i]);
+                }
+            } else {
+                assert !transitionsToDo.isEmpty();
+                NFAStateTransition transition = transitionsToDo.iterator().next();
+                transitionsToDo.remove(transition);
+                transition.setSource(copyState(stateIndex, statesToDo, transition.getSource()));
+                transition.setTarget(copyState(stateIndex, statesToDo, transition.getTarget()));
+            }
+        }
     }
 
     @TruffleBoundary

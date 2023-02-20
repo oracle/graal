@@ -85,14 +85,6 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
         this.predecessors = emptyTransitions;
     }
 
-    protected BasicState(BasicState<S, T> original) {
-        this.id = original.id;
-        this.flags = original.flags;
-        this.successors = Arrays.copyOf(original.successors, original.successors.length);
-        this.predecessors = Arrays.copyOf(original.predecessors, original.predecessors.length);
-        this.nPredecessors = original.nPredecessors;
-    }
-
     @Override
     public final int getId() {
         return id;
@@ -288,4 +280,12 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
     }
 
     protected abstract T[] createTransitionsArray(int length);
+
+    protected BasicState(BasicState<S, T> original) {
+        this.id = original.id;
+        this.flags = original.flags;
+        this.successors = Arrays.copyOf(original.successors, original.successors.length);
+        this.predecessors = Arrays.copyOf(original.predecessors, original.predecessors.length);
+        this.nPredecessors = original.nPredecessors;
+    }
 }
