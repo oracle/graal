@@ -5,12 +5,9 @@ local wasm_suite_root = root_ci.wasm_suite_root;
 local graal_suite_root = root_ci.graal_suite_root;
 
 {
-  local mx = (import "../../../common.json").mx_version,
   local common = (import "../../../ci/ci_common/common.jsonnet"),
-  local common_json = (import "../../../common.json"),
-  local utils = (import "../../../ci/ci_common/common-utils.libsonnet"),
 
-  devkits: utils.composable(common_json.devkits),
+  devkits: common.devkits,
 
   gate: {
     targets+: ['gate'],
@@ -20,60 +17,18 @@ local graal_suite_root = root_ci.graal_suite_root;
     targets+: ['bench', 'daily'],
   },
 
-  common: {
-    environment+: {
-      MX_PYTHON: common_json.deps.common.environment["MX_PYTHON"],
-    },
-    packages+: common_json.deps.common.packages + {
-      'mx': mx,
-      'pip:ninja_syntax': '==1.7.2',
-    },
-  },
-
-  linux: self.common + {
+  linux_amd64: common.linux_amd64 + {
     packages+: {
       "01:binutils": '>=2.30',
-      git: '>=1.8.3',
       gcc: '==8.3.0',
       'gcc-build-essentials': '==8.3.0', # GCC 4.9.0 fails on cluster
       make: '>=3.83',
       llvm: '==8.0.1',
       nodejs: '==8.9.4',
     },
-    capabilities+: ['linux'],
-    docker: {
-      "image": "buildslave_ol7",
-      "mount_modules": true
-    },
   },
 
-  windows: self.common + {
-    capabilities+: ['windows'],
-  },
-
-  amd64: {
-    capabilities+: ['amd64'],
-  },
-
-  aarch64: {
-    capabilities+: ['aarch64'],
-    timelimit: '1:30:00'
-  },
-
-  eclipse: {
-    downloads+: {
-      ECLIPSE: {name: 'eclipse', version: '4.14.0', platformspecific: true},
-    },
-    environment+: {
-      ECLIPSE_EXE: '$ECLIPSE/eclipse',
-    },
-  },
-
-  jdt: {
-    environment+: {
-      JDT: "builtin",
-    },
-  },
+  windows_amd64: common.windows_amd64,
 
   wabt: {
     downloads+: {
@@ -171,13 +126,14 @@ local graal_suite_root = root_ci.graal_suite_root;
     ],
     logs: ['bench-results.json'],
     capabilities+: ['x52'],
+    timelimit: '1:00:00',
   },
 
-  jdk17_gate_linux_eclipse_jdt              : common.labsjdk17 + self.gate  + self.linux   + self.eclipse + self.jdt,
-  jdk17_gate_linux_wabt                     : common.labsjdk17 + self.gate  + self.linux   + self.wabt,
-  jdk17_gate_linux_wabt_emsdk               : common.labsjdk17 + self.gate  + self.linux   + self.wabt    + self.emsdk,
-  jdk17_gate_linux_wabt_emsdk_ocamlbuild    : common.labsjdk17 + self.gate  + self.linux   + self.wabt    + self.emsdk + self.ocamlbuild,
-  jdk17_bench_linux_wabt_emsdk              : common.labsjdk17 + self.bench + self.linux   + self.wabt    + self.emsdk,
-  jdk17_bench_linux_wabt_emsdk_nodejs       : common.labsjdk17 + self.bench + self.linux   + self.wabt    + self.emsdk + self.nodejs,
-  jdk17_gate_windows_wabt                   : common.labsjdk17 + self.gate  + self.windows + self.wabt,
+  jdk17_gate_linux_amd64_eclipse_jdt              : common.labsjdk17 + self.gate  + self.linux_amd64  + common.deps.eclipse + common.deps.jdt,
+  jdk17_gate_linux_amd64_wabt                     : common.labsjdk17 + self.gate  + self.linux_amd64   + self.wabt,
+  jdk17_gate_linux_amd64_wabt_emsdk               : common.labsjdk17 + self.gate  + self.linux_amd64   + self.wabt    + self.emsdk,
+  jdk17_gate_linux_amd64_wabt_emsdk_ocamlbuild    : common.labsjdk17 + self.gate  + self.linux_amd64   + self.wabt    + self.emsdk + self.ocamlbuild,
+  jdk17_bench_linux_amd64_wabt_emsdk              : common.labsjdk17 + self.bench + self.linux_amd64   + self.wabt    + self.emsdk,
+  jdk17_bench_linux_amd64_wabt_emsdk_nodejs       : common.labsjdk17 + self.bench + self.linux_amd64   + self.wabt    + self.emsdk + self.nodejs,
+  jdk17_gate_windows_amd64_wabt                   : common.labsjdk17 + self.gate  + self.windows_amd64 + self.wabt,
 }

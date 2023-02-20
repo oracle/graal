@@ -1,5 +1,5 @@
 {
-  local common = import "ci/ci_common/common.jsonnet",
+  local common = import "../../ci/ci_common/common.jsonnet",
   local utils = import "common-utils.libsonnet",
 
   # benchmark job base with automatically generated name
@@ -43,26 +43,26 @@
       threads_per_node:: if self.is_numa then self.num_threads / std.length(self.numa_nodes) else self.num_threads,
     },
 
-    x52:: common.linux + common.amd64 + self._bench_machine + {
+    x52:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "x52",
       capabilities+: ["no_frequency_scaling", "tmpfs25g"],
       numa_nodes:: [0, 1],
       default_numa_node:: 0,
       num_threads:: 72
     },
-    x82:: common.linux + common.amd64 + self._bench_machine + {
+    x82:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "x82",
       capabilities+: ["no_frequency_scaling", "tmpfs25g"],
       numa_nodes:: [0, 1],
       default_numa_node:: 0,
       num_threads:: 96
     },
-    xgene3:: common.linux + common.aarch64 + self._bench_machine + {
+    xgene3:: common.linux_aarch64 + self._bench_machine + {
       machine_name:: "xgene3",
       capabilities+: [],
       num_threads:: 32
     },
-    a12c:: common.linux + common.aarch64 + self._bench_machine + {
+    a12c:: common.linux_aarch64 + self._bench_machine + {
       machine_name:: "a12c",
       capabilities+: ["no_frequency_scaling", "tmpfs25g"],
       numa_nodes:: [0, 1],

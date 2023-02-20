@@ -1,11 +1,7 @@
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local base = import '../ci.jsonnet';
-local base_json = import '../../../common.json';
 
-local utils = import "../../../ci/ci_common/common-utils.libsonnet";
-local composable = utils.composable;
-local sulong_deps = composable(base_json.sulong.deps);
-local devkits = composable(graal_common.devkits);
+local devkits = graal_common.devkits;
 
 local _version_suffix(java_version) = if java_version == 8 then '' else '-java' + java_version;
 
@@ -20,7 +16,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   local that = self,
 
   // platform-specific snippets
-  common: base_json.deps.common + graal_common.mx + sulong_deps.common + {
+  common: graal_common.deps.sulong + {
     python_version: '3',
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
@@ -30,7 +26,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     ],
   },
 
-  linux: self.common + sulong_deps.linux + graal_common.linux_amd64 + {
+  linux: self.common + graal_common.linux_amd64 + {
     packages+: {
       '00:devtoolset': '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
       '01:binutils': '==2.34',
@@ -42,7 +38,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
-  darwin_amd64: self.common + sulong_deps.darwin_amd64 + graal_common.darwin_amd64 + {
+  darwin_amd64: self.common + graal_common.darwin_amd64 + {
     environment+: {
       // for compatibility with macOS High Sierra
       MACOSX_DEPLOYMENT_TARGET: '10.13',
