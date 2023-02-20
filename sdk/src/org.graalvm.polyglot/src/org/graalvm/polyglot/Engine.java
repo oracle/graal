@@ -703,12 +703,24 @@ public final class Engine implements AutoCloseable {
         }
 
         private IllegalArgumentException throwSandboxException(SandboxPolicy sandboxPolicy, String reason, String fix) {
+            throw throwSandboxException(sandboxPolicy, reason, fix, boundEngine ? "Context" : "Engine");
+        }
+
+        static IllegalArgumentException throwSandboxException(SandboxPolicy sandboxPolicy, String reason, String fix, String apiClass) {
             Objects.requireNonNull(sandboxPolicy);
             Objects.requireNonNull(reason);
             Objects.requireNonNull(fix);
+            String spawnIsolateHelp;
+            if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED)) {
+                spawnIsolateHelp = String.format(
+                                " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using %s.Builder.option(\"engine.SpawnIsolate\",\"true\").",
+                                apiClass);
+            } else {
+                spawnIsolateHelp = "";
+            }
             String message = String.format("The validation for the given sandbox policy %s failed. %s " +
-                            "In order to resolve this %s or switch to a less strict sandbox policy using %s.Builder.sandbox(SandboxPolicy).",
-                            sandboxPolicy, reason, fix, boundEngine ? "Context" : "Engine");
+                            "In order to resolve this %s or switch to a less strict sandbox policy using %s.Builder.sandbox(SandboxPolicy).%s",
+                            sandboxPolicy, reason, fix, apiClass, spawnIsolateHelp);
             throw new IllegalArgumentException(message);
         }
     }

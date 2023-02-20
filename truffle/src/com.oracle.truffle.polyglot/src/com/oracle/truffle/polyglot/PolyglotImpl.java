@@ -322,11 +322,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         // sandboxing policy . When it's used as a delegate of other polyglot it needs to support
         // all sandboxing policies.
         if (this == getRootImpl() && sandboxPolicy.isStricterThan(SandboxPolicy.CONSTRAINED)) {
-            String apiClass = boundEngine ? "Context" : "Engine";
-            throw PolyglotEngineException.illegalArgument(sandboxPolicyException(sandboxPolicy,
-                            String.format("The %s.Builder.sandbox(SandboxPolicy) is set to %s, but the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED.",
-                                            apiClass, sandboxPolicy),
-                            null));
+            throw PolyglotEngineException.illegalArgument(String.format(
+                            "The %s.Builder.sandbox(SandboxPolicy) is set to %s, but the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED." +
+                                            "In order to resolve this switch to a less strict sandbox policy using Context.Builder.sandbox(SandboxPolicy).",
+                            boundEngine ? "Context" : "Engine", sandboxPolicy));
         }
     }
 
@@ -794,15 +793,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static IllegalArgumentException sandboxPolicyException(SandboxPolicy sandboxPolicy, String reason, String fix) {
         Objects.requireNonNull(sandboxPolicy);
         Objects.requireNonNull(reason);
-        StringBuilder useFix = new StringBuilder();
-        if (fix != null) {
-            useFix.append(" ");
-            useFix.append(fix);
-            useFix.append(" or");
+        Objects.requireNonNull(fix);
+        String spawnIsolateHelp;
+        if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED)) {
+            spawnIsolateHelp = " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using Context.Builder.option(\"engine.SpawnIsolate\",\"true\").";
+        } else {
+            spawnIsolateHelp = "";
         }
         String message = String.format("The validation for the given sandbox policy %s failed. %s " +
-                        "In order to resolve this%s switch to a less strict sandbox policy using Context.Builder.sandbox(SandboxPolicy).",
-                        sandboxPolicy, reason, useFix);
+                        "In order to resolve this %s or switch to a less strict sandbox policy using Context.Builder.sandbox(SandboxPolicy).%s",
+                        sandboxPolicy, reason, fix, spawnIsolateHelp);
         return new IllegalArgumentException(message);
     }
 

@@ -2103,12 +2103,7 @@ public final class Context implements AutoCloseable {
         }
 
         private IllegalArgumentException throwSandboxException(SandboxPolicy sandboxPolicy, String reason, String fix) {
-            Objects.requireNonNull(sandboxPolicy);
-            Objects.requireNonNull(reason);
-            Objects.requireNonNull(fix);
-            String message = String.format("The validation for the given sandbox policy %s failed. %s " +
-                            "In order to resolve this %s or switch to a less strict sandbox policy using Context.Builder.sandbox(SandboxPolicy).", sandboxPolicy, reason, fix);
-            throw new IllegalArgumentException(message);
+            throw Engine.Builder.throwSandboxException(sandboxPolicy, reason, fix, "Context");
         }
     }
 }

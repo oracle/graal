@@ -53,6 +53,16 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-30473 Added `TruffleInstrument.Env#getSandboxPolicy()` returning the engine's `SandboxPolicy`.
 * GR-30473 Added `Option#sandbox()` to specify the maximum sandbox policy in which the option can be used.
 * GR-30473 Added `TruffleOptionDescriptors` extending `OptionDescriptors` by the ability to provide the option's `SandboxPolicy`.
+* GR-30473 Added support for sandbox policies. By default, languages and instruments support just the `TRUSTED` sandbox policy.
+  * If a language wants to target a more restrictive sandbox policy, it must:
+    1. Specify the most strict sandbox policy it satisfies using `TruffleLanguage.Registration#sandbox()`.
+    2. For each option, the language must specify the most restrictive sandbox policy in which the option can be used via `Option#sandbox()`. By default, options have a `TRUSTED` sandbox policy.
+    3.  If a language needs additional validation, it can use `TruffleLanguage.Env#getSandboxPolicy()` to obtain the current context sandbox policy.
+  * If an instrument wants to target a more restrictive sandbox policy, it must:
+    1. Specify the most strict sandbox policy it satisfies using `TruffleInstrument.Registration#sandbox()`.
+    2. For each option, the instrument must specify the most restrictive sandbox policy in which the option can be used via `Option#sandbox()`. By default, options have a `TRUSTED` sandbox policy.
+    3.  If an instrument needs additional validation, it can use `TruffleInstrument.Env#getSandboxPolicy()` to obtain the engine's sandbox policy.
+  * Added `TruffleOptionDescriptors` extending `OptionDescriptors` by the ability to provide the option's `SandboxPolicy`.
 
 ## Version 22.3.0
 

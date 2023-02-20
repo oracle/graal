@@ -81,6 +81,11 @@ import org.graalvm.collections.MapCursor;
  * <li>{@link #ALL} - Does allow full unrestricted access to public methods or fields of host
  * objects. Note that this policy allows unrestricted access to reflection. It is highly discouraged
  * from using this policy in environments where the guest application is not fully trusted.
+ * <li>{@link #CONSTRAINED} host access policy suitable for a context with
+ * {@link SandboxPolicy#CONSTRAINED CONSTRAINED} sandbox policy.
+ * <li>{@link #ISOLATED} host access policy suitable for a context with
+ * {@link SandboxPolicy#ISOLATED ISOLATED} and {@link SandboxPolicy#UNTRUSTED UNTRUSTED} sandbox
+ * policy.
  * </ul>
  * Custom host access policies can be created using {@link #newBuilder()}. The builder allows to
  * specify a custom export annotation and allowed and denied methods or fields.
