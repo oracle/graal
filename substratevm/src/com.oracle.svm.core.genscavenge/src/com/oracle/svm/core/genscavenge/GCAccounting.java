@@ -32,9 +32,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.log.Log;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryPoolMXBean;
-
 /**
  * This data is only updated during a GC.
  *
@@ -53,6 +50,7 @@ public final class GCAccounting {
     private boolean lastIncrementalCollectionOverflowedSurvivors = false;
 
     /* Before and after measures. */
+    private UnsignedWord edenChunkBytesBefore = WordFactory.zero();
     private UnsignedWord youngChunkBytesBefore = WordFactory.zero();
     private UnsignedWord youngChunkBytesAfter = WordFactory.zero();
     private UnsignedWord oldChunkBytesBefore = WordFactory.zero();
@@ -107,8 +105,8 @@ public final class GCAccounting {
         return oldChunkBytesAfter;
     }
 
-    UnsignedWord getOldChunkBytesBefore() {
-        return oldChunkBytesBefore;
+    UnsignedWord getEdenChunkBytesBefore() {
+        return edenChunkBytesBefore;
     }
 
     UnsignedWord getYoungChunkBytesBefore() {
@@ -127,17 +125,12 @@ public final class GCAccounting {
         return lastIncrementalCollectionOverflowedSurvivors;
     }
 
-    void notifyMemoryPoolMXBeans() {
-        for (MemoryPoolMXBean bean: ManagementFactory.getPlatformMXBeans(MemoryPoolMXBean.class)) {
-            ((AbstractMemoryPoolMXBean)bean).beforeCollection();
-        }
-    }
-
     void beforeCollection(boolean completeCollection) {
         Log trace = Log.noopLog().string("[GCImpl.Accounting.beforeCollection:").newline();
         /* Gather some space statistics. */
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
+        edenChunkBytesBefore = youngGen.getEden().getChunkBytes();
         youngChunkBytesBefore = youngGen.getChunkBytes();
         /* This is called before the collection, so OldSpace is FromSpace. */
         Space oldSpace = heap.getOldGeneration().getFromSpace();
@@ -153,9 +146,9 @@ public final class GCAccounting {
         if (!completeCollection) {
             lastIncrementalCollectionOverflowedSurvivors = false;
         }
-        notifyMemoryPoolMXBeans();
-        trace.string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
-                        .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
+        trace.string("  edenChunkBytesBefore: ").unsigned(edenChunkBytesBefore)
+                .string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
+                .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
         trace.string("]").newline();
     }
 
@@ -171,6 +164,7 @@ public final class GCAccounting {
         } else {
             afterIncrementalCollection(collectionTimer);
         }
+        MemoryPoolMXBeans.notifyAfterCollection();
     }
 
     private void afterIncrementalCollection(Timer collectionTimer) {

@@ -45,16 +45,14 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
 
     protected final String name;
     protected final String[] managerNames;
-    protected final GCAccounting gcAccounting;
     protected final UninterruptibleUtils.AtomicUnsigned peakUsage = new UninterruptibleUtils.AtomicUnsigned();
 
     protected AbstractMemoryPoolMXBean(String name, String... managerNames) {
         this.name = name;
         this.managerNames = managerNames;
-        this.gcAccounting = GCImpl.getGCImpl().getAccounting();
     }
 
-    abstract void beforeCollection();
+    abstract void afterCollection();
 
     @Override
     public String getName() {

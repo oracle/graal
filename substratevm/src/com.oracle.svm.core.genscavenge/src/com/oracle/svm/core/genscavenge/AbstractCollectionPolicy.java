@@ -216,6 +216,12 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
+    public UnsignedWord getMaximumSurvivorSize() {
+        guaranteeSizeParametersInitialized();
+        return sizes.maxSurvivorSize();
+    }
+
+    @Override
     public UnsignedWord getCurrentHeapCapacity() {
         assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();

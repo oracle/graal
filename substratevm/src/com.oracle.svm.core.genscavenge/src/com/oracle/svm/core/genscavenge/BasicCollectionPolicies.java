@@ -147,6 +147,11 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        public UnsignedWord getMaximumSurvivorSize() {
+            return WordFactory.zero();
+        }
+
+        @Override
         public UnsignedWord getSurvivorSpacesCapacity() {
             return WordFactory.zero();
         }
