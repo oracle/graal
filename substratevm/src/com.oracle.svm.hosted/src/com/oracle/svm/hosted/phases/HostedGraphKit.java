@@ -64,19 +64,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HostedGraphKit extends SubstrateGraphKit {
 
-    public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
-        this(debug, providers, method, false);
-    }
-
-    private HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, boolean forceTrackNodeSourcePosition) {
-        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), forceTrackNodeSourcePosition);
-        graph.getGraphState().configureExplicitExceptionsNoDeopt();
-    }
-
     public HostedGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
         // Needed to match type flows to invokes so invoked methods can be inlined in runtime
         // compilations, see GraalFeature.processMethod() and MethodTypeFlowBuilder.uniqueKey()
-        this(debug, providers, method, purpose == GraphProvider.Purpose.ANALYSIS);
+        super(debug, method, providers, providers.getWordTypes(), providers.getGraphBuilderPlugins(), new SubstrateCompilationIdentifier(), purpose == GraphProvider.Purpose.ANALYSIS);
+        graph.getGraphState().configureExplicitExceptionsNoDeopt();
     }
 
     @Override
