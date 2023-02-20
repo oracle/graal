@@ -27,6 +27,9 @@ package com.oracle.svm.core.jfr;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.Containers;
@@ -51,43 +54,21 @@ import jdk.jfr.internal.LogTag;
 @TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_JVM {
     // Checkstyle: stop
-    @Alias @TargetElement(onlyWith = JvmChunkRotationMonitorAvailable.class) //
+    @Alias //
+    @TargetElement(onlyWith = HasChunkRotationMonitorField.class) //
     static Object CHUNK_ROTATION_MONITOR;
 
-    @Alias @TargetElement(onlyWith = JvmFileDeltaChangeAvailable.class) //
+    @Alias //
+    @TargetElement(onlyWith = HasFileDeltaChangeField.class) //
     static Object FILE_DELTA_CHANGE;
     // Checkstyle: resume
 
-    static class JvmChunkRotationMonitorAvailable extends JvmFieldAvailable {
-        protected JvmChunkRotationMonitorAvailable() {
-            super("CHUNK_ROTATION_MONITOR");
-        }
-    }
-
-    private static class JvmFileDeltaChangeAvailable extends JvmFieldAvailable {
-        protected JvmFileDeltaChangeAvailable() {
-            super("FILE_DELTA_CHANGE");
-        }
-    }
-
-    private abstract static class JvmFieldAvailable implements BooleanSupplier {
-
-        private final String fieldName;
-
-        protected JvmFieldAvailable(String fieldName) {
-            this.fieldName = fieldName;
-        }
-
-        @Override
-        public boolean getAsBoolean() {
-            return ReflectionUtil.lookupField(true, JVM.class, fieldName) != null;
-        }
-    }
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile boolean nativeOK;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     @TargetElement(onlyWith = JDK11OrEarlier.class) //
     private volatile boolean recording;
 
@@ -496,5 +477,29 @@ public final class Target_jdk_jfr_internal_JVM {
     @TargetElement(onlyWith = JDK17OrLater.class) //
     public void markChunkFinal() {
         // Temporarily do nothing. This is used for JFR streaming.
+    }
+}
+
+class HasChunkRotationMonitorField implements BooleanSupplier {
+    private static final boolean HAS_FIELD = ReflectionUtil.lookupField(true, JVM.class, "CHUNK_ROTATION_MONITOR") != null;
+
+    @Override
+    public boolean getAsBoolean() {
+        return HAS_FIELD;
+    }
+
+    @Fold
+    public static boolean get() {
+        return HAS_FIELD;
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class HasFileDeltaChangeField implements BooleanSupplier {
+    private static final boolean HAS_FIELD = ReflectionUtil.lookupField(true, JVM.class, "FILE_DELTA_CHANGE") != null;
+
+    @Override
+    public boolean getAsBoolean() {
+        return HAS_FIELD;
     }
 }
