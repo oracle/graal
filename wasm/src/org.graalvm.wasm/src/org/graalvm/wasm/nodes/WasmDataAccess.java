@@ -41,27 +41,27 @@
 
 package org.graalvm.wasm.nodes;
 
-import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 
 /**
  * Interface for accessing the data needed for debugging.
  */
 public interface WasmDataAccess {
-    int loadI32FromStack(Frame frame, int index);
+    int loadI32FromStack(MaterializedFrame frame, int index);
 
-    long loadI64FromStack(Frame frame, int index);
+    long loadI64FromStack(MaterializedFrame frame, int index);
 
-    float loadF32FromStack(Frame frame, int index);
+    float loadF32FromStack(MaterializedFrame frame, int index);
 
-    double loadF64FromStack(Frame frame, int index);
+    double loadF64FromStack(MaterializedFrame frame, int index);
 
-    int loadI32FromLocals(Frame frame, int index);
+    int loadI32FromLocals(MaterializedFrame frame, int index);
 
-    long loadI64FromLocals(Frame frame, int index);
+    long loadI64FromLocals(MaterializedFrame frame, int index);
 
-    float loadF32FromLocals(Frame frame, int index);
+    float loadF32FromLocals(MaterializedFrame frame, int index);
 
-    double loadF64FromLocals(Frame frame, int index);
+    double loadF64FromLocals(MaterializedFrame frame, int index);
 
     int loadI32FromGlobals(int index);
 

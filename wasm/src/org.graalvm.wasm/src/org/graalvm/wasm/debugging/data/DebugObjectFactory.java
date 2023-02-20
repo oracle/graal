@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.debugging.DebugLineMap;
@@ -392,6 +393,7 @@ public abstract class DebugObjectFactory {
         return parse(context, scope, data.get());
     }
 
+    @TruffleBoundary
     public Optional<? extends DebugType> parse(DebugParserContext context, DebugScope scope, DebugData data) {
         final int tag = data.tag();
         if (tag == Tags.VARIABLE || tag == Tags.MEMBER || tag == Tags.FORMAL_PARAMETER || tag == Tags.UNSPECIFIED_PARAMETERS) {

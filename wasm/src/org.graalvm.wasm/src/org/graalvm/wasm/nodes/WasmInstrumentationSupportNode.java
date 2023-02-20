@@ -161,6 +161,7 @@ public final class WasmInstrumentationSupportNode extends Node {
         }
     }
 
+    @TruffleBoundary
     private InstrumentableNode.WrapperNode getWrapperAt(int lineIndex) {
         if (statementNodes == null || lineIndex < 0 || lineIndex > statementNodes.length) {
             return null;

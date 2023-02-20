@@ -41,6 +41,11 @@
 
 package org.graalvm.wasm.debugging.representation;
 
+import org.graalvm.wasm.debugging.DebugLocation;
+import org.graalvm.wasm.debugging.data.DebugContext;
+import org.graalvm.wasm.debugging.data.DebugObject;
+import org.graalvm.wasm.debugging.data.DebugType;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -48,11 +53,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.WasmConstant;
-import org.graalvm.wasm.debugging.DebugLocation;
-import org.graalvm.wasm.debugging.data.DebugContext;
-import org.graalvm.wasm.debugging.data.DebugObject;
-import org.graalvm.wasm.debugging.data.DebugType;
 
 /**
  * Representation of an array scope in the debug environment.
@@ -75,6 +75,7 @@ public class DebugArrayDisplayValue extends DebugDisplayValue implements Truffle
         this.name = name;
     }
 
+    @TruffleBoundary
     public static DebugArrayDisplayValue fromDebugObject(DebugObject object, DebugContext context, DebugLocation location) {
         return new DebugArrayDisplayValue(context, object.toString(), 0, 0, location, object);
     }
@@ -121,25 +122,7 @@ public class DebugArrayDisplayValue extends DebugDisplayValue implements Truffle
             return new DebugArrayDisplayValue(context, "", dimension + 1, offset * dimensionLength, location, array);
         }
         final DebugObject object = array.readArrayElement(context, location, offset);
-        return resolveObject(object, context, location);
-    }
-
-    private Object resolveObject(DebugObject object, DebugContext context, DebugLocation objectLocation) {
-        final DebugLocation loc = object.getLocation(objectLocation);
-        final DebugContext ctx = object.getContext(context);
-        if (object.isValue()) {
-            return object.asValue(ctx, loc);
-        }
-        if (object.isDebugObject()) {
-            return resolveObject(object.asDebugObject(ctx, loc), ctx, loc);
-        }
-        if (object.hasMembers()) {
-            return DebugObjectDisplayValue.fromDebugObject(object, ctx, loc);
-        }
-        if (object.hasArrayElements()) {
-            return DebugArrayDisplayValue.fromDebugObject(object, ctx, loc);
-        }
-        return WasmConstant.NULL;
+        return resolveDebugObject(object, context, location);
     }
 
     @SuppressWarnings({"unused", "static-method"})

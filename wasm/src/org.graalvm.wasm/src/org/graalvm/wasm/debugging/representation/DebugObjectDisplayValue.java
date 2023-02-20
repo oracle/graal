@@ -80,6 +80,7 @@ public class DebugObjectDisplayValue extends DebugDisplayValue implements Truffl
         this.members = members;
     }
 
+    @TruffleBoundary
     public static Object fromDebugObject(DebugObject object, DebugContext context, DebugLocation location) {
         final EconomicMap<String, DebugObject> members = EconomicMap.create();
         final int count = object.memberCount();

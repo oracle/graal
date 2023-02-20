@@ -41,6 +41,8 @@
 
 package org.graalvm.wasm.debugging.data;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.Optional;
 import java.util.OptionalInt;
 
@@ -50,6 +52,7 @@ public class DebugContext {
     private int memberBitSize = -1;
     private int memberBitOffset = -1;
 
+    @TruffleBoundary
     public DebugContext(int sourceCodeLocation) {
         this.sourceCodeLocation = sourceCodeLocation;
     }

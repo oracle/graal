@@ -41,12 +41,14 @@
 
 package org.graalvm.wasm.debugging.representation;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.debugging.DebugLocation;
 import org.graalvm.wasm.debugging.data.DebugContext;
 import org.graalvm.wasm.debugging.data.DebugObject;
 
 public abstract class DebugDisplayValue {
+    @TruffleBoundary
     protected Object resolveDebugObject(DebugObject object, DebugContext context, DebugLocation objectLocation) {
         final DebugLocation loc = object.getLocation(objectLocation);
         final DebugContext ctx = object.getContext(context);
