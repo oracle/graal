@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Deque;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -54,7 +56,6 @@ import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.TBitSet;
-import org.graalvm.collections.EconomicSet;
 
 public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
@@ -269,26 +270,26 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         return fixedCodePointWidth;
     }
 
-    private static NFAState copyState(NFAState[] stateIndex, EconomicSet<NFAState> statesToDo, NFAState original) {
+    private static NFAState copyState(NFAState[] stateIndex, Deque<NFAState> statesToDo, NFAState original) {
         if (original == null) {
             return null;
         }
         if (stateIndex[original.getId()] == null) {
             NFAState state = new NFAState(original);
             stateIndex[state.getId()] = state;
-            statesToDo.add(state);
+            statesToDo.push(state);
         }
         return stateIndex[original.getId()];
     }
 
-    private static NFAStateTransition copyTransition(NFAStateTransition[] transitionIndex, EconomicSet<NFAStateTransition> transitionsToDo, NFAStateTransition original) {
+    private static NFAStateTransition copyTransition(NFAStateTransition[] transitionIndex, Deque<NFAStateTransition> transitionsToDo, NFAStateTransition original) {
         if (original == null) {
             return null;
         }
         if (transitionIndex[original.getId()] == null) {
             NFAStateTransition transition = new NFAStateTransition(original);
             transitionIndex[original.getId()] = transition;
-            transitionsToDo.add(transition);
+            transitionsToDo.push(transition);
         }
         return transitionIndex[original.getId()];
     }
@@ -301,8 +302,8 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     public NFA(NFA original) {
         NFAState[] stateIndex = new NFAState[original.states.length];
         NFAStateTransition[] transitionIndex = new NFAStateTransition[original.transitions.length];
-        EconomicSet<NFAState> statesToDo = EconomicSet.create(original.states.length);
-        EconomicSet<NFAStateTransition> transitionsToDo = EconomicSet.create(original.transitions.length);
+        Deque<NFAState> statesToDo = new ArrayDeque<>(original.states.length);
+        Deque<NFAStateTransition> transitionsToDo = new ArrayDeque<>(original.transitions.length);
         this.ast = original.ast;
         this.preCalculatedResults = original.preCalculatedResults;
         this.states = new NFAState[original.states.length];
@@ -328,8 +329,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
         while (!statesToDo.isEmpty() || !transitionsToDo.isEmpty()) {
             if (!statesToDo.isEmpty()) {
-                NFAState state = statesToDo.iterator().next();
-                statesToDo.remove(state);
+                NFAState state = statesToDo.pop();
                 NFAStateTransition[] successors = state.getSuccessors();
                 for (int i = 0; i < successors.length; i++) {
                     successors[i] = copyTransition(transitionIndex, transitionsToDo, successors[i]);
@@ -340,8 +340,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
                 }
             } else {
                 assert !transitionsToDo.isEmpty();
-                NFAStateTransition transition = transitionsToDo.iterator().next();
-                transitionsToDo.remove(transition);
+                NFAStateTransition transition = transitionsToDo.pop();
                 transition.setSource(copyState(stateIndex, statesToDo, transition.getSource()));
                 transition.setTarget(copyState(stateIndex, statesToDo, transition.getTarget()));
             }
