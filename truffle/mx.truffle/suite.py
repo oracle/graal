@@ -240,6 +240,7 @@ suite = {
       "requires" : [
         "java.logging",
         "jdk.management",
+        "jdk.unsupported", # sun.misc.Unsafe
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
@@ -282,6 +283,7 @@ suite = {
         "java.logging",
         "java.sql",
         "jdk.management",
+        "jdk.unsupported", # sun.misc.Unsafe
       ],
       "requiresConcealed" : {
         "java.base" : [

@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.hub;
 
+import java.util.function.IntConsumer;
+
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
@@ -85,6 +87,23 @@ public class InteriorObjRefWalker {
         }
 
         throw VMError.shouldNotReachHere("Object with invalid hub type.");
+    }
+
+    public static boolean walkInstanceReferenceOffsets(DynamicHub objHub, IntConsumer offsetConsumer) {
+        if (objHub.getHubType() != HubType.INSTANCE && objHub.getHubType() != HubType.REFERENCE_INSTANCE) {
+            throw new IllegalArgumentException("Unsupported hub type: " + objHub.getHubType());
+        }
+
+        NonmovableArray<Byte> referenceMapEncoding = DynamicHubSupport.getReferenceMapEncoding();
+        long referenceMapIndex = objHub.getReferenceMapIndex();
+
+        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), referenceMapEncoding, referenceMapIndex, new ObjectReferenceVisitor() {
+            @Override
+            public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
+                offsetConsumer.accept((int) objRef.rawValue());
+                return true;
+            }
+        }, null);
     }
 
     @AlwaysInline("Performance critical version")

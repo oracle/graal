@@ -40,42 +40,40 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import org.graalvm.polyglot.Value;
+
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.RootNode;
 
 final class PolyglotStackFramesRetriever {
 
-    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
-    static FrameInstance[][] getStackFrames(PolyglotContextImpl context) {
-        Map<Thread, List<FrameInstance>> frameInstancesByThread = new ConcurrentHashMap<>();
-        Thread[] threads;
+    static void populateHeapRoots(PolyglotContextImpl context, List<Object> heapRoots) {
         Future<Void> future;
         synchronized (context) {
-            threads = context.getSeenThreads().keySet().toArray(new Thread[0]);
             if (!context.state.isClosed()) {
                 future = context.threadLocalActions.submit(null, PolyglotEngineImpl.ENGINE_ID, new ThreadLocalAction(false, false) {
                     @Override
                     protected void perform(Access access) {
-                        List<FrameInstance> frameInstances = new ArrayList<>();
                         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
                             @Override
                             public Object visitFrame(FrameInstance frameInstance) {
-                                return frameInstances.add(frameInstance);
+                                populateHeapRootsFromFrame(context, frameInstance, heapRoots);
+                                return null;
                             }
                         });
-                        frameInstancesByThread.put(access.getThread(), frameInstances);
                     }
                 }, false);
             } else {
@@ -93,18 +91,49 @@ final class PolyglotStackFramesRetriever {
                 }
             }
         }, future);
+    }
 
-        FrameInstance[][] toRet = new FrameInstance[threads.length][];
-        for (int i = 0; i < threads.length; i++) {
-            Thread thread = threads[i];
-            List<FrameInstance> frameInstances = frameInstancesByThread.get(thread);
-            if (frameInstances != null) {
-                toRet[i] = frameInstances.toArray(new FrameInstance[0]);
-            } else {
-                toRet[i] = new FrameInstance[0];
-            }
+    private static void addRootPointerForGuestToHostStackFrameArgument(PolyglotContextImpl context, Object obj, List<Object> heapRoots) {
+        if (InteropLibrary.isValidValue(obj)) {
+            heapRoots.add(obj);
+        } else if (obj instanceof PolyglotWrapper) {
+            heapRoots.add(((PolyglotWrapper) obj).getGuestObject());
+        } else if (obj instanceof Value) {
+            heapRoots.add(context.getAPIAccess().getReceiver((Value) obj));
         }
+    }
 
-        return toRet;
+    static void populateHeapRootsFromFrame(PolyglotContextImpl context, FrameInstance frameInstance, List<Object> heapRoots) {
+        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+        RootNode rootNode = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+        if (rootNode instanceof HostToGuestRootNode) {
+            /*
+             * HostToGuestRootNode frames are ignored. We don't care about objects referenced only
+             * form the host side.
+             */
+        } else if (EngineAccessor.HOST.isGuestToHostRootNode(rootNode)) {
+            /*
+             * For GuestToHostRootNode frames, we are interested only in arguments, and only those
+             * arguments which wrap guest objects or those that are valid interop values.
+             */
+            for (Object obj : frame.getArguments()) {
+                /*
+                 * Argument array of the called host method is an element in the frame's argument
+                 * array.
+                 */
+                if (obj instanceof Object[]) {
+                    for (Object elem : ((Object[]) obj)) {
+                        addRootPointerForGuestToHostStackFrameArgument(context, elem, heapRoots);
+                    }
+                } else {
+                    addRootPointerForGuestToHostStackFrameArgument(context, obj, heapRoots);
+                }
+            }
+        } else {
+            /*
+             * All types in the frame are safe to traverse.
+             */
+            heapRoots.add(frame);
+        }
     }
 }
