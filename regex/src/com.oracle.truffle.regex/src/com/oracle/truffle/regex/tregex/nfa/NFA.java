@@ -109,6 +109,65 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         }
     }
 
+    private static NFAState copyState(NFAState[] stateDedup, NFAStateTransition[] stateTransitionDedup, NFAState original) {
+        if (original == null) {
+            return null;
+        }
+        if (stateDedup[original.getId()] == null) {
+            NFAState state = new NFAState(original);
+            stateDedup[state.getId()] = state;
+            NFAStateTransition[] successors = state.getSuccessors();
+            for (int i = 0; i < successors.length; i++) {
+                successors[i] = copyStateTransition(stateDedup, stateTransitionDedup, successors[i]);
+            }
+            NFAStateTransition[] predecessors = state.getPredecessors();
+            for (int i = 0; i < predecessors.length; i++) {
+                predecessors[i] = copyStateTransition(stateDedup, stateTransitionDedup, predecessors[i]);
+            }
+        }
+        return stateDedup[original.getId()];
+    }
+
+    private static NFAStateTransition copyStateTransition(NFAState[] stateDedup, NFAStateTransition[] stateTransitionDedup, NFAStateTransition original) {
+        if (original == null) {
+            return null;
+        }
+        if (stateTransitionDedup[original.getId()] == null) {
+            NFAStateTransition transition = new NFAStateTransition(original);
+            stateTransitionDedup[original.getId()] = transition;
+            transition.setSource(copyState(stateDedup, stateTransitionDedup, transition.getSource()));
+            transition.setTarget(copyState(stateDedup, stateTransitionDedup, transition.getTarget()));
+        }
+        return stateTransitionDedup[original.getId()];
+    }
+
+    public NFA(NFA original) {
+        NFAState[] stateDedup = new NFAState[original.states.length];
+        NFAStateTransition[] stateTransitionDedup = new NFAStateTransition[original.transitions.length];
+        this.ast = original.ast;
+        this.preCalculatedResults = original.preCalculatedResults;
+        this.states = new NFAState[original.states.length];
+        for (int i = 0; i < original.states.length; i++) {
+            this.states[i] = copyState(stateDedup, stateTransitionDedup, original.states[i]);
+        }
+        this.transitions = new NFAStateTransition[original.transitions.length];
+        for (int i = 0; i < original.transitions.length; i++) {
+            this.transitions[i] = copyStateTransition(stateDedup, stateTransitionDedup, original.transitions[i]);
+        }
+        this.anchoredEntry = new NFAStateTransition[original.anchoredEntry.length];
+        for (int i = 0; i < original.anchoredEntry.length; i++) {
+            this.anchoredEntry[i] = copyStateTransition(stateDedup, stateTransitionDedup, original.anchoredEntry[i]);
+        }
+        this.unAnchoredEntry = new NFAStateTransition[original.unAnchoredEntry.length];
+        for (int i = 0; i < original.unAnchoredEntry.length; i++) {
+            this.unAnchoredEntry[i] = copyStateTransition(stateDedup, stateTransitionDedup, original.unAnchoredEntry[i]);
+        }
+        this.dummyInitialState = copyState(stateDedup, stateTransitionDedup, original.dummyInitialState);
+        this.reverseAnchoredEntry = copyStateTransition(stateDedup, stateTransitionDedup, original.reverseAnchoredEntry);
+        this.reverseUnAnchoredEntry = copyStateTransition(stateDedup, stateTransitionDedup, original.reverseUnAnchoredEntry);
+        this.initialLoopBack = copyStateTransition(stateDedup, stateTransitionDedup, original.initialLoopBack);
+    }
+
     public NFAState getUnAnchoredInitialState() {
         return unAnchoredEntry[0].getTarget();
     }

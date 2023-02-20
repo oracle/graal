@@ -108,6 +108,19 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
         this(id, stateSet, initFlags(hasPrefixStates, mustAdvance), null, matcherBuilder, finishedLookBehinds, matchedConditionGroupsMap);
     }
 
+    public NFAState(NFAState original) {
+        super(original);
+        this.stateSet = original.stateSet;
+        this.transitionToAnchoredFinalState = original.transitionToAnchoredFinalState;
+        this.transitionToUnAnchoredFinalState = original.transitionToUnAnchoredFinalState;
+        this.revTransitionToAnchoredFinalState = original.revTransitionToAnchoredFinalState;
+        this.revTransitionToUnAnchoredFinalState = original.revTransitionToUnAnchoredFinalState;
+        this.possibleResults = original.possibleResults;
+        this.matcherBuilder = original.matcherBuilder;
+        this.finishedLookBehinds = original.finishedLookBehinds;
+        this.matchedConditionGroupsMap = original.matchedConditionGroupsMap;
+    }
+
     private static EconomicMap<Integer, TBitSet> initMatchedConditionGroupsMap(StateSet<RegexAST, ? extends RegexASTNode> stateSet) {
         if (!stateSet.getStateIndex().getProperties().hasConditionalBackReferences()) {
             return null;

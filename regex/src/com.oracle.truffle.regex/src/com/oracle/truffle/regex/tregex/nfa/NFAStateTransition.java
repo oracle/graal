@@ -56,7 +56,7 @@ public final class NFAStateTransition implements AbstractTransition<NFAState, NF
 
     private final short id;
     @CompilationFinal private NFAState source;
-    private final NFAState target;
+    @CompilationFinal private NFAState target;
     private final CodePointSet codePointSet;
     private final GroupBoundaries groupBoundaries;
 
@@ -66,6 +66,14 @@ public final class NFAStateTransition implements AbstractTransition<NFAState, NF
         this.target = target;
         this.codePointSet = codePointSet;
         this.groupBoundaries = groupBoundaries;
+    }
+
+    public NFAStateTransition(NFAStateTransition original) {
+        this.id = original.id;
+        this.source = original.source;
+        this.target = original.target;
+        this.codePointSet = original.codePointSet;
+        this.groupBoundaries = original.groupBoundaries;
     }
 
     @Override
@@ -85,6 +93,10 @@ public final class NFAStateTransition implements AbstractTransition<NFAState, NF
     @Override
     public NFAState getTarget() {
         return target;
+    }
+
+    public void setTarget(NFAState target) {
+        this.target = target;
     }
 
     public NFAState getSource(boolean forward) {
