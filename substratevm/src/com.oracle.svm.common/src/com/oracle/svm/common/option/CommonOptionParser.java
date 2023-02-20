@@ -478,6 +478,9 @@ public class CommonOptionParser {
         for (int i = 1; i < descLines.length; i++) {
             println.accept(descLinePrefix + descLines[i]);
         }
+        if (verbose) {
+            println.accept("");
+        }
     }
 
     public static void printFlags(Predicate<OptionDescriptor> filter, EconomicMap<String, OptionDescriptor> options, String prefix, PrintStream out, boolean verbose) {
@@ -490,11 +493,13 @@ public class CommonOptionParser {
         sortedDescriptors.sort(Comparator.comparing(OptionDescriptor::getName));
 
         for (OptionDescriptor descriptor : sortedDescriptors) {
-            String helpMsg = verbose && !descriptor.getExtraHelp().isEmpty() ? "" : descriptor.getHelp();
+            String helpMsg = descriptor.getHelp();
+            // ensure helpMsg ends with dot
             int helpLen = helpMsg.length();
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
                 helpMsg += '.';
             }
+            // determine default value
             boolean stringifiedArrayValue = false;
             Object defaultValue = descriptor.getOptionKey().getDefaultValue();
             if (defaultValue != null && defaultValue.getClass().isArray()) {
@@ -525,14 +530,17 @@ public class CommonOptionParser {
                     stringifiedArrayValue = true;
                 }
             }
+            // handle extra help
             String verboseHelp = "";
-            if (verbose) {
-                verboseHelp = System.lineSeparator() + descriptor.getHelp() + System.lineSeparator() + String.join(System.lineSeparator(), descriptor.getExtraHelp());
-            } else if (!descriptor.getExtraHelp().isEmpty()) {
-                verboseHelp = " [Extra help available]";
+            if (!descriptor.getExtraHelp().isEmpty()) {
+                if (verbose) {
+                    verboseHelp = System.lineSeparator() + String.join(System.lineSeparator(), descriptor.getExtraHelp());
+                } else {
+                    verboseHelp = " [Extra help available]";
+                }
             }
             int wrapWidth = verbose ? 0 : PRINT_OPTION_WRAP_WIDTH;
-            if (descriptor.getOptionValueType() == Boolean.class) {
+            if (descriptor.getOptionValueType() == Boolean.class) { // print boolean options
                 Boolean val = (Boolean) defaultValue;
                 if (helpLen != 0) {
                     helpMsg += ' ';
@@ -545,7 +553,7 @@ public class CommonOptionParser {
                     }
                 }
                 printOption(out, prefix + "\u00b1" + descriptor.getName(), helpMsg + verboseHelp, verbose, wrapWidth);
-            } else {
+            } else { // print all other options
                 if (defaultValue == null) {
                     if (helpLen != 0) {
                         helpMsg += ' ';
