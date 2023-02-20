@@ -140,10 +140,14 @@ public class MemoryTracerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     @Override
-    protected void onDispose(Env env) {
+    protected void onFinalize(Env env) {
         if (env.getOptions().get(MemoryTracerCLI.ENABLED)) {
             MemoryTracerCLI.handleOutput(env, tracer);
         }
+    }
+
+    @Override
+    protected void onDispose(Env env) {
         tracer.close();
     }
 }

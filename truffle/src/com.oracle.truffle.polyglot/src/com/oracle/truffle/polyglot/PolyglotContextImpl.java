@@ -85,6 +85,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -121,7 +122,6 @@ import com.oracle.truffle.polyglot.PolyglotLanguageContext.ValueMigrationExcepti
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import com.oracle.truffle.polyglot.PolyglotThreadLocalActions.HandshakeConfig;
 import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
-import org.graalvm.polyglot.io.IOAccess;
 
 final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -1642,7 +1642,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             engine.polyglotHostService.notifyContextClosed(this, force, invalidResourceLimit, invalidMessage);
         }
         if (engine.boundEngine && parent == null) {
-            engine.ensureClosed(force, false, true);
+            engine.ensureClosed(force, true);
         }
     }
 
