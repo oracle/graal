@@ -69,7 +69,9 @@ class PanamaNFIContext {
     }
 
     void dispose() {
-        arena.close();
+        if (arena != null) {
+            arena.close();
+        }
     }
 
     SegmentScope getScope() {
