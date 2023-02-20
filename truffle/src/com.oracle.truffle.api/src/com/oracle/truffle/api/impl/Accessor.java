@@ -168,6 +168,8 @@ public abstract class Accessor {
 
         public abstract int adoptChildrenAndCount(RootNode rootNode);
 
+        public abstract int computeSize(RootNode rootNode);
+
         public abstract Object getLanguageCache(LanguageInfo languageInfo);
 
         public abstract TruffleLanguage<?> getLanguage(RootNode languageInfo);
