@@ -75,7 +75,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import static org.junit.Assert.assertTrue;
 
@@ -84,8 +83,6 @@ public class SandboxPolicyTest {
 
     private static final String MISSING_ISOLATE_LIBRARY_MESSAGE = "No native isolate library found for language";
     private static final String UNSUPPORTED_ISOLATE_POLICY_MESSAGE = "the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED.";
-
-    private static final Predicate<String> CLASS_FILTER_DISABLE_LOADING = (cn) -> false;
 
     private final Configuration configuration;
 
@@ -168,41 +165,47 @@ public class SandboxPolicyTest {
     @Test
     @SuppressWarnings("try")
     public void testEngineStreams() {
-        InputStream nullIn = InputStream.nullInputStream();
         OutputStream nullOut = OutputStream.nullOutputStream();
         try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).build()) {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Engine.Builder uses the standard input stream, but the input must be redirected.");
+                assertSandboxPolicyException(iae, "Builder uses the standard output stream, but the output must be redirected.");
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
+            }
+        }
+        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).err(nullOut).build()) {
+            assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertSandboxPolicyException(iae, "Builder uses the standard output stream, but the output must be redirected.");
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
+            }
+        }
+        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).out(nullOut).build()) {
+            assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertSandboxPolicyException(iae, "Builder uses the standard error stream, but the error output must be redirected.");
+                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
+            }
+        }
+        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).in(System.in).out(nullOut).err(nullOut).build()) {
+            assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertSandboxPolicyException(iae, "Builder uses the standard input stream, but the input must be redirected.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
         try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).out(nullOut).err(nullOut).build()) {
-            assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
+            assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Engine.Builder uses the standard input stream, but the input must be redirected.");
-                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
+                throw iae;
             }
         }
-        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).in(nullIn).err(nullOut).build()) {
-            assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
-        } catch (IllegalArgumentException iae) {
-            if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Engine.Builder uses the standard output stream, but the output must be redirected.");
-                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
-            }
-        }
-        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).in(nullIn).out(nullOut).build()) {
-            assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
-        } catch (IllegalArgumentException iae) {
-            if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Engine.Builder uses the standard error stream, but the error output must be redirected.");
-                assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
-            }
-        }
-        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).in(nullIn).out(nullOut).err(nullOut).build()) {
+        try (Engine engine = newEngineWithIsolateOptions(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).out(nullOut).err(nullOut).in(InputStream.nullInputStream()).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
@@ -226,7 +229,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Engine.Builder.serverTransport(MessageTransport) is set, but must not be set.");
+                assertSandboxPolicyException(iae, "Builder.serverTransport(MessageTransport) is set, but must not be set.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -270,7 +273,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder does not have a list of permitted languages.");
+                assertSandboxPolicyException(iae, "Builder does not have a list of permitted languages.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -287,7 +290,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Engine.Builder does not have a list of permitted languages.");
+                assertSandboxPolicyException(iae, "Builder does not have a list of permitted languages.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -530,7 +533,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowAllAccess(boolean) is set to true, but must not be set to true.");
+                assertSandboxPolicyException(iae, "Builder.allowAllAccess(boolean) is set to true, but must not be set to true.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -550,7 +553,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowNativeAccess(boolean) is set to true, but must not be set to true.");
+                assertSandboxPolicyException(iae, "Builder.allowNativeAccess(boolean) is set to true, but must not be set to true.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -570,7 +573,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowHostClassLoading(boolean) is set to true, but must not be set to true.");
+                assertSandboxPolicyException(iae, "Builder.allowHostClassLoading(boolean) is set to true, but must not be set to true.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -590,7 +593,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowCreateProcess(boolean) is set to true, but must not be set to true.");
+                assertSandboxPolicyException(iae, "Builder.allowCreateProcess(boolean) is set to true, but must not be set to true.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -610,7 +613,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.useSystemExit(boolean) is set to true, but must not be set to true.");
+                assertSandboxPolicyException(iae, "Builder.useSystemExit(boolean) is set to true, but must not be set to true.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -630,24 +633,24 @@ public class SandboxPolicyTest {
             try (Context context = newContextBuilder(engine, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).in(System.in).build()) {
                 assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
             } catch (IllegalArgumentException iae) {
-                assertSandboxPolicyException(iae, "Context.Builder uses the standard input stream, but the input must be redirected.");
+                assertSandboxPolicyException(iae, "Builder uses the standard input stream, but the input must be redirected.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
             try (Context context = newContextBuilder(engine, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).out(System.out).build()) {
                 assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
             } catch (IllegalArgumentException iae) {
-                assertSandboxPolicyException(iae, "Context.Builder uses the standard output stream, but the output must be redirected.");
+                assertSandboxPolicyException(iae, "Builder uses the standard output stream, but the output must be redirected.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
             try (Context context = newContextBuilder(engine, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).err(System.err).build()) {
                 assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
             } catch (IllegalArgumentException iae) {
-                assertSandboxPolicyException(iae, "Context.Builder uses the standard error stream, but the error output must be redirected.");
+                assertSandboxPolicyException(iae, "Builder uses the standard error stream, but the error output must be redirected.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
             Context context = newContextBuilder(engine, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).build();
             context.close();
-            context = newContextBuilder(engine, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).in(InputStream.nullInputStream()).out(OutputStream.nullOutputStream()).err(
+            context = newContextBuilder(engine, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).out(OutputStream.nullOutputStream()).err(
                             OutputStream.nullOutputStream()).build();
             context.close();
         } catch (IllegalArgumentException iae) {
@@ -664,7 +667,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowIO(boolean) is set to true, but must not be set to true.");
+                assertSandboxPolicyException(iae, "Builder.allowIO(boolean) is set to true, but must not be set to true.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -685,7 +688,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to the host file system, but access to the host file system must be disabled.");
+                                "Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to the host file system, but access to the host file system must be disabled.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -694,7 +697,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to the host file system, but access to the host file system must be disabled.");
+                                "Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to the host file system, but access to the host file system must be disabled.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -703,7 +706,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to host sockets, but access to host sockets must be disabled.");
+                assertSandboxPolicyException(iae, "Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to host sockets, but access to host sockets must be disabled.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -713,7 +716,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowIO(IOAccess) is set to an IOAccess, which has a custom file system that allows access to the host file system, but access to the host file system must be disabled.");
+                                "Builder.allowIO(IOAccess) is set to an IOAccess, which has a custom file system that allows access to the host file system, but access to the host file system must be disabled.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -741,7 +744,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowEnvironmentAccess(EnvironmentAccess) is set to INHERIT, but must be set to EnvironmentAccess.NONE.");
+                assertSandboxPolicyException(iae, "Builder.allowEnvironmentAccess(EnvironmentAccess) is set to INHERIT, but must be set to EnvironmentAccess.NONE.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -761,7 +764,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowHostAccess(boolean) is set to true, but must not be set to true.");
+                assertSandboxPolicyException(iae, "Builder.allowHostAccess(boolean) is set to true, but must not be set to true.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -771,7 +774,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowPublicAccess(boolean) set to true");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowPublicAccess(boolean) set to true");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -781,7 +784,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowAccessInheritance(boolean) set to true");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowAccessInheritance(boolean) set to true");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -791,7 +794,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which allows host object mappings of mutable target types, but it must not be enabled.");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which allows host object mappings of mutable target types, but it must not be enabled.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -800,7 +803,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which has no HostAccess.Builder.methodScoping(boolean) set to true");
+                assertSandboxPolicyException(iae, "Builder.allowHostAccess(HostAccess) is set to a HostAccess which has no HostAccess.Builder.methodScoping(boolean) set to true");
                 assertAtLeast(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
             }
         }
@@ -826,7 +829,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowAllClassImplementations(boolean) set to true");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowAllClassImplementations(boolean) set to true");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -836,7 +839,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowAllImplementations(boolean) set to true");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowAllImplementations(boolean) set to true");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -845,7 +848,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which allows FunctionalInterface implementations");
+                assertSandboxPolicyException(iae, "Builder.allowHostAccess(HostAccess) is set to a HostAccess which allows FunctionalInterface implementations");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -855,7 +858,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.TRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which allows FunctionalInterface implementations");
+                assertSandboxPolicyException(iae, "Builder.allowHostAccess(HostAccess) is set to a HostAccess which allows FunctionalInterface implementations");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -866,7 +869,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which allows host object mappings of mutable target types, but it must not be enabled.");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which allows host object mappings of mutable target types, but it must not be enabled.");
                 assertAtLeast(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
             }
         }
@@ -875,7 +878,7 @@ public class SandboxPolicyTest {
             assertAtMost(SandboxPolicy.CONSTRAINED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
-                assertSandboxPolicyException(iae, "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which has no HostAccess.Builder.methodScoping(boolean) set to true");
+                assertSandboxPolicyException(iae, "Builder.allowHostAccess(HostAccess) is set to a HostAccess which has no HostAccess.Builder.methodScoping(boolean) set to true");
                 assertAtLeast(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
             }
         }
@@ -894,7 +897,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowArrayAccess(boolean) set to true");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowArrayAccess(boolean) set to true");
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
             }
         }
@@ -904,7 +907,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowListAccess(boolean) set to true");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowListAccess(boolean) set to true");
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
             }
         }
@@ -914,7 +917,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowBufferAccess(boolean) set to true");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowBufferAccess(boolean) set to true");
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
             }
         }
@@ -924,7 +927,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowIterableAccess(boolean) set to true");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowIterableAccess(boolean) set to true");
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
             }
         }
@@ -934,7 +937,7 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowIteratorAccess(boolean) set to true");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowIteratorAccess(boolean) set to true");
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
             }
         }
@@ -944,14 +947,14 @@ public class SandboxPolicyTest {
         } catch (IllegalArgumentException iae) {
             if (filterUnsupportedIsolate(configuration, iae)) {
                 assertSandboxPolicyException(iae,
-                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowMapAccess(boolean) set to true");
+                                "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowMapAccess(boolean) set to true");
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
             }
         }
     }
 
     private Engine.Builder newEngineBuilder(String... permittedLanguages) {
-        Engine.Builder builder = Engine.newBuilder(permittedLanguages).in(InputStream.nullInputStream()).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream());
+        Engine.Builder builder = Engine.newBuilder(permittedLanguages).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream());
         if (configuration.sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED) && configuration.supportsIsolatedPolicy) {
             builder.option("engine.MaxIsolateMemory", "4GB");
         }
@@ -959,8 +962,7 @@ public class SandboxPolicyTest {
     }
 
     private Context.Builder newContextBuilder(Engine explicitEngine, String... permittedLanguages) {
-        Context.Builder builder = Context.newBuilder(permittedLanguages).allowHostClassLookup(CLASS_FILTER_DISABLE_LOADING).in(InputStream.nullInputStream()).out(OutputStream.nullOutputStream()).err(
-                        OutputStream.nullOutputStream());
+        Context.Builder builder = Context.newBuilder(permittedLanguages).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream());
         if (explicitEngine != null) {
             builder.engine(explicitEngine);
         }

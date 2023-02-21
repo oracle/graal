@@ -423,7 +423,7 @@ public final class Engine implements AutoCloseable {
 
         private OutputStream out = System.out;
         private OutputStream err = System.err;
-        private InputStream in = System.in;
+        private InputStream in = null;
         private Map<String, String> options = new HashMap<>();
         private boolean allowExperimentalOptions = false;
         private boolean useSystemProperties = true;
@@ -658,9 +658,16 @@ public final class Engine implements AutoCloseable {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
             validateSandbox();
-
+            InputStream useIn = in;
+            if (useIn == null) {
+                useIn = switch (sandboxPolicy) {
+                    case TRUSTED -> System.in;
+                    case CONSTRAINED, ISOLATED, UNTRUSTED -> InputStream.nullInputStream();
+                    default -> throw new IllegalArgumentException(String.valueOf(sandboxPolicy));
+                };
+            }
             LogHandler logHandler = customLogHandler != null ? polyglot.newLogHandler(customLogHandler) : null;
-            Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, useSystemProperties, allowExperimentalOptions,
+            Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, useIn, options, useSystemProperties, allowExperimentalOptions,
                             boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null);
             return engine;
         }
@@ -676,51 +683,40 @@ public final class Engine implements AutoCloseable {
                 return;
             }
             if (permittedLanguages.length == 0) {
-                String apiClass = boundEngine ? "Context" : "Engine";
-                throw throwSandboxException(sandboxPolicy, String.format("%s.Builder does not have a list of permitted languages.", apiClass),
-                                String.format("create an %s.Builder with a list of permitted languages, for example, %s.newBuilder(\"js\")", apiClass, apiClass));
+                throw throwSandboxException(sandboxPolicy, "Builder does not have a list of permitted languages.",
+                                String.format("create a Builder with a list of permitted languages, for example, %s.newBuilder(\"js\")", boundEngine ? "Context" : "Engine"));
             }
             if (isSystemStream(in)) {
-                String apiClass = boundEngine ? "Context" : "Engine";
-                throw throwSandboxException(sandboxPolicy, String.format("%s.Builder uses the standard input stream, but the input must be redirected.", apiClass),
-                                String.format("set %s.Builder.in(InputStream)", apiClass));
+                throw throwSandboxException(sandboxPolicy, "Builder uses the standard input stream, but the input must be redirected.",
+                                "do not set Builder.in(InputStream) to use InputStream.nullInputStream() or redirect it to other stream than System.in");
             }
             if (isSystemStream(out)) {
-                String apiClass = boundEngine ? "Context" : "Engine";
-                throw throwSandboxException(sandboxPolicy, String.format("%s.Builder uses the standard output stream, but the output must be redirected.", apiClass),
-                                String.format("set %s.Builder.out(OutputStream)", apiClass));
+                throw throwSandboxException(sandboxPolicy, "Builder uses the standard output stream, but the output must be redirected.",
+                                "set Builder.out(OutputStream)");
             }
             if (isSystemStream(err)) {
-                String apiClass = boundEngine ? "Context" : "Engine";
-                throw throwSandboxException(sandboxPolicy, String.format("%s.Builder uses the standard error stream, but the error output must be redirected.", apiClass),
-                                String.format("set %s.Builder.err(OutputStream)", apiClass));
+                throw throwSandboxException(sandboxPolicy, "Builder uses the standard error stream, but the error output must be redirected.",
+                                "set Builder.err(OutputStream)");
             }
             if (messageTransport != null) {
-                String apiClass = boundEngine ? "Context" : "Engine";
-                throw throwSandboxException(sandboxPolicy, String.format("%s.Builder.serverTransport(MessageTransport) is set, but must not be set.", apiClass),
-                                String.format("do not set %s.Builder.serverTransport(MessageTransport)", apiClass));
+                throw throwSandboxException(sandboxPolicy, "Builder.serverTransport(MessageTransport) is set, but must not be set.",
+                                "do not set Builder.serverTransport(MessageTransport)");
             }
         }
 
-        private IllegalArgumentException throwSandboxException(SandboxPolicy sandboxPolicy, String reason, String fix) {
-            throw throwSandboxException(sandboxPolicy, reason, fix, boundEngine ? "Context" : "Engine");
-        }
-
-        static IllegalArgumentException throwSandboxException(SandboxPolicy sandboxPolicy, String reason, String fix, String apiClass) {
+        static IllegalArgumentException throwSandboxException(SandboxPolicy sandboxPolicy, String reason, String fix) {
             Objects.requireNonNull(sandboxPolicy);
             Objects.requireNonNull(reason);
             Objects.requireNonNull(fix);
             String spawnIsolateHelp;
             if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED)) {
-                spawnIsolateHelp = String.format(
-                                " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using %s.Builder.option(\"engine.SpawnIsolate\",\"true\").",
-                                apiClass);
+                spawnIsolateHelp = " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using Builder.option(\"engine.SpawnIsolate\",\"true\").";
             } else {
                 spawnIsolateHelp = "";
             }
             String message = String.format("The validation for the given sandbox policy %s failed. %s " +
-                            "In order to resolve this %s or switch to a less strict sandbox policy using %s.Builder.sandbox(SandboxPolicy).%s",
-                            sandboxPolicy, reason, fix, apiClass, spawnIsolateHelp);
+                            "In order to resolve this %s or switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).%s",
+                            sandboxPolicy, reason, fix, spawnIsolateHelp);
             throw new IllegalArgumentException(message);
         }
     }

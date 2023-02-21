@@ -253,10 +253,7 @@ public final class HostAccess {
      *
      * <pre>
      * <code>
-     * HostAccess.newBuilder().
-     *           allowAccessAnnotatedBy(Export.class).
-     *           allowImplementationsAnnotatedBy(Implementable.class).
-     *           allowMutableTargetMappings().
+     * HostAccess.newBuilder(CONSTRAINED).
      *           methodScoping(true).build();
      * </code>
      * </pre>

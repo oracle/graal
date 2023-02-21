@@ -111,9 +111,11 @@ public enum SandboxPolicy {
      * <ul>
      * <li>The list of {@link Context#newBuilder(String...) permitted languages} must be explicitly
      * set.</li>
-     * <li>Standard {@link Context.Builder#in(InputStream) in},
-     * {@link Context.Builder#out(OutputStream) out} and {@link Context.Builder#err(OutputStream)}
-     * err} streams must be redirected.</li>
+     * <li>If {@link Context.Builder#in(InputStream) in} is not specified, the
+     * {@link InputStream#nullInputStream()} is used. Otherwise, it must be redirected elsewhere
+     * than to {@link System#in}.
+     * <li>Standard {@link Context.Builder#out(OutputStream) out} and
+     * {@link Context.Builder#err(OutputStream)} err} streams must be redirected.</li>
      * <li>The {@link Context.Builder#allowAllAccess(boolean) all access} must not be enabled.</li>
      * <li>The {@link Context.Builder#allowNativeAccess(boolean) native access} must not be
      * enabled.</li>
@@ -153,11 +155,12 @@ public enum SandboxPolicy {
      * Constrained Context building example:
      * 
      * <pre>
+     * ByteArrayOutputStream output = new ByteArrayOutputStream();
+     * ByteArrayOutputStream errorOutput = new ByteArrayOutputStream();
      * try (Context context = Context.newBuilder("js") //
      *                 .sandbox(SandboxPolicy.CONSTRAINED) //
-     *                 .in(InputStream.nullInputStream()) //
-     *                 .out(new FileOutputStream("context.stdout")) //
-     *                 .err(new FileOutputStream("context.stderr")) //
+     *                 .out(output) //
+     *                 .err(errorOutput) //
      *                 .build()) {
      *     context.eval(source);
      * }
@@ -190,11 +193,12 @@ public enum SandboxPolicy {
      * Isolated Context building example:
      *
      * <pre>
+     * ByteArrayOutputStream output = new ByteArrayOutputStream();
+     * ByteArrayOutputStream errorOutput = new ByteArrayOutputStream();
      * try (Context context = Context.newBuilder("js") //
      *                 .sandbox(SandboxPolicy.ISOLATED)  //
-     *                 .in(InputStream.nullInputStream())  //
-     *                 .out(new FileOutputStream("context.stdout"))  //
-     *                 .err(new FileOutputStream("context.stderr"))  //
+     *                 .out(output)  //
+     *                 .err(errorOutput)  //
      *                 .option("engine.MaxIsolateMemory", "1GB")  //
      *                 .build()) {
      *     context.eval(source);
@@ -218,25 +222,31 @@ public enum SandboxPolicy {
      * <ul>
      * <li>The {@code engine.UntrustedCodeMitigation} option is preset to {@code software} if it has
      * not been explicitly set.</li>
-     * <li>The {@code sandbox.MaxCPUTime}, {@code sandbox.MaxASTDepth},
-     * {@code sandbox.MaxStackFrames}, {@code sandbox.MaxThreads} limits options must be set. Use
-     * {@code sandbox.TraceLimits} to estimate an application's optimal sandbox parameters.</li>
+     * <li>The {@code sandbox.MaxCPUTime}, {@code sandbox.MaxHeapMemory},
+     * {@code sandbox.MaxASTDepth}, {@code sandbox.MaxStackFrames}, {@code sandbox.MaxThreads},
+     * {@code sandbox.MaxOutputStreamSize}, {@code sandbox.MaxErrorStreamSize} limits options must
+     * be set. Use {@code sandbox.TraceLimits} to estimate an application's optimal sandbox
+     * parameters.</li>
      * </ul>
      * </p>
      * <p>
      * Untrusted Context building example:
      *
      * <pre>
+     * ByteArrayOutputStream output = new ByteArrayOutputStream();
+     * ByteArrayOutputStream errorOutput = new ByteArrayOutputStream();
      * try (Context context = Context.newBuilder("js") //
      *                 .sandbox(SandboxPolicy.UNTRUSTED) //
-     *                 .in(InputStream.nullInputStream()) //
-     *                 .out(new FileOutputStream("context.stdout")) //
-     *                 .err(new FileOutputStream("context.stderr")) //
+     *                 .out(output) //
+     *                 .err(errorOutput) //
      *                 .option("engine.MaxIsolateMemory", "1GB") //
+     *                 .option("sandbox.MaxHeapMemory", "800MB") //
      *                 .option("sandbox.MaxCPUTime", "10s") //
      *                 .option("sandbox.MaxASTDepth", "100") //
      *                 .option("sandbox.MaxStackFrames", "10") //
      *                 .option("sandbox.MaxThreads", "1") //
+     *                 .option("sandbox.MaxOutputStreamSize", "1MB") //
+     *                 .option("sandbox.MaxErrorStreamSize", "1MB") //
      *                 .build()) {
      *     context.eval(source);
      * }

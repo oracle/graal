@@ -142,7 +142,7 @@ final class OptionValuesImpl implements OptionValues {
             if (sandboxPolicy.isStricterThan(optionSandboxPolicy)) {
                 throw PolyglotEngineException.illegalArgument(PolyglotImpl.sandboxPolicyException(sandboxPolicy,
                                 String.format("The option %s can only be used up to the %s sandbox policy.", descriptor.getName(), optionSandboxPolicy),
-                                String.format("do not set the %s option by removing Context.Builder.option(\"%s\", \"%s\")", descriptor.getName(), descriptor.getName(), value)));
+                                String.format("do not set the %s option by removing Builder.option(\"%s\", \"%s\")", descriptor.getName(), descriptor.getName(), value)));
             }
         }
         OptionKey<?> optionKey = descriptor.getKey();

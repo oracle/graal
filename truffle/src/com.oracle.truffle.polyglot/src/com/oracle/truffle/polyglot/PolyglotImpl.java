@@ -239,7 +239,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                     boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
         PolyglotEngineImpl impl = null;
         try {
-            validateSandbox(sandboxPolicy, boundEngine);
+            validateSandbox(sandboxPolicy);
             if (TruffleOptions.AOT) {
                 EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
             }
@@ -317,15 +317,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
     }
 
-    private void validateSandbox(SandboxPolicy sandboxPolicy, boolean boundEngine) {
+    private void validateSandbox(SandboxPolicy sandboxPolicy) {
         // When The PolyglotImpl is used as a root polyglot it supports at most the CONSTRAINED
         // sandboxing policy . When it's used as a delegate of other polyglot it needs to support
         // all sandboxing policies.
         if (this == getRootImpl() && sandboxPolicy.isStricterThan(SandboxPolicy.CONSTRAINED)) {
             throw PolyglotEngineException.illegalArgument(String.format(
-                            "The %s.Builder.sandbox(SandboxPolicy) is set to %s, but the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED." +
-                                            "In order to resolve this switch to a less strict sandbox policy using Context.Builder.sandbox(SandboxPolicy).",
-                            boundEngine ? "Context" : "Engine", sandboxPolicy));
+                            "The Builder.sandbox(SandboxPolicy) is set to %s, but the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED." +
+                                            "In order to resolve this switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).",
+                            sandboxPolicy));
         }
     }
 
@@ -796,12 +796,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         Objects.requireNonNull(fix);
         String spawnIsolateHelp;
         if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED)) {
-            spawnIsolateHelp = " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using Context.Builder.option(\"engine.SpawnIsolate\",\"true\").";
+            spawnIsolateHelp = " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using Builder.option(\"engine.SpawnIsolate\",\"true\").";
         } else {
             spawnIsolateHelp = "";
         }
         String message = String.format("The validation for the given sandbox policy %s failed. %s " +
-                        "In order to resolve this %s or switch to a less strict sandbox policy using Context.Builder.sandbox(SandboxPolicy).%s",
+                        "In order to resolve this %s or switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).%s",
                         sandboxPolicy, reason, fix, spawnIsolateHelp);
         return new IllegalArgumentException(message);
     }
