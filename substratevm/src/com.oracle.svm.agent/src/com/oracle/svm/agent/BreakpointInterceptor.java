@@ -210,11 +210,14 @@ final class BreakpointInterceptor {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle name = getObjectArgument(thread, 0);
         String className = fromJniString(jni, name);
+        if (className == null) {
+            return false; /* No point in tracing this. */
+        }
 
         boolean classLoaderValid = true;
         WordPointer classLoaderPtr = StackValue.get(WordPointer.class);
         if (bp.method == agent.handles().javaLangClassForName3) {
-            assert thread.notEqual(nullHandle()) : "JDK-8292657: must not use NULL for the current thread because it does not apply to virtual threads on JDK 19";
+            assert thread.notEqual(nullHandle()) || Support.jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19 : "JDK-8292657";
             classLoaderValid = (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), thread, 0, 2, classLoaderPtr) == JvmtiError.JVMTI_ERROR_NONE);
         } else {
             classLoaderPtr.write(nullHandle());
@@ -234,11 +237,13 @@ final class BreakpointInterceptor {
              * recursion checks keep us from seeing events of interest during initialization.
              */
             int initialize = 0;
-            JNIObjectHandle loadedClass = Support.callStaticObjectMethodLIL(jni, bp.clazz, agent.handles().javaLangClassForName3, name, initialize, classLoaderPtr.read());
-            if (clearException(jni)) {
-                loadedClass = nullHandle();
-            }
-            result = loadedClass.notEqual(nullHandle());
+            Support.callStaticObjectMethodLIL(jni, bp.clazz, agent.handles().javaLangClassForName3, name, initialize, classLoaderPtr.read());
+            JNIObjectHandle exception = handleException(jni, true);
+            /*
+             * To throw the right exceptions at run time, we need to ensure that the image builder
+             * sees them, so we trace all calls except those that throw a ClassNotFoundException.
+             */
+            result = exception.equal(nullHandle()) || !jniFunctions().getIsInstanceOf().invoke(jni, exception, agent.handles().javaLangClassNotFoundException);
         }
 
         traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, result, state.getFullStackTraceOrNull(), className);
@@ -1283,15 +1288,15 @@ final class BreakpointInterceptor {
      * used to properly read the locals in the breakpoint.
      */
     private static JNIObjectHandle rectifyCurrentThread(JNIObjectHandle thread) {
-        if (Support.jvmtiVersion() < JvmtiInterface.JVMTI_VERSION_19) {
+        if (Support.jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19) {
             return thread;
         }
+
         WordPointer threadPtr = StackValue.get(WordPointer.class);
         JvmtiError error = jvmtiFunctions().GetCurrentThread().invoke(jvmtiEnv(), threadPtr);
         if (error == JvmtiError.JVMTI_ERROR_WRONG_PHASE) {
             return nullHandle();
         }
-
         check(error);
         return threadPtr.read();
     }
@@ -1566,7 +1571,7 @@ final class BreakpointInterceptor {
             return null;
         }
         Breakpoint bp = new Breakpoint(br, clazz, method);
-        guarantee(map.put(method.rawValue(), bp) == null, "Duplicate breakpoint: " + bp);
+        guarantee(map.put(method.rawValue(), bp) == null, "Duplicate breakpoint: %s", bp);
         return bp;
     }
 

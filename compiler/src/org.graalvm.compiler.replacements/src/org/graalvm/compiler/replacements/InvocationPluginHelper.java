@@ -272,7 +272,7 @@ public class InvocationPluginHelper implements DebugCloseable {
 
     public ValueNode loadField(ValueNode value, ResolvedJavaField field) {
         return b.add(LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
-                        b.getOptions(), b.getAssumptions(), value, field, false, false));
+                        b.getOptions(), b.getAssumptions(), value, field, false, false, b.getGraph().currentNodeSourcePosition()));
     }
 
     /**

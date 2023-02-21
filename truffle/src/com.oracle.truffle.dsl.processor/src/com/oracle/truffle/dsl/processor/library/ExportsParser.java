@@ -88,9 +88,9 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpressionResolver;
-import com.oracle.truffle.dsl.processor.expression.InvalidExpressionException;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
@@ -108,8 +108,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
     public static final String EXECUTE_PREFIX = "execute";
     public static final String EXECUTE_SUFFIX = "_";
-
-    public final List<DeclaredType> annotations = Arrays.asList(types.ExportMessage, types.ExportLibrary);
 
     @Override
     public boolean isDelegateToRootDeclaredType() {
@@ -346,6 +344,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         for (ExportsLibrary exportsLibrary : declaredExports) {
             // recreate cache for every exports library to not confuse exports configuration
             Map<String, NodeData> parsedNodeCache = new HashMap<>();
+            int specializedNodeCount = 0;
             for (ExportMessageData exportedElement : exportsLibrary.getExportedMessages().values()) {
                 if (exportedElement.isOverriden()) {
                     // must not initialize overridden elements because otherwise the parsedNodeCache
@@ -359,6 +358,20 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     initializeExportedNode(parsedNodeCache, exportedElement);
                 } else {
                     throw new AssertionError("should not be reachable");
+                }
+                if (exportedElement.getSpecializedNode() != null) {
+                    specializedNodeCount++;
+                }
+            }
+            for (ExportMessageData exportedElement : exportsLibrary.getExportedMessages().values()) {
+                if (exportedElement.isOverriden()) {
+                    // must not initialize overridden elements because otherwise the parsedNodeCache
+                    // gets confused.
+                    continue;
+                }
+
+                if (exportedElement.getSpecializedNode() != null) {
+                    exportedElement.getSpecializedNode().setActivationProbability(1.0d / specializedNodeCount);
                 }
             }
         }
@@ -378,6 +391,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
 
             Set<LibraryMessage> missingAbstractMessage = new LinkedHashSet<>();
+            Set<LibraryMessage> missingAbstractMessageAsWarning = new LinkedHashSet<>();
             for (LibraryMessage message : exportLib.getLibrary().getMethods()) {
                 List<Element> elementsWithSameName = potentiallyMissedOverrides.getOrDefault(message.getName(), Collections.emptyList());
                 if (!elementsWithSameName.isEmpty()) {
@@ -405,20 +419,35 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                     break;
                                 }
                             }
-                        } else {
+                        } else if (message.getAbstractIfExportedAsWarning().isEmpty()) {
                             isAbstract = !exportLib.hasExportDelegation();
+                        } else {
+                            isAbstract = false;
                         }
+
+                        if (!message.getAbstractIfExportedAsWarning().isEmpty()) {
+                            for (LibraryMessage abstractIfExportedAsWarning : message.getAbstractIfExportedAsWarning()) {
+                                if (exportLib.getExportedMessages().containsKey(abstractIfExportedAsWarning.getName())) {
+                                    missingAbstractMessageAsWarning.add(message);
+                                    break;
+                                }
+                            }
+                        }
+
                         if (isAbstract) {
                             missingAbstractMessage.add(message);
                         }
                     }
                 }
             }
-            if (!missingAbstractMessage.isEmpty()) {
+            if (!missingAbstractMessage.isEmpty() || !missingAbstractMessageAsWarning.isEmpty()) {
+                Set<LibraryMessage> missingAbstractMessages = new LinkedHashSet<>(missingAbstractMessage);
+                missingAbstractMessages.addAll(missingAbstractMessageAsWarning);
+
                 StringBuilder msg = new StringBuilder(
-                                String.format("The following message(s) of library %s are abstract and must be exported using:%n",
+                                String.format("The following message(s) of library %s are abstract and should be exported using:%n",
                                                 getSimpleName(exportLib.getLibrary().getTemplateType())));
-                for (LibraryMessage message : missingAbstractMessage) {
+                for (LibraryMessage message : missingAbstractMessages) {
                     msg.append("  ").append(generateExpectedSignature(type, message, exportLib.getExplicitReceiver())).append(" {");
                     if (!ElementUtils.isVoid(message.getExecutable().getReturnType())) {
                         msg.append(" return ").append(ElementUtils.defaultValue(message.getExecutable().getReturnType()));
@@ -426,16 +455,22 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     }
                     msg.append(" }%n");
                 }
-                exportLib.addError(msg.toString());
+                if (!missingAbstractMessage.isEmpty()) {
+                    exportLib.addError(msg.toString());
+                } else {
+                    exportLib.addSuppressableWarning(TruffleSuppressedWarnings.ABSTRACT_LIBRARY_EXPORT, msg.toString());
+                }
             }
         }
 
         for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
             List<NodeData> cachedSharedNodes = new ArrayList<>();
             List<ExportMessageData> exportedMessages = new ArrayList<>();
+
             for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
-                if (export.getSpecializedNode() != null) {
-                    cachedSharedNodes.add(export.getSpecializedNode());
+                NodeData node = export.getSpecializedNode();
+                if (node != null) {
+                    cachedSharedNodes.add(node);
                     exportedMessages.add(export);
                 }
             }
@@ -464,7 +499,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
                 for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
                     if (export.isClass() && export.getSpecializedNode() != null) {
-                        NodeParser.removeFastPathSpecializations(export.getSpecializedNode());
+                        NodeParser.removeFastPathSpecializations(export.getSpecializedNode(), libraryExports.getSharedExpressions());
                     }
                 }
             }
@@ -557,8 +592,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 explicitReceiver = true;
             }
 
-            Map<TypeElement, LibraryData> libraryCache = ProcessorContext.getInstance().getCacheMap(LibraryParser.class);
-            LibraryData libraryData = libraryCache.computeIfAbsent(fromTypeMirror(libraryMirror), (t) -> new LibraryParser().parse(t));
+            LibraryData libraryData = context.parseIfAbsent(fromTypeMirror(libraryMirror), LibraryParser.class, (t) -> new LibraryParser().parse(t));
 
             ExportsLibrary lib = new ExportsLibrary(context, type, annotationMirror, model, libraryData, receiverClass, explicitReceiver);
             ExportsLibrary otherLib = model.getExportedLibraries().get(libraryId);
@@ -697,14 +731,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             if (transitionLimit != null) {
                 DSLExpressionResolver resolver = new DSLExpressionResolver(context, model.getTemplateType(),
                                 NodeParser.importVisibleStaticMembers(model.getTemplateType(), model.getTemplateType(), false));
-                try {
-                    DSLExpression expression = DSLExpression.parse(transitionLimit);
-                    expression.accept(resolver);
-                    lib.setTransitionLimit(expression);
-                } catch (InvalidExpressionException e) {
-                    AnnotationValue allowTransition = ElementUtils.getAnnotationValue(annotationMirror, "transitionLimit");
-                    model.addError(annotationMirror, allowTransition, "Error parsing expression '%s': %s", transitionLimit, e.getMessage());
-                }
+                lib.setTransitionLimit(DSLExpression.parseAndResolve(resolver, lib, "transitionLimit", transitionLimit));
             }
 
             String delegateTo = ElementUtils.getAnnotationValue(String.class, annotationMirror, "delegateTo", false);
@@ -1155,6 +1182,17 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 element.getParameters().add(0, new CodeVariableElement(exportedElement.getReceiverType(), "this"));
                 element.getModifiers().add(Modifier.STATIC);
             }
+
+            if (message.getName().equals("accepts")) {
+                /*
+                 * We suppress never default messages in accepts because they will be eager
+                 * initialized. So it does not matter whether they are never default. Eager
+                 * initialization is computed later in the exports generated, so is not yet
+                 * available here.
+                 */
+                GeneratorUtils.mergeSuppressWarnings(element, TruffleSuppressedWarnings.NEVERDEFAULT);
+            }
+
             type.add(element);
             NodeData parsedNodeData = parseNode(parsedNodeCache, type, exportedElement, Collections.emptyList());
             if (parsedNodeData == null) {
@@ -1228,9 +1266,11 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
         clonedType.getAnnotationMirrors().clear();
         clonedType.getAnnotationMirrors().add(newImports);
+
         if (exportedMessage.getExportsLibrary().isUseForAOT()) {
             clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateAOT));
         }
+
         if (generateUncached != null) {
             clonedType.getAnnotationMirrors().add(generateUncached);
         } else {

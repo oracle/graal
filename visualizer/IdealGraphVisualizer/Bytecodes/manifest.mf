@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+OpenIDE-Module: org.graalvm.visualizer.bytecodes
+OpenIDE-Module-Layer: org/graalvm/visualizer/bytecodes/layer.xml
+OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/bytecodes/Bundle.properties
+OpenIDE-Module-Specification-Version: 1.1

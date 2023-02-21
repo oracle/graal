@@ -26,8 +26,7 @@ package org.graalvm.profdiff.core;
 
 import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
-import org.graalvm.profdiff.parser.experiment.ExperimentParserError;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.parser.ExperimentParserError;
 
 /**
  * Represents an executed Graal compilation of a method.
@@ -187,13 +186,13 @@ public class CompilationUnit {
 
     /**
      * Writes the header of the compilation unit (compilation ID, execution summary, experiment ID)
-     * and the optimization and inlining tree to the destination writer. The execution summary is
-     * omitted when proftool data is not {@link Experiment#isProfileAvailable() available} to the
-     * experiment.
+     * and either the optimization-context tree or the optimization and inlining tree to the
+     * destination writer. The execution summary is omitted when proftool data is not
+     * {@link Experiment#isProfileAvailable() available} to the experiment.
      *
      * @param writer the destination writer
      */
-    public void write(Writer writer) throws Exception {
+    public void write(Writer writer) throws ExperimentParserError {
         writer.write("Compilation " + compilationId);
         if (method.getExperiment().isProfileAvailable()) {
             writer.write(" (" + createExecutionSummary() + ")");
@@ -201,10 +200,14 @@ public class CompilationUnit {
         writer.writeln(" in experiment " + method.getExperiment().getExperimentId());
         writer.increaseIndent();
         TreePair treePair = loader.load();
-        treePair.getInliningTree().preprocess(writer.getVerbosityLevel());
-        treePair.getInliningTree().write(writer);
-        treePair.getOptimizationTree().preprocess(writer.getVerbosityLevel());
-        treePair.getOptimizationTree().write(writer);
+        treePair.getInliningTree().preprocess(writer.getOptionValues());
+        treePair.getOptimizationTree().preprocess(writer.getOptionValues());
+        if (writer.getOptionValues().isOptimizationContextTreeEnabled()) {
+            OptimizationContextTree.createFrom(treePair.getInliningTree(), treePair.getOptimizationTree()).write(writer);
+        } else {
+            treePair.getInliningTree().write(writer);
+            treePair.getOptimizationTree().write(writer);
+        }
         writer.decreaseIndent();
     }
 }

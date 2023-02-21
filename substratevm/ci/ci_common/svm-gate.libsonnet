@@ -1,5 +1,5 @@
 {
-  local common     = import "../../../common.jsonnet",
+  local common     = import "../../../ci/ci_common/common.jsonnet",
   local tools      = import "tools.libsonnet",
   local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet",
 
@@ -10,6 +10,8 @@
   local require_musl = task_spec((import 'include.libsonnet').musl_dependency),
 
   local std_get = tools.std_get,
+
+  gate_triggering_suites:: ["sdk", "substratevm", "compiler", "truffle"],
 
   // mx gate build config
   mxgate(tags, suite, suite_short=suite):: task_spec(common.disable_proxies + {

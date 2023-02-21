@@ -25,6 +25,8 @@
 package org.graalvm.polybench.micro.expr;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.NonIdempotent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.polybench.micro.MicrobenchLanguage;
@@ -35,10 +37,12 @@ public abstract class Expression extends Node {
 
     public abstract Object execute(VirtualFrame frame);
 
+    @Idempotent
     protected final MicrobenchLanguage getLanguage() {
         return MicrobenchLanguage.get(this);
     }
 
+    @NonIdempotent
     protected final Env getContext() {
         return MicrobenchLanguage.getContext(this);
     }

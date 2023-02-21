@@ -69,7 +69,7 @@ public abstract class InvokeInterface extends EspressoNode {
     public abstract Object execute(Object[] args);
 
     @Specialization
-    Object executeWithNullCheck(Object[] args,
+    Object doWithNullCheck(Object[] args,
                     @Cached NullCheck nullCheck,
                     @Cached("create(resolutionSeed)") WithoutNullCheck invokeInterface) {
         StaticObject receiver = (StaticObject) args[0];
@@ -163,7 +163,7 @@ public abstract class InvokeInterface extends EspressoNode {
 
     static Method.MethodVersion methodLookup(Method resolutionSeed, Klass receiverKlass) {
         assert !receiverKlass.isArray();
-        if (resolutionSeed.isRemovedByRedefition()) {
+        if (resolutionSeed.isRemovedByRedefinition()) {
             /*
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop
@@ -190,7 +190,7 @@ public abstract class InvokeInterface extends EspressoNode {
         public abstract Object execute(Method resolutionSeed, Object[] args);
 
         @Specialization
-        Object executeWithNullCheck(Method resolutionSeed, Object[] args,
+        Object doWithNullCheck(Method resolutionSeed, Object[] args,
                         @Cached NullCheck nullCheck,
                         @Cached WithoutNullCheck invokeInterface) {
             StaticObject receiver = (StaticObject) args[0];

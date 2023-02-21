@@ -1,0 +1,1266 @@
+LICENSES FOR THIRD-PARTY COMPONENTS 
+
+===============================================================================
+   
+The following sections contain licensing information for libraries that we have 
+included with the GraalVM Ideal Graph Visualizer Technology Preview source.
+We are thankful to all individuals that have created these.
+
+The following software may be included in this product:
+
+===============================================================================
+
+Apache NetBeans 11.1
+
+Copyright 2017-2019 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+The code is based on NetBeans, that has been kindly donated to the Apache
+Software Foundation by Oracle.
+
+The code was Copyright 1997-2016 Oracle and/or its affiliates.  The Initial
+Developer of the Original Software was Sun Microsystems, Inc. Portions
+Copyright 1997-2006 Sun Microsystems, Inc.
+
+
+Apache Struts
+Copyright 2000-2007 The Apache Software Foundation
+
+Apache Struts Tiles
+Copyright 2000-2007 The Apache Software Foundation
+
+Apache Jakarta Commons Validator
+Copyright 2001-2006 The Apache Software Foundation
+
+Apache Struts Taglib
+Copyright 2000-2007 The Apache Software Foundation
+
+Kotlin Compiler
+Copyright 2010-2019 JetBrains s.r.o and respective authors and developers
+
+This software includes code from IntelliJ IDEA Community Edition
+Copyright (C) JetBrains s.r.o.
+https://www.jetbrains.com/idea/
+
+Apache Ant
+Copyright 1999-2018 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+The <sync> task is based on code Copyright (c) 2002, Landmark
+Graphics Corp that has been kindly donated to the Apache Software
+Foundation.
+
+*******************************************
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+
+***********************************************************************************************************************************
+Apache NetBeans includes a number of source files that are not covered by the Apache license. The following files are part of this distribution.
+***********************************************************************************************************************************
+
+Sourcefile                                                                                                                           LICENSE     NOTES
+(path in the source)                                                                                 (text is in file in licenses directory)
+------------------------------------------------------------------------------------------------------------------------------------------------------
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application_1_4.mdd                                              CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application_1_4.xsd                                              CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application_5.mdd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application_5.xsd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application_6.mdd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application_6.xsd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application_7.mdd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application_7.xsd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application_8.mdd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application_8.xsd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application-client_1_4.mdd                                       CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application-client_1_4.xsd                                       CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application-client_5.mdd                                         CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application-client_5.xsd                                         CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application-client_6.mdd                                         CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application-client_6.xsd                                         CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application-client_7.mdd                                         CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application-client_7.xsd                                         CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/application-client_8.xsd                                         CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/connector_1_5.xsd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/connector_1_7.xsd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/ejb-jar_2_1.mdd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/ejb-jar_2_1.xsd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/ejb-jar_3_0.mdd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/ejb-jar_3_0.xsd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/ejb-jar_3_1.mdd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/ejb-jar_3_1.xsd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/ejb-jar_3_2.mdd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/ejb-jar_3_2.xsd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/j2ee_1_4.xsd                                                     CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/j2ee_web_services_1_1.xsd                                        CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/j2ee_web_services_client_1_1.xsd                                 CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_5.xsd                                                     CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_6.xsd                                                     CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_7.xsd                                                     CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_8.xsd                                                     CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_web_services_1_2.xsd                                      CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_web_services_1_3.xsd                                      CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_web_services_1_4.xsd                                      CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_web_services_1_4_1.xsd                                    CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_web_services_client_1_2.xsd                               CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_web_services_client_1_3.xsd                               CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_web_services_client_1_4.xsd                               CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/jsp_2_0.xsd                                                      CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/jsp_2_1.xsd                                                      CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/jsp_2_2.xsd                                                      CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/jsp_2_3.xsd                                                      CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/permissions_7.xsd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_2_2.dtd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_2_2_1.dtd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_2_3.dtd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_2_3_1.dtd                                                CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_2_4.mdd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_2_4.xsd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_2_5.mdd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_2_5.xsd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_3_0.mdd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_3_0.xsd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_3_1.mdd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_3_1.xsd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_4_0.mdd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-app_4_0.xsd                                                  CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-common_3_0.xsd                                               CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-common_3_1.xsd                                               CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-common_4_0.xsd                                               CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-fragment_3_0.mdd                                             CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-fragment_3_0.xsd                                             CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-fragment_3_1.mdd                                             CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-fragment_3_1.xsd                                             CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-fragment_4_0.mdd                                             CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/web-fragment_4_0.xsd                                             CDDL-1.1          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/datatypes.dtd                                                        W3C2          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/XMLSchema.dtd                                                        W3C2          
+enterprise/j2ee.dd/src/org/netbeans/modules/j2ee/dd/impl/resources/xml.xsd                                                              W3C2          
+enterprise/j2ee.dd.webservice/src/org/netbeans/modules/j2ee/dd/impl/resources/j2ee_1_4.xsd                                          CDDL-1.1          
+enterprise/j2ee.dd.webservice/src/org/netbeans/modules/j2ee/dd/impl/resources/j2ee_web_services_1_1.xsd                             CDDL-1.1          
+enterprise/j2ee.dd.webservice/src/org/netbeans/modules/j2ee/dd/impl/resources/j2ee_web_services_client_1_1.xsd                      CDDL-1.1          
+enterprise/j2ee.dd.webservice/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_5.xsd                                          CDDL-1.1          
+enterprise/j2ee.dd.webservice/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_web_services_1_2.xsd                           CDDL-1.1          
+enterprise/j2ee.dd.webservice/src/org/netbeans/modules/j2ee/dd/impl/resources/javaee_web_services_client_1_2.xsd                    CDDL-1.1          
+enterprise/j2ee.dd.webservice/src/org/netbeans/modules/j2ee/dd/impl/resources/XMLSchema.dtd                                             W3C2          
+enterprise/j2ee.dd.webservice/src/org/netbeans/modules/j2ee/dd/impl/resources/datatypes.dtd                                             W3C2          
+enterprise/j2ee.dd.webservice/src/org/netbeans/modules/j2ee/dd/impl/resources/xml.xsd                                                   W3C2          
+enterprise/j2ee.ddloaders/src/org/netbeans/modules/j2ee/ddloaders/web/resources/xml.xsd                                                 W3C2          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-cmp-mapping_1_0.dtd                                  CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-cmp-mapping_1_1.dtd                                  CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-cmp-mapping_1_2.dtd                                  CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/glassfish-application_6_0-1.dtd                          CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/glassfish-application-client_6_0-1.dtd                   CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/glassfish-ejb-jar_3_1-1.dtd                              CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/glassfish-resources_1_5.dtd                              CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/glassfish-web-app_3_0-1.dtd                              CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/static-verification_1_4.dtd                              CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-application_1_3-0.dtd                                CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-application_1_4-0.dtd                                CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-application_5_0-0.dtd                                CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-application_6_0-0.dtd                                CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-application-client_1_3-0.dtd                         CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-application-client_1_4-0.dtd                         CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-application-client_1_4-1.dtd                         CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-application-client_5_0-0.dtd                         CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-application-client_6_0-0.dtd                         CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-ejb-jar_2_0-0.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-ejb-jar_2_1-0.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-ejb-jar_2_1-1.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-ejb-jar_3_0-0.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-ejb-jar_3_0-1.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-ejb-jar_3_1-0.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-resources_1_0.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-resources_1_3.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-web-app_2_3-0.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-web-app_2_4-0.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-web-app_2_4-1.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-web-app_2_5-0.dtd                                    CDDL-1.1          
+enterprise/j2ee.sun.dd/src/org/netbeans/modules/j2ee/sun/dd/impl/resources/sun-web-app_3_0-0.dtd                                    CDDL-1.1          
+enterprise/payara.eecommon/src/org/netbeans/modules/payara/eecommon/dd/resources/payara-web-app_4.dtd                               CDDL-1.1          
+enterprise/web.core/src/org/netbeans/modules/web/taglib/resources/xml.xsd                                                               W3C2          
+enterprise/web.core/src/org/netbeans/modules/web/taglib/resources/j2ee_1_4.xsd                                                      CDDL-1.1          
+enterprise/web.core/src/org/netbeans/modules/web/taglib/resources/j2ee_web_services_client_1_1.xsd                                  CDDL-1.1          
+enterprise/web.core/src/org/netbeans/modules/web/taglib/resources/javaee_5.xsd                                                      CDDL-1.1          
+enterprise/web.core/src/org/netbeans/modules/web/taglib/resources/javaee_web_services_client_1_2.xsd                                CDDL-1.1          
+enterprise/web.core/src/org/netbeans/modules/web/taglib/resources/web-jsptaglibrary_1_1.dtd                                         CDDL-1.1          
+enterprise/web.core/src/org/netbeans/modules/web/taglib/resources/web-jsptaglibrary_1_2.dtd                                         CDDL-1.1          
+enterprise/web.core/src/org/netbeans/modules/web/taglib/resources/web-jsptaglibrary_2_0.xsd                                         CDDL-1.1          
+enterprise/web.core/src/org/netbeans/modules/web/taglib/resources/web-jsptaglibrary_2_1.xsd                                         CDDL-1.1          
+enterprise/web.core/src/org/netbeans/modules/web/taglib/resources/web-jsptaglibrary_2_1.mdd                                         CDDL-1.1          
+enterprise/web.core.syntax/tlddoc/xslt/alltags-frame.html.xsl                                                                    BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/alltags-noframe.html.xsl                                                                  BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/function.html.xsl                                                                         BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/help-doc.html.xsl                                                                         BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/index.html.xsl                                                                            BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/overview-frame.html.xsl                                                                   BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/overview-summary.html.xsl                                                                 BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/tag.html.xsl                                                                              BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/tld-frame.html.xsl                                                                        BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/tld-summary.html.xsl                                                                      BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/tld1_1-tld1_2.xsl                                                                         BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/tld1_2-tld2_0.xsl                                                                         BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/tld2_0-tld2_1.xsl                                                                         BSD-tldxslt          
+enterprise/web.core.syntax/tlddoc/xslt/tld2_1-tld2_1.xsl                                                                         BSD-tldxslt          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/xml.xsd                                                                   W3C2          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/facelet-taglib_1_0.dtd                                                CDDL-1.1          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/javaee_5.xsd                                                          CDDL-1.1          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/javaee_web_services_client_1_2.xsd                                    CDDL-1.1          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/web-facelettaglibrary_2_0.xsd                                         CDDL-1.1          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/web-facelettaglibrary_2_2.xsd                                         CDDL-1.1          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/web-facesconfig_1_0.dtd                                               CDDL-1.1          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/web-facesconfig_1_1.dtd                                               CDDL-1.1          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/web-facesconfig_1_2.xsd                                               CDDL-1.1          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/web-facesconfig_2_0.xsd                                               CDDL-1.1          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/web-facesconfig_2_1.xsd                                               CDDL-1.1          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/web-facesconfig_2_2.xsd                                               CDDL-1.1          
+enterprise/web.jsf/src/org/netbeans/modules/web/jsf/resources/web-facesconfig_2_3.xsd                                               CDDL-1.1          
+enterprise/websvc.core/src/org/netbeans/modules/websvc/core/resources/sun-jaxws.xsd                                                 CDDL-1.0          
+enterprise/websvc.core/src/org/netbeans/modules/websvc/core/resources/javaee_web_services_metadata_handler_2_0.xsd                  CDDL-1.1          
+enterprise/websvc.core/src/org/netbeans/modules/websvc/core/resources/wsdl_customizationschema_2_0.xsd                              CDDL-1.1          
+extide/options.java/src/org/netbeans/modules/options/java/resources/java_logo.png                                                    CC0-v10          
+extide/options.java/src/org/netbeans/modules/options/java/resources/java_logo.svg                                                    CC0-v10          
+ide/css.editor/src/org/netbeans/modules/css/resources/icons/chrome20-disabled.png                                                   CDDL-1.0          
+ide/css.editor/src/org/netbeans/modules/css/resources/icons/chrome20.png                                                            CDDL-1.0          
+ide/css.editor/src/org/netbeans/modules/css/resources/icons/firefox20-disabled.png                                                  CDDL-1.0          
+ide/css.editor/src/org/netbeans/modules/css/resources/icons/firefox20.png                                                           CDDL-1.0          
+ide/css.editor/src/org/netbeans/modules/css/resources/icons/ie20-disabled.png                                                       CDDL-1.0          
+ide/css.editor/src/org/netbeans/modules/css/resources/icons/ie20.png                                                                CDDL-1.0          
+ide/css.editor/src/org/netbeans/modules/css/resources/icons/opera20-disabled.png                                                    CDDL-1.0          
+ide/css.editor/src/org/netbeans/modules/css/resources/icons/opera20.png                                                             CDDL-1.0          
+ide/css.editor/src/org/netbeans/modules/css/resources/icons/safari20-disabled.png                                                   CDDL-1.0          
+ide/css.editor/src/org/netbeans/modules/css/resources/icons/safari20.png                                                            CDDL-1.0          
+ide/css.lib/src/org/netbeans/modules/css/lib/Css3.g                                                                         BSD-css3-grammar          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/3_2/html32.dtd                                                      W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/3_2/lat1.ent                                                        W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_0/frameset.dtd                                                    W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_0/loose.dtd                                                       W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_0/strict.dtd                                                      W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_0/HTMLlat1.ent                                                    W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_0/HTMLspecial.ent                                                 W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_0/HTMLsymbol.ent                                                  W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_01/frameset.dtd                                                   W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_01/loose.dtd                                                      W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_01/strict.dtd                                                     W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_01/HTMLlat1.ent                                                   W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_01/HTMLspecial.ent                                                W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/4_01/HTMLsymbol.ent                                                 W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/xhtml/xhtml1-frameset.dtd                                           W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/xhtml/xhtml1-strict.dtd                                             W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/xhtml/xhtml1-transitional.dtd                                       W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/xhtml/xhtml-lat1.ent                                                W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/xhtml/xhtml-special.ent                                             W3C2          
+ide/html.editor/src/org/netbeans/modules/html/editor/resources/DTDs/xhtml/xhtml-symbol.ent                                              W3C2          
+ide/schema2beans/src/org/netbeans/modules/schema2beansdev/xmlschema.xsd                                                                 W3C2          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_chrome_16x.png                                        CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_chrome_24x.png                                        CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_chromium_16x.png                                      CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_chromium_24x.png                                      CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_edge_16x.png                                          CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_edge_24x.png                                          CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_firefox_16x.png                                       CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_firefox_24x.png                                       CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_ie_16x.png                                            CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_ie_24x.png                                            CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_opera_16x.png                                         CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_opera_24x.png                                         CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_safari_16x.png                                        CDDL-1.0          
+ide/web.browser.api/src/org/netbeans/modules/web/browser/ui/resources/browser_safari_24x.png                                        CDDL-1.0          
+ide/xml.catalog/src/org/netbeans/modules/xml/catalog/resources/Transform.xsd                                                            W3C2          
+ide/xml.catalog/src/org/netbeans/modules/xml/catalog/resources/XMLNamespace.xsd                                                         W3C2          
+ide/xml.catalog/src/org/netbeans/modules/xml/catalog/resources/XMLSchema-instance.xsd                                                   W3C2          
+ide/xml.catalog/src/org/netbeans/modules/xml/catalog/resources/XMLSchema.dtd                                                            W3C2          
+ide/xml.catalog/src/org/netbeans/modules/xml/catalog/resources/XMLSchema.xsd                                                            W3C2          
+ide/xml.catalog/src/org/netbeans/modules/xml/catalog/resources/datatypes.dtd                                                            W3C2          
+ide/xml.schema.completion/src/org/netbeans/modules/xml/schema/completion/util/XMLSchema.xsd                                             W3C2          
+java/j2ee.persistence/src/org/netbeans/modules/j2ee/persistence/dd/resources/orm_1_0.xsd                                            CDDL-1.0          
+java/j2ee.persistence/src/org/netbeans/modules/j2ee/persistence/dd/resources/persistence_1_0.xsd                                    CDDL-1.0          
+java/j2ee.persistence/src/org/netbeans/modules/j2ee/persistence/dd/resources/orm_2_0.xsd                                             EDL-1.0         1
+java/j2ee.persistence/src/org/netbeans/modules/j2ee/persistence/dd/resources/persistence_2_0.xsd                                     EDL-1.0         1
+java/j2ee.persistence/src/org/netbeans/modules/j2ee/persistence/dd/resources/orm_2_1.xsd                                             EDL-1.0         2
+java/j2ee.persistence/src/org/netbeans/modules/j2ee/persistence/dd/resources/persistence_2_1.xsd                                     EDL-1.0         2
+java/junit.ui/src/org/netbeans/modules/junit/ui/resources/junit5-logo.png                                                            EPL-v20          
+java/xml.jaxb/src/org/netbeans/modules/xml/jaxb/resources/eclipselink_oxm_2_3.xsd                                                    EDL-1.0         3
+nb/welcome/src/org/netbeans/modules/welcome/resources/xhtml1-transitional.dtd                                                           W3C2          
+nb/welcome/src/org/netbeans/modules/welcome/resources/xhtml-lat1.ent                                                                    W3C2          
+nb/welcome/src/org/netbeans/modules/welcome/resources/xhtml-special.ent                                                                 W3C2          
+nb/welcome/src/org/netbeans/modules/welcome/resources/xhtml-symbol.ent                                                                  W3C2          
+nbbuild/antsrc/org/netbeans/nbbuild/xhtml-lat1.ent                                                                                      W3C2          
+nbbuild/antsrc/org/netbeans/nbbuild/xhtml-special.ent                                                                                   W3C2          
+nbbuild/antsrc/org/netbeans/nbbuild/xhtml-symbol.ent                                                                                    W3C2          
+nbbuild/antsrc/org/netbeans/nbbuild/xhtml1-strict.dtd                                                                                   W3C2          
+php/php.code.analysis/src/org/netbeans/modules/php/analysis/ui/resources/phpstan.png                                             MIT-phpstan          
+php/php.smarty/src/org/netbeans/modules/php/smarty/resources/tpl-icon.png                                                           CDDL-1.0          
+php/php.twig/src/org/netbeans/modules/php/twig/resources/twig-icon.png                                                              CDDL-1.0          
+websvccommon/websvc.saas.api/src/org/netbeans/modules/websvc/saas/model/wadl200902.xsd                                              CDDL-1.0          
+
+Notes
+-----
+[  1] Copyright (c) 2008, 2009 Sun Microsystems. All rights reserved.
+
+            Contributors:
+            Linda DeMichiel - Java Persistence 2.0, Version 2.0 (October 1, 2009)
+            Specification available from http://jcp.org/en/jsr/detail?id=317
+
+[  2] Copyright (c) 2008  - 2013 Oracle Corporation. All rights reserved. 
+
+            Contributors:
+            Linda DeMichiel - Java Persistence 2.1, Version 2.1 (February 4, 2013)
+            Specification available from http://jcp.org/en/jsr/detail?id=338
+
+[  3] Copyright (c) 1998, 2010 Oracle. All rights reserved.
+
+Contributors:
+dmccann - December 22/2010 - 2.3 - Initial implementation
+
+**********************************
+W3C® SOFTWARE NOTICE AND LICENSE
+
+Copyright © 1994-2001 World Wide Web Consortium, (Massachusetts Institute of Technology, Institut National de Recherche en Informatique et en Automatique, Keio University). All Rights Reserved. http://www.w3.org/Consortium/Legal/
+
+This W3C work (including software, documents, or other related items) is being provided by the copyright holders under the following license. By obtaining, using and/or copying this work, you (the licensee) agree that you have read, understood, and will comply with the following terms and conditions:
+
+Permission to use, copy, modify, and distribute this software and its documentation, with or without modification, for any purpose and without fee or royalty is hereby granted, provided that you include the following on ALL copies of the software and documentation or portions thereof, including modifications, that you make:
+
+    1. The full text of this NOTICE in a location viewable to users of the redistributed or derivative work.
+
+    2. Any pre-existing intellectual property disclaimers, notices, or terms and conditions. If none exist, a short notice of the following form (hypertext is preferred, text is permitted) should be used within the body of any redistributed or derivative code: "Copyright © [$date-of-software] World Wide Web Consortium, (Massachusetts Institute of Technology, Institut National de Recherche en Informatique et en Automatique, Keio University). All Rights Reserved. http://www.w3.org/Consortium/Legal/"
+
+    3. Notice of any changes or modifications to the W3C files, including the date changes were made. (We recommend you provide URIs to the location from which the code is derived.)
+
+THIS SOFTWARE AND DOCUMENTATION IS PROVIDED "AS IS," AND COPYRIGHT HOLDERS MAKE NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY OR FITNESS FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF THE SOFTWARE OR DOCUMENTATION WILL NOT INFRINGE ANY THIRD PARTY PATENTS, COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS.
+
+COPYRIGHT HOLDERS WILL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF ANY USE OF THE SOFTWARE OR DOCUMENTATION.
+
+The name and trademarks of copyright holders may NOT be used in advertising or publicity pertaining to the software without specific, written prior permission. Title to copyright in this software and any associated documentation will at all times remain with copyright holders.
+
+**********************************
+W3C Software and Document Notice and License
+
+Status: This license takes effect 13 May, 2015.
+
+This work is being provided by the copyright holders under the following license.
+License
+
+By obtaining and/or copying this work, you (the licensee) agree that you have read, understood, and will comply with the following terms and conditions.
+
+Permission to copy, modify, and distribute this work, with or without modification, for any purpose and without fee or royalty is hereby granted, provided that you include the following on ALL copies of the work or portions thereof, including modifications:
+
+    The full text of this NOTICE in a location viewable to users of the redistributed or derivative work.
+    Any pre-existing intellectual property disclaimers, notices, or terms and conditions. If none exist, the W3C Software and Document Short Notice should be included.
+    Notice of any changes or modifications, through a copyright statement on the new code or document such as "This software or document includes material copied from or derived from [title and URI of the W3C document]. Copyright © [YEAR] W3C® (MIT, ERCIM, Keio, Beihang)." 
+
+Disclaimers
+
+THIS WORK IS PROVIDED "AS IS," AND COPYRIGHT HOLDERS MAKE NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY OR FITNESS FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF THE SOFTWARE OR DOCUMENT WILL NOT INFRINGE ANY THIRD PARTY PATENTS, COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS.
+
+COPYRIGHT HOLDERS WILL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF ANY USE OF THE SOFTWARE OR DOCUMENT.
+
+The name and trademarks of copyright holders may NOT be used in advertising or publicity pertaining to the work without specific, written prior permission. Title to copyright in this work will at all times remain with copyright holders.
+
+**********************************
+COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.1
+
+1. Definitions.
+
+    1.1. "Contributor" means each individual or entity that creates or
+    contributes to the creation of Modifications.
+
+    1.2. "Contributor Version" means the combination of the Original
+    Software, prior Modifications used by a Contributor (if any), and
+    the Modifications made by that particular Contributor.
+
+    1.3. "Covered Software" means (a) the Original Software, or (b)
+    Modifications, or (c) the combination of files containing Original
+    Software with files containing Modifications, in each case including
+    portions thereof.
+
+    1.4. "Executable" means the Covered Software in any form other than
+    Source Code.
+
+    1.5. "Initial Developer" means the individual or entity that first
+    makes Original Software available under this License.
+
+    1.6. "Larger Work" means a work which combines Covered Software or
+    portions thereof with code not governed by the terms of this License.
+
+    1.7. "License" means this document.
+
+    1.8. "Licensable" means having the right to grant, to the maximum
+    extent possible, whether at the time of the initial grant or
+    subsequently acquired, any and all of the rights conveyed herein.
+
+    1.9. "Modifications" means the Source Code and Executable form of
+    any of the following:
+
+    A. Any file that results from an addition to, deletion from or
+    modification of the contents of a file containing Original Software
+    or previous Modifications;
+
+    B. Any new file that contains any part of the Original Software or
+    previous Modification; or
+
+    C. Any new file that is contributed or otherwise made available
+    under the terms of this License.
+
+    1.10. "Original Software" means the Source Code and Executable form
+    of computer software code that is originally released under this
+    License.
+
+    1.11. "Patent Claims" means any patent claim(s), now owned or
+    hereafter acquired, including without limitation, method, process,
+    and apparatus claims, in any patent Licensable by grantor.
+
+    1.12. "Source Code" means (a) the common form of computer software
+    code in which modifications are made and (b) associated
+    documentation included in or with such code.
+
+    1.13. "You" (or "Your") means an individual or a legal entity
+    exercising rights under, and complying with all of the terms of,
+    this License. For legal entities, "You" includes any entity which
+    controls, is controlled by, or is under common control with You. For
+    purposes of this definition, "control" means (a) the power, direct
+    or indirect, to cause the direction or management of such entity,
+    whether by contract or otherwise, or (b) ownership of more than
+    fifty percent (50%) of the outstanding shares or beneficial
+    ownership of such entity.
+
+2. License Grants.
+
+    2.1. The Initial Developer Grant.
+
+    Conditioned upon Your compliance with Section 3.1 below and subject
+    to third party intellectual property claims, the Initial Developer
+    hereby grants You a world-wide, royalty-free, non-exclusive license:
+
+    (a) under intellectual property rights (other than patent or
+    trademark) Licensable by Initial Developer, to use, reproduce,
+    modify, display, perform, sublicense and distribute the Original
+    Software (or portions thereof), with or without Modifications,
+    and/or as part of a Larger Work; and
+
+    (b) under Patent Claims infringed by the making, using or selling of
+    Original Software, to make, have made, use, practice, sell, and
+    offer for sale, and/or otherwise dispose of the Original Software
+    (or portions thereof).
+
+    (c) The licenses granted in Sections 2.1(a) and (b) are effective on
+    the date Initial Developer first distributes or otherwise makes the
+    Original Software available to a third party under the terms of this
+    License.
+
+    (d) Notwithstanding Section 2.1(b) above, no patent license is
+    granted: (1) for code that You delete from the Original Software, or
+    (2) for infringements caused by: (i) the modification of the
+    Original Software, or (ii) the combination of the Original Software
+    with other software or devices.
+
+    2.2. Contributor Grant.
+
+    Conditioned upon Your compliance with Section 3.1 below and subject
+    to third party intellectual property claims, each Contributor hereby
+    grants You a world-wide, royalty-free, non-exclusive license:
+
+    (a) under intellectual property rights (other than patent or
+    trademark) Licensable by Contributor to use, reproduce, modify,
+    display, perform, sublicense and distribute the Modifications
+    created by such Contributor (or portions thereof), either on an
+    unmodified basis, with other Modifications, as Covered Software
+    and/or as part of a Larger Work; and
+
+    (b) under Patent Claims infringed by the making, using, or selling
+    of Modifications made by that Contributor either alone and/or in
+    combination with its Contributor Version (or portions of such
+    combination), to make, use, sell, offer for sale, have made, and/or
+    otherwise dispose of: (1) Modifications made by that Contributor (or
+    portions thereof); and (2) the combination of Modifications made by
+    that Contributor with its Contributor Version (or portions of such
+    combination).
+
+    (c) The licenses granted in Sections 2.2(a) and 2.2(b) are effective
+    on the date Contributor first distributes or otherwise makes the
+    Modifications available to a third party.
+
+    (d) Notwithstanding Section 2.2(b) above, no patent license is
+    granted: (1) for any code that Contributor has deleted from the
+    Contributor Version; (2) for infringements caused by: (i) third
+    party modifications of Contributor Version, or (ii) the combination
+    of Modifications made by that Contributor with other software
+    (except as part of the Contributor Version) or other devices; or (3)
+    under Patent Claims infringed by Covered Software in the absence of
+    Modifications made by that Contributor.
+
+3. Distribution Obligations.
+
+    3.1. Availability of Source Code.
+
+    Any Covered Software that You distribute or otherwise make available
+    in Executable form must also be made available in Source Code form
+    and that Source Code form must be distributed only under the terms
+    of this License. You must include a copy of this License with every
+    copy of the Source Code form of the Covered Software You distribute
+    or otherwise make available. You must inform recipients of any such
+    Covered Software in Executable form as to how they can obtain such
+    Covered Software in Source Code form in a reasonable manner on or
+    through a medium customarily used for software exchange.
+
+    3.2. Modifications.
+
+    The Modifications that You create or to which You contribute are
+    governed by the terms of this License. You represent that You
+    believe Your Modifications are Your original creation(s) and/or You
+    have sufficient rights to grant the rights conveyed by this License.
+
+    3.3. Required Notices.
+
+    You must include a notice in each of Your Modifications that
+    identifies You as the Contributor of the Modification. You may not
+    remove or alter any copyright, patent or trademark notices contained
+    within the Covered Software, or any notices of licensing or any
+    descriptive text giving attribution to any Contributor or the
+    Initial Developer.
+
+    3.4. Application of Additional Terms.
+
+    You may not offer or impose any terms on any Covered Software in
+    Source Code form that alters or restricts the applicable version of
+    this License or the recipients' rights hereunder. You may choose to
+    offer, and to charge a fee for, warranty, support, indemnity or
+    liability obligations to one or more recipients of Covered Software.
+    However, you may do so only on Your own behalf, and not on behalf of
+    the Initial Developer or any Contributor. You must make it
+    absolutely clear that any such warranty, support, indemnity or
+    liability obligation is offered by You alone, and You hereby agree
+    to indemnify the Initial Developer and every Contributor for any
+    liability incurred by the Initial Developer or such Contributor as a
+    result of warranty, support, indemnity or liability terms You offer.
+
+    3.5. Distribution of Executable Versions.
+
+    You may distribute the Executable form of the Covered Software under
+    the terms of this License or under the terms of a license of Your
+    choice, which may contain terms different from this License,
+    provided that You are in compliance with the terms of this License
+    and that the license for the Executable form does not attempt to
+    limit or alter the recipient's rights in the Source Code form from
+    the rights set forth in this License. If You distribute the Covered
+    Software in Executable form under a different license, You must make
+    it absolutely clear that any terms which differ from this License
+    are offered by You alone, not by the Initial Developer or
+    Contributor. You hereby agree to indemnify the Initial Developer and
+    every Contributor for any liability incurred by the Initial
+    Developer or such Contributor as a result of any such terms You offer.
+
+    3.6. Larger Works.
+
+    You may create a Larger Work by combining Covered Software with
+    other code not governed by the terms of this License and distribute
+    the Larger Work as a single product. In such a case, You must make
+    sure the requirements of this License are fulfilled for the Covered
+    Software.
+
+4. Versions of the License.
+
+    4.1. New Versions.
+
+    Oracle is the initial license steward and may publish revised and/or
+    new versions of this License from time to time. Each version will be
+    given a distinguishing version number. Except as provided in Section
+    4.3, no one other than the license steward has the right to modify
+    this License.
+
+    4.2. Effect of New Versions.
+
+    You may always continue to use, distribute or otherwise make the
+    Covered Software available under the terms of the version of the
+    License under which You originally received the Covered Software. If
+    the Initial Developer includes a notice in the Original Software
+    prohibiting it from being distributed or otherwise made available
+    under any subsequent version of the License, You must distribute and
+    make the Covered Software available under the terms of the version
+    of the License under which You originally received the Covered
+    Software. Otherwise, You may also choose to use, distribute or
+    otherwise make the Covered Software available under the terms of any
+    subsequent version of the License published by the license steward.
+
+    4.3. Modified Versions.
+
+    When You are an Initial Developer and You want to create a new
+    license for Your Original Software, You may create and use a
+    modified version of this License if You: (a) rename the license and
+    remove any references to the name of the license steward (except to
+    note that the license differs from this License); and (b) otherwise
+    make it clear that the license contains terms which differ from this
+    License.
+
+5. DISCLAIMER OF WARRANTY.
+
+    COVERED SOFTWARE IS PROVIDED UNDER THIS LICENSE ON AN "AS IS" BASIS,
+    WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED,
+    INCLUDING, WITHOUT LIMITATION, WARRANTIES THAT THE COVERED SOFTWARE
+    IS FREE OF DEFECTS, MERCHANTABLE, FIT FOR A PARTICULAR PURPOSE OR
+    NON-INFRINGING. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF
+    THE COVERED SOFTWARE IS WITH YOU. SHOULD ANY COVERED SOFTWARE PROVE
+    DEFECTIVE IN ANY RESPECT, YOU (NOT THE INITIAL DEVELOPER OR ANY
+    OTHER CONTRIBUTOR) ASSUME THE COST OF ANY NECESSARY SERVICING,
+    REPAIR OR CORRECTION. THIS DISCLAIMER OF WARRANTY CONSTITUTES AN
+    ESSENTIAL PART OF THIS LICENSE. NO USE OF ANY COVERED SOFTWARE IS
+    AUTHORIZED HEREUNDER EXCEPT UNDER THIS DISCLAIMER.
+
+6. TERMINATION.
+
+    6.1. This License and the rights granted hereunder will terminate
+    automatically if You fail to comply with terms herein and fail to
+    cure such breach within 30 days of becoming aware of the breach.
+    Provisions which, by their nature, must remain in effect beyond the
+    termination of this License shall survive.
+
+    6.2. If You assert a patent infringement claim (excluding
+    declaratory judgment actions) against Initial Developer or a
+    Contributor (the Initial Developer or Contributor against whom You
+    assert such claim is referred to as "Participant") alleging that the
+    Participant Software (meaning the Contributor Version where the
+    Participant is a Contributor or the Original Software where the
+    Participant is the Initial Developer) directly or indirectly
+    infringes any patent, then any and all rights granted directly or
+    indirectly to You by such Participant, the Initial Developer (if the
+    Initial Developer is not the Participant) and all Contributors under
+    Sections 2.1 and/or 2.2 of this License shall, upon 60 days notice
+    from Participant terminate prospectively and automatically at the
+    expiration of such 60 day notice period, unless if within such 60
+    day period You withdraw Your claim with respect to the Participant
+    Software against such Participant either unilaterally or pursuant to
+    a written agreement with Participant.
+
+    6.3. If You assert a patent infringement claim against Participant
+    alleging that the Participant Software directly or indirectly
+    infringes any patent where such claim is resolved (such as by
+    license or settlement) prior to the initiation of patent
+    infringement litigation, then the reasonable value of the licenses
+    granted by such Participant under Sections 2.1 or 2.2 shall be taken
+    into account in determining the amount or value of any payment or
+    license.
+
+    6.4. In the event of termination under Sections 6.1 or 6.2 above,
+    all end user licenses that have been validly granted by You or any
+    distributor hereunder prior to termination (excluding licenses
+    granted to You by any distributor) shall survive termination.
+
+7. LIMITATION OF LIABILITY.
+
+    UNDER NO CIRCUMSTANCES AND UNDER NO LEGAL THEORY, WHETHER TORT
+    (INCLUDING NEGLIGENCE), CONTRACT, OR OTHERWISE, SHALL YOU, THE
+    INITIAL DEVELOPER, ANY OTHER CONTRIBUTOR, OR ANY DISTRIBUTOR OF
+    COVERED SOFTWARE, OR ANY SUPPLIER OF ANY OF SUCH PARTIES, BE LIABLE
+    TO ANY PERSON FOR ANY INDIRECT, SPECIAL, INCIDENTAL, OR
+    CONSEQUENTIAL DAMAGES OF ANY CHARACTER INCLUDING, WITHOUT
+    LIMITATION, DAMAGES FOR LOSS OF GOODWILL, WORK STOPPAGE, COMPUTER
+    FAILURE OR MALFUNCTION, OR ANY AND ALL OTHER COMMERCIAL DAMAGES OR
+    LOSSES, EVEN IF SUCH PARTY SHALL HAVE BEEN INFORMED OF THE
+    POSSIBILITY OF SUCH DAMAGES. THIS LIMITATION OF LIABILITY SHALL NOT
+    APPLY TO LIABILITY FOR DEATH OR PERSONAL INJURY RESULTING FROM SUCH
+    PARTY'S NEGLIGENCE TO THE EXTENT APPLICABLE LAW PROHIBITS SUCH
+    LIMITATION. SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OR
+    LIMITATION OF INCIDENTAL OR CONSEQUENTIAL DAMAGES, SO THIS EXCLUSION
+    AND LIMITATION MAY NOT APPLY TO YOU.
+
+8. U.S. GOVERNMENT END USERS.
+
+    The Covered Software is a "commercial item," as that term is defined
+    in 48 C.F.R. 2.101 (Oct. 1995), consisting of "commercial computer
+    software" (as that term is defined at 48 C.F.R. §
+    252.227-7014(a)(1)) and "commercial computer software documentation"
+    as such terms are used in 48 C.F.R. 12.212 (Sept. 1995). Consistent
+    with 48 C.F.R. 12.212 and 48 C.F.R. 227.7202-1 through 227.7202-4
+    (June 1995), all U.S. Government End Users acquire Covered Software
+    with only those rights set forth herein. This U.S. Government Rights
+    clause is in lieu of, and supersedes, any other FAR, DFAR, or other
+    clause or provision that addresses Government rights in computer
+    software under this License.
+
+9. MISCELLANEOUS.
+
+    This License represents the complete agreement concerning subject
+    matter hereof. If any provision of this License is held to be
+    unenforceable, such provision shall be reformed only to the extent
+    necessary to make it enforceable. This License shall be governed by
+    the law of the jurisdiction specified in a notice contained within
+    the Original Software (except to the extent applicable law, if any,
+    provides otherwise), excluding such jurisdiction's conflict-of-law
+    provisions. Any litigation relating to this License shall be subject
+    to the jurisdiction of the courts located in the jurisdiction and
+    venue specified in a notice contained within the Original Software,
+    with the losing party responsible for costs, including, without
+    limitation, court costs and reasonable attorneys' fees and expenses.
+    The application of the United Nations Convention on Contracts for
+    the International Sale of Goods is expressly excluded. Any law or
+    regulation which provides that the language of a contract shall be
+    construed against the drafter shall not apply to this License. You
+    agree that You alone are responsible for compliance with the United
+    States export administration regulations (and the export control
+    laws and regulation of any other countries) when You use, distribute
+    or otherwise make available any Covered Software.
+
+10. RESPONSIBILITY FOR CLAIMS.
+
+    As between Initial Developer and the Contributors, each party is
+    responsible for claims and damages arising, directly or indirectly,
+    out of its utilization of rights under this License and You agree to
+    work with Initial Developer and Contributors to distribute such
+    responsibility on an equitable basis. Nothing herein is intended or
+    shall be deemed to constitute any admission of liability.
+
+------------------------------------------------------------------------
+
+NOTICE PURSUANT TO SECTION 9 OF THE COMMON DEVELOPMENT AND DISTRIBUTION
+LICENSE (CDDL)
+
+The code released under the CDDL shall be governed by the laws of the
+State of California (excluding conflict-of-law provisions). Any
+litigation relating to this License shall be subject to the jurisdiction
+of the Federal Courts of the Northern District of California and the
+state courts of the State of California, with venue lying in Santa Clara
+County, California.
+
+*********************
+
+
+COMMON DEVELOPMENT AND DISTRIBUTION LICENSE (CDDL) Version 1.0
+
+1. Definitions.
+
+1.1. "Contributor" means each individual or entity that creates or contributes to the creation of Modifications.
+
+1.2. "Contributor Version" means the combination of the Original Software, prior Modifications used by a Contributor (if any), and the Modifications made by that particular Contributor.
+
+1.3. "Covered Software" means (a) the Original Software, or (b) Modifications, or (c) the combination of files containing Original Software with files containing Modifications, in each case including portions thereof.
+
+1.4. "Executable" means the Covered Software in any form other than Source Code.
+
+1.5. "Initial Developer" means the individual or entity that first makes Original Software available under this License.
+
+1.6. "Larger Work" means a work which combines Covered Software or portions thereof with code not governed by the terms of this License.
+
+1.7. "License" means this document.
+
+1.8. "Licensable" means having the right to grant, to the maximum extent possible, whether at the time of the initial grant or subsequently acquired, any and all of the rights conveyed herein.
+
+1.9. "Modifications" means the Source Code and Executable form of any of the following:
+
+A. Any file that results from an addition to, deletion from or modification of the contents of a file containing Original Software or previous Modifications;
+
+B. Any new file that contains any part of the Original Software or previous Modification; or
+
+C. Any new file that is contributed or otherwise made available under the terms of this License.
+
+1.10. "Original Software" means the Source Code and Executable form of computer software code that is originally released under this License.
+
+1.11. "Patent Claims" means any patent claim(s), now owned or hereafter acquired, including without limitation, method, process, and apparatus claims, in any patent Licensable by grantor.
+
+1.12. "Source Code" means (a) the common form of computer software code in which modifications are made and (b) associated documentation included in or with such code.
+
+1.13. "You" (or "Your") means an individual or a legal entity exercising rights under, and complying with all of the terms of, this License. For legal entities, "You" includes any entity which controls, is controlled by, or is under common control with You. For purposes of this definition, "control" means (a) the power, direct or indirect, to cause the direction or management of such entity, whether by contract or otherwise, or (b) ownership of more than fifty percent (50%) of the outstanding shares or beneficial ownership of such entity.
+
+2. License Grants.
+
+2.1. The Initial Developer Grant.
+
+Conditioned upon Your compliance with Section 3.1 below and subject to third party intellectual property claims, the Initial Developer hereby grants You a world-wide, royalty-free, non-exclusive license:
+
+(a) under intellectual property rights (other than patent or trademark) Licensable by Initial Developer, to use, reproduce, modify, display, perform, sublicense and distribute the Original Software (or portions thereof), with or without Modifications, and/or as part of a Larger Work; and
+
+(b) under Patent Claims infringed by the making, using or selling of Original Software, to make, have made, use, practice, sell, and offer for sale, and/or otherwise dispose of the Original Software (or portions thereof).
+
+(c) The licenses granted in Sections 2.1(a) and (b) are effective on the date Initial Developer first distributes or otherwise makes the Original Software available to a third party under the terms of this License.
+
+(d) Notwithstanding Section 2.1(b) above, no patent license is granted: (1) for code that You delete from the Original Software, or (2) for infringements caused by: (i) the modification of the Original Software, or (ii) the combination of the Original Software with other software or devices.
+
+2.2. Contributor Grant.
+
+Conditioned upon Your compliance with Section 3.1 below and
+subject to third party intellectual property claims, each
+Contributor hereby grants You a world-wide, royalty-free,
+non-exclusive license:
+
+(a) under intellectual property rights (other than patent or trademark) Licensable by Contributor to use, reproduce, modify, display, perform, sublicense and distribute the Modifications created by such Contributor (or portions thereof), either on an unmodified basis, with other Modifications, as Covered Software and/or as part of a Larger Work; and
+
+(b) under Patent Claims infringed by the making, using, or selling of Modifications made by that Contributor either alone and/or in combination with its Contributor Version (or portions of such combination), to make, use, sell, offer for sale, have made, and/or otherwise dispose of: (1) Modifications made by that Contributor (or portions thereof); and (2) the combination of Modifications made by that Contributor with its Contributor Version (or portions of such combination).
+
+(c) The licenses granted in Sections 2.2(a) and 2.2(b) are effective on the date Contributor first distributes or otherwise makes the Modifications available to a third party.
+(d) Notwithstanding Section 2.2(b) above, no patent license is granted: (1) for any code that Contributor has deleted from the Contributor Version; (2) for infringements caused by: (i) third party modifications of Contributor Version, or (ii) the combination of Modifications made by that Contributor with other software (except as part of the Contributor Version) or other devices; or (3) under Patent Claims infringed by Covered Software in the absence of Modifications made by that Contributor.
+
+3. Distribution Obligations.
+
+3.1. Availability of Source Code.
+
+Any Covered Software that You distribute or otherwise make available in Executable form must also be made available in Source Code form and that Source Code form must be distributed only under the terms of this License. You must include a copy of this License with every copy of the Source Code form of the Covered Software You distribute or otherwise make available. You must inform recipients of any such Covered Software in Executable form as to how they can obtain such Covered Software in Source Code form in a reasonable manner on or through a medium customarily used for software exchange.
+
+3.2. Modifications.
+
+The Modifications that You create or to which You contribute are governed by the terms of this License. You represent that You believe Your Modifications are Your original creation(s) and/or You have sufficient rights to grant the rights conveyed by this License.
+
+3.3. Required Notices.
+
+You must include a notice in each of Your Modifications that identifies You as the Contributor of the Modification. You may not remove or alter any copyright, patent or trademark notices contained within the Covered Software, or any notices of licensing or any descriptive text giving attribution to any Contributor or the Initial Developer.
+
+3.4. Application of Additional Terms.
+
+You may not offer or impose any terms on any Covered Software in Source Code form that alters or restricts the applicable version of this License or the recipients' rights hereunder. You may choose to offer, and to charge a fee for, warranty, support, indemnity or liability obligations to one or more recipients of Covered Software. However, you may do so only on Your own behalf, and not on behalf of the Initial Developer or any Contributor. You must make it absolutely clear that any such warranty, support, indemnity or liability obligation is offered by You alone, and You hereby agree to indemnify the Initial Developer and every Contributor for any liability incurred by the Initial Developer or such Contributor as a result of warranty, support, indemnity or liability terms You offer.
+
+3.5. Distribution of Executable Versions.
+
+You may distribute the Executable form of the Covered Software under the terms of this License or under the terms of a license of Your choice, which may contain terms different from this License, provided that You are in compliance with the terms of this License and that the license for the Executable form does not attempt to limit or alter the recipient's rights in the Source Code form from the rights set forth in this License. If You distribute the Covered Software in Executable form under a different license, You must make it absolutely clear that any terms which differ from this License are offered by You alone, not by the Initial Developer or Contributor. You hereby agree to indemnify the Initial Developer and every Contributor for any liability incurred by the Initial Developer or such Contributor as a result of any such terms You offer.
+
+3.6. Larger Works.
+
+You may create a Larger Work by combining Covered Software with other code not governed by the terms of this License and distribute the Larger Work as a single product. In such a case, You must make sure the requirements of this License are fulfilled for the Covered Software.
+
+4. Versions of the License.
+
+4.1. New Versions.
+
+Sun Microsystems, Inc. is the initial license steward and may publish revised and/or new versions of this License from time to time. Each version will be given a distinguishing version number. Except as provided in Section 4.3, no one other than the license steward has the right to modify this License.
+
+4.2. Effect of New Versions.
+
+You may always continue to use, distribute or otherwise make the Covered Software available under the terms of the version of the License under which You originally received the Covered Software. If the Initial Developer includes a notice in the Original Software prohibiting it from being distributed or otherwise made available under any subsequent version of the License, You must distribute and make the Covered Software available under the terms of the version of the License under which You originally received the Covered Software. Otherwise, You may also choose to use, distribute or otherwise make the Covered Software available under the terms of any subsequent version of the License published by the license steward.
+
+4.3. Modified Versions.
+
+When You are an Initial Developer and You want to create a new license for Your Original Software, You may create and use a modified version of this License if You: (a) rename the license and remove any references to the name of the license steward (except to note that the license differs from this License); and (b) otherwise make it clear that the license contains terms which differ from this License.
+
+5. DISCLAIMER OF WARRANTY.
+
+COVERED SOFTWARE IS PROVIDED UNDER THIS LICENSE ON AN "AS IS" BASIS, WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, WITHOUT LIMITATION, WARRANTIES THAT THE COVERED SOFTWARE IS FREE OF DEFECTS, MERCHANTABLE, FIT FOR A PARTICULAR PURPOSE OR NON-INFRINGING. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE COVERED SOFTWARE IS WITH YOU. SHOULD ANY COVERED SOFTWARE PROVE DEFECTIVE IN ANY RESPECT, YOU (NOT THE INITIAL DEVELOPER OR ANY OTHER CONTRIBUTOR) ASSUME THE COST OF ANY NECESSARY SERVICING, REPAIR OR CORRECTION. THIS DISCLAIMER OF WARRANTY CONSTITUTES AN ESSENTIAL PART OF THIS LICENSE. NO USE OF ANY COVERED SOFTWARE IS AUTHORIZED HEREUNDER EXCEPT UNDER THIS DISCLAIMER.
+
+6. TERMINATION.
+
+6.1. This License and the rights granted hereunder will terminate automatically if You fail to comply with terms herein and fail to cure such breach within 30 days of becoming aware of the breach. Provisions which, by their nature, must remain in effect beyond the termination of this License shall survive.
+
+6.2. If You assert a patent infringement claim (excluding declaratory judgment actions) against Initial Developer or a Contributor (the Initial Developer or Contributor against whom You assert such claim is referred to as "Participant") alleging that the Participant Software (meaning the Contributor Version where the Participant is a Contributor or the Original Software where the Participant is the Initial Developer) directly or indirectly infringes any patent, then any and all rights granted directly or indirectly to You by such Participant, the Initial Developer (if the Initial Developer is not the Participant) and all Contributors under Sections 2.1 and/or 2.2 of this License shall, upon 60 days notice from Participant terminate prospectively and automatically at the expiration of such 60 day notice period, unless if within such 60 day period You withdraw Your claim with respect to the Participant Software against such Participant either unilaterally or pursuant to a written agreement with Participant.
+
+6.3. In the event of termination under Sections 6.1 or 6.2 above, all end user licenses that have been validly granted by You or any distributor hereunder prior to termination (excluding licenses granted to You by any distributor) shall survive termination.
+
+7. LIMITATION OF LIABILITY.
+
+UNDER NO CIRCUMSTANCES AND UNDER NO LEGAL THEORY, WHETHER TORT (INCLUDING NEGLIGENCE), CONTRACT, OR OTHERWISE, SHALL YOU, THE INITIAL DEVELOPER, ANY OTHER CONTRIBUTOR, OR ANY DISTRIBUTOR OF COVERED SOFTWARE, OR ANY SUPPLIER OF ANY OF SUCH PARTIES, BE LIABLE TO ANY PERSON FOR ANY INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES OF ANY CHARACTER INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOST PROFITS, LOSS OF GOODWILL, WORK STOPPAGE, COMPUTER FAILURE OR MALFUNCTION, OR ANY AND ALL OTHER COMMERCIAL DAMAGES OR LOSSES, EVEN IF SUCH PARTY SHALL HAVE BEEN INFORMED OF THE POSSIBILITY OF SUCH DAMAGES. THIS LIMITATION OF LIABILITY SHALL NOT APPLY TO LIABILITY FOR DEATH OR PERSONAL INJURY RESULTING FROM SUCH PARTY'S NEGLIGENCE TO THE EXTENT APPLICABLE LAW PROHIBITS SUCH LIMITATION. SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OR LIMITATION OF INCIDENTAL OR CONSEQUENTIAL DAMAGES, SO THIS EXCLUSION AND LIMITATION MAY NOT APPLY TO YOU.
+
+8. U.S. GOVERNMENT END USERS.
+
+The Covered Software is a "commercial item," as that term is defined in 48 C.F.R. 2.101 (Oct. 1995), consisting of "commercial computer software" (as that term is defined at 48 C.F.R. ¤ 252.227-7014(a)(1)) and "commercial computer software documentation" as such terms are used in 48 C.F.R. 12.212 (Sept. 1995). Consistent with 48 C.F.R. 12.212 and 48 C.F.R. 227.7202-1 through 227.7202-4 (June 1995), all U.S. Government End Users acquire Covered Software with only those rights set forth herein. This U.S. Government Rights clause is in lieu of, and supersedes, any other FAR, DFAR, or other clause or provision that addresses Government rights in computer software under this License.
+
+9. MISCELLANEOUS.
+
+This License represents the complete agreement concerning subject matter hereof. If any provision of this License is held to be unenforceable, such provision shall be reformed only to the extent necessary to make it enforceable. This License shall be governed by the law of the jurisdiction specified in a notice contained within the Original Software (except to the extent applicable law, if any, provides otherwise), excluding such jurisdiction's conflict-of-law provisions. Any litigation relating to this License shall be subject to the jurisdiction of the courts located in the jurisdiction and venue specified in a notice contained within the Original Software, with the losing party responsible for costs, including, without limitation, court costs and reasonable attorneys' fees and expenses. The application of the United Nations Convention on Contracts for the International Sale of Goods is expressly excluded. Any law or regulation which provides that the language of a contract shall be construed against the drafter shall not apply to this License. You agree that You alone are responsible for compliance with the United States export administration regulations (and the export control laws and regulation of any other countries) when You use, distribute or otherwise make available any Covered Software.
+
+10. RESPONSIBILITY FOR CLAIMS.
+
+As between Initial Developer and the Contributors, each party is responsible for claims and damages arising, directly or indirectly, out of its utilization of rights under this License and You agree to work with Initial Developer and Contributors to distribute such responsibility on an equitable basis. Nothing herein is intended or shall be deemed to constitute any admission of liability.
+
+**********************
+Eclipse Distribution License - v 1.0
+Copyright (c) 2007, Eclipse Foundation, Inc. and its licensors.
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+    Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+    Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+    Neither the name of the Eclipse Foundation, Inc. nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission. 
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+***************
+
+Eclipse Public License - v 2.0
+
+THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE PUBLIC LICENSE (“AGREEMENT”). ANY USE, REPRODUCTION OR DISTRIBUTION OF THE PROGRAM CONSTITUTES RECIPIENT'S ACCEPTANCE OF THIS AGREEMENT.
+1. DEFINITIONS
+
+“Contribution” means:
+
+    a) in the case of the initial Contributor, the initial content Distributed under this Agreement, and
+    b) in the case of each subsequent Contributor:
+        i) changes to the Program, and
+        ii) additions to the Program;
+    where such changes and/or additions to the Program originate from and are Distributed by that particular Contributor. A Contribution “originates” from a Contributor if it was added to the Program by such Contributor itself or anyone acting on such Contributor's behalf. Contributions do not include changes or additions to the Program that are not Modified Works.
+
+“Contributor” means any person or entity that Distributes the Program.
+
+“Licensed Patents” mean patent claims licensable by a Contributor which are necessarily infringed by the use or sale of its Contribution alone or when combined with the Program.
+
+“Program” means the Contributions Distributed in accordance with this Agreement.
+
+“Recipient” means anyone who receives the Program under this Agreement or any Secondary License (as applicable), including Contributors.
+
+“Derivative Works” shall mean any work, whether in Source Code or other form, that is based on (or derived from) the Program and for which the editorial revisions, annotations, elaborations, or other modifications represent, as a whole, an original work of authorship.
+
+“Modified Works” shall mean any work in Source Code or other form that results from an addition to, deletion from, or modification of the contents of the Program, including, for purposes of clarity any new file in Source Code form that contains any contents of the Program. Modified Works shall not include works that contain only declarations, interfaces, types, classes, structures, or files of the Program solely in each case in order to link to, bind by name, or subclass the Program or Modified Works thereof.
+
+“Distribute” means the acts of a) distributing or b) making available in any manner that enables the transfer of a copy.
+
+“Source Code” means the form of a Program preferred for making modifications, including but not limited to software source code, documentation source, and configuration files.
+
+“Secondary License” means either the GNU General Public License, Version 2.0, or any later versions of that license, including any exceptions or additional permissions as identified by the initial Contributor.
+2. GRANT OF RIGHTS
+
+    a) Subject to the terms of this Agreement, each Contributor hereby grants Recipient a non-exclusive, worldwide, royalty-free copyright license to reproduce, prepare Derivative Works of, publicly display, publicly perform, Distribute and sublicense the Contribution of such Contributor, if any, and such Derivative Works.
+    b) Subject to the terms of this Agreement, each Contributor hereby grants Recipient a non-exclusive, worldwide, royalty-free patent license under Licensed Patents to make, use, sell, offer to sell, import and otherwise transfer the Contribution of such Contributor, if any, in Source Code or other form. This patent license shall apply to the combination of the Contribution and the Program if, at the time the Contribution is added by the Contributor, such addition of the Contribution causes such combination to be covered by the Licensed Patents. The patent license shall not apply to any other combinations which include the Contribution. No hardware per se is licensed hereunder.
+    c) Recipient understands that although each Contributor grants the licenses to its Contributions set forth herein, no assurances are provided by any Contributor that the Program does not infringe the patent or other intellectual property rights of any other entity. Each Contributor disclaims any liability to Recipient for claims brought by any other entity based on infringement of intellectual property rights or otherwise. As a condition to exercising the rights and licenses granted hereunder, each Recipient hereby assumes sole responsibility to secure any other intellectual property rights needed, if any. For example, if a third party patent license is required to allow Recipient to Distribute the Program, it is Recipient's responsibility to acquire that license before distributing the Program.
+    d) Each Contributor represents that to its knowledge it has sufficient copyright rights in its Contribution, if any, to grant the copyright license set forth in this Agreement.
+    e) Notwithstanding the terms of any Secondary License, no Contributor makes additional grants to any Recipient (other than those set forth in this Agreement) as a result of such Recipient's receipt of the Program under the terms of a Secondary License (if permitted under the terms of Section 3).
+
+3. REQUIREMENTS
+
+3.1 If a Contributor Distributes the Program in any form, then:
+
+    a) the Program must also be made available as Source Code, in accordance with section 3.2, and the Contributor must accompany the Program with a statement that the Source Code for the Program is available under this Agreement, and informs Recipients how to obtain it in a reasonable manner on or through a medium customarily used for software exchange; and
+    b) the Contributor may Distribute the Program under a license different than this Agreement, provided that such license:
+        i) effectively disclaims on behalf of all other Contributors all warranties and conditions, express and implied, including warranties or conditions of title and non-infringement, and implied warranties or conditions of merchantability and fitness for a particular purpose;
+        ii) effectively excludes on behalf of all other Contributors all liability for damages, including direct, indirect, special, incidental and consequential damages, such as lost profits;
+        iii) does not attempt to limit or alter the recipients' rights in the Source Code under section 3.2; and
+        iv) requires any subsequent distribution of the Program by any party to be under a license that satisfies the requirements of this section 3.
+
+3.2 When the Program is Distributed as Source Code:
+
+    a) it must be made available under this Agreement, or if the Program (i) is combined with other material in a separate file or files made available under a Secondary License, and (ii) the initial Contributor attached to the Source Code the notice described in Exhibit A of this Agreement, then the Program may be made available under the terms of such Secondary Licenses, and
+    b) a copy of this Agreement must be included with each copy of the Program.
+
+3.3 Contributors may not remove or alter any copyright, patent, trademark, attribution notices, disclaimers of warranty, or limitations of liability (‘notices’) contained within the Program from any copy of the Program which they Distribute, provided that Contributors may add their own appropriate notices.
+4. COMMERCIAL DISTRIBUTION
+
+Commercial distributors of software may accept certain responsibilities with respect to end users, business partners and the like. While this license is intended to facilitate the commercial use of the Program, the Contributor who includes the Program in a commercial product offering should do so in a manner which does not create potential liability for other Contributors. Therefore, if a Contributor includes the Program in a commercial product offering, such Contributor (“Commercial Contributor”) hereby agrees to defend and indemnify every other Contributor (“Indemnified Contributor”) against any losses, damages and costs (collectively “Losses”) arising from claims, lawsuits and other legal actions brought by a third party against the Indemnified Contributor to the extent caused by the acts or omissions of such Commercial Contributor in connection with its distribution of the Program in a commercial product offering. The obligations in this section do not apply to any claims or Losses relating to any actual or alleged intellectual property infringement. In order to qualify, an Indemnified Contributor must: a) promptly notify the Commercial Contributor in writing of such claim, and b) allow the Commercial Contributor to control, and cooperate with the Commercial Contributor in, the defense and any related settlement negotiations. The Indemnified Contributor may participate in any such claim at its own expense.
+
+For example, a Contributor might include the Program in a commercial product offering, Product X. That Contributor is then a Commercial Contributor. If that Commercial Contributor then makes performance claims, or offers warranties related to Product X, those performance claims and warranties are such Commercial Contributor's responsibility alone. Under this section, the Commercial Contributor would have to defend claims against the other Contributors related to those performance claims and warranties, and if a court requires any other Contributor to pay any damages as a result, the Commercial Contributor must pay those damages.
+5. NO WARRANTY
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, AND TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE PROGRAM IS PROVIDED ON AN “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. Each Recipient is solely responsible for determining the appropriateness of using and distributing the Program and assumes all risks associated with its exercise of rights under this Agreement, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and unavailability or interruption of operations.
+6. DISCLAIMER OF LIABILITY
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, AND TO THE EXTENT PERMITTED BY APPLICABLE LAW, NEITHER RECIPIENT NOR ANY CONTRIBUTORS SHALL HAVE ANY LIABILITY FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING WITHOUT LIMITATION LOST PROFITS), HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OR DISTRIBUTION OF THE PROGRAM OR THE EXERCISE OF ANY RIGHTS GRANTED HEREUNDER, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+7. GENERAL
+
+If any provision of this Agreement is invalid or unenforceable under applicable law, it shall not affect the validity or enforceability of the remainder of the terms of this Agreement, and without further action by the parties hereto, such provision shall be reformed to the minimum extent necessary to make such provision valid and enforceable.
+
+If Recipient institutes patent litigation against any entity (including a cross-claim or counterclaim in a lawsuit) alleging that the Program itself (excluding combinations of the Program with other software or hardware) infringes such Recipient's patent(s), then such Recipient's rights granted under Section 2(b) shall terminate as of the date such litigation is filed.
+
+All Recipient's rights under this Agreement shall terminate if it fails to comply with any of the material terms or conditions of this Agreement and does not cure such failure in a reasonable period of time after becoming aware of such noncompliance. If all Recipient's rights under this Agreement terminate, Recipient agrees to cease use and distribution of the Program as soon as reasonably practicable. However, Recipient's obligations under this Agreement and any licenses granted by Recipient relating to the Program shall continue and survive.
+
+Everyone is permitted to copy and distribute copies of this Agreement, but in order to avoid inconsistency the Agreement is copyrighted and may only be modified in the following manner. The Agreement Steward reserves the right to publish new versions (including revisions) of this Agreement from time to time. No one other than the Agreement Steward has the right to modify this Agreement. The Eclipse Foundation is the initial Agreement Steward. The Eclipse Foundation may assign the responsibility to serve as the Agreement Steward to a suitable separate entity. Each new version of the Agreement will be given a distinguishing version number. The Program (including Contributions) may always be Distributed subject to the version of the Agreement under which it was received. In addition, after a new version of the Agreement is published, Contributor may elect to Distribute the Program (including its Contributions) under the new version.
+
+Except as expressly stated in Sections 2(a) and 2(b) above, Recipient receives no rights or licenses to the intellectual property of any Contributor under this Agreement, whether expressly, by implication, estoppel or otherwise. All rights in the Program not expressly granted under this Agreement are reserved. Nothing in this Agreement is intended to be enforceable by any entity that is not a Contributor or Recipient. No third-party beneficiary rights are created under this Agreement.
+Exhibit A – Form of Secondary Licenses Notice
+
+“This Source Code may also be made available under the following Secondary Licenses when the conditions for such availability set forth in the Eclipse Public License, v. 2.0 are satisfied: {name license(s), version(s), and exceptions or additional permissions here}.”
+
+    Simply including a copy of this Agreement, including this Exhibit A is not sufficient to license the Source Code under Secondary Licenses.
+
+    If it is not possible or desirable to put the notice in a particular file, then You may include the notice in a location (such as a LICENSE file in a relevant directory) where a recipient would be likely to look for such a notice.
+
+    You may add additional accurate notices of copyright ownership.
+
+===============================================================================
+
+Apache Batik 1.11
+
+Copyright 1999-2019 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+This software contains code from the World Wide Web Consortium (W3C) for the 
+Document Object Model API (DOM API) and SVG Document Type Definition (DTD).
+
+This software contains code from the International Organisation for
+Standardization for the definition of character entities used in the software's
+documentation.
+
+This product includes images from the Tango Desktop Project
+(http://tango.freedesktop.org/).
+
+This product includes images from the Pasodoble Icon Theme
+(http://www.jesusda.com/projects/pasodoble).
+
+++++++++++++++++++++++++++++++++++++++++
+Batik License (From https://xmlgraphics.apache.org/batik/license.html)
+
+Batik is licensed according to the Apache License, Version 2.0, the text of which is included below.
+
+Apache License Version 2.0, January 2004 http://www.apache.org/licenses/
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+Definitions.
+
+"License" shall mean the terms and conditions for use, reproduction, and distribution as defined by Sections 1 through 9 of this document.
+
+"Licensor" shall mean the copyright owner or entity authorized by the copyright owner that is granting the License.
+
+"Legal Entity" shall mean the union of the acting entity and all other entities that control, are controlled by, or are under common control with that entity. For the purposes of this definition, "control" means (i) the power, direct or indirect, to cause the direction or management of such entity, whether by contract or otherwise, or (ii) ownership of fifty percent (50%) or more of the outstanding shares, or (iii) beneficial ownership of such entity.
+
+"You" (or "Your") shall mean an individual or Legal Entity exercising permissions granted by this License.
+
+"Source" form shall mean the preferred form for making modifications, including but not limited to software source code, documentation source, and configuration files.
+
+"Object" form shall mean any form resulting from mechanical transformation or translation of a Source form, including but not limited to compiled object code, generated documentation, and conversions to other media types.
+
+"Work" shall mean the work of authorship, whether in Source or Object form, made available under the License, as indicated by a copyright notice that is included in or attached to the work (an example is provided in the Appendix below).
+
+"Derivative Works" shall mean any work, whether in Source or Object form, that is based on (or derived from) the Work and for which the editorial revisions, annotations, elaborations, or other modifications represent, as a whole, an original work of authorship. For the purposes of this License, Derivative Works shall not include works that remain separable from, or merely link (or bind by name) to the interfaces of, the Work and Derivative Works thereof.
+
+"Contribution" shall mean any work of authorship, including the original version of the Work and any modifications or additions to that Work or Derivative Works thereof, that is intentionally submitted to Licensor for inclusion in the Work by the copyright owner or by an individual or Legal Entity authorized to submit on behalf of the copyright owner. For the purposes of this definition, "submitted" means any form of electronic, verbal, or written communication sent to the Licensor or its representatives, including but not limited to communication on electronic mailing lists, source code control systems, and issue tracking systems that are managed by, or on behalf of, the Licensor for the purpose of discussing and improving the Work, but excluding communication that is conspicuously marked or otherwise designated in writing by the copyright owner as "Not a Contribution."
+
+"Contributor" shall mean Licensor and any individual or Legal Entity on behalf of whom a Contribution has been received by Licensor and subsequently incorporated within the Work.
+
+Grant of Copyright License. Subject to the terms and conditions of this License, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepare Derivative Works of, publicly display, publicly perform, sublicense, and distribute the Work and such Derivative Works in Source or Object form.
+
+Grant of Patent License. Subject to the terms and conditions of this License, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent license to make, have made, use, offer to sell, sell, import, and otherwise transfer the Work, where such license applies only to those patent claims licensable by such Contributor that are necessarily infringed by their Contribution(s) alone or by combination of their Contribution(s) with the Work to which such Contribution(s) was submitted. If You institute patent litigation against any entity (including a cross-claim or counterclaim in a lawsuit) alleging that the Work or a Contribution incorporated within the Work constitutes direct or contributory patent infringement, then any patent licenses granted to You under this License for that Work shall terminate as of the date such litigation is filed.
+
+Redistribution. You may reproduce and distribute copies of the Work or Derivative Works thereof in any medium, with or without modifications, and in Source or Object form, provided that You meet the following conditions:
+
+(a) You must give any other recipients of the Work or Derivative Works a copy of this License; and
+
+(b) You must cause any modified files to carry prominent notices stating that You changed the files; and
+
+(c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and
+
+(d) If the Work includes a "NOTICE" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at least one of the following places: within a NOTICE text file distributed as part of the Derivative Works; within the Source form or documentation, if provided along with the Derivative Works; or, within a display generated by the Derivative Works, if and wherever such third-party notices normally appear. The contents of the NOTICE file are for informational purposes only and do not modify the License. You may add Your own attribution notices within Derivative Works that You distribute, alongside or as an addendum to the NOTICE text from the Work, provided that such additional attribution notices cannot be construed as modifying the License.
+
+You may add Your own copyright statement to Your modifications and may provide additional or different license terms and conditions for use, reproduction, or distribution of Your modifications, or for any such Derivative Works as a whole, provided Your use, reproduction, and distribution of the Work otherwise complies with the conditions stated in this License.
+
+Submission of Contributions. Unless You explicitly state otherwise, any Contribution intentionally submitted for inclusion in the Work by You to the Licensor shall be under the terms and conditions of this License, without any additional terms or conditions. Notwithstanding the above, nothing herein shall supersede or modify the terms of any separate license agreement you may have executed with Licensor regarding such Contributions.
+
+Trademarks. This License does not grant permission to use the trade names, trademarks, service marks, or product names of the Licensor, except as required for reasonable and customary use in describing the origin of the Work and reproducing the content of the NOTICE file.
+
+Disclaimer of Warranty. Unless required by applicable law or agreed to in writing, Licensor provides the Work (and each Contributor provides its Contributions) on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied, including, without limitation, any warranties or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A PARTICULAR PURPOSE. You are solely responsible for determining the appropriateness of using or redistributing the Work and assume any risks associated with Your exercise of permissions under this License.
+
+Limitation of Liability. In no event and under no legal theory, whether in tort (including negligence), contract, or otherwise, unless required by applicable law (such as deliberate and grossly negligent acts) or agreed to in writing, shall any Contributor be liable to You for damages, including any direct, indirect, special, incidental, or consequential damages of any character arising as a result of this License or out of the use or inability to use the Work (including but not limited to damages for loss of goodwill, work stoppage, computer failure or malfunction, or any and all other commercial damages or losses), even if such Contributor has been advised of the possibility of such damages.
+
+Accepting Warranty or Additional Liability. While redistributing the Work or Derivative Works thereof, You may choose to offer, and charge a fee for, acceptance of support, warranty, indemnity, or other liability obligations and/or rights consistent with this License. However, in accepting such obligations, You may act only on Your own behalf and on Your sole responsibility, not on behalf of any other Contributor, and only if You agree to indemnify, defend, and hold each Contributor harmless for any liability incurred by, or claims asserted against, such Contributor by reason of your accepting any such warranty or additional liability.
+
+END OF TERMS AND CONDITIONS
+
+------------------------------------------------------
+-- xmlgraphics-commons-2.3.jar
+Apache 2.0
+
+-- Xalan
+The xalan-2.7.2.jar file is licensed under the Apache License 2.0, which
+can be found in the distribution root directory in the LICENSE file.
+
+ -- xml-apis, xml-apis-ext, 1.3.04
+
+   Apache XML Commons XML APIs
+   Copyright 1999-2009 The Apache Software Foundation.
+
+   This product includes software developed at
+   The Apache Software Foundation (http://www.apache.org/).
+
+   Portions of this software were originally based on the following:
+     - software copyright (c) 1999, IBM Corporation., http://www.ibm.com.
+     - software copyright (c) 1999, Sun Microsystems., http://www.sun.com.
+     - software copyright (c) 2000 World Wide Web Consortium, http://www.w3.org

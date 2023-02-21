@@ -52,7 +52,7 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
@@ -308,7 +308,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
 
     @SuppressWarnings("unchecked")
     @Override
-    protected void processInitialLoopState(Loop<Block> loop, PEReadEliminationBlockState initialState) {
+    protected void processInitialLoopState(Loop<HIRBlock> loop, PEReadEliminationBlockState initialState) {
         super.processInitialLoopState(loop, initialState);
 
         if (!initialState.getReadCache().isEmpty()) {
@@ -371,13 +371,13 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     @Override
-    protected MergeProcessor createMergeProcessor(Block merge) {
+    protected MergeProcessor createMergeProcessor(HIRBlock merge) {
         return new ReadEliminationMergeProcessor(merge);
     }
 
     private class ReadEliminationMergeProcessor extends MergeProcessor {
 
-        ReadEliminationMergeProcessor(Block mergeBlock) {
+        ReadEliminationMergeProcessor(HIRBlock mergeBlock) {
             super(mergeBlock);
         }
 
@@ -461,7 +461,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     @Override
-    protected void processKilledLoopLocations(Loop<Block> loop, PEReadEliminationBlockState initialState, PEReadEliminationBlockState mergedStates) {
+    protected void processKilledLoopLocations(Loop<HIRBlock> loop, PEReadEliminationBlockState initialState, PEReadEliminationBlockState mergedStates) {
         assert initialState != null;
         assert mergedStates != null;
         if (initialState.readCache.size() > 0) {
@@ -504,7 +504,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     @Override
-    protected PEReadEliminationBlockState stripKilledLoopLocations(Loop<Block> loop, PEReadEliminationBlockState originalInitialState) {
+    protected PEReadEliminationBlockState stripKilledLoopLocations(Loop<HIRBlock> loop, PEReadEliminationBlockState originalInitialState) {
         PEReadEliminationBlockState initialState = super.stripKilledLoopLocations(loop, originalInitialState);
         LoopKillCache loopKilledLocations = loopLocationKillCache.get(loop);
         if (loopKilledLocations != null && loopKilledLocations.loopKillsLocations()) {

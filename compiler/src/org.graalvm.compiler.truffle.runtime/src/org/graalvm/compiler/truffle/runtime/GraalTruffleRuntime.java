@@ -86,6 +86,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.OptimizationFailedException;
@@ -94,6 +95,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.dsl.InlineSupport;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -402,6 +404,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         TruffleString.class,
                         AbstractTruffleString.class,
                         Buffer.class,
+                        InlineSupport.InlinableField.class,
+                        InlineSupport.StateField.class,
+                        InlineSupport.BooleanField.class,
+                        InlineSupport.ByteField.class,
+                        InlineSupport.ShortField.class,
+                        InlineSupport.IntField.class,
+                        InlineSupport.CharField.class,
+                        InlineSupport.FloatField.class,
+                        InlineSupport.LongField.class,
+                        InlineSupport.DoubleField.class,
+                        InlineSupport.ReferenceField.class,
         }) {
             m.put(c.getName(), c);
         }
@@ -422,12 +435,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 throw new NoClassDefFoundError(className);
             }
         } else if (JAVA_SPECIFICATION_VERSION >= 19) {
-            String className = "jdk.internal.foreign.Scoped";
-            try {
-                Class<?> c = Class.forName(className);
-                m.put(c.getName(), c);
-            } catch (ClassNotFoundException e) {
-                throw new NoClassDefFoundError(className);
+            for (String className : new String[]{
+                            "jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError",
+                            "jdk.internal.foreign.AbstractMemorySegmentImpl",
+            }) {
+                try {
+                    Class<?> c = Class.forName(className);
+                    m.put(c.getName(), c);
+                } catch (ClassNotFoundException e) {
+                    throw new NoClassDefFoundError(className);
+                }
             }
         }
         for (String className : new String[]{
@@ -968,6 +985,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         public final ResolvedJavaMethod callInlinedCallMethod;
         public final ResolvedJavaMethod[] anyFrameMethod;
         public final ResolvedJavaMethod inInterpreterMethod;
+        public final ResolvedJavaMethod inInterpreterFastPathMethod;
         public final ResolvedJavaMethod[] transferToInterpreterMethods;
 
         public KnownMethods(MetaAccessProvider metaAccess) {
@@ -982,6 +1000,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             this.transferToInterpreterMethods[0] = searchMethod(compilerDirectives, "transferToInterpreter");
             this.transferToInterpreterMethods[1] = searchMethod(compilerDirectives, "transferToInterpreterAndInvalidate");
             this.inInterpreterMethod = searchMethod(compilerDirectives, "inInterpreter");
+
+            ResolvedJavaType hostCompilerDirectives = metaAccess.lookupJavaType(HostCompilerDirectives.class);
+            this.inInterpreterFastPathMethod = searchMethod(hostCompilerDirectives, "inInterpreterFastPath");
         }
     }
 
@@ -1109,6 +1130,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public boolean isInInterpreter(ResolvedJavaMethod targetMethod) {
         return getKnownMethods().inInterpreterMethod.equals(targetMethod);
+    }
+
+    /**
+     * Determines if {@code method} is an inInterpeter method.
+     */
+    @Override
+    public boolean isInInterpreterFastPath(ResolvedJavaMethod targetMethod) {
+        return getKnownMethods().inInterpreterFastPathMethod.equals(targetMethod);
     }
 
     /**
@@ -1269,12 +1298,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("unused")
-    protected Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
-        throw new UnsupportedOperationException();
-    }
-
-    @SuppressWarnings("unused")
-    protected Object getFieldValue(ResolvedJavaField resolvedJavaField, Object obj) {
+    protected int[] getFieldOffsets(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
         throw new UnsupportedOperationException();
     }
 

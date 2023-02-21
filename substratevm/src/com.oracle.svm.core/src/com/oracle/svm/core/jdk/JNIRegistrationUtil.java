@@ -74,7 +74,7 @@ public class JNIRegistrationUtil {
 
     protected static Class<?> clazz(FeatureAccess access, String className) {
         Class<?> classByName = access.findClassByName(className);
-        VMError.guarantee(classByName != null, "class " + className + " not found");
+        VMError.guarantee(classByName != null, "class %s not found", className);
         return classByName;
     }
 

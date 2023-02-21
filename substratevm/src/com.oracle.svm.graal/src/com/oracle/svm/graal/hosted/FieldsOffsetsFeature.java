@@ -192,31 +192,31 @@ public class FieldsOffsetsFeature implements Feature {
             NodeClass<?> nodeClass = (NodeClass<?>) introspection;
 
             Fields dataFields = nodeClass.getData();
-            registerFields(dataFields, DefaultUnsafePartition.get(), config);
+            registerFields(dataFields, DefaultUnsafePartition.get(), config, "Graal node data field");
 
             Fields inputEdges = nodeClass.getInputEdges();
-            registerFields(inputEdges, GraalEdgeUnsafePartition.get(), config);
+            registerFields(inputEdges, GraalEdgeUnsafePartition.get(), config, "Graal node input edge");
 
             Fields successorEdges = nodeClass.getSuccessorEdges();
-            registerFields(successorEdges, GraalEdgeUnsafePartition.get(), config);
+            registerFields(successorEdges, GraalEdgeUnsafePartition.get(), config, "Graal node successor edge");
 
             /* Ensure field shortName is initialized, so that the instance is immutable. */
             nodeClass.shortName();
 
         } else {
             for (Fields fields : introspection.getAllFields()) {
-                registerFields(fields, DefaultUnsafePartition.get(), config);
+                registerFields(fields, DefaultUnsafePartition.get(), config, "Graal field");
             }
         }
     }
 
-    private static void registerFields(Fields fields, UnsafePartitionKind partitionKind, BeforeAnalysisAccessImpl config) {
+    private static void registerFields(Fields fields, UnsafePartitionKind partitionKind, BeforeAnalysisAccessImpl config, Object reason) {
         getReplacements().put(fields.getOffsets(), new FieldsOffsetsReplacement(fields));
 
         for (int i = 0; i < fields.getCount(); i++) {
             AnalysisField aField = config.getMetaAccess().lookupJavaField(findField(fields, i));
-            aField.getType().registerAsReachable();
-            config.registerAsUnsafeAccessed(aField, partitionKind);
+            aField.getType().registerAsReachable(aField);
+            config.registerAsUnsafeAccessed(aField, partitionKind, reason);
         }
     }
 

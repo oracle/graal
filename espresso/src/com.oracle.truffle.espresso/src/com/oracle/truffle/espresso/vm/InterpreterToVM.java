@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,8 +23,8 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import static com.oracle.truffle.espresso.vm.VM.StackElement.NATIVE_BCI;
-import static com.oracle.truffle.espresso.vm.VM.StackElement.UNKNOWN_BCI;
+import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.NATIVE_BCI;
+import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.UNKNOWN_BCI;
 
 import java.util.List;
 
@@ -36,6 +36,7 @@ import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -400,7 +401,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
         }
     }
 
-    @TruffleBoundary /*- Throwable.addSuppressed blacklisted by SVM (from try-with-resources) */
+    @TruffleBoundary /*- Throwable.addSuppressed blocklisted by SVM (from try-with-resources) */
     @SuppressWarnings("try")
     private static void contendedMonitorEnter(StaticObject obj, Meta meta, EspressoLock lock, EspressoContext context) {
         StaticObject thread = context.getCurrentThread();
@@ -544,6 +545,25 @@ public final class InterpreterToVM extends ContextAccessImpl {
         return arr.length(language);
     }
 
+    public static boolean referenceIdentityEqual(StaticObject o1, StaticObject o2, EspressoLanguage language) {
+        if (o1 == o2) {
+            return true;
+        }
+        // Espresso null == foreign null
+        if (StaticObject.isNull(o1) && StaticObject.isNull(o2)) {
+            return true;
+        }
+        // an Espresso object can never be identical to a foreign object
+        if (o1.isForeignObject() && o2.isForeignObject()) {
+            Object foreignOp1 = o1.rawForeignObject(language);
+            Object foreignOp2 = o2.rawForeignObject(language);
+            InteropLibrary operand1Lib = InteropLibrary.getUncached(foreignOp1);
+            InteropLibrary operand2Lib = InteropLibrary.getUncached(foreignOp2);
+            return operand1Lib.isIdentical(foreignOp1, foreignOp2, operand2Lib);
+        }
+        return false;
+    }
+
     public @JavaType(String.class) StaticObject intern(@JavaType(String.class) StaticObject guestString) {
         assert getMeta().java_lang_String == guestString.getKlass();
         return getStrings().intern(guestString);
@@ -568,7 +588,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
             return throwable;
         }
         int bci = -1;
-        Method m = null;
+        Method m;
         frames = new VM.StackTrace();
         FrameCounter c = new FrameCounter();
         for (TruffleStackTraceElement element : trace) {
@@ -592,7 +612,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
                     if (m.isNative()) {
                         bci = NATIVE_BCI;
                     }
-                    frames.add(new VM.StackElement(m, bci));
+                    frames.add(new VM.EspressoStackElement(m, bci));
                     bci = UNKNOWN_BCI;
                 }
             }
@@ -630,7 +650,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
                                 if (!c.checkFillIn(method)) {
                                     if (!c.checkThrowableInit(method)) {
                                         int bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
-                                        frames.add(new VM.StackElement(method, bci));
+                                        frames.add(new VM.EspressoStackElement(method, bci));
                                         c.inc();
                                     }
                                 }

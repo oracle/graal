@@ -49,7 +49,9 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -79,13 +81,19 @@ public class AcceptsTransitionTest extends AbstractLibraryTest {
         STRATEGY1,
         STRATEGY2,
         STRATEGY3;
+
+        @Override
+        @Idempotent
+        public String toString() {
+            return super.toString();
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)
     @ExportLibrary(value = TransitionTestLibrary.class, transitionLimit = "LIMIT")
     static class StrategyObject implements TruffleObject {
         static final int LIMIT = 1;
-        protected Strategy strategy = Strategy.STRATEGY1;
+        @NeverDefault protected Strategy strategy = Strategy.STRATEGY1;
         protected final Object mergeKey = "testMerged";
 
         StrategyObject(Strategy s) {

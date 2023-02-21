@@ -125,6 +125,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -134,7 +135,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
 public class ValueAPITest {
@@ -270,6 +272,15 @@ public class ValueAPITest {
         assertValueInContexts(context.asValue(null), HOST_OBJECT, NULL);
     }
 
+    private static class BigIntegerSubClass extends BigInteger {
+
+        private static final long serialVersionUID = -8639948598957064947L;
+
+        BigIntegerSubClass(String val) {
+            super(val);
+        }
+    }
+
     private static final Object[] HOST_OBJECTS = new Object[]{
                     new ArrayList<>(),
                     new HashMap<>(),
@@ -278,6 +289,7 @@ public class ValueAPITest {
                     new FieldAccess(),
                     new JavaSuperClass(),
                     new BigInteger("42"),
+                    new BigIntegerSubClass("42"),
                     new BigDecimal("42"),
                     new Function<>() {
                         public Object apply(Object t) {
@@ -305,6 +317,32 @@ public class ValueAPITest {
                     }), ByteBuffer.wrap(new byte[0])};
 
     @Test
+    public void testBigIntegerNumberAccess() {
+        try (Context ctx = Context.newBuilder().allowHostAccess(HostAccess.newBuilder().allowPublicAccess(true).allowBigIntegerNumberAccess(false).build()).build()) {
+            Value val = ctx.asValue(new BigInteger("42"));
+            assertFalse(val.fitsInByte());
+            assertFalse(val.fitsInShort());
+            assertFalse(val.fitsInInt());
+            assertFalse(val.fitsInLong());
+            assertFalse(val.fitsInBigInteger());
+            assertFalse(val.fitsInFloat());
+            assertFalse(val.fitsInDouble());
+            assertFalse(val.isNumber());
+        }
+        try (Context ctx = Context.newBuilder().allowHostAccess(HostAccess.newBuilder().allowPublicAccess(true).build()).build()) {
+            Value val = ctx.asValue(new BigInteger("42"));
+            assertTrue(val.fitsInByte());
+            assertTrue(val.fitsInShort());
+            assertTrue(val.fitsInInt());
+            assertTrue(val.fitsInLong());
+            assertTrue(val.fitsInBigInteger());
+            assertTrue(val.fitsInFloat());
+            assertTrue(val.fitsInDouble());
+            assertTrue(val.isNumber());
+        }
+    }
+
+    @Test
     public void testHostObject() {
         assertTrue(context.asValue(new EmptyObject()).getMemberKeys().isEmpty());
         assertTrue(context.asValue(new PrivateObject()).getMemberKeys().isEmpty());
@@ -313,6 +351,10 @@ public class ValueAPITest {
             List<Trait> expectedTraits = new ArrayList<>();
             expectedTraits.add(MEMBERS);
             expectedTraits.add(HOST_OBJECT);
+
+            if (value.getClass() == BigInteger.class) {
+                expectedTraits.add(NUMBER);
+            }
 
             if (value instanceof Supplier || value instanceof Function) {
                 expectedTraits.add(EXECUTABLE);
@@ -1396,6 +1438,9 @@ public class ValueAPITest {
         assertFails(() -> nullValue.asLong(), NullPointerException.class,
                         "Cannot convert null value 'null'(language: Java) to Java type 'long' using Value.asLong(). " +
                                         "You can ensure that the operation is supported using Value.fitsInLong().");
+        assertFails(() -> nullValue.asBigInteger(), ClassCastException.class,
+                        "Cannot convert 'null'(language: Java) to Java type 'java.math.BigInteger' using Value.asBigInteger(): Invalid or lossy coercion. " +
+                                        "You can ensure that the value can be converted using Value.fitsInBigInteger().");
         assertFails(() -> nullValue.as(long.class), NullPointerException.class,
                         "Cannot convert null value 'null'(language: Java) to Java type 'long'.");
         assertFails(() -> nullValue.asFloat(), NullPointerException.class,
@@ -1454,6 +1499,10 @@ public class ValueAPITest {
                         "Cannot convert 'NaN'(language: Java, type: java.lang.Double) to Java type 'long': Invalid or lossy primitive coercion.");
         assertFails(() -> nan.as(Long.class), ClassCastException.class,
                         "Cannot convert 'NaN'(language: Java, type: java.lang.Double) to Java type 'java.lang.Long': Invalid or lossy primitive coercion.");
+
+        assertFails(() -> nan.asBigInteger(), ClassCastException.class,
+                        "Cannot convert 'NaN'(language: Java, type: java.lang.Double) to Java type 'java.math.BigInteger' using Value.asBigInteger(): Invalid or lossy coercion. " +
+                                        "You can ensure that the value can be converted using Value.fitsInBigInteger().");
 
         Value nofloat = context.asValue(Double.MAX_VALUE);
 
@@ -2449,9 +2498,10 @@ public class ValueAPITest {
 
         @ExportMessage
         String readArrayElement(long idx,
-                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(idx)) {
-                exception.enter();
+                exception.enter(node);
                 throw InvalidArrayIndexException.create(idx);
             }
             return members[(int) idx];
@@ -2499,6 +2549,55 @@ public class ValueAPITest {
             AbstractPolyglotTest.assertFails(() -> buffer.writeBufferFloat(ByteOrder.LITTLE_ENDIAN, index, 42), IndexOutOfBoundsException.class);
             AbstractPolyglotTest.assertFails(() -> buffer.readBufferDouble(ByteOrder.LITTLE_ENDIAN, index), IndexOutOfBoundsException.class);
             AbstractPolyglotTest.assertFails(() -> buffer.writeBufferDouble(ByteOrder.LITTLE_ENDIAN, index, 42), IndexOutOfBoundsException.class);
+        }
+    }
+
+    @Test
+    public void testToString() {
+        // test null context
+        assertNotNull(Value.asValue("").toString());
+
+        Context c = Context.create();
+
+        Object[] values = new Object[]{
+                        c.asValue(""), // bound value,
+                        c.asValue(new Members()).as(Map.class),
+                        c.asValue(new ArrayElements()).as(List.class),
+                        c.asValue(new Executable()).as(Function.class),
+                        c.asValue(new HashEntries()).as(Map.class),
+        };
+
+        for (Object v : values) {
+            assertNotNull(v.toString());
+        }
+
+        c.close();
+
+        for (Object v : values) {
+            assertEquals("Error in toString(): Context is invalid or closed.", v.toString());
+        }
+
+    }
+
+    @Test
+    public void testProxyErrorInToString() {
+        try (Context c = Context.create()) {
+
+            Value v = c.asValue(new org.graalvm.polyglot.proxy.Proxy() {
+
+                @Override
+                public String toString() {
+                    throw new UnsupportedOperationException("test message");
+                }
+
+            });
+
+            AbstractPolyglotTest.assertFails(() -> v.toString(), PolyglotException.class, (e) -> {
+                assertEquals("test message", e.getMessage());
+                assertTrue(e.isHostException());
+                assertTrue(e.asHostException() instanceof UnsupportedOperationException);
+            });
+
         }
     }
 

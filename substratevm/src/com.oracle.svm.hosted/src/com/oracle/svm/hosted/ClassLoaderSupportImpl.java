@@ -59,6 +59,7 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.internal.module.Modules;
 
@@ -74,6 +75,12 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         imageClassLoader = classLoaderSupport.getClassLoader();
+        /*
+         * Only if imageClassLoader is not the URLClassLoader we need to also remember its parent as
+         * classPathClassLoader (for use in isNativeImageClassLoaderImpl). Otherwise, there is only
+         * the URLClassLoader (already stored in imageClassLoader, extra classPathClassLoader field
+         * can be set to null).
+         */
         classPathClassLoader = imageClassLoader instanceof URLClassLoader ? null : (URLClassLoader) imageClassLoader.getParent();
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
@@ -104,7 +111,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         for (Path classpathFile : classLoaderSupport.classpath()) {
             try {
                 if (Files.isDirectory(classpathFile)) {
-                    scanDirectory(classpathFile, resourceCollector, classLoaderSupport);
+                    scanDirectory(classpathFile, resourceCollector);
                 } else if (ClasspathUtils.isJar(classpathFile)) {
                     scanJar(classpathFile, resourceCollector);
                 }
@@ -136,7 +143,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector, NativeImageClassLoaderSupport support) throws IOException {
+    private static void scanDirectory(Path root, ResourceCollector collector) throws IOException {
         Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
         Set<String> allEntries = new HashSet<>();
 
@@ -160,8 +167,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 }
                 try (Stream<Path> pathStream = Files.list(entry)) {
                     Stream<Path> filtered = pathStream;
-                    if (support.excludeDirectoriesRoot.equals(entry)) {
-                        filtered = filtered.filter(Predicate.not(support.excludeDirectories::contains));
+                    if (ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT.equals(entry)) {
+                        filtered = filtered.filter(Predicate.not(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES::contains));
                     }
                     filtered.forEach(queue::push);
                 }

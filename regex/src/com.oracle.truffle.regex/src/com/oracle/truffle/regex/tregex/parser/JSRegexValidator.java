@@ -48,18 +48,18 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.errors.ErrorMessages;
+import com.oracle.truffle.regex.errors.JsErrorMessages;
 
 public class JSRegexValidator implements RegexValidator {
 
     private final RegexSource source;
     private final RegexFlags flags;
-    private final RegexLexer lexer;
+    private final JSRegexLexer lexer;
 
     public JSRegexValidator(RegexSource source) {
         this.source = source;
         this.flags = RegexFlags.parseFlags(source);
-        this.lexer = new RegexLexer(source, flags);
+        this.lexer = new JSRegexLexer(source, flags);
     }
 
     @Override
@@ -94,7 +94,7 @@ public class JSRegexValidator implements RegexValidator {
      * errors.
      * <p>
      * This method simulates the state of {@link JSRegexParser} running
-     * {@link JSRegexParser#parse()}. Most of the syntax errors are handled by {@link RegexLexer}.
+     * {@link JSRegexParser#parse()}. Most of the syntax errors are handled by {@link JSRegexLexer}.
      * In order to correctly identify the remaining syntax errors, we need to track only a fraction
      * of the parser's state (the stack of open parenthesized expressions and a short
      * characterization of the last term).
@@ -121,14 +121,14 @@ public class JSRegexValidator implements RegexValidator {
                 case quantifier:
                     switch (curTermState) {
                         case Null:
-                            throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
+                            throw syntaxError(JsErrorMessages.QUANTIFIER_WITHOUT_TARGET);
                         case LookAheadAssertion:
                             if (flags.isUnicode()) {
-                                throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
+                                throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
                             }
                             break;
                         case LookBehindAssertion:
-                            throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
+                            throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
                         case Other:
                             break;
                     }
@@ -152,7 +152,7 @@ public class JSRegexValidator implements RegexValidator {
                     break;
                 case groupEnd:
                     if (syntaxStack.isEmpty()) {
-                        throw syntaxError(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
+                        throw syntaxError(JsErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
                     }
                     RegexStackElem poppedElem = syntaxStack.remove(syntaxStack.size() - 1);
                     switch (poppedElem) {
@@ -170,7 +170,7 @@ public class JSRegexValidator implements RegexValidator {
             }
         }
         if (!syntaxStack.isEmpty()) {
-            throw syntaxError(ErrorMessages.UNTERMINATED_GROUP);
+            throw syntaxError(JsErrorMessages.UNTERMINATED_GROUP);
         }
     }
 

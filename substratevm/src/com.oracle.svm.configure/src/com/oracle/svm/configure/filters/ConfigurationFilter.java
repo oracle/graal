@@ -26,7 +26,7 @@ package com.oracle.svm.configure.filters;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.core.util.json.JsonPrintable;
 
 public interface ConfigurationFilter extends JsonPrintable {
 

@@ -47,6 +47,7 @@ import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -69,11 +70,15 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
@@ -93,6 +98,7 @@ import org.graalvm.compiler.phases.contract.VerifyNodeCosts;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -101,6 +107,8 @@ import org.junit.Test;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
+import jdk.vm.ci.hotspot.HotSpotConstantPool;
+import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
@@ -175,34 +183,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             if (className.equals("module-info") || className.startsWith("META-INF.versions.")) {
                 return false;
             }
-            // @formatter:off
-                /*
-                 * Work around to prevent:
-                 *
-                 * org.graalvm.compiler.debug.GraalError: java.lang.IllegalAccessError: class org.graalvm.compiler.serviceprovider.GraalServices$Lazy (in module
-                 * jdk.internal.vm.compiler) cannot access class java.lang.management.ManagementFactory (in module java.management) because module
-                 * jdk.internal.vm.compiler does not read module java.management
-                 *     at jdk.internal.vm.compiler/org.graalvm.compiler.debug.GraalError.shouldNotReachHere(GraalError.java:55)
-                 *     at org.graalvm.compiler.core.test.CheckGraalInvariants$InvariantsTool.handleClassLoadingException(CheckGraalInvariants.java:149)
-                 *     at org.graalvm.compiler.core.test.CheckGraalInvariants.initializeClasses(CheckGraalInvariants.java:321)
-                 *     at org.graalvm.compiler.core.test.CheckGraalInvariants.runTest(CheckGraalInvariants.java:239)
-                 *
-                 * which occurs because JDK8 overlays are in modular jars. They are never used normally.
-                 */
-                // @formatter:on
-            if (className.equals("org.graalvm.compiler.serviceprovider.GraalServices$Lazy")) {
-                return false;
-            }
-
             return true;
-        }
-
-        protected void handleClassLoadingException(Throwable t) {
-            GraalError.shouldNotReachHere(t);
-        }
-
-        protected void handleParsingException(Throwable t) {
-            GraalError.shouldNotReachHere(t);
         }
 
         public boolean shouldVerifyFoldableMethods() {
@@ -260,6 +241,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
 
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
         Plugins plugins = new Plugins(new InvocationPlugins());
+        plugins.setClassInitializationPlugin(new DoNotInitializeClassInitializationPlugin());
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
@@ -394,8 +376,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         if (errors.isEmpty()) {
             // Order outer classes before the inner classes
             classNames.sort((String a, String b) -> a.compareTo(b));
-            // Initialize classes in single thread to avoid deadlocking issues during initialization
-            List<Class<?>> classes = initializeClasses(tool, classNames);
+            List<Class<?>> classes = loadClasses(tool, classNames);
             for (Class<?> c : classes) {
                 String className = c.getName();
                 executor.execute(() -> {
@@ -438,18 +419,12 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                                         checkGraph(verifiers, context, graph);
                                     } catch (VerificationError e) {
                                         errors.add(e.getMessage());
-                                    } catch (LinkageError e) {
-                                        // suppress linkages errors resulting from eager resolution
                                     } catch (BailoutException e) {
                                         // Graal bail outs on certain patterns in Java bytecode
                                         // (e.g.,
                                         // unbalanced monitors introduced by jacoco).
                                     } catch (Throwable e) {
-                                        try {
-                                            tool.handleParsingException(e);
-                                        } catch (Throwable t) {
-                                            errors.add(String.format("Error while checking %s:%n%s", methodName, printStackTraceToString(e)));
-                                        }
+                                        errors.add(String.format("Error while checking %s:%n%s", methodName, printStackTraceToString(e)));
                                     }
                                 }
                             });
@@ -560,27 +535,27 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         return className.contains("com.google.gson");
     }
 
-    private static List<Class<?>> initializeClasses(InvariantsTool tool, List<String> classNames) {
+    private static List<Class<?>> loadClasses(InvariantsTool tool, List<String> classNames) {
         List<Class<?>> classes = new ArrayList<>(classNames.size());
         for (String className : classNames) {
             if (!tool.shouldLoadClass(className)) {
                 continue;
             }
             try {
-                Class<?> c = Class.forName(className, true, CheckGraalInvariants.class.getClassLoader());
+                Class<?> c = Class.forName(className, false, CheckGraalInvariants.class.getClassLoader());
+                if (Node.class.isAssignableFrom(c)) {
+                    /*
+                     * Eagerly initialize Node classes because the VerifyNodeCosts checker will
+                     * initialize them anyway, and doing it here eagerly while being single-threaded
+                     * avoids race conditions.
+                     */
+                    GraalUnsafeAccess.getUnsafe().ensureClassInitialized(c);
+                }
                 classes.add(c);
             } catch (UnsupportedClassVersionError e) {
                 // graal-test.jar can contain classes compiled for different Java versions
-            } catch (NoClassDefFoundError e) {
-                if (!e.getMessage().contains("Could not initialize class")) {
-                    throw e;
-                } else {
-                    // A second or later attempt to initialize a class
-                    // results in this confusing error where the
-                    // original cause of initialization failure is lost
-                }
             } catch (Throwable t) {
-                tool.handleClassLoadingException(t);
+                GraalError.shouldNotReachHere(t);
             }
         }
         return classes;
@@ -600,6 +575,15 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             // SingleMemoryKill or MultiMemoryKill.
             assert !MemoryKill.class.isAssignableFrom(c) || Modifier.isAbstract(c.getModifiers()) || SingleMemoryKill.class.isAssignableFrom(c) || MultiMemoryKill.class.isAssignableFrom(c) : c +
                             " must inherit from either SingleMemoryKill or MultiMemoryKill";
+        }
+        if (c.equals(DebugContext.class)) {
+            try {
+                // there are many log/logIndent methods, check the 2 most basic versions
+                c.getDeclaredMethod("log", String.class);
+                c.getDeclaredMethod("logAndIndent", String.class);
+            } catch (NoSuchMethodException | SecurityException e) {
+                throw new VerificationError("DebugContext misses basic log/logAndIndent methods", e);
+            }
         }
         for (VerifyPhase<CoreProviders> verifier : verifiers) {
             verifier.verifyClass(c, metaAccess);
@@ -759,5 +743,23 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         boolean test21(ArithmeticOpTable.Op f) {
             return aStaticArithmeticOpTableOp == f;
         }
+    }
+}
+
+class DoNotInitializeClassInitializationPlugin implements ClassInitializationPlugin {
+
+    @Override
+    public boolean supportsLazyInitialization(ConstantPool cp) {
+        return true;
+    }
+
+    @Override
+    public void loadReferencedType(GraphBuilderContext builder, ConstantPool cp, int cpi, int bytecode) {
+        ((HotSpotConstantPool) cp).loadReferencedType(cpi, bytecode, false);
+    }
+
+    @Override
+    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
+        return false;
     }
 }

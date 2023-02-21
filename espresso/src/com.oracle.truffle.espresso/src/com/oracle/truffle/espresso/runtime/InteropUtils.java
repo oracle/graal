@@ -28,18 +28,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 
 public class InteropUtils {
-    private static final int MANTISSA_PRECISION_FLOAT = 24;
-    private static final float FLOAT_MAX_SAFE_INTEGER = (1 << MANTISSA_PRECISION_FLOAT) - 1;
-    private static final int MANTISSA_PRECISION_DOUBLE = 53;
-    private static final double DOUBLE_MAX_SAFE_INTEGER = (1L << MANTISSA_PRECISION_DOUBLE) - 1;
-
-    public static boolean inSafeIntegerRange(float f) {
-        return f >= -FLOAT_MAX_SAFE_INTEGER && f <= FLOAT_MAX_SAFE_INTEGER;
-    }
-
-    public static boolean inSafeIntegerRange(double d) {
-        return d >= -DOUBLE_MAX_SAFE_INTEGER && d <= DOUBLE_MAX_SAFE_INTEGER;
-    }
 
     public static boolean isNegativeZero(float f) {
         return Float.floatToRawIntBits(f) == Float.floatToRawIntBits(-0f);

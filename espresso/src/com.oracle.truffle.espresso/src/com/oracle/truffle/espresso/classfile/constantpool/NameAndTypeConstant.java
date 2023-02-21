@@ -52,11 +52,11 @@ public interface NameAndTypeConstant extends PoolConstant {
      */
     Symbol<? extends Descriptor> getDescriptor(ConstantPool pool);
 
-    default void validateMethod(ConstantPool pool) {
-        validateMethod(pool, true);
+    default void validateMethod(ConstantPool pool, boolean checkVoidInitOrClinit) {
+        validateMethod(pool, true, checkVoidInitOrClinit);
     }
 
-    void validateMethod(ConstantPool pool, boolean allowClinit);
+    void validateMethod(ConstantPool pool, boolean allowClinit, boolean checkVoidInitOrClinit);
 
     void validateField(ConstantPool pool);
 
@@ -94,7 +94,7 @@ public interface NameAndTypeConstant extends PoolConstant {
         public void validate(ConstantPool pool) {
             Symbol<? extends Descriptor> descriptor = getDescriptor(pool);
             if (descriptor.length() > 0 && descriptor.byteAt(0) == '(') {
-                validateMethod(pool);
+                validateMethod(pool, false);
             } else {
                 // Fails with empty name.
                 validateField(pool);
@@ -102,10 +102,10 @@ public interface NameAndTypeConstant extends PoolConstant {
         }
 
         @Override
-        public void validateMethod(ConstantPool pool, boolean allowClinit) {
+        public void validateMethod(ConstantPool pool, boolean allowClinit, boolean checkVoidInitOrClinit) {
             pool.utf8At(nameIndex).validateMethodName(allowClinit);
             Symbol<?> symbol = pool.symbolAt(nameIndex);
-            boolean isInitOrClinit = Name._init_.equals(symbol) || Name._clinit_.equals(symbol);
+            boolean isInitOrClinit = checkVoidInitOrClinit && (Name._init_.equals(symbol) || Name._clinit_.equals(symbol));
             pool.utf8At(typeIndex).validateSignature(isInitOrClinit);
         }
 

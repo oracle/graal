@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -416,14 +416,15 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         argTypes.set(argIndex, new PointerType(null));
         argIndex++;
 
-        if (targetType instanceof StructureType) {
+        if (targetType instanceof StructureType || targetType instanceof ArrayType) {
             argTypes.set(argIndex, new PointerType(targetType));
             argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(targetType, uniquesRegion);
             argIndex++;
         }
 
         // realArgumentCount = argumentCount - varArgCount
-        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+        FunctionType functionType = call.getFunctionType();
+        int realArgumentCount = functionType.getNumberOfArguments();
 
         final SymbolImpl target = call.getCallTarget();
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
@@ -450,7 +451,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 result = createInlineAssemblerNode(inlineAsmConstant, argNodes, argTypes, targetType);
             } else {
                 LLVMExpressionNode function = symbols.resolve(target);
-                int fixedArgsPos = computeVaArgsPosition(target);
+                int fixedArgsPos = computeVaArgsPosition(functionType);
                 result = CommonNodeFactory.createFunctionCall(function, argNodes, new FunctionType(targetType, argTypes, fixedArgsPos));
 
                 // the callNode needs to be instrumentable so that the debugger can see the CallTag.
@@ -464,23 +465,20 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         createFrameWrite(result, call, intent);
     }
 
-    private static int computeVaArgsPosition(SymbolImpl target) {
+    private static int computeVaArgsPosition(FunctionType ft) {
         int fixedArgs = FunctionType.NOT_VARARGS;
 
-        if (target.getType() instanceof FunctionType) {
-            FunctionType ft = (FunctionType) target.getType();
-            if (ft.isVarargs()) {
-                // target.getType() is the signature of the target function. The signature
-                // constructed for the call-site contains the types of the actual arguments.
-                // For example, printf has this signature:
-                // > (i8*, ...):i32
-                // a call-site
-                // > printf("%d %d %d", 1, 2, 3)
-                // has this signature
-                // > (i8*, ..., i32, i32, i32):i32
-                fixedArgs = ft.getArgumentTypes().size();
-                assert ft.getFixedArgs() == fixedArgs;
-            }
+        if (ft.isVarargs()) {
+            // target.getType() is the signature of the target function. The signature
+            // constructed for the call-site contains the types of the actual arguments.
+            // For example, printf has this signature:
+            // > (i8*, ...):i32
+            // a call-site
+            // > printf("%d %d %d", 1, 2, 3)
+            // has this signature
+            // > (i8*, ..., i32, i32, i32):i32
+            fixedArgs = ft.getArgumentTypes().size();
+            assert ft.getFixedArgs() == fixedArgs;
         }
         return fixedArgs;
     }
@@ -641,7 +639,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         SymbolImpl target = call.getCallTarget();
 
-        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+        FunctionType functionType = call.getFunctionType();
+        int realArgumentCount = functionType.getNumberOfArguments();
 
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
             argNodes[argIndex + i] = resolveOptimized(call.getArgument(i), i, target, call.getArguments());
@@ -668,9 +667,9 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 assignSourceLocation(result, call);
             } else {
                 final LLVMExpressionNode function = resolveOptimized(target, call.getArguments());
-                int fixedArgsPos = computeVaArgsPosition(target);
-                final FunctionType functionType = new FunctionType(call.getType(), argTypes, fixedArgsPos);
-                result = CommonNodeFactory.createFunctionCall(function, argNodes, functionType);
+                int fixedArgsPos = computeVaArgsPosition(functionType);
+                final FunctionType realType = new FunctionType(call.getType(), argTypes, fixedArgsPos);
+                result = CommonNodeFactory.createFunctionCall(function, argNodes, realType);
 
                 // the callNode needs to be instrumentable so that the debugger can see the CallTag.
                 // If it did not provide a source location, the debugger may not be able to show the
@@ -696,13 +695,14 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         ensureSupportedOperandBundle(target, call.getOperandBundle());
 
-        if (targetType instanceof StructureType) {
+        if (targetType instanceof StructureType || targetType instanceof ArrayType) {
             argTypes.set(argIndex, new PointerType(targetType));
             argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(targetType, uniquesRegion);
             argIndex++;
         }
 
-        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+        FunctionType functionType = call.getFunctionType();
+        int realArgumentCount = functionType.getNumberOfArguments();
 
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
             argNodes[argIndex + i] = resolveOptimized(call.getArgument(i), i, target, call.getArguments());
@@ -736,7 +736,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
         LLVMExpressionNode function = symbols.resolve(target);
         LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(CommonNodeFactory.createFrameWrite(targetType, null, symbols.findOrAddFrameSlot(call)), function, argNodes,
-                        new FunctionType(targetType, argTypes, computeVaArgsPosition(target)),
+                        new FunctionType(targetType, argTypes, computeVaArgsPosition(functionType)),
                         regularIndex, unwindIndex, normalPhi, unwindPhi);
 
         setControlFlowNode(result, call, SourceInstrumentationStrategy.FORCED);
@@ -757,7 +757,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         argsType.set(argIndex, new PointerType(null));
         argIndex++;
 
-        int realArgumentCount = call.getCallTarget().getType() instanceof FunctionType ? ((FunctionType) call.getCallTarget().getType()).getNumberOfArguments() : argumentCount;
+        FunctionType functionType = call.getFunctionType();
+        int realArgumentCount = functionType.getNumberOfArguments();
 
         for (int i = call.getArgumentCount() - 1; i >= 0; i--) {
             args[argIndex + i] = symbols.resolve(call.getArgument(i));
@@ -790,7 +791,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
         LLVMExpressionNode function = resolveOptimized(target, call.getArguments());
-        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(null, function, args, new FunctionType(call.getType(), argsType, computeVaArgsPosition(target)),
+        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(null, function, args, new FunctionType(call.getType(), argsType, computeVaArgsPosition(functionType)),
                         regularIndex, unwindIndex, normalPhi, unwindPhi);
 
         setControlFlowNode(result, call, SourceInstrumentationStrategy.FORCED);
@@ -798,7 +799,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private static int getArgumentCount(int argumentCount, final Type targetType) {
         int count = argumentCount;
-        if (targetType instanceof StructureType) {
+        if (targetType instanceof StructureType || targetType instanceof ArrayType) {
             count++;
         }
         count++; // stackpointer
@@ -868,7 +869,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(GetElementPointerInstruction gep) {
-        createFrameWrite(symbols.resolveElementPointer(gep.getBasePointer(), gep.getIndices(), this::resolveOptimized), gep);
+        createFrameWrite(symbols.resolveElementPointer(gep.getBaseType(), gep.getBasePointer(), gep.getIndices(), this::resolveOptimized), gep);
     }
 
     @Override
@@ -1333,13 +1334,26 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private LLVMExpressionNode capsuleAddressByValue(LLVMExpressionNode child, Type type, AttributesGroup paramAttr) {
         try {
-            final Type pointee = ((PointerType) type).getPointeeType();
-            final long size = pointee.getSize(dataLayout);
-            int alignment = pointee.getAlignment(dataLayout);
+            Type pointee = null;
+            int alignment = -1;
             for (Attribute attr : paramAttr.getAttributes()) {
+                if (attr instanceof Attribute.KnownTypedAttribute && ((Attribute.KnownTypedAttribute) attr).getAttr() == Attribute.Kind.BYVAL) {
+                    pointee = ((Attribute.KnownTypedAttribute) attr).getType();
+                }
                 if (attr instanceof Attribute.KnownIntegerValueAttribute && ((Attribute.KnownIntegerValueAttribute) attr).getAttr() == Attribute.Kind.ALIGN) {
                     alignment = ((Attribute.KnownIntegerValueAttribute) attr).getValue();
                 }
+            }
+
+            if (pointee == null) {
+                // only happens on older versions, we can rely on not having an opaque pointer here
+                assert !((PointerType) type).isOpaque();
+                pointee = ((PointerType) type).getPointeeType();
+            }
+
+            final long size = pointee.getSize(dataLayout);
+            if (alignment < 0) {
+                alignment = pointee.getAlignment(dataLayout);
             }
 
             return nodeFactory.createVarArgCompoundValue(size, alignment, type, child);
@@ -1419,6 +1433,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private void assignSourceLocation(LLVMInstrumentableNode node, Instruction sourceInstruction, SourceInstrumentationStrategy instrumentationStrategy) {
         if (node == null) {
+            return;
+        }
+
+        if (!node.isAdoptable()) {
+            // don't assign source sections to cacheable nodes
             return;
         }
 

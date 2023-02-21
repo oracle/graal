@@ -26,15 +26,18 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -58,10 +61,14 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredFeature
 class SubstrateSegfaultHandlerFeature implements InternalFeature {
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(IsolateListenerSupportFeature.class);
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(SubstrateSegfaultHandler.class)) {
@@ -72,7 +79,6 @@ class SubstrateSegfaultHandlerFeature implements InternalFeature {
         ImageSingletons.add(SingleIsolateSegfaultSetup.class, singleIsolateSegfaultSetup);
         IsolateListenerSupport.singleton().register(singleIsolateSegfaultSetup);
 
-        VMError.guarantee(ImageSingletons.contains(RegisterDumper.class));
         RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateSegfaultHandlerStartupHook());
     }
 }
@@ -82,7 +88,7 @@ final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
     public void execute(boolean isFirstIsolate) {
         if (isFirstIsolate) {
             Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
-            if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
+            if (SubstrateOptions.EnableSignalHandling.getValue() && optionValue != Boolean.FALSE) {
                 ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
             }
         }
@@ -91,7 +97,7 @@ final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
 
 public abstract class SubstrateSegfaultHandler {
     public static class Options {
-        @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library.")//
+        @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library, disabled when EnableSignalHandling is disabled.")//
         static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
     }
 

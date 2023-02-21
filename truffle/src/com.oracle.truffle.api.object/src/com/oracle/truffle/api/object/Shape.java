@@ -52,6 +52,8 @@ import org.graalvm.collections.Pair;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.NonIdempotent;
 
 /**
  * A Shape is an immutable descriptor of the current object "shape" of a DynamicObject, i.e., object
@@ -602,6 +604,7 @@ public abstract class Shape {
      *
      * @since 0.8 or earlier
      */
+    @Idempotent
     public abstract Assumption getValidAssumption();
 
     /**
@@ -609,6 +612,7 @@ public abstract class Shape {
      *
      * @since 0.8 or earlier
      */
+    @NonIdempotent
     public abstract boolean isValid();
 
     /**
@@ -616,6 +620,7 @@ public abstract class Shape {
      *
      * @since 0.8 or earlier
      */
+    @NonIdempotent
     public abstract Assumption getLeafAssumption();
 
     /**
@@ -623,6 +628,7 @@ public abstract class Shape {
      *
      * @since 0.8 or earlier
      */
+    @NonIdempotent
     public abstract boolean isLeaf();
 
     /**
@@ -679,6 +685,7 @@ public abstract class Shape {
      * @see Shape.Builder#shapeFlags(int)
      * @since 20.2.0
      */
+    @Idempotent
     public int getFlags() {
         CompilerAsserts.neverPartOfCompilation();
         throw CompilerDirectives.shouldNotReachHere();
@@ -851,6 +858,7 @@ public abstract class Shape {
      * @see Shape.Builder#shared(boolean)
      * @since 0.18
      */
+    @Idempotent
     public boolean isShared() {
         return false;
     }
@@ -878,6 +886,7 @@ public abstract class Shape {
      *
      * @since 20.2.0
      */
+    @Idempotent
     protected boolean hasInstanceProperties() {
         return true;
     }

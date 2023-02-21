@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,15 +26,16 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
+import com.oracle.objectfile.debugentry.range.PrimaryRange;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
@@ -57,7 +58,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Details of this class's interfaces.
      */
-    protected List<InterfaceClassEntry> interfaces;
+    protected final List<InterfaceClassEntry> interfaces = new ArrayList<>();
     /**
      * Details of the associated file.
      */
@@ -69,17 +70,17 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Details of methods located in this instance.
      */
-    protected List<MethodEntry> methods;
+    protected final List<MethodEntry> methods = new ArrayList<>();
     /**
      * An index of all currently known methods keyed by the unique, associated, identifying
      * ResolvedJavaMethod.
      */
-    private Map<ResolvedJavaMethod, MethodEntry> methodsIndex;
+    private final EconomicMap<ResolvedJavaMethod, MethodEntry> methodsIndex = EconomicMap.create();
     /**
      * A list recording details of all normal compiled methods included in this class sorted by
      * ascending address range. Note that the associated address ranges are disjoint and contiguous.
      */
-    private List<CompiledMethodEntry> normalCompiledEntries;
+    private final List<CompiledMethodEntry> normalCompiledEntries = new ArrayList<>();
     /**
      * A list recording details of all deopt fallback compiled methods included in this class sorted
      * by ascending address range. Note that the associated address ranges are disjoint, contiguous
@@ -90,39 +91,30 @@ public class ClassEntry extends StructureTypeEntry {
      * An index identifying ranges for compiled method which have already been encountered, whether
      * normal or deopt fallback methods.
      */
-    private Map<Range, CompiledMethodEntry> compiledMethodIndex;
+    private final EconomicMap<Range, CompiledMethodEntry> compiledMethodIndex = EconomicMap.create();
     /**
      * An index of all primary and secondary files referenced from this class's compilation unit.
      */
-    private Map<FileEntry, Integer> localFilesIndex;
+    private final EconomicMap<FileEntry, Integer> localFilesIndex = EconomicMap.create();
     /**
      * A list of the same files.
      */
-    private List<FileEntry> localFiles;
+    private final List<FileEntry> localFiles = new ArrayList<>();
     /**
      * An index of all primary and secondary dirs referenced from this class's compilation unit.
      */
-    private HashMap<DirEntry, Integer> localDirsIndex;
+    private final EconomicMap<DirEntry, Integer> localDirsIndex = EconomicMap.create();
     /**
      * A list of the same dirs.
      */
-    private List<DirEntry> localDirs;
+    private final List<DirEntry> localDirs = new ArrayList<>();
 
     public ClassEntry(String className, FileEntry fileEntry, int size) {
         super(className, size);
-        this.interfaces = new ArrayList<>();
         this.fileEntry = fileEntry;
         this.loader = null;
-        this.methods = new ArrayList<>();
-        this.methodsIndex = new HashMap<>();
-        this.normalCompiledEntries = new ArrayList<>();
         // deopt methods list is created on demand
         this.deoptCompiledEntries = null;
-        this.compiledMethodIndex = new HashMap<>();
-        this.localFiles = new ArrayList<>();
-        this.localFilesIndex = new HashMap<>();
-        this.localDirs = new ArrayList<>();
-        this.localDirsIndex = new HashMap<>();
         if (fileEntry != null) {
             localFiles.add(fileEntry);
             localFilesIndex.put(fileEntry, localFiles.size());
@@ -141,6 +133,7 @@ public class ClassEntry extends StructureTypeEntry {
 
     @Override
     public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
+        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
         assert debugTypeInfo.typeName().equals(typeName);
         DebugInstanceTypeInfo debugInstanceTypeInfo = (DebugInstanceTypeInfo) debugTypeInfo;
         /* Add details of super and interface classes */
@@ -166,7 +159,7 @@ public class ClassEntry extends StructureTypeEntry {
         debugInstanceTypeInfo.methodInfoProvider().forEach(debugMethodInfo -> this.processMethod(debugMethodInfo, debugInfoBase, debugContext));
     }
 
-    public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
+    public void indexPrimary(PrimaryRange primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         if (compiledMethodIndex.get(primary) == null) {
             CompiledMethodEntry compiledEntry = new CompiledMethodEntry(primary, frameSizeInfos, frameSize, this);
             compiledMethodIndex.put(primary, compiledEntry);
@@ -187,7 +180,7 @@ public class ClassEntry extends StructureTypeEntry {
         }
     }
 
-    public void indexSubRange(Range subrange) {
+    public void indexSubRange(SubRange subrange) {
         Range primary = subrange.getPrimary();
         /* The subrange should belong to a primary range. */
         assert primary != null;
@@ -244,7 +237,7 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     @SuppressWarnings("unused")
-    String getFullFileName() {
+    public String getFullFileName() {
         if (fileEntry != null) {
             return fileEntry.getFullName();
         } else {
@@ -316,16 +309,6 @@ public class ClassEntry extends StructureTypeEntry {
 
     public boolean hasDeoptCompiledEntries() {
         return deoptCompiledEntries != null;
-    }
-
-    public String getCachePath() {
-        if (fileEntry != null) {
-            Path cachePath = fileEntry.getCachePath();
-            if (cachePath != null) {
-                return cachePath.toString();
-            }
-        }
-        return "";
     }
 
     private void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {

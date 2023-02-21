@@ -348,8 +348,17 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.resetCompilationProfile();
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
         // node(s).
-        this.uninitializedNodeCount = isOSR() ? -1 : GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode);
+        this.uninitializedNodeCount = uninitializedNodeCount(rootNode);
         id = idCounter.getAndIncrement();
+    }
+
+    private int uninitializedNodeCount(RootNode rootNode) {
+        if (isOSR()) {
+            return -1;
+        }
+        int childrenCount = GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode);
+        int size = GraalRuntimeAccessor.NODES.computeSize(rootNode);
+        return size > 0 ? size : childrenCount;
     }
 
     final Assumption getNodeRewritingAssumption() {
@@ -1263,31 +1272,56 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // This should be private but can't be. GR-19397
-    @ExplodeLoop
     public final void profileArguments(Object[] args) {
         assert !callProfiled;
         ArgumentsProfile argumentsProfile = this.argumentsProfile;
+        if (argumentsProfile == ArgumentsProfile.INVALID) {
+            return;
+        }
+
         if (argumentsProfile == null) {
-            if (CompilerDirectives.inInterpreter()) {
-                initializeProfiledArgumentTypes(args);
+            if (CompilerDirectives.inCompiledCode()) {
+                // do not deoptimize missing argument profile
+                return;
             }
         } else {
             Class<?>[] types = argumentsProfile.types;
-            if (types != null) {
-                if (types.length != args.length) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    transitionToInvalidArgumentsProfile();
-                } else if (argumentsProfile.assumption.isValid()) {
-                    for (int i = 0; i < types.length; i++) {
-                        Class<?> type = types[i];
-                        Object value = args[i];
-                        if (type != null && (value == null || value.getClass() != type)) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            updateProfiledArgumentTypes(args, argumentsProfile);
-                            break;
-                        }
+            assert types != null : "argument types must be set at this point";
+            if (types.length == args.length && areArgumentTypesValid(args, types)) {
+                if (CompilerDirectives.inCompiledCode()) {
+                    if (argumentsProfile.assumption.isValid()) {
+                        return;
                     }
+                } else {
+                    // fast-path: profile valid
+                    return;
                 }
+            }
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        profileArgumentsSlow(argumentsProfile, args);
+    }
+
+    @ExplodeLoop
+    private static boolean areArgumentTypesValid(Object[] args, Class<?>[] types) {
+        for (int i = 0; i < types.length; i++) {
+            Class<?> type = types[i];
+            Object value = args[i];
+            if (type != null && (value == null || value.getClass() != type)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void profileArgumentsSlow(ArgumentsProfile profile, Object[] args) {
+        if (profile == null) {
+            initializeProfiledArgumentTypes(args);
+        } else {
+            if (profile.types.length != args.length) {
+                transitionToInvalidArgumentsProfile();
+            } else {
+                updateProfiledArgumentTypes(args, profile);
             }
         }
     }
@@ -1374,30 +1408,58 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private void profileReturnValue(Object result) {
         ReturnProfile returnProfile = this.returnProfile;
+        if (returnProfile == ReturnProfile.INVALID) {
+            return;
+        }
+
         if (returnProfile == null) {
-            // we only profile return values in the interpreter as we don't want to deoptimize for
-            // immediate compiles.
-            if (CompilerDirectives.inInterpreter() && engine.returnTypeSpeculation) {
-                final Class<?> type = classOf(result);
-                ReturnProfile newProfile = type == null ? ReturnProfile.INVALID : new ReturnProfile(type);
-                if (!RETURN_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
-                    // Another thread initialized the profile, we need to check it
-                    profileReturnValue(result);
-                }
+            if (CompilerDirectives.inCompiledCode()) {
+                // we only profile return values in the interpreter as we don't want to deoptimize
+                // for immediate compiles.
+                return;
             }
         } else {
-            if (returnProfile.assumption.isValid() && (result == null || returnProfile.type != result.getClass())) {
-                // Immediately go to invalid, do not try to widen the type.
-                // See the comment above the returnProfile field.
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                /*
-                 * The assumption for the old profile must be invalidated before installing a new
-                 * profile.
-                 */
-                returnProfile.assumption.invalidate();
-                ReturnProfile previous = RETURN_PROFILE_UPDATER.getAndSet(this, ReturnProfile.INVALID);
-                assert previous == returnProfile || previous == ReturnProfile.INVALID;
+            if (result != null && returnProfile.type == result.getClass()) {
+                if (CompilerDirectives.inCompiledCode()) {
+                    if (returnProfile.assumption.isValid()) {
+                        return;
+                    }
+                } else {
+                    /*
+                     * The interpreter check for returnProfile.type should be enough to that the
+                     * assumption is valid. If the assumption is not valid then returnProfile.type
+                     * will be null and therefore never match this condition.
+                     */
+                    return;
+                }
             }
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        specializeReturnProfile(returnProfile, result);
+    }
+
+    private void specializeReturnProfile(ReturnProfile previousProfile, Object result) {
+        ReturnProfile newProfile;
+        final Class<?> type = classOf(result);
+        if (previousProfile == null) {
+            if (type == null || !engine.returnTypeSpeculation) {
+                newProfile = ReturnProfile.INVALID;
+            } else {
+                newProfile = new ReturnProfile(type);
+            }
+            if (!RETURN_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
+                // Another thread initialized the profile, we need to check it
+                profileReturnValue(previousProfile);
+            }
+        } else if (previousProfile.assumption.isValid() && previousProfile.type != type) {
+            /*
+             * The assumption for the old profile must be invalidated before installing a new
+             * profile.
+             */
+            previousProfile.assumption.invalidate();
+
+            ReturnProfile previous = RETURN_PROFILE_UPDATER.getAndSet(this, ReturnProfile.INVALID);
+            assert previous == previousProfile || previous == ReturnProfile.INVALID;
         }
     }
 

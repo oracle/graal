@@ -474,9 +474,15 @@ public class MethodGuardsTest {
 
         private boolean hiddenValue;
 
+        @SuppressWarnings("truffle-guard")
         @Specialization(guards = "method()")
         static String do1(int value) {
             return "do1";
+        }
+
+        @Specialization
+        static String do2(int value) {
+            return "do2";
         }
 
         boolean method() {

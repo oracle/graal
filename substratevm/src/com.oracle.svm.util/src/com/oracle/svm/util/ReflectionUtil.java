@@ -109,6 +109,14 @@ public final class ReflectionUtil {
         }
     }
 
+    public static <T> T newInstance(Constructor<T> constructor, Object... initArgs) {
+        try {
+            return constructor.newInstance(initArgs);
+        } catch (ReflectiveOperationException ex) {
+            throw new ReflectionUtilError(ex);
+        }
+    }
+
     public static Field lookupField(Class<?> declaringClass, String fieldName) {
         return lookupField(false, declaringClass, fieldName);
     }

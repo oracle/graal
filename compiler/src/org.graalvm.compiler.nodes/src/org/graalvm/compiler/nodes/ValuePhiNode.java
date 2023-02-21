@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,8 +60,12 @@ public class ValuePhiNode extends PhiNode {
         values = new NodeInputList<>(this);
     }
 
-    public ValuePhiNode(Stamp stamp, AbstractMergeNode merge, ValueNode[] values) {
-        super(TYPE, stamp, merge);
+    public ValuePhiNode(Stamp stamp, AbstractMergeNode merge, ValueNode... values) {
+        this(TYPE, stamp, merge, values);
+    }
+
+    public ValuePhiNode(NodeClass<? extends ValuePhiNode> c, Stamp stamp, AbstractMergeNode merge, ValueNode... values) {
+        super(c, stamp, merge);
         assert stamp != StampFactory.forVoid();
         this.values = new NodeInputList<>(this, values);
     }
@@ -164,6 +168,11 @@ public class ValuePhiNode extends PhiNode {
     @Override
     public PhiNode duplicateOn(AbstractMergeNode newMerge) {
         return graph().addWithoutUnique(new ValuePhiNode(stamp(NodeView.DEFAULT), newMerge));
+    }
+
+    @Override
+    public ValuePhiNode duplicateWithValues(AbstractMergeNode newMerge, ValueNode... newValues) {
+        return new ValuePhiNode(stamp(NodeView.DEFAULT), newMerge, newValues);
     }
 
     @Override

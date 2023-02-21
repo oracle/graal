@@ -24,17 +24,17 @@
  */
 package com.oracle.svm.core.thread;
 
+import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.VMError;
 
 public final class LoomSupport {
     @Fold
     public static boolean isEnabled() {
         VMError.guarantee(ImageSingletons.lookup(ContinuationsFeature.class).hasFinishedRegistration());
-        return ImageSingletons.contains(LoomVirtualThreads.class) && !SubstrateOptions.useLLVMBackend();
+        return ImageSingletons.contains(LoomVirtualThreads.class);
     }
 
     // See JDK native enum freeze_result
@@ -42,6 +42,7 @@ public final class LoomSupport {
     static final int FREEZE_PINNED_CS = 2; // critical section
     static final int FREEZE_PINNED_NATIVE = 3;
 
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     public static Continuation getInternalContinuation(Target_jdk_internal_vm_Continuation cont) {
         return cont.internal;
     }

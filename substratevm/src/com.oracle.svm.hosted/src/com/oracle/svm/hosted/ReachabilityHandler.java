@@ -32,13 +32,19 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
-public interface ReachabilityHandler {
+public abstract class ReachabilityHandler {
 
-    void registerMethodOverrideReachabilityHandler(BeforeAnalysisAccessImpl access, BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod);
+    public abstract void registerMethodOverrideReachabilityHandler(BeforeAnalysisAccessImpl access, BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod);
 
-    void registerSubtypeReachabilityHandler(BeforeAnalysisAccessImpl access, BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass);
+    public abstract void registerSubtypeReachabilityHandler(BeforeAnalysisAccessImpl access, BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass);
 
-    void registerClassInitializerReachabilityHandler(BeforeAnalysisAccessImpl access, Consumer<DuringAnalysisAccess> callback, Class<?> clazz);
+    public final void registerClassInitializerReachabilityHandler(BeforeAnalysisAccessImpl access, Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
+        /*
+         * In our current static analysis implementations, there is no difference between the
+         * reachability of a class and the reachability of its class initializer.
+         */
+        registerReachabilityHandler(access, callback, new Object[]{clazz});
+    }
 
-    void registerReachabilityHandler(BeforeAnalysisAccessImpl access, Consumer<DuringAnalysisAccess> callback, Object[] triggers);
+    public abstract void registerReachabilityHandler(BeforeAnalysisAccessImpl access, Consumer<DuringAnalysisAccess> callback, Object[] triggers);
 }

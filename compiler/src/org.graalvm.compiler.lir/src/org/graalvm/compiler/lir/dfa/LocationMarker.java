@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -70,16 +70,16 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
     protected abstract void processState(LIRInstruction op, LIRFrameState info, S values);
 
     void build() {
-        AbstractBlockBase<?>[] blocks = lir.getControlFlowGraph().getBlocks();
+        BasicBlock<?>[] blocks = lir.getControlFlowGraph().getBlocks();
         UniqueWorkList worklist = new UniqueWorkList(blocks.length);
         for (int i = blocks.length - 1; i >= 0; i--) {
             worklist.add(blocks[i]);
         }
-        for (AbstractBlockBase<?> block : lir.getControlFlowGraph().getBlocks()) {
+        for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
             liveInMap.put(block, newLiveValueSet());
         }
         while (!worklist.isEmpty()) {
-            AbstractBlockBase<?> block = worklist.poll();
+            BasicBlock<?> block = worklist.poll();
             processBlock(block, worklist);
         }
     }
@@ -87,9 +87,10 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
     /**
      * Merge outSet with in-set of successors.
      */
-    private boolean updateOutBlock(AbstractBlockBase<?> block) {
+    private boolean updateOutBlock(BasicBlock<?> block) {
         S union = newLiveValueSet();
-        for (AbstractBlockBase<?> succ : block.getSuccessors()) {
+        for (int i = 0; i < block.getSuccessorCount(); i++) {
+            BasicBlock<?> succ = block.getSuccessorAt(i);
             union.putAll(liveInMap.get(succ));
         }
         S outSet = liveOutMap.get(block);
@@ -102,7 +103,7 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
     }
 
     @SuppressWarnings("try")
-    private void processBlock(AbstractBlockBase<?> block, UniqueWorkList worklist) {
+    private void processBlock(BasicBlock<?> block, UniqueWorkList worklist) {
         if (updateOutBlock(block)) {
             DebugContext debug = lir.getDebug();
             try (Indent indent = debug.logAndIndent("handle block %s", block)) {
@@ -114,7 +115,8 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
                 }
                 liveInMap.put(block, currentSet);
                 currentSet = null;
-                for (AbstractBlockBase<?> b : block.getPredecessors()) {
+                for (int i = 0; i < block.getPredecessorCount(); i++) {
+                    BasicBlock<?> b = block.getPredecessorAt(i);
                     worklist.add(b);
                 }
             }

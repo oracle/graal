@@ -56,6 +56,8 @@ import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.nfi.api.SerializableLibrary;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 abstract class NativeBuffer implements TruffleObject {
 
     @ExportLibrary(value = SerializableLibrary.class, useForAOT = false)
@@ -68,6 +70,7 @@ abstract class NativeBuffer implements TruffleObject {
             this.content = content;
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean isSerializable() {
             return true;
@@ -85,6 +88,7 @@ abstract class NativeBuffer implements TruffleObject {
             }
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasBufferElements() {
             return true;
@@ -98,7 +102,7 @@ abstract class NativeBuffer implements TruffleObject {
         @ExportMessage
         byte readBufferByte(long offset,
                         @Shared("exception") @Cached BranchProfile exception) throws InvalidBufferOffsetException {
-            if (Long.compareUnsigned(offset, content.length) < 0) {
+            if (Long.compareUnsigned(offset, content.length) >= 0) {
                 exception.enter();
                 throw InvalidBufferOffsetException.create(offset, content.length);
             }

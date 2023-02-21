@@ -32,10 +32,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 
 public final class ReferenceHandlerThread implements Runnable {
@@ -71,13 +71,9 @@ public final class ReferenceHandlerThread implements Runnable {
 
     @Override
     public void run() {
-        this.isolateThread = CurrentIsolate.getCurrentThread();
-
-        /*
-         * Precaution: this thread does not register a callback itself, but a subclass of Reference,
-         * ReferenceQueue, or a Cleaner or Cleanable might do strange things.
-         */
         ThreadingSupportImpl.pauseRecurringCallback("An exception in a recurring callback must not interrupt pending reference processing because it could result in a memory leak.");
+
+        this.isolateThread = CurrentIsolate.getCurrentThread();
         try {
             while (true) {
                 ReferenceInternals.waitForPendingReferences();
@@ -88,8 +84,6 @@ public final class ReferenceHandlerThread implements Runnable {
             VMError.guarantee(VMThreads.isTearingDown(), "Reference Handler should only be interrupted during tear-down");
         } catch (Throwable t) {
             VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
-        } finally {
-            ThreadingSupportImpl.resumeRecurringCallback();
         }
     }
 

@@ -57,7 +57,6 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.AbstractDSLExpr
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
@@ -71,9 +70,18 @@ public final class GuardExpression extends MessageContainer {
     private boolean libraryAcceptsGuard;
     private boolean weakReferenceGuard;
 
+    private Boolean fastPathIdempotent;
+
     public GuardExpression(SpecializationData source, DSLExpression expression) {
         this.source = source;
         this.expression = expression;
+    }
+
+    public GuardExpression copy(SpecializationData newSpecialization) {
+        GuardExpression guard = new GuardExpression(newSpecialization, expression);
+        guard.libraryAcceptsGuard = libraryAcceptsGuard;
+        guard.weakReferenceGuard = weakReferenceGuard;
+        return guard;
     }
 
     @Override
@@ -89,6 +97,17 @@ public final class GuardExpression extends MessageContainer {
     @Override
     public AnnotationValue getMessageAnnotationValue() {
         return ElementUtils.getAnnotationValue(getMessageAnnotation(), "guards");
+    }
+
+    public boolean isFastPathIdempotent() {
+        if (fastPathIdempotent == null) {
+            throw new AssertionError("Idempotent not yet initialized.");
+        }
+        return fastPathIdempotent;
+    }
+
+    public void setFastPathIdempotent(boolean idempotent) {
+        this.fastPathIdempotent = idempotent;
     }
 
     public DSLExpression getExpression() {
@@ -116,98 +135,94 @@ public final class GuardExpression extends MessageContainer {
         return "Guard[" + (expression != null ? expression.asString() : "null") + "]";
     }
 
-    public boolean isConstantTrueInSlowPath(ProcessorContext context, boolean uncached) {
-        if (libraryAcceptsGuard) {
-            return true;
+    private class TrueInSlowPathGuardDetector extends AbstractDSLExpressionReducer {
+
+        private final boolean uncached;
+        private final boolean followBindings;
+
+        TrueInSlowPathGuardDetector(boolean uncached, boolean followBindings) {
+            this.uncached = uncached;
+            this.followBindings = followBindings;
         }
-        DSLExpression reducedExpression = getExpression().reduce(new AbstractDSLExpressionReducer() {
 
-            @Override
-            public DSLExpression visitVariable(Variable binary) {
-                // on the slow path we can assume all cache expressions inlined.
-                for (CacheExpression cache : source.getCaches()) {
-                    if (cache.getSharedGroup() != null) {
-                        // with sharing we cannot inline cache expressions.
-                        continue;
-                    }
-                    if (ElementUtils.variableEquals(cache.getParameter().getVariableElement(), binary.getResolvedVariable())) {
-                        return uncached ? cache.getUncachedExpression() : cache.getDefaultExpression();
-                    }
+        @Override
+        public DSLExpression visitVariable(Variable binary) {
+            // on the slow path we can assume all cache expressions inlined.
+            for (CacheExpression cache : source.getCaches()) {
+                if (cache.getSharedGroup() != null) {
+                    // with sharing we cannot inline cache expressions.
+                    continue;
                 }
-                return super.visitVariable(binary);
+                if ((followBindings || !cache.isBind()) && ElementUtils.variableEquals(cache.getParameter().getVariableElement(), binary.getResolvedVariable())) {
+                    return uncached ? cache.getUncachedExpression() : cache.getDefaultExpression();
+                }
             }
+            return super.visitVariable(binary);
+        }
 
-            @Override
-            public DSLExpression visitCall(Call binary) {
-                ExecutableElement method = binary.getResolvedMethod();
-                if (!method.getSimpleName().toString().equals("equals")) {
-                    return binary;
-                }
-                if (method.getModifiers().contains(Modifier.STATIC)) {
-                    return binary;
-                }
-                if (!ElementUtils.typeEquals(method.getReturnType(), context.getType(boolean.class))) {
-                    return binary;
-                }
-                if (method.getParameters().size() != 1) {
-                    return binary;
-                }
-                // signature: receiver.equals(receiver) can be folded to true
-                DSLExpression receiver = binary.getReceiver();
-                DSLExpression firstArg = binary.getParameters().get(0);
-                if (receiver instanceof Variable && firstArg instanceof Variable) {
-                    if (receiver.equals(firstArg)) {
-                        return new BooleanLiteral(true);
-                    }
-                }
-                return super.visitCall(binary);
+        @Override
+        public DSLExpression visitCall(Call binary) {
+            ExecutableElement method = binary.getResolvedMethod();
+            if (!method.getSimpleName().toString().equals("equals")) {
+                return binary;
             }
+            if (method.getModifiers().contains(Modifier.STATIC)) {
+                return binary;
+            }
+            ProcessorContext context = ProcessorContext.getInstance();
+            if (!ElementUtils.typeEquals(method.getReturnType(), context.getType(boolean.class))) {
+                return binary;
+            }
+            if (method.getParameters().size() != 1) {
+                return binary;
+            }
+            // signature: receiver.equals(receiver) can be folded to true
+            DSLExpression receiver = binary.getReceiver();
+            DSLExpression firstArg = binary.getParameters().get(0);
+            if (receiver instanceof Variable && firstArg instanceof Variable) {
+                if (receiver.equals(firstArg)) {
+                    return new BooleanLiteral(true);
+                }
+            }
+            return super.visitCall(binary);
+        }
 
-            @Override
-            public DSLExpression visitBinary(Binary binary) {
-                // signature: value == value can be folded to true
-                if (IDENTITY_FOLD_OPERATORS.contains(binary.getOperator())) {
-                    if (binary.getLeft() instanceof Variable && binary.getRight() instanceof Variable) {
-                        Variable leftVar = ((Variable) binary.getLeft());
-                        Variable rightVar = ((Variable) binary.getRight());
-                        if (leftVar.equals(rightVar)) {
-                            // double and float cannot be folded as NaN is never identity equal
-                            if (!ElementUtils.typeEquals(leftVar.getResolvedType(), context.getType(float.class)) &&
-                                            !ElementUtils.typeEquals(leftVar.getResolvedType(), context.getType(double.class))) {
-                                return new BooleanLiteral(true);
-                            }
+        @Override
+        public DSLExpression visitBinary(Binary binary) {
+            // signature: value == value can be folded to true
+            if (IDENTITY_FOLD_OPERATORS.contains(binary.getOperator())) {
+                if (binary.getLeft() instanceof Variable && binary.getRight() instanceof Variable) {
+                    Variable leftVar = ((Variable) binary.getLeft());
+                    Variable rightVar = ((Variable) binary.getRight());
+                    if (leftVar.equals(rightVar)) {
+                        // double and float cannot be folded as NaN is never identity equal
+                        ProcessorContext context = ProcessorContext.getInstance();
+                        if (!ElementUtils.typeEquals(leftVar.getResolvedType(), context.getType(float.class)) &&
+                                        !ElementUtils.typeEquals(leftVar.getResolvedType(), context.getType(double.class))) {
+                            return new BooleanLiteral(true);
                         }
                     }
                 }
-                return super.visitBinary(binary);
-
             }
-        });
+            return super.visitBinary(binary);
 
-        Object o = reducedExpression.resolveConstant();
-        if (o instanceof Boolean) {
-            if (((Boolean) o).booleanValue()) {
-                return true;
-            }
         }
-        return false;
     }
 
-    public boolean equalsNegated(GuardExpression other) {
-        boolean negated = false;
-        DSLExpression thisExpression = expression;
-        if (thisExpression instanceof Negate) {
-            negated = true;
-            thisExpression = ((Negate) thisExpression).getReceiver();
+    public boolean isConstantTrueInSlowPath(boolean uncached) {
+        if (libraryAcceptsGuard) {
+            return true;
+        }
+        Object o = getExpression().reduce(new TrueInSlowPathGuardDetector(uncached, true)).resolveConstant();
+        if (o instanceof Boolean && (boolean) o) {
+            return true;
+        }
+        o = getExpression().reduce(new TrueInSlowPathGuardDetector(uncached, false)).resolveConstant();
+        if (o instanceof Boolean && (boolean) o) {
+            return true;
         }
 
-        boolean otherNegated = false;
-        DSLExpression otherExpression = other.expression;
-        if (otherExpression instanceof Negate) {
-            otherNegated = true;
-            otherExpression = ((Negate) otherExpression).getReceiver();
-        }
-        return Objects.equals(thisExpression, otherExpression) && negated != otherNegated;
+        return false;
     }
 
     public boolean implies(GuardExpression other) {

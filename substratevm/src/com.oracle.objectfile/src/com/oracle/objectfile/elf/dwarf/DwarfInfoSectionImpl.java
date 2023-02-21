@@ -51,7 +51,8 @@ import com.oracle.objectfile.debugentry.InterfaceClassEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
-import com.oracle.objectfile.debugentry.Range;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
@@ -199,6 +200,16 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
         pos = writeAttrData1(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
+        String compilationDirectory = dwarfSections.getCachePath();
+        log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
+        pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
+        /*
+         * Using zero as a fallback lineIndex is potentially dangerous, but probably harmless,
+         * because it will point at some arbitrary data in the lines data.
+         */
+        final int lineIndex = 0;
+        log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
+        pos = writeAttrData4(lineIndex, buffer, pos);
 
         /* Write child entries for basic Java types. */
 
@@ -215,6 +226,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* Write child entry for object/array header struct. */
 
         pos = writeHeaderType(context, headerType(), buffer, pos);
+
+        /* write class constants for primitive type classes */
+
+        pos = primitiveTypeStream().reduce(pos,
+                        (pos1, primitiveTypeEntry) -> writeClassConstantDeclaration(context, primitiveTypeEntry, buffer, pos1),
+                        (oldpos, newpos) -> newpos);
 
         /* Terminate with null entry. */
 
@@ -356,7 +373,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
         pos = writeStrSectionOffset(classEntry.getFileName(), buffer, pos);
-        String compilationDirectory = classEntry.getCachePath();
+        String compilationDirectory = dwarfSections.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
         /* Non-compiled classes have no compiled methods so they have no low or high pc. */
@@ -380,6 +397,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeClassLayout(context, classEntry, buffer, pos);
             pos = writeClassType(context, classEntry, buffer, pos);
         }
+
+        /* Write a declaration for the special Class object pseudo-static field */
+        pos = writeClassConstantDeclaration(context, classEntry, buffer, pos);
 
         /* For a non-compiled class there are no method definitions to write. */
         /* Nor, by the same token are there any abstract inline methods to write. */
@@ -437,7 +457,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fileName), fileName);
         pos = writeStrSectionOffset(fileName, buffer, pos);
-        String compilationDirectory = classEntry.getCachePath();
+        String compilationDirectory = dwarfSections.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
         /*
@@ -467,6 +487,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeClassLayout(context, classEntry, buffer, pos);
             pos = writeClassType(context, classEntry, buffer, pos);
         }
+
+        /* Write a declaration for the special Class object pseudo-static field */
+        pos = writeClassConstantDeclaration(context, classEntry, buffer, pos);
 
         /* Write all method locations. */
 
@@ -510,6 +533,44 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
+    private int writeClassConstantDeclaration(DebugContext context, TypeEntry typeEntry, byte[] buffer, int p) {
+        int pos = p;
+        long offset = typeEntry.getClassOffset();
+        if (offset < 0) {
+            return pos;
+        }
+        // Write a special static field declaration for the class object
+        // we use the abbrev code for a static field with no file or line location
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_class_constant;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+
+        String name = uniqueDebugString(typeEntry.getTypeName() + ".class");
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
+        pos = writeStrSectionOffset(name, buffer, pos);
+        /*
+         * This is a direct reference to the object rather than a compressed oop reference. So, we
+         * need to use the direct layout type for hub class to type it.
+         */
+        ClassEntry valueType = dwarfSections.getHubClassEntry();
+        int typeIdx = (valueType == null ? -1 : getLayoutIndex(valueType));
+        log(context, "  [0x%08x]     type  0x%x (<hub type>)", pos, typeIdx);
+        pos = writeInfoSectionOffset(typeIdx, buffer, pos);
+        log(context, "  [0x%08x]     accessibility public static final", pos);
+        pos = writeAttrAccessibility(Modifier.PUBLIC | Modifier.STATIC | Modifier.FINAL, buffer, pos);
+        log(context, "  [0x%08x]     external(true)", pos);
+        pos = writeFlag((byte) 1, buffer, pos);
+        log(context, "  [0x%08x]     definition(true)", pos);
+        pos = writeFlag((byte) 1, buffer, pos);
+        /*
+         * We need to force encoding of this location as a heap base relative relocatable address
+         * rather than an offset from the heapbase register.
+         */
+        log(context, "  [0x%08x]     location  heapbase + 0x%x (class constant)", pos, offset);
+        pos = writeHeapLocationExprLoc(offset, false, buffer, pos);
+        return pos;
+    }
+
     private int writeClassLayout(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         int layoutIndex = pos;
@@ -549,7 +610,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         } else {
             /* Inherit layout from object header. */
             superName = OBJECT_HEADER_STRUCT_NAME;
-            TypeEntry headerType = lookupType(null);
+            TypeEntry headerType = headerType();
             superTypeOffset = getTypeIndex(headerType);
         }
         /* Now write the child fields. */
@@ -586,6 +647,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
              * Write a terminating null attribute.
              */
             pos = writeAttrNull(buffer, pos);
+        } else {
+            setIndirectLayoutIndex(classEntry, layoutIndex);
         }
 
         return pos;
@@ -904,6 +967,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
              * Write a terminating null attribute.
              */
             pos = writeAttrNull(buffer, pos);
+        } else {
+            setIndirectLayoutIndex(interfaceClassEntry, layoutOffset);
         }
 
         return pos;
@@ -1031,9 +1096,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] concrete entries [0x%x,0x%x] %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodName());
         ClassEntry classEntry = compiledEntry.getClassEntry();
         int depth = 0;
-        Iterator<Range> iterator = compiledEntry.topDownRangeIterator();
+        Iterator<SubRange> iterator = compiledEntry.topDownRangeIterator();
         while (iterator.hasNext()) {
-            Range subrange = iterator.next();
+            SubRange subrange = iterator.next();
             if (subrange.isLeaf()) {
                 // we only generate concrete methods for non-leaf entries
                 continue;
@@ -1045,7 +1110,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             }
             depth = subrange.getDepth();
             pos = writeInlineSubroutine(context, classEntry, subrange, depth + 2, buffer, pos);
-            HashMap<DebugLocalInfo, List<Range>> varRangeMap = subrange.getVarRangeMap();
+            HashMap<DebugLocalInfo, List<SubRange>> varRangeMap = subrange.getVarRangeMap();
             // increment depth to account for parameter and method locations
             depth++;
             pos = writeMethodParameterLocations(context, classEntry, varRangeMap, subrange, depth + 2, buffer, pos);
@@ -1083,9 +1148,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             return;
         }
         verboseLog(context, "  [0x%08x] collect abstract inlined methods %s", p, primary.getFullMethodName());
-        Iterator<Range> iterator = compiledEntry.topDownRangeIterator();
+        Iterator<SubRange> iterator = compiledEntry.topDownRangeIterator();
         while (iterator.hasNext()) {
-            Range subrange = iterator.next();
+            SubRange subrange = iterator.next();
             if (subrange.isLeaf()) {
                 // we only generate abstract inline methods for non-leaf entries
                 continue;
@@ -1158,6 +1223,16 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String name = arrayTypeEntry.getTypeName();
         log(context, "  [0x%08x]     name 0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
+        String compilationDirectory = dwarfSections.getCachePath();
+        log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
+        pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
+        /*
+         * Using zero as a fallback lineIndex is potentially dangerous, but probably harmless,
+         * because it will point at some arbitrary data in the lines data.
+         */
+        final int lineIndex = 0;
+        log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
+        pos = writeAttrData4(lineIndex, buffer, pos);
 
         /* if the array base type is a class with a loader then embed the children in a namespace */
         String loaderId = arrayTypeEntry.getLoaderId();
@@ -1175,6 +1250,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeIndirectArrayLayout(context, arrayTypeEntry, size, layoutIdx, buffer, pos);
         }
         pos = writeArrayTypes(context, arrayTypeEntry, layoutIdx, indirectLayoutIdx, buffer, pos);
+
+        /* Write a declaration for the special Class object pseudo-static field */
+        pos = writeClassConstantDeclaration(context, arrayTypeEntry, buffer, pos);
+
         /*
          * Write a terminating null attribute.
          */
@@ -1353,7 +1432,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
         pos = writeStrSectionOffset(classEntry.getFileName(), buffer, pos);
-        String compilationDirectory = classEntry.getCachePath();
+        String compilationDirectory = dwarfSections.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
         log(context, "  [0x%08x]     lo_pc  0x%08x", pos, lo);
@@ -1397,7 +1476,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int methodSpecOffset = getMethodDeclarationIndex(primary.getMethodEntry());
         log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
         pos = writeInfoSectionOffset(methodSpecOffset, buffer, pos);
-        HashMap<DebugLocalInfo, List<Range>> varRangeMap = primary.getVarRangeMap();
+        HashMap<DebugLocalInfo, List<SubRange>> varRangeMap = primary.getVarRangeMap();
         pos = writeMethodParameterLocations(context, null, varRangeMap, primary, 2, buffer, pos);
         pos = writeMethodLocalLocations(context, null, varRangeMap, primary, 2, buffer, pos);
         if (primary.includesInlineRanges()) {
@@ -1413,7 +1492,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeAttrNull(buffer, pos);
     }
 
-    private int writeMethodParameterLocations(DebugContext context, ClassEntry classEntry, HashMap<DebugLocalInfo, List<Range>> varRangeMap, Range range, int depth, byte[] buffer, int p) {
+    private int writeMethodParameterLocations(DebugContext context, ClassEntry classEntry, HashMap<DebugLocalInfo, List<SubRange>> varRangeMap, Range range, int depth, byte[] buffer, int p) {
         int pos = p;
         MethodEntry methodEntry;
         if (range.isPrimary()) {
@@ -1425,19 +1504,19 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (!Modifier.isStatic(methodEntry.getModifiers())) {
             DebugLocalInfo thisParamInfo = methodEntry.getThisParam();
             int refAddr = getMethodLocalIndex(classEntry, methodEntry, thisParamInfo);
-            List<Range> ranges = varRangeMap.get(thisParamInfo);
+            List<SubRange> ranges = varRangeMap.get(thisParamInfo);
             pos = writeMethodLocalLocation(context, range, thisParamInfo, refAddr, ranges, depth, true, buffer, pos);
         }
         for (int i = 0; i < methodEntry.getParamCount(); i++) {
             DebugLocalInfo paramInfo = methodEntry.getParam(i);
             int refAddr = getMethodLocalIndex(classEntry, methodEntry, paramInfo);
-            List<Range> ranges = varRangeMap.get(paramInfo);
+            List<SubRange> ranges = varRangeMap.get(paramInfo);
             pos = writeMethodLocalLocation(context, range, paramInfo, refAddr, ranges, depth, true, buffer, pos);
         }
         return pos;
     }
 
-    private int writeMethodLocalLocations(DebugContext context, ClassEntry classEntry, HashMap<DebugLocalInfo, List<Range>> varRangeMap, Range range, int depth, byte[] buffer, int p) {
+    private int writeMethodLocalLocations(DebugContext context, ClassEntry classEntry, HashMap<DebugLocalInfo, List<SubRange>> varRangeMap, Range range, int depth, byte[] buffer, int p) {
         int pos = p;
         MethodEntry methodEntry;
         if (range.isPrimary()) {
@@ -1450,18 +1529,18 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         for (int i = 0; i < count; i++) {
             DebugLocalInfo localInfo = methodEntry.getLocal(i);
             int refAddr = getMethodLocalIndex(classEntry, methodEntry, localInfo);
-            List<Range> ranges = varRangeMap.get(localInfo);
+            List<SubRange> ranges = varRangeMap.get(localInfo);
             pos = writeMethodLocalLocation(context, range, localInfo, refAddr, ranges, depth, false, buffer, pos);
         }
         return pos;
     }
 
-    private int writeMethodLocalLocation(DebugContext context, Range range, DebugLocalInfo localInfo, int refAddr, List<Range> ranges, int depth, boolean isParam, byte[] buffer,
+    private int writeMethodLocalLocation(DebugContext context, Range range, DebugLocalInfo localInfo, int refAddr, List<SubRange> ranges, int depth, boolean isParam, byte[] buffer,
                     int p) {
         int pos = p;
         log(context, "  [0x%08x] method %s location %s:%s", pos, (isParam ? "parameter" : "local"), localInfo.name(), localInfo.typeName());
         List<DebugLocalValueInfo> localValues = new ArrayList<>();
-        for (Range subrange : ranges) {
+        for (SubRange subrange : ranges) {
             DebugLocalValueInfo value = subrange.lookupValue(localInfo);
             if (value != null) {
                 log(context, "  [0x%08x]     local  %s:%s [0x%x, 0x%x] = %s", pos, value.name(), value.typeName(), subrange.getLo(), subrange.getHi(), formatValue(value));
@@ -1629,8 +1708,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          *
          * The setting for option -H:+/-SpawnIsolates is determined by useHeapBase == true/false.
          *
-         * The setting for option -H:+/-UseCompressedReferences is determined by oopShiftCount ==
-         * zero/non-zero
          */
 
         boolean useHeapBase = dwarfSections.useHeapBase();
@@ -1702,10 +1779,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                     mask = dwarfSections.oopTagsMask();
                     exprSize += 3;
                 } else {
-                    /* We need two shifts to remove the bits. */
-                    rightShift = oopTagsShift;
+                    /* We need one or two shifts to remove the bits. */
+                    if (oopTagsShift != 0) {
+                        rightShift = oopTagsShift;
+                        exprSize += 2;
+                    }
                     leftShift = oopCompressShift;
-                    exprSize += 4;
+                    exprSize += 2;
                 }
             } else {
                 /* No flags to deal with, so we need either an uncompress or nothing. */

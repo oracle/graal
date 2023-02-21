@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -96,7 +97,7 @@ import org.graalvm.options.OptionValues;
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
                                 LLVMLanguage.LLVM_MS_DOS_MIME_TYPE}, //
                 fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class}, version = LLVMConfig.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
-                website = "https://www.graalvm.org/22.1/reference-manual/llvm/")
+                website = "https://www.graalvm.org/${graalvm-website-version}/reference-manual/llvm/")
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
@@ -115,7 +116,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-    public final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Only a single context is active");
+
+    @CompilationFinal public boolean singleContext;
 
     @CompilationFinal private Configuration activeConfiguration = null;
 
@@ -171,9 +173,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final EconomicMap<String, LibraryCacheEntry> libraryCache = EconomicMap.create();
     private final ReferenceQueue<CallTarget> libraryCacheQueue = new ReferenceQueue<>();
     private final Object libraryCacheLock = new Object();
-
-    private final EconomicMap<String, Source> librarySources = EconomicMap.create();
-
     private final IDGenerater idGenerater = new IDGenerater();
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
@@ -183,6 +182,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private final ConcurrentHashMap<Class<?>, RootCallTarget> cachedCallTargets = new ConcurrentHashMap<>();
 
+    /**
+     * This cache ensures that the truffle cache maintains the default internal libraries, and that
+     * these default internal libraries are not parsed more than once.
+     */
+    private final EconomicMap<String, Source> defaultInternalLibraryCache = EconomicMap.create();
     private DataLayout defaultDataLayout;
     private TargetTriple defaultTargetTriple;
 
@@ -438,16 +442,20 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         internalFileScopes.put(libraryName, scope);
     }
 
-    public Source getLibrarySource(String path) {
-        return librarySources.get(path);
+    public boolean isDefaultInternalLibraryCacheEmpty() {
+        return defaultInternalLibraryCache.isEmpty();
     }
 
-    public void addLibrarySource(String path, Source source) {
-        librarySources.put(path, source);
+    public void setDefaultInternalLibraryCache(Source library) {
+        defaultInternalLibraryCache.put(library.getPath(), library);
     }
 
-    public boolean containsLibrarySource(String path) {
-        return librarySources.containsKey(path);
+    public Source getDefaultInternalLibraryCache(String path) {
+        return defaultInternalLibraryCache.get(path);
+    }
+
+    public boolean isDefaultInternalLibrary(String path) {
+        return defaultInternalLibraryCache.containsKey(path);
     }
 
     @Override
@@ -804,10 +812,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected void initializeMultipleContexts() {
         super.initializeMultipleContexts();
-        singleContextAssumption.invalidate();
+        singleContext = false;
     }
 
     public RootCallTarget createCachedCallTarget(Class<?> key, Function<LLVMLanguage, RootNode> create) {
         return cachedCallTargets.computeIfAbsent(key, k -> create.apply(LLVMLanguage.this).getCallTarget());
     }
+
+    @Idempotent
+    public static boolean isSingleContext(Node node) {
+        return LLVMLanguage.get(node).singleContext;
+    }
+
 }

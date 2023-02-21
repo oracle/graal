@@ -52,7 +52,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * <p>
  * A profile is a Truffle utility class that uses the {@link CompilerDirectives Truffle compiler
- * directives} to guard for and/or forward runtime information to the compiler.
+ * directives} to guard for and/or forward runtime information to the compiler. Whenever Truffle DSL
+ * can be used {@link InlinedProfile inlined profiles} subclasses should be used instead of regular
+ * {@link Profile profile} subclasses.
  * </p>
  *
  * <p>
@@ -105,10 +107,12 @@ import com.oracle.truffle.api.nodes.RootNode;
  * </ul>
  * </p>
  *
+ * @see InlinedProfile
  * @see Assumption
  * @since 0.10
  */
 public abstract class Profile extends NodeCloneable {
+
     static boolean isProfilingEnabled() {
         boolean enabled;
         try {
@@ -124,8 +128,8 @@ public abstract class Profile extends NodeCloneable {
         /* We don't to allow custom profiles. We want to evolve this API further first. Sorry. */
     }
 
-    String toStringDisabled(Class<?> profileClass) {
-        return String.format("%s(DISABLED)", profileClass.getSimpleName());
+    final String toStringDisabled() {
+        return String.format("%s(DISABLED)", getClass().getSimpleName());
     }
 
     /**
@@ -153,7 +157,7 @@ public abstract class Profile extends NodeCloneable {
     public void reset() {
     }
 
-    String toString(Class<?> profileClass, boolean uninitialized, boolean generic, String specialization) {
+    final String toString(Class<?> profileClass, boolean uninitialized, boolean generic, String specialization) {
         String s;
         if (uninitialized) {
             s = "UNINITIALIZED";

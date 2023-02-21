@@ -31,6 +31,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.UninitializedStaticFieldValueReader;
 import com.oracle.graal.pointsto.standalone.StandaloneHost;
+
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
@@ -74,7 +75,7 @@ public class StandaloneConstantReflectionProvider extends HotSpotConstantReflect
     private static ResolvedJavaType markReachable(ResolvedJavaType type) {
         if (type instanceof AnalysisType) {
             AnalysisType t = (AnalysisType) type;
-            t.registerAsReachable();
+            t.registerAsReachable("registered by the StandaloneConstantReflectionProvider");
             return t.getWrapped();
         } else {
             return type;

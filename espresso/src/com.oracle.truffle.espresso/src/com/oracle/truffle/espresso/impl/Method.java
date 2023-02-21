@@ -44,6 +44,7 @@ import java.io.PrintStream;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.IntFunction;
 import java.util.logging.Level;
@@ -54,8 +55,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
@@ -152,7 +155,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
         // Proxy the method, so that we have the same callTarget if it is not yet initialized.
         // Allows for not duplicating the codeAttribute
-        this.proxy = method.proxy == null ? method : method.proxy;
+        this.proxy = method.proxy;
         this.isLeaf = method.isLeaf;
     }
 
@@ -172,12 +175,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             Meta meta = getMeta();
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
         }
-        this.proxy = null;
+        this.proxy = this;
         this.isLeaf = getContext().getClassHierarchyOracle().createLeafAssumptionForNewMethod(this);
     }
 
     public Method identity() {
-        return proxy == null ? this : proxy;
+        return proxy;
     }
 
     @Override
@@ -549,6 +552,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         getDeclaringKlass().protectionDomain());
     }
 
+    @Idempotent
     public int getParameterCount() {
         return Signatures.parameterCount(getParsedSignature());
     }
@@ -560,27 +564,29 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public static Method getHostReflectiveMethodRoot(StaticObject seed, Meta meta) {
         assert seed.getKlass().getMeta().java_lang_reflect_Method.isAssignableFrom(seed.getKlass());
         StaticObject curMethod = seed;
-        Method target = null;
-        while (target == null) {
-            target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
-            if (target == null) {
-                curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
+        while (curMethod != null && StaticObject.notNull(curMethod)) {
+            Method target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
+            if (target != null) {
+                return target;
             }
+            curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
         }
-        return target;
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Could not find HIDDEN_METHOD_KEY");
     }
 
     public static Method getHostReflectiveConstructorRoot(StaticObject seed, Meta meta) {
         assert seed.getKlass().getMeta().java_lang_reflect_Constructor.isAssignableFrom(seed.getKlass());
         StaticObject curMethod = seed;
-        Method target = null;
-        while (target == null) {
-            target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curMethod);
-            if (target == null) {
-                curMethod = meta.java_lang_reflect_Constructor_root.getObject(curMethod);
+        while (curMethod != null && StaticObject.notNull(curMethod)) {
+            Method target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curMethod);
+            if (target != null) {
+                return target;
             }
+            curMethod = meta.java_lang_reflect_Constructor_root.getObject(curMethod);
         }
-        return target;
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Could not find HIDDEN_CONSTRUCTOR_KEY");
     }
 
     // Polymorphic signature method 'creation'
@@ -675,11 +681,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean isInlinableGetter() {
-        if (getSubstitutions().get(this) == null) {
+        if (!getSubstitutions().hasSubstitutionFor(this)) {
             if (getParameterCount() == 0 && !isAbstract() && !isNative() && !isSynchronized()) {
-                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || getContext().getClassHierarchyOracle().isLeafMethod(getMethodVersion()).isValid() || isStatic()) {
-                    return hasGetterBytecodes();
-                }
+                return hasGetterBytecodes();
             }
         }
         return false;
@@ -700,11 +704,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean isInlinableSetter() {
-        if (getSubstitutions().get(this) == null) {
+        if (!getSubstitutions().hasSubstitutionFor(this)) {
             if (getParameterCount() == 1 && !isAbstract() && !isNative() && !isSynchronized()) {
-                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || getContext().getClassHierarchyOracle().isLeafMethod(getMethodVersion()).isValid() || isStatic()) {
-                    return hasSetterBytecodes();
-                }
+                return hasSetterBytecodes();
             }
         }
         return false;
@@ -970,7 +972,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             // we block until class redefinition is done
             // unless we're the redefine thread
             getContext().getClassRedefinition().check();
-            if (isRemovedByRedefition()) {
+            if (isRemovedByRedefinition()) {
                 // for a removed method, we return the latest known
                 // method version in case active frames try to
                 // retrieve information for obsolete methods
@@ -987,7 +989,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         removedByRedefinition = true;
     }
 
-    public boolean isRemovedByRedefition() {
+    public boolean isRemovedByRedefinition() {
         return removedByRedefinition;
     }
 
@@ -1093,6 +1095,36 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             initRefKind();
         }
 
+        public SourceSection getWholeMethodSourceSection() {
+            Source s = getSource();
+            if (s == null) {
+                return null;
+            }
+
+            LineNumberTableAttribute lineNumberTable = getLineNumberTableAttribute();
+
+            if (lineNumberTable != LineNumberTableAttribute.EMPTY) {
+                List<LineNumberTableAttribute.Entry> entries = lineNumberTable.getEntries();
+                int startLine = Integer.MAX_VALUE;
+                int endLine = 0;
+
+                for (int i = 0; i < entries.size(); i++) {
+                    int line = entries.get(i).getLineNumber();
+                    if (line > endLine) {
+                        endLine = line;
+                    }
+                    if (line < startLine) {
+                        startLine = line;
+                    }
+                }
+
+                if (startLine >= 1 && endLine >= 1 && startLine <= endLine) {
+                    return s.createSection(startLine, -1, endLine, -1);
+                } // (else) Most likely generated bytecodes with dummy LineNumberTable attribute.
+            }
+            return s.createUnavailableSection();
+        }
+
         public void initRefKind() {
             if (Modifier.isStatic(linkedMethod.getFlags())) {
                 this.refKind = REF_invokeStatic;
@@ -1131,6 +1163,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return code;
         }
 
+        @Idempotent
         public Method getMethod() {
             return Method.this;
         }
@@ -1210,14 +1243,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 if (callTarget != null) {
                     return;
                 }
-                if (proxy != null) {
+                if (proxy != Method.this) {
                     this.callTarget = proxy.getCallTarget();
                     return;
                 }
 
                 /*
                  * The substitution factory does the validation e.g. some substitutions only apply
-                 * for classes/methods in the boot or platform class loaders. A warning is logged is
+                 * for classes/methods in the boot or platform class loaders. A warning is logged if
                  * the validation fails.
                  */
                 EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
@@ -1395,7 +1428,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public Object invokeMethod(Object callee, Object[] args) {
-            if (getMethod().isRemovedByRedefition()) {
+            if (getMethod().isRemovedByRedefinition()) {
                 Meta meta = getMeta();
                 throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
                                 meta.toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getName() + getRawSignature()));

@@ -26,15 +26,20 @@
 package com.oracle.svm.common.option;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface MultiOptionValue<T> {
 
     Class<T> getValueType();
 
+    String getDelimiter();
+
     /**
      * @return a list of option values, one for each place where the option is used.
      */
     List<T> values();
+
+    Optional<T> lastValue();
 
     void valueUpdate(Object value);
 

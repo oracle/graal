@@ -27,34 +27,45 @@ package com.oracle.graal.pointsto.flow.context.bytecode;
 import static jdk.vm.ci.common.JVMCIError.guarantee;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.CallSiteSensitiveMethodTypeFlow;
-import com.oracle.graal.pointsto.flow.DirectInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraphClone;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.util.LightImmutableCollection;
+import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 final class BytecodeSensitiveStaticInvokeTypeFlow extends AbstractStaticInvokeTypeFlow {
 
-    private AnalysisContext calleeContext;
+    /**
+     * Contexts of the resolved method.
+     */
+    @SuppressWarnings("unused") private volatile Object calleesFlows;
+
+    private static final AtomicReferenceFieldUpdater<BytecodeSensitiveStaticInvokeTypeFlow, Object> CALLEES_FLOWS_ACCESSOR = AtomicReferenceFieldUpdater.newUpdater(
+                    BytecodeSensitiveStaticInvokeTypeFlow.class, Object.class,
+                    "calleesFlows");
+
     /**
      * Context of the caller.
      */
     private AnalysisContext callerContext;
 
     BytecodeSensitiveStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
-        calleeContext = null;
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
     }
 
     private BytecodeSensitiveStaticInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveStaticInvokeTypeFlow original) {
@@ -71,7 +82,7 @@ final class BytecodeSensitiveStaticInvokeTypeFlow extends AbstractStaticInvokeTy
     public void update(PointsToAnalysis bb) {
         assert this.isClone();
         /* The static invokes should be updated only once and the callee should be null. */
-        guarantee(callee == null, "static invoke updated multiple times!");
+        guarantee(LightImmutableCollection.isEmpty(this, CALLEES_ACCESSOR), "static invoke updated multiple times!");
 
         // Unlinked methods can not be parsed
         if (!targetMethod.getWrapped().getDeclaringClass().isLinked()) {
@@ -82,23 +93,30 @@ final class BytecodeSensitiveStaticInvokeTypeFlow extends AbstractStaticInvokeTy
          * Initialize the callee lazily so that if the invoke flow is not reached in this context,
          * i.e. for this clone, there is no callee linked/
          */
-        callee = targetMethod.getTypeFlow();
-        // set the callee in the original invoke too
-        ((DirectInvokeTypeFlow) originalInvoke).callee = callee;
+        initializeCallees(bb);
+        PointsToAnalysisMethod singleMethod = LightImmutableCollection.toSingleElement(this, CALLEES_ACCESSOR);
+        if (singleMethod != null) {
+            LightImmutableCollection.initializeNonEmpty(this, CALLEES_FLOWS_ACCESSOR, getCalleeFlow(bb, singleMethod));
+        } else {
+            Collection<PointsToAnalysisMethod> collection = LightImmutableCollection.toCollection(this, CALLEES_ACCESSOR);
+            var flows = collection.stream().map(callee -> getCalleeFlow(bb, callee)).collect(Collectors.toUnmodifiableSet());
+            LightImmutableCollection.initializeNonEmpty(this, CALLEES_FLOWS_ACCESSOR, flows);
+        }
+    }
 
-        calleeContext = BytecodeSensitiveAnalysisPolicy.contextPolicy(bb).staticCalleeContext(bb, source, (BytecodeAnalysisContext) callerContext, callee);
-        MethodFlowsGraph calleeFlows = ((CallSiteSensitiveMethodTypeFlow) callee).addContext(bb, calleeContext, this);
+    private MethodFlowsGraph getCalleeFlow(PointsToAnalysis bb, PointsToAnalysisMethod callee) {
+        MethodTypeFlow calleeTypeFlow = callee.getTypeFlow();
+
+        AnalysisContext calleeContext = BytecodeSensitiveAnalysisPolicy.contextPolicy(bb).staticCalleeContext(bb, source, (BytecodeAnalysisContext) callerContext, calleeTypeFlow);
+        MethodFlowsGraphInfo calleeFlows = ((CallSiteSensitiveMethodTypeFlow) calleeTypeFlow).addContext(bb, calleeContext, this);
+
         linkCallee(bb, true, calleeFlows);
+
+        return (MethodFlowsGraph) calleeFlows;
     }
 
     @Override
-    public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
-        if (callee == null || calleeContext == null) {
-            /* This static invoke was not updated. */
-            return Collections.emptyList();
-        } else {
-            MethodFlowsGraph methodFlows = ((CallSiteSensitiveMethodTypeFlow) callee).getFlows(calleeContext);
-            return Collections.singletonList(methodFlows);
-        }
+    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
+        return LightImmutableCollection.toCollection(this, CALLEES_FLOWS_ACCESSOR);
     }
 }

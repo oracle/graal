@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,6 +77,7 @@ import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
@@ -89,6 +90,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -155,7 +157,7 @@ public final class Engine implements AutoCloseable {
          */
         @SuppressWarnings("unused")
         private static void preInitializeEngine() {
-            IMPL.preInitializeEngine(IMPL.createHostLanguage(IMPL.createHostAccess()));
+            IMPL.preInitializeEngine();
         }
 
         /**
@@ -174,7 +176,7 @@ public final class Engine implements AutoCloseable {
          */
         private static void debugContextPreInitialization() {
             if (!ImageInfo.inImageCode() && System.getProperty("polyglot.image-build-time.PreinitializeContexts") != null) {
-                IMPL.preInitializeEngine(IMPL.createHostLanguage(IMPL.createHostAccess()));
+                IMPL.preInitializeEngine();
             }
         }
 
@@ -622,8 +624,9 @@ public final class Engine implements AutoCloseable {
             if (polyglot == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
+            LogHandler logHandler = customLogHandler != null ? polyglot.newLogHandler(customLogHandler) : null;
             Engine engine = polyglot.buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions,
-                            boundEngine, messageTransport, customLogHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null);
+                            boundEngine, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null);
             return engine;
         }
 
@@ -814,6 +817,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public MutableTargetMapping[] getMutableTargetMappings(HostAccess access) {
+            return access.getMutableTargetMappings();
+        }
+
+        @Override
         public List<Object> getTargetMappings(HostAccess access) {
             return access.getTargetMappings();
         }
@@ -846,6 +854,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public boolean isMapAccessible(HostAccess access) {
             return access.allowMapAccess;
+        }
+
+        @Override
+        public boolean isBigIntegerAccessibleAsNumber(HostAccess access) {
+            return access.allowBigIntegerNumberAccess;
         }
 
         @Override
@@ -984,7 +997,7 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties,
-                        boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage,
+                        boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage,
                         boolean hostLanguageOnly, boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
             throw noPolyglotImplementationFound();
         }
@@ -1020,7 +1033,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public void preInitializeEngine(Object hostLanguage) {
+        public void preInitializeEngine() {
         }
 
         @Override
@@ -1048,12 +1061,22 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
         public ProcessHandler newDefaultProcessHandler() {
             throw noPolyglotImplementationFound();
         }
 
         @Override
         public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
+            return false;
+        }
+
+        @Override
+        public boolean isInternalFileSystem(FileSystem fileSystem) {
             return false;
         }
 

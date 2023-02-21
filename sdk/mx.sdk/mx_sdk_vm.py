@@ -54,33 +54,11 @@ import types
 
 from os.path import join, exists, isfile, isdir, dirname, relpath
 from zipfile import ZipFile, ZIP_DEFLATED
-from binascii import b2a_hex
+from binascii import b2a_hex # pylint: disable=no-name-in-module
 from collections import OrderedDict
 from argparse import ArgumentParser
 
 from mx_javamodules import as_java_module, JavaModuleDescriptor
-
-
-def _with_metaclass(meta, *bases):
-    """Create a base class with a metaclass."""
-
-    # Copyright (c) 2010-2018 Benjamin Peterson
-    # Taken from six, Python compatibility library
-    # MIT license
-
-    # This requires a bit of explanation: the basic idea is to make a dummy
-    # metaclass for one level of class instantiation that replaces itself with
-    # the actual metaclass.
-    class MetaClass(type):
-
-        def __new__(mcs, name, this_bases, d):
-            return meta(name, bases, d)
-
-        @classmethod
-        def __prepare__(mcs, name, this_bases):
-            return meta.__prepare__(name, bases)
-    return type.__new__(MetaClass, '_with_metaclass({}, {})'.format(meta, bases), (), {})  # pylint: disable=unused-variable
-
 
 _suite = mx.suite('sdk')
 _graalvm_components = dict()  # By short_name
@@ -98,7 +76,7 @@ _known_vms = set()
 _base_jdk = None
 
 
-class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
+class AbstractNativeImageConfig(object, metaclass=ABCMeta):
     def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
         """
         :type destination: str
@@ -399,6 +377,11 @@ class GraalVmTruffleComponent(GraalVmComponent):
 
 
 class GraalVmLanguage(GraalVmTruffleComponent):
+    """
+    :param support_distributions: distributions the contents of which is added to the language's home directory.
+    The contents of support distributions setting the `fileListPurpose` attribute to `native-image-resources` will end up as file list in the `native-image-resources.filelist` file in this language's home directory.
+    As a part of a native image build that includes this language, the files in the merged file list will be copied as resources to a directory named `resources` next to the produced image.
+    """
     pass
 
 

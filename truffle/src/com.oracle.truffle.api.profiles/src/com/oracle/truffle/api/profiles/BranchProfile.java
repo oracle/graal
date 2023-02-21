@@ -42,6 +42,8 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -88,19 +90,6 @@ public final class BranchProfile extends Profile {
     }
 
     /**
-     * Call to create a new instance of a branch profile.
-     *
-     * @since 0.10
-     */
-    public static BranchProfile create() {
-        if (Profile.isProfilingEnabled()) {
-            return new BranchProfile();
-        } else {
-            return getUncached();
-        }
-    }
-
-    /**
      * {@inheritDoc}
      *
      * @since 22.1
@@ -133,10 +122,34 @@ public final class BranchProfile extends Profile {
     @Override
     public String toString() {
         if (this == DISABLED) {
-            return toStringDisabled(BranchProfile.class);
+            return toStringDisabled();
         } else {
             return toString(BranchProfile.class, !visited, false, "VISITED");
         }
+    }
+
+    /**
+     * Call to create a new instance of a branch profile.
+     *
+     * @since 0.10
+     */
+    @NeverDefault
+    public static BranchProfile create() {
+        if (isProfilingEnabled()) {
+            return new BranchProfile();
+        } else {
+            return getUncached();
+        }
+    }
+
+    /**
+     * Returns an inlined version of the profile. This version is automatically used by Truffle DSL
+     * node inlining.
+     *
+     * @since 23.0
+     */
+    public static InlinedBranchProfile inline(InlineTarget target) {
+        return InlinedBranchProfile.inline(target);
     }
 
     /**

@@ -225,7 +225,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     public UnsignedWord getCurrentHeapCapacity() {
         assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();
-        return edenSize.add(survivorSize.multiply(2)).add(oldSize);
+        return edenSize.add(survivorSize).add(oldSize);
     }
 
     @Override
@@ -233,6 +233,19 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();
         return survivorSize;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Ensure reading a consistent value.")
+    public UnsignedWord getYoungGenerationCapacity() {
+        guaranteeSizeParametersInitialized();
+        return edenSize.add(survivorSize);
+    }
+
+    @Override
+    public UnsignedWord getOldGenerationCapacity() {
+        guaranteeSizeParametersInitialized();
+        return oldSize;
     }
 
     @Override
@@ -254,6 +267,17 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     public int getTenuringAge() {
         assert VMOperation.isGCInProgress() : "use only during GC";
         return tenuringThreshold;
+    }
+
+    @Override
+    public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) {
+        // Capture the fraction of bytes in aligned chunks at the start to include all allocated
+        // (also dead) objects, because we use it to reserve aligned chunks for future allocations
+        UnsignedWord youngChunkBytes = GCImpl.getGCImpl().getAccounting().getYoungChunkBytesBefore();
+        if (youngChunkBytes.notEqual(0)) {
+            UnsignedWord youngAlignedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getAlignedChunkBytes();
+            avgYoungGenAlignedChunkFraction.sample(UnsignedUtils.toDouble(youngAlignedChunkBytes) / UnsignedUtils.toDouble(youngChunkBytes));
+        }
     }
 
     @Override

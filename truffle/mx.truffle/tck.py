@@ -274,6 +274,10 @@ def _find_unit_tests(cp, pkgs=None):
 
 def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter, cp, truffle_cp, boot_cp, vm_args, debug_port):
     tests = _find_unit_tests(cp, pkgs=['com.oracle.truffle.tck.tests'])
+    if mode.name == 'default' and not _has_explicit_assertion_option(vm_args):
+        vm_args.append('-ea')
+    if mode.name == 'default' and not _has_explicit_system_assertion_option(vm_args):
+        vm_args.append('-esa')
     vm_args.extend(mode.vm_args)
     if language_filter:
         vm_args.append('-Dtck.language={0}'.format(language_filter))
@@ -290,6 +294,24 @@ def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_
     ret_code = p.wait()
     return ret_code
 
+def _has_explicit_assertion_option(vm_args):
+    """
+        Checks if the vm_args contain any option for enabling or disabling assertions.
+
+        :param vm_args: an iterable containing Java VM args
+        """
+    for vm_arg in vm_args:
+        if vm_arg.startswith('-ea') or vm_arg.startswith('-enableassertions') or vm_arg.startswith('-da') or vm_arg.startswith('-disableassertions'):
+            return True
+    return False
+
+def _has_explicit_system_assertion_option(vm_args):
+    """
+        Checks if the vm_args contain any option for enabling or disabling system assertions.
+
+        :param vm_args: an iterable containing Java VM args
+        """
+    return '-esa' in vm_args or '-enablesystemassertions' in vm_args or '-dsa' in vm_args or '-disablesystemassertions' in vm_args
 
 def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_filter=None, tests_filter=None, cp=None, truffle_cp=None, boot_cp=None, vm_args=None, debug_port=None):
     """
@@ -404,8 +426,22 @@ def _main(argv):
     usage = parser.format_usage().strip()
     if usage.startswith('usage: '):
         usage = usage[len('usage: '):]
-    parser.usage = usage + ' [VM options...] [language [mode [test filters...]]]'
-    parsed_args, args = parser.parse_known_args()
+    parser.usage = usage + ' [--] [VM options...] [language [mode [test filters...]]]'
+
+    args_before_delimiter = []
+    args_after_delimiter = argv[1:]     # remove the script name in argv[0]
+    while len(args_after_delimiter) > 0:
+        arg = args_after_delimiter.pop(0)
+        if arg == '--':
+            break
+        args_before_delimiter.append(arg)
+    if len(args_after_delimiter) == 0:
+        # parse all known arguments
+        parsed_args, args = parser.parse_known_args(args_before_delimiter)
+    else:
+        # all arguments before '--' must be recognized
+        parsed_args = parser.parse_args(args_before_delimiter)
+        args = args_after_delimiter
 
     global _log_level
     _log_level = parsed_args.log_level

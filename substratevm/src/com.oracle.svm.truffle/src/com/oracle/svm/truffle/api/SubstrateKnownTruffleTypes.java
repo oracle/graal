@@ -24,11 +24,8 @@
  */
 package com.oracle.svm.truffle.api;
 
-import java.util.Arrays;
-
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
@@ -48,25 +45,14 @@ public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
     @Override
     protected ResolvedJavaType lookupType(String className) {
         AnalysisType type = (AnalysisType) super.lookupType(className);
-        type.registerAsReachable();
+        type.registerAsReachable("known Truffle type");
         return type;
     }
 
     @Override
     protected ResolvedJavaType lookupType(Class<?> c) {
         AnalysisType type = (AnalysisType) super.lookupType(c);
-        type.registerAsReachable();
+        type.registerAsReachable("known Truffle type");
         return type;
-    }
-
-    @Override
-    protected ResolvedJavaField[] getInstanceFields(ResolvedJavaType type, boolean includeSuperclasses) {
-        AnalysisField[] fields = ((AnalysisType) type).getInstanceFields(includeSuperclasses);
-        /*
-         * We must not embed an object of dynamic type AnalysisField[] in the image heap. Object
-         * replacement does not replace arrays, only their elements. Therefore we replace the array
-         * manually by one with a dynamic type allowed in the image heap.
-         */
-        return Arrays.copyOf(fields, fields.length, ResolvedJavaField[].class);
     }
 }

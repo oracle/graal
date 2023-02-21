@@ -1,7 +1,6 @@
 {
-  local common_json = (import '../../../common.json'),
-  local c = (import '../../../common.jsonnet'),
-  local bc = (import '../../../bench-common.libsonnet'),
+  local c = (import '../../../ci/ci_common/common.jsonnet'),
+  local bc = (import '../../../ci/ci_common/bench-common.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
 
   local _suite_key(a) = a['suite'],
@@ -84,7 +83,7 @@
     ],
     timelimit: "01:30:00",
     forks_batches:: 1,
-    forks_timelimit:: "03:30:00",
+    forks_timelimit:: "04:30:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
@@ -209,7 +208,6 @@
   microservice_benchmarks: cc.compiler_benchmark + {
     suite:: "microservices",
     packages+: {
-      "python3": common_json.deps.common.packages["python3"],
       "pip:psutil": "==5.8.0"
     },
     local bench_upload = ["bench-uploader.py", "bench-results.json"],

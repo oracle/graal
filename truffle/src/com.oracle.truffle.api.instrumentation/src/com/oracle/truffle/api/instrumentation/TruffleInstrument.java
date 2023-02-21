@@ -65,6 +65,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -172,8 +173,12 @@ public abstract class TruffleInstrument {
      * languages are going to be disposed, possibly because the underlying
      * {@linkplain org.graalvm.polyglot.Engine engine} is going to be closed. This method is called
      * before {@link #onDispose(Env)} and the instrument must remain usable after finalization. The
-     * instrument can prepare for disposal while still having other instruments not disposed yet.
-     *
+     * instrument can prepare for disposal while still having other instruments not disposed yet. In
+     * the event of VM shutdown, {@link #onDispose(Env)} for active instruments on unclosed
+     * {@link org.graalvm.polyglot.Engine engines} is not called, and so in case the instrument is
+     * supposed to do some specific action before its disposal, e.g. print some kind of summary, it
+     * should be done in this method.
+     * 
      * @param env environment information for the instrument
      * @since 19.0
      */
@@ -185,7 +190,9 @@ public abstract class TruffleInstrument {
      * Invoked once on an {@linkplain TruffleInstrument instance} when it becomes disabled, possibly
      * because the underlying {@linkplain org.graalvm.polyglot.Engine engine} has been closed. A
      * disposed instance is no longer usable. If the instrument is re-enabled, the engine will
-     * create a new instance.
+     * create a new instance. In the event of VM shutdown, this method is not called for active
+     * instruments on unclosed {@link org.graalvm.polyglot.Engine engines}. The unclosed engines are
+     * not closed automatically on VM shutdown, they just die with the VM.
      *
      * @param env environment information for the instrument
      * @since 0.12
@@ -1310,6 +1317,16 @@ public abstract class TruffleInstrument {
         /**
          * A link to a website with more information about the instrument. Will be shown in the help
          * text of GraalVM launchers.
+         * <p>
+         * The link can contain the following substitutions:
+         * <dl>
+         * <dt>{@code ${graalvm-version}}</dt>
+         * <dd>the current GraalVM version. Optionally, a format string can be provided for the
+         * version using {@code ${graalvm-version:format}}. See {@link Version#format}.
+         * <dt>{@code ${graalvm-website-version}}</dt>
+         * <dd>the current GraalVM version in a format suitable for links to the GraalVM reference
+         * manual. The exact format may change without notice.</dd>
+         * </dl>
          * 
          * @since 22.1.0
          */

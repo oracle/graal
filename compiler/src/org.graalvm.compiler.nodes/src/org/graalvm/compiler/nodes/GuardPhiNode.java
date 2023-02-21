@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,7 @@ public final class GuardPhiNode extends PhiNode implements GuardingNode {
         this.values = new NodeInputList<>(this);
     }
 
-    public GuardPhiNode(AbstractMergeNode merge, ValueNode[] values) {
+    public GuardPhiNode(AbstractMergeNode merge, ValueNode... values) {
         super(TYPE, StampFactory.forVoid(), merge);
         this.values = new NodeInputList<>(this, values);
     }
@@ -59,6 +59,11 @@ public final class GuardPhiNode extends PhiNode implements GuardingNode {
     @Override
     public PhiNode duplicateOn(AbstractMergeNode newMerge) {
         return graph().addWithoutUnique(new GuardPhiNode(newMerge));
+    }
+
+    @Override
+    public GuardPhiNode duplicateWithValues(AbstractMergeNode newMerge, ValueNode... newValues) {
+        return new GuardPhiNode(newMerge, newValues);
     }
 
     @Override

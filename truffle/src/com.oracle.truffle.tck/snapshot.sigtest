@@ -95,6 +95,7 @@ meth public static com.oracle.truffle.api.source.Source getSourceImpl(org.graalv
 meth public void assertBreakpointsBreakEverywhere(org.graalvm.polyglot.Source)
 meth public void assertBreakpointsBreakEverywhere(org.graalvm.polyglot.Source,com.oracle.truffle.tck.DebuggerTester$PositionPredicate)
 meth public void assertColumnBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String,java.lang.String)
+meth public void assertColumnBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.net.URI)
 meth public void assertLineBreakpointsResolution(java.lang.String,com.oracle.truffle.tck.DebuggerTester$PositionPredicate,java.lang.String,java.lang.String)
 meth public void assertLineBreakpointsResolution(java.lang.String,java.lang.String,java.lang.String)
 meth public void close()

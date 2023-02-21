@@ -210,7 +210,7 @@ abstract class NativeCalculator extends Calculator {
 
 ### Custom marshallers
 
-The annotation processor supports Java primitive types, `String`, arrays of primitive types, and foreign references. For other types, a marshaller must be registered in the `JNIConfig`. In the following example, we will change the `Calculator` interface to work with a custom complex number type.
+The annotation processor supports Java primitive types, `String`, arrays of primitive types, and foreign references. For other types, a marshaller must be registered in the `JNIConfig`. Arrays of custom types are supported by a marshaller for the array component type, and the annotation processor automatically generates a loop for marshalling and unmarshalling the array. In the following example, we will change the `Calculator` interface to work with a custom complex number type.
 
 ```java
 final class Complex {
@@ -255,6 +255,68 @@ final class ComplexMarshaller implements BinaryMarshaller<Complex> {
 ```
 
 Finally, the marshaller needs to be registered in the `JNIConfig`, see [JNIConfig](#JNIConfig) section for information on how to register a marshaller.
+
+The annotation processor also supports `out` parameters of custom types. To support `out` parameters the marshaller needs to implement also `writeUpdate`, `readUpdate`, and `inferUpdateSize` methods. The following example bridges `split` method with two out `List<Integer>` parameters.
+
+```java
+interface Numbers {
+    void split(int pivot, List<Integer> numbers, List<Integer> belowOrEqual, List<Integer> above);
+}
+
+@GenerateHotSpotToNativeBridge(jniConfig = ExampleJNIConfig.class)
+abstract class NativeNumbers extends NativeObject implements Numbers {
+    public abstract void split(int pivot, List<Integer> numbers, @Out List<Integer> belowOrEqual, @Out List<Integer> above);
+}
+
+
+```
+
+The `List<Integer>` type is unknown to the annotation processor. We need to provide a marshaller to convert it into a serial form and recreate it from a serial form. The marshaller also needs to implement out parameter methods.
+```java
+final class IntListMarshaller implements BinaryMarshaller<List<Integer>> {
+    @Override
+    public List<Integer> read(BinaryInput input) {
+        int len = input.readInt();
+        List<Integer> result = new ArrayList<>(len);
+        for (int i = 0; i < len; i++) {
+            result.add(input.readInt());
+        }
+        return result;
+    }
+
+    @Override
+    public void write(BinaryOutput output, List<Integer> object) {
+        output.writeInt(object.size());
+        for (Integer i : object) {
+            output.writeInt(i);
+        }
+    }
+
+    @Override
+    public int inferSize(List<Integer> object) {
+        return Integer.BYTES + Integer.BYTES * object.size();
+    }
+
+    @Override
+    public void writeUpdate(BinaryOutput output, List<Integer> object) {
+        write(output, object);
+    }
+
+    @Override
+    public void readUpdate(BinaryInput input, List<Integer> object) {
+        object.clear();
+        int len = input.readInt();
+        for (int i = 0; i < len; i++) {
+            object.add(input.readInt());
+        }
+    }
+
+    @Override
+    public int inferUpdateSize(List<Integer> object) {
+        return inferSize(object);
+    }
+}
+```
 
 ### Foreign reference types
 

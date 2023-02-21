@@ -83,7 +83,7 @@ public final class EspressoEnv {
     // Checkstyle: stop field name check
 
     // Performance control
-    public final boolean InlineFieldAccessors;
+    public final boolean bytecodeLevelInlining;
     public final boolean InlineMethodHandle;
     public final boolean SplitMethodHandles;
 
@@ -127,7 +127,7 @@ public final class EspressoEnv {
         this.shouldReportVMEvents = JDWPOptions != null;
         this.eventListener = new VMEventListenerImpl();
 
-        this.InlineFieldAccessors = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineFieldAccessors);
+        this.bytecodeLevelInlining = JDWPOptions == null && env.getOptions().get(EspressoOptions.BytecodeLevelInlining);
         this.InlineMethodHandle = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineMethodHandle);
         this.SplitMethodHandles = JDWPOptions == null && env.getOptions().get(EspressoOptions.SplitMethodHandles);
         this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
@@ -137,9 +137,11 @@ public final class EspressoEnv {
         boolean useHostFinalReferenceOption = env.getOptions().get(EspressoOptions.UseHostFinalReference);
         this.UseHostFinalReference = useHostFinalReferenceOption && FinalizationSupport.canUseHostFinalReference();
         if (useHostFinalReferenceOption && !FinalizationSupport.canUseHostFinalReference()) {
-            context.getLogger().warning("--java.UseHostFinalReference is set to 'true' but Espresso cannot access the host java.lang.ref.FinalReference class.\n" +
-                            "Ensure that host system properties '-Despresso.finalization.InjectClasses=true' and '-Despresso.finalization.UnsafeOverride=true' are set.\n" +
-                            "Espresso's guest FinalReference(s) will fallback to WeakReference semantics.");
+            if (env.getOptions().hasBeenSet(EspressoOptions.UseHostFinalReference)) {
+                context.getLogger().warning("--java.UseHostFinalReference is set to 'true' but Espresso cannot access the host java.lang.ref.FinalReference class.\n" +
+                                "Ensure that host system properties '-Despresso.finalization.InjectClasses=true' and '-Despresso.finalization.UnsafeOverride=true' are set.\n" +
+                                "Espresso's guest FinalReference(s) will fallback to WeakReference semantics.");
+            }
         }
 
         String multiThreadingDisabledReason = null;

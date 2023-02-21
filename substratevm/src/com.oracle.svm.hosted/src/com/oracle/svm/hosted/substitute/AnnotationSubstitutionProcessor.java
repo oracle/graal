@@ -53,7 +53,6 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -76,6 +75,7 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -121,6 +121,15 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     public void registerFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
         ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
+        if (!SubstrateOptions.parseOnce() && classInitializationSupport.shouldInitializeAtRuntime(reflectionField.getDeclaringClass())) {
+            String parseOnce = SubstrateOptions.ParseOnce.getName();
+            String reason = "It was detected that " + parseOnce + " is disabled. " +
+                            "Registering a field value transformer for a field whose declaring class is marked for run time initialization is not supported in this configuration. " +
+                            "(This can happen for example when trying to include a Truffle Language implementation in a Spring Boot application. " +
+                            "Since the Truffle framework doesn't currently support " + parseOnce + " it automatically disables this feature. " +
+                            "For more information see https://github.com/oracle/graal/issues/4473.)";
+            throw UserError.abort("Cannot register a field value transformer for field %s: %s", field, reason);
+        }
         boolean isFinal = field.isFinal();
         ComputedValueField computedValueField = new ComputedValueField(field, field, Kind.Custom, reflectionField.getType(), transformer, null, null, isFinal, false);
         ResolvedJavaField existingSubstitution = fieldSubstitutions.put(field, computedValueField);
@@ -300,14 +309,20 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     @Override
     public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        if (method instanceof SubstitutionMethod) {
-            return ((SubstitutionMethod) method).getOriginal();
-        } else if (method instanceof CustomSubstitutionMethod) {
-            return ((CustomSubstitutionMethod) method).getOriginal();
-        } else if (method instanceof AnnotatedMethod) {
-            return ((AnnotatedMethod) method).getOriginal();
+        ResolvedJavaMethod cur = method;
+        while (true) {
+            if (cur instanceof SubstitutionMethod) {
+                cur = ((SubstitutionMethod) cur).getOriginal();
+            } else if (cur instanceof CustomSubstitutionMethod) {
+                cur = ((CustomSubstitutionMethod) cur).getOriginal();
+            } else if (cur instanceof AnnotatedMethod) {
+                cur = ((AnnotatedMethod) cur).getOriginal();
+            } else if (cur instanceof IncompatibleClassChangeFallbackMethod) {
+                cur = ((IncompatibleClassChangeFallbackMethod) cur).getOriginal();
+            } else {
+                return cur;
+            }
         }
-        return method;
     }
 
     /**
@@ -320,12 +335,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:
-                        AnalysisType targetFieldDeclaringType = bb.getMetaAccess().lookupJavaType(cvField.getTargetField().getDeclaringClass());
-                        targetFieldDeclaringType.registerAsReachable();
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
-                        targetField.registerAsAccessed();
+                        targetField.registerAsAccessed(cvField);
                         assert !AnnotationAccess.isAnnotationPresent(targetField, Delete.class);
-                        targetField.registerAsUnsafeAccessed();
+                        targetField.registerAsUnsafeAccessed(cvField);
                         break;
                 }
             }
@@ -432,6 +445,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         int numAnnotations = (deleteAnnotation != null ? 1 : 0) + (substituteAnnotation != null ? 1 : 0) + (annotateOriginalAnnotation != null ? 1 : 0) + (aliasAnnotation != null ? 1 : 0);
         if (numAnnotations == 0) {
+            if (!(annotatedMethod instanceof Constructor) && annotatedMethod.getName().startsWith("lambda$")) {
+                String targetClass = annotatedMethod.getDeclaringClass().getName();
+                String[] methodNameParts = annotatedMethod.getName().split("[$]");
+                String method = methodNameParts.length > 1 ? methodNameParts[1] : annotatedMethod.getName();
+
+                throw UserError.abort("Lambda usage detected in the substitution method: %s#%s. Lambdas are not supported inside" +
+                                " substitution methods. To fix the issue, replace the culprit lambda with an equivalent anonymous class.", targetClass, method);
+            }
             guarantee(annotatedMethod instanceof Constructor, "One of @Delete, @Substitute, @AnnotateOriginal, or @Alias must be used: %s", annotatedMethod);
             return;
         }

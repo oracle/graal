@@ -45,7 +45,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
     @Override
     public boolean forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
         if (!field.isWritten()) {
-            return field.registerAsWritten(null);
+            return field.registerAsWritten(reason);
         }
         return false;
     }
@@ -124,7 +124,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         Object valueObj = analysis.getSnippetReflectionProvider().asObject(Object.class, value);
         AnalysisType type = bb.getMetaAccess().lookupJavaType(valueObj.getClass());
 
-        type.registerAsInHeap();
+        type.registerAsInHeap(reason);
     }
 
     private PointsToAnalysis getAnalysis() {

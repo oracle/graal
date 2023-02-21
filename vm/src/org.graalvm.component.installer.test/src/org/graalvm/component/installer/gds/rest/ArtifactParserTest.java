@@ -28,6 +28,7 @@ package org.graalvm.component.installer.gds.rest;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONException;
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.Arrays;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.Version;
@@ -140,7 +141,7 @@ public class ArtifactParserTest extends TestBase {
             ap = new ArtifactParser(jo);
             fail("StringIndexOutOfBoundsException expected.");
         } catch (StringIndexOutOfBoundsException ex) {
-            assertEquals("begin 0, end -1, length 15", ex.getMessage());
+            assertEquals(makeSubstringExceptionMessage(0, -1, 15), ex.getMessage());
             // expected
         }
         jo.put(JSON_KEY_DISP_NAME, JSON_VAL_DISP_NAME + SystemUtils.OS.get().getName());
@@ -179,6 +180,22 @@ public class ArtifactParserTest extends TestBase {
         assertEquals(JSON_META_VAL_EDITION, ap.getEdition());
         setMeta(meta, JSON_META_KEY_SYMBOLIC_NAME, JSON_META_VAL_SYMBOLIC_NAME);
         assertEquals(JSON_META_VAL_SYMBOLIC_NAME, ap.getLabel());
+    }
+
+    private static String makeSubstringExceptionMessage(int start, int end, int length) {
+        String str = makeStringOfLength(length);
+        try {
+            str.substring(start, end);
+        } catch (StringIndexOutOfBoundsException ex) {
+            return ex.getMessage();
+        }
+        return null;
+    }
+
+    private static String makeStringOfLength(int length) {
+        char[] arr = new char[length];
+        Arrays.fill(arr, 'a');
+        return String.valueOf(arr);
     }
 
     @Test

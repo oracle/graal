@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.reachability;
 
+import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -143,7 +144,7 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                     continue;
                 }
                 if (method != null) {
-                    method.addInvoke(new ReachabilityInvokeInfo(targetMethod, ReachabilityAnalysisMethod.sourcePosition(node, method), kind.isDirect()));
+                    method.addInvoke(new ReachabilityInvokeInfo(targetMethod, AbstractAnalysisEngine.sourcePosition(node.asNode()), kind.isDirect()));
                 }
                 if (kind.isDirect()) {
                     implementationInvokedMethods.add(targetMethod);

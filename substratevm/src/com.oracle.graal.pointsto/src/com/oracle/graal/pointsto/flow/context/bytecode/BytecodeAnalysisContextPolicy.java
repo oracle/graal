@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -117,7 +117,7 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
          * the invoke location, otherwise just reuse the caller context.
          */
 
-        if (!PointstoOptions.HybridStaticContext.getValue(bb.getOptions())) {
+        if (!bb.analysisPolicy().useHybridStaticContext()) {
             return callerContext;
         }
 
@@ -145,14 +145,6 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
     @Override
     public BytecodeAnalysisContext allocationContext(BytecodeAnalysisContext context, int maxHeapContextDepth) {
         return peel(context, maxHeapContextDepth);
-    }
-
-    public BytecodeAnalysisContext getContext(BytecodePosition bcl) {
-        return getContext(new BytecodePosition[]{bcl});
-    }
-
-    public BytecodeAnalysisContext getContext(BytecodePosition[] positions) {
-        return lookupContext(positions);
     }
 
     private BytecodeAnalysisContext lookupContext(BytecodePosition[] positions) {

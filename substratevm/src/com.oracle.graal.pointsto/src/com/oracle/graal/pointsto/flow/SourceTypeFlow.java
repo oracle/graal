@@ -59,7 +59,7 @@ public final class SourceTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     public SourceTypeFlow(SourceTypeFlow original, MethodFlowsGraph methodFlows) {
-        super(original, methodFlows);
+        super(original, methodFlows, original.getState().canBeNull() ? TypeState.forNull() : TypeState.forEmpty());
     }
 
     @Override
@@ -71,6 +71,11 @@ public final class SourceTypeFlow extends TypeFlow<BytecodePosition> {
     public void initFlow(PointsToAnalysis bb) {
         /* Propagate the source state when the type is marked as instantiated. */
         declaredType.registerInstantiatedCallback(a -> addState(bb, TypeState.forExactType(bb, declaredType, false)));
+    }
+
+    @Override
+    public boolean needsInitialization() {
+        return true;
     }
 
     @Override

@@ -54,7 +54,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -123,19 +123,19 @@ public class LoopPredicationPhase extends PostRunCanonicalizationPhase<MidTierCo
                                 // backedge.
                                 // The following logic emulates that behavior.
                                 final NodeIterable<LoopEndNode> loopEndNodes = loop.loopBegin().loopEnds();
-                                final Block end = data.getCFG().commonDominatorFor(loopEndNodes);
+                                final HIRBlock end = data.getCFG().commonDominatorFor(loopEndNodes);
                                 guards = guards.filter(guard -> {
                                     final ValueNode anchor = ((GuardNode) guard).getAnchor().asNode();
-                                    final Block anchorBlock = data.getCFG().getNodeToBlock().get(anchor);
+                                    final HIRBlock anchorBlock = data.getCFG().getNodeToBlock().get(anchor);
                                     return AbstractControlFlowGraph.dominates(anchorBlock, end);
                                 });
                             }
                             final AbstractBeginNode body = loop.counted().getBody();
-                            final Block bodyBlock = cfg.getNodeToBlock().get(body);
+                            final HIRBlock bodyBlock = cfg.getNodeToBlock().get(body);
 
                             for (GuardNode guard : guards) {
                                 final AnchoringNode anchor = guard.getAnchor();
-                                final Block anchorBlock = cfg.getNodeToBlock().get(anchor.asNode());
+                                final HIRBlock anchorBlock = cfg.getNodeToBlock().get(anchor.asNode());
                                 // for inverted loop the anchor can dominate the body
                                 if (!inverted) {
                                     if (!AbstractControlFlowGraph.dominates(bodyBlock, anchorBlock)) {

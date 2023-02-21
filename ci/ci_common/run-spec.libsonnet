@@ -8,7 +8,7 @@ local examples   = (import "run-spec-examples.libsonnet").examples;
   // Supported platforms
   supported_oss_names:: ["linux", "darwin", "windows"],
   supported_archs_names:: ["amd64", "aarch64"],
-  supported_jdks_names:: ["jdk11", "jdk17", "jdk19"],
+  supported_jdks_names:: ["jdk17", "jdk19", "jdk20"],
 
   // This will turn a task dictionary into a list of build objects.
   process(task_dict)::
@@ -30,7 +30,7 @@ local examples   = (import "run-spec-examples.libsonnet").examples;
       local EXAMPLE_PLATFORM_SPEC_0 = {
         linux: {
           amd64: {
-            jdk11: $.task_spec({ /*...*/ })
+            jdk20: $.task_spec({ /*...*/ })
           }
         }
       },
@@ -39,7 +39,7 @@ local examples   = (import "run-spec-examples.libsonnet").examples;
       //
       // There is also a short-hand variant for nested entries:
       local EXAMPLE_PLATFORM_SPEC_1 = {
-        linux_amd64_jdk11: $.task_spec({ /*...*/ })
+        linux_amd64_jdk20: $.task_spec({ /*...*/ })
       },
       // See the following for more details.
       local SEE_ALSO_1 = [examples.desugaring, $.platform_spec],
@@ -136,7 +136,7 @@ local examples   = (import "run-spec-examples.libsonnet").examples;
     local EXAMPLE_0 = {
       "linux": {
         "amd64": {
-          "jdk11": $.task_spec({ /*...*/ })
+          "jdk20": $.task_spec({ /*...*/ })
         }
       }
     },

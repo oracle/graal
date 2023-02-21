@@ -43,18 +43,57 @@ package com.oracle.truffle.dsl.processor.generator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import javax.lang.model.element.Element;
+import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
+/**
+ * Constants per top-level class. If multiple nodes are generated per top-level class, this allows
+ * to put them into the top-level class. They must not be specific to the individual generated node.
+ */
 public final class StaticConstants {
 
     public final Map<String, CodeVariableElement> libraries = new LinkedHashMap<>();
     public final Map<String, CodeVariableElement> contextReferences = new LinkedHashMap<>();
     public final Map<String, CodeVariableElement> languageReferences = new LinkedHashMap<>();
+    public final Map<String, CodeVariableElement> enumValues = new LinkedHashMap<>();
+    public final Map<String, CodeExecutableElement> decodeConstants = new LinkedHashMap<>();
+    public final Map<String, CodeExecutableElement> encodeConstants = new LinkedHashMap<>();
+    public final Map<String, TypeMirror> reservedSymbols = new LinkedHashMap<>();
 
     public void clear() {
         libraries.clear();
         contextReferences.clear();
         languageReferences.clear();
+        enumValues.clear();
+        reservedSymbols.clear();
+        decodeConstants.clear();
+        encodeConstants.clear();
+    }
+
+    public void addElementsTo(CodeElement<Element> element) {
+        element.addAll(libraries.values());
+        element.addAll(contextReferences.values());
+        element.addAll(languageReferences.values());
+        element.addAll(enumValues.values());
+        element.addAll(decodeConstants.values());
+        element.addAll(encodeConstants.values());
+    }
+
+    public String reserveSymbol(TypeMirror type, String name) {
+        TypeMirror foundType = reservedSymbols.get(name);
+        if (foundType == null) {
+            reservedSymbols.put(name, type);
+            return name;
+        } else if (ElementUtils.typeEquals(foundType, type)) {
+            return name;
+        } else {
+            return reserveSymbol(type, name + "_");
+        }
     }
 
 }

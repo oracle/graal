@@ -86,6 +86,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -309,13 +310,14 @@ public final class EspressoContext {
 
         spawnVM();
         this.initialized = true;
+
+        getEspressoEnv().getPolyglotTypeMappings().resolve(this);
+        getEspressoEnv().getReferenceDrainer().startReferenceDrain();
+
         // enable JDWP instrumenter only if options are set (assumed valid if non-null)
         if (espressoEnv.JDWPOptions != null) {
             espressoEnv.getJdwpContext().jdwpInit(getEnv(), getMainThread(), espressoEnv.getEventListener());
         }
-
-        getEspressoEnv().getPolyglotTypeMappings().resolve(this);
-        getEspressoEnv().getReferenceDrainer().startReferenceDrain();
     }
 
     public void patchContext(TruffleLanguage.Env newEnv) {
@@ -427,8 +429,6 @@ public final class EspressoContext {
             espressoEnv.getThreadRegistry().createMainThread(meta);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
-                initializeKnownClass(Type.java_lang_Object);
-
                 for (Symbol<Type> type : Arrays.asList(
                                 Type.java_lang_reflect_Method,
                                 Type.java_lang_ref_Finalizer)) {
@@ -445,6 +445,13 @@ public final class EspressoContext {
                 } else {
                     assert getJavaVersion().java9OrLater();
                     meta.java_lang_System_initPhase1.invokeDirect(null);
+                    for (Symbol<Type> type : Arrays.asList(
+                                    Type.java_lang_invoke_MethodHandle,
+                                    Type.java_lang_invoke_MemberName,
+                                    Type.java_lang_invoke_MethodHandleNatives)) {
+                        // Type.java_lang_invoke_ResolvedMethodName is not used atm
+                        initializeKnownClass(type);
+                    }
                     int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, false);
                     if (e != 0) {
                         throw EspressoError.shouldNotReachHere();
@@ -1051,9 +1058,9 @@ public final class EspressoContext {
         return REFERENCE.get(node);
     }
 
-    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler) {
+    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler, DebuggerController controller) {
         if (classRedefinition == null) {
-            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler);
+            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler, controller);
         }
         return classRedefinition;
     }
@@ -1108,5 +1115,9 @@ public final class EspressoContext {
         } else {
             throw EspressoError.shouldNotReachHere();
         }
+    }
+
+    public long nextThreadId() {
+        return espressoEnv.getThreadRegistry().nextThreadId();
     }
 }

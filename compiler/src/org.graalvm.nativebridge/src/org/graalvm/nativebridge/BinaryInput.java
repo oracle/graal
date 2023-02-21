@@ -25,6 +25,10 @@
 package org.graalvm.nativebridge;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import static org.graalvm.nativebridge.BinaryOutput.LARGE_STRING_TAG;
 import static org.graalvm.nativebridge.BinaryOutput.NULL;
@@ -52,8 +56,8 @@ public abstract class BinaryInput {
 
     private static final int EOF = -1;
 
-    private byte[] byteBuffer;
-    private char[] charBuffer;
+    private byte[] tempEncodingByteBuffer;
+    private char[] tempEncodingCharBuffer;
     protected final int length;
     protected int pos;
 
@@ -99,6 +103,14 @@ public abstract class BinaryInput {
         if ((b1 | b2) < 0) {
             throw new IndexOutOfBoundsException();
         }
+        return packShort(b1, b2);
+    }
+
+    /**
+     * Creates a Java {@code short} from given unsigned bytes, where {@code b1} is the most
+     * significant byte {@code byte} and {@code b2} is the least significant {@code byte}.
+     */
+    private static short packShort(int b1, int b2) {
         return (short) ((b1 << 8) + b2);
     }
 
@@ -113,6 +125,14 @@ public abstract class BinaryInput {
         if ((b1 | b2) < 0) {
             throw new IndexOutOfBoundsException();
         }
+        return packChar(b1, b2);
+    }
+
+    /**
+     * Creates a Java {@code char} from given unsigned bytes, where {@code b1} is the most
+     * significant byte {@code byte} and {@code b2} is the least significant {@code byte}.
+     */
+    private static char packChar(int b1, int b2) {
         return (char) ((b1 << 8) + b2);
     }
 
@@ -129,6 +149,14 @@ public abstract class BinaryInput {
         if ((b1 | b2 | b3 | b4) < 0) {
             throw new IndexOutOfBoundsException();
         }
+        return packInt(b1, b2, b3, b4);
+    }
+
+    /**
+     * Creates a Java {@code int} from given unsigned bytes, where {@code b1} is the most
+     * significant byte {@code byte} and {@code b4} is the least significant {@code byte}.
+     */
+    private static int packInt(int b1, int b2, int b3, int b4) {
         return (b1 << 24) + (b2 << 16) + (b3 << 8) + b4;
     }
 
@@ -149,6 +177,14 @@ public abstract class BinaryInput {
         if ((b1 | b2 | b3 | b4 | b5 | b6 | b7 | b8) < 0) {
             throw new IndexOutOfBoundsException();
         }
+        return packLong(b1, b2, b3, b4, b5, b6, b7, b8);
+    }
+
+    /**
+     * Creates a Java {@code long} from given unsigned bytes, where {@code b1} is the most
+     * significant byte {@code byte} and {@code b8} is the least significant {@code byte}.
+     */
+    private static long packLong(int b1, int b2, int b3, int b4, int b5, int b6, int b7, int b8) {
         return ((long) b1 << 56) + ((long) b2 << 48) + ((long) b3 << 40) + ((long) b4 << 32) +
                         ((long) b5 << 24) + ((long) b6 << 16) + ((long) b7 << 8) + b8;
     }
@@ -183,28 +219,11 @@ public abstract class BinaryInput {
     public abstract int read();
 
     /**
-     * Reads up to {@code len} bytes into a byte array starting at offset {@code off}.
-     */
-    public abstract int read(byte[] b, int off, int len);
-
-    /**
      * Reads {@code len} bytes into a byte array starting at offset {@code off}.
      *
      * @throws IndexOutOfBoundsException if there are not enough bytes to read
      */
-    public final void readFully(byte[] b, int off, int len) throws IndexOutOfBoundsException {
-        if (len < 0) {
-            throw new IllegalArgumentException(String.format("Len must be non negative but was %d", len));
-        }
-        int n = 0;
-        while (n < len) {
-            int count = read(b, off + n, len - n);
-            if (count < 0) {
-                throw new IndexOutOfBoundsException();
-            }
-            n += count;
-        }
-    }
+    public abstract void read(byte[] b, int off, int len) throws IndexOutOfBoundsException;
 
     /**
      * Reads a string using a modified UTF-8 encoding in a machine-independent manner.
@@ -230,10 +249,9 @@ public abstract class BinaryInput {
         } else {
             len = (b1 << 8) + b2;
         }
-        if (byteBuffer == null || byteBuffer.length < len) {
-            int bufSize = Math.max(bufferSize(0, len), 80);
-            byteBuffer = new byte[bufSize];
-            charBuffer = new char[bufSize];
+        ensureBufferSize(len);
+        if (tempEncodingCharBuffer == null || tempEncodingCharBuffer.length < len) {
+            tempEncodingCharBuffer = new char[Math.max(bufferSize(0, len), 80)];
         }
 
         int c1;
@@ -242,19 +260,19 @@ public abstract class BinaryInput {
         int byteCount = 0;
         int charCount = 0;
 
-        readFully(byteBuffer, 0, len);
+        read(tempEncodingByteBuffer, 0, len);
 
         while (byteCount < len) {
-            c1 = byteBuffer[byteCount] & 0xff;
+            c1 = tempEncodingByteBuffer[byteCount] & 0xff;
             if (c1 > 127) {
                 break;
             }
             byteCount++;
-            charBuffer[charCount++] = (char) c1;
+            tempEncodingCharBuffer[charCount++] = (char) c1;
         }
 
         while (byteCount < len) {
-            c1 = byteBuffer[byteCount] & 0xff;
+            c1 = tempEncodingByteBuffer[byteCount] & 0xff;
             switch (c1 >> 4) {
                 case 0:
                 case 1:
@@ -266,7 +284,7 @@ public abstract class BinaryInput {
                 case 7:
                     /* 0xxxxxxx */
                     byteCount++;
-                    charBuffer[charCount++] = (char) c1;
+                    tempEncodingCharBuffer[charCount++] = (char) c1;
                     break;
                 case 12:
                 case 13:
@@ -275,11 +293,11 @@ public abstract class BinaryInput {
                     if (byteCount > len) {
                         throw new IllegalArgumentException("Partial character at end");
                     }
-                    c2 = byteBuffer[byteCount - 1];
+                    c2 = tempEncodingByteBuffer[byteCount - 1];
                     if ((c2 & 0xC0) != 0x80) {
                         throw new IllegalArgumentException("malformed input around byte " + byteCount);
                     }
-                    charBuffer[charCount++] = (char) (((c1 & 0x1F) << 6) | (c2 & 0x3F));
+                    tempEncodingCharBuffer[charCount++] = (char) (((c1 & 0x1F) << 6) | (c2 & 0x3F));
                     break;
                 case 14:
                     /* 1110 xxxx 10xx xxxx 10xx xxxx */
@@ -287,12 +305,12 @@ public abstract class BinaryInput {
                     if (byteCount > len) {
                         throw new IllegalArgumentException("malformed input: partial character at end");
                     }
-                    c2 = byteBuffer[byteCount - 2];
-                    c3 = byteBuffer[byteCount - 1];
+                    c2 = tempEncodingByteBuffer[byteCount - 2];
+                    c3 = tempEncodingByteBuffer[byteCount - 1];
                     if (((c2 & 0xC0) != 0x80) || ((c3 & 0xC0) != 0x80)) {
                         throw new IllegalArgumentException("malformed input around byte " + (byteCount - 1));
                     }
-                    charBuffer[charCount++] = (char) (((c1 & 0x0F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F));
+                    tempEncodingCharBuffer[charCount++] = (char) (((c1 & 0x0F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F));
                     break;
                 default:
                     /* 10xx xxxx, 1111 xxxx */
@@ -300,7 +318,7 @@ public abstract class BinaryInput {
             }
         }
         // The number of chars produced may be less than len
-        return new String(charBuffer, 0, charCount);
+        return new String(tempEncodingCharBuffer, 0, charCount);
     }
 
     /**
@@ -348,6 +366,150 @@ public abstract class BinaryInput {
     }
 
     /**
+     * Reads {@code len} bytes into a boolean array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void read(boolean[] b, int off, int len) {
+        ensureBufferSize(len);
+        read(tempEncodingByteBuffer, 0, len);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            b[i] = tempEncodingByteBuffer[j++] != 0;
+        }
+    }
+
+    /**
+     * Reads {@code len} shorts into a short array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void read(short[] b, int off, int len) {
+        int size = len * Short.BYTES;
+        ensureBufferSize(size);
+        read(tempEncodingByteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
+            b[i] = packShort(b1, b2);
+        }
+    }
+
+    /**
+     * Reads {@code len} chars into a char array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void read(char[] b, int off, int len) {
+        int size = len * Character.BYTES;
+        ensureBufferSize(size);
+        read(tempEncodingByteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
+            b[i] = packChar(b1, b2);
+        }
+    }
+
+    /**
+     * Reads {@code len} ints into an int array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void read(int[] b, int off, int len) {
+        int size = len * Integer.BYTES;
+        ensureBufferSize(size);
+        read(tempEncodingByteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b3 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b4 = (tempEncodingByteBuffer[j++] & 0xff);
+            b[i] = packInt(b1, b2, b3, b4);
+        }
+    }
+
+    /**
+     * Reads {@code len} longs into a long array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void read(long[] b, int off, int len) {
+        int size = len * Long.BYTES;
+        ensureBufferSize(size);
+        read(tempEncodingByteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b3 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b4 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b5 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b6 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b7 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b8 = (tempEncodingByteBuffer[j++] & 0xff);
+            b[i] = packLong(b1, b2, b3, b4, b5, b6, b7, b8);
+        }
+    }
+
+    /**
+     * Reads {@code len} floats into a float array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void read(float[] b, int off, int len) {
+        int size = len * Float.BYTES;
+        ensureBufferSize(size);
+        read(tempEncodingByteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b3 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b4 = (tempEncodingByteBuffer[j++] & 0xff);
+            b[i] = Float.intBitsToFloat(packInt(b1, b2, b3, b4));
+        }
+    }
+
+    /**
+     * Reads {@code len} doubles into a double array starting at offset {@code off}.
+     *
+     * @throws IndexOutOfBoundsException if there are not enough bytes to read
+     */
+    public final void read(double[] b, int off, int len) {
+        int size = len * Double.BYTES;
+        ensureBufferSize(size);
+        read(tempEncodingByteBuffer, 0, size);
+        int limit = off + len;
+        for (int i = off, j = 0; i < limit; i++) {
+            int b1 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b2 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b3 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b4 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b5 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b6 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b7 = (tempEncodingByteBuffer[j++] & 0xff);
+            int b8 = (tempEncodingByteBuffer[j++] & 0xff);
+            b[i] = Double.longBitsToDouble(packLong(b1, b2, b3, b4, b5, b6, b7, b8));
+        }
+    }
+
+    /**
+     * Returns a read only {@link ByteBuffer} backed by the {@link BinaryInput} internal buffer. The
+     * content of the buffer will start at the {@link BinaryInput}'s current position. The buffer's
+     * capacity and limit will be {@code len}, its position will be zero, its mark will be
+     * undefined, and its byte order will be {@link ByteOrder#BIG_ENDIAN BIG_ENDIAN}. After a
+     * successful call, the {@link BinaryInput}'s current position is incremented by the
+     * {@code len}.
+     *
+     * @throws IndexOutOfBoundsException if the BinaryInput has not enough remaining bytes.
+     */
+    public abstract ByteBuffer asByteBuffer(int len);
+
+    /**
      * Creates a new buffer backed by a byte array.
      */
     public static BinaryInput create(byte[] buffer) {
@@ -360,6 +522,12 @@ public abstract class BinaryInput {
      */
     public static BinaryInput create(CCharPointer address, int length) {
         return new CCharPointerInput(address, length);
+    }
+
+    private void ensureBufferSize(int len) {
+        if (tempEncodingByteBuffer == null || tempEncodingByteBuffer.length < len) {
+            tempEncodingByteBuffer = new byte[Math.max(bufferSize(0, len), 80)];
+        }
     }
 
     private static final class ByteArrayBinaryInput extends BinaryInput {
@@ -380,20 +548,40 @@ public abstract class BinaryInput {
         }
 
         @Override
-        public int read(byte[] b, int off, int len) {
-            if (pos >= length) {
-                return EOF;
+        public void read(byte[] b, int off, int len) {
+            if (len < 0) {
+                throw new IllegalArgumentException(String.format("Len must be non negative but was %d", len));
             }
-            int toRead = Math.min(len, length - pos);
-            System.arraycopy(buffer, pos, b, off, toRead);
-            pos += toRead;
-            return toRead;
+            if (pos + len > length) {
+                throw new IndexOutOfBoundsException();
+            }
+            System.arraycopy(buffer, pos, b, off, len);
+            pos += len;
+        }
+
+        @Override
+        public ByteBuffer asByteBuffer(int len) {
+            ByteBuffer result = ByteBuffer.wrap(buffer, pos, len).slice().asReadOnlyBuffer();
+            pos += len;
+            return result;
         }
     }
 
     private static final class CCharPointerInput extends BinaryInput {
 
+        /**
+         * Represents the point at which the average cost of a JNI call exceeds the expense of an
+         * element by element copy. See {@code java.nio.Bits#JNI_COPY_TO_ARRAY_THRESHOLD}.
+         */
+        private static final int BYTEBUFFER_COPY_TO_ARRAY_THRESHOLD = 6;
+
         private final CCharPointer address;
+        /**
+         * ByteBuffer view of this {@link CCharPointerInput} direct memory. The ByteBuffer is used
+         * for bulk data transfers, where the bulk ByteBuffer operations outperform element by
+         * element copying by an order of magnitude.
+         */
+        private ByteBuffer byteBufferView;
 
         CCharPointerInput(CCharPointer address, int length) {
             super(length);
@@ -409,16 +597,32 @@ public abstract class BinaryInput {
         }
 
         @Override
-        public int read(byte[] b, int off, int len) {
-            if (pos >= length) {
-                return EOF;
+        public void read(byte[] b, int off, int len) {
+            if (len < 0) {
+                throw new IllegalArgumentException(String.format("Len must be non negative but was %d", len));
             }
-            int i = 0;
-            for (int j = pos; i < len && j < length; i++, j++) {
-                b[off + i] = address.read(j);
+            if (pos + len > length) {
+                throw new IndexOutOfBoundsException();
             }
-            pos += i;
-            return i;
+            if (len > BYTEBUFFER_COPY_TO_ARRAY_THRESHOLD) {
+                if (byteBufferView == null) {
+                    byteBufferView = CTypeConversion.asByteBuffer(address, length);
+                }
+                byteBufferView.position(pos);
+                byteBufferView.get(b, off, len);
+            } else {
+                for (int i = 0, j = pos; i < len; i++, j++) {
+                    b[off + i] = address.read(j);
+                }
+            }
+            pos += len;
+        }
+
+        @Override
+        public ByteBuffer asByteBuffer(int len) {
+            ByteBuffer result = CTypeConversion.asByteBuffer(address.addressOf(pos), len).order(ByteOrder.BIG_ENDIAN).asReadOnlyBuffer();
+            pos += len;
+            return result;
         }
     }
 }

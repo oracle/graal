@@ -51,6 +51,7 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -247,7 +248,7 @@ public class ObjectScanner {
             return;
         }
         if (!bb.scanningPolicy().scanConstant(bb, value)) {
-            bb.markTypeInHeap(bb.getMetaAccess().lookupJavaType(value));
+            bb.registerTypeAsInHeap(bb.getMetaAccess().lookupJavaType(value), reason);
             return;
         }
         Object valueObj = (value instanceof ImageHeapConstant) ? value : constantAsObject(bb, value);
@@ -412,11 +413,12 @@ public class ObjectScanner {
     private void doScan(WorklistEntry entry) {
         try {
             AnalysisType type = bb.getMetaAccess().lookupJavaType(entry.constant);
-            type.registerAsReachable();
+            type.registerAsReachable(entry.reason);
 
             if (type.isInstanceClass()) {
                 /* Scan constant's instance fields. */
-                for (AnalysisField field : type.getInstanceFields(true)) {
+                for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
+                    AnalysisField field = (AnalysisField) javaField;
                     if (field.getJavaKind() == JavaKind.Object && field.isRead()) {
                         assert !Modifier.isStatic(field.getModifiers());
                         scanField(field, entry.constant, entry.reason);
@@ -643,7 +645,7 @@ public class ObjectScanner {
      * Furthermore it also serializes on the object put until the method release is called with this
      * object. So each object goes through two states:
      * <li>In flight: counter = sequence - 1
-     * <li>Commited: counter = sequence
+     * <li>Committed: counter = sequence
      *
      * If the object is in state in flight, all other calls with this object to putAndAcquire will
      * block until release with the object is called.

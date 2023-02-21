@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,19 +48,15 @@ public class WasmCustomSection {
      * Name of the custom section.
      */
     private final String name;
-    /**
-     * Position of the custom section in module's data.
-     */
-    private final int offset;
-    /**
-     * Length of the custom section.
-     */
-    private final int length;
 
-    public WasmCustomSection(String name, int offset, int length) {
+    /**
+     * Data of the custom section.
+     */
+    private final byte[] data;
+
+    public WasmCustomSection(String name, byte[] data) {
         this.name = name;
-        this.offset = offset;
-        this.length = length;
+        this.data = data;
     }
 
     /**
@@ -68,26 +64,17 @@ public class WasmCustomSection {
      * 
      * @return name of the custom section.
      */
-    public String getName() {
+    public String name() {
         return name;
     }
 
     /**
-     * Returns the position of the custom section in module's data.
+     * Returns the data of the custom section.
      * 
-     * @return position of the custom section in module's data.
+     * @return data of the custom section.
      */
-    public int getOffset() {
-        return offset;
-    }
-
-    /**
-     * Returns the length of the custom section.
-     * 
-     * @return length of the custom section.
-     */
-    public int getLength() {
-        return length;
+    public byte[] data() {
+        return data;
     }
 
 }

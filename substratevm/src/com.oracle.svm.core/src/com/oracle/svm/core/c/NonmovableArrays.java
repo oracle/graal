@@ -91,7 +91,7 @@ public final class NonmovableArrays {
         }
         DynamicHub hub = SubstrateUtil.cast(arrayType, DynamicHub.class);
         assert LayoutEncoding.isArray(hub.getLayoutEncoding());
-        UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
+        UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hub.getLayoutEncoding(), length);
         Pointer array = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(size);
         if (array.isNull()) {
             throw OUT_OF_MEMORY_ERROR;
@@ -147,7 +147,7 @@ public final class NonmovableArrays {
     /** Provides the size of the given array in bytes. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord byteSizeOf(NonmovableArray<?> array) {
-        return array.isNonNull() ? LayoutEncoding.getArraySize(readLayoutEncoding(array), lengthOf(array)) : WordFactory.zero();
+        return array.isNonNull() ? LayoutEncoding.getArrayAllocationSize(readLayoutEncoding(array), lengthOf(array)) : WordFactory.zero();
     }
 
     /** @see System#arraycopy */

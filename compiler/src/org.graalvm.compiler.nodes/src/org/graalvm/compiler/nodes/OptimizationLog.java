@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,14 +29,13 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.debug.CompilationListener;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.NodeSuccessorList;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -50,8 +49,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * optimizations performed in a single compilation and dumps them to the standard output, JSON
  * files, and/or IGV.
  */
-public interface OptimizationLog extends CompilationListener {
-
+public interface OptimizationLog {
     /**
      * Represents a node in the tree of optimizations. The tree of optimizations consists of
      * optimization phases and individual optimizations. Extending {@link Node} allows the tree to
@@ -164,32 +162,38 @@ public interface OptimizationLog extends CompilationListener {
     }
 
     /**
-     * The scope of an entered optimization phase that is also a node in the optimization tree,
-     * i.e., it has child {@link OptimizationTreeNode nodes}.
-     */
-    interface OptimizationPhaseScope extends DebugContext.CompilerPhaseScope {
-        CharSequence getPhaseName();
-
-        NodeSuccessorList<OptimizationTreeNode> getChildren();
-    }
-
-    /**
      * Keeps track of virtualized allocations and materializations during partial escape analysis.
      */
-    interface PartialEscapeLog {
+    class PartialEscapeLog {
+        /**
+         * Tracks the number of materializations per virtual node.
+         */
+        private final EconomicMap<VirtualObjectNode, Integer> virtualNodes = EconomicMap.create(Equivalence.IDENTITY);
+
         /**
          * Notifies the log that an allocation was virtualized.
          *
          * @param virtualObjectNode the virtualized node
          */
-        void allocationRemoved(VirtualObjectNode virtualObjectNode);
+        public void allocationRemoved(VirtualObjectNode virtualObjectNode) {
+            virtualNodes.put(virtualObjectNode, 0);
+        }
 
         /**
          * Notifies the log that an object was materialized.
          *
          * @param virtualObjectNode the object that was materialized
          */
-        void objectMaterialized(VirtualObjectNode virtualObjectNode);
+        public void objectMaterialized(VirtualObjectNode virtualObjectNode) {
+            Integer count = virtualNodes.get(virtualObjectNode);
+            if (count != null) {
+                virtualNodes.put(virtualObjectNode, count + 1);
+            }
+        }
+
+        protected EconomicMap<VirtualObjectNode, Integer> getVirtualNodes() {
+            return virtualNodes;
+        }
     }
 
     /**
@@ -208,12 +212,17 @@ public interface OptimizationLog extends CompilationListener {
          * disabled.
          */
         @Override
-        public OptimizationPhaseScope enterPhase(CharSequence name, int nesting) {
+        public DebugCloseable enterPhase(CharSequence name) {
             return null;
         }
 
         @Override
-        public void notifyInlining(ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, CharSequence message, int bci) {
+        public void inline(OptimizationLog calleeOptimizationLog, boolean updatePosition, NodeSourcePosition invokePosition) {
+
+        }
+
+        @Override
+        public void replaceLog(OptimizationLog replacementLog) {
 
         }
 
@@ -250,16 +259,6 @@ public interface OptimizationLog extends CompilationListener {
             return null;
         }
 
-        @Override
-        public Graph getOptimizationTree() {
-            return null;
-        }
-
-        @Override
-        public OptimizationPhaseScope getCurrentPhase() {
-            return null;
-        }
-
         /**
          * Returns a {@link DebugCloseable#VOID_CLOSEABLE} because the optimization log is disabled
          * and there is nothing to do.
@@ -270,15 +269,13 @@ public interface OptimizationLog extends CompilationListener {
         }
 
         /**
-         * Does not set itself as the compilation listener and returns a scope that does nothing,
-         * because the optimization log is disabled.
+         * Does not emit the optimization log, because it is disabled.
          *
          * @param methodNameFormatter a function that formats method names (ignored)
-         * @return a scope that does nothing
          */
         @Override
-        public DebugCloseable listen(Function<ResolvedJavaMethod, String> methodNameFormatter) {
-            return DebugCloseable.VOID_CLOSEABLE;
+        public void emit(Function<ResolvedJavaMethod, String> methodNameFormatter) {
+
         }
     }
 
@@ -419,22 +416,32 @@ public interface OptimizationLog extends CompilationListener {
     PartialEscapeLog getPartialEscapeLog();
 
     /**
-     * Gets the tree of optimizations.
+     * Notifies the optimization log that a phase was entered. Returns a closeable that should be
+     * closed when the phase is exited.
      *
-     * @see OptimizationTreeNode
+     * @param name the name of the entered phase
+     * @return a closeable that should be closed when the phase is exited
      */
-    Graph getOptimizationTree();
-
-    @Override
-    OptimizationPhaseScope enterPhase(CharSequence name, int nesting);
+    DebugCloseable enterPhase(CharSequence name);
 
     /**
-     * Gets the scope of the most recently opened phase (from unclosed phases) or {@code null} if
-     * the optimization log is not enabled.
+     * Inlines the optimization log of the callee into the current phase of this optimization log.
+     * The node source position of the inlined optimization log may be updated using the position of
+     * the inlined invoke node.
      *
-     * @return the scope of the most recently opened phase (from unclosed phases) or {@code null}
+     * @param calleeOptimizationLog the optimization log of the inlined callee
+     * @param updatePosition the node source position of the callee should be updated
+     * @param invokePosition the node source position of the inlined callee, ignored iff
+     *            {@code !updatePosition}
      */
-    OptimizationPhaseScope getCurrentPhase();
+    void inline(OptimizationLog calleeOptimizationLog, boolean updatePosition, NodeSourcePosition invokePosition);
+
+    /**
+     * Replaces this optimization log with a copy of the replacement log.
+     *
+     * @param replacementLog the optimization log which replaces this log
+     */
+    void replaceLog(OptimizationLog replacementLog);
 
     /**
      * Notifies the log that partial escape analysis will be entered and returns a
@@ -445,13 +452,11 @@ public interface OptimizationLog extends CompilationListener {
     DebugCloseable enterPartialEscapeAnalysis();
 
     /**
-     * Opens a {@link DebugCloseable} and sets itself as the compilation listener, if the
-     * optimization log is enabled. When the closable is closed, the compilation listener is reset
-     * to {@code null} and the optimization tree is printed according to the
-     * {@link DebugOptions#OptimizationLog OptimizationLog} option.
+     * Depending on the {@link DebugOptions#OptimizationLog OptimizationLog} option, prints the
+     * optimization log to the standard output, JSON files and/or dumps it. Method names are
+     * formatted using the provided formatter.
      *
      * @param methodNameFormatter a function that formats method names
-     * @return a closable in whose lifespan the optimization log is set as the compilation listener
      */
-    DebugCloseable listen(Function<ResolvedJavaMethod, String> methodNameFormatter);
+    void emit(Function<ResolvedJavaMethod, String> methodNameFormatter);
 }

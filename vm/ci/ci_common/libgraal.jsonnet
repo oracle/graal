@@ -1,12 +1,10 @@
-local composable = (import '../../../common-utils.libsonnet').composable;
 local vm = import '../ci_includes/vm.jsonnet';
-local graal_common = import '../../../common.jsonnet';
-local repo_config = import '../../../repo-configuration.libsonnet';
-local common_json = composable(import '../../../common.json');
-local devkits = common_json.devkits;
+local graal_common = import '../../../ci/ci_common/common.jsonnet';
+local repo_config = import '../../../ci/repo-configuration.libsonnet';
+local devkits = graal_common.devkits;
 local c = import 'common.jsonnet';
 local g = vm.compiler_gate;
-local utils = import '../../../common-utils.libsonnet';
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
 {
   local underscore(s) = std.strReplace(s, "-", "_"),
@@ -25,6 +23,10 @@ local utils = import '../../../common-utils.libsonnet';
     run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Compiler'],
     ],
+    logs+: [
+      '*/graal-compiler.log',
+      '*/graal-compiler-ctw.log'
+    ],
     timelimit: '1:00:00',
   },
 
@@ -41,7 +43,10 @@ local utils = import '../../../common-utils.libsonnet';
     run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'] + if coverage then g.jacoco_gate_args else [],
     ],
-    logs+: ['*/graal-compiler.log'],
+    logs+: [
+      '*/graal-compiler.log',
+      '*/graal-compiler-ctw.log'
+    ],
     timelimit: '1:00:00',
     teardown+: if coverage then [
       g.upload_coverage
@@ -58,10 +63,10 @@ local utils = import '../../../common-utils.libsonnet';
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gates = {
-    "gate-vm-libgraal_compiler-labsjdk-19-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-19-linux-amd64": {},
-    "gate-vm-libgraal_compiler_quickbuild-labsjdk-19-linux-amd64": {},
-    "gate-vm-libgraal_truffle_quickbuild-labsjdk-19-linux-amd64": {},
+    "gate-vm-libgraal_compiler-labsjdk-20-linux-amd64": {},
+    "gate-vm-libgraal_truffle-labsjdk-20-linux-amd64": {},
+    "gate-vm-libgraal_compiler_quickbuild-labsjdk-20-linux-amd64": {},
+    "gate-vm-libgraal_truffle_quickbuild-labsjdk-20-linux-amd64": {},
   },
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -98,7 +103,7 @@ local utils = import '../../../common-utils.libsonnet';
     vm["vm_java_" + jdk]
     for jdk in [
       "17",
-      "19"
+      "20"
     ]
     for os_arch in [
       "linux-amd64",
@@ -116,8 +121,8 @@ local utils = import '../../../common-utils.libsonnet';
   ],
 
 
-  # Builds run on only on linux-amd64-jdk19
-  local linux_amd64_jdk19_builds = [
+  # Builds run on only on linux-amd64-jdk20
+  local linux_amd64_jdk20_builds = [
     c["gate_vm_" + underscore(os_arch)] +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
@@ -129,7 +134,7 @@ local utils = import '../../../common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "19"
+      "20"
     ]
     for os_arch in [
       "linux-amd64",
@@ -144,7 +149,7 @@ local utils = import '../../../common-utils.libsonnet';
   # Complete set of builds defined in this file
   local all_builds =
     all_platforms_builds +
-    linux_amd64_jdk19_builds,
+    linux_amd64_jdk20_builds,
 
   builds: if
       g.check_manifest(gates, all_builds, std.thisFile, "gates").result

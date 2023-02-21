@@ -32,14 +32,14 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.JfrThreadState;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 
 public final class SamplerSampleWriter {
-
-    public static final long END_MARKER = -1;
-    public static final int IP_SIZE = Long.BYTES;
+    public static final long JFR_STACK_TRACE_END = -1;
+    public static final long EXECUTION_SAMPLE_END = -2;
     public static final int END_MARKER_SIZE = Long.BYTES;
 
     private SamplerSampleWriter() {
@@ -47,14 +47,14 @@ public final class SamplerSampleWriter {
 
     @Fold
     public static int getHeaderSize() {
-        /* sample hash + is truncated + sample size + tick + thread state. */
-        return Integer.BYTES + Integer.BYTES + Integer.BYTES + Long.BYTES + Long.BYTES;
+        return 4 * Integer.BYTES + 3 * Long.BYTES;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     public static void begin(SamplerSampleWriterData data) {
-        assert isValid(data);
+        assert SamplerSampleWriterDataAccess.verify(data);
         assert getUncommittedSize(data).equal(0);
+        assert data.getCurrentPos().unsignedRemainder(Long.BYTES).equal(0);
 
         /* Sample hash. (will be patched later) */
         SamplerSampleWriter.putInt(data, 0);
@@ -62,34 +62,41 @@ public final class SamplerSampleWriter {
         SamplerSampleWriter.putInt(data, 0);
         /* Sample size. (will be patched later) */
         SamplerSampleWriter.putInt(data, 0);
-        /* Tick. */
+        /* Padding so that the long values below are aligned. */
+        SamplerSampleWriter.putInt(data, 0);
+
         SamplerSampleWriter.putLong(data, JfrTicks.elapsedTicks());
-        /* Thread state. */
+        SamplerSampleWriter.putLong(data, SubstrateJVM.getCurrentThreadId());
         SamplerSampleWriter.putLong(data, JfrThreadState.getId(Thread.State.RUNNABLE));
+
+        assert getHeaderSize() % Long.BYTES == 0;
+        assert !isValid(data) || getUncommittedSize(data).equal(getHeaderSize());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void end(SamplerSampleWriterData data) {
-        assert isValid(data);
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
+    public static boolean end(SamplerSampleWriterData data, long endMarker) {
+        if (!isValid(data)) {
+            return false;
+        }
 
         UnsignedWord sampleSize = getSampleSize(data);
-        /* Put end marker. */
-        putUncheckedLong(data, END_MARKER);
 
+        /* ensureSize() guarantees that there is enough space for the end marker. */
+        putUncheckedLong(data, endMarker);
+
+        /* Patch data at start of entry. */
         Pointer currentPos = data.getCurrentPos();
         data.setCurrentPos(data.getStartPos());
-        /* Patch sample hash. */
         putUncheckedInt(data, data.getHashCode());
-        /* Patch is truncated. */
         putUncheckedInt(data, data.getTruncated() ? 1 : 0);
-        /* Patch sample size. */
         putUncheckedInt(data, (int) sampleSize.rawValue());
         data.setCurrentPos(currentPos);
 
         commit(data);
+        return true;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     public static boolean putLong(SamplerSampleWriterData data, long value) {
         if (ensureSize(data, Long.BYTES)) {
             putUncheckedLong(data, value);
@@ -99,7 +106,7 @@ public final class SamplerSampleWriter {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     private static void putUncheckedLong(SamplerSampleWriterData data, long value) {
         /* This method is only called if ensureSize() succeeded earlier. */
         assert getAvailableSize(data).aboveOrEqual(Long.BYTES);
@@ -107,7 +114,7 @@ public final class SamplerSampleWriter {
         increaseCurrentPos(data, WordFactory.unsigned(Long.BYTES));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     public static boolean putInt(SamplerSampleWriterData data, int value) {
         if (ensureSize(data, Integer.BYTES)) {
             putUncheckedInt(data, value);
@@ -117,7 +124,7 @@ public final class SamplerSampleWriter {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     private static void putUncheckedInt(SamplerSampleWriterData data, int value) {
         /* This method is only called if ensureSize() succeeded earlier. */
         assert getAvailableSize(data).aboveOrEqual(Integer.BYTES);
@@ -125,17 +132,21 @@ public final class SamplerSampleWriter {
         increaseCurrentPos(data, WordFactory.unsigned(Integer.BYTES));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     private static void commit(SamplerSampleWriterData data) {
-        SamplerBuffer buffer = data.getSamplerBuffer();
         assert isValid(data);
+        assert getUncommittedSize(data).unsignedRemainder(Long.BYTES).equal(0);
+
+        SamplerBuffer buffer = data.getSamplerBuffer();
         assert buffer.getPos().equal(data.getStartPos());
         assert SamplerBufferAccess.getDataEnd(data.getSamplerBuffer()).equal(data.getEndPos());
 
-        buffer.setPos(data.getCurrentPos());
+        Pointer newPosition = data.getCurrentPos();
+        buffer.setPos(newPosition);
+        data.setStartPos(newPosition);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     private static boolean ensureSize(SamplerSampleWriterData data, int requested) {
         assert requested > 0;
         if (!isValid(data)) {
@@ -153,32 +164,31 @@ public final class SamplerSampleWriter {
         return true;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     private static boolean accommodate(SamplerSampleWriterData data, UnsignedWord uncommitted) {
         if (SamplerBufferAccess.isEmpty(data.getSamplerBuffer())) {
             /*
              * Sample is too big to fit into the size of one buffer i.e. we want to do
              * accommodations while nothing is committed into buffer.
              */
-            SamplerThreadLocal.increaseMissedSamples();
+            cancel(data);
             return false;
         }
 
-        /* Pop first free buffer from the pool. */
-        SamplerBuffer newBuffer = SubstrateSigprofHandler.singleton().availableBuffers().popBuffer();
+        /* Try to get a buffer. */
+        SamplerBuffer newBuffer = SubstrateJVM.getSamplerBufferPool().acquireBuffer(data.getAllowBufferAllocation());
         if (newBuffer.isNull()) {
-            /* No available buffers on the pool. Fallback! */
-            SamplerThreadLocal.increaseMissedSamples();
+            cancel(data);
             return false;
         }
-        SamplerThreadLocal.setThreadLocalBuffer(newBuffer);
+        JfrThreadLocal.setSamplerBuffer(newBuffer);
 
         /* Copy the uncommitted content of old buffer into new one. */
         UnmanagedMemoryUtil.copy(data.getStartPos(), SamplerBufferAccess.getDataStart(newBuffer), uncommitted);
 
         /* Put in the stack with other unprocessed buffers and send a signal to the JFR recorder. */
         SamplerBuffer oldBuffer = data.getSamplerBuffer();
-        SubstrateSigprofHandler.singleton().fullBuffers().pushBuffer(oldBuffer);
+        SubstrateJVM.getSamplerBufferPool().pushFullBuffer(oldBuffer);
         SubstrateJVM.getRecorderThread().signal();
 
         /* Reinitialize data structure. */
@@ -188,7 +198,7 @@ public final class SamplerSampleWriter {
         return true;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     private static void reset(SamplerSampleWriterData data) {
         SamplerBuffer buffer = data.getSamplerBuffer();
         data.setStartPos(buffer.getPos());
@@ -196,27 +206,33 @@ public final class SamplerSampleWriter {
         data.setEndPos(SamplerBufferAccess.getDataEnd(buffer));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean isValid(SamplerSampleWriterData data) {
+    @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
+    private static void cancel(SamplerSampleWriterData data) {
+        data.setEndPos(WordFactory.nullPointer());
+        JfrThreadLocal.increaseMissedSamples();
+    }
+
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
+    public static boolean isValid(SamplerSampleWriterData data) {
         return data.getEndPos().isNonNull();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     private static UnsignedWord getAvailableSize(SamplerSampleWriterData data) {
         return data.getEndPos().subtract(data.getCurrentPos());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     private static UnsignedWord getUncommittedSize(SamplerSampleWriterData data) {
         return data.getCurrentPos().subtract(data.getStartPos());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     private static UnsignedWord getSampleSize(SamplerSampleWriterData data) {
         return getUncommittedSize(data).subtract(getHeaderSize());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     private static void increaseCurrentPos(SamplerSampleWriterData data, UnsignedWord delta) {
         data.setCurrentPos(data.getCurrentPos().add(delta));
     }

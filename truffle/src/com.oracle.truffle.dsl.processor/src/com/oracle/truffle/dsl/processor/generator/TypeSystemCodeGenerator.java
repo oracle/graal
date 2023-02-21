@@ -110,13 +110,6 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
         return cast(typeSystem, type, CodeTreeBuilder.singleString(content));
     }
 
-    static CodeTree invokeImplicitCast(TypeSystemData typeSystem, ImplicitCastData cast, CodeTree expression) {
-        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-        builder.startStaticCall(createTypeSystemGen(typeSystem), cast.getMethodName()).tree(expression);
-        builder.end();
-        return builder.build();
-    }
-
     static CodeTree cast(TypeSystemData typeSystem, TypeMirror type, CodeTree content) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
 
@@ -352,7 +345,7 @@ public class TypeSystemCodeGenerator extends CodeTypeElementFactory<TypeSystemDa
             if (cachedVersion) {
                 // call uncached version for the interpreter version.
                 // no need to check the state there.
-                builder.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end().end().startBlock();
+                builder.startIf().startStaticCall(types.HostCompilerDirectives, "inInterpreterFastPath").end().end().startBlock();
                 builder.startReturn().startCall(name).string(LOCAL_VALUE).end().end();
                 builder.end();
             }

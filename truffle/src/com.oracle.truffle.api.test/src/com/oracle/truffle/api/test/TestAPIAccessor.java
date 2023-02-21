@@ -58,7 +58,7 @@ public final class TestAPIAccessor extends Accessor {
         return API.nodeSupport();
     }
 
-    static Accessor.RuntimeSupport runtimeAccess() {
+    public static Accessor.RuntimeSupport runtimeAccess() {
         return API.runtimeSupport();
     }
 }

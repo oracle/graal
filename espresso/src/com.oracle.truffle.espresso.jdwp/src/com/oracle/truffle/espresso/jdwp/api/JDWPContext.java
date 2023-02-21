@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -335,14 +335,6 @@ public interface JDWPContext {
     void interruptThread(Object thread);
 
     /**
-     * Returns all active child threads within the thread group.
-     *
-     * @param threadGroup the thread group that threads must belong to
-     * @return all active threads in the group
-     */
-    Object[] getChildrenThreads(Object threadGroup);
-
-    /**
      * Returns the classes and interfaces directly nested within this type.Types further nested
      * within those types are not included.
      *
@@ -472,13 +464,6 @@ public interface JDWPContext {
      * @param exitCode the system exit code
      */
     void abort(int exitCode);
-
-    /**
-     * Determines if the current thread is a VM internal thread.
-     *
-     * @return true if current thread is a VM internal thread
-     */
-    boolean isSystemThread();
 
     /**
      * Returns the current BCI of the node.

@@ -25,12 +25,10 @@
 
 package org.graalvm.component.installer.gds.rest;
 
-import org.graalvm.component.installer.ComponentCatalog.DownloadInterceptor;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.AbstractCatalogStorage;
-import org.graalvm.component.installer.remote.FileDownloader;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Collection;
@@ -43,7 +41,7 @@ import java.util.Set;
  *
  * @author odouda
  */
-class GDSCatalogStorage extends AbstractCatalogStorage implements DownloadInterceptor {
+class GDSCatalogStorage extends AbstractCatalogStorage {
     private final Map<String, Set<ComponentInfo>> components;
 
     GDSCatalogStorage(ComponentRegistry localRegistry, Feedback feedback, URL baseURL, Collection<ComponentInfo> artifacts) {
@@ -59,11 +57,6 @@ class GDSCatalogStorage extends AbstractCatalogStorage implements DownloadInterc
     @Override
     public Set<ComponentInfo> loadComponentMetadata(String id) throws IOException {
         return components.get(id);
-    }
-
-    @Override
-    public FileDownloader processDownloader(ComponentInfo info, FileDownloader dn) {
-        return dn;
     }
 
     private static Map<String, Set<ComponentInfo>> buildComponentsMap(Collection<ComponentInfo> artifacts) {

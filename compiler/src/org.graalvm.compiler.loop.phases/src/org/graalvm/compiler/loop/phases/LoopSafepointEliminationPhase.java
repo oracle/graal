@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.loop.InductionVariable;
 import org.graalvm.compiler.nodes.loop.LoopEx;
@@ -151,7 +151,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                 loop.loopBegin().disableGuestSafepoint();
             }
             for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
-                Block b = loops.getCFG().blockFor(loopEnd);
+                HIRBlock b = loops.getCFG().blockFor(loopEnd);
                 blocks: while (b != loop.loop().getHeader()) {
                     assert b != null;
                     for (FixedNode node : b.getNodes()) {

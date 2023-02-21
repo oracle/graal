@@ -36,6 +36,7 @@ public class CommonConstants {
     public static final String CAP_GRAALVM_VERSION = "graalvm_version";
     public static final String CAP_OS_ARCH = "os_arch";
     public static final String CAP_OS_NAME = "os_name";
+    public static final String CAP_OS_VARIANT = "os_variant";
     public static final String CAP_EDITION = "edition";
     public static final String CAP_JAVA_VERSION = "java_version";
 

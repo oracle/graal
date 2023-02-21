@@ -35,7 +35,6 @@ import org.graalvm.compiler.core.common.BootstrapMethodIntrospection;
 import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
-import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.hotspot.HotSpotConstantPool;
@@ -51,9 +50,9 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     protected final Universe universe;
     protected final ConstantPool wrapped;
-    private final WrappedJavaType defaultAccessingClass;
+    private final ResolvedJavaType defaultAccessingClass;
 
-    public WrappedConstantPool(Universe universe, ConstantPool wrapped, WrappedJavaType defaultAccessingClass) {
+    public WrappedConstantPool(Universe universe, ConstantPool wrapped, ResolvedJavaType defaultAccessingClass) {
         this.universe = universe;
         this.wrapped = wrapped;
         this.defaultAccessingClass = defaultAccessingClass;
@@ -153,12 +152,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public JavaType lookupType(int cpi, int opcode) {
-        try {
-            return universe.lookupAllowUnresolved(wrapped.lookupType(cpi, opcode));
-        } catch (TypeNotFoundError e) {
-            /* If the universe was sealed there are no new types created. */
-            return null;
-        }
+        return universe.lookupAllowUnresolved(wrapped.lookupType(cpi, opcode));
     }
 
     @Override
@@ -195,14 +189,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public JavaType lookupReferencedType(int index, int opcode) {
-        try {
-            JavaType type = wrapped.lookupReferencedType(index, opcode);
-            if (type != null) {
-                return universe.lookupAllowUnresolved(type);
-            }
-        } catch (TypeNotFoundError e) {
-        }
-        return null;
+        return universe.lookupAllowUnresolved(wrapped.lookupReferencedType(index, opcode));
     }
 
     public BootstrapMethodIntrospection lookupBootstrapMethodIntrospection(int cpi, int opcode) {

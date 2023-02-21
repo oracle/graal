@@ -39,6 +39,7 @@ import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.FailedOperationException;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.UnknownVersionException;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
@@ -663,7 +664,7 @@ public class UpgradeTest extends CommandTestBase {
      */
     @Test
     public void testUpgradeRespectsTargetCatalogURLs() throws Exception {
-        URL u = new URL("test://catalog-19.3.properties");
+        URL u = SystemUtils.toURL("test://catalog-19.3.properties");
         Handler.bind(u.toString(), dataFile("../repo/catalog-19.3.properties").toUri().toURL());
 
         initVersion("1.0.0.0", "../repo/catalog-19.3.properties");

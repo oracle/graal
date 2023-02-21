@@ -48,6 +48,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
+
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
@@ -62,12 +68,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.SourceSection;
-
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionKey;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
 
 /**
  * A total debugging instrument that steps through the whole guest language execution and asks for
@@ -123,11 +123,10 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
     }
 
     @Override
-    protected void onDispose(Env env) {
+    protected void onFinalize(Env env) {
         logger.print("Executed successfully: ");
         logger.print(Boolean.toString(!hasFailed).toUpperCase());
         logger.flush();
-        super.onDispose(env);
         if (error != null) {
             throw new AssertionError("Failure", error);
         }

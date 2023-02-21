@@ -64,8 +64,8 @@ import jdk.vm.ci.meta.Value;
 
 /**
  * Arraycopy operation for arbitrary source and destination arrays, with arbitrary byte offset, with
- * support for arbitrary compression and inflation of {@link JavaKind#Byte 8 bit},
- * {@link JavaKind#Char 16 bit} or {@link JavaKind#Int 32 bit} array elements.
+ * support for arbitrary compression and inflation of {@link Stride#S1 8 bit}, {@link Stride#S2 16
+ * bit} or {@link Stride#S4 32 bit} array elements.
  * <p>
  * CAUTION: the compression implementation assumes that the upper bytes of {@code char}/{@code int}
  * values to be compressed are zero. If this assumption is broken, compression will yield incorrect
@@ -267,13 +267,13 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             // use the 1-byte-1-byte stride variant for the 2-2 and 4-4 cases by simply shifting the
             // length
             asm.align(preferredBranchTargetAlignment(crb));
-            asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S4, Stride.S4)]);
+            asm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S4, Stride.S4)]);
             asm.shll(len, 1);
             asm.align(preferredBranchTargetAlignment(crb));
-            asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S2, Stride.S2)]);
+            asm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S2, Stride.S2)]);
             asm.shll(len, 1);
             asm.align(preferredBranchTargetAlignment(crb));
-            asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
+            asm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
             emitOp(crb, asm, Stride.S1, Stride.S1, src, sro, dst, len);
             asm.jmp(end);
 
@@ -283,7 +283,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
                         continue;
                     }
                     asm.align(preferredBranchTargetAlignment(crb));
-                    asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(strideSrc, strideDst)]);
+                    asm.bind(variants[StrideUtil.getDirectStubCallIndex(strideSrc, strideDst)]);
                     emitOp(crb, asm, strideSrc, strideDst, src, sro, dst, len);
                     asm.jmp(end);
                 }

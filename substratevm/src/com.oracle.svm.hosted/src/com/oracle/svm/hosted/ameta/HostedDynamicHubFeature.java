@@ -49,11 +49,7 @@ public class HostedDynamicHubFeature implements InternalFeature {
         if (source instanceof Class) {
             Class<?> clazz = (Class<?>) source;
             DynamicHub dynamicHub = hostVM.dynamicHub(metaAccess.lookupJavaType(clazz));
-            AnalysisConstantReflectionProvider.registerAsReachable(hostVM, dynamicHub);
             return dynamicHub;
-        }
-        if (source instanceof DynamicHub) {
-            AnalysisConstantReflectionProvider.registerAsReachable(hostVM, (DynamicHub) source);
         }
         return source;
     }

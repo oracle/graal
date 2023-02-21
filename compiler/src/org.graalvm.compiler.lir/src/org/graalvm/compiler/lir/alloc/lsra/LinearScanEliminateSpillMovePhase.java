@@ -31,7 +31,7 @@ import static org.graalvm.compiler.lir.phases.LIRPhase.Options.LIROptimization;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -106,7 +106,8 @@ public class LinearScanEliminateSpillMovePhase extends LinearScanAllocationPhase
             }
 
             LIRInsertionBuffer insertionBuffer = new LIRInsertionBuffer();
-            for (AbstractBlockBase<?> block : allocator.sortedBlocks()) {
+            for (char blockId : allocator.sortedBlocks()) {
+                BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
                 try (Indent indent1 = debug.logAndIndent("Handle %s", block)) {
                     ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
                     int numInst = instructions.size();
@@ -197,7 +198,7 @@ public class LinearScanEliminateSpillMovePhase extends LinearScanAllocationPhase
      * @param block The block {@code move} is located in.
      * @param move Spill move.
      */
-    protected boolean canEliminateSpillMove(AbstractBlockBase<?> block, MoveOp move) {
+    protected boolean canEliminateSpillMove(BasicBlock<?> block, MoveOp move) {
         assert isVariable(move.getResult()) : "LinearScan inserts only moves to variables: " + move;
 
         Interval curInterval = allocator.intervalFor(move.getResult());

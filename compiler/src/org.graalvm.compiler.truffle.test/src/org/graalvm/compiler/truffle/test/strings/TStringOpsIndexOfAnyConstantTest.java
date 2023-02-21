@@ -38,7 +38,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -118,7 +117,7 @@ public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfAnyTest {
 
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
-        if (getTarget().arch instanceof AMD64) {
+        if (isSupportedArchitecture()) {
             if (arrayA.length < GraalOptions.StringIndexOfConstantLimit.getValue(graph.getOptions())) {
                 assertConstantReturn(graph);
             }

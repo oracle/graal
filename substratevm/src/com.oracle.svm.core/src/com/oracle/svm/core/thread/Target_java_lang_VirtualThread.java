@@ -38,7 +38,10 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
+import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -64,6 +67,18 @@ public final class Target_java_lang_VirtualThread {
 
     @Substitute
     private static void registerNatives() {
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK20OrLater.class)
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiHideFrames(boolean hide) {
+        /*
+         * Unfortunately, resetting the `notifyJvmtiEvents` field is not enough to completely remove
+         * calls to this method due to the way it's used from the `switchToVirtualThread` method, so
+         * unlike the other `notifyJvmti*` methods, we need a substitution to prevent linker errors.
+         */
+        throw VMError.shouldNotReachHere();
     }
 
     @Alias Executor scheduler;
@@ -273,14 +288,14 @@ final class VirtualThreadHelper {
             token = self;
         }
         Object lock = asTarget(self).interruptLock;
-        MonitorSupport.singleton().monitorEnter(lock);
+        MonitorSupport.singleton().monitorEnter(lock, MonitorInflationCause.VM_INTERNAL);
         return token;
     }
 
     /** @see #acquireInterruptLockMaybeSwitch */
     static void releaseInterruptLockMaybeSwitchBack(Target_java_lang_VirtualThread self, Object token) {
         Object lock = asTarget(self).interruptLock;
-        MonitorSupport.singleton().monitorExit(lock);
+        MonitorSupport.singleton().monitorExit(lock, MonitorInflationCause.VM_INTERNAL);
         if (token != null) {
             assert token == self;
             Thread carrier = asVTarget(token).carrierThread;

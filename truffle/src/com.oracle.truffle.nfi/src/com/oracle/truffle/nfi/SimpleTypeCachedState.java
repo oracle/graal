@@ -74,6 +74,8 @@ import com.oracle.truffle.nfi.api.SerializableLibrary;
 import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
+//TODO GR-42818 fix warnings
+@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 final class SimpleTypeCachedState {
 
     private static final TypeCachedState nopCachedState;
@@ -193,7 +195,7 @@ final class SimpleTypeCachedState {
         @Specialization(guards = "arg != null")
         Object doObject(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary(limit = "1") BackendNativePointerLibrary library,
-                        @Cached("createBinaryProfile()") ConditionProfile isPointerProfile) {
+                        @Cached ConditionProfile isPointerProfile) {
             try {
                 return isPointerProfile.profile(library.isPointer(arg)) ? NFIPointer.create(library.asPointer(arg)) : arg;
             } catch (UnsupportedMessageException e) {

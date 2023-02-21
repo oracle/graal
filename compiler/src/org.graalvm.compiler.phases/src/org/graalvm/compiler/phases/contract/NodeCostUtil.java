@@ -35,7 +35,7 @@ import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
@@ -69,7 +69,7 @@ public class NodeCostUtil {
 
     @SuppressWarnings("try")
     public static double computeGraphCycles(StructuredGraph graph, boolean fullSchedule) {
-        Function<Block, Iterable<? extends Node>> blockToNodes;
+        Function<HIRBlock, Iterable<? extends Node>> blockToNodes;
         ControlFlowGraph cfg;
         if (fullSchedule) {
             SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
@@ -78,7 +78,7 @@ public class NodeCostUtil {
         } else {
             cfg = ControlFlowGraph.compute(graph, true, true, false, false);
             BlockMap<List<FixedNode>> nodes = new BlockMap<>(cfg);
-            for (Block b : cfg.getBlocks()) {
+            for (HIRBlock b : cfg.getBlocks()) {
                 ArrayList<FixedNode> curNodes = new ArrayList<>();
                 for (FixedNode node : b.getNodes()) {
                     curNodes.add(node);
@@ -90,7 +90,7 @@ public class NodeCostUtil {
         double weightedCycles = 0D;
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope("NodeCostSummary")) {
-            for (Block block : cfg.getBlocks()) {
+            for (HIRBlock block : cfg.getBlocks()) {
                 for (Node n : blockToNodes.apply(block)) {
                     double probWeighted = n.estimatedNodeCycles().value * block.getRelativeFrequency();
                     assert Double.isFinite(probWeighted);

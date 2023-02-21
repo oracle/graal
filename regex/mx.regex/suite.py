@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "6.9.9",
+  "mxversion": "6.15.3",
 
   "name" : "regex",
 
@@ -98,8 +98,8 @@ suite = {
       "exports" : [
         "com.oracle.truffle.regex.chardata",
       ],
-      "checkstyleVersion" : "8.36.1",
-      "javaCompliance" : "11+",
+      "checkstyleVersion" : "10.7.0",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,Regex",
       "spotbugsIgnoresGenerated" : True,
     },
@@ -117,7 +117,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "checkstyle" : "com.oracle.truffle.regex",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,Regex",
     },
   },
@@ -130,6 +130,11 @@ suite = {
           "java.logging",
           "jdk.unsupported", # sun.misc.Unsafe
         ],
+        "requiresConcealed" : {
+          "org.graalvm.truffle" : [
+            "com.oracle.truffle.api"
+          ],
+        },
       },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex"],

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,6 @@ public class LIRSuites {
     private final LIRPhaseSuite<AllocationContext> allocStage;
     private final LIRPhaseSuite<PostAllocationOptimizationContext> postAllocStage;
     private final LIRPhaseSuite<FinalCodeAnalysisContext> finalCodeAnalysisStage;
-    private boolean immutable;
 
     public LIRSuites(LIRPhaseSuite<PreAllocationOptimizationContext> preAllocOptStage, LIRPhaseSuite<AllocationContext> allocStage, LIRPhaseSuite<PostAllocationOptimizationContext> postAllocStage,
                     LIRPhaseSuite<FinalCodeAnalysisContext> finalCodeAnalysisStage) {
@@ -103,20 +102,6 @@ public class LIRSuites {
      */
     public LIRPhaseSuite<FinalCodeAnalysisContext> getFinalCodeAnalysisStage() {
         return finalCodeAnalysisStage;
-    }
-
-    public boolean isImmutable() {
-        return immutable;
-    }
-
-    public synchronized void setImmutable() {
-        if (!immutable) {
-            preAllocOptStage.setImmutable();
-            allocStage.setImmutable();
-            postAllocStage.setImmutable();
-            finalCodeAnalysisStage.setImmutable();
-            immutable = true;
-        }
     }
 
     public LIRSuites copy() {

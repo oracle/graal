@@ -147,7 +147,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return maxStaticIndex;
     }
 
-    static LanguageCache createHostLanguageCache(TruffleLanguage<Object> languageInstance, String... services) {
+    static LanguageCache createHostLanguageCache(TruffleLanguage<?> languageInstance, String... services) {
         HostLanguageProvider hostLanguageProvider = new HostLanguageProvider(languageInstance, services);
         LanguageCache cache = new LanguageCache(
                         PolyglotEngineImpl.HOST_LANGUAGE_ID,
@@ -444,6 +444,21 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 out.println("Failed to lookup patchContext method. " + roe);
             }
         }
+    }
+
+    /*
+     * Collect languages included in a native image.
+     *
+     * NOTE: this method is called reflectively by TruffleBaseFeature
+     */
+    @SuppressWarnings("unused")
+    private static Set<String> collectLanguages() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        Set<String> toRet = new HashSet<>();
+        for (LanguageCache languageCache : nativeImageCache.values()) {
+            toRet.add(languageCache.id);
+        }
+        return toRet;
     }
 
     /**

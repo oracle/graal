@@ -34,13 +34,20 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 public interface ConstantFieldProvider {
 
-    public interface ConstantFieldTool<T> {
+    interface ConstantFieldTool<T> {
 
         OptionValues getOptions();
 
         JavaConstant readValue();
 
         JavaConstant getReceiver();
+
+        /**
+         * The reason why this constant folding was attempted. Ideally this is a
+         * {@link jdk.vm.ci.code.BytecodePosition}, where available, or a {@link String}
+         * description, however it can be {@code null}.
+         */
+        Object getReason();
 
         T foldConstant(JavaConstant ret);
 

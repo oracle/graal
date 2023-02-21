@@ -30,6 +30,7 @@
 
 #include <threads.h>
 #include <time.h>
+#include <stdint.h>
 #include <graalvm/llvm/threads.h>
 
 int thrd_create(thrd_t *thr, thrd_start_t func, void *arg) {
@@ -106,9 +107,9 @@ void thrd_yield(void) {
 }
 
 int thrd_join(thrd_t thr, int *res) {
-    int *ret = __sulong_thread_join((__sulong_thread_t) thr);
+    void *ret = __sulong_thread_join((__sulong_thread_t) thr);
     if (res) {
-        *res = ret;
+        *res = (int) (intptr_t) ret;
     }
     return thrd_success;
 }

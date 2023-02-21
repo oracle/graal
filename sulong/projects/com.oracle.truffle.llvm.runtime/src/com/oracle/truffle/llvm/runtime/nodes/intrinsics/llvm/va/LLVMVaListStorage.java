@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -78,10 +79,18 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorag
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.PointerConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ShortConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport.ToNativePointerNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVMDoubleOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNode.LLVMFloatOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode.LLVMI16OffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNode.LLVMI1OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode.LLVMI64OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode.LLVMI8OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLVMPointerOffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI32OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
@@ -413,46 +422,11 @@ public class LLVMVaListStorage implements TruffleObject {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnsupportedTypeException.create(arguments, "LLVMInteropType");
             }
-            LLVMInteropType type = (LLVMInteropType) arguments[0];
-            Type internalType;
-            if (type instanceof LLVMInteropType.Value) {
-                switch (((LLVMInteropType.Value) type).kind) {
-                    case DOUBLE:
-                        internalType = PrimitiveType.DOUBLE;
-                        break;
-                    case FLOAT:
-                        internalType = PrimitiveType.FLOAT;
-                        break;
-                    case I1:
-                        internalType = PrimitiveType.I1;
-                        break;
-                    case I16:
-                        internalType = PrimitiveType.I16;
-                        break;
-                    case I32:
-                        internalType = PrimitiveType.I32;
-                        break;
-                    case I64:
-                        internalType = PrimitiveType.I64;
-                        break;
-                    case I8:
-                        internalType = PrimitiveType.I8;
-                        break;
-                    case POINTER:
-                        // don't care about the pointee type
-                        internalType = new PointerType(PrimitiveType.I64);
-                        break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere("not implemented");
-                }
-            } else if (type instanceof LLVMInteropType.Structured) {
-                // don't care about the pointee type
-                internalType = new PointerType(PrimitiveType.I64);
-            } else {
-                throw CompilerDirectives.shouldNotReachHere("not implemented");
-            }
-            // only pointers?
-            Object result = vaListLib.shift(receiver, internalType, null);
+            return next(receiver, (LLVMInteropType) arguments[0], vaListLib, pointerEscapeNode);
+        }
+
+        public static Object next(Object receiver, LLVMInteropType type, LLVMVaListLibrary vaListLib, LLVMPointerDataEscapeNode pointerEscapeNode) {
+            Object result = vaListLib.shift(receiver, getInternalType(type), null);
 
             if (!(type instanceof LLVMInteropType.Structured)) {
                 return result;
@@ -465,6 +439,38 @@ public class LLVMVaListStorage implements TruffleObject {
             LLVMPointer ptrArg = LLVMPointer.cast(result);
 
             return pointerEscapeNode.executeWithType(ptrArg, (LLVMInteropType.Structured) type);
+        }
+
+        private static Type getInternalType(LLVMInteropType type) {
+            // only pointers?
+            if (type instanceof LLVMInteropType.Value) {
+                switch (((LLVMInteropType.Value) type).kind) {
+                    case DOUBLE:
+                        return PrimitiveType.DOUBLE;
+                    case FLOAT:
+                        return PrimitiveType.FLOAT;
+                    case I1:
+                        return PrimitiveType.I1;
+                    case I16:
+                        return PrimitiveType.I16;
+                    case I32:
+                        return PrimitiveType.I32;
+                    case I64:
+                        return PrimitiveType.I64;
+                    case I8:
+                        return PrimitiveType.I8;
+                    case POINTER:
+                        // don't care about the pointee type
+                        return new PointerType(PrimitiveType.I64);
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere("not implemented");
+                }
+            } else if (type instanceof LLVMInteropType.Structured) {
+                // don't care about the pointee type
+                return new PointerType(PrimitiveType.I64);
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("not implemented");
+            }
         }
 
         @Fallback
@@ -706,12 +712,12 @@ public class LLVMVaListStorage implements TruffleObject {
      */
     public abstract static class AbstractOverflowArgArea extends ArgsArea implements Cloneable {
         protected final long[] offsets;
-        public final int overflowAreaSize;
+        public final long overflowAreaSize;
 
         protected long previousOffset = -1;
         protected long currentOffset;
 
-        protected AbstractOverflowArgArea(Object[] args, long[] offsets, int overflowAreaSize) {
+        protected AbstractOverflowArgArea(Object[] args, long[] offsets, long overflowAreaSize) {
             super(args);
             this.overflowAreaSize = overflowAreaSize;
             this.offsets = offsets;
@@ -827,7 +833,7 @@ public class LLVMVaListStorage implements TruffleObject {
         }
 
         @Specialization
-        byte shortConversion(Short x, int offset, @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+        byte shortConversion(Short x, int offset, @Cached ConditionProfile conditionProfile) {
             if (conditionProfile.profile(offset == 0)) {
                 return x.byteValue();
             } else {
@@ -838,8 +844,8 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         byte intConversion(Integer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
             if (conditionProfile1.profile(offset < 2)) {
                 return shortConversion(x.shortValue(), offset, conditionProfile2);
             } else {
@@ -849,9 +855,9 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         byte longConversion(Long x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2,
+                        @Cached ConditionProfile conditionProfile3) {
             if (conditionProfile1.profile(offset < 4)) {
                 return intConversion(x.intValue(), offset, conditionProfile2, conditionProfile3);
             } else {
@@ -861,9 +867,9 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         byte doubleConversion(Double x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2,
+                        @Cached ConditionProfile conditionProfile3) {
             return longConversion(Double.doubleToLongBits(x), offset, conditionProfile1, conditionProfile2, conditionProfile3);
         }
 
@@ -875,8 +881,8 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         byte floatVectorConversion(LLVMFloatVector x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
             int index = offset / 4;
             assert index < x.getLength();
             int fi = Float.floatToIntBits((Float) x.getElement(index));
@@ -897,18 +903,18 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization(guards = "isNativePointer(x)")
         byte nativePointerObjectConversion(LLVMNativePointer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2,
+                        @Cached ConditionProfile conditionProfile3) {
             return longConversion(x.asNative(), offset, conditionProfile1, conditionProfile2, conditionProfile3);
         }
 
         @Specialization(guards = "!isNativePointer(x)")
         byte managedPointerObjectConversion(LLVMManagedPointer x, int offset,
                         @Cached ToNativePointerNode toNativePointer,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile3) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2,
+                        @Cached ConditionProfile conditionProfile3) {
             LLVMNativePointer nativePointer = toNativePointer.execute(x.getObject());
             return nativePointerObjectConversion(nativePointer, offset, conditionProfile1, conditionProfile2, conditionProfile3);
         }
@@ -935,7 +941,7 @@ public class LLVMVaListStorage implements TruffleObject {
         }
 
         @Specialization
-        short intConversion(Integer x, int offset, @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+        short intConversion(Integer x, int offset, @Cached ConditionProfile conditionProfile) {
             if (conditionProfile.profile(offset == 0)) {
                 return x.shortValue();
             } else {
@@ -946,8 +952,8 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         short longConversion(Long x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
 
             if (conditionProfile1.profile(offset < 4)) {
                 return intConversion(x.intValue(), offset, conditionProfile2);
@@ -958,14 +964,14 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         short doubleConversion(Double x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
             return longConversion(Double.doubleToLongBits(x), offset, conditionProfile1, conditionProfile2);
         }
 
         @Specialization
         short floatVectorConversion(LLVMFloatVector x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+                        @Cached ConditionProfile conditionProfile) {
             int index = offset / 4;
             assert index < x.getLength();
             int fi = Float.floatToIntBits((Float) x.getElement(index));
@@ -985,16 +991,16 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization(guards = "isNativePointer(x)")
         short nativePointerObjectConversion(LLVMNativePointer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
             return longConversion(x.asNative(), offset, conditionProfile1, conditionProfile2);
         }
 
         @Specialization(guards = "!isNativePointer(x)")
         short managedPointerObjectConversion(LLVMManagedPointer x, int offset,
                         @Cached ToNativePointerNode toNativePointer,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile1,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile2) {
+                        @Cached ConditionProfile conditionProfile1,
+                        @Cached ConditionProfile conditionProfile2) {
             LLVMNativePointer nativePointer = toNativePointer.execute(x.getObject());
             return nativePointerObjectConversion(nativePointer, offset, conditionProfile1, conditionProfile2);
         }
@@ -1034,7 +1040,7 @@ public class LLVMVaListStorage implements TruffleObject {
         }
 
         @Specialization
-        int longConversion(Long x, int offset, @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+        int longConversion(Long x, int offset, @Cached ConditionProfile conditionProfile) {
             if (conditionProfile.profile(offset == 0)) {
                 return x.intValue();
             } else {
@@ -1045,7 +1051,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization
         int doubleConversion(Double x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+                        @Cached ConditionProfile conditionProfile) {
             return longConversion(Double.doubleToLongBits(x), offset, conditionProfile);
         }
 
@@ -1070,14 +1076,14 @@ public class LLVMVaListStorage implements TruffleObject {
 
         @Specialization(guards = "isNativePointer(x)")
         int nativePointerObjectConversion(LLVMNativePointer x, int offset,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+                        @Cached ConditionProfile conditionProfile) {
             return longConversion(LLVMNativePointer.cast(x).asNative(), offset, conditionProfile);
         }
 
         @Specialization(guards = "!isNativePointer(x)")
         int managedPointerObjectConversion(LLVMManagedPointer x, int offset,
                         @Cached ToNativePointerNode toNativePointer,
-                        @Cached("createBinaryProfile()") ConditionProfile conditionProfile) {
+                        @Cached ConditionProfile conditionProfile) {
             LLVMNativePointer nativePointer = toNativePointer.execute(x.getObject());
             return nativePointerObjectConversion(nativePointer, offset, conditionProfile);
         }
@@ -1230,7 +1236,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
         private ArgumentListExpander(boolean cached, boolean unpack32) {
             expansionBranchProfile = cached ? BranchProfile.create() : BranchProfile.getUncached();
-            noExpansionProfile = cached ? ConditionProfile.createBinaryProfile() : ConditionProfile.getUncached();
+            noExpansionProfile = cached ? ConditionProfile.create() : ConditionProfile.getUncached();
             if (cached) {
                 expander = unpack32 ? Unpack32ArgumentExpanderNodeGen.create() : ArgumentExpanderNodeGen.create();
             } else {
@@ -1319,6 +1325,54 @@ public class LLVMVaListStorage implements TruffleObject {
             @Specialization(guards = {"isI32ArrayWithMaxTwoElems(arg.getType()) || isI32VectorWithMaxTwoElems(arg.getType())"})
             protected Object[] expandI32ArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
                 return new Object[]{convNode.executeInteger(arg, 0), convNode.executeInteger(arg, 4)};
+            }
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class LoadFromAreaNode extends LLVMNode {
+
+        public abstract Object execute(LLVMPointer vaList, int saveAreaOffset, int offsetInArea, int incrementArea, Type type);
+
+        @Specialization
+        static Object load(LLVMPointer vaList, int saveAreaOffset, int offsetInArea, int incrementArea, Type type,
+                        @Cached LLVMI1OffsetLoadNode loadI1,
+                        @Cached LLVMI8OffsetLoadNode loadI8,
+                        @Cached LLVMI16OffsetLoadNode loadI16,
+                        @Cached LLVMI32OffsetLoadNode loadI32,
+                        @Cached LLVMI64OffsetLoadNode loadI64,
+                        @Cached LLVMPointerOffsetLoadNode loadPointer,
+                        @Cached LLVMFloatOffsetLoadNode loadFloat,
+                        @Cached LLVMDoubleOffsetLoadNode loadDouble,
+                        @Cached LLVMPointerOffsetLoadNode regSaveAreaLoad,
+                        @Exclusive @Cached LLVMPointerOffsetStoreNode store) {
+            LLVMPointer areaPtr = regSaveAreaLoad.executeWithTarget(vaList, saveAreaOffset);
+            if (incrementArea != 0) {
+                store.executeWithTarget(vaList, saveAreaOffset, areaPtr.increment(incrementArea));
+            }
+            if (type instanceof PrimitiveType) {
+                switch (((PrimitiveType) type).getPrimitiveKind()) {
+                    case DOUBLE:
+                        return loadDouble.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case FLOAT:
+                        return loadFloat.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case I1:
+                        return loadI1.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case I16:
+                        return loadI16.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case I32:
+                        return loadI32.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case I64:
+                        return loadI64.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case I8:
+                        return loadI8.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere("not implemented");
+                }
+            } else if (type instanceof PointerType) {
+                return loadPointer.executeWithTargetGeneric(areaPtr, offsetInArea);
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("not implemented");
             }
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
@@ -68,6 +69,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.logging.LogRecord;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicSet;
@@ -76,6 +78,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
@@ -236,6 +239,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isMapAccessible(HostAccess access);
 
+        public abstract boolean isBigIntegerAccessibleAsNumber(HostAccess access);
+
         public abstract boolean allowsPublicAccess(HostAccess hostAccess);
 
         public abstract boolean allowsAccessInheritance(HostAccess hostAccess);
@@ -253,6 +258,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract String validatePolyglotAccess(PolyglotAccess access, Set<String> language);
 
         public abstract void engineClosed(Engine engine);
+
+        public abstract MutableTargetMapping[] getMutableTargetMappings(HostAccess access);
 
     }
 
@@ -325,16 +332,16 @@ public abstract class AbstractPolyglotImpl {
 
     public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
                     boolean allowExperimentalOptions,
-                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
+                    boolean boundEngine, MessageTransport messageInterceptor, LogHandler logHandler, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
                     AbstractPolyglotHostService polyglotHostService) {
-        return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, hostLanguage,
+        return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandler, hostLanguage,
                         hostLanguageOnly, registerInActiveEngines, polyglotHostService);
     }
 
     public abstract int getPriority();
 
-    public void preInitializeEngine(Object hostLanguage) {
-        getNext().preInitializeEngine(hostLanguage);
+    public void preInitializeEngine() {
+        getNext().preInitializeEngine();
     }
 
     public Object createHostLanguage(AbstractHostAccess access) {
@@ -575,7 +582,7 @@ public abstract class AbstractPolyglotImpl {
                         boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions, boolean allowExperimentalOptions,
                         Predicate<String> classFilter,
                         Map<String, String> options,
-                        Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
+                        Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, LogHandler logHandler, boolean allowCreateProcess, ProcessHandler processHandler,
                         EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader,
                         boolean allowValueSharing, boolean useSystemExit);
 
@@ -593,6 +600,8 @@ public abstract class AbstractPolyglotImpl {
                         Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions);
 
         public abstract void shutdown(Object engine);
+
+        public abstract RuntimeException hostToGuestException(Object engineReceiver, Throwable throwable);
 
     }
 
@@ -754,8 +763,6 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(polyglot);
         }
 
-        public abstract void patch(AbstractPolyglotHostService otherService);
-
         public abstract void notifyClearExplicitContextStack(Object contextReceiver);
 
         public abstract void notifyContextCancellingOrExiting(Object contextReceiver, boolean exit, int exitCode, boolean resourceLimit, String message);
@@ -763,6 +770,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract void notifyContextClosed(Object contextReceiver, boolean cancelIfExecuting, boolean resourceLimit, String message);
 
         public abstract void notifyEngineClosed(Object engineReceiver, boolean cancelIfExecuting);
+
+        public abstract RuntimeException hostToGuestException(AbstractHostLanguageService hostLanguageService, Throwable throwable);
     }
 
     public abstract static class AbstractHostLanguageService extends AbstractDispatchClass {
@@ -790,9 +799,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object findStaticClass(Object context, String classValue);
 
-        public abstract Object createToHostTypeNode();
-
-        public abstract <T> T toHostType(Object hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
+        public abstract <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
 
         public abstract boolean isHostValue(Object value);
 
@@ -955,6 +962,12 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract long asLong(Object context, Object receiver);
+
+        public boolean fitsInBigInteger(Object context, Object receiver) {
+            return false;
+        }
+
+        public abstract BigInteger asBigInteger(Object context, Object receiver);
 
         public boolean fitsInDouble(Object context, Object receiver) {
             return false;
@@ -1139,6 +1152,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newReadOnlyFileSystem(fileSystem);
     }
 
+    public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+        return getNext().newNIOFileSystem(fileSystem);
+    }
+
     public ProcessHandler newDefaultProcessHandler() {
         return getNext().newDefaultProcessHandler();
     }
@@ -1147,8 +1164,16 @@ public abstract class AbstractPolyglotImpl {
         return getNext().isDefaultProcessHandler(processHandler);
     }
 
+    public boolean isInternalFileSystem(FileSystem fileSystem) {
+        return getNext().isInternalFileSystem(fileSystem);
+    }
+
     public ThreadScope createThreadScope() {
         return getNext().createThreadScope();
+    }
+
+    public LogHandler newLogHandler(Object logHandlerOrStream) {
+        return getNext().newLogHandler(logHandlerOrStream);
     }
 
     /**
@@ -1192,6 +1217,20 @@ public abstract class AbstractPolyglotImpl {
 
         @Override
         public abstract void close();
+    }
+
+    public abstract static class LogHandler {
+
+        protected LogHandler(AbstractPolyglotImpl polyglot) {
+            Objects.requireNonNull(polyglot);
+        }
+
+        public abstract void publish(LogRecord logRecord);
+
+        public abstract void flush();
+
+        public abstract void close();
+
     }
 
 }

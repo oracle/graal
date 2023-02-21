@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.snippets;
 
-import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.GC_LOCATIONS;
 
 import java.lang.reflect.Method;
 
@@ -75,7 +75,7 @@ public class SnippetRuntime {
                     LocationIdentity... additionalKilledLocations) {
         Method method = findMethod(declaringClass, methodName);
         SubstrateForeignCallTarget foreignCallTargetAnnotation = AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
-        VMError.guarantee(foreignCallTargetAnnotation != null, "Add missing @SubstrateForeignCallTarget to " + declaringClass.getName() + "." + methodName);
+        VMError.guarantee(foreignCallTargetAnnotation != null, "Add missing @SubstrateForeignCallTarget to %s.%s", declaringClass.getName(), methodName);
 
         boolean isUninterruptible = Uninterruptible.Utils.isUninterruptible(method);
         boolean isFullyUninterruptible = foreignCallTargetAnnotation.fullyUninterruptible();
@@ -86,7 +86,7 @@ public class SnippetRuntime {
                     boolean isFullyUninterruptible, LocationIdentity... additionalKilledLocations) {
         Method method = findMethod(declaringClass, methodName);
         SubstrateForeignCallTarget foreignCallTargetAnnotation = AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class);
-        VMError.guarantee(foreignCallTargetAnnotation == null, declaringClass.getName() + "." + methodName + " must not be annotated with @SubstrateForeignCallTarget.");
+        VMError.guarantee(foreignCallTargetAnnotation == null, "%s.%s must not be annotated with @SubstrateForeignCallTarget.", declaringClass.getName(), methodName);
 
         return findForeignCall(descriptorName, method, isReexecutable, isUninterruptible, isFullyUninterruptible, additionalKilledLocations);
     }
@@ -100,16 +100,16 @@ public class SnippetRuntime {
          */
         LocationIdentity[] killedLocations;
         if (isFullyUninterruptible) {
-            VMError.guarantee(isUninterruptible, method.toString() + " is fully uninterruptible but not annotated with @Uninterruptible.");
+            VMError.guarantee(isUninterruptible, "%s is fully uninterruptible but not annotated with @Uninterruptible.", method);
             killedLocations = additionalKilledLocations;
-        } else if (additionalKilledLocations.length == 0 || additionalKilledLocations == TLAB_LOCATIONS) {
-            killedLocations = TLAB_LOCATIONS;
+        } else if (additionalKilledLocations.length == 0 || additionalKilledLocations == GC_LOCATIONS) {
+            killedLocations = GC_LOCATIONS;
         } else if (containsAny(additionalKilledLocations)) {
             killedLocations = additionalKilledLocations;
         } else {
-            killedLocations = new LocationIdentity[TLAB_LOCATIONS.length + additionalKilledLocations.length];
-            System.arraycopy(TLAB_LOCATIONS, 0, killedLocations, 0, TLAB_LOCATIONS.length);
-            System.arraycopy(additionalKilledLocations, 0, killedLocations, TLAB_LOCATIONS.length, additionalKilledLocations.length);
+            killedLocations = new LocationIdentity[GC_LOCATIONS.length + additionalKilledLocations.length];
+            System.arraycopy(GC_LOCATIONS, 0, killedLocations, 0, GC_LOCATIONS.length);
+            System.arraycopy(additionalKilledLocations, 0, killedLocations, GC_LOCATIONS.length, additionalKilledLocations.length);
         }
 
         boolean needsDebugInfo = !isFullyUninterruptible;

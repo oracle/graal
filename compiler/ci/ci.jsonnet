@@ -1,5 +1,5 @@
 {
-  local utils = (import '../../common-utils.libsonnet'),
+  local utils = (import '../../ci/ci_common/common-utils.libsonnet'),
   local graal = (import 'ci_includes/gate.jsonnet'),
   local graal_common = (import 'ci_common/gate.jsonnet'),
   local graal_benchmarks = (import 'ci_common/benchmark-builders.jsonnet'),

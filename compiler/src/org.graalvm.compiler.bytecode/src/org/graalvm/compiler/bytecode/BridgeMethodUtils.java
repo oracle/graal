@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,22 +133,6 @@ public class BridgeMethodUtils {
             ResolvedJavaMethod bridged = getBridgedMethod(method);
             if (bridged != null) {
                 a = bridged.getParameterAnnotations();
-            }
-        }
-        return a;
-    }
-
-    /**
-     * A helper for {@link ResolvedJavaMethod#getParameterAnnotation(Class, int)} that handles the
-     * absence of parameter annotations on bridge methods where the bridged method has parameter
-     * annotations.
-     */
-    public static <T extends Annotation> T getParameterAnnotation(Class<T> annotationClass, int parameterIndex, ResolvedJavaMethod method) {
-        T a = method.getParameterAnnotation(annotationClass, parameterIndex);
-        if (a == null && method.isBridge()) {
-            ResolvedJavaMethod bridged = getBridgedMethod(method);
-            if (bridged != null) {
-                a = bridged.getParameterAnnotation(annotationClass, parameterIndex);
             }
         }
         return a;

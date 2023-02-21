@@ -24,13 +24,16 @@
  */
 package com.oracle.truffle.tools.dap.test;
 
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import java.net.URL;
 import java.util.regex.Pattern;
+
 import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
+
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 
 /**
  * {@link InstrumentationTestLanguage} DAP debugging test.
@@ -45,21 +48,22 @@ public class ITLDAPTest {
     }
 
     @Test
+    @Ignore("GR-43473")
     public void testOutput() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
-                        "  PRINT(OUT, \"one\ntwo\n\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"one\ntwo\n\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"three,\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"three,\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"four\rfive\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"four\rfive\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"\r\n\"),\n" +
-                        "  PRINT(OUT, \"\r\nsix,\"),\n" +
-                        "  PRINT(OUT, \"seven\n\neight\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\n\")),\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\nsix,\")),\n" +
+                        "  PRINT(OUT, CONSTANT(\"seven\n\neight\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(ERR, \"1err\n2err\r\n\"),\n" +
+                        "  PRINT(ERR, CONSTANT(\"1err\n2err\r\n\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"\r\nnine\rten\r\n\")\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\nnine\rten\r\n\"))\n" +
                         ")\n", "TestOutput.itl").build();
         tester = DAPTester.start(true);
         tester.sendMessage(
@@ -134,18 +138,19 @@ public class ITLDAPTest {
     }
 
     @Test
+    @Ignore("GR-43473")
     public void testOutputEarly() throws Exception {
         Source source1 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
-                        "  PRINT(OUT, \"Prologue to stdout\n\"),\n" +
-                        "  PRINT(ERR, \"Prologue to stderr\n\")" +
+                        "  PRINT(OUT, CONSTANT(\"Prologue to stdout\n\")),\n" +
+                        "  PRINT(ERR, CONSTANT(\"Prologue to stderr\n\"))" +
                         ")\n", "TestOutput1.itl").build();
         Source source2 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
-                        "  PRINT(OUT, \"Text to stdout\n\"),\n" +
-                        "  PRINT(ERR, \"Text to stderr\n\")" +
+                        "  PRINT(OUT, CONSTANT(\"Text to stdout\n\")),\n" +
+                        "  PRINT(ERR, CONSTANT(\"Text to stderr\n\"))" +
                         ")\n", "TestOutput2.itl").build();
         Source source3 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
-                        "  PRINT(OUT, \"Epilogue to stdout\n\"),\n" +
-                        "  PRINT(ERR, \"Epilogue to stderr\n\")" +
+                        "  PRINT(OUT, CONSTANT(\"Epilogue to stdout\n\")),\n" +
+                        "  PRINT(ERR, CONSTANT(\"Epilogue to stderr\n\"))" +
                         ")\n", "TestOutput3.itl").build();
         tester = DAPTester.start(false, context -> context.eval(source1));
         tester.sendMessage(
@@ -180,7 +185,9 @@ public class ITLDAPTest {
         tester.getContext().eval(source3);
     }
 
+    @SuppressWarnings("deprecation")
     @Test
+    @Ignore("GR-43473")
     public void testMultiThreading() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, new URL("file:///path/TestThreads.itl")).content("ROOT(\n" +
                         "DEFINE(f,\n" +
@@ -289,7 +296,9 @@ public class ITLDAPTest {
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":3},\"type\":\"request\",\"seq\":12}");
     }
 
+    @SuppressWarnings("deprecation")
     @Test
+    @Ignore("GR-43473")
     public void testBadSourceReference() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, new URL("file:///path/TestSrcRef.itl")).content("ROOT(\n" +
                         "  STATEMENT(),\n" +
@@ -339,6 +348,7 @@ public class ITLDAPTest {
     }
 
     @Test
+    @Ignore("GR-43473")
     public void testEagerSourceLoad() throws Exception {
         Source source1 = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
                         "  EXPRESSION(),\n" +

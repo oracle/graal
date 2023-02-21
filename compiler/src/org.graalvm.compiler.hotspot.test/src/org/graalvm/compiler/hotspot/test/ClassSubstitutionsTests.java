@@ -25,14 +25,11 @@
 
 package org.graalvm.compiler.hotspot.test;
 
-import static org.junit.Assume.assumeTrue;
-
 import java.lang.reflect.Field;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -150,7 +147,6 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
 
     @Test
     public void testUnsafeFoldComponentType() {
-        assumeTrue(GraalHotSpotVMConfig.jvmciGE(GraalHotSpotVMConfig.JVMCI_20_3_b04));
         runTest = new Runnable() {
             @Override
             public void run() {
@@ -186,7 +182,7 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(f);
                     b.addPush(JavaKind.Object,
                                     LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(), b.getOptions(),
-                                                    b.getAssumptions(), clazz, field, false, false));
+                                                    b.getAssumptions(), clazz, field, false, false, b.getGraph().currentNodeSourcePosition()));
                     return true;
                 }
             });

@@ -46,12 +46,14 @@ import org.junit.Test;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.test.ExpressionOrderTestFactory.ExpressionOrderTest1NodeGen;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing"})
 public class ExpressionOrderTest {
 
     @SuppressWarnings("unused")
@@ -60,6 +62,7 @@ public class ExpressionOrderTest {
 
         abstract boolean execute(Object value);
 
+        @SuppressWarnings("truffle-assumption")
         @Specialization(guards = {"guard1(value)", "cacheGuard1(cache1)", "guard2(value)", "cacheGuard2(cache2)"}, //
                         assumptions = {"assumptionInitializer1(cache3)", "assumptionInitializer2()"})
         boolean s0(boolean value, @Cached("cacheInitializer1(value)") int cache1,
@@ -95,6 +98,7 @@ public class ExpressionOrderTest {
             return 1;
         }
 
+        @Idempotent
         protected boolean cacheGuard1(int value) {
             assertOrder(2);
             Assert.assertEquals(1, value);
@@ -111,6 +115,7 @@ public class ExpressionOrderTest {
             return 2;
         }
 
+        @Idempotent
         protected boolean cacheGuard2(int value) {
             assertOrder(5);
             Assert.assertEquals(2, value);

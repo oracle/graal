@@ -61,6 +61,11 @@ final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl 
     }
 
     @Override
+    void beforeInstumentation(VirtualFrame frame) {
+        // no op
+    }
+
+    @Override
     Object execute(VirtualFrame frame) {
         return substitution.invoke(frame.getArguments());
     }

@@ -19,6 +19,7 @@ The Native Image JNI implementation supports both approaches.
 
 ### Table of Contents
 
+* [Loading Native Libraries](#loading-native-libraries)
 * [Reflection Metadata](#reflection-metadata)
 * [Object Handles](#object-handles)
 * [Java-to-Native Method Calls](#java-to-native-method-calls)
@@ -28,6 +29,12 @@ The Native Image JNI implementation supports both approaches.
 * [Field Accesses](#field-accesses)
 * [Exceptions](#exceptions)
 * [Monitors](#monitors)
+
+## Loading Native Libraries
+
+When loading native libraries using `System.loadLibrary()` (and related APIs), the native image will search the
+directory containing the native image before searching the Java library path. So as long as the native libraries
+to be loaded are in the same directory as the native image, no other settings should be necessary.
 
 ## Reflection Metadata
 

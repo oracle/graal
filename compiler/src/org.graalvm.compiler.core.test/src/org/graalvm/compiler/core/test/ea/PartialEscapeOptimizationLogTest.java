@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -127,7 +127,8 @@ public class PartialEscapeOptimizationLogTest extends EATestBase {
         try {
             int actualAllocationsRemoved = 0;
             int actualMaterializations = 0;
-            for (OptimizationLogImpl.OptimizationEntryImpl entry : graph.getOptimizationLog().getOptimizationTree().getNodes().filter(OptimizationLogImpl.OptimizationEntryImpl.class)) {
+            OptimizationLogImpl optimizationLog = (OptimizationLogImpl) graph.getOptimizationLog();
+            for (OptimizationLogImpl.OptimizationNode entry : optimizationLog.getOptimizationTree().getNodes().filter(OptimizationLogImpl.OptimizationNode.class)) {
                 if (entry.getEventName().equals("AllocationVirtualization")) {
                     actualAllocationsRemoved += 1;
                     actualMaterializations += (Integer) entry.getProperties().get("materializations");

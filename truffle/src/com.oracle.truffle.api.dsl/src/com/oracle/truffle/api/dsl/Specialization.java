@@ -239,9 +239,13 @@ public @interface Specialization {
      * result for each combination of the enclosing node instance and the bound input values.
      * </p>
      * <p>
-     * If a guard expression does not bind any dynamic input parameters then the DSL assumes that
-     * the result will not change for this node after specialization instantiation. The DSL asserts
-     * this assumption if assertions are enabled (-ea).
+     * If a guard expression does not bind any dynamic input parameters then the DSL, by default,
+     * assumes that the result will not change for this node after specialization instantiation. In
+     * other words the DSL assumes idempotence for this guard on the fast-path, by default. The
+     * {@link Idempotent} and {@link NonIdempotent} annotations may be used to configure this
+     * explicitly. The DSL will also emit warnings in case the use of such annotations is
+     * recommended. If assertions are enabled (-ea), then the DSL will assert that the idempotence
+     * property does hold at runtime.
      * </p>
      * <p>
      * Guard expressions are defined using a subset of Java. This subset includes field/parameter
@@ -371,5 +375,68 @@ public @interface Specialization {
      * @since 0.8 or earlier
      */
     String limit() default "";
+
+    /**
+     * Instructs the specialization to unroll a specialization with multiple instances. Unrolling
+     * causes fields of the inline cache to be directly stored in the node instead of a chained
+     * inline cache. At most 8 instances of a specialization can be unrolled to avoid code explosion
+     * in the interpreter.
+     * <p>
+     * A common use-case for this feature is to unroll the first instance of an inline cache. It is
+     * often the case that specializations with multiple instances are instantiated only once. By
+     * unrolling the first instance we can optimize for this common situation which may lead to
+     * footprint and interpreter performance improvements.
+     * <p>
+     * This feature is prone to cause inefficiencies if used too aggressively. Extra care should be
+     * taken, e.g. the generated code should be inspected and profiled to verify that the new code
+     * is better than the previous version.
+     * <p>
+     * Consider the following example:
+     *
+     * <pre>
+     * class MyNode extends Node {
+     *
+     *     static int limit = 2;
+     *
+     *     abstract int execute(int value);
+     *
+     *     &#64;Specialization(guards = "value == cachedValue", limit = "limit", unroll = 1)
+     *     int doDefault(int value,
+     *                     &#64;Cached("value") int cachedValue) {
+     *         return value;
+     *     }
+     *
+     * }
+     * </pre>
+     *
+     * In this example we unroll the first instance of an inline cache on <code>int</code> values.
+     * This is equivalent to manually specifying the following specializations:
+     *
+     * <pre>
+     * class MyUnrollNode extends Node {
+     *
+     *     static int limit = 2;
+     *
+     *     abstract int execute(int value);
+     *
+     *     &#64;Specialization(guards = "value == cachedValue", limit = "1")
+     *     int doUnrolled0(int value,
+     *                     &#64;Cached("value") int cachedValue) {
+     *         return value;
+     *     }
+     *
+     *     &#64;Specialization(guards = "value == cachedValue", limit = "limit - 1")
+     *     int doDefault(int value,
+     *                     &#64;Cached("value") int cachedValue) {
+     *         return value;
+     *     }
+     * }
+     *
+     * </pre>
+     *
+     *
+     * @since 23.0
+     */
+    int unroll() default 0;
 
 }

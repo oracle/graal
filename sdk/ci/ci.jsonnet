@@ -1,6 +1,6 @@
 {
-  local common = import '../../common.jsonnet',
-  local utils = import '../../common-utils.libsonnet',
+  local common = import '../../ci/ci_common/common.jsonnet',
+  local utils = import '../../ci/ci_common/common-utils.libsonnet',
 
   local sdk_gate = {
     name: 'gate-sdk-oraclejdk' + self.jdk_version + '-' + self.os + '-' + self.arch,
@@ -18,9 +18,9 @@
   },
 
   builds: [
-    common.linux_amd64  + common.oraclejdk11 + sdk_gate + common.eclipse + common.jdt,
-    common.linux_amd64  + common.oraclejdk17 + sdk_gate + common.eclipse + common.jdt + common.mach5_target,
-    common.darwin_amd64 + common.oraclejdk11 + sdk_gate,
+    common.linux_amd64  + common.oraclejdk20 + sdk_gate + common.deps.eclipse + common.deps.jdt,
+    common.linux_amd64  + common.oraclejdk17 + sdk_gate + common.deps.eclipse + common.deps.jdt + common.mach5_target,
+    common.darwin_amd64 + common.oraclejdk20 + sdk_gate,
     common.darwin_amd64 + common.oraclejdk17 + sdk_gate + common.mach5_target,
   ]
 }

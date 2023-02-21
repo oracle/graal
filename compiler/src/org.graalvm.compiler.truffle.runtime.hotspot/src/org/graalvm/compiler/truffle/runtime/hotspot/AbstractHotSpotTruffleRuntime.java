@@ -67,7 +67,6 @@ import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -607,44 +606,22 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    protected Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
+    protected int[] getFieldOffsets(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
         if (type.isArray() || type.isPrimitive()) {
             throw new IllegalArgumentException("Class " + type.getName() + " is a primitive type or an array class!");
         }
         HotSpotMetaAccessProvider meta = (HotSpotMetaAccessProvider) getMetaAccess();
         ResolvedJavaType javaType = meta.lookupJavaType(type);
         ResolvedJavaField[] fields = javaType.getInstanceFields(includeSuperclasses);
-        ResolvedJavaField[] fieldsToReturn = new ResolvedJavaField[fields.length];
+        int[] fieldOffsets = new int[fields.length];
         int fieldsCount = 0;
         for (int i = 0; i < fields.length; i++) {
             final ResolvedJavaField f = fields[i];
             if ((includePrimitive || !f.getJavaKind().isPrimitive()) && !fieldIsNotEligible(type, f)) {
-                fieldsToReturn[fieldsCount++] = f;
+                fieldOffsets[fieldsCount++] = f.getOffset();
             }
         }
-        return Arrays.copyOf(fieldsToReturn, fieldsCount);
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Object getFieldValue(ResolvedJavaField resolvedJavaField, Object obj) {
-        assert obj != null;
-        assert !resolvedJavaField.isStatic();
-        assert resolvedJavaField.getJavaKind() == JavaKind.Object;
-        assert resolvedJavaField.getDeclaringClass().isAssignableFrom(getMetaAccess().lookupJavaType(obj.getClass()));
-
-        /*
-         * The following code is extracted from
-         * jdk.vm.ci.hotspot.HotSpotJDKReflection#readFieldValue(HotSpotResolvedJavaField, Object,
-         * boolean) for this special case.
-         */
-        Object value;
-        if (resolvedJavaField.isVolatile()) {
-            value = UNSAFE.getObjectVolatile(obj, resolvedJavaField.getOffset());
-        } else {
-            value = UNSAFE.getObject(obj, resolvedJavaField.getOffset());
-        }
-        return value;
+        return Arrays.copyOf(fieldOffsets, fieldsCount);
     }
 
     private <T> T getVMOptionValue(String name, Class<T> type) {

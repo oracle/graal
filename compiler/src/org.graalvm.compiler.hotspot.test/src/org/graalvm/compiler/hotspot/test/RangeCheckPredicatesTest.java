@@ -42,7 +42,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.loop.phases.LoopPredicationPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
-import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
@@ -139,9 +139,9 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
     private boolean noRangeCheckInLoop(String method) {
         StructuredGraph graph = getFinalGraph(getResolvedJavaMethod(method), getOptionsMainPath());
         final StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
-        final List<Loop<Block>> loops = schedule.getCFG().getLoops();
+        final List<Loop<HIRBlock>> loops = schedule.getCFG().getLoops();
         Assert.assertEquals(1, loops.size());
-        final Loop<Block> loop = loops.get(0);
+        final Loop<HIRBlock> loop = loops.get(0);
         return loop.getBlocks().size() == 2;
     }
 
@@ -1039,11 +1039,11 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
 
     private static int countRangeChecksInLoop(StructuredGraph graph) {
         StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
-        List<Loop<Block>> loops = schedule.getCFG().getLoops();
+        List<Loop<HIRBlock>> loops = schedule.getCFG().getLoops();
         Assert.assertEquals(1, loops.size());
-        Loop<Block> loop = loops.get(0);
+        Loop<HIRBlock> loop = loops.get(0);
         int rangeChecks = 0;
-        for (Block block : loop.getBlocks()) {
+        for (HIRBlock block : loop.getBlocks()) {
             for (Node node : schedule.nodesFor(block)) {
                 if (node instanceof IntegerBelowNode) {
                     rangeChecks++;

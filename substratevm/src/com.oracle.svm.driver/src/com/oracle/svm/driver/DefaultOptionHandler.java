@@ -33,12 +33,12 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
-    static final String verboseOption = "--verbose";
     private static final String requireValidJarFileMessage = "-jar requires a valid jarfile";
     private static final String newStyleClasspathOptionName = "--class-path";
 
@@ -175,16 +175,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
             return true;
         }
-        String optimizeOption = "-O";
-        if (headArg.startsWith(optimizeOption)) {
-            args.poll();
-            if (headArg.equals(optimizeOption)) {
-                NativeImage.showError("The " + optimizeOption + " option should not be followed by a space");
-            } else {
-                nativeImage.addPlainImageBuilderArg(nativeImage.oHOptimize + headArg.substring(2));
-            }
-            return true;
-        }
         if (headArg.startsWith(addModulesOption + "=")) {
             args.poll();
             String addModulesArgs = headArg.substring(addModulesOption.length() + 1);
@@ -198,7 +188,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (headArg.startsWith("@") && !disableAtFiles) {
             args.poll();
             headArg = headArg.substring(1);
-            Path argFile = Paths.get(headArg);
+            Path origArgFile = Paths.get(headArg);
+            Path argFile = nativeImage.bundleSupport != null ? nativeImage.bundleSupport.substituteAuxiliaryPath(origArgFile, BundleMember.Role.Input) : origArgFile;
             NativeImage.NativeImageArgsProcessor processor = nativeImage.new NativeImageArgsProcessor(OptionOrigin.argFilePrefix + argFile);
             readArgFile(argFile).forEach(processor::accept);
             List<String> leftoverArgs = processor.apply(false);
@@ -295,26 +286,25 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     ctx.state = PARSER_STATE.SKIP_LEAD_WS;
                 } else {
                     // escaped character
-                    char[] escaped = new char[2];
-                    escaped[1] = '\0';
+                    String escaped;
                     switch (ch) {
                         case 'n':
-                            escaped[0] = '\n';
+                            escaped = "\n";
                             break;
                         case 'r':
-                            escaped[0] = '\r';
+                            escaped = "\r";
                             break;
                         case 't':
-                            escaped[0] = '\t';
+                            escaped = "\t";
                             break;
                         case 'f':
-                            escaped[0] = '\f';
+                            escaped = "\f";
                             break;
                         default:
-                            escaped[0] = ch;
+                            escaped = String.valueOf(ch);
                             break;
                     }
-                    ctx.parts.add(String.valueOf(escaped));
+                    ctx.parts.add(escaped);
                     ctx.state = PARSER_STATE.IN_QUOTE;
                 }
                 // anchor to next character
@@ -424,20 +414,26 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
-    private void handleJarFileArg(Path filePath) {
-        if (Files.isDirectory(filePath)) {
-            NativeImage.showError(filePath + " is a directory. (" + requireValidJarFileMessage + ")");
+    private void handleJarFileArg(Path jarFilePath) {
+        if (Files.isDirectory(jarFilePath)) {
+            NativeImage.showError(jarFilePath + " is a directory. (" + requireValidJarFileMessage + ")");
         }
-        if (!NativeImage.processJarManifestMainAttributes(filePath, nativeImage::handleMainClassAttribute)) {
-            NativeImage.showError("No manifest in " + filePath);
+        String jarFileName = jarFilePath.getFileName().toString();
+        String jarSuffix = ".jar";
+        String jarFileNameBase;
+        if (jarFileName.endsWith(jarSuffix)) {
+            jarFileNameBase = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
+        } else {
+            jarFileNameBase = jarFileName;
         }
-        nativeImage.addCustomImageClasspath(filePath);
-    }
-
-    @Override
-    void addFallbackBuildArgs(List<String> buildArgs) {
-        if (nativeImage.isVerbose()) {
-            buildArgs.add(verboseOption);
+        if (!jarFileNameBase.isEmpty()) {
+            String origin = "manifest from " + jarFilePath.toUri();
+            nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(nativeImage.oHName + jarFileNameBase, origin));
         }
+        Path finalFilePath = nativeImage.bundleSupport != null ? nativeImage.bundleSupport.substituteClassPath(jarFilePath) : jarFilePath;
+        if (!NativeImage.processJarManifestMainAttributes(finalFilePath, nativeImage::handleMainClassAttribute)) {
+            NativeImage.showError("No manifest in " + finalFilePath);
+        }
+        nativeImage.addCustomImageClasspath(finalFilePath);
     }
 }

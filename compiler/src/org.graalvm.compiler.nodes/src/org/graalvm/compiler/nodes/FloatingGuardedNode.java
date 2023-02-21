@@ -38,10 +38,6 @@ public abstract class FloatingGuardedNode extends FloatingNode implements Guarde
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
 
-    protected FloatingGuardedNode(NodeClass<? extends FloatingGuardedNode> c, Stamp stamp) {
-        super(c, stamp);
-    }
-
     protected FloatingGuardedNode(NodeClass<? extends FloatingGuardedNode> c, Stamp stamp, GuardingNode guard) {
         super(c, stamp);
         this.guard = guard;

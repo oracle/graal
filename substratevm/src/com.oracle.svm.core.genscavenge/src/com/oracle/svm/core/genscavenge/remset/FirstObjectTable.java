@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
-import com.oracle.svm.core.AlwaysInline;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -232,25 +232,24 @@ final class FirstObjectTable {
      * outside the current card.
      */
     @AlwaysInline("GC performance")
-    public static Pointer getFirstObjectImprecise(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit, UnsignedWord index) {
+    public static Pointer getFirstObjectImprecise(Pointer tableStart, Pointer objectsStart, UnsignedWord index) {
         Pointer result;
-        Pointer firstObject = getFirstObject(tableStart, objectsStart, objectsLimit, index);
+        Pointer firstObject = getFirstObject(tableStart, objectsStart, index);
         Pointer indexedMemoryStart = objectsStart.add(indexToMemoryOffset(index));
         // If the object starts before the memory for this index, skip over it.
         if (firstObject.belowThan(indexedMemoryStart)) {
             Object crossingObject = firstObject.toObject();
-            result = LayoutEncoding.getObjectEnd(crossingObject);
+            result = LayoutEncoding.getObjectEndInGC(crossingObject);
         } else {
             assert firstObject.equal(indexedMemoryStart) : "preciseFirstPointer.equal(indexedMemoryStart)";
             result = indexedMemoryStart;
         }
         assert objectsStart.belowOrEqual(result) : "memoryStart.belowOrEqual(result)";
-        assert result.belowOrEqual(objectsLimit) : "result.belowOrEqual(memoryLimit)";
         return result;
     }
 
     @AlwaysInline("GC performance")
-    private static Pointer getFirstObject(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit, UnsignedWord index) {
+    private static Pointer getFirstObject(Pointer tableStart, Pointer objectsStart, UnsignedWord index) {
         UnsignedWord currentIndex = index;
         int currentEntry = getEntryAtIndex(tableStart, currentIndex);
         assert currentEntry != UNINITIALIZED_ENTRY : "uninitialized first object table entry";
@@ -276,7 +275,6 @@ final class FirstObjectTable {
         UnsignedWord memoryOffset = entryToMemoryOffset(currentIndex, currentEntry);
         Pointer result = objectsStart.add(memoryOffset);
         assert objectsStart.belowOrEqual(result) : "chunkStart.belowOrEqual(result)";
-        assert result.belowThan(objectsLimit) : "result.belowThan(memoryLimit)";
         return result;
     }
 
@@ -292,7 +290,7 @@ final class FirstObjectTable {
     public static boolean verify(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit) {
         UnsignedWord indexLimit = getTableSizeForMemoryRange(objectsStart, objectsLimit);
         for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
-            Pointer objStart = getFirstObject(tableStart, objectsStart, objectsLimit, index);
+            Pointer objStart = getFirstObject(tableStart, objectsStart, index);
             if (objStart.belowThan(objectsStart) || objectsLimit.belowOrEqual(objStart)) {
                 Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object that is outside of the current chunk:  obj: ").zhex(objStart)
                                 .string(", chunk: ")
@@ -308,7 +306,7 @@ final class FirstObjectTable {
             }
 
             Object obj = objStart.toObject();
-            Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
+            Pointer objEnd = LayoutEncoding.getObjectEndInGC(obj);
             if (!entryStart.belowThan(objEnd)) {
                 Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object is not crossing nor starting at a card boundary:  obj: ").zhex(objStart)
                                 .string(" - ").zhex(objEnd).string(", chunk: ").zhex(objectsStart).string(" - ").zhex(objectsLimit).newline();

@@ -10,7 +10,7 @@ permalink: /support/
 GraalVM Enterprise distributions are based on Oracle JDK 11, Oracle JDK 17, and Oracle JDK 19.
 GraalVM Enterprise releases include all Oracle Java critical patch updates (CPUs), which are released on a regular schedule to remedy defects and known vulnerabilities.
 
-GraalVM Enterprise is available for Linux, macOS, and Windows platforms on x86 64-bit systems, for Linux and macOS (Apple Silicon) on ARM 64-bit systems.
+GraalVM Enterprise is available for Linux, macOS, and Windows platforms on x86 64-bit systems, for Linux and macOS on AArch64 architecture.
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
 
 ## Certified Platforms
@@ -19,12 +19,12 @@ The following are the certified platforms for GraalVM Enterprise 22.3:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| Oracle Linux 	| 7, 8 	| x86 64-bit, ARM 64-bit	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/oci/installation-compute-instance-with-OL.md) 	|
+| Oracle Linux 	| 7, 8 	| x86 64-bit, AArch64| [Installation Guide for Linux](../getting-started/graalvm-enterprise/oci/installation-compute-instance-with-OL.md) 	|
 | Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x86 64-bit 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/installation-linux.md) 	|
-| macOS 	| 10.14 (Mojave), 10.15 (Catalina), 11 (Big Sur), 12.4 (Monterey)	| x86 64-bit	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/installation-macos.md) 	|
+| macOS 	| 10.14 (Mojave), 10.15 (Catalina), 11 (Big Sur), 12.4 (Monterey), 13.2 (Ventura)	| x86 64-bit, AArch64	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/installation-macos.md) 	|
 | Microsoft Windows 	| Server 2016, 2019	| x86 64-bit 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/installation-windows.md) 	|
 
-Note: GraalVM Enterprise macOS distribution for ARM 64-bit architecture (Apple Silicon) is experimental.
+Note: GraalVM Enterprise macOS distribution for AArch64 architecture is experimental.
 
 ## Experimental Features
 
@@ -38,7 +38,7 @@ For more information, check the [Oracle Technology Network License Agreement for
 
 The following table lists supported and experimental features in GraalVM Enterprise Edition 22.3 by platform.
 
-| Feature         | Linux AMD64   | Linux ARM64   | macOS AMD64   | Windows AMD64 |
+| Feature         | Linux AMD64   | Linux AArch64 | macOS AMD64   | Windows AMD64 |
 |-----------------|---------------|---------------|---------------|---------------|
 | Native Image    | supported     | supported     | supported     | supported     |
 | LLVM runtime    | supported     | supported     | supported     | experimental  |

@@ -45,6 +45,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class SubstitutionReflectivityFilter {
 
     public static boolean shouldExclude(Class<?> classObj, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
+        if (!universe.hostVM().platformSupported(classObj)) {
+            return true;
+        }
         try {
             ResolvedJavaType analysisClass = metaAccess.lookupJavaType(classObj);
             if (!universe.hostVM().platformSupported(analysisClass)) {
@@ -59,6 +62,12 @@ public class SubstitutionReflectivityFilter {
     }
 
     public static boolean shouldExclude(Executable method, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
+        if (shouldExclude(method.getDeclaringClass(), metaAccess, universe)) {
+            return true;
+        }
+        if (!universe.hostVM().platformSupported(method)) {
+            return true;
+        }
         try {
             AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
             if (!universe.hostVM().platformSupported(aMethod)) {
@@ -82,6 +91,12 @@ public class SubstitutionReflectivityFilter {
     }
 
     public static boolean shouldExclude(Field field, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
+        if (shouldExclude(field.getDeclaringClass(), metaAccess, universe)) {
+            return true;
+        }
+        if (!universe.hostVM().platformSupported(field)) {
+            return true;
+        }
         try {
             AnalysisField aField = metaAccess.lookupJavaField(field);
             if (!universe.hostVM().platformSupported(aField)) {

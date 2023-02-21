@@ -46,7 +46,7 @@ public interface ComponentCatalog extends ComponentCollection {
      * <li>{@code false}: do not report components, which are already installed.
      * <li>{@code null}: report both installed and uninstalled components.
      * </ul>
-     * 
+     *
      * @param installed controls handling for installed components.
      * @param start the starting point
      * @param closure if true, makes complete closure of dependencies. False inspects only 1st level
@@ -64,12 +64,12 @@ public interface ComponentCatalog extends ComponentCollection {
      */
     boolean isRemoteEnabled();
 
-    public interface DownloadInterceptor {
+    interface DownloadInterceptor {
         /**
          * Configures the downloader, as appropriate for the catalog item. Note that the Catalog may
          * reject configuration for a ComponentInfo it knows nothing about - will return
          * {@code null}
-         * 
+         *
          * @param info component for which the Downloader should be configured
          * @param dn the downloader instance
          * @return the configured Downloader or {@code null}, if the ComponentInfo is not known.
@@ -80,7 +80,7 @@ public interface ComponentCatalog extends ComponentCollection {
          * Allows to intercept metadata loader operations. The interface may be implemented on
          * {@link SoftwareChannel} merged into {@link MergeStorage}. The default implementation
          * simply returns the delegate itself.
-         * 
+         *
          * @param info component info for which the MetadataLoader is wanted
          * @param delegate the original delegate
          * @return possibly wrapped/delegated instance

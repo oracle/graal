@@ -27,14 +27,14 @@ package org.graalvm.compiler.truffle.test.strings;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
-public class TStringOpsCalcStringAttributesLatin1Test extends TStringOpsTest<AMD64CalcStringAttributesNode> {
+public class TStringOpsCalcStringAttributesLatin1Test extends TStringOpsTest<CalcStringAttributesNode> {
 
     @Parameters(name = "{index}: args: {1}, {2}")
     public static Iterable<Object[]> data() {
@@ -68,7 +68,7 @@ public class TStringOpsCalcStringAttributesLatin1Test extends TStringOpsTest<AMD
     private final int length;
 
     public TStringOpsCalcStringAttributesLatin1Test(Object array, int offset, int length) {
-        super(AMD64CalcStringAttributesNode.class);
+        super(CalcStringAttributesNode.class);
         this.array = array;
         this.offset = offset;
         this.length = length;
@@ -76,6 +76,6 @@ public class TStringOpsCalcStringAttributesLatin1Test extends TStringOpsTest<AMD
 
     @Test
     public void testLatin1() {
-        test(getTStringOpsMethod("calcStringAttributesLatin1", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
+        testWithNative(getTStringOpsMethod("calcStringAttributesLatin1", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 }

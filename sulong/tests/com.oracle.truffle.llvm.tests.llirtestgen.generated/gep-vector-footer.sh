@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -33,5 +33,5 @@ cat << EOF
   ret void
 }
 
-declare dso_local noundef i32 @printf(i8* nocapture noundef readonly, ...) local_unnamed_addr #1
+declare dso_local noundef i32 @printf(ptr nocapture noundef readonly, ...) local_unnamed_addr #1
 EOF

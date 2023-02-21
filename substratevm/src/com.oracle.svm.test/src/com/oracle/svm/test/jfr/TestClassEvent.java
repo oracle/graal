@@ -26,16 +26,15 @@
 
 package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
 import org.junit.Test;
+
+import com.oracle.svm.test.jfr.events.ClassEvent;
 
 public class TestClassEvent extends JfrTest {
 
     @Override
     public String[] getTestedEvents() {
-        return new String[]{
-                        ClassEvent.class.getName()
-        };
+        return new String[]{ClassEvent.class.getName()};
     }
 
     @Test

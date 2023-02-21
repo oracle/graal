@@ -366,11 +366,21 @@ JNIEXPORT void JNICALL JVM_Yield(JNIEnv *env, jclass threadClass) {
 JNIEXPORT void JNICALL JVM_Sleep(JNIEnv *env, jclass threadClass, jlong millis) {
   UNIMPLEMENTED(JVM_Sleep);
 
+
+}
+
+JNIEXPORT jobject JNICALL JVM_CurrentCarrierThread(JNIEnv *env, jclass threadClass) {
+  UNIMPLEMENTED(JVM_CurrentCarrierThread);
+  return NULL;
 }
 
 JNIEXPORT jobject JNICALL JVM_CurrentThread(JNIEnv *env, jclass threadClass) {
   UNIMPLEMENTED(JVM_CurrentThread);
   return NULL;
+}
+
+JNIEXPORT void JVM_SetCurrentThread(JNIEnv *env, jobject thisThread, jobject theThread) {
+  UNIMPLEMENTED(JVM_SetCurrentThread);
 }
 
 JNIEXPORT jint JNICALL JVM_CountStackFrames(JNIEnv *env, jobject thread) {
@@ -393,6 +403,11 @@ JNIEXPORT jboolean JNICALL JVM_HoldsLock(JNIEnv *env, jclass threadClass, jobjec
   return 0;
 }
 
+JNIEXPORT jobject JNICALL JVM_GetStackTrace(JNIEnv *env, jobject thread) {
+  UNIMPLEMENTED(JVM_GetStackTrace);
+  return NULL;
+}
+
 JNIEXPORT void JNICALL JVM_DumpAllStacks(JNIEnv *env, jclass unused) {
   UNIMPLEMENTED(JVM_DumpAllStacks);
 
@@ -411,6 +426,38 @@ JNIEXPORT void JNICALL JVM_SetNativeThreadName(JNIEnv *env, jobject jthread, jst
 JNIEXPORT jobjectArray JNICALL JVM_DumpThreads(JNIEnv *env, jclass threadClass, jobjectArray threads) {
   UNIMPLEMENTED(JVM_DumpThreads);
   return NULL;
+}
+
+JNIEXPORT jobject JNICALL JVM_ExtentLocalCache(JNIEnv *env, jclass threadClass) {
+  UNIMPLEMENTED(JVM_ExtentLocalCache);
+  return NULL;
+}
+
+JNIEXPORT void JNICALL JVM_SetExtentLocalCache(JNIEnv *env, jclass threadClass, jobject theCache) {
+  UNIMPLEMENTED(JVM_SetExtentLocalCache);
+}
+
+JNIEXPORT jobject JNICALL JVM_ScopedValueCache(JNIEnv *env, jclass threadClass) {
+    UNIMPLEMENTED(JVM_ScopedValueCache);
+    return NULL;
+}
+
+JNIEXPORT void JNICALL JVM_SetScopedValueCache(JNIEnv *env, jclass threadClass, jobject theCache) {
+UNIMPLEMENTED(JVM_SetScopedValueCache);
+}
+
+JNIEXPORT jobject JNICALL JVM_FindScopedValueBindings(JNIEnv *env, jclass threadClass) {
+    UNIMPLEMENTED(JVM_FindScopedValueBindings);
+    return NULL;
+}
+
+JNIEXPORT jlong JNICALL JVM_GetNextThreadIdOffset(JNIEnv *env, jclass threadClass) {
+  UNIMPLEMENTED(JVM_GetNextThreadIdOffset);
+  return 0L;
+}
+
+JNIEXPORT void JNICALL JVM_RegisterContinuationMethods(JNIEnv *env, jclass cls) {
+  UNIMPLEMENTED(JVM_RegisterContinuationMethods);
 }
 
 JNIEXPORT jclass JNICALL JVM_CurrentLoadedClass(JNIEnv *env) {
@@ -761,6 +808,10 @@ JNIEXPORT jobject JNICALL JVM_GetInheritedAccessControlContext(JNIEnv *env, jcla
   return (*getEnv())->JVM_GetInheritedAccessControlContext(env, cls);
 }
 
+JNIEXPORT void JNICALL JVM_EnsureMaterializedForStackWalk_func(JNIEnv* env, jobject vthread, jobject value) {
+    UNIMPLEMENTED(JVM_EnsureMaterializedForStackWalk_func);
+}
+
 JNIEXPORT jobject JNICALL JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls) {
   IMPLEMENTED(JVM_GetStackAccessControlContext);
   return (*getEnv())->JVM_GetStackAccessControlContext(env, cls);
@@ -794,6 +845,14 @@ JNIEXPORT jobject JNICALL JVM_AssertionStatusDirectives(JNIEnv *env, jclass unus
 JNIEXPORT jboolean JNICALL JVM_SupportsCX8(void) {
   IMPLEMENTED(JVM_SupportsCX8);
   return (*getEnv())->JVM_SupportsCX8();
+}
+
+JNIEXPORT void JNICALL JVM_ReportFinalizationComplete(JNIEnv *env, jobject finalizee) {
+  UNIMPLEMENTED(JVM_ReportFinalizationComplete);
+}
+
+JNIEXPORT jboolean JNICALL JVM_IsFinalizationEnabled(JNIEnv *env) {
+  return JNI_TRUE;
 }
 
 JNIEXPORT jint JNICALL JVM_DTraceGetVersion(JNIEnv *env) {
@@ -1391,6 +1450,18 @@ JNIEXPORT jobjectArray JNICALL JVM_GetVmArguments(JNIEnv *env) {
   return (*getEnv())->JVM_GetVmArguments(env);
 }
 
+JNIEXPORT jboolean JNICALL JVM_IsPreviewEnabled(void) {
+  // TODO: proper arg handling of --enable-previw
+  IMPLEMENTED(JVM_IsPreviewEnabled);
+  return JNI_FALSE;
+}
+
+JNIEXPORT jboolean JNICALL JVM_IsContinuationsSupported(void) {
+  // TODO: actually support them.
+  IMPLEMENTED(JVM_IsContinuationsSupported);
+  return JNI_FALSE;
+}
+
 JNIEXPORT jboolean JNICALL JVM_HasReferencePendingList(JNIEnv *env) {
   IMPLEMENTED(JVM_HasReferencePendingList);
   return (*getEnv())->JVM_HasReferencePendingList(env);
@@ -1424,6 +1495,10 @@ JNIEXPORT jint JNICALL JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong
                   jobjectArray frames) {
   IMPLEMENTED(JVM_MoreStackWalk);
   return (*getEnv())->JVM_MoreStackWalk(env, stackStream, mode, anchor, frame_count, start_index, frames);
+}
+
+JNIEXPORT void JNICALL JVM_SetStackWalkContinuation(JNIEnv *env, jobject stackStream, jlong anchor, jobjectArray frames, jobject cont) {
+  UNIMPLEMENTED(JVM_SetStackWalkContinuation);
 }
 
 JNIEXPORT void JNICALL JVM_SetBootLoaderUnnamedModule(JNIEnv *env, jobject module) {
@@ -1551,6 +1626,31 @@ JNIEXPORT void JNICALL JVM_DumpDynamicArchive(JNIEnv *env, jstring archiveName) 
   UNIMPLEMENTED(JVM_DumpDynamicArchive);
 }
 
+JNIEXPORT void JNICALL JVM_VirtualThreadMountBegin(JNIEnv* env, jobject vthread, jboolean first_mount) {
+  UNIMPLEMENTED(JVM_VirtualThreadUnmountBegin);
+}
+
+JNIEXPORT void JNICALL JVM_VirtualThreadMountEnd(JNIEnv* env, jobject vthread, jboolean first_mount) {
+  UNIMPLEMENTED(JVM_VirtualThreadUnmountEnd);
+}
+
+JNIEXPORT void JNICALL JVM_VirtualThreadUnmountBegin(JNIEnv* env, jobject vthread, jboolean last_unmount) {
+  UNIMPLEMENTED(JVM_VirtualThreadUnmountBegin);
+}
+
+JNIEXPORT void JNICALL JVM_VirtualThreadUnmountEnd(JNIEnv* env, jobject vthread, jboolean last_unmount) {
+  UNIMPLEMENTED(JVM_VirtualThreadUnmountEnd);
+}
+
+JNIEXPORT void JNICALL JVM_VirtualThreadHideFrames(JNIEnv* env, jobject vthread, jboolean hide) {
+  UNIMPLEMENTED(JVM_VirtualThreadHideFrames);
+}
+
+JNIEXPORT jint JNICALL JVM_GetClassFileVersion(JNIEnv *env, jclass current) {
+  UNIMPLEMENTED(JVM_GetClassFileVersion);
+  return 0;
+}
+
 // region Invocation API
 
 jboolean is_supported_jni_version(jint version) {
@@ -1560,7 +1660,10 @@ jboolean is_supported_jni_version(jint version) {
         case JNI_VERSION_1_6:
         case JNI_VERSION_1_8:
         case JNI_VERSION_9:
-        case JNI_VERSION_10: return JNI_TRUE;
+        case JNI_VERSION_10:
+        case JNI_VERSION_19:
+        case JNI_VERSION_20:
+		return JNI_TRUE;
     }
     return JNI_FALSE;
 }

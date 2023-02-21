@@ -74,10 +74,9 @@ import com.oracle.svm.core.util.UnsignedUtils;
 final class CardTable {
     public static final int BYTES_COVERED_BY_ENTRY = 512;
 
-    private static final int ENTRY_SIZE_BYTES = 1;
-
-    private static final int DIRTY_ENTRY = 0;
-    private static final int CLEAN_ENTRY = 1;
+    static final byte DIRTY_ENTRY = 0;
+    static final byte CLEAN_ENTRY = 1;
+    static final UnsignedWord CLEAN_WORD = WordFactory.unsigned(0x0101010101010101L);
 
     private static final CardTableVerificationVisitor CARD_TABLE_VERIFICATION_VISITOR = new CardTableVerificationVisitor();
 
@@ -85,21 +84,20 @@ final class CardTable {
     }
 
     public static void cleanTable(Pointer tableStart, UnsignedWord size) {
-        UnmanagedMemoryUtil.fill(tableStart, size, (byte) CLEAN_ENTRY);
+        UnmanagedMemoryUtil.fill(tableStart, size, CLEAN_ENTRY);
     }
 
     public static void setDirty(Pointer table, UnsignedWord index) {
-        UnsignedWord tableOffset = indexToTableOffset(index);
-        byte valueBefore = table.readByte(tableOffset, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
+        byte valueBefore = table.readByte(index, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
         // Using a likely probability should typically avoid placing the write below at a separate
         // location with an extra jump back to after the barrier for more compact code.
         if (BranchProbabilityNode.probability(BranchProbabilityNode.LIKELY_PROBABILITY, valueBefore != DIRTY_ENTRY)) {
-            table.writeByte(tableOffset, (byte) DIRTY_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
+            table.writeByte(index, DIRTY_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
         }
     }
 
     public static void setClean(Pointer table, UnsignedWord index) {
-        table.writeByte(indexToTableOffset(index), (byte) CLEAN_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
+        table.writeByte(index, CLEAN_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
     }
 
     public static boolean isDirty(Pointer table, UnsignedWord index) {
@@ -113,25 +111,20 @@ final class CardTable {
     }
 
     private static int readEntry(Pointer table, UnsignedWord index) {
-        return table.readByte(indexToTableOffset(index));
-    }
-
-    private static UnsignedWord indexToTableOffset(UnsignedWord index) {
-        return index.multiply(ENTRY_SIZE_BYTES);
+        return table.readByte(index);
     }
 
     public static UnsignedWord memoryOffsetToIndex(UnsignedWord offset) {
         return offset.unsignedDivide(BYTES_COVERED_BY_ENTRY);
     }
 
-    public static Pointer indexToMemoryPointer(Pointer memoryStart, UnsignedWord index) {
-        UnsignedWord offset = index.multiply(BYTES_COVERED_BY_ENTRY);
-        return memoryStart.add(offset);
+    public static Pointer cardToHeapAddress(Pointer cardTableStart, Pointer cardAddr, Pointer objectsStart) {
+        UnsignedWord offset = cardAddr.subtract(cardTableStart).multiply(CardTable.BYTES_COVERED_BY_ENTRY);
+        return objectsStart.add(offset);
     }
 
     public static UnsignedWord tableSizeForMemorySize(UnsignedWord memorySize) {
-        UnsignedWord maxIndex = indexLimitForMemorySize(memorySize);
-        return maxIndex.multiply(ENTRY_SIZE_BYTES);
+        return indexLimitForMemorySize(memorySize);
     }
 
     public static UnsignedWord indexLimitForMemorySize(UnsignedWord memorySize) {
@@ -160,7 +153,7 @@ final class CardTable {
                     success &= verifyReferent(ref, cardTableStart, objectsStart);
                 }
             }
-            curPtr = LayoutEncoding.getObjectEnd(obj);
+            curPtr = LayoutEncoding.getObjectEndInGC(obj);
         }
         return success;
     }
@@ -178,7 +171,7 @@ final class CardTable {
             boolean fromImageHeap = HeapImpl.usesImageHeapCardMarking() && HeapImpl.getHeapImpl().isInImageHeap(parentObject);
             if (fromImageHeap || HeapChunk.getSpace(objChunk).isYoungSpace()) {
                 UnsignedWord cardTableIndex = memoryOffsetToIndex(Word.objectToUntrackedPointer(parentObject).subtract(objectsStart));
-                Pointer cardTableAddress = cardTableStart.add(indexToTableOffset(cardTableIndex));
+                Pointer cardTableAddress = cardTableStart.add(cardTableIndex);
                 Log.log().string("Object ").zhex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).character(')')
                                 .string(fromImageHeap ? ", which is in the image heap, " : " ")
                                 .string("has an object reference at ")

@@ -51,10 +51,6 @@ public final class JavaWriteNode extends AbstractWriteNode implements Lowerable,
     protected final boolean hasSideEffect;
     protected final MemoryOrderMode memoryOrder;
 
-    public JavaWriteNode(JavaKind writeKind, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean compressible, boolean hasSideEffect) {
-        this(writeKind, address, location, value, barrierType, compressible, hasSideEffect, MemoryOrderMode.PLAIN);
-    }
-
     public JavaWriteNode(JavaKind writeKind, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean compressible) {
         this(writeKind, address, location, value, barrierType, compressible, true, MemoryOrderMode.PLAIN);
     }

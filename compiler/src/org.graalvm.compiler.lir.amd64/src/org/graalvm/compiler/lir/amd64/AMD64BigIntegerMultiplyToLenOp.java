@@ -64,9 +64,9 @@ import jdk.vm.ci.meta.Value;
           commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
           sha1      = "8ada7fcdb170eda06a7852fc90450193b2a0f7a0")
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 6087,
-          lineEnd   = 6544,
-          commit    = "5d48da4574f6aacb0db445dd5750566330aa383d",
+          lineStart = 6100,
+          lineEnd   = 6557,
+          commit    = "2afb4c3327b6830a009ee1ab8a1eb7803ef53007",
           sha1      = "3b967007055fd0134e74b90898a6ab12dc531653")
 // @formatter:on
 public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {

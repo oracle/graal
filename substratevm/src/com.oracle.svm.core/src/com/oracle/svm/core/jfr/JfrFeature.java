@@ -34,11 +34,13 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
+import com.oracle.svm.core.sampler.SamplerStackWalkVisitor;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.util.UserError;
@@ -49,7 +51,6 @@ import com.sun.management.HotSpotDiagnosticMXBean;
 import com.sun.management.internal.PlatformMBeanProviderImpl;
 
 import jdk.jfr.Configuration;
-import jdk.jfr.Event;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.jfc.JFC;
 
@@ -59,9 +60,9 @@ import jdk.jfr.internal.jfc.JFC;
  *
  * There are two different kinds of JFR events:
  * <ul>
- * <li>Java-level events are defined by a Java class that extends {@link Event} and that is
- * annotated with JFR-specific annotations. Those events are typically triggered by the Java
- * application and a Java {@code EventWriter} object is used when writing the event to a
+ * <li>Java-level events are defined by a Java class that extends {@link jdk.internal.event.Event}
+ * and that is annotated with JFR-specific annotations. Those events are typically triggered by the
+ * Java application and a Java {@code EventWriter} object is used when writing the event to a
  * buffer.</li>
  * <li>Native events are triggered by the JVM itself and are defined in the JFR metadata.xml file.
  * For writing such an event to a buffer, we call into {@link JfrNativeEventWriter} and pass a
@@ -115,7 +116,7 @@ public class JfrFeature implements InternalFeature {
         boolean runtimeEnabled = VMInspectionOptions.hasJfrSupport();
         if (HOSTED_ENABLED && !runtimeEnabled) {
             if (allowPrinting) {
-                System.err.println("Warning: When FlightRecoder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
+                System.err.println("Warning: When FlightRecorder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
                                 "This can affect the measurements because it can can make the image larger and image build time longer.");
             }
             runtimeEnabled = true;
@@ -125,6 +126,10 @@ public class JfrFeature implements InternalFeature {
 
     private static boolean osSupported() {
         return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+    }
+
+    public static boolean isExecutionSamplerSupported() {
+        return HasJfrSupport.get() && !DeoptimizationSupport.enabled();
     }
 
     /**
@@ -160,9 +165,15 @@ public class JfrFeature implements InternalFeature {
         ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());
         ImageSingletons.add(JfrTraceIdEpoch.class, new JfrTraceIdEpoch());
         ImageSingletons.add(JfrGCNames.class, new JfrGCNames());
+        ImageSingletons.add(SamplerStackWalkVisitor.class, new SamplerStackWalkVisitor());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
+        JfrSerializerSupport.get().register(new JfrMonitorInflationCauseSerializer());
+        JfrSerializerSupport.get().register(new JfrGCCauseSerializer());
+        JfrSerializerSupport.get().register(new JfrGCNameSerializer());
+        JfrSerializerSupport.get().register(new JfrVMOperationNameSerializer());
+
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 
         if (HOSTED_ENABLED) {
