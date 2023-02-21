@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 import sun.management.Util;
 
-@Platforms(Platform.HOSTED_ONLY.class)
 public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements MemoryPoolMXBean {
 
     protected final String name;
@@ -51,6 +50,7 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
     private static final UnsignedWord UNDEFINED = WordFactory.zero();
     protected UnsignedWord initialValue = UNDEFINED;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected AbstractMemoryPoolMXBean(String name, String... managerNames) {
         this.name = name;
         this.managerNames = managerNames;

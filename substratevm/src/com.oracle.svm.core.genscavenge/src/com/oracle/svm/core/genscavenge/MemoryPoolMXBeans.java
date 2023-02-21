@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, BELLSOFT. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,7 +71,7 @@ public class MemoryPoolMXBeans {
     static final class EdenMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public EdenMemoryPoolMXBean(String... managerNames) {
+        EdenMemoryPoolMXBean(String... managerNames) {
             super("eden space", managerNames);
         }
 
@@ -118,7 +118,7 @@ public class MemoryPoolMXBeans {
     static final class SurvivorMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public SurvivorMemoryPoolMXBean(String... managerNames) {
+        SurvivorMemoryPoolMXBean(String... managerNames) {
             super("survivor space", managerNames);
         }
 
@@ -159,7 +159,7 @@ public class MemoryPoolMXBeans {
     static final class OldGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public OldGenerationMemoryPoolMXBean(String... managerNames) {
+        OldGenerationMemoryPoolMXBean(String... managerNames) {
             super("old generation space", managerNames);
         }
 
@@ -201,7 +201,7 @@ public class MemoryPoolMXBeans {
     static final class EpsilonMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public EpsilonMemoryPoolMXBean(String... managerNames) {
+        EpsilonMemoryPoolMXBean(String... managerNames) {
             super("epsilon heap", managerNames);
         }
 
