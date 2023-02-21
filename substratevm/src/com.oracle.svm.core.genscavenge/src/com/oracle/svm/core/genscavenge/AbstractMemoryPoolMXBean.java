@@ -29,6 +29,7 @@ import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
+import java.lang.management.MemoryUsage;
 import java.util.Arrays;
 
 import com.oracle.svm.core.heap.MXBeanBase;
@@ -47,12 +48,31 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
     protected final String[] managerNames;
     protected final UninterruptibleUtils.AtomicUnsigned peakUsage = new UninterruptibleUtils.AtomicUnsigned();
 
+    private static final UnsignedWord UNDEFINED = WordFactory.zero();
+    protected UnsignedWord initialValue = UNDEFINED;
+
     protected AbstractMemoryPoolMXBean(String name, String... managerNames) {
         this.name = name;
         this.managerNames = managerNames;
     }
 
-    abstract void afterCollection();
+    UnsignedWord getInitialValue() {
+        if (initialValue.equal(UNDEFINED)) {
+            initialValue = computeInitialValue();
+        }
+        return initialValue;
+    }
+
+    abstract UnsignedWord computeInitialValue();
+
+    abstract UnsignedWord getMaximumValue();
+
+    MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
+        return new MemoryUsage(getInitialValue().rawValue(), usedAndCommitted.rawValue(), usedAndCommitted.rawValue(), getMaximumValue().rawValue());
+    }
+
+    void afterCollection() {
+    }
 
     @Override
     public String getName() {

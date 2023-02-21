@@ -76,6 +76,17 @@ public class MemoryPoolMXBeans {
         }
 
         @Override
+        UnsignedWord computeInitialValue() {
+            return GCImpl.getPolicy() instanceof AbstractCollectionPolicy policy ? policy.sizes.initialEdenSize : WordFactory.signed(-1);
+        }
+
+        @Override
+        UnsignedWord getMaximumValue() {
+            CollectionPolicy policy = GCImpl.getPolicy();
+            return policy.getMaximumYoungGenerationSize().subtract(policy.getMaximumSurvivorSize());
+        }
+
+        @Override
         void afterCollection() {
             updatePeakUsage(GCImpl.getGCImpl().getAccounting().getEdenChunkBytesBefore());
         }
@@ -99,12 +110,6 @@ public class MemoryPoolMXBeans {
         private static UnsignedWord getCurrentUsage() {
             return HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes();
         }
-
-        private static MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
-            CollectionPolicy policy = GCImpl.getPolicy();
-            UnsignedWord max = policy.getMaximumYoungGenerationSize().subtract(policy.getMaximumSurvivorSize());
-            return new MemoryUsage(0L, usedAndCommitted.rawValue(), usedAndCommitted.rawValue(), max.rawValue());
-        }
     }
 
     /**
@@ -115,6 +120,16 @@ public class MemoryPoolMXBeans {
         @Platforms(Platform.HOSTED_ONLY.class)
         public SurvivorMemoryPoolMXBean(String... managerNames) {
             super("survivor space", managerNames);
+        }
+
+        @Override
+        UnsignedWord computeInitialValue() {
+            return GCImpl.getPolicy() instanceof AbstractCollectionPolicy policy ? policy.sizes.initialSurvivorSize : WordFactory.signed(-1);
+        }
+
+        @Override
+        UnsignedWord getMaximumValue() {
+            return GCImpl.getPolicy().getMaximumSurvivorSize();
         }
 
         @Override
@@ -136,11 +151,6 @@ public class MemoryPoolMXBeans {
         public MemoryUsage getCollectionUsage() {
             return memoryUsage(GCImpl.getGCImpl().getAccounting().getYoungChunkBytesAfter());
         }
-
-        private static MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
-            UnsignedWord max = GCImpl.getPolicy().getMaximumSurvivorSize();
-            return new MemoryUsage(0L, usedAndCommitted.rawValue(), usedAndCommitted.rawValue(), max.rawValue());
-        }
     }
 
     /**
@@ -151,6 +161,17 @@ public class MemoryPoolMXBeans {
         @Platforms(Platform.HOSTED_ONLY.class)
         public OldGenerationMemoryPoolMXBean(String... managerNames) {
             super("old generation space", managerNames);
+        }
+
+        @Override
+        UnsignedWord computeInitialValue() {
+            return GCImpl.getPolicy() instanceof AbstractCollectionPolicy policy ? policy.sizes.initialOldSize() : WordFactory.signed(-1);
+        }
+
+        @Override
+        UnsignedWord getMaximumValue() {
+            CollectionPolicy policy = GCImpl.getPolicy();
+            return policy.getMaximumHeapSize().subtract(policy.getMaximumYoungGenerationSize());
         }
 
         @Override
@@ -172,12 +193,6 @@ public class MemoryPoolMXBeans {
         public MemoryUsage getCollectionUsage() {
             return memoryUsage(GCImpl.getGCImpl().getAccounting().getOldGenerationAfterChunkBytes());
         }
-
-        private static MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
-            CollectionPolicy policy = GCImpl.getPolicy();
-            UnsignedWord max = policy.getMaximumHeapSize().subtract(policy.getMaximumYoungGenerationSize());
-            return new MemoryUsage(0L, usedAndCommitted.rawValue(), usedAndCommitted.rawValue(), max.rawValue());
-        }
     }
 
     /**
@@ -185,15 +200,19 @@ public class MemoryPoolMXBeans {
      */
     static final class EpsilonMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
-        private final long MAX_HEAP_SIZE = GCImpl.getPolicy().getMaximumHeapSize().rawValue();
-
         @Platforms(Platform.HOSTED_ONLY.class)
         public EpsilonMemoryPoolMXBean(String... managerNames) {
             super("epsilon heap", managerNames);
         }
 
         @Override
-        void afterCollection() {
+        UnsignedWord computeInitialValue() {
+            return GCImpl.getPolicy().getMinimumHeapSize();
+        }
+
+        @Override
+        UnsignedWord getMaximumValue() {
+            return GCImpl.getPolicy().getMaximumHeapSize();
         }
 
         @Override
@@ -215,7 +234,7 @@ public class MemoryPoolMXBeans {
         }
 
         private MemoryUsage memoryUsage(long used, long committed) {
-            return new MemoryUsage(0L, used, committed, MAX_HEAP_SIZE);
+            return new MemoryUsage(getInitialValue().rawValue(), used, committed, getMaximumValue().rawValue());
         }
     }
 }
