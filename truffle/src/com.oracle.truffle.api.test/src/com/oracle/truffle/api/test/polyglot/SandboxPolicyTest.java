@@ -887,6 +887,67 @@ public class SandboxPolicyTest {
                 throw iae;
             }
         }
+
+        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowArrayAccess(true).build();
+        try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertSandboxPolicyException(iae,
+                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowArrayAccess(boolean) set to true");
+                assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
+            }
+        }
+        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowListAccess(true).build();
+        try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertSandboxPolicyException(iae,
+                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowListAccess(boolean) set to true");
+                assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
+            }
+        }
+        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowBufferAccess(true).build();
+        try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertSandboxPolicyException(iae,
+                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowBufferAccess(boolean) set to true");
+                assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
+            }
+        }
+        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowIterableAccess(true).build();
+        try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertSandboxPolicyException(iae,
+                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowIterableAccess(boolean) set to true");
+                assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
+            }
+        }
+        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowIteratorAccess(true).build();
+        try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertSandboxPolicyException(iae,
+                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowIteratorAccess(boolean) set to true");
+                assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
+            }
+        }
+        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowMapAccess(true).build();
+        try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertSandboxPolicyException(iae,
+                                "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowMapAccess(boolean) set to true");
+                assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
+            }
+        }
     }
 
     private Engine.Builder newEngineBuilder(String... permittedLanguages) {

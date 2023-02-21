@@ -2100,6 +2100,46 @@ public final class Context implements AutoCloseable {
                                     "set HostAccess.Builder.methodScoping(boolean)");
                 }
             }
+            if (useSandboxPolicy.isStricterOrEqual(SandboxPolicy.UNTRUSTED)) {
+                if (hostAccess != null) {
+                    if (hostAccess.allowArrayAccess) {
+                        throw throwSandboxException(useSandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowArrayAccess(boolean) set to true, " +
+                                                        "but HostAccess.Builder.allowArrayAccess(boolean) must not be set to true.",
+                                        "do not set HostAccess.Builder.allowArrayAccess(boolean)");
+                    }
+                    if (hostAccess.allowListAccess) {
+                        throw throwSandboxException(useSandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowListAccess(boolean) set to true, " +
+                                                        "but HostAccess.Builder.allowListAccess(boolean) must not be set to true.",
+                                        "do not set HostAccess.Builder.allowListAccess(boolean)");
+                    }
+                    if (hostAccess.allowMapAccess) {
+                        throw throwSandboxException(useSandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowMapAccess(boolean) set to true, " +
+                                                        "but HostAccess.Builder.allowMapAccess(boolean) must not be set to true.",
+                                        "do not set HostAccess.Builder.allowMapAccess(boolean)");
+                    }
+                    if (hostAccess.allowBufferAccess) {
+                        throw throwSandboxException(useSandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowBufferAccess(boolean) set to true, " +
+                                                        "but HostAccess.Builder.allowBufferAccess(boolean) must not be set to true.",
+                                        "do not set HostAccess.Builder.allowBufferAccess(boolean)");
+                    }
+                    if (hostAccess.allowIterableAccess) {
+                        throw throwSandboxException(useSandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowIterableAccess(boolean) set to true, " +
+                                                        "but HostAccess.Builder.allowIterableAccess(boolean) must not be set to true.",
+                                        "do not set HostAccess.Builder.allowIterableAccess(boolean)");
+                    }
+                    if (hostAccess.allowIteratorAccess) {
+                        throw throwSandboxException(useSandboxPolicy,
+                                        "Context.Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowIteratorAccess(boolean) set to true, " +
+                                                        "but HostAccess.Builder.allowIteratorAccess(boolean) must not be set to true.",
+                                        "do not set HostAccess.Builder.allowIteratorAccess(boolean)");
+                    }
+                }
+            }
         }
 
         private IllegalArgumentException throwSandboxException(SandboxPolicy sandboxPolicy, String reason, String fix) {
