@@ -750,15 +750,10 @@ final class LongDoubleUtil {
         }
 
         private static BigInteger fractionToUnsignedBigInteger(long fraction, long expSignFraction) {
-                long extractedFraction = (expSignFraction & FP128Number.FRACTION_MASK) + (1L << FP128Number.EXPONENT_POSITION);
-                long upperFraction = ((extractedFraction << 1) + (fraction >>> 63));
-                long lowerFraction = (fraction & Long.MAX_VALUE);
-                return (BigInteger.valueOf(upperFraction).shiftLeft(63).add(BigInteger.valueOf(lowerFraction)));
-                // upper -- part -- 48 bits
-                // lower -- whole -- 64 bits -- might be negative
-                // upper1 = upper shift left by 1 + lower right shift by 63 + (1 << 48)
-                // lower1 = lower masked by 63 bits
-                // BigInteger bi = upper1 left shift by 63 bits + lower1
+            long extractedFraction = (expSignFraction & FP128Number.FRACTION_MASK) + (1L << FP128Number.EXPONENT_POSITION);
+            long upperFraction = ((extractedFraction << 1) + (fraction >>> 63));
+            long lowerFraction = (fraction & Long.MAX_VALUE);
+            return (BigInteger.valueOf(upperFraction).shiftLeft(63).add(BigInteger.valueOf(lowerFraction)));
         }
 
         @ExportMessage
