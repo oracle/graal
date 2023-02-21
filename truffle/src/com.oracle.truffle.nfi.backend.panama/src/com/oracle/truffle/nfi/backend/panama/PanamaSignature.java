@@ -305,7 +305,7 @@ final class PanamaSignature {
     static MethodHandle createDowncallHandle(FunctionDescriptor descriptor) {
         int parameterCount = descriptor.argumentLayouts().size();
         return Linker.nativeLinker().downcallHandle(descriptor).asSpreader(Object[].class, parameterCount).asType(
-                        MethodType.methodType(Object.class, new Class[]{MemorySegment.class, Object[].class}));
+                        MethodType.methodType(Object.class, new Class<?>[]{MemorySegment.class, Object[].class}));
     }
 
     static final class ArgsState {
