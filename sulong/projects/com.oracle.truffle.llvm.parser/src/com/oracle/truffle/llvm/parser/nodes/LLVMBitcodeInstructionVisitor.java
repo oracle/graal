@@ -416,7 +416,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         argTypes.set(argIndex, new PointerType(null));
         argIndex++;
 
-        if (targetType instanceof StructureType) {
+        if (targetType instanceof StructureType || targetType instanceof ArrayType) {
             argTypes.set(argIndex, new PointerType(targetType));
             argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(targetType, uniquesRegion);
             argIndex++;
@@ -695,7 +695,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         ensureSupportedOperandBundle(target, call.getOperandBundle());
 
-        if (targetType instanceof StructureType) {
+        if (targetType instanceof StructureType || targetType instanceof ArrayType) {
             argTypes.set(argIndex, new PointerType(targetType));
             argNodes[argIndex] = nodeFactory.createGetUniqueStackSpace(targetType, uniquesRegion);
             argIndex++;
@@ -799,7 +799,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private static int getArgumentCount(int argumentCount, final Type targetType) {
         int count = argumentCount;
-        if (targetType instanceof StructureType) {
+        if (targetType instanceof StructureType || targetType instanceof ArrayType) {
             count++;
         }
         count++; // stackpointer
