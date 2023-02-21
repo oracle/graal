@@ -29,7 +29,7 @@ For macOS, use:
 export JAVA_HOME=/path/to/graalvm/Contents/Home
 export PATH=/path/to/graalvm/Contents/Home/bin:$PATH
 ```
-4. Execute `mvn package` from the SimpleLanguage folder to build the language. The command also builds a `slnative` executable in the `simplelanguage/native` directory and a `sl-component.jar` language component which later can be installed into GraalVM using the [GraalVM Updater](../reference-manual/graalvm-updater.md) tool. Please verify ithat the `native-image` plugin is available in your GraalVM distribution to avoid build failure:
+4. Execute `mvn package` from the SimpleLanguage folder to build the language. The command also builds a `slnative` executable in the `simplelanguage/native` directory and a `sl-component.jar` language component which later can be installed into GraalVM using the [GraalVM Updater](../reference-manual/graalvm-updater.md) tool. Please verify that the `native-image` plugin is available in your GraalVM distribution to avoid build failure:
 ```shell
 gu list
 gu install native-image

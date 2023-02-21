@@ -44,7 +44,7 @@ public abstract class CompositeValue extends Value {
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface Component {
+    public @interface Component {
 
         OperandFlag[] value() default OperandFlag.REG;
     }

@@ -115,7 +115,7 @@ public final class ThreadData extends UnacquiredThreadData {
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public ThreadData acquire() {
-        SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
+        JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
             if (detached) {
                 return null;
@@ -124,14 +124,14 @@ public final class ThreadData extends UnacquiredThreadData {
             refCount++;
             return this;
         } finally {
-            SpinLockUtils.unlock(this, LOCK_OFFSET);
+            JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
         }
     }
 
     /** Decreases the reference count. The data may be freed if the reference count reaches zero. */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void release() {
-        SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
+        JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
             assert refCount > 0;
             refCount--;
@@ -139,7 +139,7 @@ public final class ThreadData extends UnacquiredThreadData {
                 free();
             }
         } finally {
-            SpinLockUtils.unlock(this, LOCK_OFFSET);
+            JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
         }
     }
 
@@ -154,14 +154,14 @@ public final class ThreadData extends UnacquiredThreadData {
         assert isForCurrentThread() || VMOperation.isInProgressAtSafepoint() : "may only be called by the detaching thread or at a safepoint";
         assert !detached : "may only be called once";
 
-        SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
+        JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
             detached = true;
             if (refCount == 0) {
                 free();
             }
         } finally {
-            SpinLockUtils.unlock(this, LOCK_OFFSET);
+            JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
         }
     }
 
@@ -187,7 +187,7 @@ public final class ThreadData extends UnacquiredThreadData {
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private boolean tryToStoreParkEvent(long offset, ParkEvent newEvent) {
-        SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
+        JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
             if (UNSAFE.getObject(this, offset) != null) {
                 return false;
@@ -195,7 +195,7 @@ public final class ThreadData extends UnacquiredThreadData {
             UNSAFE.putObjectVolatile(this, offset, newEvent);
             return true;
         } finally {
-            SpinLockUtils.unlock(this, LOCK_OFFSET);
+            JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
         }
     }
 

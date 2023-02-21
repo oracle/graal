@@ -264,7 +264,6 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> VTHREAD_GROUP = StaticSymbols.putName("VTHREAD_GROUP");
         public static final Symbol<Name> inheritedAccessControlContext = StaticSymbols.putName("inheritedAccessControlContext");
         public static final Symbol<Name> maxPriority = StaticSymbols.putName("maxPriority");
-        public static final Symbol<Name> parkBlocker = StaticSymbols.putName("parkBlocker");
         public static final Symbol<Name> priority = StaticSymbols.putName("priority");
         public static final Symbol<Name> remove = StaticSymbols.putName("remove");
         public static final Symbol<Name> stop = StaticSymbols.putName("stop");

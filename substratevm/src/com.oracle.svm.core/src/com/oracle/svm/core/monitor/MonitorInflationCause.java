@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +23,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.util;
 
-/** Utility methods for manipulating bit arrays stored as an int. */
-public class BitArrayUtils {
+package com.oracle.svm.core.monitor;
 
-    /** An empty bit array, i.e., not bits set. */
-    public static final int EMPTY_BIT_ARRAY = 0;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    public static int or(int first, int second) {
-        return first | second;
+public enum MonitorInflationCause {
+    VM_INTERNAL("VM Internal"),
+    MONITOR_ENTER("Monitor Enter"),
+    WAIT("Monitor Wait"),
+    NOTIFY("Monitor Notify"),
+    JNI_ENTER("JNI Monitor Enter"),
+    JNI_EXIT("JNI Monitor Exit");
+
+    private final String text;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    MonitorInflationCause(String text) {
+        this.text = text;
     }
 
-    public static int and(int first, int second) {
-        return first & second;
-    }
-
-    public static int set(int array, int bit) {
-        assert 0 <= bit && bit < 64;
-        return array | (1 << bit);
-    }
-
-    public static int unSet(int array, int bit) {
-        assert 0 <= bit && bit < 64;
-        return array & ~(1 << bit);
-    }
-
-    public static boolean isSet(int array, int bit) {
-        assert 0 <= bit && bit < 64;
-        return (array & (1 << bit)) == 1;
+    public String getText() {
+        return text;
     }
 }

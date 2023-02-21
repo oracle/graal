@@ -41,6 +41,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
+import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -287,14 +288,14 @@ final class VirtualThreadHelper {
             token = self;
         }
         Object lock = asTarget(self).interruptLock;
-        MonitorSupport.singleton().monitorEnter(lock);
+        MonitorSupport.singleton().monitorEnter(lock, MonitorInflationCause.VM_INTERNAL);
         return token;
     }
 
     /** @see #acquireInterruptLockMaybeSwitch */
     static void releaseInterruptLockMaybeSwitchBack(Target_java_lang_VirtualThread self, Object token) {
         Object lock = asTarget(self).interruptLock;
-        MonitorSupport.singleton().monitorExit(lock);
+        MonitorSupport.singleton().monitorExit(lock, MonitorInflationCause.VM_INTERNAL);
         if (token != null) {
             assert token == self;
             Thread carrier = asVTarget(token).carrierThread;

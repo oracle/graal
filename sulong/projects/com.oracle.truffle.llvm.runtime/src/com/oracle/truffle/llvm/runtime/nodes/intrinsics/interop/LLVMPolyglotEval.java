@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -102,7 +102,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
          * @param code
          * @see #execute(String, String)
          */
-        @Specialization(limit = "2", guards = {"id.equals(cachedId)", "code.equals(cachedCode)"}, assumptions = "singleContextAssumption()")
+        @Specialization(limit = "2", guards = {"id.equals(cachedId)", "code.equals(cachedCode)", "isSingleContext($node)"})
         CallTarget doCached(String id, String code,
                         @Cached("id") @SuppressWarnings("unused") String cachedId,
                         @Cached("code") @SuppressWarnings("unused") String cachedCode,

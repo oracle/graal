@@ -89,6 +89,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.library
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.String[] ifExported()
+meth public abstract !hasdefault java.lang.String[] ifExportedAsWarning()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.library.GenerateLibrary$DefaultExport
  outer com.oracle.truffle.api.library.GenerateLibrary

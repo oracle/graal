@@ -290,7 +290,7 @@ public class MethodTypeFlowBuilder {
 
             } else if (n instanceof BoxNode) {
                 BoxNode node = (BoxNode) n;
-                AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
+                AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
                 type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
             } else if (n instanceof LoadFieldNode) {
@@ -307,7 +307,7 @@ public class MethodTypeFlowBuilder {
                 ConstantNode cn = (ConstantNode) n;
                 if (cn.hasUsages() && cn.isJavaConstant() && cn.asJavaConstant().getJavaKind() == JavaKind.Object && cn.asJavaConstant().isNonNull()) {
                     assert StampTool.isExactType(cn);
-                    AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn);
+                    AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
                     type.registerAsInHeap(AbstractAnalysisEngine.sourcePosition(cn));
                     if (registerEmbeddedRoots && !ignoreConstant(bb, cn)) {
                         registerEmbeddedRoot(bb, cn);
@@ -504,7 +504,7 @@ public class MethodTypeFlowBuilder {
                 }
             } else if (n instanceof BoxNode) {
                 BoxNode node = (BoxNode) n;
-                AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
+                AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
 
                 TypeFlowBuilder<?> boxBuilder = TypeFlowBuilder.create(bb, node, BoxTypeFlow.class, () -> {
                     BoxTypeFlow boxFlow = new BoxTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type);
@@ -539,7 +539,7 @@ public class MethodTypeFlowBuilder {
                          * constants in the analysis?
                          */
                         assert StampTool.isExactType(node);
-                        AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
+                        AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
                         assert type.isInstantiated();
                         TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
                             JavaConstant heapConstant = bb.getUniverse().getHeapScanner().toImageHeapObject(node.asJavaConstant());
@@ -663,13 +663,13 @@ public class MethodTypeFlowBuilder {
                 if (stamp.isEmpty()) {
                     throw AnalysisError.shouldNotReachHere("Stamp for node " + n + " is empty.");
                 }
+                AnalysisType stampType = (AnalysisType) StampTool.typeOrNull(stamp, bb.getMetaAccess());
                 if (stamp.isExactType()) {
                     /*
                      * We are lucky: the stamp tells us which type the node has.
                      */
                     result = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                        AnalysisType type = (AnalysisType) stamp.type();
-                        SourceTypeFlow src = new SourceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, !stamp.nonNull());
+                        SourceTypeFlow src = new SourceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), stampType, !stamp.nonNull());
                         flowsGraph.addMiscEntryFlow(src);
                         return src;
                     });
@@ -679,9 +679,8 @@ public class MethodTypeFlowBuilder {
                      * Use a type state which consists of all allocated types (which are compatible
                      * to the node's type). Is is a conservative assumption.
                      */
-                    AnalysisType type = (AnalysisType) (stamp.type() == null ? bb.getObjectType() : stamp.type());
                     result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
-                        TypeFlow<?> proxy = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), type.getTypeFlow(bb, true));
+                        TypeFlow<?> proxy = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), stampType.getTypeFlow(bb, true));
                         flowsGraph.addMiscEntryFlow(proxy);
                         return proxy;
                     });
@@ -753,7 +752,7 @@ public class MethodTypeFlowBuilder {
      */
     class NodeIterator extends PostOrderNodeIterator<TypeFlowsOfNodes> {
 
-        private HashMap<Object, TypeFlowBuilder<?>> instanceOfFlows;
+        private final HashMap<Object, TypeFlowBuilder<?>> instanceOfFlows;
         private TypeFlowBuilder<?> returnBuilder;
 
         NodeIterator(FixedNode start, TypeFlowsOfNodes typeFlows) {
@@ -925,7 +924,7 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof ExceptionObjectNode) {
                 ExceptionObjectNode node = (ExceptionObjectNode) n;
                 TypeFlowBuilder<?> exceptionObjectBuilder = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
-                    TypeFlow<?> input = ((AnalysisType) StampTool.typeOrNull(node)).getTypeFlow(bb, false);
+                    TypeFlow<?> input = ((AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess())).getTypeFlow(bb, false);
                     TypeFlow<?> exceptionObjectFlow = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), input);
                     flowsGraph.addMiscEntryFlow(exceptionObjectFlow);
                     return exceptionObjectFlow;
@@ -970,7 +969,7 @@ public class MethodTypeFlowBuilder {
                      */
                     GetClassNode getClassNode = (GetClassNode) instanceTypeNode;
                     ValueNode getClassReceiver = getClassNode.getObject();
-                    instanceType = (AnalysisType) StampTool.typeOrNull(getClassReceiver);
+                    instanceType = (AnalysisType) StampTool.typeOrNull(getClassReceiver, bb.getMetaAccess());
                     instanceTypeBuilder = state.lookup(getClassReceiver);
                 } else {
                     /*
@@ -982,9 +981,8 @@ public class MethodTypeFlowBuilder {
                         return instanceType.getTypeFlow(bb, false);
                     });
                 }
-                AnalysisType nonNullInstanceType = Optional.ofNullable(instanceType).orElseGet(bb::getObjectType);
                 TypeFlowBuilder<DynamicNewInstanceTypeFlow> dynamicNewInstanceBuilder = TypeFlowBuilder.create(bb, node, DynamicNewInstanceTypeFlow.class, () -> {
-                    DynamicNewInstanceTypeFlow newInstanceTypeFlow = new DynamicNewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), instanceTypeBuilder.get(), nonNullInstanceType);
+                    DynamicNewInstanceTypeFlow newInstanceTypeFlow = new DynamicNewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), instanceTypeBuilder.get(), instanceType);
                     flowsGraph.addMiscEntryFlow(newInstanceTypeFlow);
                     return newInstanceTypeFlow;
                 });
@@ -1065,11 +1063,11 @@ public class MethodTypeFlowBuilder {
                 LoadIndexedNode node = (LoadIndexedNode) n;
                 TypeFlowBuilder<?> arrayBuilder = state.lookup(node.array());
                 if (node.getStackKind() == JavaKind.Object) {
-                    AnalysisType arrayType = (AnalysisType) StampTool.typeOrNull(node.array());
-                    AnalysisType nonNullArrayType = Optional.ofNullable(arrayType).orElseGet(bb::getObjectArrayType);
+                    AnalysisType type = (AnalysisType) StampTool.typeOrNull(node.array(), bb.getMetaAccess());
+                    AnalysisType arrayType = type.isArray() ? type : bb.getObjectArrayType();
 
                     TypeFlowBuilder<?> loadIndexedBuilder = TypeFlowBuilder.create(bb, node, LoadIndexedTypeFlow.class, () -> {
-                        LoadIndexedTypeFlow loadIndexedFlow = new LoadIndexedTypeFlow(AbstractAnalysisEngine.sourcePosition(node), nonNullArrayType, arrayBuilder.get());
+                        LoadIndexedTypeFlow loadIndexedFlow = new LoadIndexedTypeFlow(AbstractAnalysisEngine.sourcePosition(node), arrayType, arrayBuilder.get());
                         flowsGraph.addNodeFlow(bb, node, loadIndexedFlow);
                         return loadIndexedFlow;
                     });
@@ -1092,7 +1090,7 @@ public class MethodTypeFlowBuilder {
 
                 AnalysisType partitionType = (AnalysisType) node.partitionType();
 
-                AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object());
+                AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object(), bb.getMetaAccess());
                 assert bb.getGraalNodeType().isAssignableFrom(objectType);
 
                 /* Use the Object type as a conservative type for the values loaded. */
@@ -1118,14 +1116,14 @@ public class MethodTypeFlowBuilder {
 
                 AnalysisType partitionType = (AnalysisType) node.partitionType();
 
-                AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object());
+                AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object(), bb.getMetaAccess());
                 assert bb.getGraalNodeType().isAssignableFrom(objectType);
 
                 /* Use the Object type as a conservative type for the values stored. */
                 AnalysisType componentType = bb.getObjectType();
 
-                AnalysisType valueType = (AnalysisType) StampTool.typeOrNull(node.value());
-                assert valueType == null || bb.getGraalNodeType().isAssignableFrom(valueType) || bb.getGraalNodeListType().isAssignableFrom(valueType);
+                AnalysisType valueType = (AnalysisType) StampTool.typeOrNull(node.value(), bb.getMetaAccess());
+                assert valueType.isJavaLangObject() || bb.getGraalNodeType().isAssignableFrom(valueType) || bb.getGraalNodeListType().isAssignableFrom(valueType);
 
                 TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                 TypeFlowBuilder<?> valueBuilder = state.lookup(node.value());
@@ -1149,7 +1147,7 @@ public class MethodTypeFlowBuilder {
                 checkUnsafeOffset(node.object(), node.offset());
 
                 if (node.object().getStackKind() == JavaKind.Object && node.getStackKind() == JavaKind.Object) {
-                    AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object());
+                    AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object(), bb.getMetaAccess());
                     TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                     TypeFlowBuilder<?> loadBuilder;
                     BytecodePosition loadLocation = AbstractAnalysisEngine.sourcePosition(node);
@@ -1186,7 +1184,7 @@ public class MethodTypeFlowBuilder {
                 checkUnsafeOffset(node.object(), node.offset());
 
                 if (node.object().getStackKind() == JavaKind.Object && node.value().getStackKind() == JavaKind.Object) {
-                    AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object());
+                    AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object(), bb.getMetaAccess());
                     TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                     TypeFlowBuilder<?> valueBuilder = state.lookup(node.value());
                     TypeFlowBuilder<?> storeBuilder;
@@ -1226,7 +1224,7 @@ public class MethodTypeFlowBuilder {
 
                 checkUnsafeOffset(object, node.offset());
                 if (object.getStackKind() == JavaKind.Object && newValue.getStackKind() == JavaKind.Object) {
-                    AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(object);
+                    AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(object, bb.getMetaAccess());
                     TypeFlowBuilder<?> objectBuilder = state.lookup(object);
                     TypeFlowBuilder<?> newValueBuilder = state.lookup(newValue);
                     TypeFlowBuilder<?> storeBuilder;
@@ -1280,7 +1278,7 @@ public class MethodTypeFlowBuilder {
                  * not need a type flow. We do not track individual array elements.
                  */
                 if (srcBuilder != dstBuilder) {
-                    AnalysisType type = (AnalysisType) StampTool.typeOrNull(node.asNode());
+                    AnalysisType type = (AnalysisType) StampTool.typeOrNull(node.asNode(), bb.getMetaAccess());
 
                     TypeFlowBuilder<?> arrayCopyBuilder = TypeFlowBuilder.create(bb, node, ArrayCopyTypeFlow.class, () -> {
                         ArrayCopyTypeFlow arrayCopyFlow = new ArrayCopyTypeFlow(AbstractAnalysisEngine.sourcePosition(node.asNode()), type, srcBuilder.get(), dstBuilder.get());
@@ -1331,7 +1329,7 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof ObjectClone) {
                 ObjectClone node = (ObjectClone) n;
                 TypeFlowBuilder<?> inputBuilder = state.lookup(node.getObject());
-                AnalysisType inputType = Optional.ofNullable((AnalysisType) StampTool.typeOrNull(node.getObject())).orElseGet(bb::getObjectType);
+                AnalysisType inputType = (AnalysisType) StampTool.typeOrNull(node.getObject(), bb.getMetaAccess());
 
                 TypeFlowBuilder<?> cloneBuilder = TypeFlowBuilder.create(bb, node, CloneTypeFlow.class, () -> {
                     CloneTypeFlow cloneFlow = new CloneTypeFlow(AbstractAnalysisEngine.sourcePosition(node.asNode()), inputType, inputBuilder.get());
@@ -1388,7 +1386,7 @@ public class MethodTypeFlowBuilder {
             checkUnsafeOffset(object, offset);
 
             if (object.getStackKind() == JavaKind.Object && newValue.getStackKind() == JavaKind.Object) {
-                AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(object);
+                AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(object, bb.getMetaAccess());
                 TypeFlowBuilder<?> objectBuilder = state.lookup(object);
                 TypeFlowBuilder<?> newValueBuilder = state.lookup(newValue);
 
@@ -1559,7 +1557,7 @@ public class MethodTypeFlowBuilder {
              */
             AnalysisType receiverType = null;
             if (invokeKind.hasReceiver()) {
-                receiverType = (AnalysisType) StampTool.typeOrNull(arguments.get(0));
+                receiverType = (AnalysisType) StampTool.typeOrNull(arguments.get(0), bb.getMetaAccess());
                 if (receiverType == null) {
                     receiverType = targetMethod.getDeclaringClass();
                 }
@@ -1610,7 +1608,8 @@ public class MethodTypeFlowBuilder {
             });
 
             ObjectStamp stamp = (ObjectStamp) invoke.stamp(NodeView.DEFAULT);
-            if (stamp.nonNull() && !returnType.equals(stamp.type()) && returnType.isAssignableFrom(stamp.type())) {
+            AnalysisType stampType = (AnalysisType) StampTool.typeOrNull(stamp, bb.getMetaAccess());
+            if (stamp.nonNull() && !returnType.equals(stampType) && returnType.isAssignableFrom(stampType)) {
                 /*
                  * If the invoke stamp has a more precise type than the return type use that to
                  * filter the returned values. This can happen for example for MacroInvokable nodes
@@ -1620,7 +1619,7 @@ public class MethodTypeFlowBuilder {
                  * filter to avoid loosing precision.
                  */
                 TypeFlowBuilder<?> filterBuilder = TypeFlowBuilder.create(bb, invoke, FilterTypeFlow.class, () -> {
-                    FilterTypeFlow filterFlow = new FilterTypeFlow(invokeLocation, (AnalysisType) stamp.type(), stamp.isExactType(), true, true);
+                    FilterTypeFlow filterFlow = new FilterTypeFlow(invokeLocation, stampType, stamp.isExactType(), true, true);
                     flowsGraph.addMiscEntryFlow(filterFlow);
                     return filterFlow;
                 });
@@ -1742,12 +1741,12 @@ public class MethodTypeFlowBuilder {
 
     private void processStoreIndexed(ValueNode node, ValueNode array, ValueNode value, TypeFlowsOfNodes state) {
         if (value.getStackKind() == JavaKind.Object) {
-            AnalysisType arrayType = (AnalysisType) StampTool.typeOrNull(array);
-            AnalysisType nonNullArrayType = Optional.ofNullable(arrayType).orElseGet(bb::getObjectArrayType);
+            AnalysisType type = (AnalysisType) StampTool.typeOrNull(array, bb.getMetaAccess());
+            AnalysisType arrayType = type.isArray() ? type : bb.getObjectArrayType();
             TypeFlowBuilder<?> arrayBuilder = state.lookup(array);
             TypeFlowBuilder<?> valueBuilder = state.lookup(value);
             TypeFlowBuilder<?> storeIndexedBuilder = TypeFlowBuilder.create(bb, node, StoreIndexedTypeFlow.class, () -> {
-                StoreIndexedTypeFlow storeIndexedFlow = new StoreIndexedTypeFlow(AbstractAnalysisEngine.sourcePosition(node), nonNullArrayType, arrayBuilder.get(), valueBuilder.get());
+                StoreIndexedTypeFlow storeIndexedFlow = new StoreIndexedTypeFlow(AbstractAnalysisEngine.sourcePosition(node), arrayType, arrayBuilder.get(), valueBuilder.get());
                 flowsGraph.addMiscEntryFlow(storeIndexedFlow);
                 return storeIndexedFlow;
             });

@@ -101,7 +101,7 @@ Follow these steps to install a component to GraalVM Enterprise, for example, Na
 2. Install a component using the `ComponentId` value:
 
     ```shell
-    gu install native-image
+    gu install nodejs
     ```
    You will see a message to provide your valid email address or input your download token and press `ENTER`. 
    Supposedly, this is your first installation and you have not accepted the license yet. So press `ENTER`.

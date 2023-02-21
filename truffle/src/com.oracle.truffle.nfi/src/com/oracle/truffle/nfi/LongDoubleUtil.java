@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import java.math.BigInteger;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -239,6 +240,16 @@ final class LongDoubleUtil {
         }
 
         @ExportMessage
+        boolean fitsInBigInteger(@CachedLibrary("this.buffer") InteropLibrary interop) {
+            try {
+                asBigInteger(interop);
+                return true;
+            } catch (UnsupportedMessageException ex) {
+                return false;
+            }
+        }
+
+        @ExportMessage
         boolean fitsInFloat(@CachedLibrary("this.buffer") InteropLibrary interop) {
             if (fitsInDouble()) {
                 try {
@@ -315,6 +326,61 @@ final class LongDoubleUtil {
                 }
             } catch (InvalidBufferOffsetException ex) {
                 throw UnsupportedMessageException.create();
+            }
+        }
+
+        @ExportMessage
+        BigInteger asBigInteger(@CachedLibrary("this.buffer") InteropLibrary interop) throws UnsupportedMessageException {
+            int unbiasedExponent;
+            short exponent;
+            long fractionLong;
+            try {
+                exponent = interop.readBufferShort(buffer, ByteOrder.LITTLE_ENDIAN, 8);
+                if ((exponent & FP80Number.EXPONENT_MASK) == FP80Number.EXPONENT_MASK) {
+                    // NaN or infinity
+                    throw UnsupportedMessageException.create();
+                }
+
+                unbiasedExponent = (exponent & FP80Number.EXPONENT_MASK) - FP80Number.EXPONENT_BIAS;
+                fractionLong = interop.readBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, 0);
+            } catch (InvalidBufferOffsetException ex) {
+                throw UnsupportedMessageException.create();
+            }
+            return toBigInteger(fractionLong, exponent, unbiasedExponent);
+        }
+
+        @TruffleBoundary
+        private static BigInteger toBigInteger(long fractionLong, short exponent, int unbiasedExponent) throws UnsupportedMessageException {
+            BigInteger fraction = toUnsignedBigInteger(fractionLong);
+            int shift = FP80Number.FRACTION_BITS - unbiasedExponent - 1;
+            BigInteger ret;
+            if (shift >= 0) {
+                ret = fraction.shiftRight(shift);
+                BigInteger fractionBack = ret.shiftLeft(shift);
+                if (!fraction.equals(fractionBack)) {
+                    // not a whole number
+                    throw UnsupportedMessageException.create();
+                }
+            } else {
+                ret = fraction.shiftLeft(-shift);
+            }
+
+            if ((exponent & FP80Number.SIGN_MASK) == 0) {
+                return ret;
+            } else {
+                return ret.negate();
+            }
+        }
+
+        private static BigInteger toUnsignedBigInteger(long i) {
+            if (i >= 0L) {
+                return BigInteger.valueOf(i);
+            } else {
+                int upper = (int) (i >>> 32);
+                int lower = (int) i;
+
+                // return (upper << 32) + lower
+                return (BigInteger.valueOf(Integer.toUnsignedLong(upper))).shiftLeft(32).add(BigInteger.valueOf(Integer.toUnsignedLong(lower)));
             }
         }
 

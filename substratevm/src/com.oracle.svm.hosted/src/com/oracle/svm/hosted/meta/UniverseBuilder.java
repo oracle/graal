@@ -531,8 +531,27 @@ public class UniverseBuilder {
          */
         allFields.sort(FIELD_LOCATION_COMPARATOR);
 
+        int sizeWithoutIdHashField = usedBytes.length();
+
+        // Identity hash code
+        if (!clazz.isAbstract() && !HybridLayout.isHybrid(clazz)) {
+            int offset;
+            if (layout.hasFixedIdentityHashField()) {
+                offset = layout.getFixedIdentityHashOffset();
+            } else { // optional: place in gap if any, or append on demand during GC
+                int size = Integer.BYTES;
+                int endOffset = usedBytes.length();
+                offset = findGapForField(usedBytes, 0, size, endOffset);
+                if (offset == -1) {
+                    offset = endOffset + getAlignmentAdjustment(endOffset, size);
+                }
+                reserve(usedBytes, offset, size);
+            }
+            clazz.setOptionalIdentityHashOffset(offset);
+        }
+
         clazz.instanceFieldsWithoutSuper = allFields.toArray(new HostedField[0]);
-        clazz.afterFieldsOffset = usedBytes.length();
+        clazz.afterFieldsOffset = sizeWithoutIdHashField;
         clazz.instanceSize = layout.alignUp(clazz.afterFieldsOffset);
 
         if (clazz.instanceFieldsWithoutSuper.length == 0) {
@@ -1002,6 +1021,7 @@ public class UniverseBuilder {
             int layoutHelper;
             boolean canInstantiateAsInstance = false;
             int monitorOffset = 0;
+            int optionalIdHashOffset = -1;
             if (type.isInstanceClass()) {
                 HostedInstanceClass instanceClass = (HostedInstanceClass) type;
                 if (instanceClass.isAbstract()) {
@@ -1017,6 +1037,7 @@ public class UniverseBuilder {
                     canInstantiateAsInstance = type.isInstantiated();
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
+                optionalIdHashOffset = instanceClass.getOptionalIdentityHashOffset();
             } else if (type.isArray()) {
                 JavaKind storageKind = type.getComponentType().getStorageKind();
                 boolean isObject = (storageKind == JavaKind.Object);
@@ -1049,8 +1070,8 @@ public class UniverseBuilder {
             long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
             DynamicHub hub = type.getHub();
-            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(),
-                            type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance);
+            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, optionalIdHashOffset, type.getTypeCheckStart(), type.getTypeCheckRange(),
+                            type.getTypeCheckSlot(), type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance);
         }
     }
 

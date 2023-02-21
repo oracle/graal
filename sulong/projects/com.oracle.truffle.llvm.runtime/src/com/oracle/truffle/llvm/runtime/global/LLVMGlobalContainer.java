@@ -37,6 +37,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -336,11 +337,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
     }
 
     @ExportMessage
+    @ImportStatic(LLVMLanguage.class)
     static class ReadGenericI64 {
-
-        static Assumption singleContextAssumption() {
-            return LLVMLanguage.get(null).singleContextAssumption;
-        }
 
         @Specialization(guards = "self.isPointer()")
         static long readNative(LLVMGlobalContainer self, long offset,
@@ -349,7 +347,7 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
             return LLVMLanguage.get(location).getLLVMMemory().getI64(location, self.getAddress() + offset);
         }
 
-        @Specialization(guards = {"!self.isPointer()", "offset == 0"}, assumptions = "singleContextAssumption()")
+        @Specialization(guards = {"isSingleContext($node)", "!self.isPointer()", "offset == 0"})
         static Object readI64ManagedSingleContext(LLVMGlobalContainer self, long offset) {
             assert offset == 0;
             return self.get();
@@ -372,11 +370,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
     }
 
     @ExportMessage
+    @ImportStatic(LLVMLanguage.class)
     static class ReadPointer {
-
-        static Assumption singleContextAssumption() {
-            return LLVMLanguage.get(null).singleContextAssumption;
-        }
 
         @Specialization(guards = "self.isPointer()")
         static LLVMPointer readNative(LLVMGlobalContainer self, long offset,
@@ -385,7 +380,7 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
             return LLVMLanguage.get(location).getLLVMMemory().getPointer(location, self.getAddress() + offset);
         }
 
-        @Specialization(guards = {"!self.isPointer()", "offset == 0"}, assumptions = "singleContextAssumption()")
+        @Specialization(guards = {"isSingleContext($node)", "!self.isPointer()", "offset == 0"})
         static LLVMPointer readManagedSingleContext(LLVMGlobalContainer self, long offset,
                         @Shared("toPointer") @Cached LLVMToPointerNode toPointer) {
             assert offset == 0;
@@ -510,11 +505,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
     }
 
     @ExportMessage
+    @ImportStatic(LLVMLanguage.class)
     static class WriteI64 {
-
-        static Assumption singleContextAssumption() {
-            return LLVMLanguage.get(null).singleContextAssumption;
-        }
 
         @Specialization(guards = "self.isPointer()")
         static void writeNative(LLVMGlobalContainer self, long offset, long value,
@@ -523,7 +515,7 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
             LLVMLanguage.get(location).getLLVMMemory().putI64(location, self.getAddress() + offset, value);
         }
 
-        @Specialization(guards = {"!self.isPointer()", "offset == 0"}, assumptions = "singleContextAssumption()")
+        @Specialization(guards = {"isSingleContext($node)", "!self.isPointer()", "offset == 0"})
         static void writeManagedSingleContext(LLVMGlobalContainer self, long offset, long value) {
             assert offset == 0;
             if (CompilerDirectives.isPartialEvaluationConstant(self)) {
@@ -555,11 +547,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
     }
 
     @ExportMessage
+    @ImportStatic(LLVMLanguage.class)
     static class WriteGenericI64 {
-
-        static Assumption singleContextAssumption() {
-            return LLVMLanguage.get(null).singleContextAssumption;
-        }
 
         @Specialization(guards = "self.isPointer()")
         static void writeNative(LLVMGlobalContainer self, long offset, Object value,
@@ -569,7 +558,7 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
             LLVMLanguage.get(toNative).getLLVMMemory().putI64(toNative, self.getAddress() + offset, ptr);
         }
 
-        @Specialization(guards = {"!self.isPointer()", "offset == 0"}, assumptions = "singleContextAssumption()")
+        @Specialization(guards = {"isSingleContext($node)", "!self.isPointer()", "offset == 0"})
         static void writeI64ManagedSingleContext(LLVMGlobalContainer self, long offset, Object value) {
             assert offset == 0;
             if (CompilerDirectives.isPartialEvaluationConstant(self)) {

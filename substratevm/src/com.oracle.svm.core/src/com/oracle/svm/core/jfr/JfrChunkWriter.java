@@ -130,7 +130,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
     public boolean write(JfrBuffer buffer) {
-        assert JfrBufferAccess.isAcquired(buffer) || VMOperation.isInProgressAtSafepoint() || buffer.getBufferType() == JfrBufferType.C_HEAP;
+        assert JfrBufferAccess.isLocked(buffer) || VMOperation.isInProgressAtSafepoint() || buffer.getBufferType() == JfrBufferType.C_HEAP;
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
             return false;
@@ -409,7 +409,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             JfrBuffers buffers = globalMemory.getBuffers();
             for (int i = 0; i < globalMemory.getBufferCount(); i++) {
                 JfrBuffer buffer = buffers.addressOf(i).read();
-                assert !JfrBufferAccess.isAcquired(buffer);
+                assert !JfrBufferAccess.isLocked(buffer);
                 write(buffer);
                 JfrBufferAccess.reinitialize(buffer);
             }

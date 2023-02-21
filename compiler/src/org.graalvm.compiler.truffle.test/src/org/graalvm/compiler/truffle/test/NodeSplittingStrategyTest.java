@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.polyglot.Context;
@@ -556,5 +557,32 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         try (Context c = Context.newBuilder(SplittingLimitTestLanguage.ID).build()) {
             c.eval(SplittingLimitTestLanguage.ID, "");
         }
+    }
+
+    @Test
+    public void testRootNodeSizeSmaller() {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsFirstArgumentNode())) {
+            @Override
+            protected int computeSize() {
+                return PolyglotCompilerOptions.SplittingMaxCalleeSize.getDefaultValue() - 1;
+            }
+        }.getCallTarget();
+        Object[] first = new Object[]{new DummyRootNode().getCallTarget()};
+        Object[] second = new Object[]{new DummyRootNode().getCallTarget()};
+        testSplitsDirectCallsHelper(callTarget, first, second);
+    }
+
+    @Test
+    public void testRootNodeSizeGreater() {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsFirstArgumentNode())) {
+            @Override
+            protected int computeSize() {
+                return PolyglotCompilerOptions.SplittingMaxCalleeSize.getDefaultValue() + 1;
+            }
+        }.getCallTarget();
+        Object[] first = new Object[]{new DummyRootNode().getCallTarget()};
+        Object[] second = new Object[]{new DummyRootNode().getCallTarget()};
+        testNeedsSplitButDoesNotSplitDirectCallHelper(callTarget, first, second);
+
     }
 }

@@ -60,7 +60,7 @@ public @interface Snippet {
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
-    public @interface VarargsParameter {
+    @interface VarargsParameter {
     }
 
     /**
@@ -69,7 +69,7 @@ public @interface Snippet {
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
-    public @interface ConstantParameter {
+    @interface ConstantParameter {
     }
 
     /**
@@ -78,6 +78,6 @@ public @interface Snippet {
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
-    public @interface NonNullParameter {
+    @interface NonNullParameter {
     }
 }

@@ -35,7 +35,6 @@ This design naturally fits the point we are trying to illustrate. We can build a
 
 Prerequisites:
 * [Latest GraalVM](https://www.graalvm.org/downloads/)
-* [Native Image](../native-image/README.md#install-native-image)
 * [Java on Truffle](README.md#install-java-on-truffle)
 
 1. Clone the [project](https://github.com/graalvm/graalvm-demos) with the demo applications and navigate to the `espresso-jshell` directory:

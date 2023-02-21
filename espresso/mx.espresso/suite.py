@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.15.0",
+    "mxversion": "6.15.3",
     "name": "espresso",
     "version" : "23.0.0",
     "release" : False,
@@ -111,7 +111,7 @@ suite = {
             ],
             "javaCompliance" : "8+",
             "checkstyle": "com.oracle.truffle.espresso.polyglot",
-            "checkstyleVersion": "8.8",
+            "checkstyleVersion": "10.7.0",
             "license": "UPL",
         },
 
@@ -141,22 +141,8 @@ suite = {
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
-            "checkstyleVersion": "8.8",
+            "checkstyleVersion": "10.7.0",
         },
-
-        "com.oracle.truffle.espresso.jdk17": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "overlayTarget": "com.oracle.truffle.espresso",
-            "dependencies": [
-                "com.oracle.truffle.espresso",
-            ],
-            "checkPackagePrefix": "false",
-            "multiReleaseJarVersion": "17",
-            "checkstyle": "com.oracle.truffle.espresso",
-            "javaCompliance": "17+",
-        },
-
 
         "com.oracle.truffle.espresso.processor": {
             "subDir": "src",

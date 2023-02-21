@@ -617,7 +617,7 @@ public class SubstrateOptions {
 
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
-    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0) {
+    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             if (OS.WINDOWS.isCurrent()) {
@@ -626,6 +626,12 @@ public class SubstrateOptions {
             }
         }
     };
+
+    private static void validateGenerateDebugInfo(HostedOptionKey<Integer> optionKey) {
+        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue() > 0 && !SubstrateOptions.UseOldDebugInfo.getValue()) {
+            System.out.printf("Warning: Using %s is not supported on macOS%n", SubstrateOptionsParser.commandArgument(optionKey, optionKey.getValue().toString()));
+        }
+    }
 
     @Option(help = "Control debug information output: 0 - no debuginfo, 1 - AOT code debuginfo, 2 - AOT and runtime code debuginfo (runtime code support only with -H:+UseOldDebugInfo).", //
                     deprecated = true, deprecationMessage = "Please use the -g option.")//
@@ -659,8 +665,17 @@ public class SubstrateOptions {
         }
     }
 
-    @Option(help = "Strip debug info from the binary.")//
-    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(true);
+    @Option(help = "Use a separate file for debug info.")//
+    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN, SubstrateOptions::validateStripDebugInfo);
+
+    private static void validateStripDebugInfo(HostedOptionKey<Boolean> optionKey) {
+        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue()) {
+            throw UserError.abort("Warning: Using %s is not supported on macOS", SubstrateOptionsParser.commandArgument(SubstrateOptions.StripDebugInfo, "+"));
+        }
+        if (OS.getCurrent() == OS.WINDOWS && optionKey.hasBeenSet() && !optionKey.getValue()) {
+            throw UserError.abort("Warning: Using %s is not supported on Windows: debug info is always generated in a separate file", SubstrateOptionsParser.commandArgument(optionKey, "-"));
+        }
+    }
 
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
     public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
@@ -804,8 +819,8 @@ public class SubstrateOptions {
     public static class ReportingSupport {
         String reportsPath;
 
-        public ReportingSupport(String reportingPath) {
-            this.reportsPath = reportingPath;
+        public ReportingSupport(Path reportingPath) {
+            this.reportsPath = reportingPath.toString();
         }
     }
 

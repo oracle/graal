@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,15 +36,13 @@ import org.graalvm.profdiff.core.Writer;
 
 /**
  * Compares a JIT-compiled experiment with an AOT compilation. Uses proftool data of the JIT
- * experiment to designate hot compilations units.
+ * experiment to designate hot compilations units. All methods that are hot in JIT or inlined in a
+ * hot JIT method are marked as hot in the AOT experiment.
  */
 public class JITAOTCommand implements Command {
     private final ArgumentParser argumentParser;
-
     private final StringArgument jitOptimizationLogArgument;
-
     private final StringArgument proftoolArgument;
-
     private final StringArgument aotOptimizationLogArgument;
 
     public JITAOTCommand() {
@@ -89,7 +87,11 @@ public class JITAOTCommand implements Command {
             if (!jitUnit.isHot()) {
                 continue;
             }
-            aot.getMethodOrCreate(jitUnit.getMethod().getMethodName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
+            jitUnit.loadTrees().getInliningTree().getRoot().forEach(node -> {
+                if (node.isPositive() && node.getName() != null) {
+                    aot.getMethodOrCreate(node.getName()).getCompilationUnits().forEach(aotUnit -> aotUnit.setHot(true));
+                }
+            });
         }
 
         ExperimentMatcher matcher = new ExperimentMatcher(writer);

@@ -401,7 +401,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
         }
     }
 
-    @TruffleBoundary /*- Throwable.addSuppressed blacklisted by SVM (from try-with-resources) */
+    @TruffleBoundary /*- Throwable.addSuppressed blocklisted by SVM (from try-with-resources) */
     @SuppressWarnings("try")
     private static void contendedMonitorEnter(StaticObject obj, Meta meta, EspressoLock lock, EspressoContext context) {
         StaticObject thread = context.getCurrentThread();

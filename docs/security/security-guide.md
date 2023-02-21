@@ -118,6 +118,8 @@ See the [documentation](../reference-manual/native-image/CertificateManagement.m
 
 In addition, developers can run the `native-image` builder in a dedicated environment, such as a container, that does not contain any sensitive information in the first place.
 
+The directory containing the native image is part of the search path when loading native libraries using `System.loadLibrary()` at runtime.
+
 ### Serialization in Native Image
 
 Native Image supports Serialization to help users deserialize the constructors for classes, contained in a native executable in the first place.

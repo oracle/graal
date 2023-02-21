@@ -138,12 +138,13 @@ public final class NativeImageHeap implements ImageHeap {
         this.objectLayout = ConfigurationValues.getObjectLayout();
         this.heapLayouter = heapLayouter;
 
-        this.minInstanceSize = objectLayout.getMinimumInstanceObjectSize();
-        this.minArraySize = objectLayout.getMinimumArraySize();
+        this.minInstanceSize = objectLayout.getMinImageHeapInstanceSize();
+        this.minArraySize = objectLayout.getMinImageHeapArraySize();
+        assert assertFillerObjectSizes();
+
         if (ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue()) {
             this.objectReachabilityInfo = new IdentityHashMap<>();
         }
-        assert assertFillerObjectSizes();
     }
 
     @Override
@@ -378,7 +379,7 @@ public final class NativeImageHeap implements ImageHeap {
         if (size >= minArraySize) {
             int elementSize = objectLayout.getArrayIndexScale(JavaKind.Int);
             int arrayLength = (size - minArraySize) / elementSize;
-            assert objectLayout.getArraySize(JavaKind.Int, arrayLength) == size;
+            assert objectLayout.getArraySize(JavaKind.Int, arrayLength, true) == size;
             return addLateToImageHeap(new int[arrayLength], HeapInclusionReason.FillerObject);
         } else if (size >= minInstanceSize) {
             return addLateToImageHeap(new FillerObject(), HeapInclusionReason.FillerObject);
@@ -388,10 +389,10 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private boolean assertFillerObjectSizes() {
-        assert minArraySize == objectLayout.getArraySize(JavaKind.Int, 0);
+        assert minArraySize == objectLayout.getArraySize(JavaKind.Int, 0, true);
 
         HostedType filler = metaAccess.lookupJavaType(FillerObject.class);
-        UnsignedWord fillerSize = LayoutEncoding.getPureInstanceSize(filler.getHub().getLayoutEncoding());
+        UnsignedWord fillerSize = LayoutEncoding.getPureInstanceSize(filler.getHub(), true);
         assert fillerSize.equal(minInstanceSize);
 
         assert minInstanceSize * 2 >= minArraySize : "otherwise, we might need more than one non-array object";
@@ -476,9 +477,9 @@ public final class NativeImageHeap implements ImageHeap {
                 }
 
                 assert hybridArray != null : "Cannot read value for field " + hybridArrayField.format("%H.%n");
-                size = hybridLayout.getTotalSize(Array.getLength(hybridArray));
+                size = hybridLayout.getTotalSize(Array.getLength(hybridArray), true);
             } else {
-                size = LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding()).rawValue();
+                size = LayoutEncoding.getPureInstanceSize(hub, true).rawValue();
             }
 
             info = addToImageHeap(constant, clazz, size, identityHashCode, reason);
@@ -522,7 +523,7 @@ public final class NativeImageHeap implements ImageHeap {
         } else if (type.isArray()) {
             HostedArrayClass clazz = (HostedArrayClass) type;
             int length = universe.getConstantReflectionProvider().readArrayLength(constant);
-            final long size = objectLayout.getArraySize(type.getComponentType().getStorageKind(), length);
+            final long size = objectLayout.getArraySize(type.getComponentType().getStorageKind(), length, true);
             info = addToImageHeap(constant, clazz, size, identityHashCode, reason);
             try {
                 recursiveAddObject(hub, false, info);
@@ -636,9 +637,9 @@ public final class NativeImageHeap implements ImageHeap {
         if (type.isInstanceClass()) {
             HostedInstanceClass clazz = (HostedInstanceClass) type;
             assert !HybridLayout.isHybrid(clazz);
-            return LayoutEncoding.getPureInstanceSize(clazz.getHub().getLayoutEncoding()).rawValue();
+            return LayoutEncoding.getPureInstanceSize(clazz.getHub(), true).rawValue();
         } else if (type.isArray()) {
-            return objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object));
+            return objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object), true);
         } else {
             throw shouldNotReachHere();
         }
@@ -723,10 +724,6 @@ public final class NativeImageHeap implements ImageHeap {
          * in the heap, or an {@link HeapInclusionReason}, or a {@link HostedField}.
          */
         private final Object reason;
-
-        ObjectInfo(Object object, long size, HostedClass clazz, int identityHashCode, Object reason) {
-            this(SubstrateObjectConstant.forObject(object), size, clazz, identityHashCode, reason);
-        }
 
         ObjectInfo(JavaConstant constant, long size, HostedClass clazz, int identityHashCode, Object reason) {
             this.constant = constant;

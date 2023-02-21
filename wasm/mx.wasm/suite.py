@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.14.13",
+  "mxversion": "6.15.3",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "23.0.0",
@@ -90,7 +90,7 @@ suite = {
       "requires": [
         "jdk.unsupported", # sun.misc.Unsafe
       ],
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "10.7.0",
       "javaCompliance" : "17+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",

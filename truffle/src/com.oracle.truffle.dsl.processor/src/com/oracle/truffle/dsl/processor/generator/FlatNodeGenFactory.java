@@ -6809,15 +6809,16 @@ public class FlatNodeGenFactory {
             /*
              * We do not need to invoke a guard on the fast-path if:
              *
-             * (1) the guard does not bind any dynamic parameter, only cached valuees.
+             * (1) the guard is guaranteed constant true of the fast-path, after it was invoked in
+             * the slow-path.
              *
              * (2) The guard is not a weak reference. Weak references do not bind dynamic
              * parameters, but need to be checked each time.
              *
              * (3) The guard needs a state bit and may be partially initialized.
              */
-            if (!specialization.isDynamicParameterBound(expression, true) && !guard.isWeakReferenceGuard() && !guardNeedsNodeStateBit(specialization, guard)) {
-                assertion = CodeTreeBuilder.createBuilder().startAssert().tree(guardExpression).end().build();
+            if (guard.isFastPathIdempotent()) {
+                assertion = CodeTreeBuilder.createBuilder().startAssert().startStaticCall(types.DSLSupport, "assertIdempotence").tree(guardExpression).end().end().build();
             } else {
                 condition.tree(guardExpression);
             }

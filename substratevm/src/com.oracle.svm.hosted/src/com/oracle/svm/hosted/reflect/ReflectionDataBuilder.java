@@ -303,8 +303,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
      */
     private void checkSubtypeForOverridingField(AnalysisField field, AnalysisType subtype) {
         try {
-            AnalysisField[] subClassFields = field.isStatic() ? subtype.getStaticFields() : subtype.getInstanceFields(false);
-            for (AnalysisField subclassField : subClassFields) {
+            ResolvedJavaField[] subClassFields = field.isStatic() ? subtype.getStaticFields() : subtype.getInstanceFields(false);
+            for (ResolvedJavaField javaField : subClassFields) {
+                AnalysisField subclassField = (AnalysisField) javaField;
                 if (subclassField.getName().equals(field.getName())) {
                     hidingFields.add(subclassField);
                 }

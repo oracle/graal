@@ -90,7 +90,6 @@ import com.oracle.truffle.llvm.runtime.nodes.control.LLVMLoopDispatchNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMLoopNode;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVM80BitFloatRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMAddressRetNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMArrayRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMDoubleRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMFloatRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMI16RetNodeGen;
@@ -745,9 +744,7 @@ public class BasicNodeFactory implements NodeFactory {
             return LLVMIVarBitRetNodeGen.create(retValue);
         } else if (type instanceof PointerType || type instanceof FunctionType) {
             return LLVMAddressRetNodeGen.create(retValue);
-        } else if (type instanceof ArrayType) {
-            return LLVMArrayRetNodeGen.create(retValue);
-        } else if (type instanceof StructureType) {
+        } else if (type instanceof StructureType || type instanceof ArrayType) {
             try {
                 long size = getByteSize(type);
                 return LLVMStructRetNodeGen.create(createMemMove(), retValue, size);

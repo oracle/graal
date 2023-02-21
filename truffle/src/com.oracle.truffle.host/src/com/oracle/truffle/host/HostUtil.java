@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.host;
 
+import java.math.BigInteger;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -70,6 +72,8 @@ final class HostUtil {
                     return interop.asFloat(value);
                 } else if (requestedType == double.class || requestedType == Double.class) {
                     return interop.asDouble(value);
+                } else if (requestedType == BigInteger.class) {
+                    return interop.asBigInteger(value);
                 } else if (requestedType == Number.class) {
                     return convertToNumber(value, interop);
                 }
@@ -109,6 +113,8 @@ final class HostUtil {
                 return interop.asFloat(value);
             } else if (interop.fitsInDouble(value)) {
                 return interop.asDouble(value);
+            } else if (interop.fitsInBigInteger(value)) {
+                return interop.asBigInteger(value);
             }
         } catch (UnsupportedMessageException e) {
         }

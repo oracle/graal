@@ -27,7 +27,6 @@ package org.graalvm.component.installer.remote;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -70,7 +69,7 @@ public class RemoteStorageTest extends TestBase {
     public void setUp() throws Exception {
         storage = new MockStorage();
         remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, graalSelector,
-                        Version.fromString(graalVersion), new URL(TEST_BASE_URL));
+                        Version.fromString(graalVersion), SystemUtils.toURL(TEST_BASE_URL));
         try (InputStream is = getClass().getResourceAsStream("catalog.properties")) {
             catalogProps.load(is);
         }
@@ -87,7 +86,7 @@ public class RemoteStorageTest extends TestBase {
     private void forceLoadCatalog(String s) throws IOException {
         loadCatalog(s);
         remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, graalSelector,
-                        Version.fromString(graalVersion), new URL(TEST_BASE_URL));
+                        Version.fromString(graalVersion), SystemUtils.toURL(TEST_BASE_URL));
     }
 
     @Test
@@ -120,7 +119,7 @@ public class RemoteStorageTest extends TestBase {
     @Test
     public void testRelativeRemoteURL() throws Exception {
         ComponentInfo rInfo = loadLastComponent("r");
-        assertEquals(new URL(TEST_BASE_URL_DIR + "0.33-dev/graalvm-fastr.zip"), rInfo.getRemoteURL());
+        assertEquals(SystemUtils.toURL(TEST_BASE_URL_DIR + "0.33-dev/graalvm-fastr.zip"), rInfo.getRemoteURL());
     }
 
     @Test
@@ -216,7 +215,7 @@ public class RemoteStorageTest extends TestBase {
     public void obsoleteVersionsNotIncluded() throws Exception {
         loadCatalog("catalogMultiVersions.properties");
         remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, TEST_GRAAL_FLAVOUR,
-                        Version.fromString("1.0.0.0"), new URL(TEST_BASE_URL));
+                        Version.fromString("1.0.0.0"), SystemUtils.toURL(TEST_BASE_URL));
         Set<ComponentInfo> rubies = remStorage.loadComponentMetadata("ruby");
         // 1.0.0.0 and 1.0.1.0 versions
         assertEquals(2, rubies.size());

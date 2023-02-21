@@ -1298,12 +1298,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("unused")
-    protected Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
-        throw new UnsupportedOperationException();
-    }
-
-    @SuppressWarnings("unused")
-    protected Object getFieldValue(ResolvedJavaField resolvedJavaField, Object obj) {
+    protected int[] getFieldOffsets(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
         throw new UnsupportedOperationException();
     }
 

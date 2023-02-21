@@ -47,6 +47,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.GuardNodeAdoptionTestFactory.UseCachedNodeGen;
 import com.oracle.truffle.api.dsl.test.GuardNodeAdoptionTestFactory.UseNoCacheNodeGen;
@@ -60,6 +61,7 @@ public class GuardNodeAdoptionTest {
     @GenerateInline(false)
     abstract static class GuardNode extends Node {
 
+        @Idempotent
         abstract boolean execute(String argument);
 
         @Specialization

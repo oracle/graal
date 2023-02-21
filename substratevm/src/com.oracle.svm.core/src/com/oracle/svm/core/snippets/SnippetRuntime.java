@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.snippets;
 
-import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
+import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.GC_LOCATIONS;
 
 import java.lang.reflect.Method;
 
@@ -102,14 +102,14 @@ public class SnippetRuntime {
         if (isFullyUninterruptible) {
             VMError.guarantee(isUninterruptible, "%s is fully uninterruptible but not annotated with @Uninterruptible.", method);
             killedLocations = additionalKilledLocations;
-        } else if (additionalKilledLocations.length == 0 || additionalKilledLocations == TLAB_LOCATIONS) {
-            killedLocations = TLAB_LOCATIONS;
+        } else if (additionalKilledLocations.length == 0 || additionalKilledLocations == GC_LOCATIONS) {
+            killedLocations = GC_LOCATIONS;
         } else if (containsAny(additionalKilledLocations)) {
             killedLocations = additionalKilledLocations;
         } else {
-            killedLocations = new LocationIdentity[TLAB_LOCATIONS.length + additionalKilledLocations.length];
-            System.arraycopy(TLAB_LOCATIONS, 0, killedLocations, 0, TLAB_LOCATIONS.length);
-            System.arraycopy(additionalKilledLocations, 0, killedLocations, TLAB_LOCATIONS.length, additionalKilledLocations.length);
+            killedLocations = new LocationIdentity[GC_LOCATIONS.length + additionalKilledLocations.length];
+            System.arraycopy(GC_LOCATIONS, 0, killedLocations, 0, GC_LOCATIONS.length);
+            System.arraycopy(additionalKilledLocations, 0, killedLocations, GC_LOCATIONS.length, additionalKilledLocations.length);
         }
 
         boolean needsDebugInfo = !isFullyUninterruptible;

@@ -626,8 +626,9 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                 # add `LauncherConfig.destination` to the layout
                 launcher_project = GraalVmLauncher.launcher_project_name(_launcher_config, stage1)
                 _add(layout, _launcher_dest, 'dependency:' + launcher_project, _component)
-                if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and _get_svm_support().is_debug_supported(_launcher_config):
-                    _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + launcher_project + '/*.debug', _component)
+                if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and _get_svm_support().generate_debug_info(_launcher_config):
+                    if _get_svm_support().generate_separate_debug_info(_launcher_config):
+                        _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + launcher_project + '/*' + _get_svm_support().separate_debuginfo_ext(), _component)
                     if _include_sources(launcher_project):
                         _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + launcher_project + '/sources', _component)
                 # add links from jre/bin to launcher
@@ -662,6 +663,11 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
                     if _library_config.headers:
                         _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
+                    if _debug_images() and not _skip_libraries(_library_config) and _get_svm_support().generate_debug_info(_library_config):
+                        if _get_svm_support().generate_separate_debug_info(_library_config):
+                            _add(layout, dirname(_svm_library_dest) + '/', 'dependency:' + _library_project_name + '/*' + _get_svm_support().separate_debuginfo_ext(), _component)
+                        if _include_sources(_library_config):
+                            _add(layout, dirname(_svm_library_dest) + '/', 'dependency:' + _library_project_name + '/sources', _component)
                 if not stage1 and isinstance(_library_config, mx_sdk.LanguageLibraryConfig) and _library_config.launchers:
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(PolyglotConfig.project_name(_library_config)), _component)
                     # add native launchers for language libraries
@@ -1023,7 +1029,7 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
                 elif isinstance(dep, GraalVmNativeImage):
                     if dep.debug_file():
                         source_type = 'skip' if isinstance(dep.native_image_config, mx_sdk.LibraryConfig) and _skip_libraries(dep.native_image_config) else 'dependency'
-                        root_contents += [source_type + ':{}:{}/*.debug'.format(dep.suite.name, dep.name)]
+                        root_contents += [source_type + ':{}:{}/*{}'.format(dep.suite.name, dep.name, _get_svm_support().separate_debuginfo_ext())]
                         layout[dep.native_image_name + '-sources/'] = source_type + ':{}:{}/sources'.format(dep.suite.name, dep.name)
                 elif isinstance(dep, GraalVmJImage):
                     _add(dep.deps, layout)
@@ -1082,7 +1088,11 @@ def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
 class SvmSupport(object):
     def __init__(self):
         self._svm_supported = has_component('svm', stage1=True)
-        self._debug_supported = self._svm_supported and has_component('svmee', stage1=True) and not mx.is_darwin()  # GR-37542
+        self._debug_supported = self._svm_supported and (mx.is_linux() or mx.is_windows() or (mx.is_darwin() and has_component('svmee', stage1=True)))
+        self._separate_debuginfo_ext = {
+            'linux': '.debug',
+            'windows': '.pdb',
+        }.get(mx.get_os(), None)
         self._pgo_supported = self._svm_supported and has_component('svmee', stage1=True)
 
     def is_supported(self):
@@ -1100,11 +1110,29 @@ class SvmSupport(object):
         ]
         return mx.run(native_image_command, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
-    def is_debug_supported(self, image_config=None):
-        return self._debug_supported and (image_config is None or _generate_debuginfo(image_config))
+    def is_debug_supported(self):
+        return self._debug_supported
+
+    def generate_debug_info(self, image_config):
+        return self.is_debug_supported() and _generate_debuginfo(image_config)
+
+    def generate_separate_debug_info(self, image_config):
+        return self.generate_debug_info(image_config) and self._separate_debuginfo_ext
+
+    def separate_debuginfo_ext(self):
+        return self._separate_debuginfo_ext
 
     def is_pgo_supported(self):
         return self._pgo_supported
+
+    def get_debug_flags(self, image_config):
+        assert self.is_debug_supported()
+        flags = ['-g']
+        if mx.is_darwin():
+            flags += ['-H:+UseOldDebugInfo']
+        if self.generate_separate_debug_info(image_config):
+            flags += ['-H:+StripDebugInfo']
+        return flags
 
 
 def _get_svm_support():
@@ -1233,8 +1261,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             ]
             if _debug_images():
                 build_args += ['-ea', '-O0', '-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols']
-            if _get_svm_support().is_debug_supported(image_config):
-                build_args += ['-g']
+            if _get_svm_support().generate_debug_info(image_config):
+                build_args += _get_svm_support().get_debug_flags(image_config)
             if getattr(image_config, 'link_at_build_time', True):
                 build_args += ['--link-at-build-time']
 
@@ -1669,8 +1697,12 @@ class GraalVmNativeImage(GraalVmProject, metaclass=ABCMeta):
     def debug_file(self):
         if not self.is_native():
             return None
-        if _get_svm_support().is_debug_supported(self.native_image_config) and mx.get_os() == 'linux':
-            return join(self.get_output_base(), self.name, self.native_image_name + '.debug')
+        if _get_svm_support().generate_separate_debug_info(self.native_image_config):
+            debug_file_base_name = self.native_image_name
+            if mx.is_windows():
+                assert debug_file_base_name.lower().endswith('.exe') or debug_file_base_name.lower().endswith('.dll')
+                debug_file_base_name = debug_file_base_name[:-4]
+            return join(self.get_output_base(), self.name, debug_file_base_name + _get_svm_support().separate_debuginfo_ext())
         return None
 
     @property
@@ -3546,6 +3578,11 @@ def graalvm_vendor_version(graalvm_dist):
     vendor_version += ' {}'.format(graalvm_version())
     return vendor_version
 
+
+# GR-37542 current debug info on darwin bloats binary (stripping to a separate .dSYM folder is not implemented) and
+# doesn't bring much benefit yet
+_debuginfo_default = not mx.is_darwin()
+
 mx.add_argument('--components', action='store', help='Comma-separated list of component names to build. Only those components and their dependencies are built. suite:NAME can be used to exclude all components of a suite.')
 mx.add_argument('--exclude-components', action='store', help='Comma-separated list of component names to be excluded from the build. suite:NAME can be used to exclude all components of a suite.')
 mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project.')
@@ -3558,7 +3595,7 @@ mx.add_argument('--force-bash-launchers', action='store', help='Force the use of
                                                                'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
 mx.add_argument('--skip-libraries', action='store', help='Do not build native images for these libraries.'
                                                          'This can be a comma-separated list of disabled libraries or `true` to disable all libraries.', default=None)
-mx.add_argument('--sources', action='store', help='Comma-separated list of projects and distributions of open-source components for which source file archives must be included (all by default).', default=None)
+mx.add_argument('--sources', action='store', help='Comma-separated list of projects and distributions of open-source components for which source file archives must be included' + (' (all by default).' if _debuginfo_default else '.'), default=None)
 mx.add_argument('--debuginfo-dists', action='store_true', help='Generate debuginfo distributions.')
 mx.add_argument('--generate-debuginfo', action='store', help='Comma-separated list of launchers and libraries (syntax: lib:polyglot) for which to generate debug information (`native-image -g`) (all by default)', default=None)
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
@@ -3865,7 +3902,7 @@ def _debuginfo_dists():
 def _generate_debuginfo(image_config):
     generate_debuginfo = _parse_cmd_arg('generate_debuginfo')
     if generate_debuginfo is None:
-        return True
+        return _debuginfo_default or _debug_images()
     elif isinstance(generate_debuginfo, bool):
         return generate_debuginfo
     else:

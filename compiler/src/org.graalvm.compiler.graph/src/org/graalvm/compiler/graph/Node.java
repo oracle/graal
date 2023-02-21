@@ -113,7 +113,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
-    public static @interface Input {
+    public @interface Input {
         InputType value() default InputType.Value;
     }
 
@@ -126,7 +126,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
-    public static @interface OptionalInput {
+    public @interface OptionalInput {
         InputType value() default InputType.Value;
     }
 
@@ -136,7 +136,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
-    public static @interface Successor {
+    public @interface Successor {
     }
 
     /**
@@ -145,7 +145,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.PARAMETER)
-    public static @interface ConstantNodeParameter {
+    public @interface ConstantNodeParameter {
     }
 
     /**
@@ -158,7 +158,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.PARAMETER)
-    public static @interface InjectedNodeParameter {
+    public @interface InjectedNodeParameter {
     }
 
     /**
@@ -190,7 +190,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.METHOD)
-    public static @interface NodeIntrinsic {
+    public @interface NodeIntrinsic {
 
         /**
          * The class declaring the factory method or {@link Node} subclass declaring the constructor

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,10 +74,10 @@ public class InliningPathTest {
      */
     @Test
     public void pathFromRootToNode() {
-        InliningTreeNode a = new InliningTreeNode("a()", -1, true, null, false, null);
-        InliningTreeNode b = new InliningTreeNode("b()", 1, true, null, false, null);
-        InliningTreeNode c = new InliningTreeNode("c()", 2, false, null, true, null);
-        InliningTreeNode d = new InliningTreeNode("d()", 3, true, null, false, null);
+        InliningTreeNode a = new InliningTreeNode("a()", -1, true, null, false, null, false);
+        InliningTreeNode b = new InliningTreeNode("b()", 1, true, null, false, null, false);
+        InliningTreeNode c = new InliningTreeNode("c()", 2, false, null, true, null, true);
+        InliningTreeNode d = new InliningTreeNode("d()", 3, true, null, false, null, false);
         a.addChild(b);
         b.addChild(c);
         c.addChild(d);

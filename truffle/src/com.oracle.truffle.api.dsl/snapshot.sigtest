@@ -51,6 +51,7 @@ CLSS public abstract com.oracle.truffle.api.dsl.DSLSupport
 meth public static <%0 extends com.oracle.truffle.api.nodes.NodeInterface> {%%0} maybeInsert(com.oracle.truffle.api.nodes.Node,{%%0})
 meth public static <%0 extends com.oracle.truffle.api.nodes.NodeInterface> {%%0}[] maybeInsert(com.oracle.truffle.api.nodes.Node,{%%0}[])
 meth public static <%0 extends java.lang.Enum<?>> {%%0}[] lookupEnumConstants(java.lang.Class<{%%0}>)
+meth public static boolean assertIdempotence(boolean)
 supr java.lang.Object
 hfds ENUM_CONSTANTS
 
@@ -129,6 +130,11 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.GeneratedB
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.String methodName()
 meth public abstract java.lang.Class<?> value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Idempotent
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ImplicitCast
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
@@ -364,6 +370,11 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeFields
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault com.oracle.truffle.api.dsl.NodeField[] value()
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NonIdempotent
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
+intf java.lang.annotation.Annotation
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.ReportPolymorphism
  anno 0 java.lang.annotation.Inherited()

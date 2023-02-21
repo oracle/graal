@@ -66,15 +66,9 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMove;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVMDoubleOffsetLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNode.LLVMFloatOffsetLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode.LLVMI16OffsetLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNode.LLVMI1OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode.LLVMI64OffsetLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode.LLVMI8OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLVMPointerOffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOffsetStoreNode;
@@ -607,17 +601,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                     @CachedLibrary(limit = "1") LLVMManagedReadLibrary readLib,
                     @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLib,
                     @Cached BranchProfile regAreaProfile,
-                    @Cached LLVMI1OffsetLoadNode loadI1,
-                    @Cached LLVMI8OffsetLoadNode loadI8,
-                    @Cached LLVMI16OffsetLoadNode loadI16,
-                    @Cached LLVMI32OffsetLoadNode loadI32,
-                    @Cached LLVMI64OffsetLoadNode loadI64,
-                    @Cached LLVMPointerOffsetLoadNode loadPointer,
-                    @Cached LLVMFloatOffsetLoadNode loadFloat,
-                    @Cached LLVMDoubleOffsetLoadNode loadDouble,
-                    @Cached LLVMPointerOffsetLoadNode load1,
-                    @Exclusive @Cached LLVMPointerOffsetStoreNode store1,
-                    @Cached LLVMPointerOffsetLoadNode regSaveAreaLoad,
+                    @Cached LoadFromAreaNode loadFromArea,
                     @Cached ConditionProfile isNativizedProfile) {
         int regSaveOffs = 0;
         int regSaveStep = 0;
@@ -654,65 +638,14 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
                     int i = (int) ((n << 32) >> 32);
                     return this.regSaveArea.args[i];
                 } else {
-                    LLVMPointer areaPtr = regSaveAreaLoad.executeWithTarget(this.vaListStackPtr, X86_64BitVarArgs.REG_SAVE_AREA);
-                    if (type instanceof PrimitiveType) {
-                        switch (((PrimitiveType) type).getPrimitiveKind()) {
-                            case DOUBLE:
-                                return loadDouble.executeWithTargetGeneric(areaPtr, offs);
-                            case FLOAT:
-                                return loadFloat.executeWithTargetGeneric(areaPtr, offs);
-                            case I1:
-                                return loadI1.executeWithTargetGeneric(areaPtr, offs);
-                            case I16:
-                                return loadI16.executeWithTargetGeneric(areaPtr, offs);
-                            case I32:
-                                return loadI32.executeWithTargetGeneric(areaPtr, offs);
-                            case I64:
-                                return loadI64.executeWithTargetGeneric(areaPtr, offs);
-                            case I8:
-                                return loadI8.executeWithTargetGeneric(areaPtr, offs);
-                            default:
-                                throw CompilerDirectives.shouldNotReachHere("not implemented");
-                        }
-                    } else if (type instanceof PointerType) {
-                        return loadPointer.executeWithTargetGeneric(areaPtr, offs);
-                    } else {
-                        throw CompilerDirectives.shouldNotReachHere("not implemented");
-                    }
+                    return loadFromArea.execute(this.vaListStackPtr, X86_64BitVarArgs.REG_SAVE_AREA, offs, 0, type);
                 }
             }
         }
 
         // overflow area
         if (isNativizedProfile.profile(isNativized())) {
-            // Synchronize the managed current argument pointer from the native overflow area
-            LLVMPointer areaPtr = load1.executeWithTarget(vaListStackPtr, X86_64BitVarArgs.OVERFLOW_ARG_AREA);
-            store1.executeWithTarget(vaListStackPtr, X86_64BitVarArgs.OVERFLOW_ARG_AREA, areaPtr.increment(8));
-            int offs = 0;
-            if (type instanceof PrimitiveType) {
-                switch (((PrimitiveType) type).getPrimitiveKind()) {
-                    case DOUBLE:
-                        return loadDouble.executeWithTargetGeneric(areaPtr, offs);
-                    case FLOAT:
-                        return loadFloat.executeWithTargetGeneric(areaPtr, offs);
-                    case I1:
-                        return loadI1.executeWithTargetGeneric(areaPtr, offs);
-                    case I16:
-                        return loadI16.executeWithTargetGeneric(areaPtr, offs);
-                    case I32:
-                        return loadI32.executeWithTargetGeneric(areaPtr, offs);
-                    case I64:
-                        return loadI64.executeWithTargetGeneric(areaPtr, offs);
-                    case I8:
-                        return loadI8.executeWithTargetGeneric(areaPtr, offs);
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere("not implemented");
-                }
-            } else if (type instanceof PointerType) {
-                return loadPointer.executeWithTargetGeneric(areaPtr, offs);
-            } else {
-                throw CompilerDirectives.shouldNotReachHere("not implemented");
-            }
+            return loadFromArea.execute(vaListStackPtr, X86_64BitVarArgs.OVERFLOW_ARG_AREA, 0, 8, type);
         } else {
             Object currentArg = this.overflowArgArea.getCurrentArg();
             this.overflowArgArea.shift(1);

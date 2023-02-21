@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.14.13",
+    "mxversion": "6.15.3",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
@@ -74,7 +74,7 @@ suite = {
               "com.oracle.truffle.tools.chromeinspector.instrument to org.graalvm.truffle"
             ],
             "javaCompliance" : "17+",
-            "checkstyleVersion" : "8.8",
+            "checkstyleVersion" : "10.7.0",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",

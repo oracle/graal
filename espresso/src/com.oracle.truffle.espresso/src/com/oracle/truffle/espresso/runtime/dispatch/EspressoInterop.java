@@ -24,7 +24,6 @@
 package com.oracle.truffle.espresso.runtime.dispatch;
 
 import static com.oracle.truffle.espresso.impl.Klass.STATIC_TO_CLASS;
-import static com.oracle.truffle.espresso.runtime.InteropUtils.inSafeIntegerRange;
 import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostByte;
 import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostFloat;
 import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostInt;
@@ -89,6 +88,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * Espresso and foreign objects and null.
  */
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+@SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class EspressoInterop extends BaseInterop {
     // region ### is/as checks/conversions
 
@@ -217,7 +217,7 @@ public class EspressoInterop extends BaseInterop {
         }
         if (klass == meta.java_lang_Float) {
             float content = meta.java_lang_Float_value.getFloat(receiver);
-            return inSafeIntegerRange(content) && !isNegativeZero(content) && (int) content == content;
+            return !isNegativeZero(content) && (int) content == content && (int) content != Integer.MAX_VALUE;
         }
         if (klass == meta.java_lang_Double) {
             double content = meta.java_lang_Double_value.getDouble(receiver);
@@ -240,11 +240,11 @@ public class EspressoInterop extends BaseInterop {
         Meta meta = klass.getMeta();
         if (klass == meta.java_lang_Float) {
             float content = meta.java_lang_Float_value.getFloat(receiver);
-            return inSafeIntegerRange(content) && !isNegativeZero(content) && (long) content == content;
+            return !isNegativeZero(content) && (long) content == content && (long) content != Long.MAX_VALUE;
         }
         if (klass == meta.java_lang_Double) {
             double content = meta.java_lang_Double_value.getDouble(receiver);
-            return inSafeIntegerRange(content) && !isNegativeZero(content) && (long) content == content;
+            return !isNegativeZero(content) && (long) content == content && (long) content != Long.MAX_VALUE;
         }
         return false;
     }
@@ -269,12 +269,12 @@ public class EspressoInterop extends BaseInterop {
         if (klass == meta.java_lang_Integer) {
             int content = meta.java_lang_Integer_value.getInt(receiver);
             float floatContent = content;
-            return (int) floatContent == content;
+            return content != Integer.MAX_VALUE && (int) floatContent == content;
         }
         if (klass == meta.java_lang_Long) {
             long content = meta.java_lang_Long_value.getLong(receiver);
             float floatContent = content;
-            return (long) floatContent == content;
+            return content != Long.MAX_VALUE && (long) floatContent == content;
         }
         if (klass == meta.java_lang_Double) {
             double content = meta.java_lang_Double_value.getDouble(receiver);
@@ -297,7 +297,7 @@ public class EspressoInterop extends BaseInterop {
         if (klass == meta.java_lang_Long) {
             long content = meta.java_lang_Long_value.getLong(receiver);
             double doubleContent = content;
-            return (long) doubleContent == content;
+            return content != Long.MAX_VALUE && (long) doubleContent == content;
         }
         if (klass == meta.java_lang_Float) {
             float content = meta.java_lang_Float_value.getFloat(receiver);

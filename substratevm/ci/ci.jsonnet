@@ -1,5 +1,6 @@
 {
-  local common = import "../../ci/ci_common/common.jsonnet",
+  local common     = import "../../ci/ci_common/common.jsonnet",
+  local util       = import "../../ci/ci_common/common-utils.libsonnet",
   local tools      = import "ci_common/tools.libsonnet",
   local sg         = import "ci_common/svm-gate.libsonnet",
   local inc        = import "ci_common/include.libsonnet",
@@ -15,8 +16,8 @@
   // mx gate build config
   local mxgate(tags) = os_arch_jdk_mixin + sg.mxgate(tags, suite="substratevm", suite_short="svm"),
 
-  local eclipse = task_spec(common.eclipse),
-  local jdt = task_spec(common.jdt),
+  local eclipse = task_spec(common.deps.eclipse),
+  local jdt = task_spec(common.deps.jdt),
   local gate = sg.gate,
   local gdb(version) = task_spec(sg.gdb(version)),
   local use_musl = sg.use_musl,
@@ -128,6 +129,6 @@
   },
   // END MAIN BUILD DEFINITION
   processed_builds::run_spec.process(task_dict),
-  builds: [{'defined_in': std.thisFile} + b for b in self.processed_builds.list],
+  builds: [{'defined_in': std.thisFile} + util.add_gate_predicate(b, sg.gate_triggering_suites) for b in self.processed_builds.list],
   assert tools.check_names($.builds),
 }

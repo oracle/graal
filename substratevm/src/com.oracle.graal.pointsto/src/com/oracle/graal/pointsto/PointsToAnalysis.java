@@ -84,6 +84,7 @@ import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     /** The type of {@link java.lang.Object}. */
@@ -257,14 +258,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return metaAccess.lookupJavaType(org.graalvm.compiler.graph.NodeList.class);
     }
 
-    public AnalysisType getThrowableType() {
-        return metaAccess.lookupJavaType(Throwable.class);
-    }
-
-    public AnalysisType getThreadType() {
-        return metaAccess.lookupJavaType(Thread.class);
-    }
-
     public TypeFlow<?> getAllInstantiatedTypeFlow() {
         return objectType.getTypeFlow(this, true);
     }
@@ -396,7 +389,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
         type.registerAsReachable("root class");
-        for (AnalysisField field : type.getInstanceFields(false)) {
+        for (ResolvedJavaField javaField : type.getInstanceFields(false)) {
+            AnalysisField field = (AnalysisField) javaField;
             if (addFields) {
                 field.registerAsAccessed("field of root class");
             }
@@ -420,7 +414,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @SuppressWarnings("try")
     public AnalysisType addRootField(Class<?> clazz, String fieldName) {
         AnalysisType type = addRootClass(clazz, false, false);
-        for (AnalysisField field : type.getInstanceFields(true)) {
+        for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
+            AnalysisField field = (AnalysisField) javaField;
             if (field.getName().equals(fieldName)) {
                 field.registerAsAccessed("root field");
                 /*

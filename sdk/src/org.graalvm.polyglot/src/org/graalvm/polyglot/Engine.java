@@ -857,6 +857,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean isBigIntegerAccessibleAsNumber(HostAccess access) {
+            return access.allowBigIntegerNumberAccess;
+        }
+
+        @Override
         public boolean allowsPublicAccess(HostAccess access) {
             return access.allowPublic;
         }

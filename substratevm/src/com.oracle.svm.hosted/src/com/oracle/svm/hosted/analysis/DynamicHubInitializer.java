@@ -53,6 +53,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class DynamicHubInitializer {
 
@@ -132,7 +133,8 @@ public class DynamicHubInitializer {
          * we even have to guess the field name.
          */
         AnalysisField found = null;
-        for (AnalysisField f : type.getStaticFields()) {
+        for (ResolvedJavaField javaField : type.getStaticFields()) {
+            AnalysisField f = (AnalysisField) javaField;
             if (f.getName().endsWith("$VALUES")) {
                 if (found != null) {
                     /*

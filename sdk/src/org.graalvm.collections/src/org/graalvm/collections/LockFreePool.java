@@ -66,7 +66,7 @@ public class LockFreePool<T> {
     /**
      * The top-of-the-Treiber-stack pointer.
      */
-    private final AtomicReference<Node> head;
+    private final AtomicReference<Node<T>> head;
 
     public LockFreePool() {
         this.head = new AtomicReference<>();
@@ -88,11 +88,11 @@ public class LockFreePool<T> {
      */
     public T get() {
         while (true) {
-            Node oldHead = head.get();
+            Node<T> oldHead = head.get();
             if (oldHead == null) {
                 return null;
             }
-            Node newHead = oldHead.tail;
+            Node<T> newHead = oldHead.tail;
             if (head.compareAndSet(oldHead, newHead)) {
                 return oldHead.element;
             }
@@ -113,8 +113,8 @@ public class LockFreePool<T> {
      */
     public void add(T element) {
         while (true) {
-            Node oldHead = head.get();
-            Node newHead = new Node(element, oldHead);
+            Node<T> oldHead = head.get();
+            Node<T> newHead = new Node<>(element, oldHead);
             if (head.compareAndSet(oldHead, newHead)) {
                 return;
             }
@@ -124,17 +124,17 @@ public class LockFreePool<T> {
     /**
      * Internal wrapper node used to wrap the element and the {@code tail} pointer.
      */
-    private final class Node {
+    private static final class Node<E> {
         /**
          * Element stored in this node.
          */
-        final T element;
+        final E element;
         /**
          * Pointer to the tail of the linked list, or {@code null} if the end of the list.
          */
-        final Node tail;
+        final Node<E> tail;
 
-        private Node(T element, Node tail) {
+        private Node(E element, Node<E> tail) {
             this.element = element;
             this.tail = tail;
         }

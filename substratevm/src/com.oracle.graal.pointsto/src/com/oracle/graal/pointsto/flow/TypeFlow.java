@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,14 +80,6 @@ public abstract class TypeFlow<T> {
     private final boolean isClone; // true -> clone, false -> original
     protected final MethodFlowsGraph graphRef;
 
-    /** True if this flow is passed as a parameter to a call. */
-    protected boolean usedAsAParameter;
-
-    /**
-     * True if this flow is the receiver of a virtual call. If true, usedAsAParameter is also true.
-     */
-    protected boolean usedAsAReceiver;
-
     public volatile boolean inQueue;
 
     /**
@@ -123,8 +115,6 @@ public abstract class TypeFlow<T> {
         this.isClone = isClone;
         this.graphRef = graphRef;
         this.state = typeState;
-        this.usedAsAParameter = false;
-        this.usedAsAReceiver = false;
 
         validateSource();
     }
@@ -165,8 +155,6 @@ public abstract class TypeFlow<T> {
 
     public TypeFlow(TypeFlow<T> original, MethodFlowsGraph graphRef, TypeState cloneState) {
         this(original.getSource(), original.getDeclaredType(), cloneState, original.getSlot(), true, graphRef);
-        this.usedAsAParameter = original.usedAsAParameter;
-        this.usedAsAReceiver = original.usedAsAReceiver;
         PointsToStats.registerTypeFlowRetainReason(this, original);
     }
 
@@ -196,22 +184,6 @@ public abstract class TypeFlow<T> {
      */
     public boolean needsInitialization() {
         return false;
-    }
-
-    public void setUsedAsAParameter(boolean usedAsAParameter) {
-        this.usedAsAParameter = usedAsAParameter;
-    }
-
-    public boolean isUsedAsAParameter() {
-        return usedAsAParameter;
-    }
-
-    public void setUsedAsAReceiver(boolean usedAsAReceiver) {
-        this.usedAsAReceiver = usedAsAReceiver;
-    }
-
-    public boolean isUsedAsAReceiver() {
-        return usedAsAReceiver;
     }
 
     /** Some flows have a receiver (e.g., loads, store and invokes). */

@@ -106,23 +106,21 @@ public class JfrThreadLocal implements ThreadListener {
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
         if (SubstrateJVM.get().isRecording()) {
             ThreadEndEvent.emit(javaThread);
-            stopRecording(isolateThread, true);
+            stopRecording(isolateThread);
         }
     }
 
     @Uninterruptible(reason = "Accesses various JFR buffers.")
-    public static void stopRecording(IsolateThread isolateThread, boolean flushBuffers) {
+    public static void stopRecording(IsolateThread isolateThread) {
         /* Flush event buffers. From this point onwards, no further JFR events may be emitted. */
-        if (flushBuffers) {
-            JfrBuffer jb = javaBuffer.get(isolateThread);
-            if (jb.isNonNull()) {
-                flush(jb, WordFactory.unsigned(0), 0);
-            }
+        JfrBuffer jb = javaBuffer.get(isolateThread);
+        if (jb.isNonNull()) {
+            flush(jb, WordFactory.unsigned(0), 0);
+        }
 
-            JfrBuffer nb = nativeBuffer.get(isolateThread);
-            if (nb.isNonNull()) {
-                flush(nb, WordFactory.unsigned(0), 0);
-            }
+        JfrBuffer nb = nativeBuffer.get(isolateThread);
+        if (nb.isNonNull()) {
+            flush(nb, WordFactory.unsigned(0), 0);
         }
 
         /* Clear event-related thread-locals. */

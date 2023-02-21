@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.15.0",
+  "mxversion": "6.15.3",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -409,7 +409,7 @@ suite = {
         "jdk.unsupported", # sun.misc.Signal
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "10.7.0",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "17+",
       "spotbugsIgnoresGenerated" : True,

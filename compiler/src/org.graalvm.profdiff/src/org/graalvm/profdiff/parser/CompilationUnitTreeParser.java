@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,7 +85,8 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
             }
         }
         boolean indirect = map.property(OptimizationLogImpl.INDIRECT_PROPERTY).asBoolean();
-        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason, indirect, parseProfilingInfo(map));
+        boolean alive = map.property(OptimizationLogImpl.ALIVE_PROPERTY).asBoolean();
+        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason, indirect, parseProfilingInfo(map), alive);
         ExperimentJSONParser.JSONLiteral invokes = map.property(OptimizationLogImpl.INVOKES_PROPERTY);
         if (invokes.isNull()) {
             return inliningTreeNode;

@@ -29,25 +29,14 @@ To get used to Native Image terminology and get better understanding of the tech
 
 ### Table of Contents
 
-* [Install Native Image](#install-native-image)
 * [Build a Native Executable](#build-a-native-executable)
 * [Configuring Native Image with Third-Party Libraries](#configuring-native-image-with-third-party-libraries)
 * [License](#license)
 * [Further Reading](#further-reading)
 
-## Install Native Image
-
-Native Image can be added to GraalVM with the [GraalVM Updater](../graalvm-updater.md) tool.
-
-Run this command to install Native Image:
-```shell
-gu install native-image
-```
-The `native-image` tool is installed in the `$JAVA_HOME/bin` directory.
-
 ### Prerequisites
 
-The `native-image` tool depends on the local toolchain (header files for the C library, `glibc-devel`, `zlib`, `gcc`, and/or `libstdc++-static`). 
+The `native-image` tool, available in the `bin` directory of your GraalVM installation, depends on the local toolchain (header files for the C library, `glibc-devel`, `zlib`, `gcc`, and/or `libstdc++-static`). 
 These dependencies can be installed (if not yet installed) using a package manager on your machine.
 Choose your operating system to find instructions to meet the prerequisites.
 

@@ -29,14 +29,12 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.svm.core.heap.VMOperationInfos;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 
@@ -64,9 +62,6 @@ public class JfrTypeRepository implements JfrConstantPool {
         count += writePackages(writer, typeInfo);
         count += writeModules(writer, typeInfo);
         count += writeClassLoaders(writer, typeInfo);
-        count += writeGCCauses(writer);
-        count += writeGCNames(writer);
-        count += writeVMOperations(writer);
         return count;
     }
 
@@ -188,55 +183,6 @@ public class JfrTypeRepository implements JfrConstantPool {
         for (Map.Entry<ClassLoader, Long> clInfo : classLoaders.entrySet()) {
             writeClassLoader(writer, clInfo.getKey(), clInfo.getValue());
         }
-        return NON_EMPTY;
-    }
-
-    private static int writeGCCauses(JfrChunkWriter writer) {
-        // GCCauses has null entries
-        GCCause[] causes = GCCause.getGCCauses();
-        int nonNullItems = 0;
-        for (int index = 0; index < causes.length; index++) {
-            if (causes[index] != null) {
-                nonNullItems++;
-            }
-        }
-
-        assert nonNullItems > 0;
-
-        writer.writeCompressedLong(JfrType.GCCause.getId());
-        writer.writeCompressedLong(nonNullItems);
-        for (GCCause cause : causes) {
-            if (cause != null) {
-                writer.writeCompressedLong(cause.getId());
-                writer.writeString(cause.getName());
-            }
-        }
-        return NON_EMPTY;
-    }
-
-    private static int writeGCNames(JfrChunkWriter writer) {
-        JfrGCName[] gcNames = JfrGCNames.singleton().getNames();
-        assert gcNames != null && gcNames.length > 0;
-
-        writer.writeCompressedLong(JfrType.GCName.getId());
-        writer.writeCompressedLong(gcNames.length);
-        for (JfrGCName name : gcNames) {
-            writer.writeCompressedLong(name.getId());
-            writer.writeString(name.getName());
-        }
-        return NON_EMPTY;
-    }
-
-    private static int writeVMOperations(JfrChunkWriter writer) {
-        String[] vmOperationNames = VMOperationInfos.getNames();
-        assert vmOperationNames.length > 0;
-        writer.writeCompressedLong(JfrType.VMOperation.getId());
-        writer.writeCompressedLong(vmOperationNames.length);
-        for (int id = 0; id < vmOperationNames.length; id++) {
-            writer.writeCompressedLong(id + 1); // id starts with 1
-            writer.writeString(vmOperationNames[id]);
-        }
-
         return NON_EMPTY;
     }
 

@@ -404,7 +404,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
         }
     }
 
-    @ExpectError({"The following message(s) of library ExportsTestLibrary2 are abstract and must be exported %",
+    @ExpectError({"The following message(s) of library ExportsTestLibrary2 are abstract and should be exported %",
                     "Exported library ExportsTestLibrary2 does not export any messages and therefore has no effect. Remove the export declaration to resolve this."
     })
     @ExportLibrary(ExportsTestLibrary2.class)

@@ -126,10 +126,10 @@ import jdk.vm.ci.services.Services;
 public abstract class RuntimeCompilationFeature {
 
     public static class Options {
-        @Option(help = "Print call tree of methods available for runtime compilation")//
+        @Option(help = "Print methods available for runtime compilation")//
         public static final HostedOptionKey<Boolean> PrintRuntimeCompileMethods = new HostedOptionKey<>(false);
 
-        @Option(help = "Print call tree of methods available for runtime compilation")//
+        @Option(help = "Print call tree of methods reachable for runtime compilation")//
         public static final HostedOptionKey<Boolean> PrintRuntimeCompilationCallTree = new HostedOptionKey<>(false);
 
         @Option(help = "Maximum number of methods allowed for runtime compilation.")//

@@ -98,35 +98,35 @@ public abstract class LIRInstruction {
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface Use {
+    public @interface Use {
 
         OperandFlag[] value() default OperandFlag.REG;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface Alive {
+    public @interface Alive {
 
         OperandFlag[] value() default OperandFlag.REG;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface Temp {
+    public @interface Temp {
 
         OperandFlag[] value() default OperandFlag.REG;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface Def {
+    public @interface Def {
 
         OperandFlag[] value() default OperandFlag.REG;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface State {
+    public @interface State {
     }
 
     /**

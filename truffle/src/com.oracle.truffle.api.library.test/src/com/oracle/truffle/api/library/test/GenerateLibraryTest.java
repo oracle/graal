@@ -449,7 +449,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
     }
 
-    @ExpectError({"The following message(s) of library AbstractErrorLibrary1 are abstract and must be exported using:%",
+    @ExpectError({"The following message(s) of library AbstractErrorLibrary1 are abstract and should be exported using:%",
                     "Exported library AbstractErrorLibrary1 does not export any messages and therefore has no effect. Remove the export declaration to resolve this."
     })
     @ExportLibrary(AbstractErrorLibrary1.class)
@@ -477,7 +477,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     }
 
     // should now have an abstract error message
-    @ExpectError("The following message(s) of library AbstractErrorLibrary2 are abstract and must be exported usin%")
+    @ExpectError("The following message(s) of library AbstractErrorLibrary2 are abstract and should be exported usin%")
     @ExportLibrary(AbstractErrorLibrary2.class)
     public static class AbstractErrorTest3 {
         @SuppressWarnings("static-method")

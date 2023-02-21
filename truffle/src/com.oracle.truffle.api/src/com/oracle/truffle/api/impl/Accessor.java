@@ -168,6 +168,8 @@ public abstract class Accessor {
 
         public abstract int adoptChildrenAndCount(RootNode rootNode);
 
+        public abstract int computeSize(RootNode rootNode);
+
         public abstract Object getLanguageCache(LanguageInfo languageInfo);
 
         public abstract TruffleLanguage<?> getLanguage(RootNode languageInfo);
@@ -1208,9 +1210,7 @@ public abstract class Accessor {
 
         public abstract int getBaseInstanceSize(Class<?> type);
 
-        public abstract Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses);
-
-        public abstract Object getFieldValue(Object resolvedJavaField, Object obj);
+        public abstract int[] getFieldOffsets(Class<?> type, boolean includePrimitive, boolean includeSuperclasses);
 
         public AbstractFastThreadLocal getContextThreadLocal() {
             return DefaultContextThreadLocal.SINGLETON;

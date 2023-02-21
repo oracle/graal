@@ -65,8 +65,11 @@ public final class TruffleSuppressedWarnings {
     public static final String NEVERDEFAULT = "truffle-neverdefault";
     public static final String INLINING_RECOMMENDATION = "truffle-inlining";
     public static final String SHARING_RECOMMENDATION = "truffle-sharing";
+    public static final String ABSTRACT_LIBRARY_EXPORT = "truffle-abstract-export";
+    public static final String ASSUMPTION = "truffle-assumption";
+    public static final String GUARD = "truffle-guard";
 
-    public static final List<String> ALL_KEYS = List.of(ALL, TRUFFLE, STATIC_METHOD, LIMIT, UNUSED, NEVERDEFAULT, INLINING_RECOMMENDATION, SHARING_RECOMMENDATION);
+    public static final List<String> ALL_KEYS = List.of(ALL, TRUFFLE, STATIC_METHOD, LIMIT, UNUSED, NEVERDEFAULT, INLINING_RECOMMENDATION, SHARING_RECOMMENDATION, ABSTRACT_LIBRARY_EXPORT);
 
     public static Set<String> getWarnings(Element element) {
         AnnotationMirror currentWarnings = ElementUtils.findAnnotationMirror(element, SuppressWarnings.class);

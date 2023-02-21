@@ -26,7 +26,6 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.hosted.ProgressReporterJsonHelper.UNAVAILABLE_METRIC;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -61,7 +60,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -676,7 +674,7 @@ public class ProgressReporter {
             artifacts.add(ArtifactType.BUILD_INFO, jsonHelper.printToFile());
         }
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
-            artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics(imageName, generator.getBigbang()));
+            artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics());
         }
         BuildArtifactsExporter.run(imageName, artifacts, generator.getBuildArtifacts());
     }
@@ -699,17 +697,10 @@ public class ProgressReporter {
         });
     }
 
-    private static Path reportImageBuildStatistics(String imageName, BigBang bb) {
+    private static Path reportImageBuildStatistics() {
         Consumer<PrintWriter> statsReporter = ImageSingletons.lookup(ImageBuildStatistics.class).getReporter();
-        String description = "image build statistics";
-        if (ImageBuildStatistics.Options.ImageBuildStatisticsFile.hasBeenSet(bb.getOptions())) {
-            final File file = new File(ImageBuildStatistics.Options.ImageBuildStatisticsFile.getValue(bb.getOptions()));
-            return com.oracle.graal.pointsto.reports.ReportUtils.report(description, file.getAbsoluteFile().toPath(), statsReporter, false);
-        } else {
-            String name = "image_build_statistics_" + com.oracle.graal.pointsto.reports.ReportUtils.extractImageName(imageName);
-            String path = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
-            return com.oracle.graal.pointsto.reports.ReportUtils.report(description, path, name, "json", statsReporter, false);
-        }
+        Path reportsPath = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve("reports");
+        return ReportUtils.report("image build statistics", reportsPath.resolve("image_build_statistics.json"), statsReporter, false);
     }
 
     private void printResourceStatistics() {

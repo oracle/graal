@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.tests.interop.values;
 
+import java.math.BigInteger;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -72,6 +75,11 @@ public final class BoxedIntValue implements TruffleObject {
     }
 
     @ExportMessage
+    boolean fitsInBigInteger() {
+        return true;
+    }
+
+    @ExportMessage
     boolean fitsInFloat(@CachedLibrary("this.value") InteropLibrary interop) {
         return interop.fitsInFloat(value);
     }
@@ -99,6 +107,12 @@ public final class BoxedIntValue implements TruffleObject {
     @ExportMessage
     long asLong() {
         return value;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    BigInteger asBigInteger() {
+        return BigInteger.valueOf(value);
     }
 
     @ExportMessage

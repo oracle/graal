@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,26 +51,27 @@ import org.graalvm.profdiff.core.optimization.Optimization;
  * After inlining everything in {@code a()}, we obtain the inlining tree below:
  *
  * <pre>
- *          a()
- *       at bci -1
- *      ___/  \_____
- *     /            \
- *    b()           c()
- * at bci 0       at bci 1
- *               __/  \__
- *             /         \
- *           d()         e()
- *        at bci 0     at bci 1
+ *             (root) a()
+ *              at bci -1
+ *          ______/  \_____
+ *        /                \
+ * (inlined) b()       (inlined) c()
+ *   at bci 0            at bci 1
+ *                   ______/  \______
+ *                 /                 \
+ *          (inlined) d()        (inlined) e()
+ *             at bci 0            at bci 1
  * </pre>
  *
  * In preorder, the tree corresponds to the following:
  *
  * <pre>
- *     a() at bci -1
- *         b() at bci 0
- *         c() at bci 1
- *             d() at bci 0
- *             e() at bci 1
+ * Inlining tree
+ *     (root) a() at bci -1
+ *         (inlined) b() at bci 0
+ *         (inlined) c() at bci 1
+ *             (inlined) d() at bci 0
+ *             (inlined) e() at bci 1
  * </pre>
  *
  * Note that the root uses bci -1 as a placeholder, because it represents the root method rather
@@ -208,7 +209,8 @@ public class InliningTree {
      */
     public InliningTree cloneSubtreeAt(List<Integer> index) {
         InliningTreeNode rootNode = root.atIndex(index);
-        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), Optimization.UNKNOWN_BCI, rootNode.isPositive(), null, rootNode.isIndirect(), rootNode.getReceiverTypeProfile());
+        InliningTreeNode clonedNode = new InliningTreeNode(rootNode.getName(), Optimization.UNKNOWN_BCI, rootNode.isPositive(), null, rootNode.isIndirect(),
+                        rootNode.getReceiverTypeProfile(), rootNode.isAlive());
         cloneSubtreeInto(rootNode, clonedNode);
         return new InliningTree(clonedNode);
     }
@@ -222,7 +224,7 @@ public class InliningTree {
     private static void cloneSubtreeInto(InliningTreeNode originalNode, InliningTreeNode clonedNode) {
         for (InliningTreeNode originalChild : originalNode.getChildren()) {
             InliningTreeNode clonedChild = new InliningTreeNode(originalChild.getName(), originalChild.getBCI(), originalChild.isPositive(), originalChild.getReason(),
-                            originalChild.isIndirect(), originalChild.getReceiverTypeProfile());
+                            originalChild.isIndirect(), originalChild.getReceiverTypeProfile(), originalChild.isAlive());
             cloneSubtreeInto(originalChild, clonedChild);
             clonedNode.addChild(clonedChild);
         }

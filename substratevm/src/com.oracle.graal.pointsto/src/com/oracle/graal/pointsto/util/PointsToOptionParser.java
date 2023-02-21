@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2021, 2021, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -71,13 +71,6 @@ public final class PointsToOptionParser {
                 }
             }
         });
-    }
-
-    public void setOptionValue(OptionKey<?> optionKey, Object value) {
-        if (optionValues == null) {
-            parse(new String[0]);
-        }
-        optionKey.update((EconomicMap<OptionKey<?>, Object>) optionValues.getMap(), value);
     }
 
     public OptionValues parse(String[] args) {

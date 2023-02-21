@@ -35,6 +35,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -78,10 +79,18 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorag
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.PointerConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ShortConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport.ToNativePointerNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVMDoubleOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMFloatLoadNode.LLVMFloatOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode.LLVMI16OffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI1LoadNode.LLVMI1OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode.LLVMI64OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode.LLVMI8OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLVMPointerOffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode.LLVM80BitFloatOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI32OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
@@ -1316,6 +1325,54 @@ public class LLVMVaListStorage implements TruffleObject {
             @Specialization(guards = {"isI32ArrayWithMaxTwoElems(arg.getType()) || isI32VectorWithMaxTwoElems(arg.getType())"})
             protected Object[] expandI32ArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
                 return new Object[]{convNode.executeInteger(arg, 0), convNode.executeInteger(arg, 4)};
+            }
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class LoadFromAreaNode extends LLVMNode {
+
+        public abstract Object execute(LLVMPointer vaList, int saveAreaOffset, int offsetInArea, int incrementArea, Type type);
+
+        @Specialization
+        static Object load(LLVMPointer vaList, int saveAreaOffset, int offsetInArea, int incrementArea, Type type,
+                        @Cached LLVMI1OffsetLoadNode loadI1,
+                        @Cached LLVMI8OffsetLoadNode loadI8,
+                        @Cached LLVMI16OffsetLoadNode loadI16,
+                        @Cached LLVMI32OffsetLoadNode loadI32,
+                        @Cached LLVMI64OffsetLoadNode loadI64,
+                        @Cached LLVMPointerOffsetLoadNode loadPointer,
+                        @Cached LLVMFloatOffsetLoadNode loadFloat,
+                        @Cached LLVMDoubleOffsetLoadNode loadDouble,
+                        @Cached LLVMPointerOffsetLoadNode regSaveAreaLoad,
+                        @Exclusive @Cached LLVMPointerOffsetStoreNode store) {
+            LLVMPointer areaPtr = regSaveAreaLoad.executeWithTarget(vaList, saveAreaOffset);
+            if (incrementArea != 0) {
+                store.executeWithTarget(vaList, saveAreaOffset, areaPtr.increment(incrementArea));
+            }
+            if (type instanceof PrimitiveType) {
+                switch (((PrimitiveType) type).getPrimitiveKind()) {
+                    case DOUBLE:
+                        return loadDouble.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case FLOAT:
+                        return loadFloat.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case I1:
+                        return loadI1.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case I16:
+                        return loadI16.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case I32:
+                        return loadI32.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case I64:
+                        return loadI64.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    case I8:
+                        return loadI8.executeWithTargetGeneric(areaPtr, offsetInArea);
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere("not implemented");
+                }
+            } else if (type instanceof PointerType) {
+                return loadPointer.executeWithTargetGeneric(areaPtr, offsetInArea);
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("not implemented");
             }
         }
     }

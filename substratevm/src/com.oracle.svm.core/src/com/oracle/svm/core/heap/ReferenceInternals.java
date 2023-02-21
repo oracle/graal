@@ -123,8 +123,20 @@ public final class ReferenceInternals {
         return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)));
     }
 
+    public static long getQueueFieldOffset() {
+        return Target_java_lang_ref_Reference.queueFieldOffset;
+    }
+
+    public static long getNextFieldOffset() {
+        return Target_java_lang_ref_Reference.nextFieldOffset;
+    }
+
     public static long getNextDiscoveredFieldOffset() {
         return Target_java_lang_ref_Reference.discoveredFieldOffset;
+    }
+
+    public static boolean isAnyReferenceFieldOffset(long offset) {
+        return offset == getReferentFieldOffset() || offset == getQueueFieldOffset() || offset == getNextFieldOffset() || offset == getNextDiscoveredFieldOffset();
     }
 
     /** Write {@link Target_java_lang_ref_Reference#discovered}. */

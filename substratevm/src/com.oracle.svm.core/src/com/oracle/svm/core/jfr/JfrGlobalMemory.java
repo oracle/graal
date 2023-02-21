@@ -31,8 +31,9 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.thread.VMOperation;
 
 /**
  * Manages the global JFR memory. A lot of the methods must be uninterruptible to ensure that we can
@@ -65,6 +66,15 @@ public class JfrGlobalMemory {
         }
     }
 
+    public void clear() {
+        assert VMOperation.isInProgressAtSafepoint();
+
+        for (int i = 0; i < bufferCount; i++) {
+            JfrBuffer buffer = buffers.addressOf(i).read();
+            JfrBufferAccess.reinitialize(buffer);
+        }
+    }
+
     public void teardown() {
         if (buffers.isNonNull()) {
             for (int i = 0; i < bufferCount; i++) {
@@ -89,7 +99,7 @@ public class JfrGlobalMemory {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     public boolean write(JfrBuffer threadLocalBuffer, UnsignedWord unflushedSize) {
-        JfrBuffer promotionBuffer = acquireBufferWithRetry(unflushedSize, PROMOTION_RETRY_COUNT);
+        JfrBuffer promotionBuffer = tryAcquirePromotionBuffer(unflushedSize);
         if (promotionBuffer.isNull()) {
             return false;
         }
@@ -113,17 +123,17 @@ public class JfrGlobalMemory {
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private JfrBuffer acquireBufferWithRetry(UnsignedWord size, int retryCount) {
+    private JfrBuffer tryAcquirePromotionBuffer(UnsignedWord size) {
         assert size.belowOrEqual(WordFactory.unsigned(bufferSize));
-        for (int retry = 0; retry < retryCount; retry++) {
+        for (int retry = 0; retry < PROMOTION_RETRY_COUNT; retry++) {
             for (int i = 0; i < bufferCount; i++) {
                 JfrBuffer buffer = buffers.addressOf(i).read();
-                if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size) && JfrBufferAccess.acquire(buffer)) {
-                    // Recheck the available size after acquiring the buffer.
+                if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size) && JfrBufferAccess.tryLock(buffer)) {
+                    /* Recheck the available size after acquiring the buffer. */
                     if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {
                         return buffer;
                     }
-                    JfrBufferAccess.release(buffer);
+                    JfrBufferAccess.unlock(buffer);
                 }
             }
         }
@@ -132,7 +142,7 @@ public class JfrGlobalMemory {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     private static void releasePromotionBuffer(JfrBuffer buffer) {
-        assert JfrBufferAccess.isAcquired(buffer);
-        JfrBufferAccess.release(buffer);
+        assert JfrBufferAccess.isLocked(buffer);
+        JfrBufferAccess.unlock(buffer);
     }
 }

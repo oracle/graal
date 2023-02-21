@@ -1,10 +1,13 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,18 +24,22 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.overlay;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import java.lang.ref.Reference;
+import java.io.IOException;
 
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import org.junit.Assert;
 
-public class ReferenceSupport {
-    public static boolean phantomReferenceRefersTo(Reference<StaticObject> ref, StaticObject object) {
-        return ref.refersTo(object);
-    }
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-    public static boolean referenceRefersTo(Reference<StaticObject> ref, StaticObject object) {
-        return ref.refersTo(object);
+public class MonitorInflationCauseConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int count = input.readInt();
+        for (int i = 0; i < count; i++) {
+            addFoundId(input.readInt());
+            Assert.assertFalse("Inflate cause is empty!", input.readUTF().isEmpty());
+        }
     }
 }

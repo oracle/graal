@@ -33,7 +33,7 @@ This guide shows how you can take advantage of Native Image linking options incl
 The following prerequisites should be met:
 
 - Linux AMD64 operating system
-- GraalVM distribution for Java 11 of higher with [Native Image support](../README.md#install-native-image)
+- GraalVM distribution for Java 17 of higher
 - A 64-bit `musl` toolchain, `make`, and `configure`
 - The latest `zlib` library
  

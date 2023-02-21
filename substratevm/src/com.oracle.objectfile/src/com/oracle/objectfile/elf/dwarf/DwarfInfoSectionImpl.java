@@ -200,6 +200,16 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
         pos = writeAttrData1(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
+        String compilationDirectory = dwarfSections.getCachePath();
+        log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
+        pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
+        /*
+         * Using zero as a fallback lineIndex is potentially dangerous, but probably harmless,
+         * because it will point at some arbitrary data in the lines data.
+         */
+        final int lineIndex = 0;
+        log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
+        pos = writeAttrData4(lineIndex, buffer, pos);
 
         /* Write child entries for basic Java types. */
 
@@ -363,7 +373,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
         pos = writeStrSectionOffset(classEntry.getFileName(), buffer, pos);
-        String compilationDirectory = classEntry.getCachePath();
+        String compilationDirectory = dwarfSections.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
         /* Non-compiled classes have no compiled methods so they have no low or high pc. */
@@ -447,7 +457,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fileName), fileName);
         pos = writeStrSectionOffset(fileName, buffer, pos);
-        String compilationDirectory = classEntry.getCachePath();
+        String compilationDirectory = dwarfSections.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
         /*
@@ -1213,6 +1223,16 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String name = arrayTypeEntry.getTypeName();
         log(context, "  [0x%08x]     name 0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
+        String compilationDirectory = dwarfSections.getCachePath();
+        log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
+        pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
+        /*
+         * Using zero as a fallback lineIndex is potentially dangerous, but probably harmless,
+         * because it will point at some arbitrary data in the lines data.
+         */
+        final int lineIndex = 0;
+        log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
+        pos = writeAttrData4(lineIndex, buffer, pos);
 
         /* if the array base type is a class with a loader then embed the children in a namespace */
         String loaderId = arrayTypeEntry.getLoaderId();
@@ -1412,7 +1432,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
         pos = writeStrSectionOffset(classEntry.getFileName(), buffer, pos);
-        String compilationDirectory = classEntry.getCachePath();
+        String compilationDirectory = dwarfSections.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeStrSectionOffset(compilationDirectory, buffer, pos);
         log(context, "  [0x%08x]     lo_pc  0x%08x", pos, lo);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.meta;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -191,15 +190,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         isWrittenUpdater.set(this, this.isWritten != null & other.isWritten != null ? this.isWritten : null);
         isFoldedUpdater.set(this, this.isFolded != null & other.isFolded != null ? this.isFolded : null);
         isReadUpdater.set(this, this.isRead != null & other.isRead != null ? this.isRead : null);
-        notifyUpdateAccessInfo();
-    }
-
-    public void clearAccessInfos() {
-        isAccessedUpdater.set(this, 0);
-        this.canBeNull = true;
-        isWrittenUpdater.set(this, 0);
-        isFoldedUpdater.set(this, 0);
-        isReadUpdater.set(this, null);
         notifyUpdateAccessInfo();
     }
 
@@ -383,14 +373,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     public Object getReadBy() {
         return isReadUpdater.get(this);
-    }
-
-    /**
-     * Returns all methods where the field is written. It does not include the methods where the
-     * field is written with unsafe access.
-     */
-    public Set<Object> getWrittenBy() {
-        return writtenBy.keySet();
     }
 
     /**

@@ -337,6 +337,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
 
+    @Override
+    public Path getCachePath() {
+        return cachePath;
+    }
+
     private HostedType hostedTypeForKind(JavaKind kind) {
         return javaKindToHostedType.get(kind);
     }
@@ -418,11 +423,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 return fullFilePath.getParent();
             }
             return null;
-        }
-
-        @Override
-        public Path cachePath() {
-            return cachePath;
         }
     }
 
@@ -559,11 +559,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public Path cachePath() {
-            return null;
-        }
-
-        @Override
         public long classOffset() {
             return -1;
         }
@@ -631,27 +626,27 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public Path filePath() {
             return null;
         }
-
-        @Override
-        public Path cachePath() {
-            return null;
-        }
     }
 
     private Stream<DebugTypeInfo> computeHeaderTypeInfo() {
         List<DebugTypeInfo> infos = new LinkedList<>();
         int hubOffset = getObjectLayout().getHubOffset();
         int hubFieldSize = referenceSize;
-        int idHashOffset = getObjectLayout().getIdentityHashCodeOffset();
+        int objHeaderSize = hubOffset + hubFieldSize;
+
         int idHashSize = getObjectLayout().sizeInBytes(JavaKind.Int);
-        int objHeaderSize = getObjectLayout().getMinimumInstanceObjectSize();
+        int fixedIdHashOffset = -1;
+        if (getObjectLayout().hasFixedIdentityHashField()) {
+            fixedIdHashOffset = getObjectLayout().getFixedIdentityHashOffset();
+            objHeaderSize = Math.max(objHeaderSize, fixedIdHashOffset + idHashSize);
+        }
 
         /* We need array headers for all Java kinds */
 
         NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", objHeaderSize);
         objHeader.addField("hub", hubType, hubOffset, hubFieldSize);
-        if (idHashOffset > 0) {
-            objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), idHashOffset, idHashSize);
+        if (fixedIdHashOffset >= 0) {
+            objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), fixedIdHashOffset, idHashSize);
         }
         infos.add(objHeader);
 

@@ -47,8 +47,8 @@ class WindowsBuildEnvironmentUtil {
                     // prefer x64 location over x86
                     Paths.get("C:", "Program Files (x86)", "Microsoft Visual Studio")};
     private static final String[] KNOWN_VS_EDITIONS = {
-                    // prefer Enterprise over Professional over Community
-                    "Enterprise", "Professional", "Community"};
+                    // prefer Enterprise over Professional over Community over BuildTools
+                    "Enterprise", "Professional", "Community", "BuildTools"};
     private static final String VCVARSALL = "vcvarsall.bat";
     private static final Path VCVARSALL_SUBPATH = Paths.get("VC", "Auxiliary", "Build", VCVARSALL);
     private static final String OUTPUT_SEPARATOR = "!NEXTCOMMAND!";

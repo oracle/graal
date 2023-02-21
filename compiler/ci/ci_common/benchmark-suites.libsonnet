@@ -1,5 +1,4 @@
 {
-  local common_json = (import '../../../common.json'),
   local c = (import '../../../ci/ci_common/common.jsonnet'),
   local bc = (import '../../../ci/ci_common/bench-common.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
@@ -209,7 +208,6 @@
   microservice_benchmarks: cc.compiler_benchmark + {
     suite:: "microservices",
     packages+: {
-      "python3": common_json.deps.common.packages["python3"],
       "pip:psutil": "==5.8.0"
     },
     local bench_upload = ["bench-uploader.py", "bench-results.json"],

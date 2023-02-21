@@ -381,6 +381,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     private static final List<Pair<String, List<String>>> IGNORE_FILTER = Arrays.asList(
+                    Pair.create("java.lang.invoke.MethodHandle", Collections.singletonList("bindTo")), // Class.cast()
                     Pair.create("java.lang.invoke.MethodHandles", Arrays.asList("dropArguments", "filterReturnValue", "foldArguments", "insertArguments")),
                     Pair.create("java.lang.invoke.Invokers", Collections.singletonList("spreadInvoker")));
 

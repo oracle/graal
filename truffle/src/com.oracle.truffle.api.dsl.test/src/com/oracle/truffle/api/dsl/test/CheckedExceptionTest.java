@@ -46,6 +46,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CheckedExceptionTestFactory.Default1NodeGen;
 import com.oracle.truffle.api.dsl.test.CheckedExceptionTestFactory.Default2NodeGen;
@@ -98,6 +99,7 @@ public class CheckedExceptionTest {
             throw new CheckedException();
         }
 
+        @Idempotent
         static boolean guard() throws CheckedException {
             throw new CheckedException();
         }

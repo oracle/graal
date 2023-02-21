@@ -32,7 +32,9 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.deopt.DeoptimizationCanaryFeature;
@@ -57,6 +59,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 /**
  * Feature to allow deoptimization in a generated native image.
  */
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 public final class DeoptimizationFeature implements InternalFeature {
 
     private static final Method deoptStubMethod;

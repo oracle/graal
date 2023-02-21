@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,7 +82,6 @@ import jdk.vm.ci.runtime.JVMCICompiler;
  * node is the start of the control flow of the graph.
  */
 public final class StructuredGraph extends Graph implements JavaMethodContext {
-
     /**
      * Constants denoting whether or not {@link Assumption}s can be made while processing a graph.
      */
@@ -283,7 +282,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     private ScheduleResult lastSchedule;
 
-    private final InliningLog inliningLog;
+    private InliningLog inliningLog;
 
     /**
      * Call stack (context) leading to construction of this graph.
@@ -544,19 +543,28 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * @param invoke the invocation to which the inlining decision pertains
      * @param positive {@code true} if the invocation was inlined, {@code false} otherwise
      * @param phase name of the phase doing the inlining
-     * @param replacements the node replacement map used by inlining. Must be non-null if
-     *            {@code positive == true}, ignored if {@code positive == false}.
-     * @param calleeLog the inlining log of the inlined graph. Must be non-null if
-     *            {@code positive == true}, ignored if {@code positive == false}.
+     * @param replacements the node replacement map used by inlining, ignored if
+     *            {@code positive == false}
+     * @param calleeInliningLog the inlining log of the inlined graph, ignored if
+     *            {@code positive == false}
+     * @param calleeOptimizationLog the optimization log of the inlined graph, ignored if
+     *            {@code positive == false}
+     * @param inlineeMethod the actual method considered for inlining
      * @param reason format string that along with {@code args} provides the reason for decision
      */
-    public void notifyInliningDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
+    public void notifyInliningDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements,
+                    InliningLog calleeInliningLog, OptimizationLog calleeOptimizationLog, ResolvedJavaMethod inlineeMethod,
+                    String reason, Object... args) {
         if (inliningLog != null) {
-            inliningLog.addDecision(invoke, positive, phase, replacements, calleeLog, reason, args);
+            inliningLog.addDecision(invoke, positive, phase, replacements, calleeInliningLog, inlineeMethod, reason, args);
+        }
+        if (positive && calleeOptimizationLog != null && optimizationLog.isOptimizationLogEnabled()) {
+            FixedNode invokeNode = invoke.asFixedNodeOrNull();
+            optimizationLog.inline(calleeOptimizationLog, true, invokeNode == null ? null : invokeNode.getNodeSourcePosition());
         }
         if (getDebug().hasCompilationListener()) {
             String message = String.format(reason, args);
-            getDebug().notifyInlining(invoke.getContextMethod(), invoke.getTargetMethod(), positive, message, invoke.bci());
+            getDebug().notifyInlining(invoke.getContextMethod(), inlineeMethod, positive, message, invoke.bci());
         }
     }
 
@@ -630,6 +638,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                 copyInliningLog.replaceLog(duplicates, this.getInliningLog());
             }
         }
+        copy.getOptimizationLog().replaceLog(optimizationLog);
         if (duplicationMapCallback != null) {
             duplicationMapCallback.accept(duplicates);
         }
@@ -1190,5 +1199,27 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     public double getSelfTimePercent() {
         return globalProfileProvider.getGlobalSelfTimePercent();
+    }
+
+    /**
+     * Sets the optimization log associated with this graph. The new instance should be bound to
+     * this graph and be set up according to the {@link #getOptions() options}.
+     *
+     * @param newOptimizationLog the optimization log instance
+     */
+    public void setOptimizationLog(OptimizationLog newOptimizationLog) {
+        assert newOptimizationLog != null : "the optimization log must not be null";
+        optimizationLog = newOptimizationLog;
+    }
+
+    /**
+     * Sets the inlining log associated with this graph. The new instance should be {@code null} iff
+     * it is expected to be {@code null} according to the {@link #getOptions() options}.
+     *
+     * @param newInliningLog the new inlining log instance
+     */
+    public void setInliningLog(InliningLog newInliningLog) {
+        assert (inliningLog == null) == (newInliningLog == null) : "the new inlining log must be null iff the previous is null";
+        inliningLog = newInliningLog;
     }
 }

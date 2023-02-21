@@ -237,7 +237,9 @@ public @interface GenerateLibrary {
 
         /**
          * Specifies a message to be abstract only if another message is implemented. Multiple other
-         * messages can be specified.
+         * messages can be specified. If the list is empty, the message is always abstract unless
+         * {@link Abstract#ifExportedAsWarning()} is not empty. If the list is not empty it takes
+         * precedence over {@link Abstract#ifExportedAsWarning()}.
          * <p>
          * <b>For example:</b>
          *
@@ -264,6 +266,35 @@ public @interface GenerateLibrary {
          */
         String[] ifExported() default {};
 
+        /**
+         * Specifies a message to be abstract only if another message is implemented. Multiple other
+         * messages can be specified. The message is not actually made abstract unless it is in the
+         * {@link Abstract#ifExported()} list. Only a warning is produced that prompts the user to
+         * implement the message
+         * <p>
+         * <b>For example:</b>
+         *
+         * <pre>
+         * &#64;GenerateLibrary
+         * public abstract class MaybeNumberLibrary extends Library {
+         *
+         *     public boolean isNumber(Object receiver) {
+         *         return false;
+         *     }
+         *
+         *     &#64;Abstract(ifExportedAsWarning = "isNumber")
+         *     public Number getNumber(Object receiver) {
+         *         throw new UnsupportedOperationException();
+         *     }
+         * }
+         * </pre>
+         *
+         * In this example, if the isNumber message is exported and the getNumber message is not,
+         * the user gets a warning.
+         *
+         * @since 23.0
+         */
+        String[] ifExportedAsWarning() default {};
     }
 
     /**

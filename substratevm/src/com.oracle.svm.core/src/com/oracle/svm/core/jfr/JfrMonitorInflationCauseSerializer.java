@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +23,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto;
 
-import com.oracle.graal.pointsto.util.CompletionExecutor;
+package com.oracle.svm.core.jfr;
 
-public class AnalysisObjectScanner extends ObjectScanner {
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    public AnalysisObjectScanner(BigBang bb, CompletionExecutor executor, ReusableSet scannedObjects) {
-        super(bb, executor, scannedObjects, new AnalysisObjectScanningObserver(bb));
+import com.oracle.svm.core.monitor.MonitorInflationCause;
+
+public class JfrMonitorInflationCauseSerializer implements JfrConstantPool {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrMonitorInflationCauseSerializer() {
+    }
+
+    @Override
+    public int write(JfrChunkWriter writer) {
+        writer.writeCompressedLong(JfrType.MonitorInflationCause.getId());
+
+        MonitorInflationCause[] inflationCauses = MonitorInflationCause.values();
+        writer.writeCompressedLong(inflationCauses.length);
+        for (int i = 0; i < inflationCauses.length; i++) {
+            writer.writeCompressedInt(i);
+            writer.writeString(inflationCauses[i].getText());
+        }
+
+        return NON_EMPTY;
     }
 }

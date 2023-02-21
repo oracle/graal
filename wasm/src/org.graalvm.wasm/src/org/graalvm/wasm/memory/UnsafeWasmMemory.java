@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -358,13 +358,18 @@ public final class UnsafeWasmMemory extends WasmMemory {
         return buffer.duplicate();
     }
 
+    @SuppressWarnings("deprecation"/* JDK-8277863 */)
+    private static long getObjectFieldOffset(Field field) {
+        return unsafe.objectFieldOffset(field);
+    }
+
     static {
         try {
             final Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
             unsafe = (Unsafe) f.get(null);
             Field addressField = Buffer.class.getDeclaredField("address");
-            addressOffset = unsafe.objectFieldOffset(addressField);
+            addressOffset = getObjectFieldOffset(addressField);
         } catch (Exception e) {
             throw CompilerDirectives.shouldNotReachHere(e);
         }

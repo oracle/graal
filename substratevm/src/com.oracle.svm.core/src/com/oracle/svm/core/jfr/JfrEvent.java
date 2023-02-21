@@ -58,6 +58,7 @@ public final class JfrEvent {
     public static final JfrEvent JavaMonitorEnter = create("jdk.JavaMonitorEnter");
     public static final JfrEvent ThreadPark = create("jdk.ThreadPark");
     public static final JfrEvent JavaMonitorWait = create("jdk.JavaMonitorWait");
+    public static final JfrEvent JavaMonitorInflate = create("jdk.JavaMonitorInflate");
     public static final JfrEvent ObjectAllocationInNewTLAB = create("jdk.ObjectAllocationInNewTLAB");
 
     private final long id;

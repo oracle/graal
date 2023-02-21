@@ -30,11 +30,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.OptionValues;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -43,21 +46,29 @@ public class GraphEncoderTest extends GraalCompilerTest {
 
     @Test
     public void test01() {
-        testStringMethods(false);
+        testStringMethods(false, getInitialOptions());
     }
 
     @Test
     public void test02() {
-        testStringMethods(true);
+        testStringMethods(true, getInitialOptions());
     }
 
-    public void testStringMethods(boolean canonicalize) {
+    @Test
+    public void inliningLogAndOptimizationLogDecodedCorrectly() {
+        EconomicSet<DebugOptions.OptimizationLogTarget> targets = EconomicSet.create();
+        targets.add(DebugOptions.OptimizationLogTarget.Stdout);
+        OptionValues optionValues = new OptionValues(getInitialOptions(), DebugOptions.OptimizationLog, targets);
+        testStringMethods(true, optionValues);
+    }
+
+    public void testStringMethods(boolean canonicalize, OptionValues optionValues) {
         /* Encode and decode all methods of java.lang.String. */
         List<StructuredGraph> originalGraphs = new ArrayList<>();
         for (Method method : String.class.getDeclaredMethods()) {
             ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
             if (javaMethod.hasBytecodes()) {
-                StructuredGraph originalGraph = parseEager(javaMethod, AllowAssumptions.YES);
+                StructuredGraph originalGraph = parseEager(javaMethod, AllowAssumptions.YES, optionValues);
                 if (canonicalize) {
                     CoreProviders context = getProviders();
                     createCanonicalizerPhase().apply(originalGraph, context);

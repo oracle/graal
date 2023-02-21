@@ -163,7 +163,9 @@ public class PerfMemory {
         if (overflowMemory == null) {
             overflowMemory = new Word[8];
         } else if (overflowMemory.length == overflowMemoryPos) {
-            overflowMemory = new Word[overflowMemory.length * 2];
+            Word[] expandedOverflowMemory = new Word[overflowMemory.length * 2];
+            System.arraycopy(overflowMemory, 0, expandedOverflowMemory, 0, overflowMemoryPos);
+            overflowMemory = expandedOverflowMemory;
         }
         overflowMemory[overflowMemoryPos] = result;
         overflowMemoryPos++;
@@ -200,7 +202,9 @@ public class PerfMemory {
             overflowMemory = null;
         }
 
-        memoryProvider.teardown();
+        if (memoryProvider != null) {
+            memoryProvider.teardown();
+        }
         releasePerfDataFile();
     }
 

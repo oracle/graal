@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -68,7 +68,8 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
             return true;
         }
 
-        UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(ptrToObj);
+        ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
+        Word header = ohi.readHeaderFromPointer(ptrToObj);
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             return true;
         }
@@ -78,7 +79,6 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
             return true;
         }
 
-        ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
         Class<?> clazz = DynamicHub.toClass(ohi.dynamicHubFromObjectHeader(header));
         return isAssumedReachable(clazz);
     }
