@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.backend.panama;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -49,8 +50,10 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.backend.panama.PanamaSignature.PanamaSignatureBuilder;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendLibrary;
@@ -119,9 +122,9 @@ final class PanamaNFIBackend implements NFIBackend {
         @Specialization
         public Object loadLibrary(@SuppressWarnings("unused") VirtualFrame frame,
                         @CachedLibrary("this") NFIBackendLibrary self,
-                        @Cached BranchProfile error) {
+                        @Cached InlinedBranchProfile error) {
             if (!PanamaNFIContext.get(self).env.isNativeAccessAllowed()) {
-                error.enter();
+                error.enter(this);
                 throw new NFIError("Access to native code is not allowed by the host environment.", self);
             }
             return PanamaLibrary.create(doLoad());
@@ -140,9 +143,9 @@ final class PanamaNFIBackend implements NFIBackend {
         @Specialization
         public Object loadDefault(@SuppressWarnings("unused") VirtualFrame frame,
                         @CachedLibrary("this") NFIBackendLibrary self,
-                        @Cached BranchProfile error) {
+                        @Cached InlinedBranchProfile error) {
             if (!PanamaNFIContext.get(self).env.isNativeAccessAllowed()) {
-                error.enter();
+                error.enter(this);
                 throw new NFIError("Access to native code is not allowed by the host environment.", self);
             }
             return PanamaLibrary.createDefault();
@@ -168,10 +171,11 @@ final class PanamaNFIBackend implements NFIBackend {
     @ExportMessage
     Object createSignatureBuilder(
                     @CachedLibrary("this") NFIBackendLibrary self,
-                    @Cached BranchProfile error,
+                    @Bind("$node") Node node,
+                    @Cached InlinedBranchProfile error,
                     @Cached ArrayBuilderFactory builderFactory) {
         if (!PanamaNFIContext.get(self).env.isNativeAccessAllowed()) {
-            error.enter();
+            error.enter(node);
             throw new NFIError("Access to native code is not allowed by the host environment.", self);
         }
         return new PanamaSignatureBuilder(builderFactory);

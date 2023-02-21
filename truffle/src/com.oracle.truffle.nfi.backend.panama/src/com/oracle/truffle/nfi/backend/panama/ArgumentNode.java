@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -47,11 +48,10 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 import java.lang.foreign.MemorySegment;
-
-import static java.lang.foreign.SegmentAllocator.nativeAllocator;
+import java.lang.foreign.SegmentAllocator;
 
 abstract class ArgumentNode extends Node {
     final PanamaType type;
@@ -68,7 +68,7 @@ abstract class ArgumentNode extends Node {
             super(type);
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         Object doConvert(@SuppressWarnings("unused") Object value) {
             return null;
         }
@@ -161,9 +161,10 @@ abstract class ArgumentNode extends Node {
         }
 
         @Specialization(limit = "3", replaces = {"putPointer", "putNull"})
-        long putGeneric(Object arg,
+        static long putGeneric(Object arg,
+                        @Bind("this") Node node,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (!interop.isPointer(arg)) {
                     interop.toNative(arg);
@@ -174,7 +175,7 @@ abstract class ArgumentNode extends Node {
             } catch (UnsupportedMessageException ex) {
                 // fallthrough
             }
-            exception.enter();
+            exception.enter(node);
             if (interop.isNull(arg)) {
                 return NativePointer.NULL.asPointer();
             } else {
@@ -235,7 +236,7 @@ abstract class ArgumentNode extends Node {
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             PanamaNFIContext ctx = PanamaNFIContext.get(this);
             try {
-                return nativeAllocator(ctx.getScope()).allocateUtf8String(interop.asString(value));
+                return SegmentAllocator.nativeAllocator(ctx.getScope()).allocateUtf8String(interop.asString(value));
             } catch (UnsupportedMessageException ex) {
                 throw UnsupportedTypeException.create(new Object[]{value});
             }

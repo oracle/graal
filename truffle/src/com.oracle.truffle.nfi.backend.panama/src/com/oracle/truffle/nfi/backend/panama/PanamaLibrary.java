@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.backend.panama;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -50,7 +51,10 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
@@ -102,11 +106,11 @@ final class PanamaLibrary implements TruffleObject {
 
     @ExportMessage
     Object readMember(String symbol,
-                    @Cached BranchProfile exception,
-                    @CachedLibrary("this") InteropLibrary self) throws UnknownIdentifierException {
+                    @Bind("$node") Node node,
+                    @Cached InlinedBranchProfile exception) throws UnknownIdentifierException {
         Optional<MemorySegment> ret = doLookup(symbol);
         if (ret.isEmpty()) {
-            exception.enter();
+            exception.enter(node);
             throw UnknownIdentifierException.create(symbol);
         }
         return new PanamaSymbol(ret.get());

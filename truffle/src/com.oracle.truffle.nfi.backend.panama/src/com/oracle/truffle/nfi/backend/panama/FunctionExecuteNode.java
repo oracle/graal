@@ -45,6 +45,7 @@ import java.lang.ref.Reference;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -62,11 +63,12 @@ import com.oracle.truffle.nfi.backend.panama.PanamaSignature.CachedSignatureInfo
 @GenerateUncached
 @ImportStatic(PanamaNFILanguage.class)
 @GenerateAOT
+@GenerateInline(false)
 abstract class FunctionExecuteNode extends Node {
 
     public abstract Object execute(long receiver, PanamaSignature signature, Object[] args) throws ArityException, UnsupportedTypeException;
 
-    @Specialization(guards = "signature.signatureInfo == cachedInfo")
+    @Specialization(guards = "signature.signatureInfo == cachedInfo", limit = "3")
     @GenerateAOT.Exclude
     protected Object cachedSignature(long receiver, PanamaSignature signature, Object[] args,
                     @Cached("signature.signatureInfo") @SuppressWarnings("unused") CachedSignatureInfo cachedInfo,

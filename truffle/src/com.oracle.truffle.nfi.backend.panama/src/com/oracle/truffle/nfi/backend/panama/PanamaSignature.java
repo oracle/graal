@@ -44,8 +44,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -55,7 +57,9 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.backend.panama.FunctionExecuteNodeGen.SignatureExecuteNodeGen;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
@@ -111,31 +115,32 @@ final class PanamaSignature {
         @GenerateAOT.Exclude
         static Object callGeneric(PanamaSignature self, Object functionPointer, Object[] args,
                         @CachedLibrary("functionPointer") InteropLibrary interop,
-                        @Cached BranchProfile isExecutable,
-                        @Cached BranchProfile toNative,
-                        @Cached BranchProfile error,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile isExecutable,
+                        @Cached InlinedBranchProfile toNative,
+                        @Cached InlinedBranchProfile error,
                         @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
             if (interop.isExecutable(functionPointer)) {
                 // This branch can be invoked when SignatureLibrary is used to invoke a function
                 // pointer without prior engaging the interop to execute executable function
                 // pointers. It may happen, for example, in SVM for function substitutes.
                 try {
-                    isExecutable.enter();
+                    isExecutable.enter(node);
                     return interop.execute(functionPointer, args);
                 } catch (UnsupportedMessageException e) {
-                    error.enter();
+                    error.enter(node);
                     throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
                 }
             }
             if (!interop.isPointer(functionPointer)) {
-                toNative.enter();
+                toNative.enter(node);
                 interop.toNative(functionPointer);
             }
             long pointer;
             try {
                 pointer = interop.asPointer(functionPointer);
             } catch (UnsupportedMessageException e) {
-                error.enter();
+                error.enter(node);
                 throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
             }
             return functionExecute.execute(pointer, self, args);
@@ -157,7 +162,7 @@ final class PanamaSignature {
     @ImportStatic(PanamaNFILanguage.class)
     static final class CreateClosure {
 
-        @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()")
+        @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()", limit = "3")
         static PanamaClosure doCachedExecutable(PanamaSignature signature, Object executable,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @Cached("executable") Object cachedExecutable,
@@ -170,7 +175,7 @@ final class PanamaSignature {
             return new PanamaClosure(ret);
         }
 
-        @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo")
+        @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo", limit = "3")
         static PanamaClosure doCachedSignature(PanamaSignature signature, Object executable,
                         @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
                         @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
@@ -225,7 +230,7 @@ final class PanamaSignature {
         @ExportMessage
         static class AddArgument {
 
-            @Specialization(guards = {"builder.argsState == oldState", "type == cachedType"})
+            @Specialization(guards = {"builder.argsState == oldState", "type == cachedType"}, limit = "1")
             static void doCached(PanamaSignatureBuilder builder, PanamaType type,
                             @Cached("type") PanamaType cachedType,
                             @Cached("builder.argsState") ArgsState oldState,
@@ -253,7 +258,7 @@ final class PanamaSignature {
         @ImportStatic(PanamaSignature.class)
         static class Build {
 
-            @Specialization(guards = {"builder.argsState == cachedState", "builder.retType == cachedRetType"})
+            @Specialization(guards = {"builder.argsState == cachedState", "builder.retType == cachedRetType"}, limit = "3")
             static Object doCached(PanamaSignatureBuilder builder,
                             @Cached("builder.retType") @SuppressWarnings("unused") PanamaType cachedRetType,
                             @Cached("builder.argsState") @SuppressWarnings("unused") ArgsState cachedState,
