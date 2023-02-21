@@ -347,7 +347,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
          * Generated factory fields and constructor:
          *
          * <pre>
-         * public final class GeneratedStaticObject$$1$$Factory implements StaticObjectFactory {
+         * public final class GeneratedStaticObject$$1$$Factory implements ArrayBasedFactory, StaticObjectFactory {
          *     static ConcurrentHashMap<Object, Object> staticMap;
          *     final ArrayBasedStaticShape shape;
          *     final int primitiveArraySize;
@@ -696,7 +696,10 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         ClassWriter factoryWriter = new ClassWriter(0);
         int factoryAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL;
         String factoryName = generateFactoryName(storageClass);
-        factoryWriter.visit(V1_8, factoryAccess, factoryName, null, Type.getInternalName(Object.class), new String[]{Type.getInternalName(storageFactoryInterface)});
+        factoryWriter.visit(V1_8, factoryAccess, factoryName, null, Type.getInternalName(Object.class), new String[]{
+                Type.getInternalName(ArrayBasedStaticShape.ArrayBasedFactory.class), // the marker interface used by TruffleBaseFeature$StaticObjectArrayBasedSupport
+                Type.getInternalName(storageFactoryInterface)} // the interface provided by the user
+        );
         addFactoryFields(factoryWriter);
         addFactoryConstructor(factoryWriter, factoryName);
         addFactoryMethods(factoryWriter, storageClass, storageFactoryInterface, factoryName);

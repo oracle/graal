@@ -57,9 +57,13 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     private static final Class[] PRIMITIVE_TYPES = new Class[]{long.class, double.class, int.class, float.class, short.class, char.class, byte.class, boolean.class};
     private static final int N_PRIMITIVES = PRIMITIVE_TYPES.length;
 
-    // Used by TruffleBaseFeature.StaticObjectArrayBasedSupport to patch the offsets and the indexes
+    // Used by TruffleBaseFeature$StaticObjectArrayBasedSupport to patch the offsets and the indexes
     // used to store primitive values.
     private static final ConcurrentMap<Object, Object> replacements = createReplacementsMap();
+
+    // Marker interface used by TruffleBaseFeature$StaticObjectArrayBasedSupport to identify generated factory classes
+    public interface ArrayBasedFactory {
+    }
 
     @CompilationFinal(dimensions = 1) //
     private final StaticShape<T>[] superShapes;
@@ -140,6 +144,18 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
             assert storage.getClass() == Object[].class;
             return SomAccessor.RUNTIME.unsafeCast(storage, Object[].class, true, true, true);
         }
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    Class<T> getFactoryInterface() {
+        assert factory.getClass().getInterfaces().length == 2;
+        for (Class<?> factoryInterface : factory.getClass().getInterfaces()) {
+            if (factoryInterface != ArrayBasedStaticShape.ArrayBasedFactory.class) {
+                return (Class<T>) factoryInterface;
+            }
+        }
+        throw new RuntimeException("Should not reach here");
     }
 
     @SuppressWarnings("unchecked")
