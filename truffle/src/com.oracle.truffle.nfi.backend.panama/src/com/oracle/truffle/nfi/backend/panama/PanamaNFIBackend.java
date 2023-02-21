@@ -98,7 +98,7 @@ final class PanamaNFIBackend implements NFIBackend {
         return ret.getCallTarget();
     }
 
-    static abstract class LoadLibraryNode extends RootNode {
+    abstract static class LoadLibraryNode extends RootNode {
 
         private final String name;
 
@@ -128,7 +128,7 @@ final class PanamaNFIBackend implements NFIBackend {
         }
     }
 
-    static abstract class LoadDefaultNode extends RootNode {
+    abstract static class LoadDefaultNode extends RootNode {
 
         protected LoadDefaultNode(PanamaNFILanguage language) {
             super(language);

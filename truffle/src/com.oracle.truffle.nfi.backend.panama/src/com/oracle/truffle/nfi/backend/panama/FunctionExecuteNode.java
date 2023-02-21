@@ -102,7 +102,7 @@ abstract class FunctionExecuteNode extends Node {
         }
     }
 
-    static abstract class SignatureExecuteNode extends RootNode {
+    abstract static class SignatureExecuteNode extends RootNode {
 
         final CachedSignatureInfo signatureInfo;
         @Children ArgumentNode[] argNodes;

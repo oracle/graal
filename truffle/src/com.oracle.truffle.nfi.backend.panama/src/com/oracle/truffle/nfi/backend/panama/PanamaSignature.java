@@ -314,7 +314,7 @@ final class PanamaSignature {
         final PanamaType lastArg;
         final ArgsState prev;
 
-        public ArgsState(int argCount, PanamaType lastArg, ArgsState prev) {
+        ArgsState(int argCount, PanamaType lastArg, ArgsState prev) {
             this.argCount = argCount;
             this.lastArg = lastArg;
             this.prev = prev;
