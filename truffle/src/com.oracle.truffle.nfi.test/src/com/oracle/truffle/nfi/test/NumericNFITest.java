@@ -276,6 +276,18 @@ public class NumericNFITest extends NFITest {
         Assert.assertThat("return", ret, is(number(fixSign(-4))));
     }
 
+    @Test
+    public void testIncrementFromZero(@Inject(TestIncrementNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call(0);
+        Assert.assertThat("return", ret, is(number(1)));
+    }
+
+    @Test
+    public void testIncrementToZero(@Inject(TestIncrementNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call(fixSign(-1));
+        Assert.assertThat("return", ret, is(number(0)));
+    }
+
     /**
      * Test boxed primitive types as argument to native functions.
      *

@@ -705,7 +705,6 @@ final class LongDoubleUtil {
 
         @ExportMessage
         BigInteger asBigInteger(@CachedLibrary("this.buffer") InteropLibrary interop) throws UnsupportedMessageException {
-            long unbiasedExponent;
             long expSignFraction;
             long fractionLong;
             try {
@@ -715,20 +714,24 @@ final class LongDoubleUtil {
                     throw UnsupportedMessageException.create();
                 }
 
-                unbiasedExponent = getUnbiasedExponent(expSignFraction);
                 fractionLong = interop.readBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, 0);
             } catch (InvalidBufferOffsetException ex) {
                 throw UnsupportedMessageException.create();
             }
-            return toBigInteger(fractionLong, expSignFraction, unbiasedExponent);
+            return toBigInteger(fractionLong, expSignFraction);
         }
 
         @TruffleBoundary
-        private static BigInteger toBigInteger(long longFraction, long expSignFraction, long unbiasedExponent) throws UnsupportedMessageException {
-            BigInteger bigIntegerFraction = toUnsignedBigInteger(longFraction, expSignFraction, unbiasedExponent);
+        private static BigInteger toBigInteger(long longFraction, long expSignFraction) throws UnsupportedMessageException {
+            if (longFraction == 0 && (expSignFraction & (~FP128Number.SIGN_MASK)) == 0) {
+                return BigInteger.ZERO;
+            }
+
+            long unbiasedExponent = getUnbiasedExponent(expSignFraction);
+            BigInteger bigIntegerFraction = fractionToUnsignedBigInteger(longFraction, expSignFraction);
             int shift = (int) (FP128Number.FRACTION_BIT_WIDTH - unbiasedExponent - 1);
             BigInteger ret;
-            if (shift >= 0) {
+            if (shift > 0) {
                 ret = bigIntegerFraction.shiftRight(shift);
                 BigInteger fractionBack = ret.shiftLeft(shift);
                 if (!bigIntegerFraction.equals(fractionBack)) {
@@ -746,24 +749,16 @@ final class LongDoubleUtil {
             }
         }
 
-        private static BigInteger toUnsignedBigInteger(long fraction, long expSignFraction, long unbiasedExponent) {
-            if (fraction >= 0L) {
-                return BigInteger.valueOf(fraction);
-            } else {
-                long upper = (expSignFraction & FP128Number.FRACTION_MASK) << (unbiasedExponent - FP128Number.EXPONENT_POSITION);
-                long lower = fraction;
-
-                int upper1 = (int) ((upper << 1) + ((lower >>> FP128Number.DOUBLE_SIGN_POS) + (1 << FP128Number.EXPONENT_POSITION)));
-                int lower1 = (int) (lower & FP128Number.DOUBLE_SIGN_POS);
-
-                return (BigInteger.valueOf(Integer.toUnsignedLong(upper1))).shiftLeft(63).add(BigInteger.valueOf(Integer.toUnsignedLong(lower1)));
-
+        private static BigInteger fractionToUnsignedBigInteger(long fraction, long expSignFraction) {
+                long extractedFraction = (expSignFraction & FP128Number.FRACTION_MASK) + (1L << FP128Number.EXPONENT_POSITION);
+                long upperFraction = ((extractedFraction << 1) + (fraction >>> 63));
+                long lowerFraction = (fraction & Long.MAX_VALUE);
+                return (BigInteger.valueOf(upperFraction).shiftLeft(63).add(BigInteger.valueOf(lowerFraction)));
                 // upper -- part -- 48 bits
                 // lower -- whole -- 64 bits -- might be negative
                 // upper1 = upper shift left by 1 + lower right shift by 63 + (1 << 48)
                 // lower1 = lower masked by 63 bits
                 // BigInteger bi = upper1 left shift by 63 bits + lower1
-            }
         }
 
         @ExportMessage
