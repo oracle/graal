@@ -212,7 +212,7 @@ public class AMD64Call {
             checkCallDisplacementAlignment(crb, before, call);
         }
         crb.recordExceptionHandlers(after, info);
-        masm.ensureUniquePC();
+        masm.postCallNop(call);
         return before;
     }
 
@@ -240,7 +240,7 @@ public class AMD64Call {
         Call call = crb.recordDirectCall(before, after, callTarget, info);
         checkCallDisplacementAlignment(crb, before, call);
         crb.recordExceptionHandlers(after, info);
-        masm.ensureUniquePC();
+        masm.postCallNop(call);
     }
 
     private static void checkCallDisplacementAlignment(CompilationResultBuilder crb, int before, Call call) throws GraalError {
@@ -263,12 +263,7 @@ public class AMD64Call {
         } else {
             before = masm.jmp(0, true);
         }
-        recordDirectCall(crb, masm, target, before);
-    }
-
-    public static void recordDirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, ForeignCallLinkage target, int before) {
         crb.recordDirectCall(before, masm.position(), target, null);
-        masm.ensureUniquePC();
     }
 
     public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
@@ -281,9 +276,9 @@ public class AMD64Call {
     public static int indirectCall(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info, boolean mitigateDecodingAsDirectCall) {
         int before = masm.indirectCall(dst, mitigateDecodingAsDirectCall);
         int after = masm.position();
-        crb.recordIndirectCall(before, after, callTarget, info);
+        Call call = crb.recordIndirectCall(before, after, callTarget, info);
         crb.recordExceptionHandlers(after, info);
-        masm.ensureUniquePC();
+        masm.postCallNop(call);
         return before;
     }
 }
