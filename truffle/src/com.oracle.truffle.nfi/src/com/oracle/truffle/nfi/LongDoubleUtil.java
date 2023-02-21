@@ -729,7 +729,7 @@ final class LongDoubleUtil {
 
             long unbiasedExponent = getUnbiasedExponent(expSignFraction);
             BigInteger bigIntegerFraction = fractionToUnsignedBigInteger(longFraction, expSignFraction);
-            int shift = (int) (FP128Number.FRACTION_BIT_WIDTH - unbiasedExponent - 1);
+            int shift = (int) (FP128Number.FRACTION_BIT_WIDTH - unbiasedExponent);
             BigInteger ret;
             if (shift > 0) {
                 ret = bigIntegerFraction.shiftRight(shift);
