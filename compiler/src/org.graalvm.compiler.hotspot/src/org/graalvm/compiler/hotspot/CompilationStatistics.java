@@ -76,12 +76,12 @@ public final class CompilationStatistics {
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    private static @interface NotReported {
+    private @interface NotReported {
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    private static @interface TimeValue {
+    private @interface TimeValue {
     }
 
     private static long zeroTime = System.nanoTime();

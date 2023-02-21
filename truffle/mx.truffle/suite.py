@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.14.13",
+  "mxversion": "6.15.3",
   "name" : "truffle",
   "version" : "23.0.0",
   "release" : False,
@@ -200,7 +200,7 @@ suite = {
       # if warnings as errors is enabled. See GR-14683.
       "forceJavac" : "true",
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,Truffle",
     },
 
@@ -408,7 +408,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "Truffle,Codegen",
     },
 
@@ -950,7 +950,7 @@ suite = {
         "TRUFFLE_API",
       ],
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
     },

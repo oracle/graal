@@ -41,7 +41,7 @@ public interface InspectorServerConnection {
 
     void consoleAPICall(String type, Object text);
 
-    public interface Open {
+    interface Open {
 
         InspectorServerConnection open(int port, String host, boolean wait);
 
