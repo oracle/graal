@@ -151,7 +151,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         List<Module> bootLayerAutomaticModules = ModuleLayer.boot().modules()
                         .stream()
                         .filter(m -> m.isNamed() && m.getDescriptor().isAutomatic())
-                        .toList();
+                        .collect(Collectors.toList());
         if (!bootLayerAutomaticModules.isEmpty()) {
             System.out.println("Warning: Detected automatic module(s) on the module-path of the image builder:\n" +
                             bootLayerAutomaticModules.stream().map(ModuleLayerFeatureUtils::formatModule).collect(Collectors.joining("\n")) +
@@ -603,10 +603,10 @@ public final class ModuleLayerFeature implements InternalFeature {
                 moduleOpenPackagesField.setAccessible(true);
                 moduleExportedPackagesField.setAccessible(true);
 
-                allUnnamedModuleSet = new HashSet<>();
+                allUnnamedModuleSet = new HashSet<>(1);
                 allUnnamedModuleSet.add(allUnnamedModule);
                 patchModuleLoaderField(allUnnamedModule, imageClassLoader.getClassLoader());
-                everyoneSet = new HashSet<>();
+                everyoneSet = new HashSet<>(1);
                 everyoneSet.add(everyoneModule);
 
                 moduleConstructor = ReflectionUtil.lookupConstructor(Module.class, ClassLoader.class, ModuleDescriptor.class);
@@ -814,7 +814,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                         for (ModuleDescriptor.Exports exports : m.getDescriptor().exports()) {
                             String source = exports.source();
                             if (exports.isQualified()) {
-                                Set<Module> targets = new HashSet<>();
+                                Set<Module> targets = new HashSet<>(exports.targets().size());
                                 for (String target : exports.targets()) {
                                     Module m2 = nameToModule.get(target);
                                     if (m2 != null) {
@@ -834,7 +834,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                         for (ModuleDescriptor.Opens opens : descriptor.opens()) {
                             String source = opens.source();
                             if (opens.isQualified()) {
-                                Set<Module> targets = new HashSet<>();
+                                Set<Module> targets = new HashSet<>(opens.targets().size());
                                 for (String target : opens.targets()) {
                                     Module m2 = (Module) moduleFindModuleMethod.invoke(null, target, Map.of(), nameToModule, runtimeModuleLayer.parents());
                                     if (m2 != null) {
@@ -858,7 +858,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                             }
 
                             if (exports.isQualified()) {
-                                Set<Module> targets = new HashSet<>();
+                                Set<Module> targets = new HashSet<>(exports.targets().size());
                                 for (String target : exports.targets()) {
                                     Module m2 = (Module) moduleFindModuleMethod.invoke(null, target, Map.of(), nameToModule, runtimeModuleLayer.parents());
                                     if (m2 != null) {
@@ -888,7 +888,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         void addReads(Module module, Module other) throws IllegalAccessException {
             Set<Module> reads = (Set<Module>) moduleReadsField.get(module);
             if (reads == null) {
-                reads = new HashSet<>();
+                reads = new HashSet<>(1);
                 moduleReadsField.set(module, reads);
             }
             reads.add(other == null ? allUnnamedModule : other);
@@ -902,7 +902,7 @@ public final class ModuleLayerFeature implements InternalFeature {
 
             Map<String, Set<Module>> exports = (Map<String, Set<Module>>) moduleExportedPackagesField.get(module);
             if (exports == null) {
-                exports = new HashMap<>();
+                exports = new HashMap<>(1);
                 moduleExportedPackagesField.set(module, exports);
             }
 
@@ -910,7 +910,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             if (other == null) {
                 prev = exports.putIfAbsent(pn, allUnnamedModuleSet);
             } else {
-                HashSet<Module> targets = new HashSet<>();
+                HashSet<Module> targets = new HashSet<>(1);
                 targets.add(other);
                 prev = exports.putIfAbsent(pn, targets);
             }
@@ -928,7 +928,7 @@ public final class ModuleLayerFeature implements InternalFeature {
 
             Map<String, Set<Module>> opens = (Map<String, Set<Module>>) moduleOpenPackagesField.get(module);
             if (opens == null) {
-                opens = new HashMap<>();
+                opens = new HashMap<>(1);
                 moduleOpenPackagesField.set(module, opens);
             }
 
@@ -936,7 +936,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             if (other == null) {
                 prev = opens.putIfAbsent(pn, allUnnamedModuleSet);
             } else {
-                HashSet<Module> targets = new HashSet<>();
+                HashSet<Module> targets = new HashSet<>(1);
                 targets.add(other);
                 prev = opens.putIfAbsent(pn, targets);
             }
