@@ -907,10 +907,8 @@ public class SandboxPolicyTest {
             builder.option("engine.MaxIsolateMemory", "4GB");
         }
         if (configuration.supportsSandboxInstrument) {
+            builder.option("sandbox.MaxHeapMemory", "1GB");
             builder.option("sandbox.MaxCPUTime", "100s");
-            // GR-28085: ThreadMXBean.getThreadAllocatedBytes() is not supported or enabled by the
-            // host VM but required for heap memory limit.
-            // builder.option("sandbox.MaxHeapMemory", "1GB");
             builder.option("sandbox.MaxASTDepth", "1000");
             builder.option("sandbox.MaxStackFrames", "50");
             builder.option("sandbox.MaxThreads", "1");
