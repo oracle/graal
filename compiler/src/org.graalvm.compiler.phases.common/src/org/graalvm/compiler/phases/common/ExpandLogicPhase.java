@@ -66,10 +66,14 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     }
 
     @Override
-    @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
+        expandLogic(graph);
+    }
+
+    @SuppressWarnings("try")
+    public static void expandLogic(StructuredGraph graph) {
         for (ShortCircuitOrNode logic : graph.getNodes(ShortCircuitOrNode.TYPE)) {
-            processBinary(logic);
+            expandBinary(logic);
         }
         assert graph.getNodes(ShortCircuitOrNode.TYPE).isEmpty();
 
@@ -97,18 +101,18 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     }
 
     @SuppressWarnings("try")
-    private static void processBinary(ShortCircuitOrNode binary) {
+    public static void expandBinary(ShortCircuitOrNode binary) {
         while (binary.usages().isNotEmpty()) {
             Node usage = binary.usages().first();
             try (DebugCloseable nsp = usage.withNodeSourcePosition()) {
                 if (usage instanceof ShortCircuitOrNode) {
-                    processBinary((ShortCircuitOrNode) usage);
+                    expandBinary((ShortCircuitOrNode) usage);
                 } else if (usage instanceof IfNode) {
                     processIf(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (IfNode) usage, binary.getShortCircuitProbability().getDesignatedSuccessorProbability());
                 } else if (usage instanceof ConditionalNode) {
                     processConditional(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (ConditionalNode) usage);
                 } else {
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHere("Usage = " + usage); // ExcludeFromJacocoGeneratedReport
                 }
             }
         }
