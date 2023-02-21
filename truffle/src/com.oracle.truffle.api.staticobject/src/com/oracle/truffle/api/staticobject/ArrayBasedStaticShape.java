@@ -46,6 +46,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
@@ -57,12 +58,41 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     private static final Class[] PRIMITIVE_TYPES = new Class[]{long.class, double.class, int.class, float.class, short.class, char.class, byte.class, boolean.class};
     private static final int N_PRIMITIVES = PRIMITIVE_TYPES.length;
 
-    // Used by TruffleBaseFeature$StaticObjectArrayBasedSupport to patch the offsets and the indexes
-    // used to store primitive values.
-    private static final ConcurrentMap<Object, Object> replacements = createReplacementsMap();
+    // Marker interface used by TruffleBaseFeature$StaticObjectArrayBasedSupport to identify
+    // generated factory classes. Since it is defined within a non-public final class, it cannot be
+    // implemented by untrusted code. Since it is a protected inner-class, the verifier considers it
+    // public and does not throw IllegalAccessError when a generated factory class that implements
+    // it is loaded.
+    protected interface ArrayBasedFactory {
+        // Used by TruffleBaseFeature$StaticObjectArrayBasedSupport to patch the offsets and the
+        // indexes used to store primitive values.
+        @Delete ConcurrentMap<Object, Object> replacements = createReplacementsMap();
 
-    // Marker interface used by TruffleBaseFeature$StaticObjectArrayBasedSupport to identify generated factory classes
-    public interface ArrayBasedFactory {
+        @SuppressWarnings("unchecked")
+        private static ConcurrentMap<Object, Object> createReplacementsMap() {
+            if (ImageInfo.inImageBuildtimeCode()) {
+                try {
+                    return (ConcurrentMap<Object, Object>) Class.forName("com.oracle.svm.core.util.ConcurrentIdentityHashMap").getConstructor().newInstance();
+                } catch (ReflectiveOperationException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return null;
+        }
+
+        // Called by generated subtypes
+        static void registerFactoryInstance(ArrayBasedFactory factory) {
+            if (ImageInfo.inImageBuildtimeCode()) {
+                replacements.put(factory, factory);
+            }
+        }
+
+        // Called by generated subtypes
+        static void registerPrimitiveStorage(byte[] primitive) {
+            if (ImageInfo.inImageBuildtimeCode()) {
+                replacements.put(primitive, primitive);
+            }
+        }
     }
 
     @CompilationFinal(dimensions = 1) //
@@ -94,11 +124,11 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
                                             ArrayBasedStaticShape.class,
                                             int.class,
                                             int.class,
-                                            ConcurrentMap.class).newInstance(
+                                            boolean.class).newInstance(
                                                             shape,
                                                             propertyLayout.getPrimitiveArraySize(),
                                                             propertyLayout.getObjectArraySize(),
-                                                            replacements));
+                                                            true));
             shape.setFactory(factory);
             return shape;
         } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
@@ -156,18 +186,6 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
             }
         }
         throw new RuntimeException("Should not reach here");
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ConcurrentMap<Object, Object> createReplacementsMap() {
-        if (ImageInfo.inImageBuildtimeCode()) {
-            try {
-                return (ConcurrentMap<Object, Object>) Class.forName("com.oracle.svm.core.util.ConcurrentIdentityHashMap").getConstructor().newInstance();
-            } catch (ReflectiveOperationException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return null;
     }
 
     @SuppressWarnings("cast")

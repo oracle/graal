@@ -463,11 +463,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         markAsUnsafeAccessed = null;
     }
 
-    @Override
-    public void beforeImageWrite(BeforeImageWriteAccess access) {
-        StaticObjectSupport.beforeImageWrite(access);
-    }
-
     public static void preInitializeEngine() {
         invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine",
                         Collections.emptyList());
@@ -741,10 +736,6 @@ public final class TruffleBaseFeature implements InternalFeature {
             StaticObjectArrayBasedSupport.beforeAnalysis(access);
         }
 
-        static void beforeImageWrite(BeforeImageWriteAccess access) {
-            StaticObjectArrayBasedSupport.beforeImageWrite(access);
-        }
-
         static void registerInvocationPlugins(Plugins plugins, ParsingReason reason) {
             if (reason.duringAnalysis()) {
                 InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), StaticShape.Builder.class);
@@ -792,7 +783,6 @@ public final class TruffleBaseFeature implements InternalFeature {
             private static final Class<?> GENERATOR_CLASS_LOADER_CLASS = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoader");
             private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(GENERATOR_CLASS_LOADER_CLASS, Class.class);
 
-            private static final Class<?> ARRAY_BASED_STATIC_SHAPE = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedStaticShape");
             private static final Class<?> ARRAY_BASED_FACTORY = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedStaticShape$ArrayBasedFactory");
             private static final Class<?> ARRAY_BASED_SHAPE_GENERATOR = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
             private static final Method GET_ARRAY_BASED_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(ARRAY_BASED_SHAPE_GENERATOR, "getShapeGenerator", TruffleLanguage.class,
@@ -811,7 +801,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             }
 
             static void duringSetup(DuringSetupAccess access) {
-                Map<Object, Object> replacements = ReflectionUtil.readField(ARRAY_BASED_STATIC_SHAPE, "replacements", null);
+                Map<Object, Object> replacements = ReflectionUtil.readField(ARRAY_BASED_FACTORY, "replacements", null);
                 access.registerObjectReplacer(obj -> {
                     boolean isByteArray = obj instanceof byte[];
                     if (isByteArray || ARRAY_BASED_FACTORY.isInstance(obj)) {
@@ -840,13 +830,13 @@ public final class TruffleBaseFeature implements InternalFeature {
                                             shape.getClass(),
                                             int.class,
                                             int.class,
-                                            ConcurrentMap.class);
+                                            boolean.class);
 
                                     Object newFactory = ReflectionUtil.newInstance(constructor,
                                             shape,
                                             primitiveArraySize + ALIGNMENT_CORRECTION,
                                             objectArraySize,
-                                            null);
+                                            false);  // do not register patched factories, else we end up patching them again
 
                                     replacement = newFactory;
                                 }
@@ -921,11 +911,6 @@ public final class TruffleBaseFeature implements InternalFeature {
                 if (requiresIteration) {
                     access.requireAnalysisIteration();
                 }
-            }
-
-            static void beforeImageWrite(BeforeImageWriteAccess access) {
-                Map<Object, Object> replacements = ReflectionUtil.readField(ARRAY_BASED_STATIC_SHAPE, "replacements", null);
-                replacements.clear();
             }
 
             private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) throws ReflectiveOperationException {

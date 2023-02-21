@@ -46,7 +46,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -63,7 +62,6 @@ import org.graalvm.nativeimage.ImageInfo;
 
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_STATIC;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_SUPER;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_SYNTHETIC;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACONST_NULL;
@@ -71,35 +69,25 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.ALOAD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ANEWARRAY;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ARETURN;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ASTORE;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ATHROW;
 import static com.oracle.truffle.api.impl.asm.Opcodes.CHECKCAST;
 import static com.oracle.truffle.api.impl.asm.Opcodes.DOUBLE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.DUP;
 import static com.oracle.truffle.api.impl.asm.Opcodes.FLOAT;
-import static com.oracle.truffle.api.impl.asm.Opcodes.F_CHOP;
 import static com.oracle.truffle.api.impl.asm.Opcodes.F_FULL;
-import static com.oracle.truffle.api.impl.asm.Opcodes.F_SAME1;
 import static com.oracle.truffle.api.impl.asm.Opcodes.GETFIELD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.GETSTATIC;
 import static com.oracle.truffle.api.impl.asm.Opcodes.GOTO;
 import static com.oracle.truffle.api.impl.asm.Opcodes.IFEQ;
 import static com.oracle.truffle.api.impl.asm.Opcodes.IFLE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.IFNONNULL;
-import static com.oracle.truffle.api.impl.asm.Opcodes.IFNULL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ILOAD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.INTEGER;
-import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKEINTERFACE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESPECIAL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESTATIC;
 import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKEVIRTUAL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.LONG;
-import static com.oracle.truffle.api.impl.asm.Opcodes.MONITORENTER;
-import static com.oracle.truffle.api.impl.asm.Opcodes.MONITOREXIT;
 import static com.oracle.truffle.api.impl.asm.Opcodes.NEW;
 import static com.oracle.truffle.api.impl.asm.Opcodes.NEWARRAY;
-import static com.oracle.truffle.api.impl.asm.Opcodes.POP;
 import static com.oracle.truffle.api.impl.asm.Opcodes.PUTFIELD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.PUTSTATIC;
 import static com.oracle.truffle.api.impl.asm.Opcodes.RETURN;
 import static com.oracle.truffle.api.impl.asm.Opcodes.T_BYTE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
@@ -107,9 +95,9 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = TruffleOptions.AOT ? new ConcurrentHashMap<>() : null;
     private static final String STATIC_SHAPE_INTERNAL_NAME = Type.getInternalName(ArrayBasedStaticShape.class);
+    private static final String ARRAY_BASED_FACTORY_INTERNAL_NAME = Type.getInternalName(ArrayBasedStaticShape.ArrayBasedFactory.class);
+    private static final String ARRAY_BASED_FACTORY_DESCRIPTOR = Type.getDescriptor(ArrayBasedStaticShape.ArrayBasedFactory.class);
     private static final String STATIC_SHAPE_DESCRIPTOR = Type.getDescriptor(ArrayBasedStaticShape.class);
-    private static final String MAP_INTERNAL_NAME = Type.getInternalName(ConcurrentMap.class);
-    private static final String MAP_DESCRIPTOR = Type.getDescriptor(ConcurrentMap.class);
 
     private final Class<?> generatedStorageClass;
     private final Class<? extends T> generatedFactoryClass;
@@ -188,7 +176,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         return ArrayBasedStaticShape.create(this, generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, staticProperties.values(), safetyChecks);
     }
 
-    // Invoked from TruffleBaseFeature.StaticObjectSupport
+    // Invoked from TruffleBaseFeature$StaticObjectSupport
     void patchOffsets(int nativeByteArrayOffset, int nativeObjectArrayOffset, int nativeShapeOffset) {
         assert TruffleOptions.AOT;
         CompilerAsserts.neverPartOfCompilation();
@@ -326,7 +314,6 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     private static void addFactoryFields(ClassVisitor cv) {
-        cv.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, "staticMap", MAP_DESCRIPTOR, null, null).visitEnd();
         cv.visitField(ACC_PUBLIC | ACC_FINAL, "shape", STATIC_SHAPE_DESCRIPTOR, null, null).visitEnd();
         cv.visitField(ACC_PUBLIC | ACC_FINAL, "primitiveArraySize", "I", null, null).visitEnd();
         cv.visitField(ACC_PUBLIC | ACC_FINAL, "objectArraySize", "I", null, null).visitEnd();
@@ -348,37 +335,24 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
          *
          * <pre>
          * public final class GeneratedStaticObject$$1$$Factory implements ArrayBasedFactory, StaticObjectFactory {
-         *     static ConcurrentHashMap<Object, Object> staticMap;
          *     final ArrayBasedStaticShape shape;
          *     final int primitiveArraySize;
          *     final int objectArraySize;
          *
-         *     GeneratedStaticObject$$1$$Factory(ArrayBasedStaticShape shape, int primitiveArraySize, int objectArraySize, ConcurrentMap<Object, Object> map) {
+         *     GeneratedStaticObject$$1$$Factory(ArrayBasedStaticShape shape, int primitiveArraySize, int objectArraySize, boolean registerInstance) {
          *         this.shape = shape;
          *         this.primitiveArraySize = primitiveArraySize;
          *         this.objectArraySize = objectArraySize;
-         *         if (ImageInfo.inImageBuildtimeCode() && map != null) {
-         *             synchronized (Factory.class) {
-         *                 if (staticMap == null) {
-         *                     staticMap = map;
-         *                 }
-         *             }
-         *             staticMap.put(this, this);
+         *         if (registerInstance) {
+         *             registerFactoryInstance(this);
          *         }
          *     }
          * ...
          * }
          * </pre>
          */
-        MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, "<init>", "(" + STATIC_SHAPE_DESCRIPTOR + "II" + MAP_DESCRIPTOR + ")V", null, null);
+        MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, "<init>", "(" + STATIC_SHAPE_DESCRIPTOR + "IIZ)V", null, null);
         mv.visitCode();
-
-        Label monitorEnter = new Label();
-        Label monitorExitNoExceptions = new Label();
-        Label exceptionHandler = new Label();
-        mv.visitTryCatchBlock(monitorEnter, monitorExitNoExceptions, exceptionHandler, null);
-        Label monitorExitExceptions = new Label();
-        mv.visitTryCatchBlock(exceptionHandler, monitorExitExceptions, exceptionHandler, null);
 
         /**
          * <pre>
@@ -401,79 +375,25 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
         /**
          * <pre>
-         *         if (ImageInfo.inImageBuildtimeCode() && map != null) {
-         *             ...
+         * if (registerInstance) {
+         *     registerFactoryInstance(this);
+         * }
          * </pre>
          */
-        mv.visitMethodInsn(INVOKESTATIC, Type.getInternalName(ImageInfo.class), "inImageBuildtimeCode", "()Z", false);
-        Label ignoreMap = new Label();
-        mv.visitJumpInsn(IFEQ, ignoreMap);
-        mv.visitVarInsn(ALOAD, 4);
-        mv.visitJumpInsn(IFNULL, ignoreMap);
 
-        /**
-         * Synchronized blocks require exception handlers to exit the monitor before re-throwing the
-         * exception
-         *
-         * <pre>
-         *             ...
-         *             synchronized (Factory.class) {
-         *                 if (staticMap == null) {
-         *                     staticMap = map;
-         *                 }
-         *             }
-         *             ...
-         * </pre>
-         */
-        mv.visitLdcInsn(Type.getType('L' + className + ';'));
-        mv.visitInsn(DUP);
-        mv.visitVarInsn(ASTORE, 5);
-        mv.visitInsn(MONITORENTER);
-        mv.visitLabel(monitorEnter);
-        mv.visitFieldInsn(GETSTATIC, className, "staticMap", MAP_DESCRIPTOR);
-        Label staticMapNotNull = new Label();
-        mv.visitJumpInsn(IFNONNULL, staticMapNotNull);
-        mv.visitVarInsn(ALOAD, 4);
-        mv.visitFieldInsn(PUTSTATIC, className, "staticMap", MAP_DESCRIPTOR);
-        mv.visitLabel(staticMapNotNull);
-        mv.visitFrame(F_FULL, 6, new Object[]{className, STATIC_SHAPE_INTERNAL_NAME, INTEGER, INTEGER, MAP_INTERNAL_NAME, "java/lang/Object"}, 0, new Object[]{});
-        mv.visitVarInsn(ALOAD, 5);
-        mv.visitInsn(MONITOREXIT);
-        mv.visitLabel(monitorExitNoExceptions);
-        Label noExceptions = new Label();
-        mv.visitJumpInsn(GOTO, noExceptions);
-        mv.visitLabel(exceptionHandler);
-        mv.visitFrame(F_SAME1, 0, null, 1, new Object[]{"java/lang/Throwable"});
-        mv.visitVarInsn(ASTORE, 6);
-        mv.visitVarInsn(ALOAD, 5);
-        mv.visitInsn(MONITOREXIT);
-        mv.visitLabel(monitorExitExceptions);
-        mv.visitVarInsn(ALOAD, 6);
-        mv.visitInsn(ATHROW);
-        mv.visitLabel(noExceptions);
-        mv.visitLineNumber(32, noExceptions);
-        mv.visitFrame(F_CHOP, 1, null, 0, null);
-
-        /**
-         * <pre>
-         *             ...
-         *             staticMap.put(this, this);
-         *         } // end of `if (ImageInfo.inImageBuildtimeCode()) {`
-         * </pre>
-         */
-        mv.visitFieldInsn(GETSTATIC, className, "staticMap", MAP_DESCRIPTOR);
-        mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitVarInsn(ALOAD, 0); // this
-        mv.visitMethodInsn(INVOKEINTERFACE, MAP_INTERNAL_NAME, "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
-        mv.visitInsn(POP); // discard return value of `map.put(primitive, primitive)`
-        mv.visitLabel(ignoreMap);
-        mv.visitFrame(Opcodes.F_SAME, 0, null, 0, null);
+        mv.visitVarInsn(ILOAD, 4);
+        Label doNotRegister = new Label();
+        mv.visitJumpInsn(IFEQ, doNotRegister);
+        mv.visitVarInsn(ALOAD, 0);
+        mv.visitMethodInsn(INVOKESTATIC, ARRAY_BASED_FACTORY_INTERNAL_NAME, "registerFactoryInstance", "(" + ARRAY_BASED_FACTORY_DESCRIPTOR + ")V", true);
+        mv.visitLabel(doNotRegister);
+        mv.visitFrame(Opcodes.F_FULL, 5, new Object[]{className, STATIC_SHAPE_INTERNAL_NAME, INTEGER, INTEGER, INTEGER}, 0, new Object[]{});
 
         /**
          * Implicit return statement
          */
         mv.visitInsn(RETURN);
-        mv.visitMaxs(3, 7);
+        mv.visitMaxs(2, 5);
         mv.visitEnd();
     }
 
@@ -527,9 +447,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
          *                     shape,
          *                     primitive = primitiveArraySize > 0 ? new byte[primitiveArraySize] : null,
          *                     objectArraySize > 0 ? new Object[objectArraySize] : null);
-         *     if (ImageInfo.inImageBuildtimeCode()) {
-         *         staticMap.put(primitive, primitive);
-         *     }
+         *     registerPrimitiveStorage(primitive);
          *     return obj;
          * }
          * </pre>
@@ -645,23 +563,13 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
             /**
              * <pre>
-             * if (ImageInfo.inImageBuildtimeCode()) {
-             *     staticMap.put(primitive, primitive);
-             * }
+             * registerPrimitiveStorage(primitive);
              * </pre>
              */
             // no need to increment maxStack here since the previous bytecodes pushed more variables
             // to the stack
-            mv.visitMethodInsn(INVOKESTATIC, Type.getInternalName(ImageInfo.class), "inImageBuildtimeCode", "()Z", false);
-            Label notInImageBuildtimeCode = new Label();
-            mv.visitJumpInsn(IFEQ, notInImageBuildtimeCode);
-            mv.visitFieldInsn(GETSTATIC, factoryName, "staticMap", MAP_DESCRIPTOR);
             mv.visitVarInsn(ALOAD, primitiveArrayLocal); // primitive
-            mv.visitVarInsn(ALOAD, primitiveArrayLocal); // primitive
-            mv.visitMethodInsn(INVOKEINTERFACE, MAP_INTERNAL_NAME, "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", true);
-            mv.visitInsn(POP); // discard return value of `map.put(primitive, primitive)`
-            mv.visitLabel(notInImageBuildtimeCode);
-            mv.visitFrame(F_FULL, frameLocals.size(), frameLocals.toArray(), 0, null);
+            mv.visitMethodInsn(INVOKESTATIC, ARRAY_BASED_FACTORY_INTERNAL_NAME, "registerPrimitiveStorage", "([B)V", true);
 
             /**
              * <pre>
@@ -697,9 +605,10 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         int factoryAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL;
         String factoryName = generateFactoryName(storageClass);
         factoryWriter.visit(V1_8, factoryAccess, factoryName, null, Type.getInternalName(Object.class), new String[]{
-                Type.getInternalName(ArrayBasedStaticShape.ArrayBasedFactory.class), // the marker interface used by TruffleBaseFeature$StaticObjectArrayBasedSupport
-                Type.getInternalName(storageFactoryInterface)} // the interface provided by the user
-        );
+                        // marker interface used by TruffleBaseFeature$StaticObjectArrayBasedSupport
+                        Type.getInternalName(ArrayBasedStaticShape.ArrayBasedFactory.class),
+                        // interface provided by the user
+                        Type.getInternalName(storageFactoryInterface)});
         addFactoryFields(factoryWriter);
         addFactoryConstructor(factoryWriter, factoryName);
         addFactoryMethods(factoryWriter, storageClass, storageFactoryInterface, factoryName);
