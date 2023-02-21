@@ -165,8 +165,6 @@ class NativeImageVM(GraalVm):
             self.latest_profile_path = self.profile_path_no_extension + '-latest' + self.profile_file_extension
             self.config_dir = os.path.join(self.output_dir, 'config')
             self.log_dir = self.output_dir
-            self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
-            self.image_build_stats_file = bm_suite.image_build_stats_file(self, args)
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
             self.base_image_build_args += ['--no-fallback', '-H:Debug=2'] # GR-43934
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
@@ -177,9 +175,10 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += self.executable
             self.base_image_build_args += ['-H:Path=' + self.output_dir]
             self.base_image_build_args += ['-H:ConfigurationFileDirectories=' + self.config_dir]
-            self.base_image_build_args += ['-H:+PrintAnalysisStatistics', '-H:AnalysisStatisticsFile=' + self.analysis_report_path]
+            self.base_image_build_args += ['-H:+PrintAnalysisStatistics']
             self.base_image_build_args += ['-H:+PrintCallEdges']
-            self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_stats_file]
+            self.base_image_build_args += ['-H:+CollectImageBuildStatistics']
+            self.image_build_stats_file = os.path.join(self.output_dir, 'reports', 'image_build_statistics.json')
             if vm.is_quickbuild:
                 self.base_image_build_args += ['-Ob']
             if vm.use_string_inlining:

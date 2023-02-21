@@ -41,8 +41,6 @@ public class ImageBuildStatistics {
     public static class Options {
         @Option(help = "Collect information during image build about devirtualized invokes and bytecode exceptions.")//
         public static final OptionKey<Boolean> CollectImageBuildStatistics = new OptionKey<>(false);
-        @Option(help = "File for printing image build statistics")//
-        public static final OptionKey<String> ImageBuildStatisticsFile = new OptionKey<>(null);
     }
 
     public enum CheckCountLocation {
