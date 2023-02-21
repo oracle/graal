@@ -93,7 +93,15 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
                 return backend;
             }
         });
-        return new PanamaNFIContext(this, env);
+        try {
+            return new PanamaNFIContext(this, env);
+        } catch (UnsupportedClassVersionError e) {
+            /*
+             * We're missing the --enable-preview flag. Fail gracefully here, this is only a
+             * problem if we're actually being used.
+             */
+            return null;
+        }
     }
 
     @Override
@@ -110,6 +118,13 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
 
     @Override
     protected void disposeContext(PanamaNFIContext context) {
+        if (context == null) {
+            /*
+             * This means we hit the UnsupportedClassVersionError before in createContext. Since
+             * initializeContext was never called, we're fine here, just ignore this.
+             */
+            return;
+        }
         context.dispose();
     }
 
