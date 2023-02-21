@@ -70,14 +70,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-
 @State(Scope.Benchmark)
 public class BinaryTrees {
 
     private static final int MIN_DEPTH = 4;
 
-    @Param("14")
-    private static int binaryTreesN;
+    @Param("14") private static int binaryTreesN;
 
     @Benchmark
     public static void bench(Blackhole blackhole) throws Exception {
@@ -85,8 +83,7 @@ public class BinaryTrees {
         final int maxDepth = binaryTreesN < (MIN_DEPTH + 2) ? MIN_DEPTH + 2 : binaryTreesN;
         final int stretchDepth = maxDepth + 1;
 
-        blackhole.consume("stretch tree of depth " + stretchDepth + "\t check: "
-                + bottomUpTree(stretchDepth).itemCheck());
+        blackhole.consume("stretch tree of depth " + stretchDepth + "\t check: " + bottomUpTree(stretchDepth).itemCheck());
 
         final TreeNode longLivedTree = bottomUpTree(maxDepth);
 
@@ -104,21 +101,19 @@ public class BinaryTrees {
                     final TreeNode treeNode1 = bottomUpTree(depth);
                     check += treeNode1.itemCheck();
                 }
-                results[(depth - MIN_DEPTH) / 2] =
-                        iterations + "\t trees of depth " + depth + "\t check: " + check;
+                results[(depth - MIN_DEPTH) / 2] = iterations + "\t trees of depth " + depth + "\t check: " + check;
             });
         }
 
         executorService.shutdown();
         executorService.awaitTermination(120L, TimeUnit.SECONDS);
 
-
         for (final String str : results) {
             blackhole.consume(str);
         }
 
         blackhole.consume("long lived tree of depth " + maxDepth +
-                "\t check: " + longLivedTree.itemCheck());
+                        "\t check: " + longLivedTree.itemCheck());
     }
 
     private static TreeNode bottomUpTree(final int depth) {
