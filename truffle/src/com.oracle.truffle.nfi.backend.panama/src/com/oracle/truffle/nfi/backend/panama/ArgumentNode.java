@@ -42,7 +42,7 @@ abstract class ArgumentNode extends Node {
 
         @Specialization(limit = "3")
         byte doConvert(Object value,
-                       @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             try {
                 return interop.asByte(value);
             } catch (UnsupportedMessageException ex) {
@@ -76,7 +76,7 @@ abstract class ArgumentNode extends Node {
 
         @Specialization(limit = "3")
         int doConvert(Object value,
-                      @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             try {
                 return interop.asInt(value);
             } catch (UnsupportedMessageException ex) {
@@ -93,7 +93,7 @@ abstract class ArgumentNode extends Node {
 
         @Specialization(limit = "3")
         long doConvert(Object value,
-                       @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             try {
                 return interop.asLong(value);
             } catch (UnsupportedMessageException ex) {
@@ -116,7 +116,7 @@ abstract class ArgumentNode extends Node {
 
         @Specialization(limit = "3", guards = {"!interop.isPointer(arg)", "interop.isNull(arg)"})
         long putNull(@SuppressWarnings("unused") Object arg,
-                     @SuppressWarnings("unused") @CachedLibrary("arg") InteropLibrary interop) {
+                        @SuppressWarnings("unused") @CachedLibrary("arg") InteropLibrary interop) {
             return NativePointer.NULL.asPointer();
         }
 
@@ -175,7 +175,7 @@ abstract class ArgumentNode extends Node {
 
         @Specialization(limit = "3")
         double doConvert(Object value,
-                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             try {
                 return interop.asDouble(value);
             } catch (UnsupportedMessageException ex) {
@@ -192,7 +192,7 @@ abstract class ArgumentNode extends Node {
 
         @Specialization(limit = "3")
         MemorySegment doConvert(Object value,
-                                @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             PanamaNFIContext ctx = PanamaNFIContext.get(this);
             try {
                 return nativeAllocator(ctx.getScope()).allocateUtf8String(interop.asString(value));

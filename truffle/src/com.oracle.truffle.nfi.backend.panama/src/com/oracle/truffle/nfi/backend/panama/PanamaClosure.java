@@ -45,7 +45,6 @@ final class PanamaClosure implements TruffleObject {
         return symbol.address();
     }
 
-
     abstract static class CachedClosureInfo {
         final CallTarget closureCallTarget;
         final MethodHandle handle;
@@ -115,8 +114,8 @@ final class PanamaClosure implements TruffleObject {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget upcallTarget = getCallTarget();
             MethodHandle handle = handle_CallTarget_call.bindTo(upcallTarget)
-                            .asCollector(Object[].class, 2).asType(METHOD_TYPE)
-                            .asVarargsCollector(Object[].class);
+                    .asCollector(Object[].class, 2)
+                    .asType(METHOD_TYPE).asVarargsCollector(Object[].class);
             return new MonomorphicClosureInfo(this, handle);
         }
 
@@ -124,9 +123,9 @@ final class PanamaClosure implements TruffleObject {
             CompilerAsserts.neverPartOfCompilation();
             CallTarget upcallTarget = getCallTarget();
             MethodHandle handle = handle_CallTarget_call.bindTo(upcallTarget)
-                    .asCollector(Object[].class, 2).asType(METHOD_TYPE)
-                    .asVarargsCollector(Object[].class);
-            return new PolymorphicClosureInfo(this, handle) {};
+                    .asCollector(Object[].class, 2)
+                    .asType(METHOD_TYPE).asVarargsCollector(Object[].class);
+            return new PolymorphicClosureInfo(this, handle);
         }
 
         static {
@@ -158,7 +157,7 @@ final class PanamaClosure implements TruffleObject {
         @Specialization(limit = "3")
         @ExplodeLoop
         Object doCall(VirtualFrame frame, Object receiver,
-                      @CachedLibrary("receiver") InteropLibrary interop) {
+                        @CachedLibrary("receiver") InteropLibrary interop) {
             Object[] args = new Object[argNodes.length];
             for (int i = 0; i < argNodes.length; i++) {
                 args[i] = argNodes[i].execute(frame);

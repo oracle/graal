@@ -49,7 +49,6 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
-
 class PanamaType {
 
     final MemoryLayout nativeLayout;
@@ -59,7 +58,7 @@ class PanamaType {
 
     PanamaType(NativeSimpleType type) throws UnsupportedOperationException {
         this.type = type;
-        switch(type) {
+        switch (type) {
             case VOID:
                 nativeLayout = null;
                 javaType = void.class;
@@ -120,7 +119,7 @@ class PanamaType {
     }
 
     public ArgumentNode createArgumentNode() {
-        switch(type) {
+        switch (type) {
             case VOID:
                 return ArgumentNodeFactory.ToVOIDNodeGen.create(this);
             case UINT8:

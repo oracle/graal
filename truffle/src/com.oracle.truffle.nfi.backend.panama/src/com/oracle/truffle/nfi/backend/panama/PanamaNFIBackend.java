@@ -118,8 +118,8 @@ final class PanamaNFIBackend implements NFIBackend {
 
         @Specialization
         public Object loadLibrary(@SuppressWarnings("unused") VirtualFrame frame,
-                                  @CachedLibrary("this") NFIBackendLibrary self,
-                                  @Cached BranchProfile error) {
+                        @CachedLibrary("this") NFIBackendLibrary self,
+                        @Cached BranchProfile error) {
             if (!PanamaNFIContext.get(self).env.isNativeAccessAllowed()) {
                 error.enter();
                 throw new NFIError("Access to native code is not allowed by the host environment.", self);
@@ -139,8 +139,8 @@ final class PanamaNFIBackend implements NFIBackend {
 
         @Specialization
         public Object loadDefault(@SuppressWarnings("unused") VirtualFrame frame,
-            @CachedLibrary("this") NFIBackendLibrary self,
-            @Cached BranchProfile error) {
+                        @CachedLibrary("this") NFIBackendLibrary self,
+                        @Cached BranchProfile error) {
             if (!PanamaNFIContext.get(self).env.isNativeAccessAllowed()) {
                 error.enter();
                 throw new NFIError("Access to native code is not allowed by the host environment.", self);

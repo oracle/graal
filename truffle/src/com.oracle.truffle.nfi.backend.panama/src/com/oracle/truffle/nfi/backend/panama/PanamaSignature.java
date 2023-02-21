@@ -102,7 +102,7 @@ final class PanamaSignature {
 
         @Specialization
         static Object callPanama(PanamaSignature self, PanamaSymbol functionPointer, Object[] args,
-                     @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
+                        @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
             long pointer = functionPointer.asPointer();
             return functionExecute.execute(pointer, self, args);
         }
@@ -159,9 +159,9 @@ final class PanamaSignature {
 
         @Specialization(guards = {"signature.signatureInfo == cachedSignatureInfo", "executable == cachedExecutable"}, assumptions = "getSingleContextAssumption()")
         static PanamaClosure doCachedExecutable(PanamaSignature signature, Object executable,
-                                                @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
-                                                @Cached("executable") Object cachedExecutable,
-                                                @Cached("create(cachedSignatureInfo, cachedExecutable)") MonomorphicClosureInfo cachedClosureInfo) {
+                        @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
+                        @Cached("executable") Object cachedExecutable,
+                        @Cached("create(cachedSignatureInfo, cachedExecutable)") MonomorphicClosureInfo cachedClosureInfo) {
             assert signature.signatureInfo == cachedSignatureInfo && executable == cachedExecutable;
             // no need to cache duplicated allocation in the single-context case
             // the NFI frontend is taking care of that already
@@ -172,8 +172,8 @@ final class PanamaSignature {
 
         @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo")
         static PanamaClosure doCachedSignature(PanamaSignature signature, Object executable,
-                                               @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
-                                               @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
+                        @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
+                        @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
             assert signature.signatureInfo == cachedSignatureInfo;
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
             MemorySegment ret = signature.bind(cachedHandle, executable);
@@ -227,9 +227,9 @@ final class PanamaSignature {
 
             @Specialization(guards = {"builder.argsState == oldState", "type == cachedType"})
             static void doCached(PanamaSignatureBuilder builder, PanamaType type,
-                             @Cached("type") PanamaType cachedType,
-                             @Cached("builder.argsState") ArgsState oldState,
-                             @Cached("oldState.addArg(cachedType)") ArgsState newState) {
+                            @Cached("type") PanamaType cachedType,
+                            @Cached("builder.argsState") ArgsState oldState,
+                            @Cached("oldState.addArg(cachedType)") ArgsState newState) {
                 assert builder.argsState == oldState && type == cachedType;
                 builder.addArg(cachedType, newState);
 
@@ -255,10 +255,10 @@ final class PanamaSignature {
 
             @Specialization(guards = {"builder.argsState == cachedState", "builder.retType == cachedRetType"})
             static Object doCached(PanamaSignatureBuilder builder,
-                       @Cached("builder.retType") @SuppressWarnings("unused") PanamaType cachedRetType,
-                       @Cached("builder.argsState") @SuppressWarnings("unused") ArgsState cachedState,
-                       @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
-                       @Cached("prepareSignatureInfo(cachedRetType, cachedState)") CachedSignatureInfo cachedSignatureInfo) {
+                            @Cached("builder.retType") @SuppressWarnings("unused") PanamaType cachedRetType,
+                            @Cached("builder.argsState") @SuppressWarnings("unused") ArgsState cachedState,
+                            @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
+                            @Cached("prepareSignatureInfo(cachedRetType, cachedState)") CachedSignatureInfo cachedSignatureInfo) {
                 return create(PanamaNFIContext.get(self), cachedSignatureInfo, builder.upcallType);
             }
 
@@ -299,12 +299,10 @@ final class PanamaSignature {
         return descriptor;
     }
 
-
     static MethodHandle createDowncallHandle(FunctionDescriptor descriptor) {
         int parameterCount = descriptor.argumentLayouts().size();
-        return Linker.nativeLinker().downcallHandle(descriptor)
-                .asSpreader(Object[].class, parameterCount)
-                .asType(MethodType.methodType(Object.class, new Class[]{MemorySegment.class, Object[].class}));
+        return Linker.nativeLinker().downcallHandle(descriptor).asSpreader(Object[].class, parameterCount).asType(
+                        MethodType.methodType(Object.class, new Class[]{MemorySegment.class, Object[].class}));
     }
 
     static final class ArgsState {
@@ -326,7 +324,6 @@ final class PanamaSignature {
             return new ArgsState(argCount + 1, type, this);
         }
     }
-
 
     static final class CachedSignatureInfo {
         final PanamaType retType;

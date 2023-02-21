@@ -69,8 +69,8 @@ abstract class FunctionExecuteNode extends Node {
     @Specialization(guards = "signature.signatureInfo == cachedInfo")
     @GenerateAOT.Exclude
     protected Object cachedSignature(long receiver, PanamaSignature signature, Object[] args,
-                                     @Cached("signature.signatureInfo") @SuppressWarnings("unused") CachedSignatureInfo cachedInfo,
-                                     @Cached("createCachedSignatureCall(cachedInfo)") DirectCallNode execute) {
+                    @Cached("signature.signatureInfo") @SuppressWarnings("unused") CachedSignatureInfo cachedInfo,
+                    @Cached("createCachedSignatureCall(cachedInfo)") DirectCallNode execute) {
         try {
             return execute.call(receiver, args, signature);
         } finally {
@@ -90,7 +90,7 @@ abstract class FunctionExecuteNode extends Node {
 
     @Specialization(replaces = "cachedSignature")
     static Object genericExecute(long receiver, PanamaSignature signature, Object[] args,
-                                 @Cached IndirectCallNode execute) {
+                    @Cached IndirectCallNode execute) {
         try {
             return execute.call(signature.signatureInfo.callTarget, receiver, args, signature);
         } finally {
@@ -149,7 +149,7 @@ abstract class FunctionExecuteNode extends Node {
                 assert argNodes.length == types.length;
 
                 for (int i = 0; i < argNodes.length; i++) {
-                        args[i] = argNodes[i].execute(args[i]);
+                    args[i] = argNodes[i].execute(args[i]);
                 }
             } catch (UnsupportedTypeException ex) {
                 throw silenceException(RuntimeException.class, ex);
