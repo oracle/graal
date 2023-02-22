@@ -878,14 +878,19 @@ public class TruffleFeature implements InternalFeature {
      * {@link SubstrateTruffleHostInliningPhase#isTruffleBoundary(ResolvedJavaMethod)}.
      */
     private boolean neverInlineTrivial(AnalysisMethod caller, AnalysisMethod callee) {
-        if (runtimeCompiledMethods != null && !runtimeCompiledMethods.contains(caller)) {
+        if (TruffleHostInliningPhase.shouldDenyTrivialInliningInAllMethods(callee)) {
             /*
-             * Make sure we do not make any decisions for non-runtime compiled methods.
+             * Some methods should never be trivial inlined.
              */
-            return false;
-        } else if (TruffleHostInliningPhase.shouldDenyTrivialInlining(callee)) {
+            return true;
+        } else if ((runtimeCompiledMethods == null || runtimeCompiledMethods.contains(caller)) && TruffleHostInliningPhase.shouldDenyTrivialInlining(callee)) {
+            /*
+             * Deny trivial inlining in methods which can be included as part of a runtime
+             * compilation.
+             */
             return true;
         }
+
         return false;
     }
 

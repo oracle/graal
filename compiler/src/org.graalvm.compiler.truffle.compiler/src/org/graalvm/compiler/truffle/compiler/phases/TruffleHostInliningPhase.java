@@ -1306,6 +1306,12 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         }
     }
 
+    public static boolean shouldDenyTrivialInliningInAllMethods(ResolvedJavaMethod callee) {
+        TruffleCompilerRuntime r = TruffleCompilerRuntime.getRuntimeIfAvailable();
+        assert r != null;
+        return r.isInliningCutoff(callee);
+    }
+
     public static boolean shouldDenyTrivialInlining(ResolvedJavaMethod callee) {
         TruffleCompilerRuntime r = TruffleCompilerRuntime.getRuntimeIfAvailable();
         assert r != null;
