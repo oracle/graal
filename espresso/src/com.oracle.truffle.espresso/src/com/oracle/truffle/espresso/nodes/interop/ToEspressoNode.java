@@ -286,24 +286,13 @@ public abstract class ToEspressoNode extends EspressoNode {
                     // !interop.isNull(value), // redundant
                     // "!isEspressoException(value)", // redundant
     })
-    @TruffleBoundary
     Object doForeignDateTime(Object value, @SuppressWarnings("unused") ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Bind("getMeta()") Meta meta) {
-        try {
-            Instant instant = interop.asInstant(value);
-
-            ZonedDateTime zonedDateTime = instant.atZone(interop.asTimeZone(value));
-            String zoneId = zonedDateTime.getZone().getId();
-
-            StaticObject guestInstant = (StaticObject) meta.java_time_Instant_ofEpochSecond.invokeDirect(null, instant.getEpochSecond(), (long) instant.getNano());
-            StaticObject guestZoneID = (StaticObject) meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString(zoneId));
+            StaticObject guestInstant = (StaticObject) doForeignInstant(value, meta.java_time_Instant, interop, meta);
+            StaticObject guestZoneID = (StaticObject) doForeignZoneId(value, meta.java_time_ZoneId, interop, meta);
 
             return meta.java_time_ZonedDateTime_ofInstant.invokeDirect(null, guestInstant, guestZoneID);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
-        }
     }
 
     @Specialization(guards = {
@@ -322,7 +311,7 @@ public abstract class ToEspressoNode extends EspressoNode {
             return meta.java_time_LocalDate_of.invokeDirect(null, localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+            throw EspressoError.shouldNotReachHere("Contract violation: if isLocalDate returns true, asDate must succeed.");
         }
     }
 
@@ -339,10 +328,10 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Bind("getMeta()") Meta meta) {
         try {
             LocalTime localTime = interop.asTime(value);
-            return meta.java_time_LocalTime_of.invokeDirect(null, localTime.getHour(), localTime.getMinute(), localTime.getSecond());
+            return meta.java_time_LocalTime_of.invokeDirect(null, localTime.getHour(), localTime.getMinute(), localTime.getSecond(), localTime.getNano());
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+            throw EspressoError.shouldNotReachHere("Contract violation: if isLocalTime returns true, asTime must succeed.");
         }
     }
 
@@ -379,7 +368,7 @@ public abstract class ToEspressoNode extends EspressoNode {
             return meta.java_time_Instant_ofEpochSecond.invokeDirect(null, instant.getEpochSecond(), (long) instant.getNano());
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+            throw EspressoError.shouldNotReachHere("Contract violation: if isInstant returns true, asInstant must succeed.");
         }
     }
 
@@ -413,7 +402,7 @@ public abstract class ToEspressoNode extends EspressoNode {
             return meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString(zoneId.getId()));
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+            throw EspressoError.shouldNotReachHere("Contract violation: if isZoneId returns true, asTimeZone must succeed.");
         }
     }
 
@@ -436,7 +425,7 @@ public abstract class ToEspressoNode extends EspressoNode {
             return guestDuration;
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+            throw EspressoError.shouldNotReachHere("Contract violation: if isDuration returns true, asDuration must succeed.");
         }
     }
 

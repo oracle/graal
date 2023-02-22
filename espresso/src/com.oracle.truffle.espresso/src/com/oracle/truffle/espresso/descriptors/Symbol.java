@@ -919,7 +919,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> LocalDate_int_int_int = StaticSymbols.putSignature(Type.java_time_LocalDate, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> LocalTime = StaticSymbols.putSignature(Type.java_time_LocalTime);
         public static final Symbol<Signature> LocalDateTime_LocalDate_LocalTime = StaticSymbols.putSignature(Type.java_time_LocalDateTime, Type.java_time_LocalDate, Type.java_time_LocalTime);
-        public static final Symbol<Signature> LocalTime_int_int_int = StaticSymbols.putSignature(Type.java_time_LocalTime, Type._int, Type._int, Type._int);
+        public static final Symbol<Signature> LocalTime_int_int_int_int = StaticSymbols.putSignature(Type.java_time_LocalTime, Type._int, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> Instant = StaticSymbols.putSignature(Type.java_time_Instant);
         public static final Symbol<Signature> Date_Instant = StaticSymbols.putSignature(Type.java_util_Date, Type.java_time_Instant);
         public static final Symbol<Signature> Instant_long_long = StaticSymbols.putSignature(Type.java_time_Instant, Type._long, Type._long);

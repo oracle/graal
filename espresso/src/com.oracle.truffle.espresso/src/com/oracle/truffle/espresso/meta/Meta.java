@@ -775,7 +775,7 @@ public final class Meta extends ContextAccessImpl {
         java_time_LocalTime_minute = java_time_LocalTime.requireDeclaredField(Name.minute, Type._byte);
         java_time_LocalTime_second = java_time_LocalTime.requireDeclaredField(Name.second, Type._byte);
         java_time_LocalTime_nano = java_time_LocalTime.requireDeclaredField(Name.nano, Type._int);
-        java_time_LocalTime_of = java_time_LocalTime.requireDeclaredMethod(Name.of, Signature.LocalTime_int_int_int);
+        java_time_LocalTime_of = java_time_LocalTime.requireDeclaredMethod(Name.of, Signature.LocalTime_int_int_int_int);
 
         java_time_LocalDateTime = knownKlass(Type.java_time_LocalDateTime);
         java_time_LocalDateTime_toLocalDate = java_time_LocalDateTime.requireDeclaredMethod(Name.toLocalDate, Signature.LocalDate);
