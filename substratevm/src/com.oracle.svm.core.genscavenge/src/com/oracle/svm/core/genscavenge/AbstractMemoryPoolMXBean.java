@@ -25,26 +25,28 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
 import java.util.Arrays;
 
-import com.oracle.svm.core.heap.MXBeanBase;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.util.UnsignedUtils;
+import javax.management.ObjectName;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.heap.AbstractMXBean;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
+
 import sun.management.Util;
 
-public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements MemoryPoolMXBean {
+public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements MemoryPoolMXBean {
 
-    protected final String name;
-    protected final String[] managerNames;
+    private final String name;
+    private final String[] managerNames;
     protected final UninterruptibleUtils.AtomicUnsigned peakUsage = new UninterruptibleUtils.AtomicUnsigned();
 
     private static final UnsignedWord UNDEFINED = WordFactory.zero();
@@ -67,11 +69,14 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
 
     abstract UnsignedWord getMaximumValue();
 
+    abstract void afterCollection(GCAccounting accounting);
+
     MemoryUsage memoryUsage(UnsignedWord usedAndCommitted) {
         return new MemoryUsage(getInitialValue().rawValue(), usedAndCommitted.rawValue(), usedAndCommitted.rawValue(), getMaximumValue().rawValue());
     }
 
-    void afterCollection() {
+    MemoryUsage memoryUsage(UnsignedWord used, UnsignedWord committed) {
+        return new MemoryUsage(getInitialValue().rawValue(), used.rawValue(), committed.rawValue(), getMaximumValue().rawValue());
     }
 
     @Override
@@ -154,7 +159,10 @@ public abstract class AbstractMemoryPoolMXBean extends MXBeanBase implements Mem
         peakUsage.set(WordFactory.zero());
     }
 
-    void updatePeakUsage(UnsignedWord currentValue) {
-        peakUsage.set(UnsignedUtils.max(peakUsage.get(), currentValue));
+    void updatePeakUsage(UnsignedWord value) {
+        UnsignedWord current;
+        do {
+            current = peakUsage.get();
+        } while (value.aboveThan(current) && !peakUsage.compareAndSet(current, value));
     }
 }

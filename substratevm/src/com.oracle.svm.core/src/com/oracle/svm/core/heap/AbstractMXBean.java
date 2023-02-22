@@ -30,7 +30,7 @@ import javax.management.NotificationEmitter;
 import javax.management.NotificationFilter;
 import javax.management.NotificationListener;
 
-public class MXBeanBase implements NotificationEmitter {
+public abstract class AbstractMXBean implements NotificationEmitter {
 
     protected static final long UNDEFINED_MEMORY_USAGE = -1L;
 

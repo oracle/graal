@@ -44,7 +44,7 @@ import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 
 import sun.management.Util;
 
-public abstract class AbstractMemoryMXBean extends MXBeanBase implements MemoryMXBean {
+public abstract class AbstractMemoryMXBean extends AbstractMXBean implements MemoryMXBean {
 
     private final MemoryMXBeanCodeInfoVisitor codeInfoVisitor;
 

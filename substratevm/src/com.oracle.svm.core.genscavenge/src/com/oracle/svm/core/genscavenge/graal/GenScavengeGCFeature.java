@@ -25,10 +25,10 @@
 package com.oracle.svm.core.genscavenge.graal;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.core.genscavenge.MemoryPoolMXBeans;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -40,6 +40,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.CompleteGarbageCollectorMXBean;
+import com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
@@ -93,8 +94,10 @@ class GenScavengeGCFeature implements InternalFeature {
 
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
-        managementSupport.addPlatformManagedObjectList(java.lang.management.MemoryPoolMXBean.class, MemoryPoolMXBeans.createMemoryPoolMXBeans());
+        managementSupport.addPlatformManagedObjectList(java.lang.management.MemoryPoolMXBean.class, Arrays.asList(GenScavengeMemoryPoolMXBeans.createMemoryPoolMXBeans()));
         managementSupport.addPlatformManagedObjectList(com.sun.management.GarbageCollectorMXBean.class, Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean()));
+        /* Not supported yet. */
+        managementSupport.addPlatformManagedObjectList(java.lang.management.BufferPoolMXBean.class, Collections.emptyList());
 
         if (ImageSingletons.contains(PerfManager.class)) {
             ImageSingletons.lookup(PerfManager.class).register(createPerfData());

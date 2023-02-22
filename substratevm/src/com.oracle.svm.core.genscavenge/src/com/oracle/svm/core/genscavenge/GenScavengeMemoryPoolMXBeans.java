@@ -25,17 +25,18 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.SubstrateOptions;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryUsage;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import java.lang.management.MemoryPoolMXBean;
-import java.lang.management.MemoryUsage;
-import java.util.List;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.VMError;
 
-public class MemoryPoolMXBeans {
+public class GenScavengeMemoryPoolMXBeans {
 
     private static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";
     private static final String COMPLETE_SCAVENGER = "complete scavenger";
@@ -44,30 +45,28 @@ public class MemoryPoolMXBeans {
     private static AbstractMemoryPoolMXBean[] mxBeans;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static List<MemoryPoolMXBean> createMemoryPoolMXBeans() {
-        List<MemoryPoolMXBean> beanList;
+    public static MemoryPoolMXBean[] createMemoryPoolMXBeans() {
         if (SubstrateOptions.UseSerialGC.getValue()) {
-            beanList = List.of(
+            mxBeans = new AbstractMemoryPoolMXBean[]{
                             new EdenMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
                             new SurvivorMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
-                            new OldGenerationMemoryPoolMXBean(COMPLETE_SCAVENGER));
+                            new OldGenerationMemoryPoolMXBean(COMPLETE_SCAVENGER)
+            };
         } else {
             assert SubstrateOptions.UseEpsilonGC.getValue();
-            beanList = List.of(new EpsilonMemoryPoolMXBean(EPSILON_SCAVENGER));
+            mxBeans = new AbstractMemoryPoolMXBean[]{
+                            new EpsilonMemoryPoolMXBean(EPSILON_SCAVENGER)
+            };
         }
-        mxBeans = beanList.toArray(AbstractMemoryPoolMXBean[]::new);
-        return beanList;
+        return mxBeans;
     }
 
-    public static void notifyAfterCollection() {
-        for (AbstractMemoryPoolMXBean bean : mxBeans) {
-            bean.afterCollection();
+    public static void notifyAfterCollection(GCAccounting accounting) {
+        for (AbstractMemoryPoolMXBean mxBean : mxBeans) {
+            mxBean.afterCollection(accounting);
         }
     }
 
-    /**
-     * A MemoryPoolMXBean for the eden space.
-     */
     static final class EdenMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
         @Platforms(Platform.HOSTED_ONLY.class)
@@ -77,18 +76,17 @@ public class MemoryPoolMXBeans {
 
         @Override
         UnsignedWord computeInitialValue() {
-            return GCImpl.getPolicy() instanceof AbstractCollectionPolicy policy ? policy.sizes.initialEdenSize : WordFactory.signed(-1);
+            return GCImpl.getPolicy().getInitialEdenSize();
         }
 
         @Override
         UnsignedWord getMaximumValue() {
-            CollectionPolicy policy = GCImpl.getPolicy();
-            return policy.getMaximumYoungGenerationSize().subtract(policy.getMaximumSurvivorSize());
+            return GCImpl.getPolicy().getMaximumEdenSize();
         }
 
         @Override
-        void afterCollection() {
-            updatePeakUsage(GCImpl.getGCImpl().getAccounting().getEdenChunkBytesBefore());
+        void afterCollection(GCAccounting accounting) {
+            updatePeakUsage(accounting.getEdenChunkBytesBefore());
         }
 
         @Override
@@ -112,9 +110,6 @@ public class MemoryPoolMXBeans {
         }
     }
 
-    /**
-     * A MemoryPoolMXBean for the survivor spaces.
-     */
     static final class SurvivorMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
         @Platforms(Platform.HOSTED_ONLY.class)
@@ -124,7 +119,7 @@ public class MemoryPoolMXBeans {
 
         @Override
         UnsignedWord computeInitialValue() {
-            return GCImpl.getPolicy() instanceof AbstractCollectionPolicy policy ? policy.sizes.initialSurvivorSize : WordFactory.signed(-1);
+            return GCImpl.getPolicy().getInitialSurvivorSize();
         }
 
         @Override
@@ -133,8 +128,8 @@ public class MemoryPoolMXBeans {
         }
 
         @Override
-        void afterCollection() {
-            updatePeakUsage(GCImpl.getGCImpl().getAccounting().getYoungChunkBytesAfter());
+        void afterCollection(GCAccounting accounting) {
+            updatePeakUsage(accounting.getYoungChunkBytesAfter());
         }
 
         @Override
@@ -153,9 +148,6 @@ public class MemoryPoolMXBeans {
         }
     }
 
-    /**
-     * A MemoryPoolMXBean for the old generation.
-     */
     static final class OldGenerationMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
         @Platforms(Platform.HOSTED_ONLY.class)
@@ -165,18 +157,17 @@ public class MemoryPoolMXBeans {
 
         @Override
         UnsignedWord computeInitialValue() {
-            return GCImpl.getPolicy() instanceof AbstractCollectionPolicy policy ? policy.sizes.initialOldSize() : WordFactory.signed(-1);
+            return GCImpl.getPolicy().getInitialOldSize();
         }
 
         @Override
         UnsignedWord getMaximumValue() {
-            CollectionPolicy policy = GCImpl.getPolicy();
-            return policy.getMaximumHeapSize().subtract(policy.getMaximumYoungGenerationSize());
+            return GCImpl.getPolicy().getMaximumOldSize();
         }
 
         @Override
-        void afterCollection() {
-            updatePeakUsage(GCImpl.getGCImpl().getAccounting().getOldGenerationAfterChunkBytes());
+        void afterCollection(GCAccounting accounting) {
+            updatePeakUsage(accounting.getOldGenerationAfterChunkBytes());
         }
 
         @Override
@@ -195,9 +186,6 @@ public class MemoryPoolMXBeans {
         }
     }
 
-    /**
-     * A MemoryPoolMXBean for the Epsilon collector.
-     */
     static final class EpsilonMemoryPoolMXBean extends AbstractMemoryPoolMXBean {
 
         @Platforms(Platform.HOSTED_ONLY.class)
@@ -216,11 +204,14 @@ public class MemoryPoolMXBeans {
         }
 
         @Override
+        void afterCollection(GCAccounting accounting) {
+            throw VMError.shouldNotReachHere();
+        }
+
+        @Override
         public MemoryUsage getUsage() {
             HeapImpl heapImpl = HeapImpl.getHeapImpl();
-            long used = heapImpl.getUsedBytes().rawValue();
-            long committed = heapImpl.getCommittedBytes().rawValue();
-            return memoryUsage(used, committed);
+            return memoryUsage(heapImpl.getUsedBytes(), heapImpl.getCommittedBytes());
         }
 
         @Override
@@ -230,11 +221,7 @@ public class MemoryPoolMXBeans {
 
         @Override
         public MemoryUsage getCollectionUsage() {
-            return memoryUsage(0L, 0L);
-        }
-
-        private MemoryUsage memoryUsage(long used, long committed) {
-            return new MemoryUsage(getInitialValue().rawValue(), used, committed, getMaximumValue().rawValue());
+            return memoryUsage(WordFactory.zero());
         }
     }
 }

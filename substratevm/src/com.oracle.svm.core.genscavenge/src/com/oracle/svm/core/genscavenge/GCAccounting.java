@@ -164,7 +164,6 @@ public final class GCAccounting {
         } else {
             afterIncrementalCollection(collectionTimer);
         }
-        MemoryPoolMXBeans.notifyAfterCollection();
     }
 
     private void afterIncrementalCollection(Timer collectionTimer) {
