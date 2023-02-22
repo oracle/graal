@@ -187,7 +187,12 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             List<Message> messages = null;
             if (foundMessages != null) {
                 for (Message m : foundMessages) {
-                    if (!c.getLog().isSuppressed(m.kind, m.suppressionKey, m.originalContainer.getMessageElement())) {
+                    /*
+                     * Check for suppressed using an annotation, but not using the options. This
+                     * avoids failing in the truffle.dsl tests if an option is set, e.g. for a
+                     * language.
+                     */
+                    if (!c.getLog().isSuppressed(m.kind, m.suppressionKey, m.originalContainer.getMessageElement(), false)) {
                         if (messages == null) {
                             messages = new ArrayList<>();
                         }

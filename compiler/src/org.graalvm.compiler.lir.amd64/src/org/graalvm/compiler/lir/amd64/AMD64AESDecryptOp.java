@@ -26,8 +26,8 @@ package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
-import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.pointerConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.recordExternalAddress;
 
 import org.graalvm.compiler.asm.Label;
@@ -38,7 +38,6 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
-import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
@@ -90,12 +89,6 @@ public final class AMD64AESDecryptOp extends AMD64LIRInstruction {
         this.xmmTempValue3 = tool.newVariable(lirKind);
         this.xmmTempValue4 = tool.newVariable(lirKind);
     }
-
-    private ArrayDataPointerConstant keyShuffleMask = pointerConstant(16, new int[]{
-            // @formatter:off
-            0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f
-            // @formatter:on
-    });
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {

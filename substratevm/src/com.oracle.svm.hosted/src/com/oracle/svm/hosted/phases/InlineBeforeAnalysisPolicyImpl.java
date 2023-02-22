@@ -140,6 +140,15 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
         return inliningAllowed(hostVM, b, method);
     }
 
+    @Override
+    protected boolean tryInvocationPlugins() {
+        /*
+         * We conditionally allow the invocation plugin to be triggered during graph decoding to see
+         * what happens.
+         */
+        return true;
+    }
+
     public static boolean inliningAllowed(SVMHost hostVM, GraphBuilderContext b, ResolvedJavaMethod method) {
         AnalysisMethod caller = (AnalysisMethod) b.getMethod();
         AnalysisMethod callee = (AnalysisMethod) method;

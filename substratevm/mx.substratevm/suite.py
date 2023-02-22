@@ -1639,6 +1639,7 @@ suite = {
                 "exports" : [
                     "* to org.graalvm.nativeimage.agent.tracing",
                     "com.oracle.svm.configure",
+                    "com.oracle.svm.configure.command",
                 ],
             },
             "maven": False,

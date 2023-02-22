@@ -60,6 +60,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.Lock;
@@ -114,7 +115,7 @@ final class InstrumentationHandler {
 
     final Collection<RootNode> loadedRoots = new WeakAsyncList<>(256);
     private final Collection<RootNode> executedRoots = new WeakAsyncList<>(64);
-    private final Collection<AllocationReporter> allocationReporters = new WeakAsyncList<>(16);
+    private final Map<LanguageInfo, AllocationReporter> allocationReporters = new WeakHashMap<>();
 
     private volatile boolean hasLoadOrExecutionBinding = false;
     private final CopyOnWriteList<EventBinding.Source<?>> executionBindings = new CopyOnWriteList<>(new EventBinding.Source<?>[0]);
@@ -484,7 +485,7 @@ final class InstrumentationHandler {
         }
 
         this.allocationBindings.add(binding);
-        for (AllocationReporter allocationReporter : allocationReporters) {
+        for (AllocationReporter allocationReporter : allocationReporters.values()) {
             if (binding.getAllocationFilter().contains(allocationReporter.language)) {
                 allocationReporter.addListener(binding.getElement());
             }
@@ -597,7 +598,7 @@ final class InstrumentationHandler {
         } else if (binding instanceof EventBinding.Allocation) {
             EventBinding.Allocation<?> allocationBinding = (EventBinding.Allocation<?>) binding;
             AllocationListener l = (AllocationListener) binding.getElement();
-            for (AllocationReporter allocationReporter : allocationReporters) {
+            for (AllocationReporter allocationReporter : allocationReporters.values()) {
                 if (allocationBinding.getAllocationFilter().contains(allocationReporter.language)) {
                     allocationReporter.removeListener(l);
                 }
@@ -1231,8 +1232,7 @@ final class InstrumentationHandler {
     }
 
     AllocationReporter getAllocationReporter(LanguageInfo info) {
-        AllocationReporter allocationReporter = new AllocationReporter(info);
-        allocationReporters.add(allocationReporter);
+        AllocationReporter allocationReporter = allocationReporters.computeIfAbsent(info, AllocationReporter::new);
         for (EventBinding.Allocation<? extends AllocationListener> binding : allocationBindings) {
             if (binding.getAllocationFilter().contains(info)) {
                 allocationReporter.addListener(binding.getElement());

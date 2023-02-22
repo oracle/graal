@@ -117,7 +117,8 @@ final class BundleSupport {
 
     static BundleSupport create(NativeImage nativeImage, String bundleArg, NativeImage.ArgumentQueue args) {
         if (!allowBundleSupport) {
-            throw NativeImage.showError("Bundle support is still experimental and needs to be unlocked with " + UNLOCK_BUNDLE_SUPPORT_OPTION);
+            throw NativeImage.showError(
+                            "Bundle support is still experimental and needs to be unlocked with '" + UNLOCK_BUNDLE_SUPPORT_OPTION + "'. The unlock option must precede '" + bundleArg + "'.");
         }
 
         if (!nativeImage.userConfigProperties.isEmpty()) {
