@@ -62,10 +62,11 @@ import java.io.OutputStream;
  * <li>{@link #CONSTRAINED} policy intended for trusted, but potentially buggy applications. In this
  * mode, any access to host resources is required to be as restrictive as possible. In this mode,
  * the guest and host application share a heap and execute on the same underlying virtual machine.
- * <li>{@link #ISOLATED} policy intended for trusted, but applications that might have security
- * vulnerabilities. For example, a script that processes untrusted input. Security vulnerabilities
- * would allow an attacker to compromise the guest application by providing malicious input. In this
- * mode, guest and host application execute on separate virtual machine instances.
+ * <li>{@link #ISOLATED} policy intended for trusted applications, but which might have security
+ * vulnerabilities and optionally that can be mitigated using this policy. For example, a script
+ * that processes untrusted input. Security vulnerabilities would allow an attacker to compromise
+ * the guest application by providing malicious input. In this mode, guest and host application
+ * execute on separate virtual machine instances.
  * <li>{@link #UNTRUSTED} policy intended for fully untrusted applications. This assumes that a
  * potentially malicious actor is supplying the guest code itself that is being run. A strong
  * adversarial scenario is the execution of client-side Javascript in the browser that is supplied
@@ -73,8 +74,7 @@ import java.io.OutputStream;
  * compiler and runtime level to mitigate e.g. JIT spraying or speculative execution attacks.
  * </ul>
  *
- * It is strongly recommended to not run untrusted code with any other policy than
- * {@link #UNTRUSTED}.
+ * It is unsupported to run untrusted code with any other policy than {@link #UNTRUSTED}.
  *
  * <p>
  * <b> Compatibility Notice: </b> The behavior of sandbox policies is subject to incompatible
@@ -172,10 +172,11 @@ public enum SandboxPolicy {
     CONSTRAINED,
 
     /**
-     * Policy intended for trusted, but applications that might have security vulnerabilities. For
-     * example, a script that processes untrusted input. Security vulnerabilities would allow an
-     * attacker to compromise the guest application by providing malicious input. In this mode,
-     * guest and host application execute on separate virtual machine instances.
+     * Policy intended for trusted applications, but which might have security vulnerabilities and
+     * optionally that can be mitigated using this policy. For example, a script that processes
+     * untrusted input. Security vulnerabilities may allow an attacker to compromise the guest
+     * application by providing malicious input. In this mode, guest and host application execute on
+     * separate virtual machine instances.
      * <p>
      * In addition to the {@link #CONSTRAINED} restrictions, the {@code ISOLATED} sandbox policy
      * adds the following constraints:
@@ -211,11 +212,11 @@ public enum SandboxPolicy {
     ISOLATED,
 
     /**
-     * Policy intended for fully untrusted applications. This assumes that a malicious actor is
-     * supplying the guest code itself that is being run. A strong adversarial scenario is the
-     * execution of client-side Javascript in the browser that is supplied by an untrusted website.
-     * In this mode, the sandbox employs additional hardening mechanisms at the compiler and runtime
-     * level to mitigate e.g. speculative execution attacks.
+     * Policy intended for untrusted applications. This assumes that a malicious actor is supplying
+     * the guest code itself that is being run. A strong adversarial scenario is the execution of
+     * client-side Javascript in the browser that is supplied by an untrusted website. In this mode,
+     * the sandbox employs additional hardening mechanisms at the compiler and runtime level to
+     * mitigate e.g. speculative execution attacks.
      * <p>
      * In addition to the {@link #ISOLATED} constraints, the {@code UNTRUSTED} sandbox policy adds
      * the following requirements:
