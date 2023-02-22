@@ -153,9 +153,9 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .filter(m -> m.isNamed() && m.getDescriptor().isAutomatic())
                         .collect(Collectors.toList());
         if (!bootLayerAutomaticModules.isEmpty()) {
-            System.out.println("Warning: Detected automatic module(s) on the module-path of the image builder:\n" +
-                            bootLayerAutomaticModules.stream().map(ModuleLayerFeatureUtils::formatModule).collect(Collectors.joining("\n")) +
-                            "\nExtending the image builder with automatic modules is not supported and might result in failed build. " +
+            System.out.println("Warning: Detected automatic module(s) on the module-path of the image builder:" + System.lineSeparator() +
+                            bootLayerAutomaticModules.stream().map(ModuleLayerFeatureUtils::formatModule).collect(Collectors.joining(System.lineSeparator())) +
+                            System.lineSeparator() + "Extending the image builder with automatic modules is not supported and might result in failed build. " +
                             "This is probably caused by specifying a jar-file that is not a proper module on the module-path. " +
                             "Please ensure that only proper modules are found on the module-path");
         }
@@ -245,6 +245,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             systemModuleFinder = SystemModuleFinders.ofSystem();
         }
 
+        systemModuleFinder = ModuleFinder.compose(moduleLayerFeatureUtils.imageClassLoader.classLoaderSupport.modulepathModuleFinder, systemModuleFinder);
         if (haveUpgradeModulePath) {
             systemModuleFinder = ModuleFinder.compose(accessImpl.imageClassLoader.classLoaderSupport.upgradeAndSystemModuleFinder, systemModuleFinder);
         }
@@ -1005,7 +1006,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             try {
                 return (ModuleFinder) moduleBootstrapLimitFinderMethod.invoke(null, finder, roots, otherModules);
             } catch (ReflectiveOperationException e) {
-                throw VMError.shouldNotReachHere("Failed to reflectively invoke ModuleBootstrap.limitModules().", e);
+                throw VMError.shouldNotReachHere("Failed to reflectively invoke ModuleBootstrap.limitFinder().", e);
             }
         }
 
