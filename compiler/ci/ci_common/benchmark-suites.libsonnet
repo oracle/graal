@@ -17,7 +17,7 @@
     special_suites:: unique_suites([$.renaissance, $.dacapo_size_variants, $.scala_dacapo_size_variants, $.specjbb2015_full_machine]),
     microservice_suites:: unique_suites([$.microservice_benchmarks]),
 
-    main_suites:: unique_suites([$.specjvm2008] + self.open_suites + self.legacy_and_secondary_suites),
+    main_suites:: unique_suites([$.specjvm2008] + self.open_suites),
     all_suites:: unique_suites(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites),
 
     weekly_forks_suites:: self.main_suites,
