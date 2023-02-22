@@ -14,7 +14,7 @@
     legacy_and_secondary_suites:: unique_suites([$.renaissance_0_11, $.renaissance_legacy]),
     jmh_micros_suites:: unique_suites([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist]),
     graal_internals_suites:: unique_suites([$.micros_graal_whitebox]),
-    special_suites:: unique_suites([$.renaissance, $.dacapo_size_variants, $.scala_dacapo_size_variants, $.specjbb2015_full_machine]),
+    special_suites:: unique_suites([$.dacapo_size_variants, $.scala_dacapo_size_variants, $.specjbb2015_full_machine]),
     microservice_suites:: unique_suites([$.microservice_benchmarks]),
 
     main_suites:: unique_suites([$.specjvm2008] + self.open_suites),

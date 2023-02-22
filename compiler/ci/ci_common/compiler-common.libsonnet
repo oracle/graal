@@ -31,9 +31,10 @@
     ]
   },
 
+  latest_jdk:: common["labsjdk-ee-20"],
   bench_jdks:: [
     common["labsjdk-ee-17"],
-    common["labsjdk-ee-20"]
+    self.latest_jdk
   ],
 
   // Benchmarking building blocks
