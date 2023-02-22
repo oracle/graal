@@ -515,6 +515,11 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
             c2BenchVmArgs = [a for a in benchVmArgs if 'JVMCI' not in a]
             _gate_dacapo('fop', 1, ['--jvm-config', 'default'] + c2BenchVmArgs)
 
+    # ensure we can run with --enable-preview
+    with Task(prefix + 'DaCapo_enable-preview:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
+        if t:
+            _gate_dacapo('fop', 8, ['--enable-preview', '-Dgraal.CompilationFailureAction=ExitVM'])
+
     # run Scala DaCapo benchmarks #
     ###############################
     scala_dacapo_suite = mx_graal_benchmark.ScalaDaCapoBenchmarkSuite()
