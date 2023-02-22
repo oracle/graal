@@ -40,8 +40,7 @@ public class FastBitSet {
   }
 
   private boolean isSmall() {
-    return false;
-    // return cardinality <= SmallBitSet.MAX_CARDINALITY;
+    return cardinality <= SmallBitSet.MAX_CARDINALITY;
   }
 
   int cardinality;
