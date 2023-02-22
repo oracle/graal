@@ -31,6 +31,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.typestate.FastBitSet;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 public class MultiTypeState extends TypeState {
@@ -39,7 +40,7 @@ public class MultiTypeState extends TypeState {
      * Keep a bit set for types to easily answer queries like contains type or types count, and
      * quickly iterate over the types.
      */
-    protected final BitSet typesBitSet;
+    protected final FastBitSet typesBitSet;
     /** Cache the number of types since BitSet.cardinality() computes it every time is called. */
     protected final int typesCount;
     /** Can this type state represent the null value? */
@@ -50,7 +51,7 @@ public class MultiTypeState extends TypeState {
     /** Creates a new type state using the provided types bit set and objects. */
     public MultiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount) {
         assert !TypeStateUtils.needsTrim(typesBitSet);
-        this.typesBitSet = typesBitSet;
+        this.typesBitSet = new FastBitSet(typesBitSet);
         this.typesCount = typesCount;
         this.canBeNull = canBeNull;
         this.merged = false;
@@ -84,7 +85,7 @@ public class MultiTypeState extends TypeState {
     }
 
     protected BitSet typesBitSet() {
-        return typesBitSet;
+        return typesBitSet.asBitSet();
     }
 
     @Override

@@ -1,0 +1,26 @@
+Looks like 33% of MultiTypeState can be represented by SmallBitSet of size 10:
+
+    cedar% awk '{print $2}' card.txt| hist | head -20
+    cum     pct     freq
+    100     9       451     2
+    90      5       272     3
+    84      4       197     4
+    80      3       156     5
+    76      2       127     6
+    73      2       104     7
+    71      1       90      8
+    69      1       84      9
+    67      1       77      10
+    66      1       76      11
+    64      1       72      12
+    62      1       67      13
+    61      1       62      14
+    60      1       57      15
+    58      1       48      16
+    57      0       44      17
+    56      0       43      18
+    55      0       42      19
+    55      0       41      23
+    cedar%
+
+We can get to 50% by increasing max cardinality to 26 bits.

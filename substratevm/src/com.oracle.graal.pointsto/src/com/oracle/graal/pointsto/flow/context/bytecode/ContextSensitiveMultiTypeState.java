@@ -58,7 +58,7 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
     }
 
     protected BitSet bitSet() {
-        return typesBitSet;
+        return typesBitSet.asBitSet();
     }
 
     /**
