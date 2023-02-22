@@ -50,9 +50,9 @@ import com.ibm.icu.lang.UCharacter;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.chardata.UnicodeCharacterAliases;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
@@ -156,6 +156,8 @@ public final class PythonRegexLexer extends RegexLexer {
      * flags <em>can</em> be changed inline, in the pattern.
      */
     private PythonFlags globalFlags;
+    private final CodePointSetAccumulator caseFoldTmp = new CodePointSetAccumulator();
+    private PythonLocaleData localeData;
 
     public PythonRegexLexer(RegexSource source, PythonREMode mode) {
         super(source);
@@ -186,6 +188,13 @@ public final class PythonRegexLexer extends RegexLexer {
         } else {
             return UCharacter.getCharFromName(characterName);
         }
+    }
+
+    public PythonLocaleData getLocaleData() {
+        if (localeData == null) {
+            localeData = PythonLocaleData.getLocaleData(source.getOptions().getPythonLocale());
+        }
+        return localeData;
     }
 
     private void parseInlineGlobalFlags() {
@@ -352,19 +361,19 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected CaseFoldTable.CaseFoldingAlgorithm getCaseFoldingAlgorithm() {
+    protected void caseFold(CodePointSetAccumulator charClass) {
         if (getLocalFlags().isLocale()) {
-            bailOut("locale-specific case folding is not supported");
+            getLocaleData().caseFold(charClass, caseFoldTmp);
+        } else {
+            CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode(mode) ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
+            CaseFoldTable.applyCaseFold(charClass, caseFoldTmp, caseFolding);
         }
-        return getLocalFlags().isUnicode(mode) ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
     }
 
     @Override
     protected CodePointSet getPredefinedCharClass(char c) {
         if (getLocalFlags().isUnicode(mode)) {
             return UNICODE_CHAR_CLASS_SETS.get(c);
-        } else if (getLocalFlags().isLocale() && (c == 'w' || c == 'W')) {
-            bailOut("locale-specific definitions of word characters are not supported");
         }
         switch (c) {
             case 'd':
@@ -382,9 +391,17 @@ public final class PythonRegexLexer extends RegexLexer {
                 }
                 return Constants.NON_WHITE_SPACE;
             case 'w':
-                return Constants.WORD_CHARS;
+                if (getLocalFlags().isLocale()) {
+                    return getLocaleData().getWordCharacters();
+                } else {
+                    return Constants.WORD_CHARS;
+                }
             case 'W':
-                return Constants.NON_WORD_CHARS;
+                if (getLocalFlags().isLocale()) {
+                    return getLocaleData().getNonWordCharacters();
+                } else {
+                    return Constants.NON_WORD_CHARS;
+                }
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
@@ -778,10 +795,6 @@ public final class PythonRegexLexer extends RegexLexer {
         }
         flagsStack.push(newFlags);
         return Token.createInlineFlags(newFlags, false);
-    }
-
-    private static void bailOut(String s) {
-        throw new UnsupportedRegexException(s);
     }
 
     private void mustHaveMore() {

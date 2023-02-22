@@ -67,7 +67,6 @@ public abstract class RegexLexer {
     protected final String pattern;
     private final Encoding encoding;
     private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
-    private final CodePointSetAccumulator charClassCaseFoldTmp = new CodePointSetAccumulator();
     /**
      * The index of the next character in {@link #pattern} to be parsed.
      */
@@ -132,9 +131,9 @@ public abstract class RegexLexer {
     protected abstract boolean featureEnabledUnicodePropertyEscapes();
 
     /**
-     * Returns the case folding algorithm to use.
+     * Case folds a given character class.
      */
-    protected abstract CaseFoldTable.CaseFoldingAlgorithm getCaseFoldingAlgorithm();
+    protected abstract void caseFold(CodePointSetAccumulator charClass);
 
     /**
      * Returns the code point set represented by the dot operator.
@@ -586,8 +585,7 @@ public abstract class RegexLexer {
     private Token charClass(boolean invert) {
         boolean wasSingleChar = !invert && curCharClass.matchesSingleChar();
         if (featureEnabledIgnoreCase()) {
-            CaseFoldTable.CaseFoldingAlgorithm caseFolding = getCaseFoldingAlgorithm();
-            CaseFoldTable.applyCaseFold(curCharClass, charClassCaseFoldTmp, caseFolding);
+            caseFold(curCharClass);
         }
         CodePointSet cps = curCharClass.toCodePointSet();
         return Token.createCharClass(invert ? cps.createInverse(encoding) : cps, wasSingleChar);

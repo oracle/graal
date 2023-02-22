@@ -50,7 +50,6 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
@@ -163,7 +162,7 @@ public final class PythonRegexParser implements RegexParser {
                     if (getLocalFlags().isUnicode(mode)) {
                         astBuilder.addWordBoundaryAssertion(lexer.getPredefinedCharClass('w'), lexer.getPredefinedCharClass('W'));
                     } else if (getLocalFlags().isLocale()) {
-                        bailOut("locale-specific word boundary assertions not supported");
+                        astBuilder.addWordBoundaryAssertion(lexer.getLocaleData().getWordCharacters(), lexer.getLocaleData().getNonWordCharacters());
                     } else {
                         astBuilder.addWordBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
                     }
@@ -179,7 +178,7 @@ public final class PythonRegexParser implements RegexParser {
                     if (getLocalFlags().isUnicode(mode)) {
                         astBuilder.addWordNonBoundaryAssertionPython(lexer.getPredefinedCharClass('w'), lexer.getPredefinedCharClass('W'));
                     } else if (getLocalFlags().isLocale()) {
-                        bailOut("locale-specific word boundary assertions not supported");
+                        astBuilder.addWordNonBoundaryAssertionPython(lexer.getLocaleData().getWordCharacters(), lexer.getLocaleData().getNonWordCharacters());
                     } else {
                         astBuilder.addWordNonBoundaryAssertionPython(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
                     }
@@ -261,10 +260,6 @@ public final class PythonRegexParser implements RegexParser {
             }
         }
         return ast;
-    }
-
-    private static void bailOut(String s) {
-        throw new UnsupportedRegexException(s);
     }
 
     /**

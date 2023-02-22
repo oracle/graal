@@ -52,18 +52,8 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 import java.util.function.BiPredicate;
 
 /**
- * An implementation of the Python regex flavor. Technically, this class provides an implementation
- * for two regex flavors: 'str' regexes, which result from compiling string patterns, and 'bytes'
- * patterns, which result from compiling binary (byte buffer) patterns.
- *
- * This implementation supports translating all Python regular expressions to ECMAScript regular
- * expressions with the exception of the following features:
- * <ul>
- * <li>locale-sensitive case folding, word boundary assertions and character classes: When a regular
- * expression is compiled with the {@code re.LOCALE} flag, some of its elements should depend on the
- * locale set during matching time. This is not compatible with compiling regular expressions
- * ahead-of-time into automata.</li>
- * </ul>
+ * An implementation of the Python regex flavor. Supports both string regexes ('str' patterns) and
+ * binary regexes ('bytes' patterns).
  *
  * @see PythonREMode
  */

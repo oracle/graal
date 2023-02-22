@@ -92,6 +92,20 @@ public class IntRangesBuffer extends IntArrayBuffer implements RangesBuffer {
         add(hi);
     }
 
+    /**
+     * Appends a new codepoint. It can be adjacent to the last range, in which case the last range
+     * is extended.
+     */
+    public void appendCodePoint(int codePoint) {
+        assert isEmpty() || leftOf(size() - 1, codePoint, codePoint);
+        if (!isEmpty() && adjacent(size() - 1, codePoint, codePoint)) {
+            buf[(size() - 1) * 2 + 1] = codePoint;
+        } else {
+            add(codePoint);
+            add(codePoint);
+        }
+    }
+
     public void appendRangeAllowAdjacent(int lo, int hi) {
         assert isEmpty() || leftOf(size() - 1, lo, hi);
         add(lo);
