@@ -146,7 +146,6 @@ import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndAddNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
-import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
@@ -468,13 +467,6 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerArrayPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Array.class, replacements);
-        r.register(new InvocationPlugin("newArray", Class.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode componentType, ValueNode length) {
-                b.addPush(JavaKind.Object, new DynamicNewArrayNode(componentType, length, true));
-                return true;
-            }
-        });
         r.register(new InvocationPlugin("getLength", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode object) {
