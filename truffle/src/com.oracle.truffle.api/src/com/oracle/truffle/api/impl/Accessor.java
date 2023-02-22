@@ -1051,7 +1051,7 @@ public abstract class Accessor {
 
         public abstract boolean hasExceptionStackTrace(Object receiver);
 
-        public abstract Object getExceptionStackTrace(Object receiver);
+        public abstract Object getExceptionStackTrace(Object receiver, Object polyglotContext);
 
         public abstract boolean hasSourceLocation(Object receiver);
 

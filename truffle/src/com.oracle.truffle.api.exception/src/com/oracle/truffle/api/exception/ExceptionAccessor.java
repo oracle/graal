@@ -145,7 +145,7 @@ final class ExceptionAccessor extends Accessor {
 
         @Override
         @TruffleBoundary
-        public Object getExceptionStackTrace(Object receiver) {
+        public Object getExceptionStackTrace(Object receiver, Object polyglotContext) {
             Throwable throwable = (Throwable) receiver;
             List<TruffleStackTraceElement> stack = TruffleStackTrace.getStackTrace(throwable);
             if (stack == null) {
@@ -164,7 +164,10 @@ final class ExceptionAccessor extends Accessor {
             Object[] items;
             if (hasGuestToHostCalls) {
                 // If we have guest to host calls, we need to merge in the host frames.
-                items = mergeHostGuestFrames(throwable, stack, inHost);
+                Object polyglotEngine = polyglotContext == null
+                                ? ACCESSOR.engineSupport().getCurrentPolyglotEngine()
+                                : ACCESSOR.engineSupport().getEngineFromPolyglotObject(polyglotContext);
+                items = mergeHostGuestFrames(throwable, stack, inHost, polyglotEngine);
             } else {
                 // If there are no guest to host calls, there is no need for any extra processing.
                 items = new Object[stack.size()];
@@ -175,7 +178,7 @@ final class ExceptionAccessor extends Accessor {
             return new InteropList(items);
         }
 
-        private static Object[] mergeHostGuestFrames(Throwable throwable, List<TruffleStackTraceElement> guestStack, boolean inHost) {
+        private static Object[] mergeHostGuestFrames(Throwable throwable, List<TruffleStackTraceElement> guestStack, boolean inHost, Object polyglotEngine) {
             StackTraceElement[] hostStack = null;
             if (ACCESSOR.hostSupport().isHostException(throwable)) {
                 Throwable original = (Throwable) ACCESSOR.hostSupport().unboxDisconnectedHostObject(throwable);
@@ -194,7 +197,6 @@ final class ExceptionAccessor extends Accessor {
                 hostStack = new StackTraceElement[0];
             }
 
-            Object polyglotEngine = ACCESSOR.engineSupport().getCurrentPolyglotEngine();
             Iterator<TruffleStackTraceElement> guestStackIterator = guestStack.iterator();
             Iterator<Object> mergedElements = ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine, hostStack, guestStackIterator, inHost,
                             new Function<StackTraceElement, Object>() {
