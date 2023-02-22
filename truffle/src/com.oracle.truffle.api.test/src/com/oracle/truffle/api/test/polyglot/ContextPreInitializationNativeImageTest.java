@@ -91,38 +91,47 @@ public class ContextPreInitializationNativeImageTest {
 
     @BeforeClass
     public static void beforeClass() {
-        // only supported in AOT
-        TruffleTestAssumptions.assumeAOT();
-
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-        ctx = Context.create(LANGUAGE);
-        ctx.initialize(LANGUAGE);
-        ctx.enter();
+        if (TruffleTestAssumptions.isAOT()) {
+            TruffleTestAssumptions.assumeWeakEncapsulation();
+            ctx = Context.create(LANGUAGE);
+            ctx.initialize(LANGUAGE);
+            ctx.enter();
+        }
     }
 
     @AfterClass
     public static void afterClass() {
-        ctx.close();
+        if (ctx != null) {
+            ctx.close();
+        }
     }
 
     @Test
     public void patchedContext() {
+        // only supported in AOT
+        TruffleTestAssumptions.assumeAOT();
         assertTrue(Language.CONTEXT_REF.get(null).patched);
     }
 
     @Test
     public void threadLocalActions() {
+        // only supported in AOT
+        TruffleTestAssumptions.assumeAOT();
         assertTrue(String.valueOf(Language.CONTEXT_REF.get(null).threadLocalActions), Language.CONTEXT_REF.get(null).threadLocalActions > 0);
     }
 
     @Test
     public void somShapeAllocatedOnContextPreInit() throws Exception {
+        // only supported in AOT
+        TruffleTestAssumptions.assumeAOT();
         StaticObjectModelTest somTest = Language.CONTEXT_REF.get(null).staticObjectModelTest;
         somTest.testShapeAllocatedOnContextPreInit();
     }
 
     @Test
     public void somObjectAllocatedOnContextPreInit() throws Exception {
+        // only supported in AOT
+        TruffleTestAssumptions.assumeAOT();
         StaticObjectModelTest somTest = Language.CONTEXT_REF.get(null).staticObjectModelTest;
         somTest.testObjectAllocatedOnContextPreInit();
     }
