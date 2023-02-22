@@ -1317,13 +1317,13 @@ public abstract class ObjectFile {
     private String dependencyGraphAsDotString(Set<LayoutDecision> decisionsToInclude) {
         // null argument means "include all decisions"
         StringBuilder sb = new StringBuilder();
-        sb.append("digraph deps {\n");
+        sb.append("digraph deps {").append(System.lineSeparator());
         for (BuildDependency d : allDependencies) {
             if (decisionsToInclude == null || (decisionsToInclude.contains(d.depending) && decisionsToInclude.contains(d.dependedOn))) {
-                sb.append("\t\"" + d.depending + "\" -> \"" + d.dependedOn + "\";\n");
+                sb.append(String.format("\t\"%s\" -> \"%s\";%n", d.depending, d.dependedOn));
             }
         }
-        sb.append("}\n");
+        sb.append('}').append(System.lineSeparator());
         return sb.toString();
     }
 

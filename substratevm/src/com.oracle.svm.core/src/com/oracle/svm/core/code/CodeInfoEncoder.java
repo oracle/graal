@@ -225,9 +225,8 @@ public class CodeInfoEncoder {
                         long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
                         added = deoptEntryBcis.add(encodedBci);
                         if (!added) {
-                            String errorMessage = String.format("Encoding two deopt entries at same encoded bci: %s (bci %s)\nmethod: %s", encodedBci, FrameInfoDecoder.readableBci(encodedBci),
-                                            method);
-                            throw VMError.shouldNotReachHere(errorMessage);
+                            throw VMError.shouldNotReachHere(String.format("Encoding two deopt entries at same encoded bci: %s (bci %s)%nmethod: %s",
+                                            encodedBci, FrameInfoDecoder.readableBci(encodedBci), method));
                         }
                     }
                 }

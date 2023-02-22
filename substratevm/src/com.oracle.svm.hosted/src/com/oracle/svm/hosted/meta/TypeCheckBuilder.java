@@ -1736,11 +1736,11 @@ public class TypeCheckBuilder {
                         boolean checksMatch = hostedCheck == runtimeCheck;
                         if (!checksMatch) {
                             StringBuilder message = new StringBuilder();
-                            message.append("\n********Type checks do not match:********\n");
-                            message.append(String.format("super type: %s\n", superType.toString()));
-                            message.append(String.format("checked type: %s\n", checkedType.toString()));
-                            message.append(String.format("hosted check: %b\n", hostedCheck));
-                            message.append(String.format("runtime check: %b\n", runtimeCheck));
+                            message.append(String.format("%n********Type checks do not match:********%n"));
+                            message.append(String.format("super type: %s%n", superType.toString()));
+                            message.append(String.format("checked type: %s%n", checkedType.toString()));
+                            message.append(String.format("hosted check: %b%n", hostedCheck));
+                            message.append(String.format("runtime check: %b%n", runtimeCheck));
                             mismatchedTypes.add(message.toString());
                         }
                     }

@@ -1259,14 +1259,14 @@ public class NativeImageGenerator {
                                 try {
                                     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                                         if (missingIntrinsicMetrics.size() > 0) {
-                                            System.out.format("[Warning] Missing intrinsics found: %d\n", missingIntrinsicMetrics.size());
+                                            System.out.format("[Warning] Missing intrinsics found: %d%n", missingIntrinsicMetrics.size());
                                             List<Pair<String, Integer>> data = new ArrayList<>();
                                             final MapCursor<String, Integer> cursor = missingIntrinsicMetrics.getEntries();
                                             while (cursor.advance()) {
                                                 data.add(Pair.create(cursor.getKey(), cursor.getValue()));
                                             }
                                             data.stream().sorted(Comparator.comparing(Pair::getRight, Comparator.reverseOrder()))
-                                                            .forEach(pair -> System.out.format("        - %d occurrences during parsing: %s\n", pair.getRight(), pair.getLeft()));
+                                                            .forEach(pair -> System.out.format("        - %d occurrences during parsing: %s%n", pair.getRight(), pair.getLeft()));
                                         }
                                     }));
                                 } catch (IllegalStateException e) {
@@ -1276,7 +1276,7 @@ public class NativeImageGenerator {
                             if (missingIntrinsicMetrics.containsKey(method)) {
                                 missingIntrinsicMetrics.put(method, missingIntrinsicMetrics.get(method) + 1);
                             } else {
-                                System.out.format("[Warning] Missing intrinsic %s found during parsing.\n", method);
+                                System.out.format("[Warning] Missing intrinsic %s found during parsing.%n", method);
                                 missingIntrinsicMetrics.put(method, 1);
                             }
                         }
@@ -1795,7 +1795,7 @@ public class NativeImageGenerator {
             System.out.println();
 
             for (HostedType sub : type.getSubTypes()) {
-                System.out.format("               s %d %s\n", sub.getTypeID(), sub.toJavaName(false));
+                System.out.format("               s %d %s%n", sub.getTypeID(), sub.toJavaName(false));
             }
             if (type.isInterface()) {
                 for (HostedMethod method : hUniverse.getMethods()) {

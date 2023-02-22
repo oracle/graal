@@ -475,10 +475,10 @@ public abstract class NativeImageCodeCache {
         List<JavaKind> sourceKinds = Arrays.asList(sourceFrame.expectedKinds);
         if (targetFrame.getNumLocals() != sourceFrame.numLocals || targetFrame.getNumStack() != sourceFrame.numStack || targetFrame.getNumLocks() != sourceFrame.numLocks) {
             StringBuilder errorMessage = new StringBuilder();
-            errorMessage.append("Mismatch between number of expected values in target and source.\n");
-            errorMessage.append(String.format("Target: locals-%d, stack-%d, locks-%d.\n", targetFrame.getNumLocals(), targetFrame.getNumStack(), targetFrame.getNumLocks()));
+            errorMessage.append("Mismatch between number of expected values in target and source.%n");
+            errorMessage.append(String.format("Target: locals-%d, stack-%d, locks-%d.%n", targetFrame.getNumLocals(), targetFrame.getNumStack(), targetFrame.getNumLocks()));
             appendFrameInfo(errorMessage, true, Arrays.stream(targetValues).map(FrameInfoQueryResult.ValueInfo::getKind).collect(Collectors.toList()));
-            errorMessage.append(String.format("Source: locals-%d, stack-%d, locks-%d.\n", sourceFrame.numLocals, sourceFrame.numStack, sourceFrame.numLocks));
+            errorMessage.append(String.format("Source: locals-%d, stack-%d, locks-%d.%n", sourceFrame.numLocals, sourceFrame.numStack, sourceFrame.numLocks));
             appendFrameInfo(errorMessage, false, sourceKinds);
             return error(method, encodedBci, errorMessage.toString());
         }
@@ -500,7 +500,7 @@ public abstract class NativeImageCodeCache {
 
         if (!validTarget) {
             StringBuilder errorMessage = new StringBuilder();
-            errorMessage.append("Deoptimization source frame is not a superset of the target frame.\n");
+            errorMessage.append(String.format("Deoptimization source frame is not a superset of the target frame.%n"));
             appendFrameInfo(errorMessage, true, Arrays.stream(targetValues).map(FrameInfoQueryResult.ValueInfo::getKind).collect(Collectors.toList()));
             appendFrameInfo(errorMessage, false, sourceKinds);
             return error(method, encodedBci, errorMessage.toString());
@@ -509,9 +509,9 @@ public abstract class NativeImageCodeCache {
     }
 
     private static void appendFrameInfo(StringBuilder builder, boolean isTarget, List<JavaKind> javaKinds) {
-        builder.append(String.format("***%s Frame***\n", isTarget ? "Target" : "Source"));
+        builder.append(String.format("***%s Frame***%n", isTarget ? "Target" : "Source"));
         for (int i = 0; i < javaKinds.size(); i++) {
-            builder.append(String.format("index %d: %s\n", i, javaKinds.get(i)));
+            builder.append(String.format("index %d: %s%n", i, javaKinds.get(i)));
         }
     }
 
@@ -559,7 +559,7 @@ public abstract class NativeImageCodeCache {
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             HostedMethod method = pair.getLeft();
             CompilationResult result = pair.getRight();
-            System.out.format("%8d %5d %s: frame %d\n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
+            System.out.format("%8d %5d %s: frame %d%n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
         }
         System.out.println("--- vtables:");
         for (HostedType type : imageHeap.getUniverse().getTypes()) {
@@ -568,7 +568,7 @@ public abstract class NativeImageCodeCache {
                 if (method != null) {
                     CompilationResult comp = compilationResultFor(type.getVTable()[i]);
                     if (comp != null) {
-                        System.out.format("%d %s @ %d: %s = 0x%x\n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
+                        System.out.format("%d %s @ %d: %s = 0x%x%n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
                     }
                 }
             }

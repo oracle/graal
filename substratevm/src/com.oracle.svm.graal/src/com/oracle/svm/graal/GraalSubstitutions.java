@@ -270,7 +270,7 @@ final class Target_org_graalvm_compiler_phases_BasePhase {
     static BasePhase.BasePhaseStatistics getBasePhaseStatistics(Class<?> clazz) {
         BasePhase.BasePhaseStatistics result = GraalSupport.get().basePhaseStatistics.get(clazz);
         if (result == null) {
-            throw VMError.shouldNotReachHere(String.format("Missing statistics for phase class: %s\n", clazz.getName()));
+            throw VMError.shouldNotReachHere(String.format("Missing statistics for phase class: %s%n", clazz.getName()));
         }
         return result;
     }
@@ -283,7 +283,7 @@ final class Target_org_graalvm_compiler_lir_phases_LIRPhase {
     static LIRPhase.LIRPhaseStatistics getLIRPhaseStatistics(Class<?> clazz) {
         LIRPhase.LIRPhaseStatistics result = GraalSupport.get().lirPhaseStatistics.get(clazz);
         if (result == null) {
-            throw VMError.shouldNotReachHere(String.format("Missing statistics for phase class: %s\n", clazz.getName()));
+            throw VMError.shouldNotReachHere(String.format("Missing statistics for phase class: %s%n", clazz.getName()));
         }
         return result;
     }
@@ -304,7 +304,7 @@ final class Target_org_graalvm_compiler_graph_NodeClass {
     public static NodeClass<?> get(Class<?> clazz) {
         NodeClass<?> nodeClass = GraalSupport.get().nodeClasses.get(clazz);
         if (nodeClass == null) {
-            throw VMError.shouldNotReachHere(String.format("Unknown node class: %s\n", clazz.getName()));
+            throw VMError.shouldNotReachHere(String.format("Unknown node class: %s%n", clazz.getName()));
         }
         return nodeClass;
     }
@@ -328,7 +328,7 @@ final class Target_org_graalvm_compiler_lir_LIRInstructionClass {
     public static LIRInstructionClass<?> get(Class<? extends LIRInstruction> clazz) {
         LIRInstructionClass<?> instructionClass = GraalSupport.get().instructionClasses.get(clazz);
         if (instructionClass == null) {
-            throw VMError.shouldNotReachHere(String.format("Unknown instruction class: %s\n", clazz.getName()));
+            throw VMError.shouldNotReachHere(String.format("Unknown instruction class: %s%n", clazz.getName()));
         }
         return instructionClass;
     }
@@ -343,7 +343,7 @@ final class Target_org_graalvm_compiler_lir_CompositeValueClass {
     public static CompositeValueClass<?> get(Class<? extends CompositeValue> clazz) {
         CompositeValueClass<?> compositeValueClass = GraalSupport.get().compositeValueClasses.get(clazz);
         if (compositeValueClass == null) {
-            throw VMError.shouldNotReachHere(String.format("Unknown composite value class: %s\n", clazz.getName()));
+            throw VMError.shouldNotReachHere(String.format("Unknown composite value class: %s%n", clazz.getName()));
         }
         return compositeValueClass;
     }
