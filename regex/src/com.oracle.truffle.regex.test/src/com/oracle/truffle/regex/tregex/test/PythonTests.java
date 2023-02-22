@@ -458,6 +458,21 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void gr44233() {
+        test("(\\bNone|\\bFalse|\\bTrue)?\\s*([=!]=)\\s*(?(1)|(None|False|True))\\b", "", "x == True", 0, true, 1, 9, -1, -1, 2, 4, 5, 9, 3);
+
+        test("(?:(a)|(b))(?(1)(?<=a)|(?<=b))", "", "a", 0, true, 0, 1, 0, 1, -1, -1, 1);
+        test("(?:(a)|(b))(?(1)(?<=a)|(?<=b))", "", "b", 0, true, 0, 1, -1, -1, 0, 1, 2);
+        test("(?:(a)|(b))(?(1)(?<=b)|(?<=a))", "", "a", 0, false);
+        test("(?:(a)|(b))(?(1)(?<=b)|(?<=a))", "", "b", 0, false);
+
+        test("(x)?(?(1)a|b)(?<=a)", "", "xa", 0, true, 0, 2, 0, 1, 1);
+        test("(x)?(?(1)a|b)(?<=a)", "", "b", 0, false);
+        test("(x)?(?(1)a|b)(?<=b)", "", "xa", 0, false);
+        test("(x)?(?(1)a|b)(?<=b)", "", "b", 0, true, 0, 1, -1, -1, -1);
+    }
+
+    @Test
     public void testSyntaxErrors() {
         // Generated using sre from CPython 3.10.8
         expectSyntaxError("()\\2", "", "invalid group reference 2", 3);

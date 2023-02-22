@@ -52,6 +52,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRW;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.AES_BLOCK_SIZE;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
 import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.pointerConstant;
@@ -166,13 +167,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
 
     private static final int PARALLEL_FACTOR = 6;
 
-    private ArrayDataPointerConstant keyShuffleMask = pointerConstant(16, new int[]{
-            // @formatter:off
-            0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f
-            // @formatter:on
-    });
-
-    private ArrayDataPointerConstant counterShuffleMask = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant counterShuffleMask = pointerConstant(16, new int[]{
             // @formatter:off
             0x0c0d0e0f, 0x08090a0b, 0x04050607, 0x00010203,
             // @formatter:on
