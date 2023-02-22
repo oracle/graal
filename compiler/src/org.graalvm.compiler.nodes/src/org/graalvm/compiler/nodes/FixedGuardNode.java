@@ -99,12 +99,16 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
         }
     }
 
+    public boolean canFloat() {
+        return DeoptimizeNode.canFloat(getReason(), getAction());
+    }
+
     @SuppressWarnings("try")
     @Override
     public void lower(LoweringTool tool) {
         try (DebugCloseable position = this.withNodeSourcePosition()) {
             if (graph().getGuardsStage().allowsFloatingGuards()) {
-                if (getAction() != DeoptimizationAction.None && getReason() != DeoptimizationReason.Unresolved) {
+                if (canFloat()) {
                     ValueNode guard = tool.createGuard(this, getCondition(), getReason(), getAction(), getSpeculation(), isNegated(), getNoDeoptSuccessorPosition()).asNode();
                     this.replaceAtUsages(guard);
                     graph().removeFixed(this);

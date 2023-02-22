@@ -73,8 +73,6 @@ import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 
 /**
  * This phase will find branches which always end with a {@link DeoptimizeNode} and replace their
@@ -109,7 +107,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
 
         for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.TYPE)) {
             assert d.isAlive();
-            if (d.getAction() == DeoptimizationAction.None || d.getReason() == DeoptimizationReason.Unresolved) {
+            if (!d.canFloat()) {
                 continue;
             }
             try (DebugCloseable closable = d.withNodeSourcePosition()) {
