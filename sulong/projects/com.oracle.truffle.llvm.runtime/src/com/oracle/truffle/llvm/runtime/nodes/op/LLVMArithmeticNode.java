@@ -39,9 +39,10 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
-import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat.FP128Node;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat.FP80Node;
+import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleFloatingPoint;
+import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode;
+import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode.LongDoubleKinds;
 import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -96,9 +97,9 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
         abstract double doDouble(double left, double right);
 
-        abstract FP80Node createFP80Node();
+        abstract LLVMLongDoubleNode createFP80Node();
 
-        abstract FP128Node createFP128Node();
+        abstract LLVMLongDoubleNode createFP128Node();
     }
 
     abstract static class ManagedArithmeticNode extends LLVMNode {
@@ -426,13 +427,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             super(op);
         }
 
-        FP80Node createFP80Node() {
+        LLVMLongDoubleNode createFP80Node() {
             return fpOp().createFP80Node();
         }
 
         @Specialization
-        LLVM80BitFloat do80BitFloat(LLVM80BitFloat left, LLVM80BitFloat right,
-                        @Cached("createFP80Node()") FP80Node node) {
+        LLVMLongDoubleFloatingPoint do80BitFloat(LLVM80BitFloat left, LLVM80BitFloat right,
+                        @Cached("createFP80Node()") LLVMLongDoubleNode node) {
             return node.execute(left, right);
         }
     }
@@ -443,13 +444,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             super(op);
         }
 
-        FP128Node createFP128Node() {
+        LLVMLongDoubleNode createFP128Node() {
             return fpOp().createFP128Node();
         }
 
         @Specialization
-        LLVM128BitFloat do128BitFloat(LLVM128BitFloat left, LLVM128BitFloat right,
-                        @Cached("createFP128Node()") FP128Node node) {
+        LLVMLongDoubleFloatingPoint do128BitFloat(LLVM128BitFloat left, LLVM128BitFloat right,
+                        @Cached("createFP128Node()") LLVMLongDoubleNode node) {
             return node.execute(left, right);
         }
     }
@@ -515,13 +516,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
-        FP80Node createFP80Node() {
-            return LLVM80BitFloat.createAddNode();
+        LLVMLongDoubleNode createFP80Node() {
+            return LLVMLongDoubleNode.createAddNode(LongDoubleKinds.FP80);
         }
 
         @Override
-        FP128Node createFP128Node() {
-            return LLVM128BitFloat.createAddNode();
+        LLVMLongDoubleNode createFP128Node() {
+            return LLVMLongDoubleNode.createAddNode(LongDoubleKinds.FP128);
         }
 
         @Override
@@ -611,13 +612,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
-        FP80Node createFP80Node() {
-            return LLVM80BitFloat.createMulNode();
+        LLVMLongDoubleNode createFP80Node() {
+            return LLVMLongDoubleNode.createMulNode(LongDoubleKinds.FP80);
         }
 
         @Override
-        FP128Node createFP128Node() {
-            return LLVM128BitFloat.createMulNode();
+        LLVMLongDoubleNode createFP128Node() {
+            return LLVMLongDoubleNode.createMulNode(LongDoubleKinds.FP128);
         }
 
         @Override
@@ -696,13 +697,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
-        FP80Node createFP80Node() {
-            return LLVM80BitFloat.createSubNode();
+        LLVMLongDoubleNode createFP80Node() {
+            return LLVMLongDoubleNode.createSubNode(LongDoubleKinds.FP80);
         }
 
         @Override
-        FP128Node createFP128Node() {
-            return LLVM128BitFloat.createSubNode();
+        LLVMLongDoubleNode createFP128Node() {
+            return LLVMLongDoubleNode.createSubNode(LongDoubleKinds.FP128);
         }
 
         @Override
@@ -749,13 +750,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
-        FP80Node createFP80Node() {
-            return LLVM80BitFloat.createDivNode();
+        LLVMLongDoubleNode createFP80Node() {
+            return LLVMLongDoubleNode.createDivNode(LongDoubleKinds.FP80);
         }
 
         @Override
-        FP128Node createFP128Node() {
-            return LLVM128BitFloat.createDivNode();
+        LLVMLongDoubleNode createFP128Node() {
+            return LLVMLongDoubleNode.createDivNode(LongDoubleKinds.FP128);
         }
 
         @Override
@@ -835,13 +836,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Override
-        FP80Node createFP80Node() {
-            return LLVM80BitFloat.createRemNode();
+        LLVMLongDoubleNode createFP80Node() {
+            return LLVMLongDoubleNode.createRemNode(LongDoubleKinds.FP80);
         }
 
         @Override
-        FP128Node createFP128Node() {
-            return LLVM128BitFloat.createRemNode();
+        LLVMLongDoubleNode createFP128Node() {
+            return LLVMLongDoubleNode.createRemNode(LongDoubleKinds.FP128);
         }
 
         @Override

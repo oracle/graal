@@ -154,7 +154,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
 
         @Specialization
         protected double doDouble(LLVM80BitFloat from) {
-            return from.getDoubleValue();
+            return from.toDoubleValue();
         }
 
         @Specialization

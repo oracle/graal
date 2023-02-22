@@ -56,8 +56,9 @@ import com.oracle.truffle.llvm.runtime.config.CommonLanguageOptions;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
-import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode;
+import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode.LongDoubleKinds;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
@@ -304,8 +305,8 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMIV
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMFunnelShiftNodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNodeFactory.LLVMDoubleUnaryNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNodeFactory.LLVMFP80UnaryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNodeFactory.LLVMFP128UnaryNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNodeFactory.LLVMFP80UnaryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMUnaryNodeFactory.LLVMFloatUnaryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorUnaryNodeGen;
@@ -1462,7 +1463,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.pow.f80":
                 case "llvm.powi.f80":
                 case "llvm.powi.f80.i32":
-                    return LLVM80BitFloat.createPowNode(args[1], args[2]);
+                    return LLVMLongDoubleNode.createPowNode(args[1], args[2], LongDoubleKinds.FP80);
                 case "llvm.sqrt.f80":
                 case "llvm.log.f80":
                 case "llvm.log2.f80":
@@ -1475,11 +1476,11 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.sin.f80":
                 case "llvm.cos.f80":
                     String[] split = intrinsicName.split("\\.");
-                    return LLVM80BitFloat.createUnary(split[1], args[1]);
+                    return LLVMLongDoubleNode.createUnary(split[1], args[1], LongDoubleKinds.FP80);
                 case "llvm.pow.f128":
                 case "llvm.powi.f128":
                 case "llvm.powi.f128.i32":
-                    return LLVM128BitFloat.createPowNode(args[1], args[2]);
+                    return LLVMLongDoubleNode.createPowNode(args[1], args[2], LongDoubleKinds.FP128);
                 case "llvm.sqrt.f128":
                 case "llvm.log.f128":
                 case "llvm.log2.f128":
@@ -1492,7 +1493,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.sin.f128":
                 case "llvm.cos.f128":
                     split = intrinsicName.split("\\.");
-                    return LLVM128BitFloat.createUnary(split[1], args[1]);
+                    return LLVMLongDoubleNode.createUnary(split[1], args[1], LongDoubleKinds.FP128);
                 case "llvm.round.f32":
                 case "llvm.round.f64":
                 case "llvm.round.f80":
@@ -1892,7 +1893,7 @@ public class BasicNodeFactory implements NodeFactory {
             switch (name) {
                 case "pow":
                 case "powi":
-                    return LLVM128BitFloat.createPowNode(args[1], args[2]);
+                    return LLVMLongDoubleNode.createPowNode(args[1], args[2], LongDoubleKinds.FP128);
                 case "sqrt":
                 case "log":
                 case "log2":
@@ -1904,7 +1905,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case "exp2":
                 case "sin":
                 case "cos":
-                    return LLVM128BitFloat.createUnary(name, args[1]);
+                    return LLVMLongDoubleNode.createUnary(name, args[1], LongDoubleKinds.FP128);
                 case "fmuladd":
                     LLVMExpressionNode mulNodeF128 = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.F128, args[1], args[2]);
                     return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.F128, mulNodeF128, args[3]);
@@ -1915,7 +1916,7 @@ public class BasicNodeFactory implements NodeFactory {
             switch (name) {
                 case "pow":
                 case "powi":
-                    return LLVM80BitFloat.createPowNode(args[1], args[2]);
+                    return LLVMLongDoubleNode.createPowNode(args[1], args[2], LongDoubleKinds.FP80);
                 case "sqrt":
                 case "log":
                 case "log2":
@@ -1927,7 +1928,7 @@ public class BasicNodeFactory implements NodeFactory {
                 case "exp2":
                 case "sin":
                 case "cos":
-                    return LLVM80BitFloat.createUnary(name, args[1]);
+                    return LLVMLongDoubleNode.createUnary(name, args[1], LongDoubleKinds.FP80);
                 case "fmuladd":
                     LLVMExpressionNode mulNodeF80 = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.X86_FP80, args[1], args[2]);
                     return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.X86_FP80, mulNodeF80, args[3]);

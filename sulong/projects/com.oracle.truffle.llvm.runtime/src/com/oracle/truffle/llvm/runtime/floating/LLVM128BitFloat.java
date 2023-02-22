@@ -33,32 +33,15 @@ package com.oracle.truffle.llvm.runtime.floating;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.ContextExtension;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NativeContextExtension;
-import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloatFactory.LLVM128BitFloatNativeCallNodeGen;
-import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloatFactory.LLVM128BitFloatUnaryNativeCallNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.nfi.api.SerializableLibrary;
-import com.oracle.truffle.nfi.api.SignatureLibrary;
 
 import java.nio.ByteOrder;
 import java.util.Arrays;
@@ -70,7 +53,7 @@ import java.util.Arrays;
  */
 @ValueType
 @ExportLibrary(value = SerializableLibrary.class, useForAOT = false)
-public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
+public final class LLVM128BitFloat extends LLVMLongDoubleFloatingPoint {
     public static final long SIGN_BIT = 1L << 63;
     private static final int FRACTION_BIT_WIDTH = 112;
     public static final int BIT_WIDTH = 128;
@@ -226,6 +209,7 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         return getSign() ? -value : value;
     }
 
+    @Override
     public double toDoubleValue() {
         if (isPositiveInfinity()) {
             return DoubleHelper.POSITIVE_INFINITY;
@@ -432,171 +416,5 @@ public final class LLVM128BitFloat extends LLVMInternalTruffleObject {
         } catch (UnsupportedMessageException | InvalidBufferOffsetException ex) {
             throw CompilerDirectives.shouldNotReachHere(ex);
         }
-    }
-
-    public abstract static class FP128Node extends LLVMExpressionNode {
-
-        final String name;
-        private final String functionName;
-        private final String signature;
-
-        final ContextExtension.Key<NativeContextExtension> nativeCtxExtKey;
-
-        public abstract LLVM128BitFloat execute(Object... args);
-
-        FP128Node(String name, String signature) {
-            this.name = name;
-            this.functionName = "__sulong_longdouble_" + name;
-            this.signature = signature;
-            this.nativeCtxExtKey = LLVMLanguage.get(this).lookupContextExtension(NativeContextExtension.class);
-        }
-
-        protected NativeContextExtension.WellKnownNativeFunctionNode createFunction() {
-            LLVMContext context = LLVMContext.get(this);
-            NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
-            if (nativeContextExtension == null) {
-                return null;
-            } else {
-                return nativeContextExtension.getWellKnownNativeFunction(functionName, signature);
-            }
-        }
-
-        protected NativeContextExtension.WellKnownNativeFunctionAndSignature getFunction() {
-            NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(LLVMContext.get(this));
-            return nativeContextExtension.getWellKnownNativeFunctionAndSignature(functionName, signature);
-        }
-
-        protected LLVMNativeConvertNode createToFP128() {
-            return LLVMNativeConvertNode.createFromNative(PrimitiveType.F128);
-        }
-    }
-
-    @NodeChild(value = "x", type = LLVMExpressionNode.class)
-    @NodeChild(value = "y", type = LLVMExpressionNode.class)
-    abstract static class LLVM128BitFloatNativeCallNode extends FP128Node {
-
-        LLVM128BitFloatNativeCallNode(String name) {
-            super(name, "(FP128,FP128):FP128");
-        }
-
-        @Specialization(guards = "function != null")
-        protected LLVM128BitFloat doCall(Object x, Object y,
-                        @Cached("createFunction()") NativeContextExtension.WellKnownNativeFunctionNode function,
-                        @Cached("createToFP128()") LLVMNativeConvertNode nativeConvert) {
-            try {
-                Object ret = function.execute(x, y);
-                return (LLVM128BitFloat) nativeConvert.executeConvert(ret);
-            } catch (InteropException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-        }
-
-        @Specialization(guards = "nativeCtxExtKey != null", replaces = "doCall")
-        protected LLVM128BitFloat doCallAOT(Object x, Object y,
-                        @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary,
-                        @Cached("createToFP128()") LLVMNativeConvertNode nativeConvert) {
-            NativeContextExtension.WellKnownNativeFunctionAndSignature wkFunSig = getFunction();
-            try {
-                Object ret = signatureLibrary.call(wkFunSig.getSignature(), wkFunSig.getFunction(), x, y);
-                return (LLVM128BitFloat) nativeConvert.executeConvert(ret);
-            } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        @Specialization(guards = "nativeCtxExtKey == null")
-        protected LLVM128BitFloat doCallNoNative(LLVM128BitFloat x, LLVM128BitFloat y) {
-            // imprecise workaround for cases in which NFI isn't available
-            double xDouble = x.toDoubleValue();
-            double yDouble = y.toDoubleValue();
-            double result;
-            switch (name) {
-                case "add":
-                    result = xDouble + yDouble;
-                    break;
-                case "sub":
-                    result = xDouble - yDouble;
-                    break;
-                case "mul":
-                    result = xDouble * yDouble;
-                    break;
-                case "div":
-                    result = xDouble / yDouble;
-                    break;
-                case "mod":
-                    result = xDouble % yDouble;
-                    break;
-                default:
-                    throw new AssertionError("unexpected 128 bit float operation: " + name);
-            }
-            return LLVM128BitFloat.fromDouble(result);
-        }
-
-        @Override
-        public String toString() {
-            return "fp128 " + name;
-        }
-    }
-
-    @NodeChild(value = "x", type = LLVMExpressionNode.class)
-    abstract static class LLVM128BitFloatUnaryNativeCallNode extends FP128Node {
-
-        LLVM128BitFloatUnaryNativeCallNode(String name) {
-            super(name, "(FP128):FP128");
-        }
-
-        @Specialization(guards = "function != null")
-        protected LLVM128BitFloat doCall(Object x,
-                        @Cached("createFunction()") NativeContextExtension.WellKnownNativeFunctionNode function,
-                        @Cached("createToFP128()") LLVMNativeConvertNode nativeConvert) {
-            try {
-                Object ret = function.execute(x);
-                return (LLVM128BitFloat) nativeConvert.executeConvert(ret);
-            } catch (InteropException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-        }
-
-        @Specialization(guards = "nativeCtxExtKey != null", replaces = "doCall")
-        protected LLVM128BitFloat doCallAOT(Object x,
-                        @CachedLibrary(limit = "1") SignatureLibrary signatureLibrary,
-                        @Cached("createToFP128()") LLVMNativeConvertNode nativeConvert) {
-            NativeContextExtension.WellKnownNativeFunctionAndSignature wkFunSig = getFunction();
-            try {
-                Object ret = signatureLibrary.call(wkFunSig.getSignature(), wkFunSig.getFunction(), x);
-                return (LLVM128BitFloat) nativeConvert.executeConvert(ret);
-            } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
-                throw CompilerDirectives.shouldNotReachHere(e);
-            }
-        }
-    }
-
-    public static FP128Node createAddNode() {
-        return LLVM128BitFloatFactory.LLVM128BitFloatNativeCallNodeGen.create("add", null, null);
-    }
-
-    public static FP128Node createSubNode() {
-        return LLVM128BitFloatFactory.LLVM128BitFloatNativeCallNodeGen.create("sub", null, null);
-    }
-
-    public static FP128Node createMulNode() {
-        return LLVM128BitFloatNativeCallNodeGen.create("mul", null, null);
-    }
-
-    public static FP128Node createDivNode() {
-        return LLVM128BitFloatNativeCallNodeGen.create("div", null, null);
-    }
-
-    public static FP128Node createRemNode() {
-        return LLVM128BitFloatNativeCallNodeGen.create("mod", null, null);
-    }
-
-    public static FP128Node createPowNode(LLVMExpressionNode x, LLVMExpressionNode y) {
-        return LLVM128BitFloatNativeCallNodeGen.create("pow", x, y);
-    }
-
-    public static FP128Node createUnary(String name, LLVMExpressionNode x) {
-        return LLVM128BitFloatUnaryNativeCallNodeGen.create(name, x);
     }
 }
