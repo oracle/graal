@@ -39,10 +39,14 @@
   for suite in bench.groups.profiled_suites
   ]),
 
-  // intensive weekly benchmarking
-  local weekly_forks_builds = std.flattenArrays([
-    bc.generate_fork_builds(c.weekly + hw.x52 + jdk + cc.libgraal + suite, subdir='compiler')
+  local weekly_amd64_forks_builds = std.flattenArrays([
+    bc.generate_fork_builds(c.weekly + hw.x52  + jdk + cc.libgraal + suite, subdir='compiler')
   for jdk in cc.bench_jdks
+  for suite in bench.groups.weekly_forks_suites
+  ]),
+
+  local weekly_aarch64_forks_builds = std.flattenArrays([
+    bc.generate_fork_builds(c.weekly + hw.a12c + cc.latest_jdk + cc.libgraal + suite, subdir='compiler')
   for suite in bench.groups.weekly_forks_suites
   ]),
 
@@ -71,8 +75,8 @@
   ],
 
 
-  local all_builds = main_builds + weekly_forks_builds + profiling_builds + avx_builds + aarch64_builds + no_tiered_builds + no_profile_info_builds,
-  local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version)],
+  local all_builds = main_builds + weekly_amd64_forks_builds + weekly_aarch64_forks_builds + profiling_builds + avx_builds + aarch64_builds + no_tiered_builds + no_profile_info_builds,
+  local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version) && b.is_arch_supported(b.arch)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: [{ defined_in: std.thisFile } + b for b in filtered_builds]
 }
