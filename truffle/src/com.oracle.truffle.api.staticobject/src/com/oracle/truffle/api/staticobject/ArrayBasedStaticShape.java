@@ -44,7 +44,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -65,17 +65,18 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     // it is loaded.
     protected interface ArrayBasedFactory {
         // Used by TruffleBaseFeature$StaticObjectArrayBasedSupport to patch the offsets and the
-        // indexes used to store primitive values.
-        @Delete ConcurrentMap<Object, Object> replacements = createReplacementsMap();
+        // indexes used to store primitive values. The keys are factory instances (they store the
+        // length of the primitive byte[]) and the primitive byte[] (they need to be resized).
+        // Initially, values are the same as the corresponding keys. Once a replacement is computed,
+        // it is stored as value. We can use an equality-based map because generated factory
+        // instances to not override `equals()` and `hashCode()`.
+        @Delete
+        ConcurrentHashMap<Object, Object> replacements = createReplacementsMap();
 
         @SuppressWarnings("unchecked")
-        private static ConcurrentMap<Object, Object> createReplacementsMap() {
+        private static ConcurrentHashMap<Object, Object> createReplacementsMap() {
             if (ImageInfo.inImageBuildtimeCode()) {
-                try {
-                    return (ConcurrentMap<Object, Object>) Class.forName("com.oracle.svm.core.util.ConcurrentIdentityHashMap").getConstructor().newInstance();
-                } catch (ReflectiveOperationException e) {
-                    throw new RuntimeException(e);
-                }
+                return new ConcurrentHashMap<>();
             }
             return null;
         }

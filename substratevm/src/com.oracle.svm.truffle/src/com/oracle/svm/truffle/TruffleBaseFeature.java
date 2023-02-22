@@ -801,7 +801,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             }
 
             static void duringSetup(DuringSetupAccess access) {
-                Map<Object, Object> replacements = ReflectionUtil.readField(ARRAY_BASED_FACTORY, "replacements", null);
+                ConcurrentHashMap<Object, Object> replacements = ReflectionUtil.readField(ARRAY_BASED_FACTORY, "replacements", null);
                 access.registerObjectReplacer(obj -> {
                     boolean isByteArray = obj instanceof byte[];
                     if (isByteArray || ARRAY_BASED_FACTORY.isInstance(obj)) {
