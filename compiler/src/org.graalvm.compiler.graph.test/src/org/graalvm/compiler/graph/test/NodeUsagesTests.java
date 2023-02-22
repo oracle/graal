@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,14 +31,14 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-
-import org.junit.Test;
+import static org.junit.Assert.assertTrue;
 
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.options.OptionValues;
+import org.junit.Test;
 
 public class NodeUsagesTests extends GraphTest {
 
@@ -452,5 +452,19 @@ public class NodeUsagesTests extends GraphTest {
         assertThat(def1.usages(), contains(use2));
 
         assertThat(def1.usages(), isNotEmpty());
+    }
+
+    @Test
+    public void testIterableToString() {
+        OptionValues options = getOptions();
+        Graph graph = new Graph(options, getDebug(options));
+        Def def0 = graph.add(new Def());
+        Def def1 = graph.add(new Def());
+        Use use0 = graph.add(new Use(def0, null, null));
+        Use use1 = graph.add(new Use(null, def0, null));
+        Use use2 = graph.add(new Use(null, null, def0));
+
+        String str = def0.usages().toString();
+        assertTrue(str.contains("usages=[2|Use, 3|Use, 4|Use]"));
     }
 }
