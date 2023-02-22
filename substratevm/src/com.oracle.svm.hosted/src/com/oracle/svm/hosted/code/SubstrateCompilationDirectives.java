@@ -212,11 +212,7 @@ public class SubstrateCompilationDirectives {
             return true;
         }
 
-        Map<Long, DeoptSourceFrameInfo> bciMap = deoptEntries.get(toAnalysisMethod((ResolvedJavaMethod) method));
-        assert bciMap != null : "can only query for deopt entries for methods registered as deopt targets";
-
-        long encodedBci = FrameInfoEncoder.encodeBci(bci, duringCall, rethrowException);
-        return bciMap.containsKey(encodedBci);
+        return isRegisteredDeoptEntry(method, bci, duringCall, rethrowException);
     }
 
     public boolean isRegisteredDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
