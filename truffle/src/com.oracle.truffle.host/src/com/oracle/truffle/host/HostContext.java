@@ -299,7 +299,7 @@ final class HostContext {
      * is why this coercion should only be used in the catch block at the outermost API call.
      */
     @TruffleBoundary
-    <T extends Throwable> RuntimeException hostToGuestException(T e) {
+    <T extends Throwable> RuntimeException hostToGuestException(T e, Node location) {
         assert !(e instanceof HostException) : "host exceptions not expected here";
 
         if (e instanceof ThreadDeath) {
@@ -311,13 +311,18 @@ final class HostContext {
             // fall-through and treat it as any other host exception
         }
         try {
-            return HostException.wrap(e, this);
+            return HostException.wrap(e, this, location);
         } catch (StackOverflowError stack) {
             /*
              * Cannot create a new host exception. Use a readily prepared instance.
              */
             return stackoverflowError;
         }
+    }
+
+    @TruffleBoundary
+    <T extends Throwable> RuntimeException hostToGuestException(T e) {
+        return hostToGuestException(e, null);
     }
 
     Value asValue(Node node, Object value) {

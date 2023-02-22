@@ -2474,9 +2474,9 @@ final class HostObject implements TruffleObject {
                     @Bind("$node") Node node,
                     @Shared("error") @Cached InlinedBranchProfile error) throws UnsupportedMessageException {
         if (isException()) {
-            HostException ex = (HostException) extraInfo;
+            RuntimeException ex = (HostException) extraInfo;
             if (ex == null) {
-                ex = HostException.wrap((Throwable) obj, context, node);
+                ex = context.hostToGuestException((Throwable) obj, node);
             }
             throw ex;
         }
