@@ -37,6 +37,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jfr.events.ThreadEndEvent;
 import com.oracle.svm.core.jfr.events.ThreadStartEvent;
+import com.oracle.svm.core.jfr.events.ThreadCPULoadEvent;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerSampleWriterData;
 import com.oracle.svm.core.thread.ThreadListener;
@@ -82,6 +83,11 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalLong unparseableStacks = FastThreadLocalFactory.createLong("JfrThreadLocal.unparseableStacks");
     private static final FastThreadLocalWord<SamplerSampleWriterData> samplerWriterData = FastThreadLocalFactory.createWord("JfrThreadLocal.samplerWriterData");
 
+    /* ThreadCPULoad thread-locals. */
+    private static final FastThreadLocalLong cpuTime = FastThreadLocalFactory.createLong("JfrThreadLocal.cpuTime");
+    private static final FastThreadLocalLong userTime = FastThreadLocalFactory.createLong("JfrThreadLocal.userTime");
+    private static final FastThreadLocalLong wallClockTime = FastThreadLocalFactory.createLong("JfrThreadLocal.wallClockTime");
+
     private long threadLocalBufferSize;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -97,6 +103,7 @@ public class JfrThreadLocal implements ThreadListener {
     public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
         if (SubstrateJVM.get().isRecording()) {
             SubstrateJVM.getThreadRepo().registerThread(javaThread);
+            ThreadCPULoadEvent.initializeWallClockTime(isolateThread);
             ThreadStartEvent.emit(javaThread);
         }
     }
@@ -106,6 +113,7 @@ public class JfrThreadLocal implements ThreadListener {
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
         if (SubstrateJVM.get().isRecording()) {
             ThreadEndEvent.emit(javaThread);
+            ThreadCPULoadEvent.emit(isolateThread);
             stopRecording(isolateThread);
         }
     }
@@ -324,5 +332,35 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static SamplerSampleWriterData getSamplerWriterData() {
         return samplerWriterData.get();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getCpuTime(IsolateThread thread) {
+        return cpuTime.get(thread);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setCpuTime(IsolateThread thread, long value) {
+        cpuTime.set(thread, value);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getUserTime(IsolateThread thread) {
+        return userTime.get(thread);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setUserTime(IsolateThread thread, long value) {
+        userTime.set(thread, value);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getWallClockTime(IsolateThread thread) {
+        return wallClockTime.get(thread);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setWallClockTime(IsolateThread thread, long value) {
+        wallClockTime.set(thread, value);
     }
 }

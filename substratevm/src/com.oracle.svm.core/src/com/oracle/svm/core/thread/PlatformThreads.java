@@ -252,6 +252,18 @@ public abstract class PlatformThreads {
     }
 
     @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
+    public static void iterateIsolateThreads(IsolateThreadConsumer consumer) {
+        VMThreads.lockThreadMutexInNativeCode();
+        try {
+            for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
+                consumer.accept(cur);
+            }
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
+    }
+
+    @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
     public static void getThreadAllocatedBytes(long[] javaThreadIds, long[] result) {
         VMThreads.lockThreadMutexInNativeCode();
         try {
@@ -1184,6 +1196,12 @@ public abstract class PlatformThreads {
     }
 
     public interface OSThreadHandle extends PointerBase {
+    }
+
+    public interface IsolateThreadConsumer {
+
+        @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.", mayBeInlined = true)
+        void accept(IsolateThread isolateThread);
     }
 }
 
