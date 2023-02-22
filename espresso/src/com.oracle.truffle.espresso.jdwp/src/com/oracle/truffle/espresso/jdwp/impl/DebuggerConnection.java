@@ -604,10 +604,7 @@ public final class DebuggerConnection implements Commands {
                 }
                 handleReply(packet, result);
             } catch (Throwable t) {
-                // Checkstyle: stop allow error output
-                System.out.println("[internal error]: " + t.getMessage());
-                t.printStackTrace();
-                // Checkstyle: resume allow error output
+                controller.severe("Internal error while processing packet", t);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.errorCode(ErrorCodes.INTERNAL);
                 handleReply(packet, new CommandResult(reply));

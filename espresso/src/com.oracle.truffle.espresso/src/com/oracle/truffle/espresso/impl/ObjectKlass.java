@@ -1286,6 +1286,11 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
+    public int getRedefinitionAwareModifiers() {
+        return getKlassVersion().getModifiers();
+    }
+
+    @Override
     public Klass[] getSuperTypes() {
         return getKlassVersion().getSuperTypes();
     }
@@ -1888,6 +1893,7 @@ public final class ObjectKlass extends Klass {
             if (flags == -1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 computedModifiers = flags = computeModifiers();
+                assert flags != -1;
             }
             // Remember to strip ACC_SUPER bit
             return flags & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;

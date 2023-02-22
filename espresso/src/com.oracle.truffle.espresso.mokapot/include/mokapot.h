@@ -69,7 +69,7 @@ typedef uint64_t julong;
 /* Usage of the JavaVM reserved fields:
  * vm type   | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
  * ----------+----------------+---------------------+----------------+
- * reserved0 | NULL           | LibJavaVMIsolate* | context handle |
+ * reserved0 | NULL           | LibJavaVMIsolate*   | context handle |
  * reserved1 | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
  * reserved2 | NULL           | JavaVM* (americano) | JavaVM* (latte)|
  */

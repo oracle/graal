@@ -1445,10 +1445,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         if (this instanceof ObjectKlass && context.advancedRedefinitionEnabled()) {
             // getKlassVersion().getModifiers() introduces a ~10%
             // perf hit on some benchmarks, so put behind a check
-            return this.getClassModifiers();
+            return getRedefinitionAwareModifiers();
         } else {
             return modifiers;
         }
+    }
+
+    public int getRedefinitionAwareModifiers() {
+        return getModifiers();
     }
 
     /**
