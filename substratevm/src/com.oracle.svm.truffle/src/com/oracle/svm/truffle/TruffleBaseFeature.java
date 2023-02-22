@@ -795,6 +795,12 @@ public final class TruffleBaseFeature implements InternalFeature {
             private static final IdentityHashMap<Object, Object> registeredShapeGenerators = new IdentityHashMap<>();
 
             static {
+                // ArrayBasedShapeGenerator$ArrayBasedPropertyLayout makes sure that primitives are
+                // stored in a byte[] at offsets that are long-aligned. When using the Static Object
+                // Model during context pre-init, these offsets are computed using values that are
+                // correct for the base JDK but might differ from those of Native Image. When this
+                // happens, we allocate a larger byte[] and copy over the contents of the original
+                // one at a base offset that keeps the other offsets long-aligned.
                 int longIndexScale = ConfigurationValues.getObjectLayout().getArrayIndexScale(JavaKind.Long);
                 int misalignment = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte) % longIndexScale;
                 ALIGNMENT_CORRECTION = misalignment == 0 ? 0 : longIndexScale - misalignment;
