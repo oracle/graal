@@ -810,7 +810,6 @@ class NativeImageVM(GraalVm):
         executable_name_args = ['-H:Name=' + instrumentation_image_name, '-H:+UseOldDebugInfo'] # GR-43934
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
-        pgo_args += ['-H:+AOTInliner']
         instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
             instrument_args += ['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}']
@@ -848,7 +847,6 @@ class NativeImageVM(GraalVm):
         executable_name_args = ['-H:Name=' + config.final_image_name, '-H:+UseOldDebugInfo'] # GR-43934
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
-        pgo_args += ['-H:+AOTInliner']
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
         if self.cached_jdk_pgo:
