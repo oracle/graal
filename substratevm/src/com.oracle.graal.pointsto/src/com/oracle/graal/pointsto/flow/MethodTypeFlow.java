@@ -285,7 +285,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             throwSealedError();
         }
 
-        forceReparseOnCreation = forceReparse | forceReparseOnCreation;
+        forceReparseOnCreation = forceReparse || forceReparseOnCreation;
 
         assert !(newGraphKind == MethodFlowsGraph.GraphKind.STUB && graphKind == MethodFlowsGraph.GraphKind.FULL) : "creating less strict graph";
         MethodFlowsGraph.GraphKind originalGraphKind = graphKind;
