@@ -57,7 +57,7 @@ public class ConfigurationHelpCommand extends ConfigurationCommand {
 
     @Override
     protected String getDescription0() {
-        return "                      prints this help message.\n";
+        return "                      prints this help message." + System.lineSeparator();
     }
 
     protected String getToolName() {
@@ -65,7 +65,7 @@ public class ConfigurationHelpCommand extends ConfigurationCommand {
     }
 
     protected String getToolDescription() {
-        return "This tool can be used to prepare a configuration of JNI, reflection and\n" +
+        return "This tool can be used to prepare a configuration of JNI, reflection and" + System.lineSeparator() +
                         "resources for a native-image build.";
     }
 }
