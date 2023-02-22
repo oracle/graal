@@ -52,11 +52,7 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -292,40 +288,6 @@ final class ExceptionAccessor extends Accessor {
         @SuppressWarnings({"unchecked", "unused"})
         private static <E extends Throwable> E silenceException(Class<E> type, Throwable ex) throws E {
             throw (E) ex;
-        }
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class InteropList implements TruffleObject {
-
-        private final Object[] items;
-
-        InteropList(Object[] items) {
-            this.items = items;
-        }
-
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        long getArraySize() {
-            return items.length;
-        }
-
-        @ExportMessage
-        boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < items.length;
-        }
-
-        @ExportMessage
-        Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (index < 0 || index >= items.length) {
-                throw InvalidArrayIndexException.create(index);
-            }
-            return items[(int) index];
         }
     }
 }
