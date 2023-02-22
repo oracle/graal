@@ -27,6 +27,8 @@ package com.oracle.svm.core.heap;
 import java.lang.ref.Cleaner;
 import java.lang.ref.ReferenceQueue;
 
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -150,8 +152,26 @@ final class Target_jdk_internal_ref_CleanerImpl {
 
 @TargetClass(className = "jdk.internal.ref.PhantomCleanable")
 final class Target_jdk_internal_ref_PhantomCleanable {
+    /*
+     * Unlink from the list for the image heap so that we cannot reach Cleanables irrelevant for the
+     * image heap which could fail the image build; we reset the list head anyway.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = HolderObjectFieldTransformer.class) //
+    Target_jdk_internal_ref_PhantomCleanable prev;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = HolderObjectFieldTransformer.class) //
+    Target_jdk_internal_ref_PhantomCleanable next;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = HolderObjectFieldTransformer.class) //
+    Target_jdk_internal_ref_PhantomCleanable list;
+
     @Alias
     native boolean isListEmpty();
+}
+
+final class HolderObjectFieldTransformer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        return receiver;
+    }
 }
 
 // Removed by JDK-8251861
