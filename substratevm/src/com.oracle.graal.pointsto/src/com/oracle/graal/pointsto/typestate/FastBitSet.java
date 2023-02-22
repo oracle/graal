@@ -4,45 +4,45 @@ import java.util.BitSet;
 import com.oracle.graal.pointsto.typestate.SmallBitSet;
 
 public class FastBitSet {
-  public FastBitSet(BitSet other) {
-    cardinality = other.cardinality();
-    // System.out.printf("cardinality %d\n", cardinality);
-    if (isSmall()) {
-      set = new SmallBitSet(other);
-    } else {
-      set = other;
+    public FastBitSet(BitSet other) {
+        cardinality = other.cardinality();
+        // System.out.printf("cardinality %d\n", cardinality);
+        if (isSmall()) {
+            set = new SmallBitSet(other);
+        } else {
+            set = other;
+        }
     }
-  }
 
-  public BitSet asBitSet() {
-    if (isSmall()) {
-      return ((SmallBitSet)this.set).asBitSet();
+    public BitSet asBitSet() {
+        if (isSmall()) {
+            return ((SmallBitSet)this.set).asBitSet();
+        }
+        return (BitSet)set;
     }
-    return (BitSet)set;
-  }
 
-  public boolean get(int idx) {
-    if (isSmall()) {
-      return ((SmallBitSet)this.set).get(idx);
+    public boolean get(int idx) {
+        if (isSmall()) {
+            return ((SmallBitSet)this.set).get(idx);
+        }
+        return ((BitSet)set).get(idx);
     }
-    return ((BitSet)set).get(idx);
-  }
 
-  public int nextSetBit() {
-    return nextSetBit(0);
-  }
-
-  public int nextSetBit(int fromIndex) {
-    if (isSmall()) {
-      return ((SmallBitSet)this.set).nextSetBit(fromIndex);
+    public int nextSetBit() {
+        return nextSetBit(0);
     }
-    return ((BitSet)set).nextSetBit(fromIndex);
-  }
 
-  private boolean isSmall() {
-    return cardinality <= SmallBitSet.MAX_CARDINALITY;
-  }
+    public int nextSetBit(int fromIndex) {
+        if (isSmall()) {
+            return ((SmallBitSet)this.set).nextSetBit(fromIndex);
+        }
+        return ((BitSet)set).nextSetBit(fromIndex);
+    }
 
-  int cardinality;
-  Object set;
+    private boolean isSmall() {
+        return cardinality <= SmallBitSet.MAX_CARDINALITY;
+    }
+
+    int cardinality;
+    Object set;
 }
