@@ -472,6 +472,26 @@ public class PythonTests extends RegexTestBase {
         test("(x)?(?(1)a|b)(?<=b)", "", "b", 0, true, 0, 1, -1, -1, -1);
     }
 
+    public void testIgnoreCase() {
+        // \u00b5 (micro sign) and \u03bc (greek small letter mu) are considered equivalent when
+        // either of them appears in the pattern and the other in the text.
+        test("(\u00b5)\u00b5", "i", "\u00b5\u03bc", 0, true, 0, 2, 0, 1, 1);
+        test("(\u03bc)\u00b5", "i", "\u00b5\u03bc", 0, true, 0, 2, 0, 1, 1);
+        // However, these characters are not considered equal when matched using a backreference.
+        test("(\u00b5)\\1", "i", "\u00b5\u03bc", 0, false);
+        test("(\u03bc)\\1", "i", "\u00b5\u03bc", 0, false);
+        // This is because these two characters receive special care when compiling a regular
+        // expression. They are considered equivalent because they map to the same Uppercase
+        // character. However, when two strings are compared at runtime during the execution of a
+        // backreference, the characters are only tested by comparing their Lowercase mappings.
+
+        // We used to mistakenly consider a character equivalent to the first character of its
+        // extended case mapping. The ligature \ufb00 uppercases to FF and and the ligature \ufb01
+        // uppercases to FI. Both should be distinct from each other and from the letter F.
+        test("\ufb00", "i", "\ufb01", 0, false);
+        test("\ufb00", "i", "F", 0, false);
+    }
+
     @Test
     public void testSyntaxErrors() {
         // Generated using sre from CPython 3.10.8
