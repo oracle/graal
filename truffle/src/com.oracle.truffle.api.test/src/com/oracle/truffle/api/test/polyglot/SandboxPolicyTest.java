@@ -891,7 +891,7 @@ public class SandboxPolicyTest {
             }
         }
 
-        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowArrayAccess(true).build();
+        hostAccess = HostAccess.newBuilder(HostAccess.UNTRUSTED).allowArrayAccess(true).build();
         try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
@@ -901,7 +901,7 @@ public class SandboxPolicyTest {
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
             }
         }
-        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowListAccess(true).build();
+        hostAccess = HostAccess.newBuilder(HostAccess.UNTRUSTED).allowListAccess(true).build();
         try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
@@ -911,7 +911,7 @@ public class SandboxPolicyTest {
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
             }
         }
-        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowBufferAccess(true).build();
+        hostAccess = HostAccess.newBuilder(HostAccess.UNTRUSTED).allowBufferAccess(true).build();
         try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
@@ -921,7 +921,7 @@ public class SandboxPolicyTest {
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
             }
         }
-        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowIterableAccess(true).build();
+        hostAccess = HostAccess.newBuilder(HostAccess.UNTRUSTED).allowIterableAccess(true).build();
         try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
@@ -931,7 +931,7 @@ public class SandboxPolicyTest {
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
             }
         }
-        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowIteratorAccess(true).build();
+        hostAccess = HostAccess.newBuilder(HostAccess.UNTRUSTED).allowIteratorAccess(true).build();
         try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
@@ -941,7 +941,7 @@ public class SandboxPolicyTest {
                 assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
             }
         }
-        hostAccess = HostAccess.newBuilder(HostAccess.ISOLATED).allowMapAccess(true).build();
+        hostAccess = HostAccess.newBuilder(HostAccess.UNTRUSTED).allowMapAccess(true).build();
         try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {

@@ -1834,7 +1834,8 @@ public final class Context implements AutoCloseable {
                 hostAccess = switch (useSandboxPolicy) {
                     case TRUSTED -> allowAllAccess ? HostAccess.ALL : HostAccess.EXPLICIT;
                     case CONSTRAINED -> HostAccess.CONSTRAINED;
-                    case ISOLATED, UNTRUSTED -> HostAccess.ISOLATED;
+                    case ISOLATED -> HostAccess.ISOLATED;
+                    case UNTRUSTED -> HostAccess.UNTRUSTED;
                     default -> throw new IllegalArgumentException(String.valueOf(useSandboxPolicy));
                 };
             }

@@ -220,6 +220,9 @@ public enum SandboxPolicy {
      * In addition to the {@link #ISOLATED} constraints, the {@code UNTRUSTED} sandbox policy adds
      * the following requirements:
      * <ul>
+     * <li>If {@link HostAccess} is not specified, the {@link HostAccess#UNTRUSTED} is used.
+     * Otherwise, the specified {@link HostAccess} must meet all the constraints of the
+     * {@link #ISOLATED} sandbox policy.</li>
      * <li>The {@code engine.UntrustedCodeMitigation} option is preset to {@code software} if it has
      * not been explicitly set.</li>
      * <li>The {@code sandbox.MaxCPUTime}, {@code sandbox.MaxHeapMemory},

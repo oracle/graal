@@ -245,6 +245,7 @@ fld public final static org.graalvm.polyglot.HostAccess EXPLICIT
 fld public final static org.graalvm.polyglot.HostAccess ISOLATED
 fld public final static org.graalvm.polyglot.HostAccess NONE
 fld public final static org.graalvm.polyglot.HostAccess SCOPED
+fld public final static org.graalvm.polyglot.HostAccess UNTRUSTED
 innr public abstract interface static !annotation DisableMethodScoping
 innr public abstract interface static !annotation Export
 innr public abstract interface static !annotation Implementable

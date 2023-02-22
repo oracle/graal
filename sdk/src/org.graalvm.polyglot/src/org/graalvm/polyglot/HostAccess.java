@@ -84,8 +84,9 @@ import org.graalvm.collections.MapCursor;
  * <li>{@link #CONSTRAINED} host access policy suitable for a context with
  * {@link SandboxPolicy#CONSTRAINED CONSTRAINED} sandbox policy.
  * <li>{@link #ISOLATED} host access policy suitable for a context with
- * {@link SandboxPolicy#ISOLATED ISOLATED} and {@link SandboxPolicy#UNTRUSTED UNTRUSTED} sandbox
- * policy.
+ * {@link SandboxPolicy#ISOLATED ISOLATED} sandbox policy.
+ * <li>{@link #UNTRUSTED} host access policy suitable for a context with
+ * {@link SandboxPolicy#UNTRUSTED UNTRUSTED} sandbox policy.
  * </ul>
  * Custom host access policies can be created using {@link #newBuilder()}. The builder allows to
  * specify a custom export annotation and allowed and denied methods or fields.
@@ -245,9 +246,8 @@ public final class HostAccess {
                     allowMutableTargetMappings().name("HostAccess.CONSTRAINED").build();
 
     /**
-     * Predefined host access policy used by Context with an {@link SandboxPolicy#ISOLATED} or
-     * {@link SandboxPolicy#UNTRUSTED} sandbox policies when the host access policy is not
-     * explicitly specified by the embedder.
+     * Predefined host access policy used by Context with an {@link SandboxPolicy#ISOLATED} sandbox
+     * policy when the host access policy is not explicitly specified by the embedder.
      * <p>
      * Equivalent of using the following builder configuration:
      *
@@ -262,6 +262,22 @@ public final class HostAccess {
      */
     public static final HostAccess ISOLATED = HostAccess.newBuilder(CONSTRAINED).//
                     methodScoping(true).build();
+
+    /**
+     * Predefined host access policy used by Context with an {@link SandboxPolicy#UNTRUSTED} sandbox
+     * policy when the host access policy is not explicitly specified by the embedder.
+     * <p>
+     * Equivalent of using the following builder configuration:
+     *
+     * <pre>
+     * <code>
+     * HostAccess.newBuilder(ISOLATED).build();
+     * </code>
+     * </pre>
+     *
+     * @since 23.0
+     */
+    public static final HostAccess UNTRUSTED = HostAccess.newBuilder(ISOLATED).build();
 
     /**
      * List of default host object mappings of mutable target types available in
