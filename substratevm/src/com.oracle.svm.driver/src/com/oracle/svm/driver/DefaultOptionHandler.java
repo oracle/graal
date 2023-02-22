@@ -109,7 +109,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (limitModulesArgs == null) {
                     NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
                 }
-                nativeImage.addImageBuilderJavaArgs(limitModulesOption, limitModulesArgs);
                 nativeImage.addLimitedModules(limitModulesArgs);
                 return true;
             case "-jar":
@@ -211,7 +210,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (limitModulesArgs.isEmpty()) {
                 NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
             }
-            nativeImage.addImageBuilderJavaArgs(limitModulesOption, limitModulesArgs);
             nativeImage.addLimitedModules(limitModulesArgs);
             return true;
         }
