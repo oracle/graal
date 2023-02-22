@@ -46,7 +46,7 @@ public final class JVMCIVersionCheck {
     /**
      * Minimum JVMCI version supported by Graal.
      */
-    private static final Version JVMCI_MIN_VERSION = new Version(22, 3, 11);
+    private static final Version JVMCI_MIN_VERSION = new Version(23, 0, 7);
 
     /**
      * Minimum Java release supported by Graal.
@@ -193,8 +193,13 @@ public final class JVMCIVersionCheck {
                     if (!quiet) {
                         System.out.println(String.format("%d,%d,%d", v.major, v.minor, v.build));
                     }
-                    if (v.isLessThan(minVersion)) {
-                        failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, minVersion);
+                    Version actualMinVersion = minVersion;
+                    if (javaSpecVersion.equals("19")) {
+                        // Last JVMCI update for JDK 19
+                        actualMinVersion = new Version(23, 0, 5);
+                    }
+                    if (v.isLessThan(actualMinVersion)) {
+                        failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, actualMinVersion);
                     }
                     return;
                 }

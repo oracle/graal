@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,6 +53,7 @@ import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.UnknownVersionException;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.DistributionType;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
@@ -225,6 +226,11 @@ public class CatalogIterable implements ComponentIterable {
                 }
                 if (info == null) {
                     // must be already initialized
+                    ComponentInfo localInfo = input.getLocalRegistry().findComponent(id, m[0]);
+                    if (localInfo != null && localInfo.getDistributionType() == DistributionType.BUNDLED) {
+                        // bundled components are pre-installed and do not need to be downloaded
+                        return createComponentParam(s, localInfo, false);
+                    }
                     Version gv = input.getLocalRegistry().getGraalVersion();
                     Version.Match selector = gv.match(Version.Match.Type.INSTALLABLE);
                     Collection<ComponentInfo> infos = getRegistry().loadComponents(id, selector, false);

@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
     "version" : "23.0.0",
-    "mxversion": "6.14.18",
+    "mxversion": "6.15.3",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "d28f52abad40c39cf56a4d27bf6c5c63c9098174",
+                "version": "7d2592e6c49f0663190a0f972412adb08decb56f",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "d2bd4feddb425c0daa223d4cd9d00f3164321174",
+                "version": "2379475fa7fb0c3f43a7c9a48c6102a6aaa276a5",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "d2d18e57fff2a752a76749b826a44647c254d361",
+                "version": "353ead4346ec5909151b8e59813ead5b7fb8ebd1",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -99,7 +99,7 @@ suite = {
             "sourceDirs" : ["src"],
             "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
-            "checkstyleVersion" : "8.36.1",
+            "checkstyleVersion" : "10.7.0",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
                 "truffle:TruffleJSON",

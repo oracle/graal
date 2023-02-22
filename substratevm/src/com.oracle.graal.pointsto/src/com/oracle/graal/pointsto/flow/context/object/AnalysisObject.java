@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -211,10 +211,6 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return fieldTypeStore.unsafeWriteSinkFlow(bb);
     }
 
-    public FieldTypeStore getInstanceFieldTypeStore(PointsToAnalysis bb, AnalysisField field) {
-        return getInstanceFieldTypeStore(bb, null, null, field);
-    }
-
     /** Returns the instance field flow corresponding to a filed of the object's type. */
     public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, AnalysisField field, boolean isStore) {
         return getInstanceFieldFlow(bb, null, null, field, isStore);
@@ -235,8 +231,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         checkField(bb, objectFlow, context, field);
 
         if (instanceFieldsTypeStore == null) {
-            AnalysisField[] fields = type.getInstanceFields(true);
-            INSTANCE_FIELD_TYPE_STORE_UPDATER.compareAndSet(this, null, new AtomicReferenceArray<>(fields.length));
+            INSTANCE_FIELD_TYPE_STORE_UPDATER.compareAndSet(this, null, new AtomicReferenceArray<>(type.getInstanceFields(true).length));
         }
 
         AnalysisError.guarantee(field.getPosition() >= 0 && field.getPosition() < instanceFieldsTypeStore.length());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,6 @@ import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
-import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -161,6 +160,18 @@ public class CompileQueue {
         CompilationResult compile(DebugContext debug, HostedMethod method, CompilationIdentifier identifier, CompileReason reason, RuntimeConfiguration config);
     }
 
+    public static class ParseHooks {
+        private final CompileQueue compileQueue;
+
+        protected ParseHooks(CompileQueue compileQueue) {
+            this.compileQueue = compileQueue;
+        }
+
+        protected PhaseSuite<HighTierContext> getAfterParseSuite() {
+            return compileQueue.afterParseCanonicalization();
+        }
+    }
+
     protected final HostedUniverse universe;
     private final Boolean deoptimizeAll;
     protected CompletionExecutor executor;
@@ -177,6 +188,7 @@ public class CompileQueue {
     protected final FeatureHandler featureHandler;
     protected final GlobalMetrics metricValues = new GlobalMetrics();
     private final AnalysisToHostedGraphTransplanter graphTransplanter;
+    private final ParseHooks defaultParseHooks;
 
     private volatile boolean inliningProgress;
 
@@ -352,6 +364,7 @@ public class CompileQueue {
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
         this.graphTransplanter = createGraphTransplanter();
+        this.defaultParseHooks = new ParseHooks(this);
 
         callForReplacements(debug, runtimeConfig);
     }
@@ -561,23 +574,26 @@ public class CompileQueue {
         System.out.println("Number of deopt during calls entries       ; " + totalNumDuringCallEntryPoints);
     }
 
+    public CompletionExecutor getExecutor() {
+        return executor;
+    }
+
+    public final void runOnExecutor(Runnable runnable) throws InterruptedException {
+        executor.init();
+        runnable.run();
+        executor.start();
+        executor.complete();
+        executor.shutdown();
+    }
+
     protected void parseAll() throws InterruptedException {
         /*
          * We parse ahead of time compiled methods before deoptimization targets so that we remove
          * deoptimization entrypoints which are determined to be unneeded. This both helps the
          * performance of deoptimization target methods and also reduces their code size.
          */
-        executor.init();
-        parseAheadOfTimeCompiledMethods();
-        executor.start();
-        executor.complete();
-        executor.shutdown();
-
-        executor.init();
-        parseDeoptimizationTargetMethods();
-        executor.start();
-        executor.complete();
-        executor.shutdown();
+        runOnExecutor(this::parseAheadOfTimeCompiledMethods);
+        runOnExecutor(this::parseDeoptimizationTargetMethods);
     }
 
     /**
@@ -622,16 +638,19 @@ public class CompileQueue {
         }
     }
 
+    public boolean isRegisteredDeoptTarget(HostedMethod method) {
+        return SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(method);
+    }
+
     private void parseDeoptimizationTargetMethods() {
         if (parseOnce) {
             /*
              * Deoptimization target code for all methods that were manually marked as
              * deoptimization targets.
              */
-            universe.getMethods().stream().filter(method -> {
-                HostedMethod deoptTarget = method.getMultiMethod(DEOPT_TARGET_METHOD);
-                if (deoptTarget != null) {
-                    return deoptTarget.wrapped.isImplementationInvoked();
+            universe.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(method -> {
+                if (method != null) {
+                    return isRegisteredDeoptTarget(method);
                 }
                 return false;
             }).forEach(method -> ensureParsed(method.getMultiMethod(DEOPT_TARGET_METHOD), null, new EntryPointReason()));
@@ -640,7 +659,7 @@ public class CompileQueue {
              * Deoptimization target code for all methods that were manually marked as
              * deoptimization targets.
              */
-            universe.getMethods().stream().filter(method -> SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(method)).forEach(
+            universe.getMethods().stream().filter(this::isRegisteredDeoptTarget).forEach(
                             method -> ensureParsed(method.getOrCreateMultiMethod(DEOPT_TARGET_METHOD), null, new EntryPointReason()));
         }
         /*
@@ -671,20 +690,17 @@ public class CompileQueue {
             inliningProgress = false;
             round++;
             try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d%n", round)) {
-
-                executor.init();
-                universe.getMethods().forEach(method -> {
-                    assert method.isOriginalMethod();
-                    for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                        HostedMethod hMethod = (HostedMethod) multiMethod;
-                        if (hMethod.compilationInfo.getCompilationGraph() != null) {
-                            executor.execute(new TrivialInlineTask(hMethod));
+                runOnExecutor(() -> {
+                    universe.getMethods().forEach(method -> {
+                        assert method.isOriginalMethod();
+                        for (MultiMethod multiMethod : method.getAllMultiMethods()) {
+                            HostedMethod hMethod = (HostedMethod) multiMethod;
+                            if (hMethod.compilationInfo.getCompilationGraph() != null) {
+                                executor.execute(new TrivialInlineTask(hMethod));
+                            }
                         }
-                    }
+                    });
                 });
-                executor.start();
-                executor.complete();
-                executor.shutdown();
             }
         } while (inliningProgress);
     }
@@ -818,17 +834,9 @@ public class CompileQueue {
          * deoptimization entrypoints which are determined to be unneeded. This both helps the
          * performance of deoptimization target methods and also reduces their code size.
          */
-        executor.init();
-        scheduleEntryPoints();
-        executor.start();
-        executor.complete();
-        executor.shutdown();
+        runOnExecutor(this::scheduleEntryPoints);
 
-        executor.init();
-        scheduleDeoptTargets();
-        executor.start();
-        executor.complete();
-        executor.shutdown();
+        runOnExecutor(this::scheduleDeoptTargets);
     }
 
     public void scheduleEntryPoints() {
@@ -840,11 +848,13 @@ public class CompileQueue {
                 }
 
                 HostedMethod hMethod = (HostedMethod) multiMethod;
-                if (!ignoreEntryPoint(hMethod) && (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod)) ||
+                if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
                                 hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isImplementationInvoked()) {
                     ensureCompiled(hMethod, new EntryPointReason());
                 }
                 if (hMethod.wrapped.isVirtualRootMethod()) {
+                    MultiMethod.MultiMethodKey key = hMethod.getMultiMethodKey();
+                    assert key != DEOPT_TARGET_METHOD && key != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD : "unexpected method as virtual root " + hMethod;
                     for (HostedMethod impl : hMethod.getImplementations()) {
                         VMError.guarantee(impl.wrapped.isImplementationInvoked());
                         ensureCompiled(impl, new EntryPointReason());
@@ -857,15 +867,23 @@ public class CompileQueue {
     public void scheduleDeoptTargets() {
         for (HostedMethod method : universe.getMethods()) {
             HostedMethod deoptTarget = method.getMultiMethod(DEOPT_TARGET_METHOD);
-            if (deoptTarget != null && deoptTarget.wrapped.isImplementationInvoked()) {
-                ensureCompiled(deoptTarget, new EntryPointReason());
+            if (deoptTarget != null) {
+                boolean isDeoptTarget;
+                if (parseOnce) {
+                    /*
+                     * Not all methods will be deopt targets since the optimization of runtime
+                     * compiled methods may eliminate FrameStates.
+                     */
+                    isDeoptTarget = isRegisteredDeoptTarget(deoptTarget);
+                } else {
+                    isDeoptTarget = isRegisteredDeoptTarget(method) || method.compilationInfo.canDeoptForTesting;
+                    assert isDeoptTarget : "unexpected Deopt Target " + deoptTarget;
+                }
+                if (isDeoptTarget) {
+                    ensureCompiled(deoptTarget, new EntryPointReason());
+                }
             }
         }
-    }
-
-    @SuppressWarnings("unused")
-    protected boolean ignoreEntryPoint(HostedMethod method) {
-        return false;
     }
 
     protected void ensureParsed(HostedMethod method, HostedMethod callerMethod, CompileReason reason) {
@@ -881,17 +899,23 @@ public class CompileQueue {
     }
 
     protected final void doParse(DebugContext debug, ParseTask task) {
-        ParseFunction fun = task.method.compilationInfo.getCustomParseFunction();
-        if (fun == null) {
-            fun = this::defaultParseFunction;
+        ParseFunction customFunction = task.method.compilationInfo.getCustomParseFunction();
+        if (customFunction != null) {
+            customFunction.parse(debug, task.method, task.reason, runtimeConfig);
+        } else {
+
+            ParseHooks hooks = task.method.compilationInfo.getCustomParseHooks();
+            if (hooks == null) {
+                hooks = defaultParseHooks;
+            }
+            defaultParseFunction(debug, task.method, task.reason, runtimeConfig, hooks);
         }
-        fun.parse(debug, task.method, task.reason, runtimeConfig);
     }
 
     private final boolean parseOnce = SubstrateOptions.parseOnce();
 
     @SuppressWarnings("try")
-    private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config) {
+    private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config, ParseHooks hooks) {
         if (method.getAnnotation(NodeIntrinsic.class) != null) {
             throw VMError.shouldNotReachHere("Parsing method annotated with @" + NodeIntrinsic.class.getSimpleName() + ": " +
                             method.format("%H.%n(%p)") +
@@ -938,7 +962,7 @@ public class CompileQueue {
                     graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
                 }
 
-                PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
+                PhaseSuite<HighTierContext> afterParseSuite = hooks.getAfterParseSuite();
                 afterParseSuite.apply(graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
 
                 method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
@@ -1088,6 +1112,7 @@ public class CompileQueue {
 
     protected void ensureCompiled(HostedMethod method, CompileReason reason) {
         CompilationInfo compilationInfo = method.compilationInfo;
+        assert method.getMultiMethodKey() != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
 
         if (printMethodHistogram) {
             if (reason instanceof DirectCallReason) {
@@ -1199,11 +1224,11 @@ public class CompileQueue {
 
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());
 
-                try (Indent indent = debug.logAndIndent("compile %s", method);
-                                DebugCloseable l = graph.getOptimizationLog().listen(new StableMethodNameFormatter(backend.getProviders(), graph.getDebug()))) {
+                try (Indent indent = debug.logAndIndent("compile %s", method)) {
                     GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), method.getProfilingInfo(), suites, lirSuites, result,
                                     new HostedCompilationResultBuilderFactory(), false);
                 }
+                graph.getOptimizationLog().emit(new StableMethodNameFormatter(backend.getProviders(), debug));
                 method.compilationInfo.numNodesAfterCompilation = graph.getNodeCount();
 
                 if (method.isDeoptTarget()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -56,7 +56,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
     protected static final int INLINE_CACHE_SIZE = 5;
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"isSameObject(pointer.getObject(), cachedDescriptor)", "cachedDescriptor != null",
-                    "pointer.getOffset() == 0"}, assumptions = "singleContextAssumption()")
+                    "pointer.getOffset() == 0", "isSingleContext($node)"})
     protected static LLVMFunctionDescriptor doDirectCached(@SuppressWarnings("unused") LLVMManagedPointer pointer,
                     @Cached("asFunctionDescriptor(pointer.getObject())") LLVMFunctionDescriptor cachedDescriptor) {
         return cachedDescriptor;
@@ -75,7 +75,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
     }
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)",
-                    "cachedDescriptor != null"}, assumptions = "singleContextAssumption()")
+                    "cachedDescriptor != null", "isSingleContext($node)"})
     protected static LLVMFunctionDescriptor doHandleCached(@SuppressWarnings("unused") LLVMNativePointer pointer,
                     @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
                     @Cached("lookupFunction(pointer)") LLVMFunctionDescriptor cachedDescriptor) {
@@ -83,7 +83,7 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
     }
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)",
-                    "cachedDescriptor == null"}, assumptions = "singleContextAssumption()")
+                    "cachedDescriptor == null", "isSingleContext($node)"})
     protected static LLVMNativePointer doNativeFunctionCached(LLVMNativePointer pointer,
                     @Cached("pointer.asNative()") @SuppressWarnings("unused") long cachedAddress,
                     @Cached("lookupFunction(pointer)") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor) {

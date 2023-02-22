@@ -7,6 +7,8 @@ permalink: /docs/getting-started/macos/
 
 ## Installation on macOS Platforms
 
+We provide GraalVM Community Edition for macOS on AMD64 (Intel) and AArch64 architectures. 
+
 GraalVM Community Edition can be installed for a single user and administrator privileges are not required.
 However, if GraalVM is meant to become a default JDK, administrator privileges are required.
 
@@ -16,22 +18,25 @@ Note that in macOS, the JDK installation path is: `/Library/Java/JavaVirtualMach
 
 Follow these steps to install GraalVM Community on the macOS operating system:
 
-1. Navigate to [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select Java 11 based or Java 17 based distribution for macOS, and download.
+1. Navigate to [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select **11**, **17** or **19** for the Java version, **macOS** for the operating system **amd64** or **aarch64** for the architecture, and download.
+
 2. Unzip the archive.
-  ```shell
-   tar -xzf graalvm-ce-java<version>-darwin-amd64-<version>.tar.gz
-  ```
-  Alternatively, open the file in Finder.
-  > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+    ```shell
+    tar -xzf graalvm-ce-java<version>-darwin-<architecture>-<version>.tar.gz
+    ```
+    Alternatively, open the file in Finder.
+    > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
     ```shell
     sudo xattr -r -d com.apple.quarantine /path/to/graalvm
     ```
 
 3.  Move the downloaded package to its proper location, the `/Library/Java/JavaVirtualMachines` directory. Since this is a system directory, `sudo` is required:
-  ```shell
-  sudo mv graalvm-ce-java<version>-<version> /Library/Java/JavaVirtualMachines
-  ```
-To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
+    ```shell
+    sudo mv graalvm-ce-java<version>-<version> /Library/Java/JavaVirtualMachines
+    ```
+
+  To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
+
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
   - Point the `PATH` environment variable to the GraalVM `bin` directory:
     ```shell
@@ -41,6 +46,7 @@ To verify if the move is successful and to get a list of all installed JDKs, run
     ```shell
     export JAVA_HOME=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home
     ```
+
 5. To check whether the installation was successful, run the `java -version` command.
 
 Optionally, you can specify GraalVM as the default JRE or JDK installation in your Java IDE.

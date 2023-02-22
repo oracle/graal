@@ -58,19 +58,19 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 4347,
-          lineEnd   = 4385,
-          commit    = "2afb4c3327b6830a009ee1ab8a1eb7803ef53007",
+          lineStart = 4455,
+          lineEnd   = 4493,
+          commit    = "db483a38a815f85bd9668749674b5f0f6e4b27b4",
           sha1      = "b7579c8da82c51fb00317be26f7fa7d4ed1db927")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 2964,
-          lineEnd   = 2973,
-          commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
+          lineStart = 3008,
+          lineEnd   = 3017,
+          commit    = "db483a38a815f85bd9668749674b5f0f6e4b27b4",
           sha1      = "123de736fb13a15ffa6864d86b0e9d52123248a0")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 3161,
-          lineEnd   = 3471,
-          commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
+          lineStart = 3205,
+          lineEnd   = 3515,
+          commit    = "db483a38a815f85bd9668749674b5f0f6e4b27b4",
           sha1      = "e398a3781e3492a5625200e04ce934d022d3b2dc")
 // @formatter:on
 public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstruction {

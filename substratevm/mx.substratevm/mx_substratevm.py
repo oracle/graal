@@ -351,30 +351,7 @@ def truffle_unittest_task(extra_image_args=None):
     native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + compiler_args)
 
 
-def _check_catch_files():
-    """
-    Verifies that there is a "catch_files" array in common.json at the root of
-    the repository containing this suite and that the array contains elements
-    matching NativeImageOptions.DEFAULT_ERROR_FILE_NAME.
-    """
-
-    expected_default_error_file_name_pattern = "svm_err_b_%t_pid%p.md"
-    expected_catch_files_entry = " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)"
-
-    source_path = join(suite.dir, 'src', 'com.oracle.svm.hosted', 'src', 'com', 'oracle', 'svm', 'hosted', 'NativeImageOptions.java')
-    actual_pattern = mx_compiler.find_field_value(source_path, 'DEFAULT_ERROR_FILE_NAME')
-    if expected_default_error_file_name_pattern != actual_pattern:
-        mx.abort('DEFAULT_ERROR_FILE_NAME pattern has changed (expect: "{}", got: "{}")'.format(expected_default_error_file_name_pattern, actual_pattern))
-
-    catch_files, common_path = mx_compiler.get_catch_files_and_common_path()
-    if not expected_catch_files_entry in catch_files:
-        mx.abort('Could not find catch_files entry in {} matching "{}"'.format(common_path, expected_catch_files_entry))
-
-
 def svm_gate_body(args, tasks):
-    with Task('CheckCatchFiles', tasks, tags=[mx_gate.Tags.style]) as t:
-        if t: _check_catch_files()
-
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
@@ -917,7 +894,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     stability="earlyadopter",
     jlink=False,
-    installable=True,
+    installable=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -932,7 +909,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=[],
     builder_jar_distributions=['substratevm:SVM_LIBFFI'],
     support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
-    installable=True,
+    installable=False,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -944,7 +921,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     support_distributions=['substratevm:SVM_STATIC_LIBRARIES_SUPPORT'],
-    installable=True,
+    installable=False,
 ))
 
 def _native_image_launcher_main_class():
@@ -1038,7 +1015,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     support_distributions=['substratevm:NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT'],
-    installable=True,
+    installable=False,
     priority=1,
     stability="earlyadopter",
     jlink=False,
@@ -1223,7 +1200,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     jlink=False,
     installable_id='native-image',
-    installable=True,
+    installable=False,
     priority=10,
 ))
 

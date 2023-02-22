@@ -239,9 +239,13 @@ public @interface Specialization {
      * result for each combination of the enclosing node instance and the bound input values.
      * </p>
      * <p>
-     * If a guard expression does not bind any dynamic input parameters then the DSL assumes that
-     * the result will not change for this node after specialization instantiation. The DSL asserts
-     * this assumption if assertions are enabled (-ea).
+     * If a guard expression does not bind any dynamic input parameters then the DSL, by default,
+     * assumes that the result will not change for this node after specialization instantiation. In
+     * other words the DSL assumes idempotence for this guard on the fast-path, by default. The
+     * {@link Idempotent} and {@link NonIdempotent} annotations may be used to configure this
+     * explicitly. The DSL will also emit warnings in case the use of such annotations is
+     * recommended. If assertions are enabled (-ea), then the DSL will assert that the idempotence
+     * property does hold at runtime.
      * </p>
      * <p>
      * Guard expressions are defined using a subset of Java. This subset includes field/parameter

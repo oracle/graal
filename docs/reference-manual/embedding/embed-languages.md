@@ -401,11 +401,11 @@ native-image --language:python -cp . HelloPolyglot
 ./hellopolyglot
 ```
 
-In case an installed GraalVM is available, it is possible to use language homes from the GraalVM home directory. A GraalVM home can be specified at runtime using the option `-Dorg.graalvm.home=$JAVA_HOME`, assuming the environment variable `JAVA_HOME` is populated with an absolute path to the GraalVM home directory.
+In case an installed GraalVM is available, it is possible to use language homes from the GraalVM home directory. A GraalVM home can be specified at runtime using the option `-Dorg.graalvm.home=$GRAALVM_HOME`, assuming the environment variable `GRAALVM_HOME` is populated with an absolute path to the GraalVM home directory.
 Language homes are automatically discovered in the specified directory. For example:
 
 ```shell
-./hellopolyglot -Dorg.graalvm.home=$JAVA_HOME
+./hellopolyglot -Dorg.graalvm.home=$GRAALVM_HOME
 ```
 
 > Note: The `-Dorg.graalvm.home` option has precedence over any relative language home paths stored in the image.

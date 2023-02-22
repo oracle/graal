@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,6 +36,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
@@ -141,6 +142,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return getShortString("type", "signature");
     }
 
+    @Idempotent
     boolean haveNativeCtxExt() {
         CompilerAsserts.neverPartOfCompilation();
         return getLanguage().lookupContextExtension(NativeContextExtension.class) != null;
@@ -203,7 +205,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return callNode.call(code.getLLVMIRFunction(resolve), arguments);
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", replaces = "doDirectCodeFast", guards = {"descriptor == cachedDescriptor", "callNode != null"}, assumptions = "singleContextAssumption()")
+    @Specialization(limit = "INLINE_CACHE_SIZE", replaces = "doDirectCodeFast", guards = {"descriptor == cachedDescriptor", "callNode != null", "isSingleContext($node)"})
     protected static Object doDirectFunction(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("descriptor") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
                     @Cached("cachedDescriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,
@@ -257,7 +259,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
     @GenerateAOT.Exclude
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isNativeFunctionSlowPath()",
-                    "haveNativeCtxExt()"}, assumptions = "singleContextAssumption()")
+                    "haveNativeCtxExt()", "isSingleContext($node)"})
     protected Object doCachedNativeFunction(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor,
                     Object[] arguments,
                     @Cached("descriptor") LLVMFunctionDescriptor cachedDescriptor,
@@ -275,7 +277,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
     @GenerateAOT.Exclude
     @Specialization(replaces = "doCachedNativeFunction", guards = {"descriptor.getFunctionCode() == cachedFunctionCode",
-                    "cachedFunctionCode.isNativeFunctionSlowPath()"}, assumptions = "singleContextAssumption()")
+                    "cachedFunctionCode.isNativeFunctionSlowPath()", "isSingleContext($node)"})
     protected Object doCachedNativeCode(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor,
                     Object[] arguments,
                     @Cached("descriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,

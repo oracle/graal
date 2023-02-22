@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 
@@ -96,6 +97,14 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
         if (graph.getDebug().isLogEnabled()) {
             graph.getDebug().logv("InlineBeforeAnalysis: decoding " + graph.method().format("%H.%n(%p)"));
         }
+    }
+
+    @Override
+    protected InvocationPlugin getInvocationPlugin(ResolvedJavaMethod targetMethod) {
+        if (policy.tryInvocationPlugins()) {
+            return super.getInvocationPlugin(targetMethod);
+        }
+        return null;
     }
 
     @Override

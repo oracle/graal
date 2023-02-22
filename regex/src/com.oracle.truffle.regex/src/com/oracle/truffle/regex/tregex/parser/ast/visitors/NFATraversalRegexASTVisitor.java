@@ -47,6 +47,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.regex.tregex.nfa.ASTStepVisitor;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -414,7 +415,8 @@ public abstract class NFATraversalRegexASTVisitor {
         }
         if (cur.isSequence()) {
             final Sequence sequence = (Sequence) cur;
-            if (sequence.getParent().isConditionalBackReferenceGroup() && isBuildingDFA()) {
+            assert (isBuildingDFA() && getMatchedConditionGroups() != null) == this instanceof ASTStepVisitor;
+            if (sequence.getParent().isConditionalBackReferenceGroup() && isBuildingDFA() && getMatchedConditionGroups() != null) {
                 int referencedGroupNumber = sequence.getParent().asConditionalBackReferenceGroup().getReferencedGroupNumber();
                 boolean groupMatched = (getMatchedConditionGroups().get(referencedGroupNumber) && !captureGroupClears.get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber))) ||
                                 captureGroupUpdates.get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber));

@@ -125,28 +125,28 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
                         /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
-    private ArrayDataPointerConstant highsigmask = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant highsigmask = pointerConstant(16, new int[]{
             //@formatter:off
             0x00000000, 0xfffff800, 0x00000000, 0xfffff800
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant log2E = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant log2E = pointerConstant(16, new int[]{
             //@formatter:off
             0x00000000, 0x3ff72000, 0x161bb241, 0xbf5dabe1
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant highmaskY = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant highmaskY = pointerConstant(8, new int[]{
             //@formatter:off
             0x00000000, 0xfffffff8,
     });
-    private ArrayDataPointerConstant highmaskY8 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant highmaskY8 = pointerConstant(8, new int[]{
             0x00000000, 0xffffffff
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant tExp = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant tExp = pointerConstant(16, new int[]{
             //@formatter:off
             0x00000000, 0x3ff00000, 0x00000000, 0x3b700000, 0xfa5abcbf,
             0x3ff00b1a, 0xa7609f71, 0xbc84f6b2, 0xa9fb3335, 0x3ff0163d,
@@ -356,61 +356,61 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant eCoeff = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant eCoeff = pointerConstant(16, new int[]{
             //@formatter:off
             0xe78a6731, 0x3f55d87f, 0xd704a0c0, 0x3fac6b08,
     });
-    private ArrayDataPointerConstant eCoeff16 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant eCoeff16 = pointerConstant(16, new int[]{
             0x6fba4e77, 0x3f83b2ab, 0xff82c58f, 0x3fcebfbd,
     });
-    private ArrayDataPointerConstant eCoeff32 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant eCoeff32 = pointerConstant(16, new int[]{
             0xfefa39ef, 0x3fe62e42, 0x00000000, 0x00000000
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant coeffH = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant coeffH = pointerConstant(8, new int[]{
             //@formatter:off
             0x00000000, 0xbfd61a00,
     });
-    private ArrayDataPointerConstant coeffH8 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant coeffH8 = pointerConstant(8, new int[]{
             0x00000000, 0xbf5dabe1
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant highmaskLogX = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant highmaskLogX = pointerConstant(16, new int[]{
             //@formatter:off
             0xf8000000, 0xffffffff, 0x00000000, 0xfffff800
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant halfmask = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant halfmask = pointerConstant(8, new int[]{
             //@formatter:off
             0xf8000000, 0xffffffff, 0xf8000000, 0xffffffff
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant coeff = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff = pointerConstant(16, new int[]{
             //@formatter:off
             0x6dc96112, 0xbf836578, 0xee241472, 0xbf9b0301,
     });
-    private ArrayDataPointerConstant coeff16 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff16 = pointerConstant(16, new int[]{
             0x9f95985a, 0xbfb528db, 0xb3841d2a, 0xbfd619b6,
     });
-    private ArrayDataPointerConstant coeff32 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff32 = pointerConstant(16, new int[]{
             0x518775e3, 0x3f9004f2, 0xac8349bb, 0x3fa76c9b,
     });
-    private ArrayDataPointerConstant coeff48 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff48 = pointerConstant(16, new int[]{
             0x486ececc, 0x3fc4635e, 0x161bb241, 0xbf5dabe1,
     });
-    private ArrayDataPointerConstant coeff64 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff64 = pointerConstant(16, new int[]{
             0x9f95985a, 0xbfb528db, 0xf8b5787d, 0x3ef2531e,
     });
-    private ArrayDataPointerConstant coeff80 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff80 = pointerConstant(16, new int[]{
             0x486ececb, 0x3fc4635e, 0x412055cc, 0xbdd61bb2
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant lTbl = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant lTbl = pointerConstant(16, new int[]{
             //@formatter:off
             0x00000000, 0x3ff00000, 0x00000000, 0x00000000, 0x20000000,
             0x3feff00a, 0x96621f95, 0x3e5b1856, 0xe0000000, 0x3fefe019,
@@ -826,25 +826,25 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant log2 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant log2 = pointerConstant(8, new int[]{
             //@formatter:off
             0xfefa39ef, 0x3fe62e42, 0xfefa39ef, 0xbfe62e42
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant double2 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant double2 = pointerConstant(8, new int[]{
             //@formatter:off
             0x00000000, 0x40000000
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant double0 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant double0 = pointerConstant(8, new int[]{
             //@formatter:off
             0x00000000, 0x00000000
             //@formatter:on
     });
 
-    private ArrayDataPointerConstant double0Point5 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant double0Point5 = pointerConstant(8, new int[]{
             //@formatter:off
             0x00000000, 0x3fe00000
             //@formatter:on

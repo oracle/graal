@@ -64,7 +64,7 @@ public class StandardPathUtilitiesProvider implements PathUtilitiesProvider {
      * The regular expression for matching the message derived from
      * {@link #DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_FORMAT}.
      *
-     * Keep in sync with the {@code catch_files} array in {@code common.json}.
+     * Keep in sync with the {@code catch_files} array in {@code ci/common.jsonnet}.
      */
     public static final String DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP = "Graal diagnostic output saved in '(?<filename>[^']+)'";
 
@@ -190,7 +190,7 @@ public class StandardPathUtilitiesProvider implements PathUtilitiesProvider {
                         return FileVisitResult.CONTINUE;
                     }
                 });
-                // Keep this in sync with the catch_files in common.json
+                // Keep this in sync with the catch_files in ci/common.jsonnet
                 TTY.println(DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_FORMAT, zipFile);
                 return zipFile.getAbsolutePath();
             } catch (IOException e) {

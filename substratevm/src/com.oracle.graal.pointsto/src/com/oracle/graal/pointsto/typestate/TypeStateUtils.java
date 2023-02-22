@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -257,105 +257,6 @@ public class TypeStateUtils {
             bb.analysisPolicy().noteMerge(bb, rObj);
             return new AnalysisObject[]{rObj};
         } else {
-            return result;
-        }
-    }
-
-    /* Intersection. */
-
-    /**
-     * Returns the intersection of the two analysis object arrays of the same type. If one of them
-     * contains a single context insensitive object, the other array is returned.
-     */
-    protected static AnalysisObject[] intersection(PointsToAnalysis bb, AnalysisObject[] a1, AnalysisObject[] a2) {
-        // assert this.type() == other.type();
-
-        if (a1.length == 1 && a1[0].isContextInsensitiveObject()) {
-            return a2;
-        } else if (a2.length == 1 && a2[0].isContextInsensitiveObject()) {
-            return a1;
-        } else {
-            if (a1.length <= a2.length) {
-                return arraysIntersection(bb, a1, a2);
-            } else {
-                return arraysIntersection(bb, a2, a1);
-            }
-        }
-    }
-
-    /** Returns a list containing the intersection of the two object arrays. */
-    private static AnalysisObject[] arraysIntersection(PointsToAnalysis bb, AnalysisObject[] a1, AnalysisObject[] a2) {
-        assert a1.length <= a2.length : "Intersection is commutative, must call it with a1 being the shorter array";
-
-        if (a1 == a2) {
-            return a1;
-        }
-
-        /* Speculate that a1 contains no more elements than a2, i.e., the result is a1. */
-
-        int idx1 = 0;
-        int idx2 = 0;
-        while (idx2 < a2.length) {
-            AnalysisObject o1 = a1[idx1];
-            AnalysisObject o2 = a2[idx2];
-
-            if (o2.getId() < o1.getId()) {
-                idx2++;
-            } else if (o1.equals(o2)) {
-                /* If the objects are equal continue with speculation. */
-                idx1++;
-                idx2++;
-                if (idx1 == a1.length) {
-                    /*
-                     * The speculation succeeded: we walked down the whole a1 array and it contained
-                     * no more elements than a2.
-                     */
-                    return a1;
-                }
-            } else {
-                /* The speculation failed. */
-                break;
-            }
-        }
-
-        List<AnalysisObject> rList = new ArrayList<>(a1.length);
-
-        /* Add the beginning of the a1 list that we already walked above. */
-        rList.addAll(Arrays.asList(a1).subList(0, idx1));
-
-        while (idx1 < a1.length && idx2 < a2.length) {
-            AnalysisObject o1 = a1[idx1];
-            AnalysisObject o2 = a2[idx2];
-
-            if (o1.equals(o2)) {
-                rList.add(o1);
-                idx1++;
-                idx2++;
-            } else { // keep the list sorted by the id
-                assert o1.getId() != o2.getId();
-                if (o1.getId() < o2.getId()) {
-                    idx1++;
-                } else {
-                    idx2++;
-                }
-            }
-        }
-
-        /* For intersection the result must be smaller than the operands. */
-        assert rList.size() <= a1.length && rList.size() <= a2.length;
-
-        /*
-         * If the LimitObjectArrayLength is enabled then the result MUST be smaller than
-         * MaxObjectSetSize.
-         */
-        assert !bb.analysisPolicy().limitObjectArrayLength() || rList.size() <= bb.analysisPolicy().maxObjectSetSize();
-
-        if (rList.size() == 0) {
-            return AnalysisObject.EMPTY_ARRAY;
-        } else {
-            AnalysisObject[] result = rList.toArray(new AnalysisObject[rList.size()]);
-            assert !Arrays.equals(result, a1) && !Arrays.equals(result, a2);
-
             return result;
         }
     }

@@ -48,6 +48,7 @@ import java.util.function.BiPredicate;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
@@ -119,6 +120,7 @@ import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.InliningUtilities;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -537,10 +539,19 @@ public class SVMHost extends HostVM {
         }
     }
 
+    protected boolean deoptsForbidden(AnalysisMethod method) {
+        /*
+         * Runtime compiled methods can deoptimize.
+         */
+        return method.getMultiMethodKey() != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
+    }
+
     @Override
     public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
         if (graph != null) {
-            graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
+            if (deoptsForbidden(method)) {
+                graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
+            }
 
             if (parseOnce) {
                 new ImplicitAssertionsPhase().apply(graph, bb.getProviders());
@@ -846,11 +857,11 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public Object parseGraph(BigBang bb, AnalysisMethod method) {
+    public Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method) {
         if (ImageSingletons.contains(SVMParsingSupport.class)) {
-            return ImageSingletons.lookup(SVMParsingSupport.class).parseGraph(bb, method);
+            return ImageSingletons.lookup(SVMParsingSupport.class).parseGraph(bb, debug, method);
         } else {
-            return super.parseGraph(bb, method);
+            return super.parseGraph(bb, debug, method);
         }
     }
 

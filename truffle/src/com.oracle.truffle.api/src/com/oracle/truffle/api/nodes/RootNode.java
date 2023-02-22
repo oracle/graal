@@ -553,9 +553,9 @@ public abstract class RootNode extends ExecutableNode {
 
     /**
      * If this root node has a lexical scope parent, this method returns its frame descriptor.
-     * 
+     *
      * As an example, consider the following pseudocode:
-     * 
+     *
      * <pre>
      * def m {
      *   # For the "m" root node:
@@ -606,6 +606,22 @@ public abstract class RootNode extends ExecutableNode {
             l = Objects.requireNonNull(this.lock);
         }
         return l;
+    }
+
+    /**
+     * Computes a size estimate of this root node. This is intended to be overwritten if the size of
+     * the root node cannot be estimated from the natural AST size. For example, in case the root
+     * node is represented by a bytecode interpreter. If <code>-1</code> is returned, the regular
+     * AST size estimate is going to be used. By default this method returns <code>-1</code>.
+     * <p>
+     * The size estimate is guaranteed to be invoked only once when the {@link CallTarget} is
+     * created. This corresponds to calls to {@link #getCallTarget()} for the first time. This
+     * method will never be invoked after the root node was already executed.
+     *
+     * @since 23.0
+     */
+    protected int computeSize() {
+        return -1;
     }
 
     private static final class Constant extends RootNode {

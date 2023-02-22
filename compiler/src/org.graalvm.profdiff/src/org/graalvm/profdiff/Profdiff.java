@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import org.graalvm.profdiff.args.InvalidArgumentException;
 import org.graalvm.profdiff.args.MissingArgumentException;
 import org.graalvm.profdiff.args.ProgramArgumentParser;
 import org.graalvm.profdiff.args.UnknownArgumentException;
+import org.graalvm.profdiff.command.AOTAOTCommand;
 import org.graalvm.profdiff.command.HelpCommand;
 import org.graalvm.profdiff.command.JITAOTCommand;
 import org.graalvm.profdiff.command.JITJITCommand;
@@ -156,6 +157,7 @@ public class Profdiff {
         commandGroup.addCommand(new ReportCommand());
         commandGroup.addCommand(new JITJITCommand());
         commandGroup.addCommand(new JITAOTCommand());
+        commandGroup.addCommand(new AOTAOTCommand());
         commandGroup.addCommand(new HelpCommand(programArguments.getArgumentParser()));
 
         programArguments.parseOrExit(args);

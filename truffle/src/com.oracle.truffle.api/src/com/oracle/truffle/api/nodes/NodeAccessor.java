@@ -97,6 +97,11 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
+        public int computeSize(RootNode rootNode) {
+            return rootNode.computeSize();
+        }
+
+        @Override
         public Object getLanguageCache(LanguageInfo languageInfo) {
             return languageInfo.getLanguageCache();
         }

@@ -16,8 +16,8 @@
   // mx gate build config
   local mxgate(tags) = os_arch_jdk_mixin + sg.mxgate(tags, suite="substratevm", suite_short="svm"),
 
-  local eclipse = task_spec(common.eclipse),
-  local jdt = task_spec(common.jdt),
+  local eclipse = task_spec(common.deps.eclipse),
+  local jdt = task_spec(common.deps.jdt),
   local gate = sg.gate,
   local gdb(version) = task_spec(sg.gdb(version)),
   local use_musl = sg.use_musl,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.typestate;
 
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
+package com.oracle.svm.configure;
 
-/** It is an empty context. */
-public final class DefaultAnalysisContext extends AnalysisContext {
+public class ConfigurationUsageException extends RuntimeException {
+    static final long serialVersionUID = 9035113287780379597L;
 
-    @Override
-    protected boolean valueEquals(AnalysisContext obj) {
-        return this == obj;
+    public ConfigurationUsageException(String message) {
+        super(message);
     }
-
-    @Override
-    protected int valueHashCode() {
-        return System.identityHashCode(this);
-    }
-
-    @Override
-    public String toString() {
-        return "{no-context}";
-    }
-
 }

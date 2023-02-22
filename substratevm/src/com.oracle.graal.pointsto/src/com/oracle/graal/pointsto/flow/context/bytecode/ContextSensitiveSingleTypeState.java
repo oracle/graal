@@ -41,8 +41,8 @@ public class ContextSensitiveSingleTypeState extends SingleTypeState {
     protected final AnalysisObject[] objects;
 
     /** Creates a new type state from incoming objects. */
-    public ContextSensitiveSingleTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, AnalysisType type, AnalysisObject... objects) {
-        super(bb, canBeNull, properties, type);
+    public ContextSensitiveSingleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type, AnalysisObject... objects) {
+        super(bb, canBeNull, type);
         this.objects = objects;
         assert !bb.extendedAsserts() || checkObjects(bb);
     }

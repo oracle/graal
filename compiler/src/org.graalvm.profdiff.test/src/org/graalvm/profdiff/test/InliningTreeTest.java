@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,20 +50,20 @@ public class InliningTreeTest {
      *         b() at bci 1
      *             d() at bci 3
      *         c() at bci 2
-     *         (abstract) e() at bci 3
+     *         (indirect) e() at bci 3
      *             f() at bci 1
      * </pre>
      */
     @Test
     public void findNodesAtPath() {
-        InliningTreeNode a = new InliningTreeNode("a()", -1, true, null, false, null);
-        InliningTreeNode b1 = new InliningTreeNode("b()", 1, true, null, false, null);
-        InliningTreeNode d1 = new InliningTreeNode("d()", 3, true, null, false, null);
-        InliningTreeNode b2 = new InliningTreeNode("b()", 1, true, null, false, null);
-        InliningTreeNode d2 = new InliningTreeNode("d()", 3, true, null, false, null);
-        InliningTreeNode c = new InliningTreeNode("c()", 2, true, null, false, null);
-        InliningTreeNode e = new InliningTreeNode("e()", 3, false, null, true, null);
-        InliningTreeNode f = new InliningTreeNode("f()", 1, true, null, false, null);
+        InliningTreeNode a = new InliningTreeNode("a()", -1, true, null, false, null, false);
+        InliningTreeNode b1 = new InliningTreeNode("b()", 1, true, null, false, null, false);
+        InliningTreeNode d1 = new InliningTreeNode("d()", 3, true, null, false, null, false);
+        InliningTreeNode b2 = new InliningTreeNode("b()", 1, true, null, false, null, false);
+        InliningTreeNode d2 = new InliningTreeNode("d()", 3, true, null, false, null, false);
+        InliningTreeNode c = new InliningTreeNode("c()", 2, true, null, false, null, false);
+        InliningTreeNode e = new InliningTreeNode("e()", 3, false, null, true, null, true);
+        InliningTreeNode f = new InliningTreeNode("f()", 1, true, null, false, null, false);
 
         a.addChild(b1);
         a.addChild(b2);
@@ -90,27 +90,31 @@ public class InliningTreeTest {
 
     @Test
     public void sortInliningTree() {
-        InliningTreeNode inliningTreeRoot = new InliningTreeNode("root", 0, true, null, false, null);
-        InliningTreeNode method1 = new InliningTreeNode("method1", 1, true, null, false, null);
-        InliningTreeNode method2 = new InliningTreeNode("method1", 2, true, null, false, null);
-        InliningTreeNode method3 = new InliningTreeNode("method2", 2, true, null, false, null);
-        InliningTreeNode method3First = new InliningTreeNode("method", 1, true, null, false, null);
-        InliningTreeNode method3Second = new InliningTreeNode("method", 2, true, null, false, null);
+        InliningTreeNode inliningTreeRoot = new InliningTreeNode("root", 0, true, null, false, null, false);
+        InliningTreeNode method1 = new InliningTreeNode("method1", 1, true, null, false, null, false);
+        InliningTreeNode method2 = new InliningTreeNode("method1", 2, true, null, false, null, false);
+        InliningTreeNode method3 = new InliningTreeNode("method2", 2, true, null, false, null, false);
+        InliningTreeNode method3First = new InliningTreeNode("method", 1, true, null, false, null, false);
+        InliningTreeNode method3Second = new InliningTreeNode("method", 2, true, null, false, null, false);
         method3.addChild(method3Second);
         method3.addChild(method3First);
-        InliningTreeNode method4 = new InliningTreeNode("method1", 3, true, null, false, null);
-        InliningTreeNode method5 = new InliningTreeNode("method2", 3, false, null, false, null);
-        InliningTreeNode method6 = new InliningTreeNode("method2", 3, true, null, false, null);
+        InliningTreeNode method4 = new InliningTreeNode("method1", 3, true, null, false, null, false);
+        InliningTreeNode method5 = new InliningTreeNode("method2", 3, true, null, false, null, false);
+        InliningTreeNode method6 = new InliningTreeNode("method2", 3, false, null, false, null, true);
+        InliningTreeNode method7 = new InliningTreeNode("method2", 3, false, List.of("not inlined"), false, null, false);
+        InliningTreeNode method8 = new InliningTreeNode("method2", 3, false, null, false, null, false);
         inliningTreeRoot.addChild(method4);
         inliningTreeRoot.addChild(method6);
         inliningTreeRoot.addChild(method1);
+        inliningTreeRoot.addChild(method8);
         inliningTreeRoot.addChild(method5);
+        inliningTreeRoot.addChild(method7);
         inliningTreeRoot.addChild(method3);
         inliningTreeRoot.addChild(method2);
 
         InliningTree inliningTree = new InliningTree(inliningTreeRoot);
         List<InliningTreeNode> expected = List.of(inliningTreeRoot, method1, method2, method3, method3First, method3Second,
-                        method4, method5, method6);
+                        method4, method5, method6, method7, method8);
         inliningTree.sortInliningTree();
         List<InliningTreeNode> actual = treeInPreorder(inliningTree.getRoot());
         assertEquals(expected, actual);

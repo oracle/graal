@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -126,14 +126,14 @@ public class ExperimentPairTest {
         String a = "a()";
         String b = "b()";
         Experiment experiment1 = new Experiment(ExperimentId.ONE, Experiment.CompilationKind.JIT);
-        InliningTreeNode a1 = new InliningTreeNode(a, -1, true, null, false, null);
-        InliningTreeNode b1 = new InliningTreeNode(b, 1, true, null, false, null);
+        InliningTreeNode a1 = new InliningTreeNode(a, -1, true, null, false, null, false);
+        InliningTreeNode b1 = new InliningTreeNode(b, 1, true, null, false, null, false);
         a1.addChild(b1);
         InliningTree inliningTree1 = new InliningTree(a1);
         experiment1.addCompilationUnit(a, "1", 0, () -> new CompilationUnit.TreePair(null, inliningTree1)).setHot(true);
 
         Experiment experiment2 = new Experiment(ExperimentId.TWO, Experiment.CompilationKind.JIT);
-        InliningTreeNode b2 = new InliningTreeNode(b, -1, true, null, false, null);
+        InliningTreeNode b2 = new InliningTreeNode(b, -1, true, null, false, null, false);
         InliningTree inliningTree2 = new InliningTree(b2);
         experiment2.addCompilationUnit(b, "1", 0, () -> new CompilationUnit.TreePair(null, inliningTree2)).setHot(true);
 
@@ -169,21 +169,21 @@ public class ExperimentPairTest {
         String a = "a()";
         String b = "b()";
         Experiment experiment1 = new Experiment(ExperimentId.ONE, Experiment.CompilationKind.JIT);
-        InliningTreeNode a1 = new InliningTreeNode(a, -1, true, null, false, null);
-        InliningTreeNode b1 = new InliningTreeNode(b, 1, true, null, false, null);
+        InliningTreeNode a1 = new InliningTreeNode(a, -1, true, null, false, null, false);
+        InliningTreeNode b1 = new InliningTreeNode(b, 1, true, null, false, null, false);
         a1.addChild(b1);
         InliningTree inliningTree1 = new InliningTree(a1);
         experiment1.addCompilationUnit(a, "1", 0, () -> new CompilationUnit.TreePair(null, inliningTree1)).setHot(true);
 
         Experiment experiment2 = new Experiment(ExperimentId.TWO, Experiment.CompilationKind.JIT);
 
-        InliningTreeNode a2 = new InliningTreeNode(a, -1, true, null, false, null);
-        InliningTreeNode b2 = new InliningTreeNode(b, 1, true, null, false, null);
+        InliningTreeNode a2 = new InliningTreeNode(a, -1, true, null, false, null, false);
+        InliningTreeNode b2 = new InliningTreeNode(b, 1, true, null, false, null, false);
         a2.addChild(b2);
         InliningTree inliningTree2 = new InliningTree(a2);
         experiment2.addCompilationUnit(a, "1", 0, () -> new CompilationUnit.TreePair(null, inliningTree2)).setHot(true);
 
-        InliningTreeNode b3 = new InliningTreeNode(b, -1, true, null, false, null);
+        InliningTreeNode b3 = new InliningTreeNode(b, -1, true, null, false, null, false);
         InliningTree inliningTree3 = new InliningTree(b3);
         experiment2.addCompilationUnit(b, "2", 0, () -> new CompilationUnit.TreePair(null, inliningTree3)).setHot(true);
 

@@ -33,12 +33,7 @@ This example demonstrates how to compile a Java and Kotlin application ahead-of-
     ```
     Note that your paths are likely to be different depending on the download location.
 
-3. [Install Native Image](../reference-manual/native-image/README.md/#install-native-image) by running.
-    ```bash
-    gu install native-image
-    ```
-
-4. Then execute:
+3. Then execute:
     ```shell
     ./build.sh
     ```

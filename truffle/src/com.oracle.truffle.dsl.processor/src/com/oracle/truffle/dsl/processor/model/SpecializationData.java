@@ -50,6 +50,7 @@ import java.util.Set;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
@@ -446,6 +447,51 @@ public final class SpecializationData extends TemplateMethod {
                 }
             }
         }
+    }
+
+    public enum Idempotence {
+
+        IDEMPOTENT,
+
+        NON_IDEMPOTENT,
+
+        UNKNOWN
+
+    }
+
+    public Idempotence getIdempotence(DSLExpression expression) {
+        if (isDynamicParameterBound(expression, true)) {
+            return Idempotence.NON_IDEMPOTENT;
+        }
+
+        IdempotentenceVisitor visitor = new IdempotentenceVisitor();
+        expression.accept(visitor);
+        return visitor.current;
+    }
+
+    public Set<ExecutableElement> getBoundMethods(DSLExpression expression) {
+        var foundMethods = new LinkedHashSet<ExecutableElement>();
+        expression.accept(new AbstractDSLExpressionVisitor() {
+            @Override
+            public void visitCall(Call n) {
+                foundMethods.add(n.getResolvedMethod());
+            }
+
+            @Override
+            public void visitVariable(Variable n) {
+                VariableElement var = n.getResolvedVariable();
+                if (n.getReceiver() == null) {
+                    Parameter p = findByVariable(var);
+                    if (p != null) {
+                        CacheExpression cache = findCache(p);
+                        if (cache != null && cache.isAlwaysInitialized()) {
+                            foundMethods.addAll(getBoundMethods(cache.getDefaultExpression()));
+                        }
+                    }
+                }
+            }
+        });
+        return foundMethods;
     }
 
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
@@ -885,6 +931,68 @@ public final class SpecializationData extends TemplateMethod {
             }
         }
         return null;
+    }
+
+    private final class IdempotentenceVisitor extends AbstractDSLExpressionVisitor {
+
+        Idempotence current = Idempotence.IDEMPOTENT;
+
+        @Override
+        public void visitCall(Call n) {
+            if (current == Idempotence.NON_IDEMPOTENT) {
+                // if one method is known to be non-idempotent all of them are
+                return;
+            }
+
+            Idempotence idempotent = ElementUtils.getIdempotent(n.getResolvedMethod());
+            if (idempotent == Idempotence.UNKNOWN || idempotent == Idempotence.NON_IDEMPOTENT) {
+                current = idempotent;
+            }
+        }
+
+        @Override
+        public void visitVariable(Variable n) {
+            if (current == Idempotence.NON_IDEMPOTENT) {
+                // if one method is known to be non-idempotent all of them are
+                return;
+            }
+
+            VariableElement var = n.getResolvedVariable();
+            if (n.getReceiver() == null) {
+                /*
+                 * Directly bound variable that is not dynamic. The DSL ensures such reads are not
+                 * side-effecting in the fast-path. They can be treated as effectively final field
+                 * reads.
+                 */
+                Parameter p = findByVariable(var);
+                if (p != null) {
+                    CacheExpression cache = findCache(p);
+                    if (cache != null && cache.isAlwaysInitialized()) {
+                        /*
+                         * Bind variables may cause side-effects themselves.
+                         */
+                        Idempotence cacheIdempotent = getIdempotence(cache.getDefaultExpression());
+                        switch (cacheIdempotent) {
+                            case IDEMPOTENT:
+                                break;
+                            case NON_IDEMPOTENT:
+                            case UNKNOWN:
+                                current = cacheIdempotent;
+                                break;
+                            default:
+                                throw new AssertionError();
+                        }
+                    }
+                }
+            } else {
+                if (!var.getModifiers().contains(Modifier.FINAL)) {
+                    /*
+                     * If we see a non-final read an expression is sensitive to side-effects.
+                     */
+                    current = Idempotence.NON_IDEMPOTENT;
+                }
+            }
+        }
     }
 
 }

@@ -376,7 +376,7 @@ public class DirectoryStorage implements ManagementStorage {
         String u = loaded.getProperty(CommonConstants.BUNDLE_ORIGIN_URL);
         if (u != null) {
             try {
-                ci.setRemoteURL(new URL(u));
+                ci.setRemoteURL(SystemUtils.toURL(u));
             } catch (MalformedURLException ex) {
                 // ignore
             }

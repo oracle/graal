@@ -85,6 +85,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -100,8 +101,6 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.JDKAccessor;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -121,7 +120,6 @@ import com.oracle.truffle.polyglot.PolyglotLanguageContext.ValueMigrationExcepti
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import com.oracle.truffle.polyglot.PolyglotThreadLocalActions.HandshakeConfig;
 import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
-import org.graalvm.polyglot.io.IOAccess;
 
 final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -1642,7 +1640,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             engine.polyglotHostService.notifyContextClosed(this, force, invalidResourceLimit, invalidMessage);
         }
         if (engine.boundEngine && parent == null) {
-            engine.ensureClosed(force, false, true);
+            engine.ensureClosed(force, true);
         }
     }
 
@@ -1981,54 +1979,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return heapRoots.toArray();
     }
 
-    private void addRootPointerForGuestToHostStackFrameArgument(Object obj, List<Object> heapRoots) {
-        if (InteropLibrary.isValidValue(obj)) {
-            heapRoots.add(obj);
-        } else if (obj instanceof PolyglotWrapper) {
-            heapRoots.add(((PolyglotWrapper) obj).getGuestObject());
-        } else if (obj instanceof Value) {
-            heapRoots.add(getAPIAccess().getReceiver((Value) obj));
-        }
-    }
-
     private void addRootPointersForStackFrames(List<Object> heapRoots) {
-        FrameInstance[][] frameInstancesPerThread = PolyglotStackFramesRetriever.getStackFrames(this);
-        for (FrameInstance[] threadInstances : frameInstancesPerThread) {
-            for (FrameInstance frameInstance : threadInstances) {
-                Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
-                RootNode rootNode = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
-                if (rootNode instanceof HostToGuestRootNode) {
-                    /*
-                     * HostToGuestRootNode frames are ignored. We don't care about objects
-                     * referenced only form the host side.
-                     */
-                } else if (EngineAccessor.HOST.isGuestToHostRootNode(rootNode)) {
-                    /*
-                     * For GuestToHostRootNode frames, we are interested only in arguments, and only
-                     * those arguments which wrap guest objects or those that are valid interop
-                     * values.
-                     */
-                    for (Object obj : frame.getArguments()) {
-                        /*
-                         * Argument array of the called host method is an element in the frame's
-                         * argument array.
-                         */
-                        if (obj instanceof Object[]) {
-                            for (Object elem : ((Object[]) obj)) {
-                                addRootPointerForGuestToHostStackFrameArgument(elem, heapRoots);
-                            }
-                        } else {
-                            addRootPointerForGuestToHostStackFrameArgument(obj, heapRoots);
-                        }
-                    }
-                } else {
-                    /*
-                     * All types in the frame are safe to traverse.
-                     */
-                    heapRoots.add(frame);
-                }
-            }
-        }
+        PolyglotStackFramesRetriever.populateHeapRoots(this, heapRoots);
     }
 
     private void addRootPointersForContext(List<Object> heapRoots) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.util;
 
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -36,16 +35,22 @@ public class AtomicUtils {
 
     public static <T, V> boolean atomicSet(T holder, V value, AtomicReferenceFieldUpdater<T, V> updater) {
         Objects.requireNonNull(value, "The value parameter of AtomicUtils.atomicSet() should not be null.");
-        return updater.compareAndSet(holder, null, value);
+        if (updater.get(holder) == null) {
+            return updater.compareAndSet(holder, null, value);
+        }
+        return false;
     }
 
     public static <T, V> boolean atomicSetAndRun(T holder, V value, AtomicReferenceFieldUpdater<T, V> updater, Runnable task) {
         Objects.requireNonNull(value, "The value parameter of AtomicUtils.atomicSetAndRun() should not be null.");
-        boolean firstAttempt = updater.compareAndSet(holder, null, value);
-        if (firstAttempt) {
-            task.run();
+        if (updater.get(holder) == null) {
+            boolean firstAttempt = updater.compareAndSet(holder, null, value);
+            if (firstAttempt) {
+                task.run();
+            }
+            return firstAttempt;
         }
-        return firstAttempt;
+        return false;
     }
 
     public static <T, V> boolean isSet(T holder, AtomicReferenceFieldUpdater<T, V> updater) {
@@ -54,24 +59,16 @@ public class AtomicUtils {
 
     /**
      * Atomically set the field to 1 if the current value is 0.
+     *
+     * Performing a read before the compare and set is more cache friendly.
      * 
      * @return {@code true} if successful.
      */
     public static <T> boolean atomicMark(T holder, AtomicIntegerFieldUpdater<T> updater) {
-        return updater.compareAndSet(holder, 0, 1);
-    }
-
-    /**
-     * Atomically set the field to 1 if the current value is 0. If successful, execute the task.
-     *
-     * @return {@code true} if successful.
-     */
-    public static <T> boolean atomicMarkAndRun(T holder, AtomicIntegerFieldUpdater<T> updater, Runnable task) {
-        boolean firstAttempt = updater.compareAndSet(holder, 0, 1);
-        if (firstAttempt) {
-            task.run();
+        if (updater.get(holder) == 0) {
+            return updater.compareAndSet(holder, 0, 1);
         }
-        return firstAttempt;
+        return false;
     }
 
     /**
@@ -79,29 +76,6 @@ public class AtomicUtils {
      */
     public static <T> boolean isSet(T holder, AtomicIntegerFieldUpdater<T> updater) {
         return updater.get(holder) == 1;
-    }
-
-    /**
-     * Atomically sets the value to {@code true} if the current value {@code == false}.
-     * 
-     * @return {@code true} if successful.
-     */
-    public static boolean atomicMark(AtomicBoolean flag) {
-        return flag.compareAndSet(false, true);
-    }
-
-    /**
-     * Atomically sets the value to {@code true} if the current value {@code == false}. If
-     * successful, execute the task.
-     *
-     * @return {@code true} if successful.
-     */
-    public static boolean atomicMarkAndRun(AtomicBoolean flag, Runnable task) {
-        boolean firstAttempt = flag.compareAndSet(false, true);
-        if (firstAttempt) {
-            task.run();
-        }
-        return firstAttempt;
     }
 
     /**
