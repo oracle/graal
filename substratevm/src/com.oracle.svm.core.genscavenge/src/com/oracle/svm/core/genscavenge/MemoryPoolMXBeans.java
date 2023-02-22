@@ -48,9 +48,9 @@ public class MemoryPoolMXBeans {
         List<MemoryPoolMXBean> beanList;
         if (SubstrateOptions.UseSerialGC.getValue()) {
             beanList = List.of(
-                    new EdenMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
-                    new SurvivorMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
-                    new OldGenerationMemoryPoolMXBean(COMPLETE_SCAVENGER));
+                            new EdenMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
+                            new SurvivorMemoryPoolMXBean(YOUNG_GEN_SCAVENGER, COMPLETE_SCAVENGER),
+                            new OldGenerationMemoryPoolMXBean(COMPLETE_SCAVENGER));
         } else {
             assert SubstrateOptions.UseEpsilonGC.getValue();
             beanList = List.of(new EpsilonMemoryPoolMXBean(EPSILON_SCAVENGER));
@@ -60,7 +60,7 @@ public class MemoryPoolMXBeans {
     }
 
     public static void notifyAfterCollection() {
-        for (AbstractMemoryPoolMXBean bean: mxBeans) {
+        for (AbstractMemoryPoolMXBean bean : mxBeans) {
             bean.afterCollection();
         }
     }

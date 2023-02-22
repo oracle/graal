@@ -147,8 +147,8 @@ public final class GCAccounting {
             lastIncrementalCollectionOverflowedSurvivors = false;
         }
         trace.string("  edenChunkBytesBefore: ").unsigned(edenChunkBytesBefore)
-                .string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
-                .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
+                        .string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
+                        .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
         trace.string("]").newline();
     }
 
