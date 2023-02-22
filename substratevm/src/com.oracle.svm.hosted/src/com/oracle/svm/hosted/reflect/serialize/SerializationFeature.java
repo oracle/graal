@@ -100,6 +100,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @AutomaticallyRegisteredFeature
 public class SerializationFeature implements InternalFeature {
     static final HashSet<Class<?>> capturingClasses = new HashSet<>();
+    static final HashSet<Class<?>> parsedClasses = new HashSet<>();
     private SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
 
@@ -212,27 +213,6 @@ public class SerializationFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-
-        /*
-         * In order to serialize lambda classes we need to register proper methods for reflection.
-         * Since lambda names are not stable, we do not know which lambdas should be serialized. We
-         * simply register all the lambdas from capturing classes written in the serialization
-         * configuration file for serialization. In order to find all the lambdas from a class, we
-         * parse all the methods of the given class and find all the lambdas in them.
-         */
-        for (Class<?> clazz : capturingClasses) {
-            ResolvedJavaType clazzType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(clazz);
-            List<ResolvedJavaMethod> allMethods = new ArrayList<>(Arrays.asList(clazzType.getDeclaredMethods()));
-            allMethods.addAll(Arrays.asList(clazzType.getDeclaredConstructors()));
-
-            for (ResolvedJavaMethod method : allMethods) {
-                if (method.getCode() != null) {
-                    registerLambdasFromMethod(method, impl.getDebugContext());
-                }
-            }
-        }
-
         serializationBuilder.flushConditionalConfiguration(access);
         /* Ensure SharedSecrets.javaObjectInputStreamAccess is initialized before scanning. */
         ((BeforeAnalysisAccessImpl) access).ensureInitialized("java.io.ObjectInputStream");
@@ -240,6 +220,29 @@ public class SerializationFeature implements InternalFeature {
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
+        FeatureImpl.DuringAnalysisAccessImpl impl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+
+        /*
+         * In order to serialize lambda classes we need to register proper methods for reflection.
+         * We register all the lambdas from capturing classes written in the serialization
+         * configuration file for serialization. In order to find all the lambdas from a class, we
+         * parse all the methods of the given class and find all the lambdas in them.
+         */
+        for (Class<?> clazz : capturingClasses) {
+            if (!parsedClasses.contains(clazz)) {
+                ResolvedJavaType clazzType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(clazz);
+                List<ResolvedJavaMethod> allMethods = new ArrayList<>(Arrays.asList(clazzType.getDeclaredMethods()));
+                allMethods.addAll(Arrays.asList(clazzType.getDeclaredConstructors()));
+
+                for (ResolvedJavaMethod method : allMethods) {
+                    if (method.getCode() != null) {
+                        registerLambdasFromMethod(method, impl.getDebugContext());
+                    }
+                }
+                parsedClasses.add(clazz);
+            }
+        }
+
         serializationBuilder.flushConditionalConfiguration(access);
     }
 
