@@ -33,11 +33,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
+import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.graph.NodeSuccessorList;
+import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.options.OptionValues;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class NodeUsagesTests extends GraphTest {
@@ -466,5 +471,66 @@ public class NodeUsagesTests extends GraphTest {
 
         String str = def0.usages().toString();
         assertTrue(str.contains("usages=[2|Use, 3|Use, 4|Use]"));
+    }
+
+    @Test
+    public void testGraphVerify() {
+        OptionValues options = getOptions();
+        options = new OptionValues(options, Graph.Options.VerifyGraalGraphEdges, Boolean.TRUE);
+        options = new OptionValues(options, Graph.Options.VerifyGraalGraphs, Boolean.TRUE);
+
+        Graph graph = new Graph(options, getDebug(options));
+        TestVerifyNode a = graph.add(new TestVerifyNode(null));
+        TestVerifyNode b = graph.add(new TestVerifyNode(a));
+        TestVerifyNode c = graph.add(new TestVerifyNode(b));
+
+        graph.verify();
+
+        for (Position p : a.successorPositions()) {
+            Assert.assertEquals(p.hashCode(), p.hashCode());
+            Assert.assertTrue(p.equals(p));
+
+            Assert.assertFalse(p.equals(null));
+            Assert.assertFalse(p.equals(Boolean.TRUE));
+
+            Assert.assertFalse(p.equals(new Position(null, p.getIndex(), p.getSubIndex())));
+            Assert.assertFalse(p.equals(new Position(null, p.getIndex() + 1, p.getSubIndex())));
+            Assert.assertFalse(p.equals(new Position(null, p.getIndex(), p.getSubIndex() + 1)));
+        }
+    }
+
+    @Test
+    public void testGraphVerifyFails() {
+        try {
+            OptionValues options = getOptions();
+            options = new OptionValues(options, Graph.Options.VerifyGraalGraphEdges, Boolean.TRUE);
+            options = new OptionValues(options, Graph.Options.VerifyGraalGraphs, Boolean.TRUE);
+
+            Graph graph = new Graph(options, getDebug(options));
+            Def def0 = graph.add(new Def());
+            Def def1 = graph.add(new Def());
+            Use use0 = graph.add(new Use(def0, null, null));
+
+            graph.verify();
+            Assert.fail("GraalGraphError expected");
+        } catch (GraalGraphError err) {
+            assertTrue(err.getMessage().contains("invalid input of type"));
+            assertTrue(new GraalGraphError(err).getMessage().contains("invalid input of type"));
+        }
+    }
+
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
+    static final class TestVerifyNode extends Node {
+        public static final NodeClass<TestVerifyNode> TYPE = NodeClass.create(TestVerifyNode.class);
+
+        @Input NodeInputList<TestVerifyNode> inputs;
+
+        @Successor NodeSuccessorList<TestVerifyNode> successors;
+
+        protected TestVerifyNode(TestVerifyNode successorNode, TestVerifyNode... inputNodes) {
+            super(TYPE);
+            this.inputs = new NodeInputList<>(this, inputNodes);
+            this.successors = new NodeSuccessorList<>(this, new TestVerifyNode[]{successorNode});
+        }
     }
 }
