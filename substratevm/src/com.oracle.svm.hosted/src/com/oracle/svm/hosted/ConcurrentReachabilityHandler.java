@@ -124,7 +124,7 @@ public class ConcurrentReachabilityHandler extends ReachabilityHandler implement
             } else if (trigger instanceof Executable) {
                 analysisElement = metaAccess.lookupJavaMethod((Executable) trigger);
             } else {
-                throw UserError.abort("registerReachabilityHandler called with an element that is not a Class, Field, Method, or Constructor: %s", trigger.getClass().getTypeName());
+                throw UserError.abort("'registerReachabilityHandler' called with an element that is not a Class, Field, or Executable: %s", trigger.getClass().getTypeName());
             }
 
             analysisElement.registerReachabilityNotification(notification);
