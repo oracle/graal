@@ -30,46 +30,25 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
 public class JfrMetadata {
-    private UninterruptibleUtils.AtomicLong currentMetadataId;
+    private long currentMetadataId;
     private volatile byte[] metadataDescriptor;
-    private volatile boolean isDirty;
-    private SignedWord metadataPosition;
 
     public JfrMetadata(byte[] bytes) {
         metadataDescriptor = bytes;
-        currentMetadataId = new UninterruptibleUtils.AtomicLong(0);
-        isDirty = false;
-        metadataPosition = WordFactory.signed(-1);
+        currentMetadataId = 0;
     }
 
     public void setDescriptor(byte[] bytes) {
         metadataDescriptor = bytes;
-        currentMetadataId.incrementAndGet();
-        isDirty = true;
+        currentMetadataId++;
     }
 
-    public byte[] getDescriptorAndClearDirtyFlag() {
-        isDirty = false;
+    public byte[] getDescriptor() {
         return metadataDescriptor;
     }
 
-    public boolean isDirty() {
-        return isDirty;
-    }
-
-    public void setDirty() {
-        isDirty = true;
-    }
-
-    public void setMetadataPosition(SignedWord metadataPosition) {
-        this.metadataPosition = metadataPosition;
-    }
-
-    public SignedWord getMetadataPosition() {
-        return metadataPosition;
-    }
 
     public long getCurrentMetadataId() {
-        return currentMetadataId.get();
+        return currentMetadataId;
     }
 }

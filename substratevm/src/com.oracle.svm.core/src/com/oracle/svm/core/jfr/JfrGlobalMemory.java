@@ -66,7 +66,6 @@ public class JfrGlobalMemory {
         }
     }
 
-    @Uninterruptible(reason = "Locks without transition.")
     public void clear() {
         assert VMOperation.isInProgressAtSafepoint();
 

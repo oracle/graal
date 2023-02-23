@@ -90,7 +90,6 @@ public class SubstrateJVM {
      * in).
      */
     private volatile boolean recording;
-    private JfrMetadata metadata;
     private String dumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -114,8 +113,7 @@ public class SubstrateJVM {
         threadLocal = new JfrThreadLocal();
         globalMemory = new JfrGlobalMemory();
         samplerBufferPool = new SamplerBufferPool();
-        metadata = new JfrMetadata(null);
-        unlockedChunkWriter = new JfrChunkWriter(globalMemory, metadata);
+        unlockedChunkWriter = new JfrChunkWriter(globalMemory);
         recorderThread = new JfrRecorderThread(globalMemory, unlockedChunkWriter);
 
         jfrLogging = new JfrLogging();
@@ -292,7 +290,12 @@ public class SubstrateJVM {
      * See {@link JVM#storeMetadataDescriptor}.
      */
     public void storeMetadataDescriptor(byte[] bytes) {
-        metadata.setDescriptor(bytes);
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        try {
+            chunkWriter.setMetadata(bytes);
+        } finally {
+            chunkWriter.unlock();
+        }
     }
 
     /**

@@ -254,7 +254,7 @@ public class JfrThreadLocal implements ThreadListener {
             UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
             if (unflushedSize.aboveThan(0)) {
                 JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
-                // Top is increased in JfrGlobalMemory.write
+                // flushedPos is increased in JfrGlobalMemory.write
                 if (!globalMemory.write(threadLocalBuffer, unflushedSize, true)) {
                     return false;
                 }

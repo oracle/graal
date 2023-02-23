@@ -59,6 +59,9 @@ public class JfrBufferNodeLinkedList {
         @RawField
         JfrBuffer getValue();
 
+        /**
+         * This field is effectively final and should always be non-null.
+         * Changing its value after the node is added to the {@link JfrBufferNodeLinkedList} can result in races.*/
         @RawField
         void setValue(JfrBuffer value);
 
@@ -125,7 +128,6 @@ public class JfrBufferNodeLinkedList {
     public void removeNode(JfrBufferNode node, JfrBufferNode prev) {
         assert head.isNonNull();
         assert !node.getAlive();
-
 
         JfrBufferNode next = node.getNext(); // next can never be null
 
