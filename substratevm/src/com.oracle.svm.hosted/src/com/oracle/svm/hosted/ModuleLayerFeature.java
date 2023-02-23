@@ -245,9 +245,12 @@ public final class ModuleLayerFeature implements InternalFeature {
             systemModuleFinder = SystemModuleFinders.ofSystem();
         }
 
-        ModuleFinder builderModuleFinder = ModuleFinder.compose(moduleLayerFeatureUtils.imageClassLoader.classLoaderSupport.modulepathModuleFinder, systemModuleFinder);
-        ModuleFinder limitedBuilderModuleFinder = moduleLayerFeatureUtils.invokeModuleBootstrapLimitFinder(builderModuleFinder, Set.of(ModuleLayerFeature.class.getModule().getName()), Set.of());
-        systemModuleFinder = ModuleFinder.compose(limitedBuilderModuleFinder, systemModuleFinder);
+        Module builderModule = ModuleLayerFeature.class.getModule();
+        if (builderModule.isNamed()) {
+            ModuleFinder builderModuleFinder = ModuleFinder.compose(moduleLayerFeatureUtils.imageClassLoader.classLoaderSupport.modulepathModuleFinder, systemModuleFinder);
+            ModuleFinder limitedBuilderModuleFinder = moduleLayerFeatureUtils.invokeModuleBootstrapLimitFinder(builderModuleFinder, Set.of(ModuleLayerFeature.class.getModule().getName()), Set.of());
+            systemModuleFinder = ModuleFinder.compose(limitedBuilderModuleFinder, systemModuleFinder);
+        }
 
         if (haveUpgradeModulePath) {
             systemModuleFinder = ModuleFinder.compose(upgradeModulePath, systemModuleFinder);
@@ -1011,8 +1014,6 @@ public final class ModuleLayerFeature implements InternalFeature {
             try {
                 return (ModuleFinder) moduleBootstrapLimitFinderMethod.invoke(null, finder, roots, otherModules);
             } catch (ReflectiveOperationException e) {
-                // TODO remove
-                e.printStackTrace();
                 throw VMError.shouldNotReachHere("Failed to reflectively invoke ModuleBootstrap.limitFinder().", e);
             }
         }
