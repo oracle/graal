@@ -221,19 +221,19 @@ public final class ModuleLayerFeature implements InternalFeature {
      * compute the root module set that should be seen at image runtime. It reuses the same methods
      * as the original (via reflective invokes).
      */
-    private Set<String> calculateRootModules(FeatureImpl.AfterAnalysisAccessImpl accessImpl, Collection<String> extraModules) {
+    private Set<String> calculateRootModules(FeatureImpl.AfterAnalysisAccessImpl accessImpl, Collection<String> addModules) {
         String mainModule = moduleLayerFeatureUtils.getMainModuleName();
         List<Path> appModulePath = accessImpl.imageClassLoader.applicationModulePath();
-        String upgradeModulePath = System.getProperty("jdk.module.upgrade.path");
-        boolean haveUpgradeModulePath = upgradeModulePath != null && !upgradeModulePath.isEmpty();
+        ModuleFinder upgradeModulePath = NativeImageClassLoaderSupport.finderFor("jdk.module.upgrade.path");
+        boolean haveUpgradeModulePath = upgradeModulePath != null;
         boolean haveSVMLibrarySupportOnAppModulePath = appModulePath.stream().anyMatch(p -> p.endsWith("/lib/svm/library-support.jar"));
-        boolean haveAppModulePath = (!appModulePath.isEmpty() && !haveSVMLibrarySupportOnAppModulePath) || haveUpgradeModulePath;
+        boolean haveModulePath = (!appModulePath.isEmpty() && !haveSVMLibrarySupportOnAppModulePath) || haveUpgradeModulePath;
         Set<String> limitModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
 
         Object systemModules = null;
         ModuleFinder systemModuleFinder;
 
-        if (!haveAppModulePath && extraModules.isEmpty() && limitModules.isEmpty()) {
+        if (!haveModulePath && addModules.isEmpty() && limitModules.isEmpty()) {
             systemModules = moduleLayerFeatureUtils.invokeSystemModuleFinderSystemModules(mainModule);
         }
         if (systemModules == null) {
@@ -245,17 +245,22 @@ public final class ModuleLayerFeature implements InternalFeature {
             systemModuleFinder = SystemModuleFinders.ofSystem();
         }
 
-        systemModuleFinder = ModuleFinder.compose(moduleLayerFeatureUtils.imageClassLoader.classLoaderSupport.modulepathModuleFinder, systemModuleFinder);
+        ModuleFinder builderModuleFinder = ModuleFinder.compose(moduleLayerFeatureUtils.imageClassLoader.classLoaderSupport.modulepathModuleFinder, systemModuleFinder);
+        ModuleFinder limitedBuilderModuleFinder = moduleLayerFeatureUtils.invokeModuleBootstrapLimitFinder(builderModuleFinder, Set.of(ModuleLayerFeature.class.getModule().getName()), Set.of());
+        systemModuleFinder = ModuleFinder.compose(limitedBuilderModuleFinder, systemModuleFinder);
+
         if (haveUpgradeModulePath) {
-            systemModuleFinder = ModuleFinder.compose(accessImpl.imageClassLoader.classLoaderSupport.upgradeAndSystemModuleFinder, systemModuleFinder);
+            systemModuleFinder = ModuleFinder.compose(upgradeModulePath, systemModuleFinder);
         }
 
+        ModuleFinder finder;
         ModuleFinder appModulePathFinder = null;
-        if (haveAppModulePath) {
-            appModulePathFinder = ModuleFinder.of(accessImpl.imageClassLoader.applicationModulePath().toArray(new Path[0]));
+        if (haveModulePath) {
+            appModulePathFinder = ModuleFinder.of(appModulePath.toArray(new Path[0]));
+            finder = ModuleFinder.compose(systemModuleFinder, appModulePathFinder);
+        } else {
+            finder = systemModuleFinder;
         }
-
-        ModuleFinder finder = haveAppModulePath ? ModuleFinder.compose(systemModuleFinder, appModulePathFinder) : systemModuleFinder;
 
         Set<String> roots = new HashSet<>();
 
@@ -266,7 +271,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         boolean addAllDefaultModules = false;
         boolean addAllSystemModules = false;
         boolean addAllApplicationModules = false;
-        for (String mod : extraModules) {
+        for (String mod : addModules) {
             switch (mod) {
                 case ModuleSupport.MODULE_SET_ALL_DEFAULT:
                     addAllDefaultModules = true;
@@ -1006,6 +1011,8 @@ public final class ModuleLayerFeature implements InternalFeature {
             try {
                 return (ModuleFinder) moduleBootstrapLimitFinderMethod.invoke(null, finder, roots, otherModules);
             } catch (ReflectiveOperationException e) {
+                // TODO remove
+                e.printStackTrace();
                 throw VMError.shouldNotReachHere("Failed to reflectively invoke ModuleBootstrap.limitFinder().", e);
             }
         }

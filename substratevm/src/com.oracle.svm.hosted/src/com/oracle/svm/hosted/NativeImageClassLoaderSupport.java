@@ -290,7 +290,7 @@ public class NativeImageClassLoaderSupport {
     /**
      * Creates a finder from a module path specified by the {@code prop} system property.
      */
-    private static ModuleFinder finderFor(String prop) {
+    static ModuleFinder finderFor(String prop) {
         String s = System.getProperty(prop);
         if (s == null || s.isEmpty()) {
             return null;
