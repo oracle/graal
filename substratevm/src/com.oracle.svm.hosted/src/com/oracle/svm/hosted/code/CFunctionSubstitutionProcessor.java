@@ -27,12 +27,15 @@ package com.oracle.svm.hosted.code;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -44,6 +47,10 @@ public class CFunctionSubstitutionProcessor extends SubstitutionProcessor {
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         ResolvedJavaMethod wrapper = method;
         if (method.isNative() && method.isAnnotationPresent(CFunction.class)) {
+            if (AnnotationAccess.isAnnotationPresent(method, Uninterruptible.class)) {
+                throw UserError.abort("Native methods cannot be annotated with @Uninterruptible: " + method.format("%H.%n(%p)"));
+            }
+
             wrapper = callWrappers.computeIfAbsent(method, m -> {
                 CGlobalDataInfo linkage = CFunctionLinkages.singleton().addOrLookupMethod(m);
                 return new CFunctionCallStubMethod(m, linkage, getNewThreadStatus(method));
