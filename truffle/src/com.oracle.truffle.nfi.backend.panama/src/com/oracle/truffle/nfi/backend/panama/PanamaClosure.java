@@ -104,7 +104,6 @@ final class PanamaClosure implements TruffleObject {
             CompilerAsserts.neverPartOfCompilation();
             PanamaNFILanguage lang = PanamaNFILanguage.get(null);
             PanamaType retType = signatureInfo.getRetType();
-            // TODO implement other return types
             if (retType.type == NativeSimpleType.STRING) {
                 return StringRetClosureRootNode.createInfo(lang, signatureInfo, executable);
             } else if (retType.type == NativeSimpleType.VOID) {

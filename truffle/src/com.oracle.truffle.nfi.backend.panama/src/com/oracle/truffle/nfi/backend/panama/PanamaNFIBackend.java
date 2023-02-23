@@ -80,7 +80,6 @@ final class PanamaNFIBackend implements NFIBackend {
         simpleTypes = new EnumMap<>(NativeSimpleType.class);
         for (NativeSimpleType type : NativeSimpleType.values()) {
             switch (type) {
-                // TODO implement these types
                 case FP80, OBJECT, NULLABLE, STRING -> simpleTypes.put(type, null);
                 default -> simpleTypes.put(type, new PanamaType(type));
             }
