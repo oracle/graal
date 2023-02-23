@@ -1791,7 +1791,7 @@ public class NativeImage {
             return;
         }
 
-        Path classpathEntryFinal = bundleSupport != null ? bundleSupport.substituteModulePath(classpathEntry) : classpathEntry;
+        Path classpathEntryFinal = bundleSupport != null ? bundleSupport.substituteClassPath(classpathEntry) : classpathEntry;
         if (!imageClasspath.contains(classpathEntryFinal) && !customImageClasspath.contains(classpathEntryFinal)) {
             destination.add(classpathEntryFinal);
             if (ClasspathUtils.isJar(classpathEntryFinal)) {
