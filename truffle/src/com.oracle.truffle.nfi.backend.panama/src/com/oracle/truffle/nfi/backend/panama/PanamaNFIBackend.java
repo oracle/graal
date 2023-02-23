@@ -61,7 +61,6 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadDefaultNodeGen;
 import com.oracle.truffle.nfi.backend.panama.PanamaNFIBackendFactory.LoadLibraryNodeGen;
-import java.lang.foreign.SymbolLookup;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -110,9 +109,10 @@ final class PanamaNFIBackend implements NFIBackend {
         }
 
         @TruffleBoundary
-        private SymbolLookup doLoad() {
+        @SuppressWarnings("preview")
+        private java.lang.foreign.SymbolLookup doLoad() {
             PanamaNFIContext ctx = PanamaNFIContext.get(this);
-            return SymbolLookup.libraryLookup(name, ctx.getScope());
+            return java.lang.foreign.SymbolLookup.libraryLookup(name, ctx.getScope());
         }
 
         @Override

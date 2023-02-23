@@ -45,18 +45,14 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.StringClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNodeFactory.GenericClosureArgumentNodeGen;
 
-import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-
 class PanamaType {
 
-    final MemoryLayout nativeLayout;
+    @SuppressWarnings("preview") final java.lang.foreign.MemoryLayout nativeLayout;
     final Class<?> javaType;
     final Class<?> javaRetType;
     final NativeSimpleType type;
 
-    PanamaType(NativeSimpleType type) throws UnsupportedOperationException {
+    @SuppressWarnings("preview") PanamaType(NativeSimpleType type) throws UnsupportedOperationException {
         this.type = type;
         switch (type) {
             case VOID:
@@ -66,45 +62,45 @@ class PanamaType {
                 break;
             case UINT8:
             case SINT8:
-                nativeLayout = ValueLayout.JAVA_BYTE;
+                nativeLayout = java.lang.foreign.ValueLayout.JAVA_BYTE;
                 javaType = byte.class;
                 javaRetType = javaType;
                 break;
             case UINT16:
             case SINT16:
-                nativeLayout = ValueLayout.JAVA_SHORT;
+                nativeLayout = java.lang.foreign.ValueLayout.JAVA_SHORT;
                 javaType = short.class;
                 javaRetType = javaType;
                 break;
             case UINT32:
             case SINT32:
-                nativeLayout = ValueLayout.JAVA_INT;
+                nativeLayout = java.lang.foreign.ValueLayout.JAVA_INT;
                 javaType = int.class;
                 javaRetType = javaType;
                 break;
             case UINT64:
             case SINT64:
             case POINTER:
-                nativeLayout = ValueLayout.JAVA_LONG;
+                nativeLayout = java.lang.foreign.ValueLayout.JAVA_LONG;
                 javaType = long.class;
                 javaRetType = javaType;
                 break;
             case FP80:
                 throw new UnsupportedOperationException("Did not impl FP80");
             case FLOAT:
-                nativeLayout = ValueLayout.JAVA_FLOAT;
+                nativeLayout = java.lang.foreign.ValueLayout.JAVA_FLOAT;
                 javaType = float.class;
                 javaRetType = javaType;
                 break;
             case DOUBLE:
-                nativeLayout = ValueLayout.JAVA_DOUBLE;
+                nativeLayout = java.lang.foreign.ValueLayout.JAVA_DOUBLE;
                 javaType = double.class;
                 javaRetType = javaType;
                 break;
             case STRING:
-                javaType = MemorySegment.class;
-                javaRetType = MemorySegment.class;
-                nativeLayout = ValueLayout.ADDRESS;
+                javaType = java.lang.foreign.MemorySegment.class;
+                javaRetType = java.lang.foreign.MemorySegment.class;
+                nativeLayout = java.lang.foreign.ValueLayout.ADDRESS;
                 break;
             case OBJECT:
                 javaType = Object.class;

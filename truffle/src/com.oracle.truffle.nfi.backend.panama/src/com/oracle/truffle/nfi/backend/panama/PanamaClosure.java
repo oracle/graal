@@ -62,16 +62,15 @@ import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNode.ConstArgumentNo
 import com.oracle.truffle.nfi.backend.panama.PanamaClosureFactory.CallClosureNodeGen;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
-import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 @ExportLibrary(InteropLibrary.class)
 final class PanamaClosure implements TruffleObject {
-    final MemorySegment symbol;
+    @SuppressWarnings("preview") final java.lang.foreign.MemorySegment symbol;
 
-    PanamaClosure(MemorySegment symbol) {
+    PanamaClosure(@SuppressWarnings("preview") java.lang.foreign.MemorySegment symbol) {
         this.symbol = symbol;
     }
 

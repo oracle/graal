@@ -50,8 +50,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SegmentAllocator;
 
 abstract class ArgumentNode extends Node {
     final PanamaType type;
@@ -232,11 +230,12 @@ abstract class ArgumentNode extends Node {
         }
 
         @Specialization(limit = "3")
-        MemorySegment doConvert(Object value,
+        @SuppressWarnings("preview")
+        Object doConvert(Object value,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             PanamaNFIContext ctx = PanamaNFIContext.get(this);
             try {
-                return SegmentAllocator.nativeAllocator(ctx.getScope()).allocateUtf8String(interop.asString(value));
+                return java.lang.foreign.SegmentAllocator.nativeAllocator(ctx.getScope()).allocateUtf8String(interop.asString(value));
             } catch (UnsupportedMessageException ex) {
                 throw UnsupportedTypeException.create(new Object[]{value});
             }
