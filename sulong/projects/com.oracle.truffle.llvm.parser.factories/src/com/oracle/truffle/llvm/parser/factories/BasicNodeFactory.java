@@ -59,6 +59,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode;
 import com.oracle.truffle.llvm.runtime.floating.LLVMLongDoubleNode.LongDoubleKinds;
+import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
@@ -1889,49 +1890,22 @@ public class BasicNodeFactory implements NodeFactory {
         String name = declaration.getName().substring(CONSTRAINED_PREFIX_LEN, typeIndex);
         Type retType = declaration.getType().getReturnType();
 
-        if (retType == PrimitiveType.F128) {
-            switch (name) {
-                case "pow":
-                case "powi":
-                    return LLVMLongDoubleNode.createPowNode(args[1], args[2], LongDoubleKinds.FP128);
-                case "sqrt":
-                case "log":
-                case "log2":
-                case "log10":
-                case "rint":
-                case "ceil":
-                case "floor":
-                case "exp":
-                case "exp2":
-                case "sin":
-                case "cos":
-                    return LLVMLongDoubleNode.createUnary(name, args[1], LongDoubleKinds.FP128);
-                case "fmuladd":
-                    LLVMExpressionNode mulNodeF128 = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.F128, args[1], args[2]);
-                    return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.F128, mulNodeF128, args[3]);
+        if (retType == PrimitiveType.F128 || retType == PrimitiveType.X86_FP80) {
+            LongDoubleKinds kind = LongDoubleKinds.FP80;
+            if (retType.equals(PrimitiveType.F128)) {
+                kind = LongDoubleKinds.FP128;
             }
-        }
-
-        if (retType == PrimitiveType.X86_FP80) {
             switch (name) {
-                case "pow":
-                case "powi":
-                    return LLVMLongDoubleNode.createPowNode(args[1], args[2], LongDoubleKinds.FP80);
-                case "sqrt":
-                case "log":
-                case "log2":
-                case "log10":
-                case "rint":
-                case "ceil":
-                case "floor":
-                case "exp":
-                case "exp2":
-                case "sin":
-                case "cos":
-                    return LLVMLongDoubleNode.createUnary(name, args[1], LongDoubleKinds.FP80);
-                case "fmuladd":
-                    LLVMExpressionNode mulNodeF80 = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.X86_FP80, args[1], args[2]);
-                    return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.X86_FP80, mulNodeF80, args[3]);
+                case "pow", "powi" -> {
+                    return LLVMLongDoubleNode.createPowNode(args[1], args[2], kind);
+                }
+                case "sqrt", "log", "log2", "log10", "rint", "ceil", "floor", "exp", "exp2", "sin", "cos" -> {
+                    return LLVMLongDoubleNode.createUnary(name, args[1], kind);
+                }
+                case "fmuladd" -> {
+                    LLVMExpressionNode mulNodeF128 = createArithmeticOp(ArithmeticOperation.MUL, retType, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, retType, mulNodeF128, args[3]);
+                }
             }
         }
 

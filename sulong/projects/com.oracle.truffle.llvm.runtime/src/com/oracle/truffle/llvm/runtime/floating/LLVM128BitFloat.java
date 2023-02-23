@@ -180,8 +180,6 @@ public final class LLVM128BitFloat extends LLVMLongDoubleFloatingPoint {
         return ((expSignFraction & EXPONENT_MASK) >>> (EXPONENT_POSITION)) - (EXPONENT_BIAS);
     }
 
-    // 0x...p10 -- to the power of 2, 2p10. p48, 0x1p48.
-    // x...e10 -- rounding error
     private long getFractionAsLong() {
         long unbiasedExponent = getUnbiasedExponent();
         long returnFraction = (1L << unbiasedExponent);
@@ -272,9 +270,6 @@ public final class LLVM128BitFloat extends LLVMLongDoubleFloatingPoint {
         return fromLong(Math.abs(val), sign);
     }
 
-    // 1 << 47
-    // 1 << 48
-    // 1 << 49
     private static LLVM128BitFloat fromLong(long val, boolean sign) {
         int leadingOnePosition = Long.SIZE - Long.numberOfLeadingZeros(val);
         long exponent = EXPONENT_BIAS + (leadingOnePosition - 1);
