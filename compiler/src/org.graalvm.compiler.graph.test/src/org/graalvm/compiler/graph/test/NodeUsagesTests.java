@@ -464,10 +464,10 @@ public class NodeUsagesTests extends GraphTest {
         OptionValues options = getOptions();
         Graph graph = new Graph(options, getDebug(options));
         Def def0 = graph.add(new Def());
-        Def def1 = graph.add(new Def());
-        Use use0 = graph.add(new Use(def0, null, null));
-        Use use1 = graph.add(new Use(null, def0, null));
-        Use use2 = graph.add(new Use(null, null, def0));
+        graph.add(new Def());
+        graph.add(new Use(def0, null, null));
+        graph.add(new Use(null, def0, null));
+        graph.add(new Use(null, null, def0));
 
         String str = def0.usages().toString();
         assertTrue(str.contains("usages=[2|Use, 3|Use, 4|Use]"));
@@ -476,13 +476,12 @@ public class NodeUsagesTests extends GraphTest {
     @Test
     public void testGraphVerify() {
         OptionValues options = getOptions();
-        options = new OptionValues(options, Graph.Options.VerifyGraalGraphEdges, Boolean.TRUE);
-        options = new OptionValues(options, Graph.Options.VerifyGraalGraphs, Boolean.TRUE);
+        options = new OptionValues(options, Graph.Options.VerifyGraalGraphEdges, Boolean.TRUE, Graph.Options.VerifyGraalGraphs, Boolean.TRUE);
 
         Graph graph = new Graph(options, getDebug(options));
         TestVerifyNode a = graph.add(new TestVerifyNode(null));
         TestVerifyNode b = graph.add(new TestVerifyNode(a));
-        TestVerifyNode c = graph.add(new TestVerifyNode(b));
+        graph.add(new TestVerifyNode(b));
 
         graph.verify();
 
@@ -503,13 +502,12 @@ public class NodeUsagesTests extends GraphTest {
     public void testGraphVerifyFails() {
         try {
             OptionValues options = getOptions();
-            options = new OptionValues(options, Graph.Options.VerifyGraalGraphEdges, Boolean.TRUE);
-            options = new OptionValues(options, Graph.Options.VerifyGraalGraphs, Boolean.TRUE);
+            options = new OptionValues(options, Graph.Options.VerifyGraalGraphEdges, Boolean.TRUE, Graph.Options.VerifyGraalGraphs, Boolean.TRUE);
 
             Graph graph = new Graph(options, getDebug(options));
             Def def0 = graph.add(new Def());
-            Def def1 = graph.add(new Def());
-            Use use0 = graph.add(new Use(def0, null, null));
+            graph.add(new Def());
+            graph.add(new Use(def0, null, null));
 
             graph.verify();
             Assert.fail("GraalGraphError expected");

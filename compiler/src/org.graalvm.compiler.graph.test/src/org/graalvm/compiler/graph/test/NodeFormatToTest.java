@@ -36,13 +36,12 @@ public class NodeFormatToTest extends GraphTest {
     @Test
     public void testGraphVerify() {
         OptionValues options = getOptions();
-        options = new OptionValues(options, Graph.Options.VerifyGraalGraphEdges, Boolean.TRUE);
-        options = new OptionValues(options, Graph.Options.VerifyGraalGraphs, Boolean.TRUE);
+        options = new OptionValues(options, Graph.Options.VerifyGraalGraphEdges, Boolean.TRUE, Graph.Options.VerifyGraalGraphs, Boolean.TRUE);
 
         Graph graph = new Graph(options, getDebug(options));
         NodeUsagesTests.TestVerifyNode a = graph.add(new NodeUsagesTests.TestVerifyNode(null));
         NodeUsagesTests.TestVerifyNode b = graph.add(new NodeUsagesTests.TestVerifyNode(a));
-        NodeUsagesTests.TestVerifyNode c = graph.add(new NodeUsagesTests.TestVerifyNode(b));
+        graph.add(new NodeUsagesTests.TestVerifyNode(b));
 
         Formatter f = new Formatter();
         a.formatTo(f, 0, 4, 2);

@@ -36,8 +36,7 @@ public class NodeUnionFindTest extends GraphTest {
     @Test
     public void testGraphVerify() {
         OptionValues options = getOptions();
-        options = new OptionValues(options, Graph.Options.VerifyGraalGraphEdges, Boolean.TRUE);
-        options = new OptionValues(options, Graph.Options.VerifyGraalGraphs, Boolean.TRUE);
+        options = new OptionValues(options, Graph.Options.VerifyGraalGraphEdges, Boolean.TRUE, Graph.Options.VerifyGraalGraphs, Boolean.TRUE);
 
         Graph graph = new Graph(options, getDebug(options));
         NodeUsagesTests.TestVerifyNode a = graph.add(new NodeUsagesTests.TestVerifyNode(null));
