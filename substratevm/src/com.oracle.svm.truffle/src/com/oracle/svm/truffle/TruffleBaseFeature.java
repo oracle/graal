@@ -1086,6 +1086,12 @@ final class Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> {
     static native <T> Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> create(Class<?> generatedStorageClass, T factory, boolean safetyChecks, Object pod);
 }
 
+@TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedStaticShape$ArrayBasedFactory", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape_ArrayBasedFactory {
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    static ConcurrentHashMap<Object, Object> replacements;
+}
+
 @TargetClass(className = "com.oracle.truffle.api.staticobject.StaticProperty", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
     @Alias //

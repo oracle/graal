@@ -46,7 +46,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
@@ -70,7 +69,9 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         // Initially, values are the same as the corresponding keys. Once a replacement is computed,
         // it is stored as value. We can use an equality-based map because generated factory
         // instances to not override `equals()` and `hashCode()`.
-        @Delete
+        //
+        // Set to null by TruffleBaseFeature to avoid leaking objects and calls to
+        // `ImageInfo.inImageBuildtimeCode()` in code that might be PE'd.
         ConcurrentHashMap<Object, Object> replacements = createReplacementsMap();
 
         @SuppressWarnings("unchecked")
@@ -83,18 +84,16 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
 
         // Called by generated subtypes
         static void registerFactoryInstance(ArrayBasedFactory factory) {
-            if (ImageInfo.inImageBuildtimeCode()) {
+            if (replacements != null) {
                 replacements.put(factory, factory);
             }
         }
 
         // Called by generated subtypes
         static void registerPrimitiveStorage(byte[] primitive) {
-            if (ImageInfo.inImageBuildtimeCode()) {
-                // `primitive` is null when the static object does not store primitive values
-                if (primitive != null) {
-                    replacements.put(primitive, primitive);
-                }
+            // `primitive` is null when the static object does not store primitive values
+            if (replacements != null && primitive != null) {
+                replacements.put(primitive, primitive);
             }
         }
     }
