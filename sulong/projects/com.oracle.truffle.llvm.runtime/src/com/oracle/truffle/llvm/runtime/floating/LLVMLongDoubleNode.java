@@ -209,8 +209,8 @@ public abstract class LLVMLongDoubleNode extends LLVMExpressionNode {
 
     public static LLVMLongDoubleNode createUnary(String name, LLVMExpressionNode x, LongDoubleKinds kind) {
         return switch (kind) {
-            case FP80 -> LLVMLongDoubleNodeFactory.LLVMLongDoubleUnaryNativeCallNodeGen.create(name, "(FP80,FP80):FP80", kind, x);
-            case FP128 -> LLVMLongDoubleNodeFactory.LLVMLongDoubleUnaryNativeCallNodeGen.create(name, "(FP128,FP128):FP128", kind, x);
+            case FP80 -> LLVMLongDoubleNodeFactory.LLVMLongDoubleUnaryNativeCallNodeGen.create(name, "(FP80):FP80", kind, x);
+            case FP128 -> LLVMLongDoubleNodeFactory.LLVMLongDoubleUnaryNativeCallNodeGen.create(name, "(FP128):FP128", kind, x);
         };
     }
 }
