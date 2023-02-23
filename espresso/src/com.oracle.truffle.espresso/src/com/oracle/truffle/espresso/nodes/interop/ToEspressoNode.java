@@ -27,7 +27,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -282,26 +281,20 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isStaticObject(value)",
                     "interop.isInstant(value)",
                     "interop.isTimeZone(value)",
-                    "!isHostString(value)",
-                    // !interop.isNull(value), // redundant
-                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignDateTime(Object value, @SuppressWarnings("unused") ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Bind("getMeta()") Meta meta) {
-            StaticObject guestInstant = (StaticObject) doForeignInstant(value, meta.java_time_Instant, interop, meta);
-            StaticObject guestZoneID = (StaticObject) doForeignZoneId(value, meta.java_time_ZoneId, interop, meta);
+        StaticObject guestInstant = (StaticObject) doForeignInstant(value, meta.java_time_Instant, interop, meta);
+        StaticObject guestZoneID = (StaticObject) doForeignZoneId(value, meta.java_time_ZoneId, interop, meta);
 
-            return meta.java_time_ZonedDateTime_ofInstant.invokeDirect(null, guestInstant, guestZoneID);
+        return meta.java_time_ZonedDateTime_ofInstant.invokeDirect(null, guestInstant, guestZoneID);
     }
 
     @Specialization(guards = {
                     "isLocalDate(meta, klass)",
                     "!isStaticObject(value)",
                     "interop.isDate(value)",
-                    "!isHostString(value)",
-                    // !interop.isNull(value), // redundant
-                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignLocalDate(Object value, @SuppressWarnings("unused") ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -319,9 +312,6 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "isLocalTime(meta, klass)",
                     "!isStaticObject(value)",
                     "interop.isTime(value)",
-                    "!isHostString(value)",
-                    // !interop.isNull(value), // redundant
-                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignLocalTime(Object value, @SuppressWarnings("unused") ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -340,9 +330,6 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isStaticObject(value)",
                     "interop.isTime(value)",
                     "interop.isDate(value)",
-                    "!isHostString(value)",
-                    // !interop.isNull(value), // redundant
-                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignLocalDateTime(Object value, @SuppressWarnings("unused") ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -356,9 +343,6 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "isInstant(meta, klass)",
                     "!isStaticObject(value)",
                     "interop.isInstant(value)",
-                    "!isHostString(value)",
-                    // !interop.isNull(value), // redundant
-                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignInstant(Object value, @SuppressWarnings("unused") ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -376,9 +360,6 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "isDate(meta, klass)",
                     "!isStaticObject(value)",
                     "interop.isInstant(value)",
-                    "!isHostString(value)",
-                    // !interop.isNull(value), // redundant
-                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignDate(Object value, @SuppressWarnings("unused") ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -390,9 +371,6 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "isZoneId(meta, klass)",
                     "!isStaticObject(value)",
                     "interop.isTimeZone(value)",
-                    "!isHostString(value)",
-                    // !interop.isNull(value), // redundant
-                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignZoneId(Object value, @SuppressWarnings("unused") ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -410,9 +388,6 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "isDuration(meta, klass)",
                     "!isStaticObject(value)",
                     "interop.isDuration(value)",
-                    "!isHostString(value)",
-                    // !interop.isNull(value), // redundant
-                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignDuration(Object value, @SuppressWarnings("unused") ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
