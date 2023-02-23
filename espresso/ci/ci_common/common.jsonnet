@@ -3,8 +3,6 @@ local base = import '../ci.jsonnet';
 
 local devkits = graal_common.devkits;
 
-local _version_suffix(java_version) = if java_version == 8 then '' else '-java' + java_version;
-
 local _base_env(env) = if std.endsWith(env, '-llvm') then std.substr(env, 0, std.length(env) - 5) else env;
 
 local _graal_host_jvm_config(env) = if std.endsWith(_base_env(env), '-ce') then 'graal-core' else 'graal-enterprise';
@@ -163,7 +161,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   + (if timelimit != null then {timelimit: timelimit} else {})
   + (if name != null then {name: name} else {}),
 
-  host_jvm(env, java_version): 'graalvm-espresso-' + _base_env(env) + _version_suffix(java_version),
+  host_jvm(env, java_version): 'graalvm-espresso-' + _base_env(env),
   host_jvm_config(env): if std.startsWith(env, 'jvm') then 'jvm' else 'native',
 
   espresso_benchmark(env, suite, host_jvm=null, host_jvm_config=null, guest_jvm='espresso', guest_jvm_config='default', fork_file=null, extra_args=[], timelimit='3:00:00'):
