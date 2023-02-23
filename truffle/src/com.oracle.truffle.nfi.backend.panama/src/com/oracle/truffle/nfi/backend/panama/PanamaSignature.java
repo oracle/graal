@@ -71,7 +71,6 @@ import com.oracle.truffle.nfi.backend.panama.PanamaClosure.PolymorphicClosureInf
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 
-
 @ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = false)
 final class PanamaSignature {
 
@@ -87,7 +86,8 @@ final class PanamaSignature {
 
     private final MethodType upcallType;
 
-    PanamaSignature(@SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor functionDescriptor, MethodType upcallType, CachedSignatureInfo signatureInfo, @SuppressWarnings("preview") java.lang.foreign.SegmentScope scope) {
+    PanamaSignature(@SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor functionDescriptor, MethodType upcallType, CachedSignatureInfo signatureInfo,
+                    @SuppressWarnings("preview") java.lang.foreign.SegmentScope scope) {
         this.functionDescriptor = functionDescriptor;
         this.upcallType = upcallType;
 
@@ -146,9 +146,11 @@ final class PanamaSignature {
     }
 
     @TruffleBoundary
-    @SuppressWarnings("preview") java.lang.foreign.MemorySegment bind(MethodHandle cachedHandle, Object receiver) {
+    @SuppressWarnings("preview")
+    java.lang.foreign.MemorySegment bind(MethodHandle cachedHandle, Object receiver) {
         MethodHandle bound = cachedHandle.bindTo(receiver);
-        @SuppressWarnings("preview") java.lang.foreign.SegmentScope scope = PanamaNFIContext.get(null).getScope();
+        @SuppressWarnings("preview")
+        java.lang.foreign.SegmentScope scope = PanamaNFIContext.get(null).getScope();
         return java.lang.foreign.Linker.nativeLinker().upcallStub(bound, functionDescriptor, scope);
     }
 
@@ -165,7 +167,15 @@ final class PanamaSignature {
             // no need to cache duplicated allocation in the single-context case
             // the NFI frontend is taking care of that already
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
-            @SuppressWarnings("preview") java.lang.foreign.MemorySegment ret = signature.bind(cachedHandle, cachedExecutable);  // TODO check if this can also be cached
+            @SuppressWarnings("preview")
+            java.lang.foreign.MemorySegment ret = signature.bind(cachedHandle, cachedExecutable);  // TODO
+                                                                                                   // check
+                                                                                                   // if
+                                                                                                   // this
+                                                                                                   // can
+                                                                                                   // also
+                                                                                                   // be
+                                                                                                   // cached
             return new PanamaClosure(ret);
         }
 
@@ -175,7 +185,8 @@ final class PanamaSignature {
                         @Cached("create(cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
             assert signature.signatureInfo == cachedSignatureInfo;
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
-            @SuppressWarnings("preview") java.lang.foreign.MemorySegment ret = signature.bind(cachedHandle, executable);
+            @SuppressWarnings("preview")
+            java.lang.foreign.MemorySegment ret = signature.bind(cachedHandle, executable);
             return new PanamaClosure(ret);
         }
 
@@ -184,7 +195,8 @@ final class PanamaSignature {
         static PanamaClosure createClosure(PanamaSignature signature, Object executable) {
             PolymorphicClosureInfo cachedClosureInfo = PolymorphicClosureInfo.create(signature.signatureInfo);
             MethodHandle cachedHandle = cachedClosureInfo.handle.asType(signature.getUpcallMethodType());
-            @SuppressWarnings("preview") java.lang.foreign.MemorySegment ret = signature.bind(cachedHandle, executable);
+            @SuppressWarnings("preview")
+            java.lang.foreign.MemorySegment ret = signature.bind(cachedHandle, executable);
             return new PanamaClosure(ret);
         }
     }
@@ -280,13 +292,15 @@ final class PanamaSignature {
             argTypes[i] = curState.lastArg;
             curState = curState.prev;
         }
-        @SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor descriptor = createDescriptor(argTypes, retType);
+        @SuppressWarnings("preview")
+        java.lang.foreign.FunctionDescriptor descriptor = createDescriptor(argTypes, retType);
         MethodHandle downcallHandle = createDowncallHandle(descriptor);
         return new CachedSignatureInfo(PanamaNFILanguage.get(null), retType, argTypes, descriptor, downcallHandle);
     }
 
     private static @SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor createDescriptor(PanamaType[] argTypes, PanamaType retType) {
-        @SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor descriptor = java.lang.foreign.FunctionDescriptor.ofVoid();
+        @SuppressWarnings("preview")
+        java.lang.foreign.FunctionDescriptor descriptor = java.lang.foreign.FunctionDescriptor.ofVoid();
         if (retType.nativeLayout == null) {
             descriptor = descriptor.dropReturnLayout();
         } else {
@@ -333,7 +347,8 @@ final class PanamaSignature {
         final CallTarget callTarget;
         final MethodHandle downcallHandle;
 
-        CachedSignatureInfo(PanamaNFILanguage language, PanamaType retType, PanamaType[] argTypes, @SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor functionDescriptor, MethodHandle downcallHandle) {
+        CachedSignatureInfo(PanamaNFILanguage language, PanamaType retType, PanamaType[] argTypes, @SuppressWarnings("preview") java.lang.foreign.FunctionDescriptor functionDescriptor,
+                        MethodHandle downcallHandle) {
             this.retType = retType;
             this.argTypes = argTypes;
             this.functionDescriptor = functionDescriptor;

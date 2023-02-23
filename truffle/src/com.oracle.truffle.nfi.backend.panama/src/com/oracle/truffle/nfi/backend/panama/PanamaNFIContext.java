@@ -46,7 +46,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
 
-
 class PanamaNFIContext {
 
     final PanamaNFILanguage language;
@@ -73,7 +72,8 @@ class PanamaNFIContext {
         }
     }
 
-    @SuppressWarnings("preview") java.lang.foreign.SegmentScope getScope() {
+    @SuppressWarnings("preview")
+    java.lang.foreign.SegmentScope getScope() {
         return arena.scope();
     }
 

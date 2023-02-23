@@ -50,7 +50,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
-
 abstract class ArgumentNode extends Node {
     final PanamaType type;
 

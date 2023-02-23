@@ -52,7 +52,8 @@ class PanamaType {
     final Class<?> javaRetType;
     final NativeSimpleType type;
 
-    @SuppressWarnings("preview") PanamaType(NativeSimpleType type) throws UnsupportedOperationException {
+    @SuppressWarnings("preview")
+    PanamaType(NativeSimpleType type) throws UnsupportedOperationException {
         this.type = type;
         switch (type) {
             case VOID:

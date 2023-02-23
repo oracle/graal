@@ -97,8 +97,8 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
             return new PanamaNFIContext(this, env);
         } catch (UnsupportedClassVersionError e) {
             /*
-             * We're missing the --enable-preview flag. Fail gracefully here, this is only a
-             * problem if we're actually being used.
+             * We're missing the --enable-preview flag. Fail gracefully here, this is only a problem
+             * if we're actually being used.
              */
             return null;
         }
