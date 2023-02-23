@@ -131,38 +131,40 @@ public final class ConfigurationGenerateFiltersCommand extends ConfigurationComm
 
     @Override
     protected String getDescription0() {
-        return "          builds a class filter according to the parameters.\n" +
-                        "                          Filter rules are created according to the order of\n" +
-                        "                          these parameters, and filter rules are applied in\n" +
-                        "                          their order so that the last matching one \"wins\", so\n" +
-                        "                          the order of the parameters is relevant. Filter files\n" +
-                        "                          can be used with the caller-filter-file option of\n" +
-                        "                          native-image-agent.\n" +
-                        "    --include-classes=<class-pattern>\n" +
-                        "                          adds a single rule to include a specific class, such\n" +
-                        "                          as \"com.oracle.graal.Compiler\", or classes matching a\n" +
-                        "                          specified pattern, for example \"com.oracle.graal.*\"\n" +
-                        "                          for classes directly in package \"com.oracle.graal\",\n" +
-                        "                          or \"com.oracle.graal.** (double asterisks) for all\n" +
-                        "                          classes in \"com.oracle.graal\" AND all of its\n" +
-                        "                          subpackages and their subpackages, recursively. The\n" +
-                        "                          rule can potentially override rules from preceding\n" +
-                        "                          parameters. Can be specified several times.\n" +
-                        "    --exclude-classes=<class-pattern>\n" +
-                        "                          adds a single rule to exclude classes matching the\n" +
-                        "                          specified pattern, potentially overriding rules from\n" +
-                        "                          preceding parameters. Can be specified several times.\n" +
-                        "    --input-file=<path>\n" +
-                        "                          reads a file with filter rules from the given path.\n" +
-                        "                          Rules are processed in the order in which they occur\n" +
-                        "                          in the file, so that subsequent rules potentially\n" +
-                        "                          override preceding rules, including those from the\n" +
-                        "                          --include and --exclude parameters. Can be specified\n" +
-                        "                          several times.\n" +
-                        "    --output-file=<path>\n" +
-                        "                          specifies a file to which the output file is written.\n" +
-                        "                          If this parameter is not provided, the filter is\n" +
-                        "                          written to standard output.\n";
+        return """
+                                  builds a class filter according to the parameters.
+                                                  Filter rules are created according to the order of
+                                                  these parameters, and filter rules are applied in
+                                                  their order so that the last matching one "wins", so
+                                                  the order of the parameters is relevant. Filter files
+                                                  can be used with the caller-filter-file option of
+                                                  native-image-agent.
+                            --include-classes=<class-pattern>
+                                                  adds a single rule to include a specific class, such
+                                                  as "com.oracle.graal.Compiler", or classes matching a
+                                                  specified pattern, for example "com.oracle.graal.*"
+                                                  for classes directly in package "com.oracle.graal",
+                                                  or "com.oracle.graal.** (double asterisks) for all
+                                                  classes in "com.oracle.graal" AND all of its
+                                                  subpackages and their subpackages, recursively. The
+                                                  rule can potentially override rules from preceding
+                                                  parameters. Can be specified several times.
+                            --exclude-classes=<class-pattern>
+                                                  adds a single rule to exclude classes matching the
+                                                  specified pattern, potentially overriding rules from
+                                                  preceding parameters. Can be specified several times.
+                            --input-file=<path>
+                                                  reads a file with filter rules from the given path.
+                                                  Rules are processed in the order in which they occur
+                                                  in the file, so that subsequent rules potentially
+                                                  override preceding rules, including those from the
+                                                  --include and --exclude parameters. Can be specified
+                                                  several times.
+                            --output-file=<path>
+                                                  specifies a file to which the output file is written.
+                                                  If this parameter is not provided, the filter is
+                                                  written to standard output.
+                        """.replaceAll("\n", System.lineSeparator());
     }
 
     private static void printFilterToStream(ConfigurationFilter filter, OutputStream targetStream) throws IOException {

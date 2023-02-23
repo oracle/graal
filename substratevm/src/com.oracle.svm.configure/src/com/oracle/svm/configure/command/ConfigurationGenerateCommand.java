@@ -62,79 +62,81 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
 
     @Override
     protected String getDescription0() {
-        return "                  generates configuration file(s) from all inputs.\n" +
-                        "    --trace-input=<path>\n" +
-                        "                          reads and processes a trace file at the given path.\n" +
-                        "    --input-dir=<path>\n" +
-                        "                          reads a set of configuration files from the directory\n" +
-                        "                          at the given path. This is equivalent to all of:\n" +
-                        "                           --reflect-input=<path>/reflect-config.json\n" +
-                        "                           --jni-input=<path>/jni-config.json\n" +
-                        "                           --proxy-input=<path>/proxy-config.json\n" +
-                        "                           --resource-input=<path>/resource-config.json\n" +
-                        "    --reflect-input=<path>\n" +
-                        "                          reads a reflection configuration file at <path>.\n" +
-                        "    --jni-input=<path>\n" +
-                        "                          reads a JNI configuration file at <path>.\n" +
-                        "    --proxy-input=<path>\n" +
-                        "                          reads a dynamic proxy configuration file at <path>.\n" +
-                        "    --resource-input=<path>\n" +
-                        "                          reads a resource configuration file at <path>.\n" +
-                        "    --serialization-input=<path>\n" +
-                        "                          reads a serialization configuration file at <path>.\n" +
-                        "    --predefined-classes-input=<path>\n" +
-                        "                          reads a class predefinition config file at <path>.\n" +
-                        "    --output-dir=<path>\n" +
-                        "                          writes a set of configuration files to the directory\n" +
-                        "                          at the given path. Existing files are replaced. This\n" +
-                        "                          option is equivalent to all of:\n" +
-                        "                           --reflect-output=<path>/reflect-config.json\n" +
-                        "                           --jni-output=<path>/jni-config.json\n" +
-                        "                           --proxy-output=<path>/proxy-config.json\n" +
-                        "                           --resource-output=<path>/resource-config.json\n" +
-                        "    --reflect-output=<path>\n" +
-                        "                          write a reflection configuration file to <path>. This\n" +
-                        "                          file can be later provided to native-image with\n" +
-                        "                          -H:ReflectionConfigurationFiles=<path>.\n" +
-                        "    --jni-output=<path>\n" +
-                        "                          write a JNI configuration file to <path>. This file\n" +
-                        "                          can be later provided to native-image with\n" +
-                        "                          -H:JNIConfigurationFiles=<path>.\n" +
-                        "    --proxy-output=<path>\n" +
-                        "                          write a dynamic proxy configuration file to <path>.\n" +
-                        "                          This file can be later provided to native-image with\n" +
-                        "                          -H:DynamicProxyConfigurationFiles=<path>.\n" +
-                        "    --resource-output=<path>\n" +
-                        "                          write a configuration file containing used resources\n" +
-                        "                          (getResource) to <path>. This file can later be\n" +
-                        "                          provided to native-image with\n" +
-                        "                          -H:ResourceConfigurationFiles=<path>.\n" +
-                        "                          The paths in the configuration file might need to be\n" +
-                        "                          adjusted for the build directories/classpath.\n" +
-                        "    --serialization-input=<path>\n" +
-                        "                          writes a serialization configuration file to <path>.\n" +
-                        "                          This file can be later provided to native-image with\n" +
-                        "                          -H:SerializationConfigurationFiles=<path>.\n" +
-                        "    --predefined-classes-input=<path>\n" +
-                        "                          writes a class predefinition config file to <path>.\n" +
-                        "                          This file can be later provided to native-image with\n" +
-                        "                          -H:PredefinedClassesConfigurationFiles=<path>.\n" +
-                        "    --caller-filter-file=<path>\n" +
-                        "                          Provides a custom filter file for excluding usages\n" +
-                        "                          of JNI, reflection and resources based on the caller\n" +
-                        "                          class (read more below). This option can be provided\n" +
-                        "                          more than once, and the filter rules from the files\n" +
-                        "                          will be processed in the specified order.\n" +
-                        "    --no-builtin-caller-filter\n" +
-                        "                          Usages of JNI, reflection and resources that are\n" +
-                        "                          internal to the JDK, to GraalVM or to the Java VM do\n" +
-                        "                          not need to be configured for native-image builds and\n" +
-                        "                          by default, are filtered (removed) from the generated\n" +
-                        "                          configurations. This option disables the built-in\n" +
-                        "                          filter for such usages based on the caller class.\n" +
-                        "    --no-builtin-heuristic-filter\n" +
-                        "                          This option disables builtin heuristics that identify\n" +
-                        "                          further internal JNI, reflection and resource usages.\n";
+        return """
+                                          generates configuration file(s) from all inputs.
+                            --trace-input=<path>
+                                                  reads and processes a trace file at the given path.
+                            --input-dir=<path>
+                                                  reads a set of configuration files from the directory
+                                                  at the given path. This is equivalent to all of:
+                                                   --reflect-input=<path>/reflect-config.json
+                                                   --jni-input=<path>/jni-config.json
+                                                   --proxy-input=<path>/proxy-config.json
+                                                   --resource-input=<path>/resource-config.json
+                            --reflect-input=<path>
+                                                  reads a reflection configuration file at <path>.
+                            --jni-input=<path>
+                                                  reads a JNI configuration file at <path>.
+                            --proxy-input=<path>
+                                                  reads a dynamic proxy configuration file at <path>.
+                            --resource-input=<path>
+                                                  reads a resource configuration file at <path>.
+                            --serialization-input=<path>
+                                                  reads a serialization configuration file at <path>.
+                            --predefined-classes-input=<path>
+                                                  reads a class predefinition config file at <path>.
+                            --output-dir=<path>
+                                                  writes a set of configuration files to the directory
+                                                  at the given path. Existing files are replaced. This
+                                                  option is equivalent to all of:
+                                                   --reflect-output=<path>/reflect-config.json
+                                                   --jni-output=<path>/jni-config.json
+                                                   --proxy-output=<path>/proxy-config.json
+                                                   --resource-output=<path>/resource-config.json
+                            --reflect-output=<path>
+                                                  write a reflection configuration file to <path>. This
+                                                  file can be later provided to native-image with
+                                                  -H:ReflectionConfigurationFiles=<path>.
+                            --jni-output=<path>
+                                                  write a JNI configuration file to <path>. This file
+                                                  can be later provided to native-image with
+                                                  -H:JNIConfigurationFiles=<path>.
+                            --proxy-output=<path>
+                                                  write a dynamic proxy configuration file to <path>.
+                                                  This file can be later provided to native-image with
+                                                  -H:DynamicProxyConfigurationFiles=<path>.
+                            --resource-output=<path>
+                                                  write a configuration file containing used resources
+                                                  (getResource) to <path>. This file can later be
+                                                  provided to native-image with
+                                                  -H:ResourceConfigurationFiles=<path>.
+                                                  The paths in the configuration file might need to be
+                                                  adjusted for the build directories/classpath.
+                            --serialization-input=<path>
+                                                  writes a serialization configuration file to <path>.
+                                                  This file can be later provided to native-image with
+                                                  -H:SerializationConfigurationFiles=<path>.
+                            --predefined-classes-input=<path>
+                                                  writes a class predefinition config file to <path>.
+                                                  This file can be later provided to native-image with
+                                                  -H:PredefinedClassesConfigurationFiles=<path>.
+                            --caller-filter-file=<path>
+                                                  Provides a custom filter file for excluding usages
+                                                  of JNI, reflection and resources based on the caller
+                                                  class (read more below). This option can be provided
+                                                  more than once, and the filter rules from the files
+                                                  will be processed in the specified order.
+                            --no-builtin-caller-filter
+                                                  Usages of JNI, reflection and resources that are
+                                                  internal to the JDK, to GraalVM or to the Java VM do
+                                                  not need to be configured for native-image builds and
+                                                  by default, are filtered (removed) from the generated
+                                                  configurations. This option disables the built-in
+                                                  filter for such usages based on the caller class.
+                            --no-builtin-heuristic-filter
+                                                  This option disables builtin heuristics that identify
+                                                  further internal JNI, reflection and resource usages.
+                        """.replaceAll("\n", System.lineSeparator());
     }
 
     @SuppressWarnings("fallthrough")
