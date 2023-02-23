@@ -281,33 +281,36 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     }
 
     public void removeSuccessor(NFAState state) {
-        int remove = indexOfTransition(state);
-        if (remove == -1) {
-            return;
-        }
-        NFAStateTransition[] newNext = new NFAStateTransition[getSuccessors().length - 1];
-        System.arraycopy(getSuccessors(), 0, newNext, 0, remove);
-        System.arraycopy(getSuccessors(), remove + 1, newNext, remove, newNext.length - remove);
-        setSuccessors(newNext);
-        if (transitionToAnchoredFinalState == remove) {
-            transitionToAnchoredFinalState = -1;
-        } else if (transitionToAnchoredFinalState > remove) {
-            transitionToAnchoredFinalState--;
-        }
-        if (transitionToUnAnchoredFinalState == remove) {
-            transitionToUnAnchoredFinalState = -1;
-        } else if (transitionToUnAnchoredFinalState > remove) {
-            transitionToUnAnchoredFinalState--;
-        }
-    }
-
-    private int indexOfTransition(NFAState target) {
-        for (int i = 0; i < getSuccessors().length; i++) {
-            if (getSuccessors()[i].getTarget() == target) {
-                return i;
+        int toRemove = 0;
+        for (NFAStateTransition successor : getSuccessors()) {
+            if (successor.getTarget() == state) {
+                toRemove++;
             }
         }
-        return -1;
+        if (toRemove == 0) {
+            return;
+        }
+        NFAStateTransition[] newNext = new NFAStateTransition[getSuccessors().length - toRemove];
+        short iNew = 0;
+        for (short i = 0; i < getSuccessors().length; i++) {
+            if (getSuccessors()[i].getTarget() == state) {
+                if (i == transitionToAnchoredFinalState) {
+                    transitionToAnchoredFinalState = -1;
+                }
+                if (i == transitionToUnAnchoredFinalState) {
+                    transitionToUnAnchoredFinalState = -1;
+                }
+            } else {
+                if (i == transitionToAnchoredFinalState) {
+                    transitionToAnchoredFinalState = iNew;
+                }
+                if (i == transitionToUnAnchoredFinalState) {
+                    transitionToUnAnchoredFinalState = iNew;
+                }
+                newNext[iNew++] = getSuccessors()[i];
+            }
+        }
+        setSuccessors(newNext);
     }
 
     public void linkPredecessors() {

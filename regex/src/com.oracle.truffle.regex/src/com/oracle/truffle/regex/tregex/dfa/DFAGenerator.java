@@ -343,7 +343,11 @@ public final class DFAGenerator implements JsonConvertible {
         entryStates = new DFAStateNodeBuilder[numberOfEntryPoints * 2];
         nfa.setInitialLoopBack(isSearching() && !nfa.getAst().getFlags().isSticky());
         for (int i = 0; i < numberOfEntryPoints; i++) {
-            if (nfa.getUnAnchoredEntry()[i].getTarget().getSuccessors().length == 0) {
+            if (nfa.getAnchoredEntry()[i] == null) {
+                assert nfa.getUnAnchoredEntry()[i] == null;
+                entryStates[i] = null;
+                entryStates[numberOfEntryPoints + i] = null;
+            } else if (nfa.getUnAnchoredEntry()[i] == null) {
                 entryStates[i] = createInitialState(createTransitionBuilder(createNFATransitionSet(nfa.getAnchoredEntry()[i])));
                 entryStates[numberOfEntryPoints + i] = null;
             } else {
@@ -583,7 +587,9 @@ public final class DFAGenerator implements JsonConvertible {
 
             // find NFA states of the prefix and the beginning and end of the literal
             StateSet<NFA, NFAState> prefixNFAStates = StateSet.create(nfa);
-            prefixNFAStates.add(nfa.getUnAnchoredInitialState());
+            if (nfa.getUnAnchoredInitialState() != null) {
+                prefixNFAStates.add(nfa.getUnAnchoredInitialState());
+            }
             NFAState literalFirstState = null;
             NFAState literalLastState = null;
             for (NFAState s : nfa.getStates()) {
@@ -1137,7 +1143,8 @@ public final class DFAGenerator implements JsonConvertible {
     }
 
     private DFASimpleCGTransition createSimpleCGTransition(NFAStateTransition nfaTransition) {
-        return DFASimpleCGTransition.create(nfaTransition, isForward() && nfaTransition != null && nfaTransition.getSource() == nfa.getInitialLoopBackTransition().getSource());
+        return DFASimpleCGTransition.create(nfaTransition,
+                        isForward() && nfaTransition != null && nfa.getInitialLoopBackTransition() != null && nfaTransition.getSource() == nfa.getInitialLoopBackTransition().getSource());
     }
 
     /**
