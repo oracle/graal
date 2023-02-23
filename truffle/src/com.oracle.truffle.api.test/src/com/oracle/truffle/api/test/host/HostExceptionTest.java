@@ -109,6 +109,7 @@ public class HostExceptionTest {
     private boolean entered;
     ByteArrayOutputStream outStream = new ByteArrayOutputStream();
     private Env env;
+    private HostAccess hostAccess = HostAccess.ALL;
     private Class<? extends Throwable> expectedException;
     private Consumer<Throwable> hostExceptionVerifier = this::verifyHostException;
     private Consumer<Throwable> customExceptionVerifier;
@@ -137,7 +138,10 @@ public class HostExceptionTest {
 
     @Before
     public void before() {
-        context = Context.newBuilder().allowHostAccess(HostAccess.ALL).out(outStream).build();
+        if (context != null) {
+            after();
+        }
+        context = Context.newBuilder().allowHostAccess(hostAccess).out(outStream).build();
         if (TruffleTestAssumptions.isWeakEncapsulation()) {
             ProxyLanguage.setDelegate(new ProxyLanguage() {
                 @Override
@@ -695,6 +699,7 @@ public class HostExceptionTest {
 
     @FunctionalInterface
     public interface VarArgsFunction {
+        @HostAccess.Export
         Value apply(Value... args);
     }
 
@@ -890,6 +895,76 @@ public class HostExceptionTest {
                         both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
                         both(containsString(HostExceptionTest.class.getName())).and(containsString("hostRethrow")),
                         both(containsString(HostExceptionTest.class.getName())).and(containsString("lambda")),
+                        equalTo(CATCHER)).forEach(matcher -> {
+                            PolyglotException.StackFrame element = it.next();
+                            assertThat(element.getRootName(), matcher);
+                            if (element.isGuestFrame()) {
+                                assertNotNull("Missing source location for stack trace element: " + element.getRootName(), element.getSourceLocation());
+                            }
+                        });
+    }
+
+    @Test
+    public void testHideHostStackFrames() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        hostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build();
+        before();
+
+        String expectedMessage = "oh";
+        expectedException = PolyglotException.class;
+
+        Value runner = context.eval(ProxyLanguage.ID, RUNNER);
+        Value catcher = context.eval(ProxyLanguage.ID, CATCHER);
+        Value throwException = context.eval(ProxyLanguage.ID, THROW_EXCEPTION);
+        ProxyExecutable proxyRunner = HostExceptionTest::hostApply;
+        VarArgsFunction hostRunner = HostExceptionTest::hostApply;
+
+        hostExceptionVerifier = null;
+        customExceptionVerifier = (guestEx) -> {
+            assertFalse(guestEx.toString(), env.isHostException(guestEx));
+            assertTrue(guestEx.toString(), INTEROP.isException(guestEx));
+
+            assertEquals(List.of(expectedMessage,
+                            THROW_EXCEPTION,
+                            RUNNER,
+                            RUNNER,
+                            RUNNER,
+                            CATCHER),
+                            formatInteropExceptionStackTrace(guestEx, true, true));
+
+            Iterator<String> it = formatInteropExceptionStackTrace(guestEx, false, true).stream().iterator();
+            List.of(equalTo(expectedMessage),
+                            containsString(THROW_EXCEPTION),
+                            containsString(RUNNER),
+                            containsString(RUNNER),
+                            containsString(RUNNER),
+                            containsString(CATCHER)).forEach(matcher -> {
+                                assertThat(it.next(), matcher);
+                            });
+        };
+
+        Value result = catcher.execute(runner, proxyRunner, runner, hostRunner, runner, throwException, expectedMessage);
+        assertTrue(result.toString(), result.isException());
+        assertFalse(result.toString(), result.isHostObject());
+
+        PolyglotException polyglotException = result.as(PolyglotException.class);
+        assertEquals(expectedMessage, polyglotException.getMessage());
+        List<String> expectedStack = List.of(
+                        THROW_EXCEPTION,
+                        RUNNER,
+                        RUNNER,
+                        RUNNER,
+                        CATCHER);
+        assertEquals(expectedStack, getProxyLanguageStackTrace(polyglotException));
+
+        Iterator<PolyglotException.StackFrame> it = stream(polyglotException.getPolyglotStackTrace()).filter(s -> !s.getRootName().startsWith(Value.class.getName())).iterator();
+        List.of(
+                        equalTo(THROW_EXCEPTION),
+                        equalTo(RUNNER),
+                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
+                        equalTo(RUNNER),
+                        both(containsString(HostExceptionTest.class.getName())).and(containsString("hostApply")),
+                        equalTo(RUNNER),
                         equalTo(CATCHER)).forEach(matcher -> {
                             PolyglotException.StackFrame element = it.next();
                             assertThat(element.getRootName(), matcher);
