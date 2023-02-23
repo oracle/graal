@@ -175,7 +175,7 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
+        JNIGraphKit kit = new JNIGraphKit(debug, providers, method, purpose);
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());

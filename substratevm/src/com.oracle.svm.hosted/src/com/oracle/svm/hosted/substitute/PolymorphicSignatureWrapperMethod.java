@@ -85,7 +85,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
 
         List<ValueNode> args = kit.loadArguments(method.toParameterTypes());
         ValueNode receiver = null;

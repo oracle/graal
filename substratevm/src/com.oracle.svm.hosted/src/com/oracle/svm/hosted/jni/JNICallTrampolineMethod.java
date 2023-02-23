@@ -91,7 +91,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        HostedGraphKit kit = new JNIGraphKit(debug, providers, method);
+        HostedGraphKit kit = new JNIGraphKit(debug, providers, method, purpose);
         kit.append(new LoweredDeadEndNode());
 
         return kit.finalizeGraph();

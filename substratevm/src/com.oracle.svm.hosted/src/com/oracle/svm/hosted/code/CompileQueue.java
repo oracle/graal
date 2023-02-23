@@ -942,7 +942,7 @@ public class CompileQueue {
             }
             if (graph == null && method.isNative() &&
                             NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-                graph = DeletedMethod.buildGraph(debug, method, providers, DeletedMethod.NATIVE_MESSAGE);
+                graph = DeletedMethod.buildGraph(debug, method, providers, DeletedMethod.NATIVE_MESSAGE, Purpose.AOT_COMPILATION);
             }
             if (graph == null) {
                 needParsing = true;
