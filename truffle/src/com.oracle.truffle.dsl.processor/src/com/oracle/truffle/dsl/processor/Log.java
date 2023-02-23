@@ -94,7 +94,7 @@ public class Log {
 
     public boolean isSuppressed(Kind kind, String suppressionKey, Element usedElement, boolean useOptions) {
         if (kind == Kind.WARNING) {
-            if (!emitWarnings) {
+            if (!emitWarnings && useOptions) {
                 return true;
             }
             if (suppressionKey != null) {
