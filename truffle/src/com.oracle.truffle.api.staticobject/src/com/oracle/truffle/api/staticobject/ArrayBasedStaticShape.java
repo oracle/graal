@@ -91,7 +91,10 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         // Called by generated subtypes
         static void registerPrimitiveStorage(byte[] primitive) {
             if (ImageInfo.inImageBuildtimeCode()) {
-                replacements.put(primitive, primitive);
+                // `primitive` is null when the static object does not store primitive values
+                if (primitive != null) {
+                    replacements.put(primitive, primitive);
+                }
             }
         }
     }
