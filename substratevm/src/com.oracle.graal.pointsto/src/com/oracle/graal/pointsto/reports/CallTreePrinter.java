@@ -30,6 +30,7 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.EMPTY_INDENT;
 import static com.oracle.graal.pointsto.reports.ReportUtils.LAST_CHILD;
 import static com.oracle.graal.pointsto.reports.ReportUtils.invokeInfoComparator;
 import static com.oracle.graal.pointsto.reports.ReportUtils.methodComparator;
+import static org.graalvm.compiler.java.LambdaUtils.digest;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -41,6 +42,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -56,7 +58,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.LambdaUtils;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -68,6 +73,10 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 public final class CallTreePrinter {
 
@@ -113,6 +122,7 @@ public final class CallTreePrinter {
         public String format() {
             return methodNode.method.format(METHOD_FORMAT) + " id-ref=" + methodNode.id;
         }
+
     }
 
     static class MethodNode implements Node {
@@ -193,11 +203,16 @@ public final class CallTreePrinter {
                 }
             }
         }
+
         roots.sort(methodComparator);
         for (AnalysisMethod m : roots) {
             methodToNode.put(m, new MethodNode(m, true));
         }
-        /* Walk the call graph starting from the roots, do a breadth-first tree reduction. */
+
+        /*
+         * Walk the call graph starting from the roots (deterministically sorted), do a
+         * breadth-first tree reduction.
+         */
         ArrayDeque<MethodNode> workList = new ArrayDeque<>(methodToNode.values());
 
         while (!workList.isEmpty()) {
@@ -210,10 +225,17 @@ public final class CallTreePrinter {
             for (var invokeInfo : node.method.getInvokes()) {
                 invokeInfos.add(invokeInfo);
             }
+
+            /*
+             * In order to have deterministic order of invokes we sort them by position and names.
+             * In case of Lambda names we avoid the non-deterministic hash part while sorting.
+             */
             invokeInfos.sort(invokeInfoComparator);
+
             for (var invokeInfo : invokeInfos) {
                 processInvoke(invokeInfo, node, workList);
             }
+
         }
     }
 

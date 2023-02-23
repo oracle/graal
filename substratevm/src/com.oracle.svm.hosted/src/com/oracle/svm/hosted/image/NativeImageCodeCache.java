@@ -28,8 +28,6 @@ import static com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils.thr
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
@@ -37,9 +35,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,7 +50,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
-import jdk.vm.ci.common.JVMCIError;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
@@ -172,7 +167,8 @@ public abstract class NativeImageCodeCache {
     }
 
     protected List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap) {
-        return compilationMap.entrySet().stream().map(e -> Pair.create(e.getKey(), e.getValue())).collect(Collectors.toList());
+        return compilationMap.entrySet().stream().map(e -> Pair.create(e.getKey(), e.getValue())).sorted(Comparator.comparing(o -> o.getLeft().wrapped.format("%H.%n(%P):%R")))
+                        .collect(Collectors.toList());
     }
 
     public List<Pair<HostedMethod, CompilationResult>> getOrderedCompilations() {
@@ -594,38 +590,32 @@ public abstract class NativeImageCodeCache {
     public abstract List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile);
 
     public void printCompilationResults() {
-        try {
-            Path reportDir = Files.createDirectories(Paths.get(SubstrateOptions.reportsPath()));
-            Path file = reportDir.resolve("universe_compilation_" + ReportUtils.getTimeStampString() + ".txt");
-            Files.deleteIfExists(file);
+        String reportsPath = SubstrateOptions.reportsPath();
+        ReportUtils.report("compilation results", reportsPath, "universe_compilation", "txt",
+                        writer -> printCompilationResults(writer));
+    }
 
-            try (FileWriter fw = new FileWriter(Files.createFile(file).toFile())) {
-                try (PrintWriter writer = new PrintWriter(fw)) {
+    private void printCompilationResults(PrintWriter writer) {
 
-                    writer.println("--- compiled methods");
-                    for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
-                        HostedMethod method = pair.getLeft();
-                        CompilationResult result = pair.getRight();
-                        writer.format("%8d %5d %s: frame %d%n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
+        writer.println("--- compiled methods");
+        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+            HostedMethod method = pair.getLeft();
+            CompilationResult result = pair.getRight();
+            writer.format("%8d %5d %s: frame %d%n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
+        }
+        writer.println("--- vtables:");
+        for (HostedType type : imageHeap.getUniverse().getTypes()) {
+            for (int i = 0; i < type.getVTable().length; i++) {
+                HostedMethod method = type.getVTable()[i];
+                if (method != null) {
+                    CompilationResult comp = compilationResultFor(type.getVTable()[i]);
+                    if (comp != null) {
+                        writer.format("%d %s @ %d: %s = 0x%x%n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
                     }
-                    writer.println("--- vtables:");
-                    for (HostedType type : imageHeap.getUniverse().getTypes()) {
-                        for (int i = 0; i < type.getVTable().length; i++) {
-                            HostedMethod method = type.getVTable()[i];
-                            if (method != null) {
-                                CompilationResult comp = compilationResultFor(type.getVTable()[i]);
-                                if (comp != null) {
-                                    writer.format("%d %s @ %d: %s = 0x%x%n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
-                                }
-                            }
-                        }
-                    }
-
                 }
             }
-        } catch (IOException e) {
-            throw JVMCIError.shouldNotReachHere(e);
         }
+
     }
 
     private static class HostedFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromMethod {

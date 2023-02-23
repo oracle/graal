@@ -30,7 +30,6 @@ import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsMode;
 import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
@@ -40,7 +39,6 @@ import java.lang.reflect.Type;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.AbstractCollection;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,7 +57,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
-import jdk.vm.ci.common.JVMCIError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -1739,10 +1736,10 @@ public class NativeImageGenerator {
         return buildArtifacts;
     }
 
-    private void printTypes(){
+    private void printTypes() {
         String reportsPath = SubstrateOptions.reportsPath();
-        ReportUtils.report("print types", reportsPath, "universe_analysis_", "txt",
-                writer -> printTypes(writer));
+        ReportUtils.report("print types", reportsPath, "universe_analysis", "txt",
+                        writer -> printTypes(writer));
     }
 
     private void printTypes(PrintWriter writer) {
