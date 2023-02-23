@@ -534,7 +534,7 @@ final class PolyglotExceptionImpl {
             PrintStream out = System.out;
             out.println();
         }
-        return new MergedHostGuestIterator<>(impl.engine, hostStack, guestFrames, inHostLanguage, new Function<StackTraceElement, StackFrame>() {
+        return new MergedHostGuestIterator<>(impl.engine, hostStack, guestFrames, inHostLanguage, true, new Function<StackTraceElement, StackFrame>() {
             @Override
             public StackFrame apply(StackTraceElement element) {
                 return apiAccess.newPolyglotStackTraceElement(PolyglotExceptionFrame.createHost(impl, element), impl.api);
@@ -606,13 +606,15 @@ final class PolyglotExceptionImpl {
         private final ListIterator<StackTraceElement> hostFrames;
         private final Function<StackTraceElement, T> hostFrameConvertor;
         private final Function<G, T> guestFrameConvertor;
+        private final boolean includeHostFrames;
         private boolean inHostLanguage;
         private T fetchedNext;
 
-        MergedHostGuestIterator(PolyglotEngineImpl engine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor,
-                        Function<G, T> guestFrameConvertor) {
+        MergedHostGuestIterator(PolyglotEngineImpl engine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
+                        boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor) {
             this.engine = engine;
             this.hostStack = hostStack;
+            this.includeHostFrames = includeHostFrames;
             this.hostFrames = Arrays.asList(hostStack).listIterator();
             this.guestFrames = guestFrames;
             this.inHostLanguage = inHostLanguage;
@@ -686,9 +688,12 @@ final class PolyglotExceptionImpl {
                         }
                     }
                 } else if (inHostLanguage) {
-                    // construct host frame
-                    fetchedNext = hostFrameConvertor.apply(element);
-                    return fetchedNext;
+                    if (includeHostFrames) {
+                        // construct host frame
+                        T frame = hostFrameConvertor.apply(element);
+                        fetchedNext = frame;
+                        return fetchedNext;
+                    }
                 } else {
                     // skip stack frame that is part of guest language stack
                 }

@@ -235,7 +235,7 @@ public final class DebugException extends RuntimeException {
                     StackTraceElement[] stack = SuspendedEvent.cutToHostDepth(getRawStackTrace());
                     Object polyglotInstrument = Debugger.ACCESSOR.instrumentSupport().getPolyglotInstrument(session.getDebugger().getEnv());
                     Object polyglotEngine = Debugger.ACCESSOR.engineSupport().getEngineFromPolyglotObject(polyglotInstrument);
-                    Iterator<DebugStackTraceElement> mergedElements = Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine, stack, debugStack.iterator(), true,
+                    Iterator<DebugStackTraceElement> mergedElements = Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine, stack, debugStack.iterator(), true, true,
                                     new Function<StackTraceElement, DebugStackTraceElement>() {
                                         @Override
                                         public DebugStackTraceElement apply(StackTraceElement element) {

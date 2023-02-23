@@ -163,7 +163,7 @@ final class ExceptionAccessor extends Accessor {
             }
             Object[] items;
             if (hasGuestToHostCalls) {
-                // If we have guest to host calls, we need to merge in the host frames.
+                // If we have guest to host calls, we need to merge in (or filter) the host frames.
                 Object polyglotEngine = polyglotContext == null
                                 ? ACCESSOR.engineSupport().getCurrentPolyglotEngine()
                                 : ACCESSOR.engineSupport().getEngineFromPolyglotObject(polyglotContext);
@@ -198,7 +198,8 @@ final class ExceptionAccessor extends Accessor {
             }
 
             Iterator<TruffleStackTraceElement> guestStackIterator = guestStack.iterator();
-            Iterator<Object> mergedElements = ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine, hostStack, guestStackIterator, inHost,
+            boolean includeHostFrames = ACCESSOR.engineSupport().isHostStackTraceVisibleToGuest(polyglotEngine);
+            Iterator<Object> mergedElements = ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine, hostStack, guestStackIterator, inHost, includeHostFrames,
                             new Function<StackTraceElement, Object>() {
                                 @Override
                                 public Object apply(StackTraceElement element) {
@@ -212,7 +213,12 @@ final class ExceptionAccessor extends Accessor {
                             new Function<TruffleStackTraceElement, Object>() {
                                 @Override
                                 public Object apply(TruffleStackTraceElement element) {
-                                    if (ExceptionAccessor.ACCESSOR.hostSupport().isGuestToHostRootNode(element.getTarget().getRootNode())) {
+                                    RootNode rootNode = element.getTarget().getRootNode();
+                                    if (ACCESSOR.hostSupport().isGuestToHostRootNode(rootNode)) {
+                                        // omit guest to host frame (e.g. HostObject.doInvoke)
+                                        return null;
+                                    } else if (ACCESSOR.engineSupport().isHostToGuestRootNode(rootNode)) {
+                                        // omit host to guest frame (e.g. Value.execute)
                                         return null;
                                     }
                                     return element.getGuestObject();

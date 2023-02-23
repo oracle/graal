@@ -859,7 +859,7 @@ public final class SuspendedEvent {
                         }
                         return frame;
                     }
-                }, false, new Function<StackTraceElement, DebugStackFrame>() {
+                }, false, true, new Function<StackTraceElement, DebugStackFrame>() {
                     @Override
                     public DebugStackFrame apply(StackTraceElement element) {
                         return new DebugStackFrame(SuspendedEvent.this, element, frameDepth.get());

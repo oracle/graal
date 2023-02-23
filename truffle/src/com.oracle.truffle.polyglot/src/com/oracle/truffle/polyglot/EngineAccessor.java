@@ -1728,9 +1728,21 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
-                        Function<StackTraceElement, T> hostFrameConvertor,
-                        Function<G, T> guestFrameConvertor) {
-            return new PolyglotExceptionImpl.MergedHostGuestIterator<>((PolyglotEngineImpl) polyglotEngine, hostStack, guestFrames, inHostLanguage, hostFrameConvertor, guestFrameConvertor);
+                        boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor) {
+            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
+            return new PolyglotExceptionImpl.MergedHostGuestIterator<>(engine, hostStack, guestFrames, inHostLanguage, includeHostFrames,
+                            hostFrameConvertor, guestFrameConvertor);
+        }
+
+        @Override
+        public boolean isHostStackTraceVisibleToGuest(Object polyglotEngine) {
+            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
+            return engine.getAPIAccess().allowsPublicAccess(HOST.getHostAccess(engine.getHostLanguageSPI()));
+        }
+
+        @Override
+        public boolean isHostToGuestRootNode(RootNode root) {
+            return root instanceof HostToGuestRootNode;
         }
 
         @Override

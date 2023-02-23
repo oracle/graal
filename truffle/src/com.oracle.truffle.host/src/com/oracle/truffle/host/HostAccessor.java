@@ -43,6 +43,7 @@ package com.oracle.truffle.host;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
@@ -164,6 +165,11 @@ final class HostAccessor extends Accessor {
         @Override
         public boolean isHostLanguage(Class<?> languageClass) {
             return languageClass == HostLanguage.class;
+        }
+
+        @Override
+        public HostAccess getHostAccess(TruffleLanguage<?> hostLanguage) {
+            return ((HostLanguage) hostLanguage).hostClassCache.hostAccess;
         }
 
         @Override
