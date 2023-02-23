@@ -144,7 +144,7 @@ public class JfrGlobalMemory {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     private static void releasePromotionBuffer(JfrBuffer buffer) {
-        assert JfrBufferAccess.isLocked(buffer);
+        assert JfrBufferAccess.isLockedByCurrentThread(buffer);
         JfrBufferAccess.unlock(buffer);
     }
 }

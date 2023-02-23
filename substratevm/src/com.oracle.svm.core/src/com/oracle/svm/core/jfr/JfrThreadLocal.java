@@ -235,26 +235,6 @@ public class JfrThreadLocal implements ThreadListener {
         return WordFactory.nullPointer();
     }
 
-    @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
-    public static JfrBuffer getJavaBuffer(IsolateThread thread) {
-        assert VMOperation.isInProgressAtSafepoint();
-        JfrBufferNode result = javaBufferNode.get(thread);
-        if (result.isNonNull()) {
-            return result.getValue();
-        }
-        return WordFactory.nullPointer();
-    }
-
-    @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
-    public static JfrBuffer getNativeBuffer(IsolateThread thread) {
-        assert VMOperation.isInProgressAtSafepoint();
-        JfrBufferNode result = nativeBufferNode.get(thread);
-        if (result.isNonNull()) {
-            return result.getValue();
-        }
-        return WordFactory.nullPointer();
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void notifyEventWriter(IsolateThread thread) {
         if (javaEventWriter.get(thread) != null) {

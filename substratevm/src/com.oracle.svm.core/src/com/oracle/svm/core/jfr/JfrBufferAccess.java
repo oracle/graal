@@ -27,7 +27,7 @@ package com.oracle.svm.core.jfr;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -65,9 +65,13 @@ public final class JfrBufferAccess {
             result.setSize(dataSize);
             result.setBufferType(bufferType);
             NativeSpinLockUtils.initialize(ptrToLock(result));
-            tryLock(result, Integer.MAX_VALUE);
-            reinitialize(result);
-            unlock(result);
+            boolean locked = tryLock(result);
+            try {
+                assert locked;
+                reinitialize(result);
+            } finally {
+                unlock(result);
+            }
         }
         return result;
     }
@@ -80,8 +84,6 @@ public final class JfrBufferAccess {
     @Uninterruptible(reason = "Prevent safepoints as those could change the flushed position.")
     public static void reinitialize(JfrBuffer buffer) {
         assert buffer.isNonNull();
-
-        org.graalvm.nativeimage.CurrentIsolate.getCurrentThread();
         Pointer pos = getDataStart(buffer);
         buffer.setCommittedPos(pos);
         setFlushedPos(buffer, pos);
@@ -94,8 +96,7 @@ public final class JfrBufferAccess {
      */
     @Uninterruptible(reason = "Changes flushed position.")
     public static void setFlushedPos(JfrBuffer buffer, Pointer pos) {
-        assert (isLocked(buffer) && buffer.getLockOwner() == CurrentIsolate.getCurrentThread()) ||
-                        (buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_JAVA && buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_NATIVE);
+        assert isLockedByCurrentThread(buffer) || !isThreadLocal(buffer);
         buffer.setFlushedPos(pos);
     }
 
@@ -106,8 +107,7 @@ public final class JfrBufferAccess {
      */
     @Uninterruptible(reason = "Accesses flushed position. Possible race between flushing and working threads.")
     public static Pointer getFlushedPos(JfrBuffer buffer) {
-        assert (isLocked(buffer) && buffer.getLockOwner() == CurrentIsolate.getCurrentThread()) ||
-                        (buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_JAVA && buffer.getBufferType() != JfrBufferType.THREAD_LOCAL_NATIVE);
+        assert isLockedByCurrentThread(buffer) || !isThreadLocal(buffer);
         return buffer.getFlushedPos();
     }
 
@@ -140,7 +140,7 @@ public final class JfrBufferAccess {
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
     public static void unlock(JfrBuffer buffer) {
         assert buffer.isNonNull();
-        assert (isLocked(buffer) && buffer.getLockOwner() == CurrentIsolate.getCurrentThread());
+        assert isLockedByCurrentThread(buffer);
 
         NativeSpinLockUtils.unlock(ptrToLock(buffer));
     }
@@ -210,7 +210,17 @@ public final class JfrBufferAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static CIntPointer ptrToLock(JfrBuffer buffer) {
-        return (CIntPointer) ((Pointer) buffer).add(JfrBuffer.offsetOfLocked());
+    private static WordPointer ptrToLock(JfrBuffer buffer) {
+        return (WordPointer) ((Pointer) buffer).add(JfrBuffer.offsetOfLockOwner());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean isThreadLocal(JfrBuffer buffer) {
+        return buffer.getBufferType() == JfrBufferType.THREAD_LOCAL_JAVA || buffer.getBufferType() == JfrBufferType.THREAD_LOCAL_NATIVE;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isLockedByCurrentThread(JfrBuffer buffer) {
+        return isLocked(buffer) && buffer.getLockOwner() == CurrentIsolate.getCurrentThread();
     }
 }

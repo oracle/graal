@@ -733,6 +733,7 @@ public class SubstrateJVM {
              * If JFR recording is restarted later on, then it needs to start with a clean state.
              * Therefore, we clear all data that is still pending.
              */
+            ((JfrThreadLocal)SubstrateJVM.getThreadLocal()).teardown();
             SubstrateJVM.getSamplerBufferPool().teardown();
             SubstrateJVM.getGlobalMemory().clear();
         }

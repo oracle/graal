@@ -89,38 +89,38 @@ public class TestJfrBufferNodeLinkedList {
     @Uninterruptible(reason = "Locking with no transition.")
     private static int countNodes(JfrBufferNodeLinkedList list) {
         int count = 0;
-        JfrBufferNode node = list.getAndLockHead();
+        JfrBufferNode node = list.getHead();
         while (node.isNonNull()) {
             count++;
             node = node.getNext();
         }
-
-        list.releaseList();
         return count;
     }
 
     @Uninterruptible(reason = "Locking with no transition.")
     private static JfrBufferNode removeAllNodes(JfrBufferNodeLinkedList list) {
         // Try removing the nodes
-        JfrBufferNode node = list.getAndLockHead();
+        JfrBufferNode node = list.getHead();
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();
+            JfrBufferAccess.free(node.getValue());
+            node.setAlive(false);
             list.removeNode(node, WordFactory.nullPointer());
             node = next;
         }
-        list.releaseList();
         return node;
     }
 
     @Uninterruptible(reason = "Locking with no transition.")
     private static void removeNthNode(JfrBufferNodeLinkedList list, int target) {
-        JfrBufferNode node;
         JfrBufferNode prev = WordFactory.nullPointer();
-        node = list.getAndLockHead();
+        JfrBufferNode node = list.getHead();
         int count = 0;
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();
             if (count == target) {
+                JfrBufferAccess.free(node.getValue());
+                node.setAlive(false);
                 list.removeNode(node, prev);
                 break;
             }
@@ -128,6 +128,5 @@ public class TestJfrBufferNodeLinkedList {
             node = next;
             count++;
         }
-        list.releaseList();
     }
 }

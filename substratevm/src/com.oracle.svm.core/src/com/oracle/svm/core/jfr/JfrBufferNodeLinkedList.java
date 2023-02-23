@@ -40,12 +40,12 @@ import org.graalvm.word.PointerBase;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
 
 /**
- * JfrBufferNodeLinkedList is a singly linked list used to store thread local JFR buffers. Threads
+ * {@link JfrBufferNodeLinkedList} is a singly linked list used to store thread local JFR buffers. Threads
  * shall only add one node to the list. Only the thread performing a flush or epoch change shall
  * iterate this list and is allowed to remove nodes. There is a list-level lock that is acquired
  * when adding nodes, and when beginning iteration at the head. Threads may access their own nodes
- * at any time up until they call JfrBufferNode.setAlive(false). The list lock must not be held at a
- * safepoint.
+ * at any time up until they set the alive flag to false {@link JfrBufferNode#setAlive}.
+ * When entering a safepoint, the list lock must not be held by one of the blocked Java threads.
  */
 public class JfrBufferNodeLinkedList {
     @RawStructure
@@ -75,27 +75,10 @@ public class JfrBufferNodeLinkedList {
         void setAlive(boolean alive);
     }
 
-    private static final long LOCK_OFFSET;
+    private static final long LOCK_OFFSET = Unsafe.getUnsafe().objectFieldOffset(JfrBufferNodeLinkedList.class, "lock");
 
-    static {
-        try {
-            LOCK_OFFSET = Unsafe.getUnsafe().objectFieldOffset(JfrBufferNodeLinkedList.class.getDeclaredField("lock"));
-        } catch (Throwable ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
     private volatile int lock;
     private volatile JfrBufferNode head;
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private boolean isHead(JfrBufferNode node) {
-        return node == head || head.isNull();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void setHead(JfrBufferNode node) {
-        head = node;
-    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static JfrBufferNode createNode(JfrBuffer buffer, IsolateThread thread) {
@@ -115,39 +98,47 @@ public class JfrBufferNodeLinkedList {
     public JfrBufferNodeLinkedList() {
     }
 
-    @Uninterruptible(reason = "Locking with no transition.")
     public void teardown() {
-        JfrBufferNode node = getAndLockHead();
+        JfrBufferNode node = head;
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();
+            JfrBufferAccess.free(node.getValue());
+            node.setAlive(false);
             removeNode(node, WordFactory.nullPointer());
             node = next;
         }
-        releaseList();
     }
 
     @Uninterruptible(reason = "Locking with no transition.", callerMustBe = true)
-    public JfrBufferNode getAndLockHead() {
+    public JfrBufferNode getHead() {
         acquireList();
-        return head;
+        try {
+            return head;
+        } finally {
+            releaseList();
+        }
     }
 
+    /** Removes a node from the linked list. The buffer contained in the nodes must have already been
+     *  freed by the caller.*/
     @Uninterruptible(reason = "Should not be interrupted while flushing.")
-    public boolean removeNode(JfrBufferNode node, JfrBufferNode prev) {
+    public void removeNode(JfrBufferNode node, JfrBufferNode prev) {
+        assert head.isNonNull();
+        assert !node.getAlive();
+
+
         JfrBufferNode next = node.getNext(); // next can never be null
 
-        if (isHead(node)) {
+        if (node == head) {
             assert prev.isNull();
-            setHead(next); // head could now be null if there was only one node in the list
+            head = next; // head could now be null if there was only one node in the list
         } else {
             assert prev.isNonNull();
+            assert prev.getNext() == node;
             prev.setNext(next);
         }
 
-        assert node.getValue().isNonNull();
-        JfrBufferAccess.free(node.getValue());
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
-        return true;
     }
 
     /**
@@ -162,7 +153,7 @@ public class JfrBufferNodeLinkedList {
             // Old head could be null
             JfrBufferNode oldHead = head;
             newNode.setNext(oldHead);
-            setHead(newNode);
+            head = newNode;
             return newNode;
         } finally {
             releaseList();
@@ -175,12 +166,7 @@ public class JfrBufferNodeLinkedList {
     }
 
     @Uninterruptible(reason = "Locking with no transition and list must not be acquired entering epoch change.", callerMustBe = true)
-    public void releaseList() {
+    private void releaseList() {
         JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private boolean isLocked() {
-        return lock == 1;
     }
 }

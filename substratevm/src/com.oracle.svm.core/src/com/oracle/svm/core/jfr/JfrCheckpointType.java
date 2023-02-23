@@ -26,6 +26,7 @@
 package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.Uninterruptible;
+import org.graalvm.compiler.core.common.NumUtil;
 
 public enum JfrCheckpointType {
     Flush(1),
@@ -39,6 +40,6 @@ public enum JfrCheckpointType {
     }
 
     JfrCheckpointType(int id) {
-        this.id = (byte) id;
+        this.id = NumUtil.safeToByte(id);
     }
 }

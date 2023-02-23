@@ -25,6 +25,7 @@
 package com.oracle.svm.core.thread;
 
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.core.Uninterruptible;
 
@@ -38,7 +39,17 @@ public class NativeSpinLockUtils {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void initialize(WordPointer spinLock) {
+        JavaSpinLockUtils.initialize(null, spinLock.rawValue());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isLocked(CIntPointer spinLock) {
+        return JavaSpinLockUtils.isLocked(null, spinLock.rawValue());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isLocked(WordPointer spinLock) {
         return JavaSpinLockUtils.isLocked(null, spinLock.rawValue());
     }
 
@@ -48,7 +59,17 @@ public class NativeSpinLockUtils {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean tryLock(WordPointer spinLock) {
+        return JavaSpinLockUtils.tryLock(null, spinLock.rawValue());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean tryLock(CIntPointer spinLock, int retries) {
+        return JavaSpinLockUtils.tryLock(null, spinLock.rawValue(), retries);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean tryLock(WordPointer spinLock, int retries) {
         return JavaSpinLockUtils.tryLock(null, spinLock.rawValue(), retries);
     }
 
@@ -57,8 +78,18 @@ public class NativeSpinLockUtils {
         JavaSpinLockUtils.lockNoTransition(null, spinLock.rawValue());
     }
 
+    @Uninterruptible(reason = "This method does not do a transition, so the whole critical section must be uninterruptible.", callerMustBe = true)
+    public static void lockNoTransition(WordPointer spinLock) {
+        JavaSpinLockUtils.lockNoTransition(null, spinLock.rawValue());
+    }
+
     @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
     public static void unlock(CIntPointer spinLock) {
+        JavaSpinLockUtils.unlock(null, spinLock.rawValue());
+    }
+
+    @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
+    public static void unlock(WordPointer spinLock) {
         JavaSpinLockUtils.unlock(null, spinLock.rawValue());
     }
 }

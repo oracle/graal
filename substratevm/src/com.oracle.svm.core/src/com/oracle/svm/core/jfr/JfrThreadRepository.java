@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.os.RawFileOperationSupport;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -219,15 +220,36 @@ public final class JfrThreadRepository implements JfrConstantPool {
     }
 
     @Uninterruptible(reason = "Must not be interrupted for operations that emit events, potentially writing to this pool.")
-    public SignedWord maybeWrite(JfrChunkWriter writer, boolean flush) {
+    public SignedWord maybeWrite(JfrChunkWriter writer, boolean flush, SignedWord lastCheckpointOffset) {
 
         JfrThreadEpochData epochData = getEpochData(!flush);
         maybeLock(flush);
         try {
             if (epochData.visitedThreads.getSize() == 0) {
-                return WordFactory.nullPointer();
+                return lastCheckpointOffset;
             }
-            return writer.writeThreadCheckpointEvent(this, flush);
+            SignedWord start = writer.beginEvent();
+            if (lastCheckpointOffset.lessThan(0)) {
+                lastCheckpointOffset = start;
+            }
+            writer.writeCompressedLong(JfrReservedEvent.EVENT_CHECKPOINT.getId());
+            writer.writeCompressedLong(JfrTicks.elapsedTicks());
+            writer.writeCompressedLong(0); // duration
+            writer.writeCompressedLong(lastCheckpointOffset.subtract(start).rawValue());
+            writer.writeByte(JfrCheckpointType.Threads.getId());
+
+            // If only writing threads pool, count is 1
+            int poolCount = 1;
+            if (epochData.visitedThreadGroups.getSize() > 0) {
+                poolCount = 2;
+            }
+            writer.writeInt(poolCount);
+
+            int actualPoolCount = write(writer, flush);
+            assert poolCount == actualPoolCount;
+
+            writer.endEvent(start);
+            return start;
 
         } finally {
             maybeUnlock(flush);
