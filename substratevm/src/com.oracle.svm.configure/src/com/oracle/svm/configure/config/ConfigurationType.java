@@ -92,7 +92,10 @@ public class ConfigurationType implements JsonPrintable {
     private Map<ConfigurationMethod, ConfigurationMemberInfo> methods;
 
     private boolean allDeclaredClasses;
+    private boolean allRecordComponents;
     private boolean allPermittedSubclasses;
+    private boolean allNestMembers;
+    private boolean allSigners;
     private boolean allPublicClasses;
     private boolean allDeclaredFields;
     private boolean allPublicFields;
@@ -266,7 +269,10 @@ public class ConfigurationType implements JsonPrintable {
     private void setFlagsFromOther(ConfigurationType other, BiPredicate<Boolean, Boolean> flagPredicate,
                     BiFunction<ConfigurationMemberAccessibility, ConfigurationMemberAccessibility, ConfigurationMemberAccessibility> accessCombiner) {
         allDeclaredClasses = flagPredicate.test(allDeclaredClasses, other.allDeclaredClasses);
+        allRecordComponents = flagPredicate.test(allRecordComponents, other.allRecordComponents);
         allPermittedSubclasses = flagPredicate.test(allPermittedSubclasses, other.allPermittedSubclasses);
+        allNestMembers = flagPredicate.test(allNestMembers, other.allNestMembers);
+        allSigners = flagPredicate.test(allSigners, other.allSigners);
         allPublicClasses = flagPredicate.test(allPublicClasses, other.allPublicClasses);
         allDeclaredFields = flagPredicate.test(allDeclaredFields, other.allDeclaredFields);
         allPublicFields = flagPredicate.test(allPublicFields, other.allPublicFields);
@@ -282,7 +288,7 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     private boolean allFlagsFalse() {
-        return !(allDeclaredClasses || allPermittedSubclasses || allPublicClasses || allDeclaredFields || allPublicFields ||
+        return !(allDeclaredClasses || allRecordComponents || allPermittedSubclasses || allNestMembers || allSigners || allPublicClasses || allDeclaredFields || allPublicFields ||
                         allDeclaredMethodsAccess != ConfigurationMemberAccessibility.NONE || allPublicMethodsAccess != ConfigurationMemberAccessibility.NONE ||
                         allDeclaredConstructorsAccess != ConfigurationMemberAccessibility.NONE || allPublicConstructorsAccess != ConfigurationMemberAccessibility.NONE);
     }
@@ -367,8 +373,20 @@ public class ConfigurationType implements JsonPrintable {
         allDeclaredClasses = true;
     }
 
+    public synchronized void setAllRecordComponents() {
+        allRecordComponents = true;
+    }
+
     public synchronized void setAllPermittedSubclasses() {
         allPermittedSubclasses = true;
+    }
+
+    public synchronized void setAllNestMembers() {
+        allNestMembers = true;
+    }
+
+    public synchronized void setAllSigners() {
+        allSigners = true;
     }
 
     public synchronized void setAllPublicClasses() {
@@ -430,7 +448,10 @@ public class ConfigurationType implements JsonPrintable {
         optionallyPrintJsonBoolean(writer, allDeclaredConstructorsAccess == ConfigurationMemberAccessibility.ACCESSED, "allDeclaredConstructors");
         optionallyPrintJsonBoolean(writer, allPublicConstructorsAccess == ConfigurationMemberAccessibility.ACCESSED, "allPublicConstructors");
         optionallyPrintJsonBoolean(writer, allDeclaredClasses, "allDeclaredClasses");
+        optionallyPrintJsonBoolean(writer, allRecordComponents, "allRecordComponents");
         optionallyPrintJsonBoolean(writer, allPermittedSubclasses, "allPermittedSubclasses");
+        optionallyPrintJsonBoolean(writer, allNestMembers, "allNestMembers");
+        optionallyPrintJsonBoolean(writer, allSigners, "allSigners");
         optionallyPrintJsonBoolean(writer, allPublicClasses, "allPublicClasses");
         optionallyPrintJsonBoolean(writer, allDeclaredMethodsAccess == ConfigurationMemberAccessibility.QUERIED, "queryAllDeclaredMethods");
         optionallyPrintJsonBoolean(writer, allPublicMethodsAccess == ConfigurationMemberAccessibility.QUERIED, "queryAllPublicMethods");
@@ -531,8 +552,20 @@ public class ConfigurationType implements JsonPrintable {
             return type.allDeclaredClasses;
         }
 
+        public static boolean haveAllRecordComponents(ConfigurationType type) {
+            return type.allRecordComponents;
+        }
+
         public static boolean haveAllPermittedSubclasses(ConfigurationType type) {
             return type.allPermittedSubclasses;
+        }
+
+        public static boolean haveAllNestMembers(ConfigurationType type) {
+            return type.allNestMembers;
+        }
+
+        public static boolean haveAllSigners(ConfigurationType type) {
+            return type.allSigners;
         }
 
         public static boolean haveAllPublicClasses(ConfigurationType type) {
