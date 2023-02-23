@@ -96,7 +96,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 
-public final class WasmFunctionNode extends WasmInstrumentableNode implements BytecodeOSRNode {
+public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
     private static final float MAX_FLOAT_TRUNCATABLE_TO_INT = 2147483520f;
     private static final float MIN_FLOAT_TRUNCATABLE_TO_U_INT = -0.99999994f;
@@ -131,15 +131,15 @@ public final class WasmFunctionNode extends WasmInstrumentableNode implements By
 
     @CompilationFinal private int bytecodeStartOffset;
     @CompilationFinal private int bytecodeEndOffset;
-    @CompilationFinal(dimensions = 1) private byte[] sourceCode;
+    @CompilationFinal(dimensions = 1) private byte[] bytecode;
+    @CompilationFinal private WasmNotifyFunction notifyFunction;
 
     public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset) {
-        super(instance.module().functionSourceCodeStartOffset(codeEntry.functionIndex()));
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.bytecodeStartOffset = bytecodeStartOffset;
         this.bytecodeEndOffset = bytecodeEndOffset;
-        this.sourceCode = codeEntry.bytecode();
+        this.bytecode = codeEntry.bytecode();
     }
 
     @SuppressWarnings("hiding")
@@ -151,56 +151,16 @@ public final class WasmFunctionNode extends WasmInstrumentableNode implements By
         return bytecodeStartOffset;
     }
 
-    @Override
-    WasmInstance instance() {
-        return instance;
-    }
-
-    @Override
-    WasmCodeEntry codeEntry() {
-        return codeEntry;
-    }
-
-    @Override
-    void enterErrorBranch() {
+    private void enterErrorBranch() {
         codeEntry.errorBranch();
     }
 
-    @Override
-    int localCount() {
-        return codeEntry.localCount();
-    }
-
-    @Override
-    int paramCount() {
-        return instance.symbolTable().function(codeEntry.functionIndex()).paramCount();
-    }
-
-    @Override
-    int resultCount() {
-        return codeEntry.resultCount();
-    }
-
-    @Override
-    byte localType(int index) {
-        return codeEntry.localType(index);
-    }
-
-    @Override
-    byte resultType(int resultIndex) {
-        return codeEntry.resultType(resultIndex);
-    }
-
-    @Override
-    String qualifiedName() {
-        return codeEntry.function().moduleName() + "." + name();
-    }
-
-    @Override
-    protected void setSource(byte[] source, int startOffset, int endOffset) {
-        this.sourceCode = source;
-        this.bytecodeStartOffset = startOffset;
-        this.bytecodeEndOffset = endOffset;
+    @SuppressWarnings("hiding")
+    void updateBytecode(byte[] bytecode, int bytecodeStartOffset, int bytecodeEndOffset, WasmNotifyFunction notifyFunction) {
+        this.bytecode = bytecode;
+        this.bytecodeStartOffset = bytecodeStartOffset;
+        this.bytecodeEndOffset = bytecodeEndOffset;
+        this.notifyFunction = notifyFunction;
     }
 
     // region OSR support
@@ -244,17 +204,16 @@ public final class WasmFunctionNode extends WasmInstrumentableNode implements By
         int count;
     }
 
-    @Override
     public void execute(VirtualFrame frame, WasmContext context) {
         executeBodyFromOffset(context, frame, bytecodeStartOffset, codeEntry.localCount(), -1);
     }
 
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    @SuppressWarnings("UnusedAssignment")
+    @SuppressWarnings({"UnusedAssignment", "hiding"})
     public Object executeBodyFromOffset(WasmContext context, VirtualFrame frame, int startOffset, int startStackPointer, int startLine) {
         final int localCount = codeEntry.localCount();
-        final byte[] bytecode = this.sourceCode;
+        final byte[] bytecode = this.bytecode;
 
         // The back edge count is stored in an object, since else the MERGE_EXPLODE policy would
         // interpret this as a constant value in every loop iteration. This would prevent the
@@ -1782,9 +1741,11 @@ public final class WasmFunctionNode extends WasmInstrumentableNode implements By
                 }
                 case Bytecode.NOTIFY: {
                     final int nextLine = rawPeekI32(bytecode, offset);
-                    final int sourceLocation = rawPeekI32(bytecode, offset + 4);
+                    final int sourceCodeLocation = rawPeekI32(bytecode, offset + 4);
                     offset += 8;
-                    notifyLine(frame, line, nextLine, sourceLocation);
+                    if (notifyFunction != null) {
+                        notifyFunction.notifyLine(frame, line, nextLine, sourceCodeLocation);
+                    }
                     line = nextLine;
                     break;
                 }

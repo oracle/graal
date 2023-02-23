@@ -71,48 +71,83 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Represents an instrumentable Wasm node.
+ * Represents an instrumentable Wasm function node.
  */
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)
-public abstract class WasmInstrumentableNode extends Node implements InstrumentableNode, WasmDataAccess {
+public class WasmInstrumentableFunctionNode extends Node implements InstrumentableNode, WasmDataAccess {
     private final int functionSourceLocation;
-    @Child private WasmInstrumentationSupportNode instrumentation;
+    private final WasmInstance instance;
+    private final WasmCodeEntry codeEntry;
 
-    protected WasmInstrumentableNode(int functionSourceLocation) {
+    @Child WasmFunctionNode functionNode;
+    @Child WasmInstrumentationSupportNode instrumentation;
+
+    public WasmInstrumentableFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, WasmFunctionNode functionNode, int functionSourceLocation) {
+        this.instance = instance;
+        this.codeEntry = codeEntry;
+        this.functionNode = functionNode;
         this.functionSourceLocation = functionSourceLocation;
     }
 
-    protected WasmInstrumentableNode(WasmInstrumentableNode node) {
+    protected WasmInstrumentableFunctionNode(WasmInstrumentableFunctionNode node) {
+        this.instance = node.instance;
+        this.codeEntry = node.codeEntry;
+        this.functionNode = node.functionNode;
         this.functionSourceLocation = node.functionSourceLocation;
         this.instrumentation = node.instrumentation;
     }
 
-    abstract void execute(VirtualFrame frame, WasmContext context);
+    WasmInstance instance() {
+        return instance;
+    }
 
-    abstract WasmInstance instance();
+    int localCount() {
+        return codeEntry.localCount();
+    }
 
-    abstract WasmCodeEntry codeEntry();
+    int resultCount() {
+        return codeEntry.resultCount();
+    }
 
-    abstract void enterErrorBranch();
+    void execute(VirtualFrame frame, WasmContext context) {
+        functionNode.execute(frame, context);
+    }
 
-    abstract int localCount();
+    void enterErrorBranch() {
+        codeEntry.errorBranch();
+    }
 
-    abstract int paramCount();
+    byte resultType(int index) {
+        return codeEntry.resultType(index);
+    }
 
-    abstract int resultCount();
+    int paramCount() {
+        return instance.symbolTable().function(codeEntry.functionIndex()).paramCount();
+    }
 
-    abstract byte localType(int index);
+    byte localType(int index) {
+        return codeEntry.localType(index);
+    }
 
-    abstract byte resultType(int index);
+    @TruffleBoundary
+    public String name() {
+        final DebugFunction function = debugFunction();
+        return function != null ? function.name() : codeEntry.function().name();
+    }
 
-    abstract String qualifiedName();
+    @TruffleBoundary
+    String qualifiedName() {
+        return codeEntry.function().moduleName() + "." + name();
+    }
 
-    protected abstract void setSource(byte[] source, int startOffset, int endOffset);
+    @TruffleBoundary
+    public boolean isInstrumentable() {
+        return getSourceSection() != null;
+    }
 
     @TruffleBoundary
     private DebugFunction debugFunction() {
-        final WasmInstance instance = instance();
         if (instance.module().hasDebugInfo()) {
             final EconomicMap<Integer, DebugFunction> debugFunctions = instance.module().debugFunctions(instance.context());
             if (debugFunctions.containsKey(functionSourceLocation)) {
@@ -133,12 +168,6 @@ public abstract class WasmInstrumentableNode extends Node implements Instrumenta
 
     @Override
     @TruffleBoundary
-    public boolean isInstrumentable() {
-        return getSourceSection() != null;
-    }
-
-    @Override
-    @TruffleBoundary
     public SourceSection getSourceSection() {
         final DebugFunction debugFunction = debugFunction();
         if (debugFunction != null) {
@@ -153,7 +182,6 @@ public abstract class WasmInstrumentableNode extends Node implements Instrumenta
         WasmInstrumentationSupportNode info = this.instrumentation;
         // We need to check if linking is completed. Else the call nodes might not have been
         // resolved yet.
-        final WasmInstance instance = instance();
         if (info == null && instance.isLinkCompleted() && materializedTags.contains(StandardTags.StatementTag.class)) {
             Lock lock = getLock();
             lock.lock();
@@ -162,12 +190,12 @@ public abstract class WasmInstrumentableNode extends Node implements Instrumenta
                 if (info == null) {
                     final WasmContext context = instance.context();
                     final WasmModule module = instance.module();
-                    final int functionIndex = codeEntry().functionIndex();
+                    final int functionIndex = codeEntry.functionIndex();
                     final DebugFunction debugFunction = module.debugFunctions(context).get(functionSourceLocation);
                     this.instrumentation = info = insert(new WasmInstrumentationSupportNode(debugFunction, module, functionIndex));
                     final BinaryParser binaryParser = new BinaryParser(module, context, module.codeSection());
                     final byte[] bytecode = binaryParser.createFunctionDebugBytecode(functionIndex, debugFunction.lineMap().sourceLocationToLineMap());
-                    setSource(bytecode, 0, bytecode.length);
+                    functionNode.updateBytecode(bytecode, 0, bytecode.length, this::notifyLine);
                     // the debug info contains instrumentable nodes, so we need to notify for
                     // instrumentation updates.
                     notifyInserted(info);
@@ -179,15 +207,10 @@ public abstract class WasmInstrumentableNode extends Node implements Instrumenta
         return this;
     }
 
-    @TruffleBoundary
-    public String name() {
-        final DebugFunction function = debugFunction();
-        return function != null ? function.name() : codeEntry().function().name();
-    }
-
     @Override
+    @TruffleBoundary
     public WrapperNode createWrapper(ProbeNode probe) {
-        return new WasmInstrumentableNodeWrapper(this, this, probe);
+        return new WasmInstrumentableFunctionNodeWrapper(this, this, probe);
     }
 
     @SuppressWarnings({"static-method", "unused"})
@@ -205,124 +228,106 @@ public abstract class WasmInstrumentableNode extends Node implements Instrumenta
         return DebugObjectDisplayValue.fromDebugFunction(debugFunction, context, materializedFrame, this);
     }
 
-    @Override
     @TruffleBoundary
     public int loadI32FromStack(MaterializedFrame frame, int index) {
         return frame.getIntStatic(localCount() + index);
     }
 
-    @Override
     @TruffleBoundary
     public long loadI64FromStack(MaterializedFrame frame, int index) {
         return frame.getLongStatic(localCount() + index);
     }
 
-    @Override
     @TruffleBoundary
     public float loadF32FromStack(MaterializedFrame frame, int index) {
         return frame.getFloatStatic(localCount() + index);
     }
 
-    @Override
     @TruffleBoundary
     public double loadF64FromStack(MaterializedFrame frame, int index) {
         return frame.getDoubleStatic(localCount() + index);
     }
 
-    @Override
     @TruffleBoundary
     public int loadI32FromLocals(MaterializedFrame frame, int index) {
         return frame.getIntStatic(index);
     }
 
-    @Override
     @TruffleBoundary
     public long loadI64FromLocals(MaterializedFrame frame, int index) {
         return frame.getLongStatic(index);
     }
 
-    @Override
     @TruffleBoundary
     public float loadF32FromLocals(MaterializedFrame frame, int index) {
         return frame.getFloatStatic(index);
     }
 
-    @Override
     @TruffleBoundary
     public double loadF64FromLocals(MaterializedFrame frame, int index) {
         return frame.getDoubleStatic(index);
     }
 
-    @Override
     @TruffleBoundary
     public int loadI32FromGlobals(int index) {
-        final int address = instance().globalAddress(index);
-        return instance().context().globals().loadAsInt(address);
+        final int address = instance.globalAddress(index);
+        return instance.context().globals().loadAsInt(address);
     }
 
-    @Override
     @TruffleBoundary
     public long loadI64FromGlobals(int index) {
-        final int address = instance().globalAddress(index);
-        return instance().context().globals().loadAsLong(address);
+        final int address = instance.globalAddress(index);
+        return instance.context().globals().loadAsLong(address);
     }
 
-    @Override
     @TruffleBoundary
     public float loadF32FromGlobals(int index) {
         return Float.floatToRawIntBits(loadI32FromGlobals(index));
     }
 
-    @Override
     @TruffleBoundary
     public double loadF64FromGlobals(int index) {
         return Double.doubleToRawLongBits(loadI64FromGlobals(index));
     }
 
-    @Override
     @TruffleBoundary
     public byte loadI8FromMemory(long address) {
-        final WasmMemory memory = instance().memory();
+        final WasmMemory memory = instance.memory();
         return (byte) memory.load_i32_8s(this, address);
     }
 
-    @Override
     @TruffleBoundary
     public short loadI16FromMemory(long address) {
-        final WasmMemory memory = instance().memory();
+        final WasmMemory memory = instance.memory();
         return (short) memory.load_i32_16s(this, address);
     }
 
-    @Override
     @TruffleBoundary
     public int loadI32FromMemory(long address) {
-        final WasmMemory memory = instance().memory();
+        final WasmMemory memory = instance.memory();
         return memory.load_i32(this, address);
     }
 
-    @Override
     @TruffleBoundary
     public long loadI64FromMemory(long address) {
-        final WasmMemory memory = instance().memory();
+        final WasmMemory memory = instance.memory();
         return memory.load_i64(this, address);
     }
 
-    @Override
     @TruffleBoundary
     public float loadF32FromMemory(long address) {
-        final WasmMemory memory = instance().memory();
+        final WasmMemory memory = instance.memory();
         return memory.load_f32(this, address);
     }
 
-    @Override
     @TruffleBoundary
     public double loadF64FromMemory(long address) {
-        final WasmMemory memory = instance().memory();
+        final WasmMemory memory = instance.memory();
         return memory.load_f64(this, address);
     }
 
     private byte[] loadByteArrayFromMemory(long address, int length) {
-        final WasmMemory memory = instance().memory();
+        final WasmMemory memory = instance.memory();
         byte[] dataArray = new byte[length];
         for (int i = 0; i < length; i++) {
             dataArray[i] = (byte) memory.load_i32_8s(this, address + i);
@@ -330,7 +335,6 @@ public abstract class WasmInstrumentableNode extends Node implements Instrumenta
         return dataArray;
     }
 
-    @Override
     @TruffleBoundary
     public String loadStringFromMemory(long address, int length) {
         final byte[] dataArray = loadByteArrayFromMemory(address, length);

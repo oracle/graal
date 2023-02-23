@@ -38,60 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package org.graalvm.wasm.nodes;
 
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 
-/**
- * Representation of statement (line) in the source file of the current Wasm binary.
- */
-@GenerateWrapper
-@ExportLibrary(NodeLibrary.class)
-public abstract class WasmBaseStatementNode extends Node implements InstrumentableNode {
-    public void execute(@SuppressWarnings("unused") VirtualFrame frame) {
-    }
-
-    public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == StandardTags.StatementTag.class;
-    }
-
-    @Override
-    public boolean isInstrumentable() {
-        return true;
-    }
-
-    @Override
-    public WrapperNode createWrapper(ProbeNode probe) {
-        return new WasmBaseStatementNodeWrapper(this, probe);
-    }
-
-    public final WasmInstrumentableFunctionNode getFunction() {
-        Node parent = getParent();
-        while (!(parent instanceof WasmInstrumentableFunctionNode) && parent != null) {
-            parent = parent.getParent();
-        }
-        return (WasmInstrumentableFunctionNode) parent;
-    }
-
-    @SuppressWarnings({"static-method", "unused"})
-    @ExportMessage
-    public final boolean hasScope(Frame frame) {
-        return true;
-    }
-
-    @ExportMessage
-    public final Object getScope(Frame frame, boolean nodeEnter) {
-        return getFunction().getScope(frame, nodeEnter);
-    }
+@FunctionalInterface
+public interface WasmNotifyFunction {
+    void notifyLine(VirtualFrame frame, int currentLine, int nextLine, int sourceCodeLocation);
 }

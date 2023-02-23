@@ -51,6 +51,7 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
@@ -69,10 +70,10 @@ import com.oracle.truffle.api.source.SourceSection;
 
 @NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode {
+    private SourceSection sourceSection;
+    @Child private WasmInstrumentableFunctionNode function;
 
-    @Child private WasmInstrumentableNode function;
-
-    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmFunctionNode function) {
+    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstrumentableFunctionNode function) {
         super(language, frameDescriptor);
         this.function = function;
     }
@@ -263,18 +264,22 @@ public class WasmRootNode extends RootNode {
     }
 
     @Override
+    @TruffleBoundary
     protected boolean isInstrumentable() {
         return function != null && function.isInstrumentable();
     }
 
     @Override
+    @TruffleBoundary
     public final SourceSection getSourceSection() {
         if (function == null) {
             return null;
         }
-        SourceSection sourceSection = function.getSourceSection();
         if (sourceSection == null) {
-            sourceSection = function.instance().module().source().createUnavailableSection();
+            sourceSection = function.getSourceSection();
+            if (sourceSection == null) {
+                sourceSection = function.instance().module().source().createUnavailableSection();
+            }
         }
         return sourceSection;
     }

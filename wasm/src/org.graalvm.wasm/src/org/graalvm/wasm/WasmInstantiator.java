@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import org.graalvm.wasm.memory.WasmMemoryFactory;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
 import org.graalvm.wasm.nodes.WasmFunctionNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
+import org.graalvm.wasm.nodes.WasmInstrumentableFunctionNode;
 import org.graalvm.wasm.nodes.WasmMemoryOverheadModeRootNode;
 import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
@@ -433,7 +434,7 @@ public class WasmInstantiator {
         final WasmFunction function = instance.module().symbolTable().function(functionIndex);
         WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().bytecode(), codeEntry.localTypes(), codeEntry.resultTypes());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxStackSize());
-        final WasmFunctionNode functionNode = instantiateFunctionNode(instance, wasmCodeEntry, codeEntry);
+        final WasmInstrumentableFunctionNode functionNode = instantiateFunctionNode(instance, wasmCodeEntry, codeEntry);
         final WasmRootNode rootNode;
         if (context.getContextOptions().memoryOverheadMode()) {
             rootNode = new WasmMemoryOverheadModeRootNode(language, frameDescriptor, functionNode);
@@ -443,8 +444,8 @@ public class WasmInstantiator {
         instance.setTarget(codeEntry.functionIndex(), rootNode.getCallTarget());
     }
 
-    private static WasmFunctionNode instantiateFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
-        final WasmFunctionNode currentBlock = new WasmFunctionNode(instance, codeEntry, entry.bytecodeStartOffset(), entry.bytecodeEndOffset());
+    private static WasmInstrumentableFunctionNode instantiateFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
+        final WasmFunctionNode currentFunction = new WasmFunctionNode(instance, codeEntry, entry.bytecodeStartOffset(), entry.bytecodeEndOffset());
         List<CallNode> childNodeList = entry.callNodes();
         Node[] callNodes = new Node[childNodeList.size()];
         int childIndex = 0;
@@ -463,11 +464,12 @@ public class WasmInstantiator {
                 final WasmFunction function = instance.module().function(callNode.getFunctionIndex());
                 child = new WasmCallStubNode(function);
                 final int stubIndex = childIndex;
-                instance.module().addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentBlock, stubIndex, function));
+                instance.module().addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, function));
             }
             callNodes[childIndex++] = child;
         }
-        currentBlock.initializeCallNodes(callNodes);
-        return currentBlock;
+        currentFunction.initializeCallNodes(callNodes);
+        final int sourceCodeLocation = instance.module().functionSourceCodeStartOffset(codeEntry.functionIndex());
+        return new WasmInstrumentableFunctionNode(instance, codeEntry, currentFunction, sourceCodeLocation);
     }
 }

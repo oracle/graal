@@ -50,7 +50,7 @@ import org.graalvm.wasm.exception.WasmException;
 
 public class WasmMemoryOverheadModeRootNode extends WasmRootNode {
 
-    public WasmMemoryOverheadModeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmFunctionNode function) {
+    public WasmMemoryOverheadModeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstrumentableFunctionNode function) {
         super(language, frameDescriptor, function);
     }
 
