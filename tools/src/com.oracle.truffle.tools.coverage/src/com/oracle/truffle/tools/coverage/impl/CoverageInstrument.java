@@ -32,7 +32,6 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -43,6 +42,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.coverage.CoverageTracker;
@@ -175,7 +175,7 @@ public class CoverageInstrument extends TruffleInstrument {
     }
 
     @Override
-    protected void onDispose(Env env) {
+    protected void onFinalize(Env env) {
         if (enabled) {
             SourceCoverage[] coverage = tracker.getCoverage();
             final OptionValues options = env.getOptions();
@@ -195,6 +195,12 @@ public class CoverageInstrument extends TruffleInstrument {
                     new LCOVPrinter(out, coverage, strictLines).print();
                     break;
             }
+        }
+    }
+
+    @Override
+    protected void onDispose(Env env) {
+        if (enabled) {
             tracker.close();
         }
     }

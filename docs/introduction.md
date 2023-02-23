@@ -105,7 +105,7 @@ The development team welcomes feedback on experimental features, but users shoul
 
 The following table lists production-ready and experimental features in GraalVM Community Edition 22.1 by platform.
 
-| Feature         | Linux AMD64  | Linux AArch64   | macOS        | macOS AArch64   | Windows       |
+| Feature         | Linux AMD64  | Linux AArch64 | macOS AMD64  | macOS AArch64 | Windows AMD64 |
 |-----------------|--------------|---------------|--------------|---------------|---------------|
 | Native Image    | stable       | stable        | stable       | experimental  | stable        |
 | LLVM runtime    | stable       | stable        | stable       | experimental  | not available |

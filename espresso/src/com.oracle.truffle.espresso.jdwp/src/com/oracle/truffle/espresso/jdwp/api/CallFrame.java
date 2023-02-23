@@ -114,8 +114,15 @@ public final class CallFrame {
 
     public Object getThisValue() {
         Object theScope = getScope();
+        if (theScope == null) {
+            return null;
+        }
         try {
-            return theScope != null ? INTEROP.readMember(theScope, "this") : null;
+            // See com.oracle.truffle.espresso.EspressoScope.createVariables
+            if (INTEROP.isMemberReadable(theScope, "this")) {
+                return INTEROP.readMember(theScope, "this");
+            }
+            return INTEROP.readMember(theScope, "0");
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             if (controller != null) {
                 controller.warning(() -> "Unable to read 'this' value from method: " + getMethod() + " with currentNode: " + currentNode.getClass());

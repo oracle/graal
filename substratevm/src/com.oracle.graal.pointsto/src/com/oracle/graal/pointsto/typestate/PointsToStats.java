@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -179,9 +179,6 @@ public class PointsToStats {
     static class TypeFlowStats {
         static final Comparator<TypeFlowStats> totalUpdatesCountComparator = Comparator.comparingInt(TypeFlowStats::allUpdatesCount);
 
-        /* Reason why this state was not removed during graph pruning. */
-        String retainReason;
-
         final TypeFlow<?> flow;
 
         final List<TypeState> allUpdates;
@@ -189,19 +186,10 @@ public class PointsToStats {
         final AtomicInteger queuedUpdates;
 
         TypeFlowStats(TypeFlow<?> flow) {
-            this.retainReason = "";
             this.flow = flow;
             this.allUpdates = new CopyOnWriteArrayList<>();
             this.successfulUpdates = new CopyOnWriteArrayList<>();
             this.queuedUpdates = new AtomicInteger(0);
-        }
-
-        public void setRetainReason(String retainReason) {
-            this.retainReason = retainReason;
-        }
-
-        public String getRetainReason() {
-            return retainReason;
         }
 
         int allUpdatesCount() {
@@ -449,37 +437,6 @@ public class PointsToStats {
         @Override
         public int hashCode() {
             return 31 ^ state1Id ^ state2Id ^ resultId;
-        }
-    }
-
-    static class FilterOperation {
-        int filterId;
-        int inputId;
-        int resultId;
-
-        FilterOperation(int filterId, int inputId, int resultId) {
-            this.filterId = filterId;
-            this.inputId = inputId;
-            this.resultId = resultId;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof FilterOperation) {
-                FilterOperation other = (FilterOperation) obj;
-                return this.filterId == other.filterId && this.inputId == other.inputId && this.resultId == other.resultId;
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + filterId;
-            result = prime * result + inputId;
-            result = prime * result + resultId;
-            return result;
         }
     }
 

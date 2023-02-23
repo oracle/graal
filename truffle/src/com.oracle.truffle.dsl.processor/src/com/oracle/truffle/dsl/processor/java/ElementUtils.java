@@ -80,9 +80,11 @@ import javax.lang.model.util.Types;
 
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.model.SpecializationData.Idempotence;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 
 /**
@@ -105,6 +107,18 @@ public class ElementUtils {
             }
         }
         return null;
+    }
+
+    public static List<ExecutableElement> findAllPublicMethods(DeclaredType type, String methodName) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        List<ExecutableElement> methods = new ArrayList<>();
+        TypeElement typeElement = context.getTypeElement(type);
+        for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
+            if (method.getModifiers().contains(Modifier.PUBLIC) && method.getSimpleName().toString().equals(methodName)) {
+                methods.add(method);
+            }
+        }
+        return methods;
     }
 
     public static List<Element> getEnumValues(TypeElement type) {
@@ -1823,6 +1837,25 @@ public class ElementUtils {
             default:
                 throw new RuntimeException("Unknown type specified " + mirror.getKind());
         }
+    }
+
+    public static Idempotence getIdempotent(ExecutableElement method) {
+        TruffleTypes types = ProcessorContext.types();
+        if (findAnnotationMirror(method, types.Idempotent) != null) {
+            return Idempotence.IDEMPOTENT;
+        }
+        if (findAnnotationMirror(method, types.NonIdempotent) != null) {
+            return Idempotence.NON_IDEMPOTENT;
+        }
+
+        if (types.isBuiltinIdempotent(method)) {
+            return Idempotence.IDEMPOTENT;
+        }
+        if (types.isBuiltinNonIdempotent(method)) {
+            return Idempotence.NON_IDEMPOTENT;
+        }
+
+        return Idempotence.UNKNOWN;
     }
 
 }

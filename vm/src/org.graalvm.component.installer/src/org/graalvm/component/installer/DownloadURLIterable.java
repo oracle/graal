@@ -67,7 +67,7 @@ public class DownloadURLIterable extends AbstractIterable {
             String s = input.nextParameter();
             URL u;
             try {
-                u = new URL(s);
+                u = SystemUtils.toURL(s);
             } catch (MalformedURLException ex) {
                 throw feedback.failure("URL_InvalidDownloadURL", ex, s, ex.getLocalizedMessage());
             }

@@ -68,7 +68,7 @@ java HelloWorld
 Hello World!
 ```
 
-You can find a collection of larger Java examples on the [Examples Applications](../../examples/examples.md) page.
+You can find many larger Java examples among [GraalVM Demos on GitHub](https://github.com/graalvm/graalvm-demos).
 For more information on the GraalVM compiler, go to the [Graal compiler](../../reference-manual/java/compiler.md).
 For more extensive documentation on running Java, proceed to [JVM Languages](../../reference-manual/java/README.md).
 
@@ -285,12 +285,7 @@ More details can be found in the [WebAssembly reference manual](../../reference-
 
 ## Native Image
 
-With GraalVM Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and a smaller footprint for your application.
-
-The [Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
-```shell
-gu install native-image
-```
+With [Native Image](../../reference-manual/native-image/README.md) Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and a smaller footprint for your application.
 
 The `HelloWorld` example from above is used here to demonstrate how to generate a native executable:
 ```java
@@ -331,7 +326,7 @@ For more information on running polyglot applications, see [Polyglot Programming
 
 ### New Users
 Since this guide is intended mainly for users new to GraalVM Enterprise, or users
-who are familiar with GraalVM Enterprise but may have little experience using it, consider investigating more complex [Example Applications](../../examples/examples.md).
+who are familiar with GraalVM Enterprise but may have little experience using it, consider investigating more complex [Example Applications](https://github.com/graalvm/graalvm-demos).
 
 ### Oracle Cloud Users
 Oracle Cloud users considering GraalVM Enterprise for their cloud workloads are

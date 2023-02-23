@@ -8,7 +8,7 @@
     timelimit: "30:00",
   },
 
-  local regex_gate = regex_common + common.eclipse + common.jdt + {
+  local regex_gate = regex_common + common.deps.eclipse + common.deps.jdt + {
     name: 'gate-regex-oraclejdk' + self.jdk_version,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets: ["gate"],

@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.14.18",
+  "mxversion": "6.15.3",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -789,7 +789,7 @@ suite = {
         ],
       },
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR"
       ],

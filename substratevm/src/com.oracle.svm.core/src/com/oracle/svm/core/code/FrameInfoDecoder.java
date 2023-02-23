@@ -76,7 +76,7 @@ public class FrameInfoDecoder {
     /**
      * Value added to source line to guarantee the value is greater than zero.
      */
-    protected static final int COMPRESSED_SOURCE_LINE_ADDEND = 2;
+    protected static final int COMPRESSED_SOURCE_LINE_ADDEND = 3;
 
     protected static boolean isFrameInfoMatch(long frameInfoIndex, NonmovableArray<Byte> frameInfoEncodings, long searchEncodedBci) {
         NonmovableByteArrayTypeReader readBuffer = new NonmovableByteArrayTypeReader(frameInfoEncodings, frameInfoIndex);

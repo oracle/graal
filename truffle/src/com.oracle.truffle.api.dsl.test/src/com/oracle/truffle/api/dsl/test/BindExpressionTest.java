@@ -417,6 +417,7 @@ public class BindExpressionTest extends AbstractPolyglotTest {
     /*
      * Test use of assumption is allowed for transitive extracted cached values.
      */
+    @SuppressWarnings("truffle-assumption")
     abstract static class BindTransitiveCachedInAssumptionNode extends Node {
 
         abstract Object execute(Object arg0);
@@ -554,6 +555,7 @@ public class BindExpressionTest extends AbstractPolyglotTest {
 
     }
 
+    @SuppressWarnings("truffle-assumption")
     abstract static class ErrorUseInAssumptionsNode extends Node {
 
         abstract Object execute(Object arg0);

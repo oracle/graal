@@ -1927,7 +1927,7 @@ jint DetachCurrentThread(JavaVM *vm) {
 
 jint GetEnv(JavaVM *vm, void **penv, jint version) {
     if ((*vm)->reserved1 != MOKA_LATTE) {
-        fprintf(stderr, "AttachCurrentThread: not a MOKA_LATTE" OS_NEWLINE_STR);
+        fprintf(stderr, "GetEnv: not a MOKA_LATTE" OS_NEWLINE_STR);
         return JNI_ERR;
     }
     JavaVM *espressoJavaVM = (*vm)->reserved2;

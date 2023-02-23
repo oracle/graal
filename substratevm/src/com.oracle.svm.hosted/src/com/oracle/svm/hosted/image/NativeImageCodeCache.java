@@ -62,6 +62,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -401,10 +402,10 @@ public abstract class NativeImageCodeCache {
     private void verifyDeoptEntries(CodeInfo codeInfo) {
         boolean hasError = false;
         List<Entry<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>>> deoptEntries = new ArrayList<>(SubstrateCompilationDirectives.singleton().getDeoptEntries().entrySet());
-        deoptEntries.sort((e1, e2) -> e1.getKey().format("%H.%n(%p)").compareTo(e2.getKey().format("%H.%n(%p)")));
+        deoptEntries.sort(Comparator.comparing(e -> e.getKey().format("%H.%n(%p)")));
 
         for (Entry<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> entry : deoptEntries) {
-            HostedMethod method = imageHeap.getUniverse().lookup(entry.getKey());
+            HostedMethod method = imageHeap.getUniverse().lookup(entry.getKey().getMultiMethod(MultiMethod.ORIGINAL_METHOD));
 
             if (method.hasCalleeSavedRegisters()) {
                 System.out.println("DeoptEntry has callee saved registers: " + method.format("%H.%n(%p)"));
@@ -415,7 +416,7 @@ public abstract class NativeImageCodeCache {
             sourceFrameInfos.sort(Comparator.comparingLong(Entry::getKey));
 
             for (Entry<Long, DeoptSourceFrameInfo> sourceFrameInfo : sourceFrameInfos) {
-                hasError |= verifyDeoptEntry(codeInfo, method, sourceFrameInfo);
+                hasError = verifyDeoptEntry(codeInfo, method, sourceFrameInfo) || hasError;
             }
         }
         if (hasError) {

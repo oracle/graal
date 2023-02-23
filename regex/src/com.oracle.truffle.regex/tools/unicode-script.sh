@@ -75,27 +75,25 @@ cat dat/CaseFolding.txt \
 # than one UTF-16 code unit.
 ./generate_nonunicode_fold_table.py > dat/NonUnicodeFoldTable.txt
 
+
 # In Python's case insensitive regular expressions, characters are considered
 # equivalent if they have the same Lowercase mapping. However, in some cases
-# concerning character classes, Python also tries to match character by
-# considering their Uppercase mapping. In recent revisions of CPython 3, this is
-# supplemented by an explicit list of equivalence classes of lowercase
-# characters which are to be considered equal since they have the same Uppercase
-# mapping.
+# concerning character classes with non-BMP characters, Python also tries to
+# match characters by considering their Uppercase mapping. In recent revisions of
+# CPython 3, this is supplemented by an explicit list of equivalence classes of
+# lowercase characters which are to be considered equal since they have the same
+# Uppercase mapping.
 
-# One approach to model this would be to generate the case fold table from the
-# equivalences given by the Lowercase mappings and the special list of
-# exceptions used in CPython. However, this might not account for some of the
-# matches due to the use of Uppercase matching in ranges of characters in
-# Unicode character classes. By using both the Uppercase and Lowercase mappings,
-# we arrive at a larger equivalence relation, but one that might be more in the
-# spirit of what CPython is trying to model.
+# Instead of relying on a list of exceptions, we generate the equivalence
+# by considering any two characters equivalent if they map to each other or to
+# some common target using either the Lowercase or Uppercase mapping (including
+# complex cases from SpecialCasing.txt).
 
 # We make characters equivalent to their simple Uppercase and Lowercase
-# mappings. We filter out the codepoint and the three character mappings, remove
+# mappings. We filter out the codepoint and the two character mappings, remove
 # any empty fields by collapsing neighboring or terminating semicolons and
 # finally removing any lines consisting of a single codepoint (the case when a
-# character has cased mappings).
+# character has no cased mappings).
 cat dat/UnicodeData.txt \
     | cut -d\; -f1,13,14 \
     | sed -e 's/;\+/;/g' \
@@ -103,20 +101,7 @@ cat dat/UnicodeData.txt \
           -e '/^[^;]*$/d' \
     > dat/PythonSimpleCasing.txt
 
-# The Python case folding algorithm also makes use of the extended case mappings
-# defined in SpecialCasing.txt. These occur when, e.g., a single character is
-# mapped to multiple characters. In this case, Python makes a character
-# equivalent to the first character it maps to.
-# When processing the file, we strip away the comments and blank lines. Then we
-# reduce each codepoint sequence to just its first codepoint. Finally, we drop
-# any missing entries (by collapsing neighboring or terminating semicolons).
-cat dat/SpecialCasing.txt \
-    | sed -e '/^#/d' \
-          -e '/^$/d' \
-          -e 's/^\([0-9A-F]\+\); \([0-9A-F]*\)[^;]*; \([0-9A-F]*\)[^;]*; \([0-9A-F]*\).*$/\1;\2;\4/g' \
-          -e 's/;\+/;/g' \
-          -e 's/;$//g' \
-    > dat/PythonExtendedCasing.txt
+./generate_special_casing_equivalences.py > dat/PythonExtendedCasing.txt
 
 # We produce the Python case fold table by merging the equivalences due to both
 # the simple case mappings and the extended case mappings.

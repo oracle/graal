@@ -337,6 +337,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
 
+    @Override
+    public Path getCachePath() {
+        return cachePath;
+    }
+
     private HostedType hostedTypeForKind(JavaKind kind) {
         return javaKindToHostedType.get(kind);
     }
@@ -418,11 +423,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 return fullFilePath.getParent();
             }
             return null;
-        }
-
-        @Override
-        public Path cachePath() {
-            return cachePath;
         }
     }
 
@@ -559,11 +559,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public Path cachePath() {
-            return null;
-        }
-
-        @Override
         public long classOffset() {
             return -1;
         }
@@ -629,11 +624,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public Path filePath() {
-            return null;
-        }
-
-        @Override
-        public Path cachePath() {
             return null;
         }
     }

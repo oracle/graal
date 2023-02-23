@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,11 @@
 package com.oracle.svm.core.jfr;
 
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.Containers;
@@ -38,11 +42,11 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.Event;
 import jdk.jfr.internal.JVM;
@@ -53,11 +57,11 @@ import jdk.jfr.internal.LogTag;
 public final class Target_jdk_jfr_internal_JVM {
     // Checkstyle: stop
     @Alias //
-    @TargetElement(onlyWith = JDK20OrLater.class) //
+    @TargetElement(onlyWith = HasChunkRotationMonitorField.class) //
     static Object CHUNK_ROTATION_MONITOR;
 
     @Alias //
-    @TargetElement(onlyWith = JDK19OrEarlier.class) //
+    @TargetElement(onlyWith = HasFileDeltaChangeField.class) //
     static Object FILE_DELTA_CHANGE;
     // Checkstyle: resume
 
@@ -508,5 +512,29 @@ public final class Target_jdk_jfr_internal_JVM {
     public long hostTotalMemory() {
         /* Not implemented at the moment. */
         return 0;
+    }
+}
+
+class HasChunkRotationMonitorField implements BooleanSupplier {
+    private static final boolean HAS_FIELD = ReflectionUtil.lookupField(true, JVM.class, "CHUNK_ROTATION_MONITOR") != null;
+
+    @Override
+    public boolean getAsBoolean() {
+        return HAS_FIELD;
+    }
+
+    @Fold
+    public static boolean get() {
+        return HAS_FIELD;
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class HasFileDeltaChangeField implements BooleanSupplier {
+    private static final boolean HAS_FIELD = ReflectionUtil.lookupField(true, JVM.class, "FILE_DELTA_CHANGE") != null;
+
+    @Override
+    public boolean getAsBoolean() {
+        return HAS_FIELD;
     }
 }

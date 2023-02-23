@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.util;
 
-/** Utility methods for manipulating bit arrays stored as an int. */
-public class BitArrayUtils {
+package com.oracle.svm.configure.command;
 
-    /** An empty bit array, i.e., not bits set. */
-    public static final int EMPTY_BIT_ARRAY = 0;
+import java.io.IOException;
+import java.util.Iterator;
 
-    public static int or(int first, int second) {
-        return first | second;
+public final class ConfigurationProcessTraceCommand extends ConfigurationGenerateCommand {
+    @Override
+    public String getName() {
+        return "process-trace";
     }
 
-    public static int and(int first, int second) {
-        return first & second;
-    }
-
-    public static int set(int array, int bit) {
-        assert 0 <= bit && bit < 64;
-        return array | (1 << bit);
-    }
-
-    public static int unSet(int array, int bit) {
-        assert 0 <= bit && bit < 64;
-        return array & ~(1 << bit);
-    }
-
-    public static boolean isSet(int array, int bit) {
-        assert 0 <= bit && bit < 64;
-        return (array & (1 << bit)) == 1;
+    @Override
+    public void apply(Iterator<String> argumentsIterator) throws IOException {
+        generate(argumentsIterator, true);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,29 +35,91 @@ import org.graalvm.profdiff.core.Writer;
 import org.graalvm.profdiff.core.optimization.Optimization;
 
 /**
- * Represents a method in the inlining tree, which is a candidate for inlining. The method might
- * either get inlined or not, which is reflected in the {@link #isPositive() positive} field. The
- * children ({@link #getChildren()}) of a method in the inlining tree are methods that are called by
- * this method and were considered for inlining to the method's body.
+ * Represents a callsite in the inlining tree.
+ *
+ * The name of the tree node is the name of target method. The callsite may either be inlined or
+ * not, which is reflected in the {@link #isPositive() positive} field. A callsite represents an
+ * invoke node in Graal IR. The {@link #getChildren() children} are the methods invoked in the
+ * target method's body. If the callsite is {@link #indirect}, its children are the devirtualized
+ * callsites. In a compilation unit, the root of the inlining tree is the root-compiled method.
  */
 public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comparable<InliningTreeNode> {
+    /**
+     * Characterizes the kind of callsite. Each inlining-tree node can be characterized as one of
+     * the callsite kinds.
+     */
+    public enum CallsiteKind {
+        /**
+         * The root callsite. This is the kind of the root method in the inlining tree. The bci of
+         * the root is always {@link Optimization#UNKNOWN_BCI}.
+         */
+        Root,
+
+        /**
+         * An inlined callsite. The callsite is not the root, is inlined (the decision is
+         * {@link #positive}). We can assume that the invoke node was deleted (it is not
+         * {@link #alive}), because the inliner should always delete it.
+         */
+        Inlined,
+
+        /**
+         * A direct callsite. The invoke is not deleted (it is {@link #alive}), the callsite is not
+         * inlined, and the call is direct.
+         */
+        Direct,
+
+        /**
+         * An indirect callsite. The invoke is not deleted (it is {@link #alive}), the callsite is
+         * not inlined, and the call is indirect.
+         */
+        Indirect,
+
+        /**
+         * A deleted callsite. The callsite is not inlined, the invoke is deleted (it is not
+         * {@link #alive}), but the callsite cannot be considered {@link #Devirtualized} (i.e., it
+         * is either not {@link #indirect} or does not have children).
+         */
+        Deleted,
+
+        /**
+         * A devirtualized callsite. The callsite is {@link #indirect}, has children in the inlining
+         * tree (representing the devirtualized callees), and the invoke is deleted (it is not
+         * {@link #alive}).
+         */
+        Devirtualized;
+
+        /**
+         * Returns the label of this callsite kind (e.g. "root", "inlined").
+         */
+        public String label() {
+            return toString().toLowerCase();
+        }
+
+        /**
+         * Returns the prefix for this callsite kind (e.g. "(root) ", "(inlined) ").
+         */
+        public String prefix() {
+            return '(' + label() + ") ";
+        }
+
+        /**
+         * Returns a string that represents a changed callsite kind (e.g., "(inlined -> direct) ").
+         *
+         * @param from the original callsite kind
+         * @param to the new callsite kind
+         * @return a string that represents a changed callsite kind
+         */
+        public static String change(CallsiteKind from, CallsiteKind to) {
+            return '(' + from.label() + " -> " + to.label() + ") ";
+        }
+    }
 
     /**
      * If the target method name is {@code null}, display this string instead.
      */
     public static final String UNKNOWN_NAME = "unknown";
 
-    /**
-     * The prefix for inlining candidates that were not inlined.
-     */
-    public static final String NOT_INLINED_PREFIX = "(not inlined) ";
-
     public static final String AT_BCI = " at bci ";
-
-    /**
-     * The prefix of an indirect call.
-     */
-    public static final String INDIRECT_PREFIX = "(indirect) ";
 
     /**
      * A phrase introducing the reasons for an inlining decision.
@@ -82,14 +144,15 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
     private final boolean positive;
 
     /**
-     * The reasoning for this inlining decision. The compiler might assess the inlining of a
-     * candidate method several times and can reach several negative decisions before finally
-     * inlining it. This list contains the reasons for the decisions in their original order.
+     * The reasoning for inlining decisions. The compiler might assess the inlining of a candidate
+     * method several times and can reach several negative decisions before finally inlining it.
+     * This list contains the reasons for the decisions in their original order.
      */
     private final List<String> reason;
 
     /**
-     * {@code true} iff the call is indirect.
+     * {@code true} iff the call is indirect. This property can change during the lifetime of a
+     * callsite. The field captures the state at the time of the last inlining decision.
      */
     private final boolean indirect;
 
@@ -99,26 +162,35 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
     private final ReceiverTypeProfile receiverTypeProfile;
 
     /**
+     * {@code true} iff the callsite was alive (not deleted) after all optimization passes.
+     */
+    private final boolean alive;
+
+    /**
      * Constructs an inlining tree node.
      *
-     * @param targetMethodName the name of this inlined method
+     * @param targetMethodName the name of the target method (at the time of the last inlining
+     *            decision)
      * @param bci the bci of the parent method's callsite of this inlinee
      * @param positive {@code true} if the target method was inlined
      * @param reason the reasoning for this inlining decision
-     * @param indirect {@code true} if the call is indirect
+     * @param indirect {@code true} if the call is indirect (at the time of the last inlining
+     *            decision)
      * @param receiverTypeProfile the receiver-type profile of the callsite
+     * @param alive {@code true} iff the callsite was not deleted after all optimization passes
      */
-    public InliningTreeNode(String targetMethodName, int bci, boolean positive, List<String> reason, boolean indirect, ReceiverTypeProfile receiverTypeProfile) {
+    public InliningTreeNode(String targetMethodName, int bci, boolean positive, List<String> reason, boolean indirect, ReceiverTypeProfile receiverTypeProfile, boolean alive) {
         super(targetMethodName);
         this.bci = bci;
         this.positive = positive;
         this.reason = reason == null ? List.of() : reason;
         this.indirect = indirect;
         this.receiverTypeProfile = receiverTypeProfile;
+        this.alive = alive;
     }
 
     /**
-     * Gets the bci of the parent method's callsite of this inlinee.
+     * Gets the bci of this callsite in the parent method.
      */
     public int getBCI() {
         return bci;
@@ -139,19 +211,45 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
     }
 
     /**
-     * Gets the reasoning for this inlining decision.
+     * Gets the reasoning of all inlining decisions at this callsite.
      */
     public List<String> getReason() {
         return reason;
     }
 
+    /**
+     * Returns {@code true} iff the callsite was not deleted after all optimization passes.
+     */
+    public boolean isAlive() {
+        return alive;
+    }
+
+    /**
+     * Returns the kind of callsite represented by this inlining-tree node.
+     */
+    public CallsiteKind getCallsiteKind() {
+        if (getParent() == null) {
+            return CallsiteKind.Root;
+        }
+        if (positive) {
+            assert !alive;
+            return CallsiteKind.Inlined;
+        }
+        if (alive) {
+            if (indirect) {
+                return CallsiteKind.Indirect;
+            }
+            return CallsiteKind.Direct;
+        }
+        if (indirect && !getChildren().isEmpty()) {
+            return CallsiteKind.Devirtualized;
+        }
+        return CallsiteKind.Deleted;
+    }
+
     @Override
     public void writeHead(Writer writer) {
-        if (indirect) {
-            writer.write(INDIRECT_PREFIX);
-        } else if (!positive) {
-            writer.write(NOT_INLINED_PREFIX);
-        }
+        writer.write(getCallsiteKind().prefix());
         writer.write(getName() == null ? UNKNOWN_NAME : getName());
         if (bci == Optimization.UNKNOWN_BCI) {
             writer.writeln();
@@ -170,6 +268,7 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
         }
         InliningTreeNode other = (InliningTreeNode) object;
         return bci == other.bci && indirect == other.indirect && positive == other.positive &&
+                        alive == other.alive &&
                         Objects.equals(getName(), other.getName()) &&
                         Objects.equals(reason, other.reason) &&
                         Objects.equals(receiverTypeProfile, other.receiverTypeProfile) &&
@@ -178,13 +277,14 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
 
     @Override
     public int hashCode() {
-        return Objects.hash(bci, getName(), getChildren(), positive, reason, indirect, receiverTypeProfile);
+        return Objects.hash(bci, getName(), getChildren(), positive, reason, indirect, receiverTypeProfile, alive);
     }
 
     /**
      * Compares this inlining tree node to another inlining tree node. The nodes are compared
      * lexicographically according to their {@link #getBCI() bci},{@link #getName() name} and
-     * {@link #isPositive() positivity} (in this order).
+     * {@link #isPositive() positivity}, {@link #isAlive() liveness}, and the number of
+     * {@link #reason inlining decisions} (in this order).
      *
      * @param other the object to be compared
      * @return the result of the comparison
@@ -199,7 +299,15 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
         if (order != 0) {
             return order;
         }
-        return (positive ? 1 : 0) - (other.positive ? 1 : 0);
+        order = (positive ? 0 : 1) - (other.positive ? 0 : 1);
+        if (order != 0) {
+            return order;
+        }
+        order = (alive ? 0 : 1) - (other.alive ? 0 : 1);
+        if (order != 0) {
+            return order;
+        }
+        return other.reason.size() - reason.size();
     }
 
     /**
@@ -224,7 +332,8 @@ public class InliningTreeNode extends TreeNode<InliningTreeNode> implements Comp
     }
 
     /**
-     * Writes the reasoning for the inlining decision, optionally including an {@link ExperimentId}.
+     * Writes the reasoning for the inlining decisions, optionally including an
+     * {@link ExperimentId}.
      *
      * @param writer the destination writer
      * @param experimentId an optional experiment ID

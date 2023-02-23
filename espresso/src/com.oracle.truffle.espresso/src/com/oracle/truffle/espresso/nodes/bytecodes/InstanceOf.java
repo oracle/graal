@@ -251,15 +251,10 @@ public abstract class InstanceOf extends EspressoNode {
             return getContext().getClassHierarchyOracle().readSingleImplementor(superType);
         }
 
-        @Specialization(guards = "checkAssumption(noImplementors, maybeSubtype)", limit = "1")
+        @Specialization(guards = "noImplementors.isValid()")
         public boolean doNoImplementors(@SuppressWarnings("unused") Klass maybeSubtype,
                         @SuppressWarnings("unused") @Cached("getNoImplementorsAssumption().getAssumption()") Assumption noImplementors) {
             return false;
-        }
-
-        protected static boolean checkAssumption(Assumption noImplementors, @SuppressWarnings("unused") Klass maybeSubtype) {
-            // GR-43903: prevent the dsl from removing the guard in the fast-path
-            return noImplementors.isValid();
         }
 
         /**
@@ -305,15 +300,10 @@ public abstract class InstanceOf extends EspressoNode {
             return getContext().getClassHierarchyOracle().readSingleImplementor(superType);
         }
 
-        @Specialization(guards = "checkAssumption(noImplementors, maybeSubtype)", limit = "1")
+        @Specialization(guards = "noImplementors.isValid()")
         public boolean doNoImplementors(@SuppressWarnings("unused") Klass maybeSubtype,
                         @SuppressWarnings("unused") @Cached("getNoImplementorsAssumption().getAssumption()") Assumption noImplementors) {
             return false;
-        }
-
-        protected static boolean checkAssumption(Assumption noImplementors, @SuppressWarnings("unused") Klass maybeSubtype) {
-            // GR-43903: prevent the dsl from removing the guard in the fast-path
-            return noImplementors.isValid();
         }
 
         @Specialization(assumptions = "maybeSingleImplementor.hasValue()", guards = "implementor != null", replaces = "doNoImplementors")

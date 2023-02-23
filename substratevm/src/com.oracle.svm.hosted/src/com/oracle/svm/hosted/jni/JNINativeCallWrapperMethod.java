@@ -59,6 +59,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -69,6 +70,10 @@ import jdk.vm.ci.meta.Signature;
  * handles and for unboxing an object return value.
  */
 class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
+    /** Line number that indicates a native method to {@link StackTraceElement}. */
+    private static final int NATIVE_LINE_NUMBER = -2;
+    private static final LineNumberTable LINE_NUMBER_TABLE = new LineNumberTable(new int[]{1}, new int[]{NATIVE_LINE_NUMBER});
+
     private final JNINativeLinkage linkage;
     private final Field linkageBuiltInAddressField = ReflectionUtil.lookupField(JNINativeLinkage.class, "builtInAddress");
 
@@ -92,8 +97,21 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
     }
 
     @Override
+    public LineNumberTable getLineNumberTable() {
+        return LINE_NUMBER_TABLE;
+    }
+
+    @Override
+    public StackTraceElement asStackTraceElement(int bci) {
+        StackTraceElement ste = super.asStackTraceElement(bci);
+        ste = new StackTraceElement(ste.getClassLoaderName(), ste.getModuleName(), ste.getModuleVersion(), ste.getClassName(), ste.getMethodName(), ste.getFileName(), NATIVE_LINE_NUMBER);
+        assert ste.isNativeMethod();
+        return ste;
+    }
+
+    @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
+        JNIGraphKit kit = new JNIGraphKit(debug, providers, method, purpose);
         StructuredGraph graph = kit.getGraph();
 
         InvokeWithExceptionNode handleFrame = kit.nativeCallPrologue();

@@ -61,7 +61,7 @@ java HelloWorld
 Hello World!
 ```
 
-You can find a collection of larger Java examples on the [Examples Applications](../../examples/examples.md) page.
+You can find many larger Java examples among [GraalVM Demos on GitHub](https://github.com/graalvm/graalvm-demos).
 For more information on the GraalVM
 compiler, go to [Compiler](../../reference-manual/java/compiler.md).
 For more extensive documentation on running Java, proceed to [JVM Languages](../../reference-manual/java/README.md).
@@ -286,11 +286,7 @@ For more information on running polyglot applications, see [Polyglot Programming
 
 ## Native Image
 
-With GraalVM you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and smaller footprint for your application.
-The [Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
-```shell
-gu install native-image
-```
+With [Native Image](../../reference-manual/native-image/README.md) you can compile Java bytecode into a platform-specific, self-contained, native executable to achieve faster startup and smaller footprint for your application.
 
 The `HelloWorld` example from above is used here to demonstrate how to generate a native executable:
 ```java
@@ -321,7 +317,7 @@ More detailed documentation on this innovative technology is available in the [N
 ## What to Read Next
 
 ### New Users
-Since this guide is intended mainly for users new to GraalVM, or users who are familiar with GraalVM but may have little experience using it, please consider investigating more complex [Example Applications](../../examples/examples.md).
+Since this guide is intended mainly for users new to GraalVM, or users who are familiar with GraalVM but may have little experience using it, please consider investigating more complex [Example Applications](https://github.com/graalvm/graalvm-demos).
 We also recommend checking our [GraalVM Team Blog](https://medium.com/graalvm).
 
 ### Advanced Users

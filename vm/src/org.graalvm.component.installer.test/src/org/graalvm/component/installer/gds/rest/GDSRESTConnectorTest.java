@@ -253,7 +253,7 @@ public class GDSRESTConnectorTest extends TestBase {
 
     @Test
     public void testFillBasics() throws MalformedURLException {
-        FileDownloader fd = new FileDownloader(TEST_ID, new URL(testURL), this);
+        FileDownloader fd = new FileDownloader(TEST_ID, SystemUtils.toURL(testURL), this);
         testConnector.fillBasics(fd);
         Map<String, String> header = fd.getRequestHeaders();
         assertEquals(GDSRESTConnector.HEADER_VAL_GZIP, header.get(GDSRESTConnector.HEADER_ENCODING));
@@ -370,7 +370,7 @@ public class GDSRESTConnectorTest extends TestBase {
 
         @Override
         GDSRequester getGDSRequester(String acceptLicLink, String licID) throws MalformedURLException {
-            return new TestGDSRequester(new URL(acceptLicLink), licID);
+            return new TestGDSRequester(SystemUtils.toURL(acceptLicLink), licID);
         }
 
         final class TestGDSRequester extends GDSRESTConnector.GDSRequester {

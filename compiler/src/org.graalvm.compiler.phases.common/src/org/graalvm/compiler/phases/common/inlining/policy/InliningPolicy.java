@@ -30,7 +30,7 @@ import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
 import org.graalvm.compiler.phases.common.inlining.walker.MethodInvocation;
 
 public interface InliningPolicy {
-    class Decision {
+    final class Decision {
         public static final Decision YES = new Decision(true, "(unknown reason)");
         public static final Decision NO = new Decision(false, "(unknown reason)");
 

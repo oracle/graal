@@ -1722,7 +1722,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public void closeEngine(Object polyglotEngine, boolean force) {
             PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
-            engine.ensureClosed(force, false, false);
+            engine.ensureClosed(force, false);
         }
 
         @Override

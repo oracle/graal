@@ -56,6 +56,26 @@ public class JsonWriter implements AutoCloseable {
         return this;
     }
 
+    public JsonWriter appendObjectStart() throws IOException {
+        return append('{');
+    }
+
+    public JsonWriter appendObjectEnd() throws IOException {
+        return append('}');
+    }
+
+    public JsonWriter appendSeparator() throws IOException {
+        return append(',');
+    }
+
+    public JsonWriter appendFieldSeparator() throws IOException {
+        return append(':');
+    }
+
+    public JsonWriter appendKeyValue(String key, Object value) throws IOException {
+        return quote(key).appendFieldSeparator().quote(value);
+    }
+
     @SuppressWarnings("unchecked")
     public void print(Map<String, Object> map) throws IOException {
         if (map.isEmpty()) {

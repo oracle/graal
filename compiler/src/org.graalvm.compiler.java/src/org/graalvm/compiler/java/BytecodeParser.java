@@ -1952,7 +1952,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             targetMethod = originalMethod;
         }
         Invoke invoke = createNonInlinedInvoke(edgeAction, invokeBci, args, targetMethod, invokeKind, resultType, returnType, profile);
-        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, "bytecode parser did not replace invoke");
+        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, null, invoke.getTargetMethod(), "bytecode parser did not replace invoke");
         if (partialIntrinsicExit) {
             // This invoke must never be later inlined as an intrinsic so restrict this call site to
             // normal invoke handling.
@@ -2258,7 +2258,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             assert getFrameStateBuilder().stackSize() > beforeDepth : "only pushes expected";
             getFrameStateBuilder().pop(currentInvoke.returnType.getJavaKind());
         }
-        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, "bytecode parser did not replace invoke");
+        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, null, invoke.getTargetMethod(), "bytecode parser did not replace invoke");
         invoke.setInlineControl(Invoke.InlineControl.BytecodesOnly);
         lastInstr.setNext(end);
         lastInstr = previousLastInstr;
@@ -2387,7 +2387,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                         printInlining(targetMethod, targetMethod, true, reason);
                         if (TraceInlining.getValue(options) || debug.hasCompilationListener()) {
                             PlaceholderInvokable invoke = new PlaceholderInvokable(method, targetMethod, bci());
-                            graph.notifyInliningDecision(invoke, true, "GraphBuilderPhase", null, null, reason);
+                            graph.notifyInliningDecision(invoke, true, "GraphBuilderPhase", null, null, null, targetMethod, reason);
                         }
                         notifyAfterInline(targetMethod);
                     }
@@ -2417,7 +2417,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 if (intrinsic.getOriginalMethod().isNative()) {
                     printInlining(targetMethod, inlinedMethod, false, "native method (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "native method");
+                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, null, inlinedMethod, "native method");
                     }
                     return false;
                 }
@@ -2428,7 +2428,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     notifyBeforeInline(inlinedMethod);
                     printInlining(targetMethod, inlinedMethod, true, "partial intrinsic exit (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, "partial intrinsic exit");
+                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, null, inlinedMethod, "partial intrinsic exit");
                     }
                     parseAndInlineCallee(intrinsic.getOriginalMethod(), args, null);
                     notifyAfterInline(inlinedMethod);
@@ -2436,7 +2436,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 } else {
                     printInlining(targetMethod, inlinedMethod, false, "partial intrinsic exit (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "partial intrinsic exit");
+                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, null, inlinedMethod, "partial intrinsic exit");
                     }
                     return false;
                 }
@@ -2450,14 +2450,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     notifyBeforeInline(inlinedMethod);
                     printInlining(targetMethod, inlinedMethod, true, "inline method (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, "inline method");
+                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, null, inlinedMethod, "inline method");
                     }
                     parseAndInlineCallee(inlinedMethod, args, intrinsic);
                     notifyAfterInline(inlinedMethod);
                 } else {
                     printInlining(targetMethod, inlinedMethod, false, "no bytecodes (abstract or native) (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "no bytecodes (abstract or native)");
+                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, null, inlinedMethod, "no bytecodes (abstract or native)");
                     }
                     return false;
                 }

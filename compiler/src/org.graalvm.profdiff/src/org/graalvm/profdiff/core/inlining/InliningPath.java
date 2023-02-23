@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,9 +119,7 @@ public final class InliningPath {
 
         @Override
         public int hashCode() {
-            int result = methodName.hashCode();
-            result = 31 * result + callsiteBCI;
-            return result;
+            return Objects.hash(callsiteBCI, methodName);
         }
     }
 

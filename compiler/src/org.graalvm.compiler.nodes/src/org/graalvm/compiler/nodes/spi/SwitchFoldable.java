@@ -151,7 +151,7 @@ public interface SwitchFoldable extends ValueNodeInterface {
 
     // Helper data structures
 
-    class Helper {
+    final class Helper {
         private Helper() {
         }
 

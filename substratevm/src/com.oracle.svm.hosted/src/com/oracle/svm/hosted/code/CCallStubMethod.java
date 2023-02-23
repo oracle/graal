@@ -67,7 +67,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
         boolean deoptimizationTarget = MultiMethod.isDeoptTarget(method);
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
         FrameStateBuilder state = kit.getFrameState();
         List<ValueNode> arguments = kit.loadArguments(getParameterTypesForLoad(method));
         ValueNode callAddress = createTargetAddressNode(kit, providers, arguments);

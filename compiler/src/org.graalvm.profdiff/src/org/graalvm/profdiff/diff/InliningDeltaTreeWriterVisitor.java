@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,16 +32,6 @@ import org.graalvm.profdiff.core.inlining.InliningTreeNode;
  * Writes a representation of an inlining delta tree (the diff of 2 inlining trees) to a writer.
  */
 public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<InliningTreeNode> {
-    /**
-     * The prefix of an inlined method.
-     */
-    public static final String INLINED = "inlined";
-
-    /**
-     * The prefix of a not inlined method.
-     */
-    public static final String NOT_INLINED = "not inlined";
-
     public InliningDeltaTreeWriterVisitor(Writer writer) {
         super(writer);
     }
@@ -79,30 +69,14 @@ public class InliningDeltaTreeWriterVisitor extends DeltaTreeWriterVisitor<Inlin
     public void visitRelabeling(DeltaTreeNode<InliningTreeNode> node) {
         adjustIndentLevel(node);
         writer.write(EditScript.RELABEL_PREFIX);
-        if (node.getLeft().isPositive() != node.getRight().isPositive()) {
-            writer.write("(");
-            writer.write(node.getLeft().isPositive() ? INLINED : NOT_INLINED);
-            writer.write(" -> ");
-            writer.write(node.getRight().isPositive() ? INLINED : NOT_INLINED);
-            writer.write(") ");
-        } else if (!node.getLeft().isPositive()) {
-            writer.write(InliningTreeNode.NOT_INLINED_PREFIX);
-        }
+        writer.write(InliningTreeNode.CallsiteKind.change(node.getLeft().getCallsiteKind(), node.getRight().getCallsiteKind()));
         if (node.getLeft().getName() == null) {
             writer.write(InliningTreeNode.UNKNOWN_NAME);
         } else {
             writer.write(node.getLeft().getName());
         }
         writer.write(InliningTreeNode.AT_BCI);
-        if (node.getLeft().getBCI() != node.getRight().getBCI()) {
-            writer.write("(");
-            writer.write(Integer.toString(node.getLeft().getBCI()));
-            writer.write(" -> ");
-            writer.write(Integer.toString(node.getRight().getBCI()));
-            writer.writeln(") ");
-        } else {
-            writer.writeln(Integer.toString(node.getLeft().getBCI()));
-        }
+        writer.writeln(Integer.toString(node.getLeft().getBCI()));
         if (writer.getOptionValues().shouldAlwaysPrintInlinerReasoning() ||
                         node.getLeft().isPositive() != node.getRight().isPositive()) {
             node.getLeft().writeReasoning(writer, ExperimentId.ONE);

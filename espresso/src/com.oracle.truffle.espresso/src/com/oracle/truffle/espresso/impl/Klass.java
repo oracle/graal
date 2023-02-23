@@ -42,6 +42,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
@@ -706,6 +707,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @Override
+    @Idempotent
     public final boolean isInterface() {
         // conflict between ModifiersProvider and KlassRef interfaces,
         // so chose the default implementation in ModifiersProvider.
@@ -1443,10 +1445,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         if (this instanceof ObjectKlass && context.advancedRedefinitionEnabled()) {
             // getKlassVersion().getModifiers() introduces a ~10%
             // perf hit on some benchmarks, so put behind a check
-            return this.getClassModifiers();
+            return getRedefinitionAwareModifiers();
         } else {
             return modifiers;
         }
+    }
+
+    public int getRedefinitionAwareModifiers() {
+        return getModifiers();
     }
 
     /**

@@ -47,6 +47,6 @@ public @interface Fold {
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
-    public @interface InjectedParameter {
+    @interface InjectedParameter {
     }
 }
