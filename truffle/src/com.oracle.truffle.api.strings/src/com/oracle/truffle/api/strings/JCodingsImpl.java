@@ -169,7 +169,7 @@ final class JCodingsImpl implements JCodings {
     @Override
     @TruffleBoundary
     public int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, Encoding jCoding) {
-        if (isFixedWidth(jCoding)) {
+        if (unwrap(jCoding).isFixedWidth()) {
             return index * minLength(jCoding);
         }
         int offset = a.byteArrayOffset() + extraOffsetRaw;
@@ -234,7 +234,7 @@ final class JCodingsImpl implements JCodings {
                 codeRange = TSCodeRange.getBroken(isSingleByte(enc));
                 // If a string is detected as broken, and we already know the character length
                 // due to a fixed width encoding, there's no value in visiting any more ptr.
-                if (fixedWidthProfile.profile(location, isFixedWidth(enc))) {
+                if (fixedWidthProfile.profile(location, unwrap(enc).isFixedWidth())) {
                     characters = (length + minLength(enc) - 1) / minLength(enc);
                     return StringAttributes.create(characters, codeRange);
                 } else {
