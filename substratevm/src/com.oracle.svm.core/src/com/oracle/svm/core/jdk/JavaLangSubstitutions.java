@@ -31,8 +31,10 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
 import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -898,6 +900,16 @@ final class Target_jdk_internal_loader_BootLoader {
     @Substitute
     private static boolean hasClassPath() {
         return true;
+    }
+
+    @Substitute
+    public static URL findResource(String name) {
+        return ResourcesHelper.nameToResourceURL(name);
+    }
+
+    @Substitute
+    public static Enumeration<URL> findResources(String name) {
+        return ResourcesHelper.nameToResourceEnumerationURLs(name);
     }
 
     /**
