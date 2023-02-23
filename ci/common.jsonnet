@@ -1,6 +1,6 @@
 # This file is shared between many repositories.
 # All objects defined here are mixins, so you can use them like:
-# myjob: common.linux_amd64 + common.jdks.labsjdk17ce + common.deps.sulong + ...
+# { name: "myjob" } + common.linux_amd64 + common.jdks.labsjdk17ce + common.deps.sulong + ...
 # Note that using a os-arch mixin like linux_amd64 mixin is required for using common.deps.
 
 local common_json = import "../common.json";
@@ -57,6 +57,8 @@ local common_json = import "../common.json";
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
   },
 
+  # Dependencies
+  # ************
   deps: {
     eclipse: {
       downloads+: {
@@ -161,26 +163,18 @@ local common_json = import "../common.json";
     },
   },
 
-  local deps_linux = {
-    packages+: {
-      git: ">=1.8.3",
-    },
-  },
-  local deps_darwin = {
-  },
-  local deps_windows = {
-  },
-
-  local catch_files = [
-    # Keep in sync with org.graalvm.compiler.debug.StandardPathUtilitiesProvider#DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP
-    "Graal diagnostic output saved in '(?P<filename>[^']+)'",
-    # Keep in sync with org.graalvm.compiler.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
-    "Dumping debug output to '(?P<filename>[^']+)'",
-    # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
-    " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
-  ],
-
-  # Included in common
+  # Hardware definitions and common fields
+  # **************************************
+  # Note that only platforms (os-arch) are exposed (not os and arch separately),
+  # because this is the simplest way to ensure correct usage and dependencies (e.g. ol7 in linux_amd64).
+  #
+  # To add extra "common" fields for your CI:
+  # * If you already have platforms objects, you could extend them like:
+  #   linux_amd64: common.linux_amd64 + self.my_common,
+  # * Otherwise, just include your common object as well as one of the os-arch objects below in each job:
+  #   { name: "myjob" } + common.linux_amd64 + self.my_common + ...
+  #
+  # This also means self.my_common should no longer include mx, etc as it is already included by the os-arch objects.
   local mx = {
     environment+: {
       MX_PYTHON: "python3.8",
@@ -193,20 +187,15 @@ local common_json = import "../common.json";
     python_version: "3", # To use the correct virtualenv
   },
 
-  # Hardware definitions
-  # ********************
-  # Note that only platforms (os-arch) are exposed (not os and arch separately),
-  # because this is the simplest way to ensure correct usage and dependencies (e.g. ol7 in linux_amd64).
-  # If you want to add extra "common" things for your CI, just define your own objects like:
-  # linux_amd64: common.linux_amd64 + extras,
   local common = mx + {
-    local where = if std.objectHas(self, "name") then " in " + self.name else "",
-    # enforce self.os (useful for generating job names)
-    os:: error "self.os not set" + where,
-    # enforce self.arch (useful for generating job names)
-    arch:: error "self.arch not set" + where,
-    capabilities+: [],
-    catch_files+: catch_files,
+    catch_files+: [
+      # Keep in sync with org.graalvm.compiler.debug.StandardPathUtilitiesProvider#DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP
+      "Graal diagnostic output saved in '(?P<filename>[^']+)'",
+      # Keep in sync with org.graalvm.compiler.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
+      "Dumping debug output to '(?P<filename>[^']+)'",
+      # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
+      " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
+    ],
   },
 
   local ol7 = {
@@ -214,6 +203,12 @@ local common_json = import "../common.json";
       image: "buildslave_ol7",
       mount_modules: true,
     },
+  },
+  local deps_linux = {
+  },
+  local deps_darwin = {
+  },
+  local deps_windows = {
   },
 
   local linux   = deps_linux   + common + { os:: "linux",   capabilities+: [self.os] },
