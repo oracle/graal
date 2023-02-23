@@ -28,13 +28,18 @@ import static com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils.thr
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,6 +53,8 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.reports.ReportUtils;
+import jdk.vm.ci.common.JVMCIError;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
@@ -587,23 +594,37 @@ public abstract class NativeImageCodeCache {
     public abstract List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile);
 
     public void printCompilationResults() {
-        System.out.println("--- compiled methods");
-        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
-            HostedMethod method = pair.getLeft();
-            CompilationResult result = pair.getRight();
-            System.out.format("%8d %5d %s: frame %d%n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
-        }
-        System.out.println("--- vtables:");
-        for (HostedType type : imageHeap.getUniverse().getTypes()) {
-            for (int i = 0; i < type.getVTable().length; i++) {
-                HostedMethod method = type.getVTable()[i];
-                if (method != null) {
-                    CompilationResult comp = compilationResultFor(type.getVTable()[i]);
-                    if (comp != null) {
-                        System.out.format("%d %s @ %d: %s = 0x%x%n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
+        try {
+            Path reportDir = Files.createDirectories(Paths.get(SubstrateOptions.reportsPath()));
+            Path file = reportDir.resolve("universe_compilation_" + ReportUtils.getTimeStampString() + ".txt");
+            Files.deleteIfExists(file);
+
+            try (FileWriter fw = new FileWriter(Files.createFile(file).toFile())) {
+                try (PrintWriter writer = new PrintWriter(fw)) {
+
+                    writer.println("--- compiled methods");
+                    for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+                        HostedMethod method = pair.getLeft();
+                        CompilationResult result = pair.getRight();
+                        writer.format("%8d %5d %s: frame %d%n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
                     }
+                    writer.println("--- vtables:");
+                    for (HostedType type : imageHeap.getUniverse().getTypes()) {
+                        for (int i = 0; i < type.getVTable().length; i++) {
+                            HostedMethod method = type.getVTable()[i];
+                            if (method != null) {
+                                CompilationResult comp = compilationResultFor(type.getVTable()[i]);
+                                if (comp != null) {
+                                    writer.format("%d %s @ %d: %s = 0x%x%n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
+                                }
+                            }
+                        }
+                    }
+
                 }
             }
+        } catch (IOException e) {
+            throw JVMCIError.shouldNotReachHere(e);
         }
     }
 
