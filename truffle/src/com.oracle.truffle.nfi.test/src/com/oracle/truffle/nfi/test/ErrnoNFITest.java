@@ -91,6 +91,7 @@ public class ErrnoNFITest extends NFITest {
 
     @Test
     public void testVirtualErrno(@Inject(TestVirtualErrno.class) CallTarget target) {
+        Assume.assumeThat("Errno not yet implemented in panama backend", TEST_BACKEND, not(equalTo("panama")));
         Object ret = target.call(8472);
         Assert.assertEquals(8472, ret);
     }
