@@ -810,53 +810,57 @@ public final class TruffleBaseFeature implements InternalFeature {
                 if (ALIGNMENT_CORRECTION != 0) {
                     ConcurrentHashMap<Object, Object> replacements = ReflectionUtil.readField(ARRAY_BASED_FACTORY, "replacements", null);
                     access.registerObjectReplacer(obj -> {
-                        boolean isByteArray = obj instanceof byte[];
-                        if (isByteArray || ARRAY_BASED_FACTORY.isInstance(obj)) {
-                            Object replacement = replacements.get(obj);
-                            if (replacement != null) {
-                                // The `replacements` map is populated by the generated factories.
-                                // The keys of this map are the primitive byte arrays and the
-                                // factory instances that must be replaced, and the values are their
-                                // replacements. Before a replacement is computed, the value is
-                                // identical to the key.
-                                if (replacement == obj) {
-                                    // on first access: generate the replacement and register it
-                                    if (isByteArray) {
-                                        // primitive storage array
-                                        byte[] oldArray = (byte[]) obj;
-                                        byte[] newArray = new byte[oldArray.length + ALIGNMENT_CORRECTION];
-                                        System.arraycopy(oldArray, 0, newArray, ALIGNMENT_CORRECTION, oldArray.length);
-                                        replacement = newArray;
-                                    } else {
-                                        // factory instance
-                                        Class<?> factoryClass = obj.getClass();
-                                        StaticShape<?> shape = ReflectionUtil.readField(factoryClass, "shape", obj);
-                                        int primitiveArraySize = ReflectionUtil.readField(factoryClass, "primitiveArraySize", obj);
-                                        int objectArraySize = ReflectionUtil.readField(factoryClass, "objectArraySize", obj);
+                        if (!replacements.isEmpty()) {
+                            boolean isByteArray = obj instanceof byte[];
+                            if (isByteArray || ARRAY_BASED_FACTORY.isInstance(obj)) {
 
-                                        Constructor<?> constructor = ReflectionUtil.lookupConstructor(factoryClass,
-                                                        shape.getClass(),
-                                                        int.class,
-                                                        int.class,
-                                                        boolean.class);
+                                Object replacement = replacements.get(obj);
+                                if (replacement != null) {
 
-                                        Object newFactory = ReflectionUtil.newInstance(constructor,
-                                                        shape,
-                                                        primitiveArraySize + ALIGNMENT_CORRECTION,
-                                                        objectArraySize,
-                                                        // do not register patched factories, else
-                                                        // we end up patching them again
-                                                        false);
+                                    // The `replacements` map is populated by the generated factories.
+                                    // The keys of this map are the primitive byte arrays and the
+                                    // factory instances that must be replaced, and the values are their
+                                    // replacements. Before a replacement is computed, the value is
+                                    // identical to the key.
+                                    if (replacement == obj) {
+                                        // on first access: generate the replacement and register it
+                                        if (isByteArray) {
+                                            // primitive storage array
+                                            byte[] oldArray = (byte[]) obj;
+                                            byte[] newArray = new byte[oldArray.length + ALIGNMENT_CORRECTION];
+                                            System.arraycopy(oldArray, 0, newArray, ALIGNMENT_CORRECTION, oldArray.length);
+                                            replacement = newArray;
+                                        } else {
+                                            // factory instance
+                                            Class<?> factoryClass = obj.getClass();
+                                            StaticShape<?> shape = ReflectionUtil.readField(factoryClass, "shape", obj);
+                                            int primitiveArraySize = ReflectionUtil.readField(factoryClass, "primitiveArraySize", obj);
+                                            int objectArraySize = ReflectionUtil.readField(factoryClass, "objectArraySize", obj);
 
-                                        replacement = newFactory;
+                                            Constructor<?> constructor = ReflectionUtil.lookupConstructor(factoryClass,
+                                                    shape.getClass(),
+                                                    int.class,
+                                                    int.class,
+                                                    boolean.class);
+
+                                            Object newFactory = ReflectionUtil.newInstance(constructor,
+                                                    shape,
+                                                    primitiveArraySize + ALIGNMENT_CORRECTION,
+                                                    objectArraySize,
+                                                    // do not register patched factories, else
+                                                    // we end up patching them again
+                                                    false);
+
+                                            replacement = newFactory;
+                                        }
+                                        if (!replacements.replace(obj, obj, replacement)) {
+                                            // another thread already registered a replacement in the
+                                            // meanwhile. Use that one.
+                                            replacement = replacements.get(obj);
+                                        }
                                     }
-                                    if (!replacements.replace(obj, obj, replacement)) {
-                                        // another thread already registered a replacement in the
-                                        // meanwhile. Use that one.
-                                        replacement = replacements.get(obj);
-                                    }
+                                    return replacement;
                                 }
-                                return replacement;
                             }
                         }
                         return obj;
