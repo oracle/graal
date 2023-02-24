@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
+import org.graalvm.compiler.nodes.GuardPhiNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -101,7 +102,7 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     }
 
     @SuppressWarnings("try")
-    public static void expandBinary(ShortCircuitOrNode binary) {
+    private static void expandBinary(ShortCircuitOrNode binary) {
         while (binary.usages().isNotEmpty()) {
             Node usage = binary.usages().first();
             try (DebugCloseable nsp = usage.withNodeSourcePosition()) {
@@ -120,6 +121,10 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
     }
 
     private static void processIf(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, IfNode ifNode, double shortCircuitProbability) {
+        processIf(x, xNegated, y, yNegated, ifNode, shortCircuitProbability, false);
+    }
+
+    public static GuardPhiNode processIf(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, IfNode ifNode, double shortCircuitProbability, boolean createGuardPhi) {
         /*
          * this method splits an IfNode, which has a ShortCircuitOrNode as its condition, into two
          * separate IfNodes: if(X) and if(Y)
@@ -131,6 +136,8 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
          */
         AbstractBeginNode trueTarget = ifNode.trueSuccessor();
         AbstractBeginNode falseTarget = ifNode.falseSuccessor();
+
+        GuardPhiNode guardPhi = null;
 
         // 1st approach
         // assumption: P(originalIf.trueSuccessor) == P(X) + ((1 - P(X)) * P(Y))
@@ -164,6 +171,7 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
         AbstractBeginNode firstTrueTarget = BeginNode.begin(firstTrueEnd);
         firstTrueTarget.setNodeSourcePosition(trueTarget.getNodeSourcePosition());
         AbstractBeginNode secondTrueTarget = BeginNode.begin(secondTrueEnd);
+
         secondTrueTarget.setNodeSourcePosition(trueTarget.getNodeSourcePosition());
         if (yNegated) {
             secondIfTrueProbability = 1.0 - secondIfTrueProbability;
@@ -180,6 +188,14 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
         ifNode.replaceAtPredecessor(firstIf);
         ifNode.safeDelete();
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing if %s", ifNode);
+
+        if (createGuardPhi) {
+            guardPhi = graph.addWithoutUnique(new GuardPhiNode(trueTargetMerge));
+            guardPhi.addInput(firstIf.trueSuccessor());
+            guardPhi.addInput(secondIf.trueSuccessor());
+        }
+
+        return guardPhi;
     }
 
     private static boolean doubleEquals(double a, double b) {
