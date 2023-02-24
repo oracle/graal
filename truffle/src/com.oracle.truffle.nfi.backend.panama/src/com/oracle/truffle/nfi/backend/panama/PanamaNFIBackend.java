@@ -111,7 +111,11 @@ final class PanamaNFIBackend implements NFIBackend {
         @SuppressWarnings("preview")
         private java.lang.foreign.SymbolLookup doLoad() {
             PanamaNFIContext ctx = PanamaNFIContext.get(this);
-            return java.lang.foreign.SymbolLookup.libraryLookup(name, ctx.getScope());
+            try {
+                return java.lang.foreign.SymbolLookup.libraryLookup(name, ctx.getScope());
+            } catch (IllegalArgumentException ex) {
+                throw new NFIError("Library lookup returned null. Library likely does not exist on the provided location.", this);
+            }
         }
 
         @Override
