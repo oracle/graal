@@ -59,7 +59,11 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
 
     public static final String MIME_TYPE = "trufflenfi/panama";
 
+    @CompilationFinal private PanamaNFIBackend backend;
+
     private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("panama backend single context");
+
+    public final ContextThreadLocal<ErrorContext> errorContext = createErrorContext();
 
     static Assumption getSingleContextAssumption() {
         return get(null).singleContextAssumption;
@@ -89,15 +93,11 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
         }
     }
 
-    public final ContextThreadLocal<ErrorContext> errorContext = createContextThreadLocal(ErrorContext::new);
-
     @Override
     protected void initializeMultipleContexts() {
         super.initializeMultipleContexts();
         singleContextAssumption.invalidate();
     }
-
-    @CompilationFinal private PanamaNFIBackend backend;
 
     @Override
     protected PanamaNFIContext createContext(Env env) {
@@ -122,6 +122,18 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
         });
         try {
             return new PanamaNFIContext(this, env);
+        } catch (UnsupportedClassVersionError e) {
+            /*
+             * We're missing the --enable-preview flag. Fail gracefully here, this is only a problem
+             * if we're actually being used.
+             */
+            return null;
+        }
+    }
+
+    public final ContextThreadLocal<ErrorContext> createErrorContext() {
+        try {
+            return createContextThreadLocal(ErrorContext::new);
         } catch (UnsupportedClassVersionError e) {
             /*
              * We're missing the --enable-preview flag. Fail gracefully here, this is only a problem
