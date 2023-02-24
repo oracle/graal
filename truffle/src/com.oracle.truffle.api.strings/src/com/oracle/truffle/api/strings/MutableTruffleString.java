@@ -657,12 +657,12 @@ public final class MutableTruffleString extends AbstractTruffleString {
          */
         public abstract MutableTruffleString execute(AbstractTruffleString a, Encoding encoding);
 
-        @Specialization(guards = "a.isCompatibleTo(encoding)")
+        @Specialization(guards = "a.isCompatibleToIntl(encoding)")
         static MutableTruffleString compatibleMutable(MutableTruffleString a, @SuppressWarnings("unused") Encoding encoding) {
             return a;
         }
 
-        @Specialization(guards = "!a.isCompatibleTo(encoding) || a.isImmutable()")
+        @Specialization(guards = "!a.isCompatibleToIntl(encoding) || a.isImmutable()")
         static MutableTruffleString transcodeAndCopy(AbstractTruffleString a, Encoding encoding,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
                         @Cached AsMutableTruffleStringNode asMutableTruffleStringNode) {
@@ -713,13 +713,13 @@ public final class MutableTruffleString extends AbstractTruffleString {
          */
         public abstract MutableTruffleString execute(AbstractTruffleString a, Encoding expectedEncoding, Encoding targetEncoding);
 
-        @Specialization(guards = "a.isCompatibleTo(targetEncoding)")
+        @Specialization(guards = "a.isCompatibleToIntl(targetEncoding)")
         static MutableTruffleString compatible(MutableTruffleString a, Encoding expectedEncoding, @SuppressWarnings("unused") Encoding targetEncoding) {
             a.checkEncoding(expectedEncoding);
             return a;
         }
 
-        @Specialization(guards = "!a.isCompatibleTo(targetEncoding) || a.isImmutable()")
+        @Specialization(guards = "!a.isCompatibleToIntl(targetEncoding) || a.isImmutable()")
         static MutableTruffleString reinterpret(AbstractTruffleString a, Encoding expectedEncoding, Encoding targetEncoding,
                         @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode) {
             a.checkEncoding(expectedEncoding);

@@ -209,15 +209,28 @@ public abstract class AbstractTruffleString {
     }
 
     /**
+     * Returns {@code true} if this string is compatible to the given encoding.
+     * 
+     * @since 22.1
+     * @deprecated use {@link #isCompatibleToUncached(Encoding)} instead.
+     */
+    @Deprecated(since = "23.0", forRemoval = true)
+    public final boolean isCompatibleTo(TruffleString.Encoding expectedEncoding) {
+        return isCompatibleToUncached(expectedEncoding);
+    }
+
+    /**
      * Returns {@code true} if this string is compatible to the given encoding. Compatible for
      * {@link TruffleString} means it is byte-equivalent in both the encoding used to create this
      * string and the given encoding. For {@link MutableTruffleString} this method only returned
      * true if the passed encoding is the same encoding used to create this string.
      *
-     * @since 22.1
+     * @since 23.0
      */
-    public final boolean isCompatibleTo(TruffleString.Encoding expectedEncoding) {
-        return isCompatibleTo(expectedEncoding.id, expectedEncoding.maxCompatibleCodeRange);
+    @TruffleBoundary
+    public final boolean isCompatibleToUncached(TruffleString.Encoding expectedEncoding) {
+        getCodeRangeUncached(Encoding.get(encoding));
+        return isCompatibleToIntl(expectedEncoding);
     }
 
     /**
@@ -258,7 +271,11 @@ public abstract class AbstractTruffleString {
         return !isImmutable();
     }
 
-    final boolean isCompatibleTo(int enc, int maxCompatibleCodeRange) {
+    final boolean isCompatibleToIntl(TruffleString.Encoding expectedEncoding) {
+        return isCompatibleToIntl(expectedEncoding.id, expectedEncoding.maxCompatibleCodeRange);
+    }
+
+    final boolean isCompatibleToIntl(int enc, int maxCompatibleCodeRange) {
         // GR-31985: workaround: the binary OR avoids unnecessary loop unswitching on this check
         return (this.encoding() == enc) | isCodeRangeCompatibleTo(codeRange(), maxCompatibleCodeRange);
     }
@@ -411,7 +428,7 @@ public abstract class AbstractTruffleString {
     }
 
     final void checkEncoding(TruffleString.Encoding expectedEncoding) {
-        if (!isCompatibleTo(expectedEncoding)) {
+        if (!isCompatibleToIntl(expectedEncoding)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw InternalErrors.wrongEncoding(expectedEncoding);
         }

@@ -2407,11 +2407,11 @@ public final class TruffleString extends AbstractTruffleString {
             TruffleString cur = a.next;
             assert !a.isJavaString();
             if (cacheResult && cur != null) {
-                while (cur != a && (cur.isNative() || cur.isJavaString() || !cur.isCompatibleTo(encoding))) {
+                while (cur != a && (cur.isNative() || cur.isJavaString() || !cur.isCompatibleToIntl(encoding))) {
                     cur = cur.next;
                 }
                 if (cacheHit.profile(this, cur != a)) {
-                    assert cur.isCompatibleTo(encoding) && cur.isManaged() && !cur.isJavaString();
+                    assert cur.isCompatibleToIntl(encoding) && cur.isManaged() && !cur.isJavaString();
                     return cur;
                 }
             }
@@ -3736,6 +3736,52 @@ public final class TruffleString extends AbstractTruffleString {
          * {@link ByteIndexOfCodePointSetNode} will specialize on the given {@link CodePointSet}'s
          * content. If more than one set is passed, the node will immediately fall back to a generic
          * search loop and try to trigger method splitting via {@link ReportPolymorphism}.
+         * <p>
+         * Usage example:
+         * 
+         * <pre>
+         * {@code
+         * abstract static class JsonEscapeNode extends Node {
+         *
+         *     public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_32;
+         *     public static final TruffleString.ByteIndexOfCodePointSetNode.CodePointSet ESCAPE_CHARS = TruffleString.ByteIndexOfCodePointSetNode.CodePointSet.fromRanges(new int[]{
+         *                     '\n', '\n',
+         *                     '\r', '\r',
+         *                     // ....
+         *     }, ENCODING);
+         *
+         *     abstract TruffleString execute(TruffleString json);
+         *
+         *     &#64;Specialization
+         *     static TruffleString run(TruffleString json,
+         *                     &#64;Cached TruffleString.ByteIndexOfCodePointSetNode byteIndexOfCodePointSetNode,
+         *                     &#64;Cached TruffleStringBuilder.AppendSubstringByteIndexNode appendSubstringByteIndexNode,
+         *                     &#64;Cached TruffleString.CodePointAtByteIndexNode codePointAtByteIndexNode,
+         *                     &#64;Cached TruffleStringBuilder.AppendCodePointNode appendCodePointNode,
+         *                     &#64;Cached TruffleString.ByteLengthOfCodePointNode byteLengthOfCodePointNode,
+         *                     &#64;Cached TruffleStringBuilder.ToStringNode toStringNode) {
+         *         int byteLength = json.byteLength(ENCODING);
+         *         TruffleStringBuilder sb = TruffleStringBuilder.create(ENCODING, byteLength);
+         *         int lastPos = 0;
+         *         int pos = 0;
+         *         while (pos >= 0) {
+         *             pos = byteIndexOfCodePointSetNode.execute(json, lastPos, byteLength, ESCAPE_CHARS);
+         *             int substringLength = (pos < 0 ? byteLength : pos) - lastPos;
+         *             appendSubstringByteIndexNode.execute(sb, json, lastPos, substringLength);
+         *             if (pos >= 0) {
+         *                 int codePoint = codePointAtByteIndexNode.execute(json, pos, ENCODING);
+         *                 appendCodePointNode.execute(sb, '\\');
+         *                 appendCodePointNode.execute(sb, codePoint);
+         *                 int codePointLength = byteLengthOfCodePointNode.execute(json, pos, ENCODING);
+         *                 lastPos = pos + codePointLength;
+         *             }
+         *         }
+         *         return toStringNode.execute(sb);
+         *     }
+         * }
+         * }
+         * </code>
+         * </pre>
          *
          * @since 23.0
          */
@@ -5058,10 +5104,9 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Returns {@code true} if {@code a} and {@code b} are byte-by-byte equal when considered in
-         * {@code expectedEncoding}. Note that this method requires both strings to be
-         * {@link #isCompatibleTo(TruffleString.Encoding) compatible} to the
-         * {@code expectedEncoding}, just like all other operations with an {@code expectedEncoding}
-         * parameter!
+         * {@code expectedEncoding}. Note that this method requires both strings to be compatible to
+         * the {@code expectedEncoding}, just like all other operations with an
+         * {@code expectedEncoding} parameter!
          * <p>
          * The {@link TruffleString#equals(Object)}-method delegates to this method.
          *
@@ -5852,7 +5897,7 @@ public final class TruffleString extends AbstractTruffleString {
             }
             cur = a.next;
             if (cur != null) {
-                while (cur != a && !cur.isCompatibleTo(Encoding.UTF_16)) {
+                while (cur != a && !cur.isCompatibleToIntl(Encoding.UTF_16)) {
                     cur = cur.next;
                 }
             } else {
@@ -5998,11 +6043,11 @@ public final class TruffleString extends AbstractTruffleString {
             TruffleString cur = a.next;
             assert !a.isJavaString();
             if (cacheResult && cur != null) {
-                while (cur != a && (!cur.isNative() || !cur.isCompatibleTo(encoding) || cur.stride() != (useCompaction ? strideA : encoding.naturalStride))) {
+                while (cur != a && (!cur.isNative() || !cur.isCompatibleToIntl(encoding) || cur.stride() != (useCompaction ? strideA : encoding.naturalStride))) {
                     cur = cur.next;
                 }
                 if (cacheHit.profile(node, cur != a)) {
-                    assert cur.isCompatibleTo(encoding) && cur.isNative() && !cur.isJavaString() && cur.stride() == (useCompaction ? strideA : encoding.naturalStride);
+                    assert cur.isCompatibleToIntl(encoding) && cur.isNative() && !cur.isJavaString() && cur.stride() == (useCompaction ? strideA : encoding.naturalStride);
                     return cur;
                 }
             }
@@ -6126,19 +6171,19 @@ public final class TruffleString extends AbstractTruffleString {
 
         public abstract TruffleString execute(Node node, AbstractTruffleString a, Encoding targetEncoding);
 
-        @Specialization(guards = "a.isCompatibleTo(targetEncoding)")
+        @Specialization(guards = "a.isCompatibleToIntl(targetEncoding)")
         static TruffleString compatibleImmutable(TruffleString a, @SuppressWarnings("unused") Encoding targetEncoding) {
             assert !a.isJavaString();
             return a;
         }
 
-        @Specialization(guards = "a.isCompatibleTo(targetEncoding)")
+        @Specialization(guards = "a.isCompatibleToIntl(targetEncoding)")
         static TruffleString compatibleMutable(Node node, MutableTruffleString a, Encoding targetEncoding,
                         @Cached InternalAsTruffleStringNode asTruffleStringNode) {
             return asTruffleStringNode.execute(node, a, targetEncoding);
         }
 
-        @Specialization(guards = "!a.isCompatibleTo(targetEncoding)")
+        @Specialization(guards = "!a.isCompatibleToIntl(targetEncoding)")
         static TruffleString transCode(Node node, TruffleString a, Encoding targetEncoding,
                         @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached InlinedConditionProfile preciseCodeRangeIsCompatibleProfile,
@@ -6171,7 +6216,7 @@ public final class TruffleString extends AbstractTruffleString {
             return transCoded;
         }
 
-        @Specialization(guards = "!a.isCompatibleTo(targetEncoding)")
+        @Specialization(guards = "!a.isCompatibleToIntl(targetEncoding)")
         static TruffleString transCodeMutable(Node node, MutableTruffleString a, Encoding targetEncoding,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached @Shared TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
@@ -6258,7 +6303,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         static boolean isCompatibleAndNotCompacted(AbstractTruffleString a, Encoding expectedEncoding, Encoding targetEncoding) {
             return expectedEncoding.naturalStride == targetEncoding.naturalStride &&
-                            (a.encoding() == targetEncoding.id || a.stride() == targetEncoding.naturalStride && a.isCompatibleTo(targetEncoding));
+                            (a.encoding() == targetEncoding.id || a.stride() == targetEncoding.naturalStride && a.isCompatibleToIntl(targetEncoding));
         }
 
         /**
