@@ -340,9 +340,8 @@ def truffle_unittest_task(extra_image_args=None):
 
     # Regular Truffle tests that can run with isolated compilation
     truffle_tests = ['com.oracle.truffle.api.staticobject.test',
-                     'com.oracle.truffle.api.test.polyglot.ContextPolicyTest']
-    if not extra_image_args:
-        truffle_tests.append('com.oracle.truffle.api.test.TruffleSafepointTest')
+                     'com.oracle.truffle.api.test.polyglot.ContextPolicyTest',
+                     'com.oracle.truffle.api.test.TruffleSafepointTest']
 
     native_unittest(truffle_tests + truffle_args)
 
