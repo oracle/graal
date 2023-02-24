@@ -326,28 +326,25 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
     clinittest(extra_image_args)
 
 
-def truffle_unittest_task(extra_image_args=None):
-    truffle_build_args = ['--force-builder-on-cp', '--build-args', '--macro:truffle',
-                                '-H:MaxRuntimeCompileMethods=5000',
-                                '-H:+TruffleCheckBlackListedMethods']
-    if extra_image_args:
-        truffle_build_args += extra_image_args
+def truffle_unittest_task(extra_build_args=None):
+    build_args = ['--force-builder-on-cp', '--build-args', '--macro:truffle', '-H:MaxRuntimeCompileMethods=5000', '-H:+TruffleCheckBlackListedMethods']
+    if extra_build_args:
+        build_args += extra_build_args
+    run_args = ['--run-args', '--very-verbose', '--enable-timing']
 
-    truffle_args = truffle_build_args + ['--run-args', '--very-verbose', '--enable-timing']
     # ContextPreInitializationNativeImageTest can only run with its own image.
     # See class javadoc for details.
-    native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args)
+    native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + build_args + run_args)
 
     # Regular Truffle tests that can run with isolated compilation
     truffle_tests = ['com.oracle.truffle.api.staticobject.test',
                      'com.oracle.truffle.api.test.polyglot.ContextPolicyTest',
                      'com.oracle.truffle.api.test.TruffleSafepointTest']
 
-    native_unittest(truffle_tests + truffle_args)
+    native_unittest(truffle_tests + build_args + run_args)
 
     # White Box Truffle compilation tests that need access to compiler graphs.
-    compiler_args = truffle_args + ['-H:-SupportCompileInIsolates']
-    native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + compiler_args)
+    native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + build_args + ['-H:-SupportCompileInIsolates'] + run_args)
 
 
 def svm_gate_body(args, tasks):
