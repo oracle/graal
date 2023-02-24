@@ -128,7 +128,7 @@ The following table lists production-ready and experimental features in GraalVM 
 
 Whether you are new to GraalVM or have little experience using it, continue to [Get Started with GraalVM](getting-started/graalvm-community/get-started-graalvm-community.md).
 Install GraalVM on your local machine, try running the examples provided in the guide, or test GraalVM with your workload.
-After that we suggest you to look at more complex [Examples Applications](examples/examples.md).
+After that we suggest you to look at more complex [GraalVM Demos on GitHub](https://github.com/graalvm/graalvm-demos).
 
 Developers who have GraalVM already installed or have experience using, can skip the getting started guide and proceed to the [Reference Manuals](reference-manual/reference-manuals.md) for in-depth coverage of GraalVM technologies.
 

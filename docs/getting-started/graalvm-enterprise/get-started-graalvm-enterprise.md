@@ -77,8 +77,8 @@ java HelloWorld
 Hello World!
 ```
 
-You can find a collection of larger Java examples on the [Examples Applications](../../examples/examples.md) page.
-For more information on the GraalVM compiler, go to [Compiler](../../reference-manual/java/compiler.md).
+You can find many larger Java examples among [GraalVM Demos on GitHub](https://github.com/graalvm/graalvm-demos).
+For more information on the GraalVM compiler, go to the [Graal compiler](../../reference-manual/java/compiler.md).
 For more extensive documentation on running Java, proceed to [JVM Languages](../../reference-manual/java/README.md).
 
 ### JavaScript and Node.js
@@ -394,7 +394,7 @@ For more information on running polyglot applications, see [Polyglot Programming
 
 ### New Users
 Since this guide is intended mainly for users new to GraalVM Enterprise, or users
-who are familiar with GraalVM Enterprise but may have little experience using it, consider investigating more complex [Example Applications](../../examples/examples.md).
+who are familiar with GraalVM Enterprise but may have little experience using it, consider investigating more complex [Example Applications](https://github.com/graalvm/graalvm-demos).
 
 ### Oracle Cloud Users
 Oracle Cloud users considering GraalVM Enterprise for their cloud workloads are
