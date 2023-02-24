@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,25 +27,43 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.types.floating;
+#include <math.h>
 
-import static org.junit.Assert.assertEquals;
-
-import org.junit.Test;
-
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-
-public class LLVM80BitMixedTests extends LLVM80BitTest {
-
-    @Test
-    public void testMinusOneDoubleToLong() {
-        long oneLong = LLVM80BitFloat.fromDouble(-1).getLongValue();
-        assertEquals(-1, oneLong);
-    }
-
-    @Test
-    public void testMinusOneLongToDouble() {
-        double oneLong = LLVM80BitFloat.fromLong(-1).toDoubleValue();
-        assertBitEquals(-1.0, oneLong);
-    }
+long double __sulong_longdouble_add(long double x, long double y) {
+    return x + y;
 }
+
+long double __sulong_longdouble_sub(long double x, long double y) {
+    return x - y;
+}
+
+long double __sulong_longdouble_mul(long double x, long double y) {
+    return x * y;
+}
+
+long double __sulong_longdouble_div(long double x, long double y) {
+    return x / y;
+}
+
+long double __sulong_longdouble_mod(long double x, long double y) {
+    return fmodl(x, y);
+}
+
+long double __sulong_longdouble_pow(long double x, long double y) {
+    return powl(x, y);
+}
+
+#define DECLARE_UNARY_INTRINSIC(fn)                                                                                                                  \
+    long double __sulong_longdouble_##fn(long double value) { return fn##l(value); }
+
+DECLARE_UNARY_INTRINSIC(sqrt)
+DECLARE_UNARY_INTRINSIC(log)
+DECLARE_UNARY_INTRINSIC(log2)
+DECLARE_UNARY_INTRINSIC(log10)
+DECLARE_UNARY_INTRINSIC(rint)
+DECLARE_UNARY_INTRINSIC(ceil)
+DECLARE_UNARY_INTRINSIC(floor)
+DECLARE_UNARY_INTRINSIC(exp)
+DECLARE_UNARY_INTRINSIC(exp2)
+DECLARE_UNARY_INTRINSIC(sin)
+DECLARE_UNARY_INTRINSIC(cos)

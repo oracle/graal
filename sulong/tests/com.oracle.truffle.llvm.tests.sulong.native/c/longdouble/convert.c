@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,25 +27,44 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.types.floating;
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <math.h>
+#include "longdouble.h"
 
-import static org.junit.Assert.assertEquals;
+__attribute__((noinline)) void fromLong(long n) {
 
-import org.junit.Test;
+    long double m = (long double) n;
+    printfp("from long", &m);
+}
 
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+__attribute__((noinline)) void fromDouble(double n) {
 
-public class LLVM80BitMixedTests extends LLVM80BitTest {
+    long double m = (long double) n;
+    printfp("from double", &m);
+}
 
-    @Test
-    public void testMinusOneDoubleToLong() {
-        long oneLong = LLVM80BitFloat.fromDouble(-1).getLongValue();
-        assertEquals(-1, oneLong);
-    }
+__attribute__((noinline)) void fromInt(int n) {
 
-    @Test
-    public void testMinusOneLongToDouble() {
-        double oneLong = LLVM80BitFloat.fromLong(-1).toDoubleValue();
-        assertBitEquals(-1.0, oneLong);
-    }
+    long double m = (long double) n;
+    printfp("from int", &m);
+}
+
+__attribute__((noinline)) void fromFloat(float n) {
+
+    long double m = (long double) n;
+    printfp("from float", &m);
+}
+
+int main(void) {
+
+    long double m = 5.0;
+    printfp("from long double", &m);
+    fromLong(5);
+    fromDouble(5.0);
+    fromInt(5);
+    fromFloat(5.0);
+    return 0;
 }

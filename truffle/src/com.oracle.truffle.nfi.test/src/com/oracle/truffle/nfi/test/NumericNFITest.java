@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,6 +89,8 @@ public class NumericNFITest extends NFITest {
         }
         if (IS_AMD64 && !IS_WINDOWS) {
             ret.add(new Object[]{NativeSimpleType.FP80});
+        } else if (IS_AARCH64 && !IS_WINDOWS && !IS_DARWIN) {
+            ret.add(new Object[]{NativeSimpleType.FP128});
         }
         return ret;
     }
@@ -166,6 +168,7 @@ public class NumericNFITest extends NFITest {
                         case DOUBLE:
                             return UNCACHED_INTEROP.fitsInDouble(item);
                         case FP80:
+                        case FP128:
                             /*
                              * Nothing concrete to check here, since FP80 potentially doesn't fit in
                              * any numeric interop type.
@@ -271,6 +274,18 @@ public class NumericNFITest extends NFITest {
     public void testIncrementNeg(@Inject(TestIncrementNode.class) CallTarget callTarget) {
         Object ret = callTarget.call(fixSign(-5));
         Assert.assertThat("return", ret, is(number(fixSign(-4))));
+    }
+
+    @Test
+    public void testIncrementFromZero(@Inject(TestIncrementNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call(0);
+        Assert.assertThat("return", ret, is(number(1)));
+    }
+
+    @Test
+    public void testIncrementToZero(@Inject(TestIncrementNode.class) CallTarget callTarget) {
+        Object ret = callTarget.call(fixSign(-1));
+        Assert.assertThat("return", ret, is(number(0)));
     }
 
     /**

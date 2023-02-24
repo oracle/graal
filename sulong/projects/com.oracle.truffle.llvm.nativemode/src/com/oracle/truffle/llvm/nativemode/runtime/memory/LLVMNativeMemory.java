@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -264,6 +265,16 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
     }
 
     @Override
+    public LLVM128BitFloat get128BitFloat(Node location, LLVMNativePointer addr) {
+        // load two long from the location.
+        long currentAddressPtr = addr.asNative();
+        long fraction = getI64(location, currentAddressPtr);
+        currentAddressPtr += Long.BYTES;
+        long expSignFraction = getI64(location, currentAddressPtr);
+        return new LLVM128BitFloat(expSignFraction, fraction);
+    }
+
+    @Override
     public LLVMNativePointer getPointer(Node location, long ptr) {
         assert checkPointer(ptr);
         return LLVMNativePointer.create(unsafe.getAddress(ptr));
@@ -333,6 +344,14 @@ public final class LLVMNativeMemory extends LLVMHandleMemoryBase {
     @Override
     public void put80BitFloat(Node location, long ptr, LLVM80BitFloat value) {
         putByteArray(location, ptr, value.getBytes());
+    }
+
+    @Override
+    public void put128BitFloat(Node location, long ptr, LLVM128BitFloat value) {
+        long currentptr = ptr;
+        putI64(location, currentptr, value.getSecondFractionPart());
+        currentptr += Double.BYTES;
+        putI64(location, currentptr, value.getExpSignFractionPart());
     }
 
     @Override

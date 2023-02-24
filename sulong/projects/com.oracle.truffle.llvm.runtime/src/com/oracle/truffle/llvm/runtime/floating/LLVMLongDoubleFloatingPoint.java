@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,25 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.types.floating;
+package com.oracle.truffle.llvm.runtime.floating;
 
-import static org.junit.Assert.assertEquals;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 
-import org.junit.Test;
+public abstract class LLVMLongDoubleFloatingPoint extends LLVMInternalTruffleObject {
 
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+    public abstract double toDoubleValue();
 
-public class LLVM80BitMixedTests extends LLVM80BitTest {
-
-    @Test
-    public void testMinusOneDoubleToLong() {
-        long oneLong = LLVM80BitFloat.fromDouble(-1).getLongValue();
-        assertEquals(-1, oneLong);
-    }
-
-    @Test
-    public void testMinusOneLongToDouble() {
-        double oneLong = LLVM80BitFloat.fromLong(-1).toDoubleValue();
-        assertBitEquals(-1.0, oneLong);
-    }
 }

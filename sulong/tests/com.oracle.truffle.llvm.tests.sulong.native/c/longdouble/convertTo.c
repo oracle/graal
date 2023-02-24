@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,43 +27,51 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
 #include <math.h>
+#include "longdouble.h"
 
-long double __sulong_fp80_add(long double x, long double y) {
-    return x + y;
+__attribute__((noinline)) void toLong(long double n) {
+
+    long m = (long) n;
+    printf("to long %ld\n", m);
+    printBits(sizeof(m), &m);
+    printfplong("to long fp", &m);
 }
 
-long double __sulong_fp80_sub(long double x, long double y) {
-    return x - y;
+__attribute__((noinline)) void toDouble(long double n) {
+
+    double m = (double) n;
+    printf("to double %lf\n", m);
+    printBits(sizeof(m), &m);
+    printfpdouble("to double fp", &m);
 }
 
-long double __sulong_fp80_mul(long double x, long double y) {
-    return x * y;
+__attribute__((noinline)) void toInt(long double n) {
+
+    int m = (int) n;
+    printf("to int %d\n", m);
+    printBits(sizeof(m), &m);
+    printfpint("to int fp", &m);
 }
 
-long double __sulong_fp80_div(long double x, long double y) {
-    return x / y;
+__attribute__((noinline)) void toFloat(long double n) {
+
+    float m = (float) n;
+    printf("to float %f\n", m);
+    printBits(sizeof(m), &m);
+    printfpfloat("to float fp", &m);
 }
 
-long double __sulong_fp80_mod(long double x, long double y) {
-    return fmodl(x, y);
+int main(void) {
+
+    long double m = 5.0;
+    toLong(m);
+    toDouble(m);
+    toInt(m);
+    toFloat(m);
+    return 0;
 }
-
-long double __sulong_fp80_pow(long double x, long double y) {
-    return powl(x, y);
-}
-
-#define DECLARE_UNARY_INTRINSIC(fn)                                                                                                                  \
-    long double __sulong_fp80_##fn(long double value) { return fn##l(value); }
-
-DECLARE_UNARY_INTRINSIC(sqrt)
-DECLARE_UNARY_INTRINSIC(log)
-DECLARE_UNARY_INTRINSIC(log2)
-DECLARE_UNARY_INTRINSIC(log10)
-DECLARE_UNARY_INTRINSIC(rint)
-DECLARE_UNARY_INTRINSIC(ceil)
-DECLARE_UNARY_INTRINSIC(floor)
-DECLARE_UNARY_INTRINSIC(exp)
-DECLARE_UNARY_INTRINSIC(exp2)
-DECLARE_UNARY_INTRINSIC(sin)
-DECLARE_UNARY_INTRINSIC(cos)

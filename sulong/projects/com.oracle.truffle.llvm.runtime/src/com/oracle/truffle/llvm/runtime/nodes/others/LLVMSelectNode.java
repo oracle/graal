@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.CountingConditionProfile;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -103,6 +104,14 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
 
         @Specialization
         protected LLVM80BitFloat doOp(boolean cond, LLVM80BitFloat trueBranch, LLVM80BitFloat elseBranch, @Cached CountingConditionProfile conditionProfile) {
+            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
+        }
+    }
+
+    public abstract static class LLVM128BitFloatSelectNode extends LLVMSelectNode {
+
+        @Specialization
+        protected LLVM128BitFloat doOp(boolean cond, LLVM128BitFloat trueBranch, LLVM128BitFloat elseBranch, @Cached CountingConditionProfile conditionProfile) {
             return conditionProfile.profile(cond) ? trueBranch : elseBranch;
         }
     }
