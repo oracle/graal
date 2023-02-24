@@ -158,7 +158,9 @@ abstract class FunctionExecuteNode extends Node {
                 throw silenceException(RuntimeException.class, ex);
             }
 
-            return signatureInfo.execute(signature, args, address);
+            Object ret = signatureInfo.execute(signature, args, address);
+            PanamaNFILanguage.get(this).errorContext.get().handleThrowables();
+            return ret;
         }
 
         @SuppressWarnings({"unchecked"})

@@ -44,6 +44,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
@@ -52,6 +53,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
+
+import java.lang.ref.WeakReference;
 
 @TruffleLanguage.Registration(id = "internal/nfi-panama", name = "nfi-panama", version = "0.1", characterMimeTypes = PanamaNFILanguage.MIME_TYPE, internal = true, services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
 public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
@@ -63,6 +66,35 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
     static Assumption getSingleContextAssumption() {
         return get(null).singleContextAssumption;
     }
+
+    static final class ErrorContext {
+        final PanamaNFIContext ctx;
+        final WeakReference<?> thread;
+
+        private Throwable throwable = null;
+
+        public void setThrowable(Throwable throwable) {
+            this.throwable = throwable;
+        }
+
+        void handleThrowables() {
+            if (throwable != null) {
+                throw silenceThrowable(RuntimeException.class, throwable);
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        static <E extends Throwable> RuntimeException silenceThrowable(Class<E> type, Throwable t) throws E {
+            throw (E) t;
+        }
+
+        ErrorContext(PanamaNFIContext ctx, Thread thread) {
+            this.ctx = ctx;
+            this.thread = new WeakReference<>(thread);
+        }
+    }
+
+    public final ContextThreadLocal<ErrorContext> errorContext = createContextThreadLocal(ErrorContext::new);
 
     @Override
     protected void initializeMultipleContexts() {
